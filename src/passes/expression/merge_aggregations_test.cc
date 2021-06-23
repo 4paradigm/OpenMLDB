@@ -33,8 +33,8 @@ TEST_F(MergeAggregationsTest, Test) {
                                                 "col_0",
                                                 "col_1 * col_2",
                                                 "sum(col_0 + sum(col_1))",
-                                                "at(col_0, 1)",
-                                                "sum(col_0 + at(col_0, 1))"};
+                                                "lead(col_0, 1)",
+                                                "sum(col_0 + lead(col_0, 1))"};
 
     std::vector<std::string> merge_cases = {"sum(col_0 + 1)", "sum(col_1 + 1)",
                                             "distinct_count(col_2)",

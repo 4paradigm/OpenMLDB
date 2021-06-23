@@ -39,6 +39,7 @@ cases:
         4, 5, true
   - id: 1
     desc: 逻辑运算&&
+    tags: ["TODO", "zetasql-unsupport"]
     mode: request
     db: db1
     sql: select col1, col2, (col1 >2) && (col2 > 2) as flag from t1;
@@ -83,6 +84,7 @@ cases:
         4, 5, true
   - id: 3
     desc: 逻辑运算||
+    tags: ["TODO", "zetasql-unsupport"]
     mode: request
     db: db1
     sql: select col1, col2, (col1 >2) || (col2 > 2) as flag from t1;
@@ -107,7 +109,7 @@ cases:
     desc: 逻辑运算NOT
     mode: request
     db: db1
-    sql: select col1, col2, NOT ((col1 >2) || (col2 > 2)) as flag from t1;
+    sql: select col1, col2, NOT ((col1 >2) OR (col2 > 2)) as flag from t1;
     inputs:
       - name: t1
         schema: col1:int32, col2:int64
@@ -129,7 +131,7 @@ cases:
     desc: 逻辑运算!
     mode: request
     db: db1
-    sql: select col1, col2, !((col1 >2) || (col2 > 2)) as flag from t1;
+    sql: select col1, col2, !((col1 >2) OR (col2 > 2)) as flag from t1;
     inputs:
       - name: t1
         schema: col1:int32, col2:int64

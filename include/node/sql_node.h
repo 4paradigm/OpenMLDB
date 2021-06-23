@@ -18,13 +18,13 @@
 #define INCLUDE_NODE_SQL_NODE_H_
 
 #include <glog/logging.h>
-#include <boost/algorithm/string/predicate.hpp>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 #include "boost/algorithm/string.hpp"
+#include "boost/algorithm/string/predicate.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
 #include "node/expr_node.h"
@@ -54,10 +54,6 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "drop database";
         case kCmdCreateDatabase:
             return "create database";
-        case kCmdSource:
-            return "create table";
-        case kCmdCreateGroup:
-            return "create group";
         case kCmdDescTable:
             return "desc table";
         case kCmdDropTable:
@@ -221,32 +217,6 @@ inline const std::string ExprTypeName(const ExprType &type) {
     }
 }
 
-inline const std::string TimeUnitName(const TimeUnit &time_unit) {
-    switch (time_unit) {
-        case kTimeUnitYear:
-            return "year";
-        case kTimeUnitMonth:
-            return "month";
-        case kTimeUnitWeek:
-            return "week";
-        case kTimeUnitDay:
-            return "dayofmonth";
-        case kTimeUnitHour:
-            return "hour";
-        case kTimeUnitMinute:
-            return "minute";
-        case kTimeUnitSecond:
-            return "second";
-        case kTimeUnitMilliSecond:
-            return "millisecond";
-        case kTimeUnitMicroSecond:
-            return "microsecond";
-        default: {
-            return "unknow";
-        }
-    }
-    return "unknow";
-}
 inline const std::string FrameTypeName(const FrameType &type) {
     switch (type) {
         case hybridse::node::kFrameRange:
@@ -343,7 +313,7 @@ inline const std::string DataTypeName(const DataType &type) {
  * \param type: output type
  * \return: Status
  */
-Status StringToDataType(const std::string identifier, DataType* type);
+Status StringToDataType(const std::string identifier, DataType *type);
 
 inline const std::string FnNodeName(const SqlNodeType &type) {
     switch (type) {
@@ -547,9 +517,7 @@ class OrderByNode : public ExprNode {
     OrderByNode *ShadowCopy(NodeManager *) const override;
     const ExprListNode *order_by() const { return order_by_; }
     const std::vector<bool> &is_asc_list() const { return is_asc_list_; }
-    bool is_asc() const {
-        return is_asc_;
-    }
+    bool is_asc() const { return is_asc_; }
 
     const std::vector<bool> is_asc_list_;
     const bool is_asc_;
@@ -742,6 +710,61 @@ class ConstNode : public ExprNode {
     ConstNode *ShadowCopy(NodeManager *) const override;
 
     const bool IsNull() const { return kNull == data_type_; }
+    const bool IsNumber() const {
+        switch (GetDataType()) {
+            case kBool:
+            case kInt16:
+            case kInt32:
+            case kInt64:
+            case kFloat:
+            case kDouble: {
+                return true;
+            }
+            default: {
+                return false;
+            }
+        }
+    }
+    bool ConvertNegative() {
+        switch (GetDataType()) {
+            case kNull:
+            case kBool: {
+                return true;
+            }
+            case kInt16: {
+                val_.vsmallint = -val_.vsmallint;
+                return true;
+            }
+            case kInt32: {
+                val_.vint = -val_.vint;
+                return true;
+            }
+            case kInt64: {
+                val_.vlong = -val_.vlong;
+                return true;
+            }
+            case kFloat: {
+                val_.vfloat = -val_.vfloat;
+                return true;
+            }
+            case kDouble: {
+                val_.vdouble = -val_.vdouble;
+                return true;
+            }
+            case kSecond:
+            case kMinute:
+            case kHour:
+            case kDay: {
+                val_.vlong = -val_.vlong;
+                return true;
+            }
+
+            default: {
+                LOG(WARNING) << "Can't convert negative with const " + node::DataTypeName(data_type_);
+                return false;
+            }
+        }
+    }
     const bool IsPlaceholder() const { return kPlaceholder == data_type_; }
     const std::string GetExprString() const;
 
@@ -1928,8 +1951,8 @@ class FnElseBlock : public FnNode {
 };
 class FnIfElseBlock : public FnNode {
  public:
-    FnIfElseBlock(FnIfBlock *if_block, FnElseBlock *else_block)
-        : FnNode(kFnIfElseBlock), if_block_(if_block), else_block_(else_block) {}
+    FnIfElseBlock(FnIfBlock *if_block, const std::vector<FnNode *> &elif_blocks, FnElseBlock *else_block)
+        : FnNode(kFnIfElseBlock), if_block_(if_block), elif_blocks_(elif_blocks), else_block_(else_block) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     FnIfBlock *if_block_;
     std::vector<FnNode *> elif_blocks_;

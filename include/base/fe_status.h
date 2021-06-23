@@ -25,64 +25,75 @@ namespace hybridse {
 namespace base {
 
 template <typename STREAM, typename... Args>
-static inline std::initializer_list<int> __output_literal_args(
-    STREAM& stream,  // NOLINT
-    Args... args) {  // NOLINT
+static inline std::initializer_list<int> __output_literal_args(STREAM& stream,  // NOLINT
+                                                               Args... args) {  // NOLINT
     return std::initializer_list<int>{(stream << args, 0)...};
 }
 
 #define MAX_STATUS_TRACE_SIZE 4096
 
-#define CHECK_STATUS(call, ...)                                           \
-    while (true) {                                                        \
-        auto _status = (call);                                            \
-        if (!_status.isOK()) {                                            \
-            std::stringstream _msg;                                       \
-            hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);   \
-            std::stringstream _trace;                                     \
-            hybridse::base::__output_literal_args(                        \
-                _trace, "    (At ", __FILE__, ":", __LINE__, ")");        \
-            if (_status.trace.size() >= MAX_STATUS_TRACE_SIZE) {          \
-                LOG(WARNING) << "Internal error: " << _status.msg << "\n" \
-                             << _status.trace;                            \
-            } else {                                                      \
-                if (!_status.msg.empty()) {                               \
-                    _trace << "\n"                                        \
-                           << "(Caused by) " << _status.msg;              \
-                }                                                         \
-                _trace << "\n" << _status.trace;                          \
-            }                                                             \
-            return hybridse::base::Status(_status.code, _msg.str(),       \
-                                          _trace.str());                  \
-        }                                                                 \
-        break;                                                            \
+#define CHECK_STATUS(call, ...)                                                                                       \
+    while (true) {                                                                                                    \
+        auto _status = (call);                                                                                        \
+        if (!_status.isOK()) {                                                                                        \
+            std::stringstream _msg;                                                                                   \
+            hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);                                               \
+            std::stringstream _trace;                                                                                 \
+            hybridse::base::__output_literal_args(_trace, "    (At ", __FILE__, ":", __LINE__, ")");                  \
+            if (_status.trace.size() >= MAX_STATUS_TRACE_SIZE) {                                                      \
+                LOG(WARNING) << "Internal error: " << _status.msg << "\n" << _status.trace;                           \
+            } else {                                                                                                  \
+                if (!_msg.str().empty()) {                                                                            \
+                    _trace << "\n"                                                                                    \
+                           << "    (Caused by) " << _msg.str();                                                       \
+                }                                                                                                     \
+                _trace << "\n" << _status.trace;                                                                      \
+            }                                                                                                         \
+            return hybridse::base::Status(_status.code, _msg.str().empty() ? _status.msg : _msg.str(), _trace.str()); \
+        }                                                                                                             \
+        break;                                                                                                        \
     }
 
-#define CHECK_TRUE(call, errcode, ...)                                         \
-    while (true) {                                                             \
-        if (!(call)) {                                                         \
-            std::stringstream _msg;                                            \
-            hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);        \
-            std::stringstream _trace;                                          \
-            hybridse::base::__output_literal_args(                             \
-                _trace, "    (At ", __FILE__, ":", __LINE__, ")");             \
-            hybridse::base::Status _status(errcode, _msg.str(), _trace.str()); \
-            return _status;                                                    \
-        }                                                                      \
-        break;                                                                 \
+#define CHECK_TRUE(call, errcode, ...)                                                               \
+    while (true) {                                                                                   \
+        if (!(call)) {                                                                               \
+            std::stringstream _msg;                                                                  \
+            hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);                              \
+            std::stringstream _trace;                                                                \
+            hybridse::base::__output_literal_args(_trace, "    (At ", __FILE__, ":", __LINE__, ")"); \
+                                                                                                     \
+            if (!_msg.str().empty()) {                                                               \
+                _trace << "\n"                                                                       \
+                       << "    (Caused by) " << _msg.str();                                          \
+            }                                                                                        \
+            hybridse::base::Status _status(errcode, _msg.str(), _trace.str());                       \
+            return _status;                                                                          \
+        }                                                                                            \
+        break;                                                                                       \
     }
-
+#define FAIL_STATUS(errcode, ...)                                                                \
+    while (true) {                                                                               \
+        std::stringstream _msg;                                                                  \
+        hybridse::base::__output_literal_args(_msg, ##__VA_ARGS__);                              \
+        std::stringstream _trace;                                                                \
+        hybridse::base::__output_literal_args(_trace, "    (At ", __FILE__, ":", __LINE__, ")"); \
+                                                                                                 \
+        if (!_msg.str().empty()) {                                                               \
+            _trace << "\n"                                                                       \
+                   << "    (Caused by) " << _msg.str();                                          \
+        }                                                                                        \
+        hybridse::base::Status _status(errcode, _msg.str(), _trace.str());                       \
+        return _status;                                                                          \
+        break;                                                                                   \
+    }
 struct Status {
     Status() : code(common::kOk), msg("ok") {}
 
-    explicit Status(common::StatusCode status_code)
-        : code(status_code), msg("") {}
+    explicit Status(common::StatusCode status_code) : code(status_code), msg("") {}
 
-    Status(common::StatusCode status_code, const std::string& msg_str)
-        : code(status_code), msg(msg_str) {}
+    Status(common::StatusCode status_code, const std::string& msg_str) : code(status_code), msg(msg_str) {}
 
-    Status(common::StatusCode status_code, const std::string& msg_str,
-           const std::string& trace_str)
+    Status(common::StatusCode status_code, const std::string& msg_str, const std::string& trace_str)
         : code(status_code), msg(msg_str), trace(trace_str) {}
 
     static Status OK() { return Status(); }

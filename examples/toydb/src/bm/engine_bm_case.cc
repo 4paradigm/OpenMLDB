@@ -36,7 +36,6 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-#include "parser/parser.h"
 #include "tablet/tablet_catalog.h"
 
 namespace hybridse {

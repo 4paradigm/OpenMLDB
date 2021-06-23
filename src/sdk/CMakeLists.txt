@@ -18,7 +18,7 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 
 set(SDK_DEPS_LIBS hybridse_core hybridse_flags
-		${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+		${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS} ${OS_LIB} )
 
 # split sdk test and bm
 set(SDK_SRC_FILE_LIST)
@@ -60,7 +60,7 @@ swig_add_library(hybridse_jsdk_core
 target_include_directories(hybridse_jsdk_core PRIVATE ${JNI_INCLUDE_DIRS})
 target_compile_options(hybridse_jsdk_core PRIVATE -w)
 set(sdk_core_deps_libs
-	hybridse_core hybridse_flags ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${COMMON_LIBS})
+	hybridse_core hybridse_flags ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${COMMON_LIBS} )
 target_link_libraries(hybridse_jsdk_core PRIVATE glog ${sdk_core_deps_libs})
 
 if(APPLE)

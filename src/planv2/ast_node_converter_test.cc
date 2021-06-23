@@ -18,20 +18,22 @@
 #include <ctime>
 #include <memory>
 #include <random>
+#include <vector>
+#include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "zetasql/base/testing//status_matchers.h"
 #include "zetasql/parser/ast_node.h"
 
 namespace hybridse {
 namespace plan {
-
-class ASTNodeConverterTest : public ::testing::Test {
+class ASTNodeConverterTest : public ::testing::TestWithParam<sqlcase::SqlCase> {
  public:
-    ASTNodeConverterTest() {}
+    ASTNodeConverterTest() { manager_ = new node::NodeManager(); }
+    ~ASTNodeConverterTest() { delete manager_; }
 
-    ~ASTNodeConverterTest() {}
+ protected:
+    node::NodeManager* manager_;
 };
-
 TEST_F(ASTNodeConverterTest, UnSupportBinaryOp) {
     zetasql::ASTNullLiteral null1;
     zetasql::ASTNullLiteral null2;
@@ -263,17 +265,17 @@ TEST_F(ASTNodeConverterTest, ConvertFrameBoundTest) {
 TEST_F(ASTNodeConverterTest, ConvertFrameNodeTest) {
     node::NodeManager node_manager;
     {
-        zetasql::ASTWindowFrame expression;
         zetasql::ASTWindowFrameExpr start;
         zetasql::ASTWindowFrameExpr end;
         start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_PRECEDING);
-        start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_FOLLOWING);
         end.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::CURRENT_ROW);
-        expression.AddChildren({&start, &end});
+        zetasql::ASTWindowFrame expression;
         expression.set_unit(zetasql::ASTWindowFrame::ROWS_RANGE);
+        expression.AddChildren({&start, &end});
+        dynamic_cast<zetasql::ASTNode*>(&expression)->InitFields();
         node::FrameNode* output = nullptr;
         base::Status status = ConvertFrameNode(&expression, &node_manager, &output);
-        ASSERT_TRUE(status.isOK());
+        ASSERT_TRUE(status.isOK()) << status;
     }
     {
         zetasql::ASTWindowFrame expression;
@@ -284,6 +286,7 @@ TEST_F(ASTNodeConverterTest, ConvertFrameNodeTest) {
         end.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::CURRENT_ROW);
         expression.AddChildren({&start, &end});
         expression.set_unit(zetasql::ASTWindowFrame::RANGE);
+        dynamic_cast<zetasql::ASTNode*>(&expression)->InitFields();
         node::FrameNode* output = nullptr;
         base::Status status = ConvertFrameNode(&expression, &node_manager, &output);
         ASSERT_TRUE(status.isOK());
@@ -297,6 +300,7 @@ TEST_F(ASTNodeConverterTest, ConvertFrameNodeTest) {
         end.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::CURRENT_ROW);
         expression.AddChildren({&start, &end});
         expression.set_unit(zetasql::ASTWindowFrame::ROWS);
+        dynamic_cast<zetasql::ASTNode*>(&expression)->InitFields();
         node::FrameNode* output = nullptr;
         base::Status status = ConvertFrameNode(&expression, &node_manager, &output);
         ASSERT_TRUE(status.isOK());
@@ -309,7 +313,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         const std::string sql =
             "create table t1 (a int, b string, index(key=(a, b), dump='12', ts=column2, ttl=1d, ttl_type=absolute, "
             "version=(column5, 3) ) ) options (replicanum = 3, partitionnum = 3, ignored_option = 'abc', distribution "
-            "= [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo1', 'fo2']) ]);";
+            "= [ ('leader1', ['fo1', 'fo2']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
         ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
@@ -324,12 +328,34 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         EXPECT_EQ(false, output->GetOpIfNotExist());
         EXPECT_EQ(3, output->GetPartitionNum());
         EXPECT_EQ(3, output->GetReplicaNum());
+        EXPECT_EQ(3, output->GetDistributionList().size());
+        {
+            EXPECT_EQ(node::kPartitionMeta, output->GetDistributionList()[0]->GetType());
+            node::PartitionMetaNode* partition_mata =
+                dynamic_cast<node::PartitionMetaNode*>(output->GetDistributionList()[0]);
+            ASSERT_EQ(node::RoleType::kLeader, partition_mata->GetRoleType());
+            ASSERT_EQ("leader1", partition_mata->GetEndpoint());
+        }
+        {
+            EXPECT_EQ(node::kPartitionMeta, output->GetDistributionList()[0]->GetType());
+            node::PartitionMetaNode* partition_mata =
+                dynamic_cast<node::PartitionMetaNode*>(output->GetDistributionList()[1]);
+            ASSERT_EQ(node::RoleType::kFollower, partition_mata->GetRoleType());
+            ASSERT_EQ("fo1", partition_mata->GetEndpoint());
+        }
+        {
+            EXPECT_EQ(node::kPartitionMeta, output->GetDistributionList()[0]->GetType());
+            node::PartitionMetaNode* partition_mata =
+                dynamic_cast<node::PartitionMetaNode*>(output->GetDistributionList()[2]);
+            ASSERT_EQ(node::RoleType::kFollower, partition_mata->GetRoleType());
+            ASSERT_EQ("fo2", partition_mata->GetEndpoint());
+        }
     }
     {
         const std::string sql =
             "create table if not exists t1 (a i16, b float32, index(key=a, ignored_key='seb', ts=b, ttl=(1h, 1800), "
             "ttl_type=latest, version=a ) ) options (replicanum = 2, partitionnum = 5, ignored_option = 'abc', "
-            "distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo1', 'fo2']) ]);";
+            "distribution = [ ('leader1', ['fo1', 'fo2']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
         ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
@@ -349,7 +375,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         const std::string sql =
             "create table if not exists t3 (a int32, b timestamp, index(key=a, ignored_key='seb', ts=b, ttl=1800, "
             "ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, ignored_option = 'abc', "
-            "distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo1', 'fo2']) ]);";
+            "distribution = [ ('leader1', ['fo1', 'fo2']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
         ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
@@ -379,6 +405,23 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
         EXPECT_EQ(common::kOk, status.code) << status.msg << status.trace;
         EXPECT_STREQ("t4", output->GetTableName().c_str());
+    }
+
+    {
+        const std::string sql =
+            "create table if not exists t3 (a int32, b timestamp, index(key=a, ignored_key='seb', ts=b, ttl=1800, "
+            "ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, ignored_option = 'abc', "
+            "distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo3', 'fo4']) ]);";
+
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTCreateTableStatement>());
+
+        const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
+        node::CreateStmt* output = nullptr;
+        auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
+        EXPECT_EQ(common::kSqlError, status.code);
     }
 }
 
@@ -465,7 +508,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
         node::CreateSpStmt* stmt;
         auto s = ConvertCreateProcedureNode(create_sp, &node_manager, &stmt);
         EXPECT_EQ(code, s.code);
-        EXPECT_TRUE(boost::contains(s.trace, msg)) << s.trace;
+        EXPECT_TRUE(boost::contains(s.msg, msg)) << s << "\nexpect msg: " << msg;
     };
 
     // unsupported param type
@@ -494,7 +537,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
           SELECT 1 UNION DISTINCT SELECT 2 UNION DISTINCT SELECT 3;
         END;
         )sql",
-                     common::kTypeError, "unknow DataType identifier: unknown_type");
+                     common::kTypeError, "Unknow DataType identifier: unknown_type");
 
     // unsupport param type
     expect_converted(R"sql(
@@ -506,7 +549,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
           SELECT 1 UNION DISTINCT SELECT 2;
         END;
         )sql",
-                     common::kSqlError, "Un-support parameter type: ArrayType");
+                     common::kSqlError, "Un-support type: ArrayType");
 
     // unsupport set operation
     expect_converted(R"sql(
@@ -553,14 +596,15 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
         const auto* statement = parser_output->statement();
 
         node::SqlNode* stmt;
-        auto s = ConvertStmt(statement, &node_manager, &stmt);
+        auto s = ConvertStatement(statement, &node_manager, &stmt);
         EXPECT_EQ(code, s.code);
         EXPECT_STREQ(msg.c_str(), s.msg.c_str()) << s.msg << s.trace;
     };
 
     expect_converted(R"sql(
         ALTER TABLE foo ALTER COLUMN bar SET DATA TYPE STRING;
-    )sql", common::kSqlError, "Un-support statement type: AlterTableStatement");
+    )sql",
+                     common::kSqlError, "Un-support statement type: AlterTableStatement");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
@@ -591,7 +635,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kPlanError, status.code);
+        EXPECT_EQ(common::kSqlError, status.code);
     }
     {
         // not supported table element
@@ -605,7 +649,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kPlanError, status.code);
+        EXPECT_EQ(common::kSqlError, status.code);
     }
     {
         // not supported index key option value type
@@ -619,7 +663,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kPlanError, status.code);
+        EXPECT_EQ(common::kSqlError, status.code);
     }
     {
         // not supported index ttl option value type
@@ -633,7 +677,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kPlanError, status.code);
+        EXPECT_EQ(common::kSqlError, status.code);
     }
     {
         // not supported index version option value type
@@ -647,7 +691,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kPlanError, status.code);
+        EXPECT_EQ(common::kSqlError, status.code);
     }
     {
         // not supported table option value type
@@ -661,7 +705,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kPlanError, status.code);
+        EXPECT_EQ(common::kSqlError, status.code);
     }
 }
 
@@ -772,6 +816,27 @@ TEST_F(ASTNodeConverterTest, ASTIntervalLiteralToNumberTest) {
         ASSERT_EQ(common::kTypeError, status.code);
     }
 }
+
+// expect tree string equal for converted CreateStmt
+TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
+    auto& sql = GetParam().sql_str();
+
+    std::unique_ptr<zetasql::ParserOutput> parser_output;
+    ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+    const auto* statement = parser_output->statement();
+
+    node::SqlNode* output;
+    base::Status status;
+    status = ConvertStatement(statement, manager_, &output);
+    EXPECT_EQ(common::kOk, status.code) << status.msg << status.trace;
+    if (status.isOK() && GetParam().expect().node_tree_str_.has_value()) {
+        EXPECT_EQ(GetParam().expect().node_tree_str_.value(), output->GetTreeString());
+    }
+}
+const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport", "zetasql-unsupport"});
+INSTANTIATE_TEST_CASE_P(PlannerV2Test, ASTNodeConverterTest,
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
+
 }  // namespace plan
 }  // namespace hybridse
 

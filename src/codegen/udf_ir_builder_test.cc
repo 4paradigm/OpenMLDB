@@ -36,7 +36,6 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Utils.h"
 #include "node/node_manager.h"
-#include "parser/parser.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "udf/udf_test.h"

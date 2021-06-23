@@ -641,5 +641,24 @@ void QueryPlanNode::Print(std::ostream &output,
 bool QueryPlanNode::Equals(const PlanNode *node) const {
     return UnaryPlanNode::Equals(node);
 }
+
+void CreatePlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    std::string tab = org_tab + INDENT;
+    if (!database_.empty()) {
+        PrintValue(output, tab, database_, "database", false);
+        output << "\n";
+    }
+    PrintValue(output, tab, table_name_, "table", false);
+    output << "\n";
+    PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(partition_num_), "partition_num", false);
+    output << "\n";
+    PrintSqlVector(output, tab, distribution_list_, "distribution", false);
+}
 }  // namespace node
 }  // namespace hybridse

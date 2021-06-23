@@ -38,9 +38,8 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "node/node_manager.h"
-#include "parser/parser.h"
 #include "passes/physical/condition_optimized.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/simple_catalog.h"
@@ -59,6 +58,7 @@ using hybridse::passes::ConditionOptimized;
 using hybridse::passes::ExprPair;
 using hybridse::sqlcase::SqlCase;
 const std::vector<std::string> FILTERS({"physical-plan-unsupport",
+                                        "zetasql-unsupport",
                                         "logical-plan-unsupport",
                                         "parser-unsupport"});
 
@@ -169,19 +169,11 @@ TEST_P(TransformTest, transform_physical_plan) {
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status base_status;
     {
-        ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::HybridSeParser parser;
-        ::hybridse::node::NodePointVector parser_trees;
-        parser.parse(sqlstr, parser_trees, &manager, base_status);
-        LOG(INFO) << *(parser_trees[0]) << std::endl;
-        ASSERT_EQ(0, base_status.code);
-        if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
-            0) {
-            LOG(INFO) << *(plan_trees[0]) << std::endl;
+        if (plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, &manager, base_status)) {
+            LOG(INFO) << "\n" << *(plan_trees[0]) << std::endl;
         } else {
             LOG(INFO) << base_status.str();
         }
-
         ASSERT_EQ(0, base_status.code);
     }
 
@@ -264,19 +256,11 @@ TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status base_status;
     {
-        ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::HybridSeParser parser;
-        ::hybridse::node::NodePointVector parser_trees;
-        parser.parse(sqlstr, parser_trees, &manager, base_status);
-        LOG(INFO) << *(parser_trees[0]) << std::endl;
-        ASSERT_EQ(0, base_status.code);
-        if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
-            0) {
-            LOG(INFO) << *(plan_trees[0]) << std::endl;
+        if (plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, &manager, base_status)) {
+            LOG(INFO) << "\n" << *(plan_trees[0]) << std::endl;
         } else {
             LOG(INFO) << base_status.str();
         }
-
         ASSERT_EQ(0, base_status.code);
     }
 
@@ -308,21 +292,12 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status base_status;
     {
-        ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::HybridSeParser parser;
-        ::hybridse::node::NodePointVector parser_trees;
-        parser.parse(sql, parser_trees, &manager, base_status);
-        ASSERT_EQ(0, base_status.code);
-        if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
-            0) {
-            std::cout << base_status.str();
-            LOG(INFO) << *(plan_trees[0]) << std::endl;
+        if (plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &manager, base_status)) {
+            LOG(INFO) << "\n" << *(plan_trees[0]) << std::endl;
         } else {
-            std::cout << base_status.str();
+            LOG(INFO) << base_status.str();
         }
-
         ASSERT_EQ(0, base_status.code);
-        std::cout.flush();
     }
 
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -533,14 +508,7 @@ TEST_P(TransformTest, window_merge_opt_test) {
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status base_status;
     {
-        ::hybridse::plan::SimplePlanner planner(&manager);
-        ::hybridse::parser::HybridSeParser parser;
-        ::hybridse::node::NodePointVector parser_trees;
-        parser.parse(sqlstr, parser_trees, &manager, base_status);
-        LOG(INFO) << *(parser_trees[0]) << std::endl;
-        ASSERT_EQ(0, base_status.code);
-        if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
-            0) {
+        if (plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, &manager, base_status)) {
             LOG(INFO) << "\n" << *(plan_trees[0]) << std::endl;
         } else {
             LOG(INFO) << base_status.str();

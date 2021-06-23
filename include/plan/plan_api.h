@@ -26,21 +26,12 @@ using hybridse::node::NodePointVector;
 using hybridse::node::PlanNodeList;
 class PlanAPI {
  public:
-    static bool CreateSyntaxTreeFromScript(
-        const std::string& sql,
-        NodePointVector& syntax_trees,  // NOLINT
-        NodeManager* node_manager,
-        Status& status);  // NOLINT
-    static bool CreatePlanTreeFromSyntaxTree(
-        const NodePointVector& syntax_trees,
-        PlanNodeList& plan_trees,  // NOLINT
-        NodeManager* node_manager,
-        Status& status);  // NOLINT (runtime/references)
-    static bool CreatePlanTreeFromScript(
-        const std::string& sql,
-        PlanNodeList& plan_trees,  // NOLINT
-        NodeManager* node_manager,
-        Status& status);  // NOLINT (runtime/references)
+    static bool CreatePlanTreeFromScript(const std::string& sql,
+                                         PlanNodeList& plan_trees,  // NOLINT
+                                         NodeManager* node_manager,
+                                         Status& status,  // NOLINT (runtime/references)
+                                         bool is_batch_mode = true, bool is_cluster = false,
+                                         bool enable_batch_window_parallelization = false);
     static const std::string GenerateName(const std::string prefix, int id);
 };
 

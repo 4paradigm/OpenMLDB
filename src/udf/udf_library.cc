@@ -23,8 +23,7 @@
 #include "boost/filesystem/string_file.hpp"
 
 #include "codegen/type_ir_builder.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 #include "udf/udf_registry.h"
 #include "vm/jit_wrapper.h"
 
@@ -196,16 +195,10 @@ Status UdfLibrary::RegisterFromFile(const std::string& path_str) {
     boost::filesystem::load_string_file(path, script);
     DLOG(INFO) << "Script file : " << script << "\n" << script;
 
-    ::hybridse::node::NodePointVector parser_trees;
-    ::hybridse::parser::HybridSeParser parser;
-    ::hybridse::plan::SimplePlanner planer(node_manager());
     ::hybridse::node::PlanNodeList plan_trees;
-
     Status status;
-    CHECK_TRUE(0 == parser.parse(script, parser_trees, node_manager(), status),
-               kCodegenError, "Fail to parse script:", status.str());
-    CHECK_TRUE(0 == planer.CreatePlanTree(parser_trees, plan_trees, status),
-               kCodegenError, "Fail to create sql plan: ", status.str());
+    CHECK_TRUE(::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(script, plan_trees, node_manager(), status),
+               kCodegenError, "Fail to create plan: ", status.str());
 
     std::unordered_map<std::string, std::shared_ptr<SimpleUdfRegistry>> dict;
     auto it = plan_trees.begin();

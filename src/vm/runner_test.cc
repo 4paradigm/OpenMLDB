@@ -32,8 +32,7 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 #include "vm/sql_compiler.h"
 #include "testing/test_base.h"
 
@@ -45,7 +44,8 @@ ExitOnError ExitOnErr;
 namespace hybridse {
 namespace vm {
 using hybridse::sqlcase::SqlCase;
-const std::vector<std::string> FILTERS({"runner-unsupport", "physical-plan-unsupport", "logical-plan-unsupport"});
+const std::vector<std::string> FILTERS({"runner-unsupport", "physical-plan-unsupport",
+                                        "zetasql-unsupport", "logical-plan-unsupport"});
 Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type);
 
 

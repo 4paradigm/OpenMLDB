@@ -313,21 +313,10 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(const std::string& cre
     CHECK_TRUE(!create.empty(), common::kSqlError, "Fail extract with empty create string");
 
     node::NodeManager manager;
-    parser::HybridSeParser parser;
-    hybridse::plan::NodePointVector trees;
     base::Status status;
-    int ret = parser.parse(create, trees, &manager, status);
-
-    if (0 != status.code) {
-        std::cout << status << std::endl;
-    }
-    CHECK_TRUE(0 == ret, common::kSqlError, "Fail to parser SQL");
-    //    ASSERT_EQ(1, trees.size());
-    //    std::cout << *(trees.front()) << std::endl;
-    plan::SimplePlanner planner_ptr(&manager);
     node::PlanNodeList plan_trees;
-    CHECK_TRUE(0 == planner_ptr.CreatePlanTree(trees, plan_trees, status), common::kPlanError,
-               "Fail to resolve logical plan");
+    CHECK_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(create, plan_trees, &manager, status), common::kPlanError,
+               "Fail to resolve logical plan", status.msg);
     CHECK_TRUE(1u == plan_trees.size(), common::kPlanError, "Fail to extract table info with multi logical plan tree");
     CHECK_TRUE(nullptr != plan_trees[0] && node::kPlanTypeCreate == plan_trees[0]->type_, common::kPlanError,
                "Fail to extract table info with invalid SQL, CREATE SQL is required");

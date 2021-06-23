@@ -28,8 +28,7 @@
 #include "glog/logging.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 #include "udf/default_udf_library.h"
 #include "vm/runner.h"
 #include "vm/transform.h"
@@ -306,22 +305,10 @@ bool SqlCompiler::BuildClusterJob(SqlContext& ctx, Status& status) {  // NOLINT
  */
 bool SqlCompiler::Parse(SqlContext& ctx,
                         ::hybridse::base::Status& status) {  // NOLINT
-    ::hybridse::node::NodePointVector parser_trees;
-    ::hybridse::parser::HybridSeParser parser;
-
     bool is_batch_mode = ctx.engine_mode == kBatchMode;
-    ::hybridse::plan::SimplePlanner planer(
-        &ctx.nm, is_batch_mode, ctx.is_cluster_optimized,
-        ctx.enable_batch_window_parallelization);
-
-    int ret = parser.parse(ctx.sql, parser_trees, &ctx.nm, status);
-    if (ret != 0) {
-        LOG(WARNING) << "fail to parse sql " << ctx.sql << " with error "
-                     << status;
-        return false;
-    }
-    ret = planer.CreatePlanTree(parser_trees, ctx.logical_plan, status);
-    if (ret != 0) {
+    if (!::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(ctx.sql, ctx.logical_plan, &ctx.nm, status, is_batch_mode,
+                                                             ctx.is_cluster_optimized,
+                                                             ctx.enable_batch_window_parallelization)) {
         LOG(WARNING) << "Fail create sql plan: " << status;
         return false;
     }

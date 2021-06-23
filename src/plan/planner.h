@@ -38,26 +38,19 @@ using node::SqlNode;
 
 class Planner {
  public:
-    Planner(node::NodeManager *manager, const bool is_batch_mode,
-            const bool is_cluster_optimized,
+    Planner(node::NodeManager *manager, const bool is_batch_mode, const bool is_cluster_optimized,
             const bool enable_batch_window_parallelization)
         : is_batch_mode_(is_batch_mode),
           is_cluster_optimized_(is_cluster_optimized),
           enable_window_maxsize_merged_(true),
-          enable_batch_window_parallelization_(
-              enable_batch_window_parallelization),
+          enable_batch_window_parallelization_(enable_batch_window_parallelization),
           node_manager_(manager) {}
     virtual ~Planner() {}
-    virtual int CreatePlanTree(
-        const NodePointVector &parser_trees,
-        PlanNodeList &plan_trees,  // NOLINT (runtime/references)
-        Status &status) = 0;       // NOLINT (runtime/references)
-    static bool TransformTableDef(
-        const std::string &table_name, const NodePointVector &column_desc_list,
-        type::TableDef *table,
-        Status &status);  // NOLINT (runtime/references)
-    bool MergeWindows(const std::map<const node::WindowDefNode *,
-                                     node::ProjectListNode *> &map,
+    virtual base::Status CreatePlanTree(const NodePointVector &parser_trees,
+                                        PlanNodeList &plan_trees) = 0;  // NOLINT (runtime/references)
+    static base::Status TransformTableDef(const std::string &table_name, const NodePointVector &column_desc_list,
+                                          type::TableDef *table);
+    bool MergeWindows(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
                       std::vector<const node::WindowDefNode *> *windows);
 
  protected:
@@ -65,65 +58,36 @@ class Planner {
     const bool is_cluster_optimized_;
     const bool enable_window_maxsize_merged_;
     const bool enable_batch_window_parallelization_;
-    bool ExpandCurrentHistoryWindow(
-        std::vector<const node::WindowDefNode *> *windows);
+    bool ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *> *windows);
     bool IsTable(node::PlanNode *node);
-    bool ValidatePrimaryPath(
-        node::PlanNode *node, node::PlanNode **output,
-        base::Status &status);  // NOLINT (runtime/references)
-    bool CheckWindowFrame(const node::WindowDefNode *w_ptr,
-                          base::Status &status);  // NOLINT (runtime/references)
-    void CreatePlanRecurse(const node::SqlNode *root, PlanNode *plan_tree,
-                           Status &status);  // NOLINT (runtime/references)
-    bool CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
-                         Status &status);  // NOLINT (runtime/references)
-    bool CreateSelectQueryPlan(const node::SelectQueryNode *root,
-                               PlanNode **plan_tree,
-                               Status &status);  // NOLINT (runtime/references)
-    bool CreateUnionQueryPlan(const node::UnionQueryNode *root,
-                              PlanNode **plan_tree,
-                              Status &status);  // NOLINT (runtime/references)
-    bool CreateCreateTablePlan(const node::SqlNode *root,
-                               node::PlanNode **output,
-                               Status &status);  // NOLINT (runtime/references)
-    bool CreateTableReferencePlanNode(
-        const node::TableRefNode *root, node::PlanNode **output,
-        Status &status);  // NOLINT (runtime/references)
-    bool CreateCmdPlan(const SqlNode *root, node::PlanNode **output,
-                       Status &status);  // NOLINT (runtime/references)
-    bool CreateInsertPlan(const SqlNode *root, node::PlanNode **output,
-                          Status &status);  // NOLINT (runtime/references)
-
-    bool CreateFuncDefPlan(const SqlNode *root, node::PlanNode **output,
-                           Status &status);  // NOLINT (runtime/references)
-    bool CreateWindowPlanNode(const node::WindowDefNode *w_ptr,
-                              node::WindowPlanNode *plan_node,
-                              Status &status);  // NOLINT (runtime/references)
-    bool CreateCreateProcedurePlan(
-        const node::SqlNode *root, const PlanNodeList &inner_plan_node_list,
-        node::PlanNode **output,
-        Status &status);  // NOLINT (runtime/references)
+    base::Status ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output);
+    base::Status CheckWindowFrame(const node::WindowDefNode *w_ptr);
+    base::Status CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree);
+    base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, PlanNode **plan_tree);
+    base::Status CreateUnionQueryPlan(const node::UnionQueryNode *root, PlanNode **plan_tree);
+    base::Status CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output);
+    base::Status CreateTableReferencePlanNode(const node::TableRefNode *root, node::PlanNode **output);
+    base::Status CreateCmdPlan(const SqlNode *root, node::PlanNode **output);
+    base::Status CreateInsertPlan(const SqlNode *root, node::PlanNode **output);
+    base::Status CreateFuncDefPlan(const SqlNode *root, node::PlanNode **output);
+    base::Status CreateWindowPlanNode(const node::WindowDefNode *w_ptr, node::WindowPlanNode *plan_node);
+    base::Status CreateCreateProcedurePlan(const node::SqlNode *root, const PlanNodeList &inner_plan_node_list,
+                                           node::PlanNode **output);
     node::NodeManager *node_manager_;
     std::string MakeTableName(const PlanNode *node) const;
-    bool MergeProjectMap(
-        const std::map<const node::WindowDefNode *, node::ProjectListNode *>
-            &map,
-        std::map<const node::WindowDefNode *, node::ProjectListNode *> *output,
-        Status &status);  // NOLINT (runtime/references)
+    base::Status MergeProjectMap(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
+                                 std::map<const node::WindowDefNode *, node::ProjectListNode *> *output);
 };
 
 class SimplePlanner : public Planner {
  public:
-    explicit SimplePlanner(node::NodeManager *manager)
-        : Planner(manager, true, false, false) {}
-    SimplePlanner(node::NodeManager *manager, bool is_batch_mode,
-                  bool is_cluster_optimized = false,
+    explicit SimplePlanner(node::NodeManager *manager) : Planner(manager, true, false, false) {}
+    SimplePlanner(node::NodeManager *manager, bool is_batch_mode, bool is_cluster_optimized = false,
                   bool enable_batch_window_parallelization = false)
-        : Planner(manager, is_batch_mode, is_cluster_optimized,
-                  enable_batch_window_parallelization) {}
-    int CreatePlanTree(const NodePointVector &parser_trees,
-                       PlanNodeList &plan_trees,  // NOLINT
-                       Status &status);           // NOLINT (runtime/references)
+        : Planner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization) {}
+    ~SimplePlanner() {}
+    base::Status CreatePlanTree(const NodePointVector &parser_trees,
+                                PlanNodeList &plan_trees);  // NOLINT
 };
 
 }  // namespace plan

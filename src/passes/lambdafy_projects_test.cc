@@ -16,8 +16,7 @@
 
 #include "passes/lambdafy_projects.h"
 #include "gtest/gtest.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
 
@@ -31,10 +30,8 @@ TEST_F(LambdafyProjectsTest, Test) {
     vm::SchemasContext schemas_ctx;
     schemas_ctx.BuildTrivial({&schema});
 
-    parser::HybridSeParser parser;
     Status status;
     node::NodeManager nm;
-    plan::SimplePlanner planner(&nm);
 
     const std::string udf1 =
         "select "
@@ -43,14 +40,10 @@ TEST_F(LambdafyProjectsTest, Test) {
         "    sum(col_0), "
         "    count_where(col_1, col_2 > 2), "
         "    count(col_0) + log(sum(col_1 + 1 + abs(max(col_2)))) + 1,"
-        "    avg(col_0 - at(col_0, 3)) "
+        "    avg(col_0 - lead(col_0, 3)) "
         "from t1;";
-    node::NodePointVector list1;
-    int ok = parser.parse(udf1, list1, &nm, status);
-    ASSERT_EQ(0, ok);
-
     node::PlanNodeList trees;
-    planner.CreatePlanTree(list1, trees, status);
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(udf1, trees, &nm, status)) << status;
     ASSERT_EQ(1u, trees.size());
 
     auto query_plan = dynamic_cast<node::QueryPlanNode *>(trees[0]);

@@ -23,7 +23,6 @@
 #include <vector>
 #include "base/fe_status.h"
 #include "llvm/IR/Module.h"
-#include "parser/parser.h"
 #include "proto/fe_common.pb.h"
 #include "udf/udf_library.h"
 #include "vm/catalog.h"

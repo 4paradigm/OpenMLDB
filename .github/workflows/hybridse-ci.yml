@@ -32,11 +32,7 @@ jobs:
       - name: Build Core
         run: |
           ./tools/hybridse_build.sh
-
-      - name: Zetasql parser test
-        run: |
-          ./tools/zetasql_parser_test.sh
-
+          
       - name: Core Test
         run: |
           ./tools/hybridse_core_test.sh
@@ -126,10 +122,6 @@ jobs:
       - name: Build Core
         run: |
           ./tools/hybridse_build.sh
-
-      - name: Zetasql parser test
-        run: |
-          ./tools/zetasql_parser_test.sh
 
       - name: Core Test
         run: |

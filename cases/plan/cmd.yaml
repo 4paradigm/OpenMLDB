@@ -18,9 +18,10 @@ cases:
     sql: CREATE DATABASE db1;
   - id: 2
     desc: CREATE TABLE
-    sql: CREATE TABLE "schema.sql";
+    sql: CREATE TABLE schema.sql;
   - id: 3
     desc: CREATE GROUP
+    mode: zetasql-unsupport
     sql: CREATE GROUP group1;
   - id: 4
     desc: DESC table
@@ -39,3 +40,15 @@ cases:
     desc: explain logical
     sql: explain logical SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;
     mode: logical-plan-unsupport
+  - id: 9
+    desc: SHOW PROCEDUERS
+    sql: SHOW PROCEDURES;
+  - id: 10
+    desc: DROP PROCEDUER
+    sql: DROP PROCEDURE sp1;
+  - id: 11
+    desc: DROP TABLE
+    sql: DROP TABLE t1;
+  - id: 11
+    desc: DROP INDEX
+    sql: DROP INDEX t1.index1

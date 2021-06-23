@@ -105,7 +105,7 @@ cd /HybridSE
 mkdir build
 cd build
 cmake ..
-make -j$(nproc) hybridse_proto && make -j$(nproc) hybridse_parser && make -j$(nproc) simple_engine_demo
+make -j$(nproc) hybridse_proto && make -j$(nproc) simple_engine_demo
 ./src/simple_engine_demo
 ```
 
@@ -119,7 +119,7 @@ make -j$(nproc) hybridse_proto && make -j$(nproc) hybridse_parser && make -j$(np
 cd /HybridSE
 mkdir build
 cmake .. -DEXAMPLES_ENABLE=ON
-make -j$(nproc) hybridse_proto && make -j$(nproc) hybride_parser && make toydb -j$(nproc)
+make -j$(nproc) hybridse_proto && make toydb -j$(nproc)
 ```
 
 - Start ToyDB

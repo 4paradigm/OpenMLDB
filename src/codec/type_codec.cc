@@ -188,17 +188,16 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
                      int8_t* val, uint32_t size, int8_t is_null,
                      uint32_t str_start_offset, uint32_t str_field_offset,
                      uint32_t str_addr_space, uint32_t str_body_offset) {
-
     if (FLAGS_enable_spark_unsaferow_format) {
         // TODO(chenjing): Refactor to support multiple codec instead of reusing the variable
         // For UnsafeRow opt, str_start_offset is the nullbitmap size
         const uint32_t bitmap_size = str_start_offset;
         const uint32_t str_col_offset = HEADER_LENGTH + bitmap_size + col_idx * 8;
-
-        *(reinterpret_cast<uint32_t*>(buf_ptr + str_col_offset)) = size; // set size
+        // set size
+        *(reinterpret_cast<uint32_t*>(buf_ptr + str_col_offset)) = size;
         // Notice that the offset in UnsafeRow should start without HybridSE header
-        *(reinterpret_cast<uint32_t*>(buf_ptr + str_col_offset + 4)) = str_body_offset - HEADER_LENGTH; // set offset
-
+        // set offset
+        *(reinterpret_cast<uint32_t*>(buf_ptr + str_col_offset + 4)) = str_body_offset - HEADER_LENGTH;
         if (size != 0) {
             memcpy(reinterpret_cast<char*>(buf_ptr + str_body_offset), val, size);
         }

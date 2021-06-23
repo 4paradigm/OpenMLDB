@@ -99,7 +99,6 @@ class NodeManager {
                                      ExprNode *else_expr);
     ExprNode *MakeSearchedCaseWhenNode(ExprListNode *when_list_expr,
                                        ExprNode *else_expr);
-    ExprNode *MakeTimeFuncNode(const TimeUnit time_unit, ExprListNode *args);
     CallExprNode *MakeFuncNode(const std::string &name, ExprListNode *args,
                                const SqlNode *over);
     CallExprNode *MakeFuncNode(FnDefNode *fn, ExprListNode *args,
@@ -151,8 +150,6 @@ class NodeManager {
     SqlNode *MakeColumnIndexNode(SqlNodeList *keys, SqlNode *ts, SqlNode *ttl,
                                  SqlNode *version);
     SqlNode *MakeColumnIndexNode(SqlNodeList *index_item_list);
-    SqlNode *MakeKeyNode(SqlNodeList *key_list);
-    SqlNode *MakeKeyNode(const std::string &key);
     SqlNode *MakeIndexKeyNode(const std::string &key);
     SqlNode *MakeIndexTsNode(const std::string &ts);
     SqlNode *MakeIndexTTLNode(ExprListNode *ttl_expr);
@@ -210,16 +207,6 @@ class NodeManager {
     ConstNode *MakeConstNode(const char *value);
     ConstNode *MakeConstNode();
     ConstNode *MakeConstNode(DataType type);
-    ConstNode *MakeConstNodeINT16MAX();
-    ConstNode *MakeConstNodeINT32MAX();
-    ConstNode *MakeConstNodeINT64MAX();
-    ConstNode *MakeConstNodeFLOATMAX();
-    ConstNode *MakeConstNodeDOUBLEMAX();
-    ConstNode *MakeConstNodeINT16MIN();
-    ConstNode *MakeConstNodeINT32MIN();
-    ConstNode *MakeConstNodeINT64MIN();
-    ConstNode *MakeConstNodeFLOATMIN();
-    ConstNode *MakeConstNodeDOUBLEMIN();
     ConstNode *MakeConstNodePlaceHolder();
 
     AllNode *MakeAllNode(const std::string &relation_name);
@@ -228,6 +215,7 @@ class NodeManager {
 
     FnNode *MakeFnNode(const SqlNodeType &type);
     FnNodeList *MakeFnListNode();
+    FnNodeList *MakeFnListNode(FnNode* fn_node);
     FnNode *MakeFnDefNode(const FnNode *header, FnNodeList *block);
     FnNode *MakeFnHeaderNode(const std::string &name, FnNodeList *plist,
                              const TypeNode *return_type);
@@ -241,6 +229,7 @@ class NodeManager {
     FnIfBlock *MakeFnIfBlock(FnIfNode *if_node, FnNodeList *block);
     FnElifBlock *MakeFnElifBlock(FnElifNode *elif_node, FnNodeList *block);
     FnIfElseBlock *MakeFnIfElseBlock(FnIfBlock *if_block,
+                                     const std::vector<FnNode *>& elif_blocks,
                                      FnElseBlock *else_block);
     FnElseBlock *MakeFnElseBlock(FnNodeList *block);
     FnNode *MakeIfStmtNode(ExprNode *value);
@@ -262,7 +251,6 @@ class NodeManager {
     SqlNodeList *MakeNodeList();
 
     ExprListNode *MakeExprList(ExprNode *node_ptr);
-    ExprListNode *MakeExprList(ExprNode *node_ptr_1, ExprNode *node_ptr_2);
     ExprListNode *MakeExprList();
 
     DatasetNode *MakeDataset(const std::string &table);

@@ -451,6 +451,7 @@ class CreatePlanNode : public LeafPlanNode {
     void SetDistributionList(const NodePointVector &distribution_list) {
         distribution_list_ = distribution_list;
     }
+    void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     std::string database_;

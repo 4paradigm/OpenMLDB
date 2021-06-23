@@ -16,8 +16,7 @@
 
 #include "passes/resolve_udf_def.h"
 #include "gtest/gtest.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 
 namespace hybridse {
 namespace passes {
@@ -25,26 +24,22 @@ namespace passes {
 class ResolveUdfDefTest : public ::testing::Test {};
 
 TEST_F(ResolveUdfDefTest, TestResolve) {
-    parser::HybridSeParser parser;
     Status status;
     node::NodeManager nm;
-    plan::SimplePlanner planner(&nm);
+    //    const std::string udf1 =
+    //        "%%fun\n"
+    //        "def test(x:i32, y:i32):i32\n"
+    //        "    return x+y\n"
+    //        "end\n";
+    node::FnNodeList *params = nm.MakeFnListNode();
+    params->AddChild(nm.MakeFnParaNode("x", nm.MakeTypeNode(node::kInt32)));
+    params->AddChild(nm.MakeFnParaNode("y", nm.MakeTypeNode(node::kInt32)));
 
-    const std::string udf1 =
-        "%%fun\n"
-        "def test(x:i32, y:i32):i32\n"
-        "    return x+y\n"
-        "end\n";
-    node::NodePointVector list1;
-    int ok = parser.parse(udf1, list1, &nm, status);
-    ASSERT_EQ(0, ok);
-
-    node::PlanNodeList trees;
-    planner.CreatePlanTree(list1, trees, status);
-    ASSERT_EQ(1u, trees.size());
-
-    auto def_plan = dynamic_cast<node::FuncDefPlanNode *>(trees[0]);
-    ASSERT_TRUE(def_plan != nullptr);
+    node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(
+        nm.MakeFnDefNode(nm.MakeFnHeaderNode("test", params, nm.MakeTypeNode(node::kInt32)),
+                         nm.MakeFnListNode(nm.MakeReturnStmtNode(nm.MakeBinaryExprNode(
+                             nm.MakeUnresolvedExprId("x"), nm.MakeUnresolvedExprId("y"), node::kFnOpAdd)))));
+    auto def_plan = nm.MakeFuncPlanNode(fn_def);
 
     ResolveUdfDef resolver;
     status = resolver.Visit(def_plan->fn_def_);
@@ -52,25 +47,24 @@ TEST_F(ResolveUdfDefTest, TestResolve) {
 }
 
 TEST_F(ResolveUdfDefTest, TestResolveFailed) {
-    parser::HybridSeParser parser;
     Status status;
     node::NodeManager nm;
-    plan::SimplePlanner planner(&nm);
+    //    const std::string udf1 =
+    //        "%%fun\n"
+    //        "def test(x:i32, y:i32):i32\n"
+    //        "    return x+z\n"
+    //        "end\n";
 
-    const std::string udf1 =
-        "%%fun\n"
-        "def test(x:i32, y:i32):i32\n"
-        "    return x+z\n"
-        "end\n";
-    node::NodePointVector list1;
-    int ok = parser.parse(udf1, list1, &nm, status);
-    ASSERT_EQ(0, ok);
+    node::FnNodeList *params = nm.MakeFnListNode();
+    params->AddChild(nm.MakeFnParaNode("x", nm.MakeTypeNode(node::kInt32)));
+    params->AddChild(nm.MakeFnParaNode("y", nm.MakeTypeNode(node::kInt32)));
 
-    node::PlanNodeList trees;
-    planner.CreatePlanTree(list1, trees, status);
-    ASSERT_EQ(1u, trees.size());
+    node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(
+        nm.MakeFnDefNode(nm.MakeFnHeaderNode("test", params, nm.MakeTypeNode(node::kInt32)),
+                         nm.MakeFnListNode(nm.MakeReturnStmtNode(nm.MakeBinaryExprNode(
+                             nm.MakeUnresolvedExprId("x"), nm.MakeUnresolvedExprId("z"), node::kFnOpAdd)))));
 
-    auto def_plan = dynamic_cast<node::FuncDefPlanNode *>(trees[0]);
+    auto def_plan = nm.MakeFuncPlanNode(fn_def);
     ASSERT_TRUE(def_plan != nullptr);
 
     ResolveUdfDef resolver;

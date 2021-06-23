@@ -68,7 +68,6 @@ cases:
     sql: SELECT COL1 = COL2 as col12 FROM t1;
   - id: 18
     desc: SELECT Bool表达式等于2
-    mode: zetasql-unsupport
     sql: SELECT COL1 == COL2 as col12 FROM t1;
   - id: 19
     desc: SELECT Bool表达式小于
@@ -87,7 +86,7 @@ cases:
     sql: SELECT COL1 != COL2 as col12 FROM t1;
   - id: 24-1
     desc: SELECT 逻辑关系表达式 '&&'
-    mode: zetasql-unsupport
+    tags: ["TODO", "zetasql-unsupport"]
     sql: SELECT COL1 >= COL2 && COL1 != COL2 as col12 FROM t1;
   - id: 24-2
     desc: SELECT 逻辑关系表达式 AND
@@ -97,7 +96,7 @@ cases:
     sql: SELECT COL1 >= COL2 and COL1 != COL2 and COL1 > COL2 as col12 FROM t1;
   - id: 26-1
     desc: SELECT 逻辑关系表达式 '||'
-    mode: zetasql-unsupport
+    tags: ["TODO", "zetasql-unsupport"]
     sql: SELECT COL1 >= COL2 || COL1 != COL2 as col12 FROM t1;
   - id: 26-2
     desc: SELECT 逻辑关系表达式 OR
@@ -112,7 +111,6 @@ cases:
     desc: SELECT 逻辑关系表达式非NOT
     sql: SELECT NOT(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;
   - id: 30
-    mode: zetasql-unsupport
     desc: SELECT 逻辑关系表达式XOR
     sql: SELECT COL1 >= COL2 XOR COL1 != COL2 as col12 FROM t1;
   - id: 31
@@ -134,7 +132,6 @@ cases:
     sql: SELECT substr("hello world", 3, 6);
   - id: 36
     desc: SIMPLE CASE WHEN 表达式
-    mode: zetasql-unsupport
     sql: |
       select col1, case col0
                         when 'aa' then 'apple'
@@ -144,7 +141,6 @@ cases:
                     end, col2 from t1;
   - id: 37
     desc: SEARCHED CASE WHEN 表达式
-    mode: zetasql-unsupport
     sql: |
       select col1, case
                         when col0='aa' then 'apple'
@@ -154,7 +150,6 @@ cases:
                     end, col2 from t1;
   - id: 38
     desc: SIMPLE CASE WHEN 表达式 without ELSE
-    mode: zetasql-unsupport
     sql: |
       select col1, case col0
                         when 'aa' then 'apple'
@@ -163,7 +158,6 @@ cases:
                     end, col2 from t1;
   - id: 39
     desc: SEARCHED CASE WHEN 表达式 without ELSE
-    mode: zetasql-unsupport
     sql: |
       select col1, case
                         when col0='aa' then 'apple'
@@ -172,28 +166,24 @@ cases:
                     end, col2 from t1;
   - id: 40-1
     desc: SQL标准Cast语法-Cast(常量 as type)
-    mode: zetasql-unsupport
     sql: |
       select cast(1 as int) as f1, cast(1 as bigint) as f2, cast(1 as float) as f3,
       cast(1 as double) as f4, cast(1 as bool) as f5, cast(1590115420000 as timestamp) as f6,
       cast(1 as string) as f7 from t1;
   - id: 40-2
     desc: SQL标准Cast语法-Cast(表达式 as type)
-    mode: zetasql-unsupport
     sql: |
       select cast(col1 as int) as f1, cast(col1+col2 as bigint) as f2, cast(col1 as float) as f3,
       cast(col1 as double) as f4, cast(col1 as bool) as f5, cast(col5 as timestamp) as f6,
       cast(col1 as string) as f7 from t1;
   - id: 40-3
     desc: cast函数
-    mode: zetasql-unsupport
     sql: |
       select int(1) as f1, bigint(1) as f2, float(1) as f3,
       double(1) as f4, bool(1) as f5, timestamp(1590115420000) as f6,
       string(1) as f7 from t1;
   - id: 40-4
     desc: SQL标准Cast语法-Cast(表达式 as type)
-    mode: zetasql-unsupport
     sql: |
       select int(col1) as f1, bigint(col1+col2) as f2, float(col1) as f3,
       double(col1) as f4, bool(col1) as f5, timestamp(col1) as f6,

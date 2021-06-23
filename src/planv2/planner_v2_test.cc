@@ -20,8 +20,7 @@
 #include <vector>
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
-#include "planv2/ast_node_converter.h"
-#include "zetasql/base/testing/status_matchers.h"
+#include "plan/plan_api.h"
 #include "zetasql/parser/parser.h"
 #include "zetasql/public/error_helpers.h"
 #include "zetasql/public/error_location.pb.h"
@@ -77,32 +76,20 @@ INSTANTIATE_TEST_CASE_P(SqlSubQueryParse, PlannerV2Test,
 // INSTANTIATE_TEST_CASE_P(UdfParse, PlannerV2Test,
 //                        testing::ValuesIn(sqlcase::InitCases("cases/plan/udf.yaml", FILTERS)));
 //
-// INSTANTIATE_TEST_CASE_P(SQLCreate, PlannerV2Test,
-//                        testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
-//
-// INSTANTIATE_TEST_CASE_P(SQLInsert, PlannerV2Test,
-//                        testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml", FILTERS)));
-//
-// INSTANTIATE_TEST_CASE_P(SQLCmdParserTest, PlannerV2Test,
-//                        testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
+INSTANTIATE_TEST_CASE_P(SQLCreate, PlannerV2Test,
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
+
+INSTANTIATE_TEST_CASE_P(SQLInsert, PlannerV2Test,
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml", FILTERS)));
+
+INSTANTIATE_TEST_CASE_P(SQLCmdParserTest, PlannerV2Test,
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
 TEST_P(PlannerV2Test, PlannerSucessTest) {
     std::string sqlstr = GetParam().sql_str();
     std::cout << sqlstr << std::endl;
-
-    std::unique_ptr<zetasql::ParserOutput> parser_output;
     base::Status status;
-    auto zetasql_status = zetasql::ParseScript(sqlstr, zetasql::ParserOptions(),
-                                               zetasql::ERROR_MESSAGE_MULTI_LINE_WITH_CARET, &parser_output);
-    zetasql::ErrorLocation location;
-    GetErrorLocation(zetasql_status, &location);
-    ZETASQL_ASSERT_OK(zetasql_status) << "ERROR:" << zetasql::FormatError(zetasql_status) << "\n"
-                                      << GetErrorStringWithCaret(sqlstr, location);
-    const zetasql::ASTScript *script = parser_output->script();
-    std::cout << "script node: \n" << script->DebugString();
-
-    SimplePlannerV2 *planner_ptr = new SimplePlannerV2(manager_);
     node::PlanNodeList plan_trees;
-    ASSERT_EQ(0, planner_ptr->CreateASTScriptPlan(script, plan_trees, status)) << status;
+    ASSERT_TRUE(PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status)) << status;
     LOG(INFO) << "logical plan:\n";
     for (auto tree : plan_trees) {
         LOG(INFO) << "statement : " << *tree << std::endl;
@@ -118,74 +105,1487 @@ TEST_P(PlannerV2Test, PlannerClusterOptTest) {
         LOG(INFO) << "Skip mode " << sql_case.mode();
         return;
     }
-    std::unique_ptr<zetasql::ParserOutput> parser_output;
     base::Status status;
-    auto zetasql_status = zetasql::ParseScript(sqlstr, zetasql::ParserOptions(),
-                                               zetasql::ERROR_MESSAGE_MULTI_LINE_WITH_CARET, &parser_output);
-    zetasql::ErrorLocation location;
-    GetErrorLocation(zetasql_status, &location);
-    ZETASQL_ASSERT_OK(zetasql_status) << "ERROR:\n" << GetErrorStringWithCaret(sqlstr, location);
-    const zetasql::ASTScript *script = parser_output->script();
-    std::cout << "script node: \n" << script->DebugString();
-
-    SimplePlannerV2 *planner_ptr = new SimplePlannerV2(manager_, false, true);
     node::PlanNodeList plan_trees;
-    ASSERT_EQ(0, planner_ptr->CreateASTScriptPlan(script, plan_trees, status)) << status;
+    plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true);
     LOG(INFO) << "logical plan:\n";
     for (auto tree : plan_trees) {
         LOG(INFO) << "statement : " << *tree << std::endl;
     }
 }
 
-class Planv2StmtTest : public ::testing::TestWithParam<sqlcase::SqlCase> {
- public:
-    Planv2StmtTest() { manager_ = new node::NodeManager(); }
-    ~Planv2StmtTest() { delete manager_; }
-
- protected:
-    node::NodeManager* manager_;
-};
-
-// expect tree string equal for converted CreateStmt
-TEST_P(Planv2StmtTest, SqlNodeTreeEqual) {
-    auto& sql = GetParam().sql_str();
-
-    std::unique_ptr<zetasql::ParserOutput> parser_output;
-    ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
-    const auto* statement = parser_output->statement();
-
-    node::SqlNode* output;
+TEST_F(PlannerV2Test, SimplePlannerCreatePlanTest) {
+    node::NodePointVector list;
     base::Status status;
-    // TODO(aceforeverd): use SimplePlannerV2::CreatePlanTree instead
-    switch (statement->node_kind()) {
-        case zetasql::AST_CREATE_TABLE_STATEMENT: {
-            const auto ast_create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
-            node::CreateStmt* create_stmt = nullptr;
-            status = ConvertCreateTableNode(ast_create_stmt, manager_, &create_stmt);
-            output = create_stmt;
-            break;
+    std::string sql = "SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 FROM t1 limit 10;";
+    node::PlanNodeList plan_trees;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status));
+    ASSERT_EQ(1u, plan_trees.size());
+    ASSERT_EQ(1u, plan_trees.size());
+    PlanNode *plan_ptr = plan_trees.front();
+    std::cout << *(plan_ptr) << std::endl;
+    //     validate select plan
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+    plan_ptr = plan_ptr->GetChildren()[0];
+
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
+    // validate project list based on current row
+    ASSERT_EQ(10, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(node::kPlanTypeProject, limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node = (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+
+    node::ProjectListNode *project_list =
+        dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[0]);
+
+    ASSERT_EQ(0u, dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[0])->GetPos());
+    ASSERT_EQ(1u, dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[1])->GetPos());
+    ASSERT_EQ(2u, dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[2])->GetPos());
+
+    plan_ptr = project_plan_node->GetChildren()[0];
+    // validate limit 10
+    ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
+    node::TablePlanNode *relation_node = reinterpret_cast<node::TablePlanNode *>(plan_ptr);
+    ASSERT_EQ("t1", relation_node->table_);
+}
+
+TEST_F(PlannerV2Test, SelectPlanWithWindowProjectTest) {
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    std::string sql =
+        "SELECT COL1, SUM(AMT) OVER w1 as w_amt_sum FROM t \n"
+        "WINDOW w1 AS (PARTITION BY COL2\n"
+        "              ORDER BY `TS` ROWS_RANGE BETWEEN 3 PRECEDING AND "
+        "CURRENT ROW"
+        ") limit 10;";
+    node::PlanNodeList plan_trees;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status));
+    ASSERT_EQ(1u, plan_trees.size());
+    PlanNode *plan_ptr = plan_trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+    // validate select plan
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+    plan_ptr = plan_ptr->GetChildren()[0];
+    // validate limit node
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
+    // validate project list based on current row
+    ASSERT_EQ(10, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(node::kPlanTypeProject, limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node = (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    plan_ptr = project_plan_node;
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+
+    // validate projection 0
+    node::ProjectListNode *project_list =
+        dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[0]);
+
+    ASSERT_EQ(2u, project_list->GetProjects().size());
+
+    ASSERT_TRUE(nullptr != project_list->GetW());
+    ASSERT_EQ(-3, project_list->GetW()->GetStartOffset());
+    ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
+
+    ASSERT_EQ("(COL2)", node::ExprString(project_list->GetW()->GetKeys()));
+    ASSERT_TRUE(project_list->IsWindowAgg());
+
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
+    node::TablePlanNode *relation_node = reinterpret_cast<node::TablePlanNode *>(plan_ptr);
+    ASSERT_EQ("t", relation_node->table_);
+}
+
+TEST_F(PlannerV2Test, SelectPlanWithMultiWindowProjectTest) {
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    const std::string sql =
+        "SELECT sum(col1) OVER w1 as w1_col1_sum, sum(col1) OVER w2 as "
+        "w2_col1_sum FROM t1 "
+        "WINDOW "
+        "w1 AS (PARTITION BY col2 ORDER BY `TS` ROWS_RANGE BETWEEN 1d "
+        "PRECEDING AND "
+        "1s PRECEDING), "
+        "w2 AS (PARTITION BY col3 ORDER BY `TS` ROWS_RANGE BETWEEN 2d "
+        "PRECEDING AND "
+        "1s PRECEDING) "
+        "limit 10;";
+    node::PlanNodeList plan_trees;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status));
+    ASSERT_EQ(1u, plan_trees.size());
+    PlanNode *plan_ptr = plan_trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+    // validate select plan
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+    plan_ptr = plan_ptr->GetChildren()[0];
+    // validate limit node
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
+    // validate project list based on current row
+    ASSERT_EQ(10, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(node::kPlanTypeProject, limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node = (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    plan_ptr = project_plan_node;
+    ASSERT_EQ(2u, project_plan_node->project_list_vec_.size());
+
+    // validate projection 1: window agg over w1 [-1d, 1s]
+    node::ProjectListNode *project_list =
+        dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[0]);
+
+    ASSERT_EQ(1u, project_list->GetProjects().size());
+    ASSERT_TRUE(nullptr != project_list->GetW());
+
+    ASSERT_TRUE(project_list->IsWindowAgg());
+
+    ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
+    ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
+    ASSERT_EQ("(col2)", node::ExprString(project_list->GetW()->GetKeys()));
+    ASSERT_FALSE(project_list->GetW()->instance_not_in_window());
+
+    // validate projection 1: window agg over w2 [-2d, 1s]
+    project_list = dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[1]);
+    ASSERT_EQ(1u, project_list->GetProjects().size());
+    ASSERT_TRUE(nullptr != project_list->GetW());
+    ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
+    ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
+
+    ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
+    ASSERT_TRUE(project_list->IsWindowAgg());
+    ASSERT_FALSE(project_list->GetW()->instance_not_in_window());
+
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
+    node::TablePlanNode *relation_node = reinterpret_cast<node::TablePlanNode *>(plan_ptr);
+    ASSERT_EQ("t1", relation_node->table_);
+}
+
+TEST_F(PlannerV2Test, WindowWithUnionTest) {
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    const std::string sql =
+        "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
+        "      WINDOW w1 AS (UNION t2,t3 PARTITION BY col1 ORDER BY col5 RANGE "
+        "BETWEEN 3 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW) limit 10;";
+    node::PlanNodeList plan_trees;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status));
+    ASSERT_EQ(1u, plan_trees.size());
+    PlanNode *plan_ptr = plan_trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+    // validate select plan
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+    plan_ptr = plan_ptr->GetChildren()[0];
+    // validate limit node
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
+    // validate project list based on current row
+    ASSERT_EQ(10, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(node::kPlanTypeProject, limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node = (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    plan_ptr = project_plan_node;
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+
+    // validate projection 1: window agg over w1
+    node::ProjectListNode *project_list =
+        dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[0]);
+
+    ASSERT_EQ(3u, project_list->GetProjects().size());
+    ASSERT_TRUE(nullptr != project_list->GetW());
+
+    ASSERT_TRUE(project_list->IsWindowAgg());
+
+    ASSERT_EQ(-3, project_list->GetW()->GetStartOffset());
+    ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
+    ASSERT_EQ("(col1)", node::ExprString(project_list->GetW()->GetKeys()));
+    ASSERT_TRUE(project_list->GetW()->instance_not_in_window());
+    ASSERT_EQ(2u, project_list->GetW()->union_tables().size());
+
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
+    node::TablePlanNode *relation_node = reinterpret_cast<node::TablePlanNode *>(plan_ptr);
+    ASSERT_EQ("t1", relation_node->table_);
+}
+
+TEST_F(PlannerV2Test, MultiProjectListPlanPostTest) {
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    const std::string sql =
+        "SELECT sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w2 as w2_col3_sum, "
+        "sum(col4) OVER w2 as w2_col4_sum, "
+        "col1, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "col2, "
+        "sum(col1) OVER w2 as w2_col1_sum, "
+        "lead(col1, 0) OVER w2 as w2_col1_at_0, "
+        "lead(col1, 1) OVER w2 as w2_col1_at_1 "
+        "FROM t1 "
+        "WINDOW "
+        "w1 AS (PARTITION BY col2 ORDER BY `TS` ROWS_RANGE BETWEEN 1d "
+        "PRECEDING AND "
+        "1s PRECEDING), "
+        "w2 AS (PARTITION BY col3 ORDER BY `TS` ROWS_RANGE BETWEEN 2d "
+        "PRECEDING AND "
+        "1s PRECEDING) "
+        "limit 10;";
+    std::cout << sql << std::endl;
+    node::PlanNodeList plan_trees;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status));
+    ASSERT_EQ(1u, plan_trees.size());
+
+    PlanNode *plan_ptr = plan_trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+    // validate select plan
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+    plan_ptr = plan_ptr->GetChildren()[0];
+
+    // validate limit node
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
+
+    // validate project list based on current row
+    ASSERT_EQ(10, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(node::kPlanTypeProject, limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node = (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    plan_ptr = project_plan_node;
+    ASSERT_EQ(2u, project_plan_node->project_list_vec_.size());
+
+    const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping = project_plan_node->pos_mapping_;
+    ASSERT_EQ(9u, pos_mapping.size());
+    ASSERT_EQ(std::make_pair(0u, 0u), pos_mapping[0]);
+    ASSERT_EQ(std::make_pair(1u, 0u), pos_mapping[1]);
+    ASSERT_EQ(std::make_pair(1u, 1u), pos_mapping[2]);
+    ASSERT_EQ(std::make_pair(0u, 1u), pos_mapping[3]);
+    ASSERT_EQ(std::make_pair(0u, 2u), pos_mapping[4]);
+    ASSERT_EQ(std::make_pair(0u, 3u), pos_mapping[5]);
+    ASSERT_EQ(std::make_pair(1u, 2u), pos_mapping[6]);
+    ASSERT_EQ(std::make_pair(1u, 3u), pos_mapping[7]);
+    ASSERT_EQ(std::make_pair(1u, 4u), pos_mapping[8]);
+
+    // validate projection 0: window agg over w1 [-1d, -1s]
+    {
+        node::ProjectListNode *project_list =
+            dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_.at(0));
+
+        ASSERT_EQ(4u, project_list->GetProjects().size());
+        ASSERT_FALSE(nullptr == project_list->GetW());
+        ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
+        ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
+
+        // validate w1_col1_sum pos 0
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[0]);
+            ASSERT_EQ(0u, project->GetPos());
         }
-        case zetasql::AST_CREATE_PROCEDURE_STATEMENT: {
-            const auto create_sp = statement->GetAsOrDie<zetasql::ASTCreateProcedureStatement>();
-            node::CreateSpStmt* stmt;
-            auto s = ConvertCreateProcedureNode(create_sp, manager_, &stmt);
-            output = stmt;
-            break;
+        // validate col1 pos 3
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[1]);
+            ASSERT_EQ(3u, project->GetPos());
         }
-        default: {
-            ASSERT_TRUE(false) << "test unsupported for " << statement->GetNodeKindString();
+
+        // validate w1_col3_sum pos 0
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[2]);
+            ASSERT_EQ(4u, project->GetPos());
+        }
+
+        // validate col2 pos 5
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[3]);
+            ASSERT_EQ(5u, project->GetPos());
+        }
+    }
+    {
+        // validate projection 1: window agg over w2
+        node::ProjectListNode *project_list =
+            dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_.at(1));
+
+        ASSERT_EQ(5u, project_list->GetProjects().size());
+        ASSERT_TRUE(nullptr != project_list->GetW());
+        ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
+        ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
+        ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
+        ASSERT_TRUE(project_list->IsWindowAgg());
+
+        // validate w2_col3_sum pos 1
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[0]);
+            ASSERT_EQ(1u, project->GetPos());
+        }
+        // validate w2_col4_sum pos 2
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[1]);
+            ASSERT_EQ(2u, project->GetPos());
+        }
+        // validate w2_col1_sum pos 6
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[2]);
+            ASSERT_EQ(6u, project->GetPos());
+        }
+
+        // validate w2_col1_at_0 pos 7
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[3]);
+            ASSERT_EQ(7u, project->GetPos());
+        }
+        // validate w2_col1_at_1 pos 8
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[4]);
+            ASSERT_EQ(8u, project->GetPos());
         }
     }
 
-    EXPECT_EQ(common::kOk, status.code) << status.msg << status.trace;
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
+    node::TablePlanNode *relation_node = reinterpret_cast<node::TablePlanNode *>(plan_ptr);
+    ASSERT_EQ("t1", relation_node->table_);
+}
+TEST_F(PlannerV2Test, LastJoinPlanTest) {
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    const std::string sql =
+        "SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 "
+        "order by t2.col5 on "
+        "t1.col1 = t2.col1 and t2.col5 between t1.col5 - 30d and t1.col5 "
+        "- 1d limit 10;";
+    node::PlanNodeList plan_trees;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status));
+    ASSERT_EQ(1u, plan_trees.size());
 
-    if (GetParam().expect().node_tree_str_.has_value()) {
-        EXPECT_EQ(GetParam().expect().node_tree_str_.value(), output->GetTreeString());
+    PlanNode *plan_ptr = plan_trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+    // validate select plan
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+    plan_ptr = plan_ptr->GetChildren()[0];
+
+    // validate limit node
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
+    ASSERT_EQ(10, limit_ptr->limit_cnt_);
+
+    // validate project list based on current row
+    ASSERT_EQ(node::kPlanTypeProject, limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node = (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    plan_ptr = project_plan_node;
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+
+    const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping = project_plan_node->pos_mapping_;
+    ASSERT_EQ(2u, pos_mapping.size());
+    ASSERT_EQ(std::make_pair(0u, 0u), pos_mapping[0]);
+    ASSERT_EQ(std::make_pair(0u, 1u), pos_mapping[1]);
+
+    // validate projection 0: window agg over w1
+    {
+        node::ProjectListNode *project_list =
+            dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_.at(0));
+
+        ASSERT_EQ(2u, project_list->GetProjects().size());
+        ASSERT_TRUE(nullptr == project_list->GetW());
+        // validate t1_col1 pos 0
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[0]);
+            ASSERT_EQ(0u, project->GetPos());
+        }
+        // validate t2_col1 pos 1
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[1]);
+            ASSERT_EQ(1u, project->GetPos());
+        }
+    }
+
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeJoin, plan_ptr->GetType());
+    auto join = dynamic_cast<node::JoinPlanNode *>(plan_ptr);
+    ASSERT_EQ(node::kJoinTypeLast, join->join_type_);
+    ASSERT_EQ(
+        "t1.col1 = t2.col1 AND t2.col5 between t1.col5 - 30d and t1.col5 - "
+        "1d",
+        join->condition_->GetExprString());
+
+    ASSERT_EQ("(t2.col5) ASC", join->orders_->GetExprString());
+    auto left = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeTable, left->GetType());
+    {
+        node::TablePlanNode *relation_node = reinterpret_cast<node::TablePlanNode *>(left);
+        ASSERT_EQ("t1", relation_node->table_);
+    }
+
+    auto right = plan_ptr->GetChildren()[1];
+    ASSERT_EQ(node::kPlanTypeTable, right->GetType());
+    {
+        node::TablePlanNode *relation_node = reinterpret_cast<node::TablePlanNode *>(right);
+        ASSERT_EQ("t2", relation_node->table_);
     }
 }
 
-INSTANTIATE_TEST_CASE_P(PlannerV2Test, Planv2StmtTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
+TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
+    const std::string sql_str =
+        "create table IF NOT EXISTS test(\n"
+        "    column1 int NOT NULL,\n"
+        "    column2 timestamp NOT NULL,\n"
+        "    column3 int NOT NULL,\n"
+        "    column4 string NOT NULL,\n"
+        "    column5 int NOT NULL,\n"
+        "    index(key=(column4, column3), ts=column2, ttl=60d, version = (column4, 10))\n"
+        ") OPTIONS (\n"
+        "            partitionnum=8, replicanum=3,\n"
+        "            distribution = [\n"
+        "              (\"127.0.0.1:9927\", [\"127.0.0.1:9926\", \"127.0.0.1:9928\"])\n"
+        "              ]\n"
+        "          );";
+
+    node::PlanNodeList trees;
+    base::Status status;
+
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+    ASSERT_EQ(1u, trees.size());
+    PlanNode *plan_ptr = trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+
+    // validate create plan
+    ASSERT_EQ(node::kPlanTypeCreate, plan_ptr->GetType());
+    node::CreatePlanNode *createStmt = (node::CreatePlanNode *)plan_ptr;
+
+    ASSERT_EQ(3, createStmt->GetReplicaNum());
+    ASSERT_EQ(8, createStmt->GetPartitionNum());
+    ASSERT_EQ(3, createStmt->GetDistributionList().size());
+    {
+        ASSERT_EQ(node::kPartitionMeta, createStmt->GetDistributionList()[0]->GetType());
+        node::PartitionMetaNode *partition =
+            dynamic_cast<node::PartitionMetaNode *>(createStmt->GetDistributionList()[0]);
+        ASSERT_EQ(node::RoleType::kLeader, partition->GetRoleType());
+        ASSERT_EQ("127.0.0.1:9927", partition->GetEndpoint());
+    }
+    {
+        ASSERT_EQ(node::kPartitionMeta, createStmt->GetDistributionList()[1]->GetType());
+        node::PartitionMetaNode *partition =
+            dynamic_cast<node::PartitionMetaNode *>(createStmt->GetDistributionList()[1]);
+        ASSERT_EQ(node::RoleType::kFollower, partition->GetRoleType());
+        ASSERT_EQ("127.0.0.1:9926", partition->GetEndpoint());
+    }
+    {
+        ASSERT_EQ(node::kPartitionMeta, createStmt->GetDistributionList()[2]->GetType());
+        node::PartitionMetaNode *partition =
+            dynamic_cast<node::PartitionMetaNode *>(createStmt->GetDistributionList()[2]);
+        ASSERT_EQ(node::RoleType::kFollower, partition->GetRoleType());
+        ASSERT_EQ("127.0.0.1:9928", partition->GetEndpoint());
+    }
+
+    type::TableDef table_def;
+    ASSERT_TRUE(
+        Planner::TransformTableDef(createStmt->GetTableName(), createStmt->GetColumnDescList(), &table_def).isOK());
+
+    type::TableDef *table = &table_def;
+    ASSERT_EQ("test", table->name());
+    ASSERT_EQ(5, table->columns_size());
+    ASSERT_EQ("column1", table->columns(0).name());
+    ASSERT_EQ("column2", table->columns(1).name());
+    ASSERT_EQ("column3", table->columns(2).name());
+    ASSERT_EQ("column4", table->columns(3).name());
+    ASSERT_EQ("column5", table->columns(4).name());
+    ASSERT_EQ(type::Type::kInt32, table->columns(0).type());
+    ASSERT_EQ(type::Type::kTimestamp, table->columns(1).type());
+    ASSERT_EQ(type::Type::kInt32, table->columns(2).type());
+    ASSERT_EQ(type::Type::kVarchar, table->columns(3).type());
+    ASSERT_EQ(type::Type::kInt32, table->columns(4).type());
+    ASSERT_EQ(1, table->indexes_size());
+    ASSERT_EQ(60 * 86400000UL, table->indexes(0).ttl(0));
+    ASSERT_EQ(2, table->indexes(0).first_keys_size());
+    ASSERT_EQ("column4", table->indexes(0).first_keys(0));
+    ASSERT_EQ("column3", table->indexes(0).first_keys(1));
+    ASSERT_EQ("column2", table->indexes(0).second_key());
+}
+
+TEST_F(PlannerV2Test, CmdStmtPlanTest) {
+    {
+        const std::string sql_str = "show databases;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdShowDatabases, cmd_plan->GetCmdType());
+    }
+    {
+        const std::string sql_str = "show tables;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdShowTables, cmd_plan->GetCmdType());
+    }
+    {
+        const std::string sql_str = "show procedures;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdShowProcedures, cmd_plan->GetCmdType());
+    }
+    {
+        const std::string sql_str = "drop procedure sp1;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdDropSp, cmd_plan->GetCmdType());
+        ASSERT_EQ(std::vector<std::string>({"sp1"}), cmd_plan->GetArgs());
+    }
+    {
+        const std::string sql_str = "drop procedure db1.sp1;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdDropSp, cmd_plan->GetCmdType());
+        ASSERT_EQ(std::vector<std::string>({"sp1"}), cmd_plan->GetArgs());
+    }
+    {
+        const std::string sql_str = "drop table db1.t1;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdDropTable, cmd_plan->GetCmdType());
+        ASSERT_EQ(std::vector<std::string>({"t1"}), cmd_plan->GetArgs());
+    }
+    {
+        const std::string sql_str = "drop table t1;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdDropTable, cmd_plan->GetCmdType());
+        ASSERT_EQ(std::vector<std::string>({"t1"}), cmd_plan->GetArgs());
+    }
+    {
+        const std::string sql_str = "drop database db1;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdDropDatabase, cmd_plan->GetCmdType());
+        ASSERT_EQ(std::vector<std::string>({"db1"}), cmd_plan->GetArgs());
+    }
+    {
+        const std::string sql_str = "drop index db1.t1.index1;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdDropIndex, cmd_plan->GetCmdType());
+        ASSERT_EQ(std::vector<std::string>({"t1", "index1"}), cmd_plan->GetArgs());
+    }
+    {
+        const std::string sql_str = "drop index t1.index1;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdDropIndex, cmd_plan->GetCmdType());
+        ASSERT_EQ(std::vector<std::string>({"t1", "index1"}), cmd_plan->GetArgs());
+    }
+    {
+        const std::string sql_str = "drop index index1;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+    }
+}
+//
+// TEST_F(PlannerTest, FunDefPlanTest) {
+//    const std::string sql_str =
+//        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
+//        "d\nend";
+//
+//    node::NodePointVector list;
+//    node::PlanNodeList trees;
+//    base::Status status;
+//    int ret = parser_->parse(sql_str, list, manager_, status);
+//    ASSERT_EQ(0, ret);
+//    ASSERT_EQ(1u, list.size());
+//    std::cout << *(list[0]) << std::endl;
+//
+//    Planner *planner_ptr = new SimplePlanner(manager_);
+//    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+//    std::cout << status << std::endl;
+//    ASSERT_EQ(1u, trees.size());
+//    PlanNode *plan_ptr = trees[0];
+//    ASSERT_TRUE(NULL != plan_ptr);
+//
+//    std::cout << *plan_ptr << std::endl;
+//
+//    // validate create plan
+//    ASSERT_EQ(node::kPlanTypeFuncDef, plan_ptr->GetType());
+//    node::FuncDefPlanNode *plan =
+//        dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
+//    ASSERT_TRUE(nullptr != plan->fn_def_);
+//    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
+//    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
+//}
+//
+// TEST_F(PlannerTest, FunDefAndSelectPlanTest) {
+//    const std::string sql_str =
+//        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
+//        "d\nend\n%%sql\nselect col1, test(col1, col2) from t1 limit 1;";
+//
+//    node::NodePointVector list;
+//    node::PlanNodeList trees;
+//    base::Status status;
+//    int ret = parser_->parse(sql_str, list, manager_, status);
+//    ASSERT_EQ(0, ret);
+//    ASSERT_EQ(2u, list.size());
+//    std::cout << *(list[0]) << std::endl;
+//    std::cout << *(list[1]) << std::endl;
+//
+//    Planner *planner_ptr = new SimplePlanner(manager_);
+//    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+//    std::cout << status << std::endl;
+//    ASSERT_EQ(2u, trees.size());
+//    PlanNode *plan_ptr = trees[0];
+//    ASSERT_TRUE(NULL != plan_ptr);
+//    std::cout << *plan_ptr << std::endl;
+//
+//    // validate fundef plan
+//    ASSERT_EQ(node::kPlanTypeFuncDef, plan_ptr->GetType());
+//    node::FuncDefPlanNode *plan =
+//        dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
+//
+//    ASSERT_TRUE(nullptr != plan->fn_def_);
+//    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
+//    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
+//
+//    // validate select plan
+//    plan_ptr = trees[1];
+//    ASSERT_TRUE(NULL != plan_ptr);
+//    std::cout << *plan_ptr << std::endl;
+//    // validate select plan
+//
+//    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+//    plan_ptr = plan_ptr->GetChildren()[0];
+//    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+//    node::LimitPlanNode *limit_plan =
+//        dynamic_cast<node::LimitPlanNode *>(plan_ptr);
+//    ASSERT_EQ(1, limit_plan->GetLimitCnt());
+//}
+//
+// TEST_F(PlannerTest, FunDefIfElsePlanTest) {
+//    const std::string sql_str =
+//        "%%fun\n"
+//        "def test(a:i32,b:i32):i32\n"
+//        "    c=a+b\n"
+//        "\td=c+1\n"
+//        "\tif a<b\n"
+//        "\t\treturn c\n"
+//        "\telif c > d\n"
+//        "\t\treturn d\n"
+//        "\telif d > 1\n"
+//        "\t\treturn c+d\n"
+//        "\telse \n"
+//        "\t\treturn d\n"
+//        "end\n"
+//        "%%sql\n"
+//        "select col1, test(col1, col2) from t1 limit 1;";
+//    std::cout << sql_str;
+//
+//    node::NodePointVector list;
+//    node::PlanNodeList trees;
+//    base::Status status;
+//    int ret = parser_->parse(sql_str, list, manager_, status);
+//    ASSERT_EQ(0, ret);
+//    ASSERT_EQ(2u, list.size());
+//    std::cout << *(list[0]) << std::endl;
+//    std::cout << *(list[1]) << std::endl;
+//
+//    Planner *planner_ptr = new SimplePlanner(manager_);
+//    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+//    std::cout << status << std::endl;
+//    ASSERT_EQ(2u, trees.size());
+//    PlanNode *plan_ptr = trees[0];
+//    ASSERT_TRUE(NULL != plan_ptr);
+//    std::cout << *plan_ptr << std::endl;
+//
+//    // validate fundef plan
+//    ASSERT_EQ(node::kPlanTypeFuncDef, plan_ptr->GetType());
+//    node::FuncDefPlanNode *plan =
+//        dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
+//
+//    ASSERT_TRUE(nullptr != plan->fn_def_);
+//    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
+//    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
+//    ASSERT_EQ(3u, plan->fn_def_->block_->children.size());
+//    ASSERT_EQ(node::kFnAssignStmt,
+//              plan->fn_def_->block_->children[0]->GetType());
+//    ASSERT_EQ(node::kFnAssignStmt,
+//              plan->fn_def_->block_->children[1]->GetType());
+//    ASSERT_EQ(node::kFnIfElseBlock,
+//              plan->fn_def_->block_->children[2]->GetType());
+//
+//    // validate select plan
+//    plan_ptr = trees[1];
+//    ASSERT_TRUE(NULL != plan_ptr);
+//    std::cout << *plan_ptr << std::endl;
+//    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+//    plan_ptr = plan_ptr->GetChildren()[0];
+//    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+//    node::LimitPlanNode *limit_plan =
+//        dynamic_cast<node::LimitPlanNode *>(plan_ptr);
+//    ASSERT_EQ(1, limit_plan->GetLimitCnt());
+//}
+//
+// TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
+//    const std::string sql_str =
+//        "%%fun\n"
+//        "def test(x:i32,y:i32):i32\n"
+//        "    if x > 1\n"
+//        "    \tc=x+y\n"
+//        "    elif y >1\n"
+//        "    \tif x-y >0\n"
+//        "    \t\td=x-y\n"
+//        "    \t\tc=d+1\n"
+//        "    \telif x-y <0\n"
+//        "    \t\tc = y-x\n"
+//        "    \telse\n"
+//        "    \t\tc = 9999\n"
+//        "    else\n"
+//        "    \tif x < -100\n"
+//        "    \t\tc = x+100\n"
+//        "    \telif y < -100\n"
+//        "    \t\tc = y+100\n"
+//        "    \telse\n"
+//        "    \t\tc=x*y\n"
+//        "    return c\n"
+//        "end\n"
+//        "%%sql\n"
+//        "select col1, test(col1, col2) from t1 limit 1;";
+//    std::cout << sql_str;
+//
+//    node::NodePointVector list;
+//    node::PlanNodeList trees;
+//    base::Status status;
+//    int ret = parser_->parse(sql_str, list, manager_, status);
+//    ASSERT_EQ(0, ret);
+//    ASSERT_EQ(2u, list.size());
+//    std::cout << *(list[0]) << std::endl;
+//    std::cout << *(list[1]) << std::endl;
+//
+//    Planner *planner_ptr = new SimplePlanner(manager_);
+//    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+//    std::cout << status << std::endl;
+//    ASSERT_EQ(2u, trees.size());
+//    PlanNode *plan_ptr = trees[0];
+//    ASSERT_TRUE(NULL != plan_ptr);
+//    std::cout << *plan_ptr << std::endl;
+//
+//    // validate fundef plan
+//    ASSERT_EQ(node::kPlanTypeFuncDef, plan_ptr->GetType());
+//    node::FuncDefPlanNode *plan =
+//        dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
+//
+//    ASSERT_TRUE(nullptr != plan->fn_def_);
+//    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
+//    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
+//    ASSERT_EQ(2u, plan->fn_def_->block_->children.size());
+//    ASSERT_EQ(node::kFnIfElseBlock,
+//              plan->fn_def_->block_->children[0]->GetType());
+//    ASSERT_EQ(node::kFnReturnStmt,
+//              plan->fn_def_->block_->children[1]->GetType());
+//
+//    {
+//        node::FnIfElseBlock *block = dynamic_cast<node::FnIfElseBlock *>(
+//            plan->fn_def_->block_->children[0]);
+//        // if block check: if x>1
+//        {
+//            ASSERT_EQ(node::kExprBinary,
+//                      block->if_block_->if_node->expression_->GetExprType());
+//            // c = x+y
+//            ASSERT_EQ(1u, block->if_block_->block_->children.size());
+//        }
+//        ASSERT_EQ(1u, block->elif_blocks_.size());
+//
+//        {
+//            // elif block check: elif y>1
+//            ASSERT_EQ(node::kFnElifBlock, block->elif_blocks_[0]->GetType());
+//            node::FnElifBlock *elif_block =
+//                dynamic_cast<node::FnElifBlock *>(block->elif_blocks_[0]);
+//            ASSERT_EQ(node::kExprBinary,
+//                      elif_block->elif_node_->expression_->GetExprType());
+//            ASSERT_EQ(1u, elif_block->block_->children.size());
+//            ASSERT_EQ(node::kFnIfElseBlock,
+//                      elif_block->block_->children[0]->GetType());
+//            // check if elif else block
+//            {
+//                node::FnIfElseBlock *block =
+//                    dynamic_cast<node::FnIfElseBlock *>(
+//                        elif_block->block_->children[0]);
+//                // check if x-y>0
+//                //          c = x-y
+//                {
+//                    ASSERT_EQ(
+//                        node::kExprBinary,
+//                        block->if_block_->if_node->expression_->GetExprType());
+//                    // c = x-y
+//                    ASSERT_EQ(2u, block->if_block_->block_->children.size());
+//                    ASSERT_EQ(node::kFnAssignStmt,
+//                              block->if_block_->block_->children[0]->GetType());
+//                    ASSERT_TRUE(dynamic_cast<node::FnAssignNode *>(
+//                                    block->if_block_->block_->children[0])
+//                                    ->IsSSA());
+//                    ASSERT_EQ(node::kFnAssignStmt,
+//                              block->if_block_->block_->children[1]->GetType());
+//                    ASSERT_FALSE(dynamic_cast<node::FnAssignNode *>(
+//                                     block->if_block_->block_->children[1])
+//                                     ->IsSSA());
+//                }
+//                ASSERT_EQ(1u, block->elif_blocks_.size());
+//                // check elif x-y<0
+//                //          c = y-x
+//                {
+//                    ASSERT_EQ(node::kFnElifBlock,
+//                              block->elif_blocks_[0]->GetType());
+//                    node::FnElifBlock *elif_block =
+//                        dynamic_cast<node::FnElifBlock *>(
+//                            block->elif_blocks_[0]);
+//                    ASSERT_EQ(
+//                        node::kExprBinary,
+//                        elif_block->elif_node_->expression_->GetExprType());
+//                    ASSERT_EQ(1u, elif_block->block_->children.size());
+//                    ASSERT_EQ(node::kFnAssignStmt,
+//                              elif_block->block_->children[0]->GetType());
+//                }
+//                // check c = 9999
+//                ASSERT_EQ(1u, block->else_block_->block_->children.size());
+//                ASSERT_EQ(node::kFnAssignStmt,
+//                          block->else_block_->block_->children[0]->GetType());
+//            }
+//        }
+//        // else block check
+//        {
+//            ASSERT_EQ(1u, block->else_block_->block_->children.size());
+//            ASSERT_EQ(node::kFnIfElseBlock,
+//                      block->else_block_->block_->children[0]->GetType());
+//        }
+//    }
+//    // validate select plan
+//    plan_ptr = trees[1];
+//    ASSERT_TRUE(NULL != plan_ptr);
+//    std::cout << *plan_ptr << std::endl;
+//    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+//    plan_ptr = plan_ptr->GetChildren()[0];
+//    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+//    node::LimitPlanNode *limit_plan =
+//        dynamic_cast<node::LimitPlanNode *>(plan_ptr);
+//    ASSERT_EQ(1, limit_plan->GetLimitCnt());
+//}
+//
+// TEST_F(PlannerTest, FunDefForInPlanTest) {
+//    const std::string sql_str =
+//        "%%fun\n"
+//        "def test(l:list<i32>, a:i32):i32\n"
+//        "    sum=0\n"
+//        "    for x in l\n"
+//        "        if x > a\n"
+//        "            sum = sum + x\n"
+//        "    return sum\n"
+//        "end\n"
+//        "%%sql\n"
+//        "select col1, test(col1, col2) from t1 limit 1;";
+//    std::cout << sql_str;
+//
+//    node::NodePointVector list;
+//    node::PlanNodeList trees;
+//    base::Status status;
+//    int ret = parser_->parse(sql_str, list, manager_, status);
+//    ASSERT_EQ(0, ret);
+//    ASSERT_EQ(2u, list.size());
+//    std::cout << *(list[0]) << std::endl;
+//    std::cout << *(list[1]) << std::endl;
+//
+//    Planner *planner_ptr = new SimplePlanner(manager_);
+//    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+//    std::cout << status << std::endl;
+//    ASSERT_EQ(2u, trees.size());
+//    PlanNode *plan_ptr = trees[0];
+//    ASSERT_TRUE(NULL != plan_ptr);
+//    std::cout << *plan_ptr << std::endl;
+//
+//    // validate fundef plan
+//    ASSERT_EQ(node::kPlanTypeFuncDef, plan_ptr->GetType());
+//    node::FuncDefPlanNode *plan =
+//        dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
+//
+//    ASSERT_TRUE(nullptr != plan->fn_def_);
+//    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
+//    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
+//    ASSERT_EQ(3u, plan->fn_def_->block_->children.size());
+//
+//    // validate udf plan
+//    ASSERT_EQ(node::kFnAssignStmt,
+//              plan->fn_def_->block_->children[0]->GetType());
+//    ASSERT_EQ(node::kFnForInBlock,
+//              plan->fn_def_->block_->children[1]->GetType());
+//    // validate for in block
+//    {
+//        node::FnForInBlock *for_block = dynamic_cast<node::FnForInBlock *>(
+//            plan->fn_def_->block_->children[1]);
+//        ASSERT_EQ(1u, for_block->block_->children.size());
+//        ASSERT_EQ(node::kFnIfElseBlock,
+//                  for_block->block_->children[0]->GetType());
+//    }
+//    // validate select plan
+//    plan_ptr = trees[1];
+//    ASSERT_TRUE(NULL != plan_ptr);
+//    std::cout << *plan_ptr << std::endl;
+//    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
+//    plan_ptr = plan_ptr->GetChildren()[0];
+//    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+//    node::LimitPlanNode *limit_plan =
+//        dynamic_cast<node::LimitPlanNode *>(plan_ptr);
+//    ASSERT_EQ(1, limit_plan->GetLimitCnt());
+//}
+
+TEST_F(PlannerV2Test, MergeWindowsTest) {
+    SimplePlannerV2 planner_ptr(manager_, false);
+    auto partitions = manager_->MakeExprList(manager_->MakeColumnRefNode("col1", "t1"));
+
+    auto orders = dynamic_cast<node::OrderByNode *>(
+        manager_->MakeOrderByNode(manager_->MakeExprList(manager_->MakeColumnRefNode("ts", "t1")), false));
+    auto frame_1day = manager_->MakeFrameNode(
+        node::kFrameRowsRange,
+        manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(1, node::kDay)),
+                                  manager_->MakeFrameBound(node::kCurrent)));
+
+    auto frame_30m = manager_->MakeFrameNode(
+        node::kFrameRowsRange,
+        manager_->MakeFrameExtent(
+            manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(30, node::kMinute)),
+            manager_->MakeFrameBound(node::kCurrent)));
+
+    auto frame_1hour = manager_->MakeFrameNode(
+        node::kFrameRowsRange,
+        manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(1, node::kHour)),
+                                  manager_->MakeFrameBound(node::kCurrent)));
+
+    // window:col1,ts,[-1d, 0]
+    {
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1day)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_30m)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1hour)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(3), false)));
+        ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
+        ASSERT_EQ(1u, windows.size());
+        std::cout << *windows[0] << std::endl;
+        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(0, windows[0]->GetFrame()->frame_maxsize());
+    }
+
+    // window:col2,ts,[-1d,0]
+    // window:col1,ts,[-1h, 0]
+    auto partitions2 = manager_->MakeExprList(manager_->MakeColumnRefNode("col2", "t1"));
+    {
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions2, orders, frame_1day)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_30m)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1hour)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(3), false)));
+        ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
+        ASSERT_EQ(2u, windows.size());
+
+        std::cout << *(windows[0]) << std::endl;
+        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(0, windows[0]->GetFrame()->frame_maxsize());
+
+        std::cout << *(windows[1]) << std::endl;
+        ASSERT_EQ(-3600000, windows[1]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[1]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(0, windows[1]->GetFrame()->frame_maxsize());
+    }
+
+    auto frame_100 = manager_->MakeFrameNode(
+        node::kFrameRows,
+        manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(100)),
+                                  manager_->MakeFrameBound(node::kCurrent)));
+    auto frame_1000 = manager_->MakeFrameNode(
+        node::kFrameRows,
+        manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(1000)),
+                                  manager_->MakeFrameBound(node::kCurrent)));
+    // window:col1:range[-1d, 0] rows[-1000,0]
+    {
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1day)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_100)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1000)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+
+        ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
+        ASSERT_EQ(1u, windows.size());
+        std::cout << *windows[0] << std::endl;
+        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(-1000, windows[0]->GetFrame()->GetHistoryRowsStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->frame_maxsize());
+    }
+
+    // null window merge
+    {
+        const node::WindowDefNode *empty_w1 = nullptr;
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+
+        map.insert(std::make_pair(empty_w1, manager_->MakeProjectListPlanNode(nullptr, false)));
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1day)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_30m)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+        ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
+        ASSERT_EQ(2u, windows.size());
+        ASSERT_TRUE(nullptr == windows[0]);
+        std::cout << *windows[1] << std::endl;
+        ASSERT_EQ(-86400000, windows[1]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[1]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(0, windows[1]->GetFrame()->frame_maxsize());
+    }
+
+    // Merge Fail
+    {
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions2, orders, frame_1day)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_30m)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+        ASSERT_FALSE(planner_ptr.MergeWindows(map, &windows));
+    }
+}
+
+TEST_F(PlannerV2Test, MergeWindowsWithMaxSizeTest) {
+    SimplePlannerV2 planner_ptr(manager_, false);
+    auto partitions = manager_->MakeExprList(manager_->MakeColumnRefNode("col1", "t1"));
+
+    auto orders = dynamic_cast<node::OrderByNode *>(
+        manager_->MakeOrderByNode(manager_->MakeExprList(manager_->MakeColumnRefNode("ts", "t1")), false));
+    auto frame_1day = manager_->MakeFrameNode(
+        node::kFrameRowsRange,
+        manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(1, node::kDay)),
+                                  manager_->MakeFrameBound(node::kCurrent)));
+
+    auto frame_30m = manager_->MakeFrameNode(
+        node::kFrameRowsRange,
+        manager_->MakeFrameExtent(
+            manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(30, node::kMinute)),
+            manager_->MakeFrameBound(node::kCurrent)));
+
+    auto frame_1day_masize_100 = manager_->MakeFrameNode(
+        node::kFrameRowsRange,
+        manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(1, node::kDay)),
+                                  manager_->MakeFrameBound(node::kCurrent)),
+        100);
+    auto frame_1day_masize_1000 = manager_->MakeFrameNode(
+        node::kFrameRowsRange,
+        manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(1, node::kDay)),
+                                  manager_->MakeFrameBound(node::kCurrent)),
+        1000);
+
+    auto frame_30m_maxsize_100 = manager_->MakeFrameNode(
+        node::kFrameRowsRange,
+        manager_->MakeFrameExtent(
+            manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(30, node::kMinute)),
+            manager_->MakeFrameBound(node::kCurrent)),
+        100);
+
+    auto frame_1hour_maxsize_100 = manager_->MakeFrameNode(
+        node::kFrameRowsRange,
+        manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(1, node::kHour)),
+                                  manager_->MakeFrameBound(node::kCurrent)),
+        100);
+
+    // window:col1,ts,[-1d, 0]
+    {
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1day_masize_100)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_30m_maxsize_100)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+
+        map.insert(std::make_pair(dynamic_cast<node::WindowDefNode *>(
+                                      manager_->MakeWindowDefNode(partitions, orders, frame_1hour_maxsize_100)),
+                                  manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(3), false)));
+        ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
+        ASSERT_EQ(1u, windows.size());
+        std::cout << *windows[0] << std::endl;
+        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(100, windows[0]->GetFrame()->frame_maxsize());
+    }
+
+    // window:col2,ts,[-1d,0]
+    // window:col1,ts,[-1h, 0]
+    auto partitions2 = manager_->MakeExprList(manager_->MakeColumnRefNode("col2", "t1"));
+    {
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+
+        map.insert(std::make_pair(dynamic_cast<node::WindowDefNode *>(
+                                      manager_->MakeWindowDefNode(partitions2, orders, frame_1day_masize_100)),
+                                  manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_30m_maxsize_100)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+
+        map.insert(std::make_pair(dynamic_cast<node::WindowDefNode *>(
+                                      manager_->MakeWindowDefNode(partitions, orders, frame_1hour_maxsize_100)),
+                                  manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(3), false)));
+        ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
+        ASSERT_EQ(2u, windows.size());
+
+        std::cout << *(windows[0]) << std::endl;
+        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(100, windows[0]->GetFrame()->frame_maxsize());
+
+        std::cout << *(windows[1]) << std::endl;
+        ASSERT_EQ(-3600000, windows[1]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[1]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(100, windows[1]->GetFrame()->frame_maxsize());
+    }
+
+    auto frame_100 = manager_->MakeFrameNode(
+        node::kFrameRows,
+        manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(100)),
+                                  manager_->MakeFrameBound(node::kCurrent)));
+    auto frame_1000 = manager_->MakeFrameNode(
+        node::kFrameRows,
+        manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(1000)),
+                                  manager_->MakeFrameBound(node::kCurrent)));
+
+    // window:col1:range[-1d, 0] rows[-1000,0]
+    {
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+
+        map.insert(std::make_pair(dynamic_cast<node::WindowDefNode *>(
+                                      manager_->MakeWindowDefNode(partitions, orders, frame_1day_masize_1000)),
+                                  manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_100)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1000)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+
+        ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
+        ASSERT_EQ(1u, windows.size());
+        std::cout << *windows[0] << std::endl;
+        ASSERT_EQ(-86400000, windows[0]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[0]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(-1000, windows[0]->GetFrame()->GetHistoryRowsStart());
+        ASSERT_EQ(1000, windows[0]->GetFrame()->frame_maxsize());
+    }
+
+    // null window merge
+    {
+        const node::WindowDefNode *empty_w1 = nullptr;
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+
+        map.insert(std::make_pair(empty_w1, manager_->MakeProjectListPlanNode(nullptr, false)));
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1day_masize_100)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_30m_maxsize_100)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+        ASSERT_TRUE(planner_ptr.MergeWindows(map, &windows));
+        ASSERT_EQ(2u, windows.size());
+        ASSERT_TRUE(nullptr == windows[0]);
+        std::cout << *windows[1] << std::endl;
+        ASSERT_EQ(-86400000, windows[1]->GetFrame()->GetHistoryRangeStart());
+        ASSERT_EQ(0, windows[1]->GetFrame()->GetHistoryRangeEnd());
+        ASSERT_EQ(100, windows[1]->GetFrame()->frame_maxsize());
+    }
+
+    // Merge Fail: can't merge windows with different partitions
+    {
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions2, orders, frame_1day)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_30m)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+        ASSERT_FALSE(planner_ptr.MergeWindows(map, &windows));
+    }
+    // Can't merge windows with different max_size
+    {
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1day_masize_100)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1day)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+        ASSERT_FALSE(planner_ptr.MergeWindows(map, &windows));
+    }
+    // Can't merge windows with different max_size
+    {
+        std::map<const node::WindowDefNode *, node::ProjectListNode *> map;
+        std::vector<const node::WindowDefNode *> windows;
+        map.insert(std::make_pair(dynamic_cast<node::WindowDefNode *>(
+                                      manager_->MakeWindowDefNode(partitions, orders, frame_1day_masize_1000)),
+                                  manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(1), false)));
+
+        map.insert(std::make_pair(
+            dynamic_cast<node::WindowDefNode *>(manager_->MakeWindowDefNode(partitions, orders, frame_1day_masize_100)),
+            manager_->MakeProjectListPlanNode(manager_->MakeWindowPlanNode(2), false)));
+        ASSERT_FALSE(planner_ptr.MergeWindows(map, &windows));
+    }
+}
+TEST_F(PlannerV2Test, WindowMergeOptTest) {
+    const std::string sql =
+        "      SELECT\n"
+        "      sum(col1) OVER (PARTITION BY col1 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN 2d PRECEDING AND CURRENT ROW) as w_col1_sum,\n"
+        "      sum(col2) OVER w1 as w1_col2_sum,\n"
+        "      sum(col3) OVER (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN "
+        "1000 PRECEDING AND CURRENT ROW) as w_col3_sum\n"
+        "      FROM t1\n"
+        "      WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN 1d PRECEDING AND CURRENT ROW) limit 10;";
+
+    base::Status status;
+    node::PlanNodeList plan_trees;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status));
+    ASSERT_EQ(1u, plan_trees.size());
+    ASSERT_EQ(1u, plan_trees.size());
+    PlanNode *plan_ptr = plan_trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+    LOG(INFO) << "logical plan:\n" << *plan_ptr << std::endl;
+
+    auto project_plan_node = dynamic_cast<node::ProjectPlanNode *>(plan_ptr->GetChildren()[0]->GetChildren()[0]);
+    ASSERT_EQ(node::kPlanTypeProject, project_plan_node->type_);
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+
+    auto project_list = dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[0]);
+    auto w = project_list->GetW();
+    ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
+    ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
+    ASSERT_EQ("range[-172800000,0],rows[-1000,0]", w->frame_node()->GetExprString());
+}
+TEST_F(PlannerV2Test, RowsWindowExpandTest) {
+    const std::string sql =
+        "      SELECT\n"
+        "      sum(col1) OVER (PARTITION BY col1 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN 2d PRECEDING AND 1d PRECEDING) as w_col1_sum,\n"
+        "      sum(col2) OVER w1 as w1_col2_sum,\n"
+        "      sum(col3) OVER (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN "
+        "1000 PRECEDING AND 100 PRECEDING) as w_col3_sum\n"
+        "      FROM t1\n"
+        "      WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN 1d PRECEDING AND 6h PRECEDING) limit 10;";
+
+    base::Status status;
+    node::PlanNodeList plan_trees;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status));
+    ASSERT_EQ(1u, plan_trees.size());
+    PlanNode *plan_ptr = plan_trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+    LOG(INFO) << "logical plan:\n" << *plan_ptr << std::endl;
+
+    auto project_plan_node = dynamic_cast<node::ProjectPlanNode *>(plan_ptr->GetChildren()[0]->GetChildren()[0]);
+    ASSERT_EQ(node::kPlanTypeProject, project_plan_node->type_);
+    ASSERT_EQ(2u, project_plan_node->project_list_vec_.size());
+
+    {
+        auto project_list = dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[0]);
+        auto w = project_list->GetW();
+        ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
+        ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
+        ASSERT_EQ("rows[-1000,0]", w->frame_node()->GetExprString());
+    }
+
+    // Pure RowsRange Frame won't expand
+    {
+        auto project_list = dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[1]);
+        auto w = project_list->GetW();
+        ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
+        ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
+        ASSERT_EQ("range[-172800000,-21600000]", w->frame_node()->GetExprString());
+    }
+}
+
+TEST_F(PlannerV2Test, CreatePlanLeakTest) {
+    const std::string sql =
+        "      SELECT\n"
+        "      sum(col1) OVER (PARTITION BY col1 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN 2d PRECEDING AND 1d PRECEDING) as w_col1_sum,\n"
+        "      sum(col2) OVER w1 as w1_col2_sum,\n"
+        "      sum(col3) OVER (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN "
+        "1000 PRECEDING AND 100 PRECEDING) as w_col3_sum\n"
+        "      FROM t1\n"
+        "      WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN 1d PRECEDING AND 6h PRECEDING) limit 10;";
+
+    int64_t cnt = 0;
+    while (true) {
+        base::Status status;
+        NodeManager nm;
+        node::PlanNodeList plan_trees;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
+        if (cnt == 100) {
+            LOG(INFO) << "process .......... " << cnt;
+            break;
+        }
+        cnt++;
+    }
+}
+//
+// TEST_F(PlannerTest, CreateSpParseTest) {
+//    std::string sql =
+//        "create procedure sp1(const c1 string, const c3 int, c4 bigint,"
+//        "c5 float, c6 double, c7 timestamp, c8 date) "
+//        "begin "
+//        "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
+//        "WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS "
+//        "BETWEEN 2 PRECEDING AND CURRENT ROW);"
+//        "end;";
+//
+//    base::Status status;
+//    node::NodePointVector parser_trees;
+//    int ret = parser_->parse(sql, parser_trees, manager_, status);
+//    ASSERT_EQ(0, ret);
+//
+//    sql = "show procedure status;";
+//    ret = parser_->parse(sql, parser_trees, manager_, status);
+//    ASSERT_EQ(0, ret);
+//    sql = "show procedure;";
+//    ret = parser_->parse(sql, parser_trees, manager_, status);
+//    ASSERT_EQ(1, ret);
+//    sql = "show create procedure test.sp1;";
+//    ret = parser_->parse(sql, parser_trees, manager_, status);
+//    ASSERT_EQ(0, ret);
+//    sql = "show create procedure sp1;";
+//    ret = parser_->parse(sql, parser_trees, manager_, status);
+//    ASSERT_EQ(0, ret);
+//
+//    sql =
+//        "create procedure sp1(const c1 string, const c3 int, c4 bigint,"
+//        "c5 float, c6 double, c7 timestamp, c8 date) "
+//        "begin "
+//        "insert into t1 (col1, col2, col3, col4) values(1, 2, 3.1, \"string\");"
+//        "end;";
+//    ret = parser_->parse(sql, parser_trees, manager_, status);
+//    ASSERT_EQ(1, ret);
+//}
 
 class PlannerV2ErrorTest : public ::testing::TestWithParam<SqlCase> {
  public:
@@ -213,20 +1613,57 @@ TEST_P(PlannerV2ErrorTest, RequestModePlanErrorTest) {
         LOG(INFO) << "Skip mode " << sql_case.mode();
         return;
     }
-    std::unique_ptr<zetasql::ParserOutput> parser_output;
     base::Status status;
-    auto zetasql_status = zetasql::ParseScript(sqlstr, zetasql::ParserOptions(),
-                                               zetasql::ERROR_MESSAGE_MULTI_LINE_WITH_CARET, &parser_output);
-    zetasql::ErrorLocation location;
-    GetErrorLocation(zetasql_status, &location);
-    ZETASQL_ASSERT_OK(zetasql_status) << "ERROR:" << zetasql::FormatError(zetasql_status) << "\n"
-                                      << GetErrorStringWithCaret(sqlstr, location);
-    const zetasql::ASTScript *script = parser_output->script();
-    std::cout << "script node: \n" << script->DebugString();
-
-    SimplePlannerV2 *planner_ptr = new SimplePlannerV2(manager_, false);
     node::PlanNodeList plan_trees;
-    ASSERT_TRUE(0 != planner_ptr->CreateASTScriptPlan(script, plan_trees, status)) << status;
+    ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, false)) << status;
+}
+TEST_P(PlannerV2ErrorTest, ClusterRequestModePlanErrorTest) {
+    auto sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
+    std::cout << sqlstr << std::endl;
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+        return;
+    }
+    base::Status status;
+    node::PlanNodeList plan_trees;
+    ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true)) << status;
+}
+TEST_P(PlannerV2ErrorTest, BatchModePlanErrorTest) {
+    auto sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
+    std::cout << sqlstr << std::endl;
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "batch-unsupport")) {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+        return;
+    }
+    base::Status status;
+    node::PlanNodeList plan_trees;
+    ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, true)) << status;
+}
+
+TEST_F(PlannerV2ErrorTest, SqlSyntaxErrorTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string &sql, const int code, const std::string &msg) {
+        base::Status status;
+        node::PlanNodeList plan_trees;
+        ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true));
+        ASSERT_EQ(code, status.code) << status;
+        ASSERT_EQ(msg, status.msg) << status;
+        std::cout << msg << std::endl;
+    };
+
+    expect_converted("SELECT FROM t1;", common::kSyntaxError,
+                     "Syntax error: SELECT list must not be empty [at 1:8]\n"
+                     "SELECT FROM t1;\n"
+                     "       ^");
+    expect_converted("SELECT t1.col1, t2.col2 FROM t1 LAST JOIN t2 when t1.id=t2.id;", common::kSyntaxError,
+                     "Syntax error: Expected keyword ON or keyword USING but got keyword WHEN [at 1:46]\n"
+                     "SELECT t1.col1, t2.col2 FROM t1 LAST JOIN t2 when t1.id=t2.id;\n"
+                     "                                             ^");
 }
 }  // namespace plan
 }  // namespace hybridse

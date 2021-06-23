@@ -93,7 +93,6 @@ cases:
       );
   - id: 8
     desc: Create 指定副本数
-    mode : 'zetasql-unsupport'
     sql: |
       create table test(
           column1 int NOT NULL,
@@ -101,10 +100,9 @@ cases:
           column3 int NOT NULL,
           column4 string NOT NULL,
           column5 int NOT NULL,
-          index(key=column1, ts=column2)) replicanum=2;
+          index(key=column1, ts=column2)) OPTIONS (replicanum=2);
   - id: 9
     desc: Create 指定副本数与节点分布
-    mode : 'zetasql-unsupport'
     sql: |
       create table test(
           column1 int NOT NULL,
@@ -112,9 +110,15 @@ cases:
           column3 int NOT NULL,
           column4 string NOT NULL,
           column5 int NOT NULL,
-          index(key=column1, ts=column2)) replicanum=2, distribution(leader="127.0.0.1:9927", follower="127.0.0.1:9926");
+          index(key=column1, ts=column2))
+          OPTIONS (
+            replicanum=2,
+            distribution = [
+              ("127.0.0.1:9927", ["127.0.0.1:9926"])
+              ]
+          );
   - id: 10
-    desc: create procedure 
+    desc: create procedure
     sql: |
         create procedure sp1(const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date)
         begin
@@ -144,12 +148,10 @@ cases:
           index(key=column1, ts=column2, ttl=(10d,100), ttl_type=absandlat));
   - id: 13
     desc: Create table statement (typical 1)
-    mode: 'planner-unsupport'
-    tags: ['TODO']
     sql: |
         create table t1 (a int, b string, index(key=(a, b), dump='12', ts=column2, ttl=1d, ttl_type=absolute, version=(column5, 3)))
         options (replicanum = 3, partitionnum = 3, ignored_option = 'abc',
-            distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo1', 'fo2']) ]
+            distribution = [ ('leader1', ['fo1', 'fo2']) ]
         );
     expect:
       node_tree_str: |
@@ -185,24 +187,18 @@ cases:
             |    +-role_type: leader
             +-1:
             |  +-node[kPartitionMeta]
-            |    +-endpoint: fo2
+            |    +-endpoint: fo1
             |    +-role_type: follower
             +-2:
-            |  +-node[kPartitionMeta]
-            |    +-endpoint: leader2
-            |    +-role_type: leader
-            +-3:
               +-node[kPartitionMeta]
                 +-endpoint: fo2
                 +-role_type: follower
   - id: 14
     desc: Create table statement (typical 2)
-    tags: ['TODO', 'fix distribution_list']
-    mode: 'planner-unsupport'
     sql: |
         create table if not exists t2 (a i16, b float32, index(key=a, ignored_key='seb', ts=b, ttl=(1h, 1800),
         ttl_type=latest, version=a ) ) options (replicanum = 2, partitionnum = 5, ignored_option = 'abc',
-        distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo1', 'fo2'])] )
+        distribution = [ ('leader1', ['fo1', 'fo2'])] )
     expect:
       node_tree_str: |
         +-node[CREATE]
@@ -237,25 +233,19 @@ cases:
             |    +-role_type: leader
             +-1:
             |  +-node[kPartitionMeta]
-            |    +-endpoint: fo2
+            |    +-endpoint: fo1
             |    +-role_type: follower
             +-2:
-            |  +-node[kPartitionMeta]
-            |    +-endpoint: leader2
-            |    +-role_type: leader
-            +-3:
               +-node[kPartitionMeta]
                 +-endpoint: fo2
                 +-role_type: follower
 
   - id: 15
     desc: Create table statement (typical 3)
-    tags: ['TODO', 'fix distribution_list']
-    mode: 'planner-unsupport'
     sql: |
       create table if not exists t3 (a int32, b timestamp, index(key=a, ignored_key='seb', ts=b, ttl=1800,
       ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, ignored_option = 'abc',
-      distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo1', 'fo2']) ])
+      distribution = [ ('leader1', ['fo1', 'fo2'])])
     expect:
       node_tree_str: |
         +-node[CREATE]
@@ -290,20 +280,15 @@ cases:
             |    +-role_type: leader
             +-1:
             |  +-node[kPartitionMeta]
-            |    +-endpoint: fo2
+            |    +-endpoint: fo1
             |    +-role_type: follower
             +-2:
-            |  +-node[kPartitionMeta]
-            |    +-endpoint: leader2
-            |    +-role_type: leader
-            +-3:
               +-node[kPartitionMeta]
                 +-endpoint: fo2
                 +-role_type: follower
 
   - id: 16
     desc: empty create table statement
-    mode: 'planner-unsupport'
     sql: |
         create table t4
     expect:
@@ -318,7 +303,6 @@ cases:
 
   - id: 17_create_procedure
     desc: create procedure, everything empty
-    mode: 'planner-unsupport'
     sql: |
         CREATE OR REPLACE TEMP PROCEDURE IF NOT EXISTS procedure_name()
         OPTIONS()
@@ -333,7 +317,6 @@ cases:
 
   - id: 18_create_procedure
     desc: create procedure, multiple parameters
-    mode: 'planner-unsupport'
     sql: |
       CREATE PROCEDURE procedure_name(
         param_a string,
@@ -360,7 +343,6 @@ cases:
 
   - id: 19_create_procedure
     desc: create procedure, select query body
-    mode: 'planner-unsupport'
     sql: |
         CREATE PROCEDURE procedure_name()
         BEGIN
@@ -393,7 +375,6 @@ cases:
 
   - id: 20_create_procedure
     desc: create procedure, parameters and union all query
-    mode: 'planner-unsupport'
     sql: |
         CREATE PROCEDURE procedure_name(
             param_a i16,
@@ -472,7 +453,6 @@ cases:
 
   - id: 21_create_procedure
     desc: create procedure, parameters and union distinct query
-    mode: 'planner-unsupport'
     sql: |
         CREATE PROCEDURE procedure_name(
             param_a i64,

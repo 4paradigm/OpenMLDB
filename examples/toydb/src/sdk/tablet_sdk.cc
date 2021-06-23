@@ -25,8 +25,7 @@
 #include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
 #include "node/node_enum.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 #include "proto/fe_tablet.pb.h"
 #include "sdk/result_set_impl.h"
 
@@ -264,20 +263,8 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
                                node::NodeManager& node_manager,
                                node::PlanNodeList& plan_trees,
                                sdk::Status& status) {
-    parser::HybridSeParser parser;
-    plan::SimplePlanner planner(&node_manager);
     base::Status sql_status;
-
-    // TODO(chenjing): init with db
-    node::NodePointVector parser_trees;
-    parser.parse(sql, parser_trees, &node_manager, sql_status);
-    if (0 != sql_status.code) {
-        status.code = sql_status.code;
-        status.msg = sql_status.str();
-        LOG(WARNING) << status.msg;
-        return;
-    }
-    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
+    plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
 
     if (0 != sql_status.code) {
         status.code = sql_status.code;

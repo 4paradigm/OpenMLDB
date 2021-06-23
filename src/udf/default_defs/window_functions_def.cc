@@ -140,6 +140,7 @@ void DefaultUdfLibrary::InitWindowFunctions() {
             return BuildAt(ctx, input, idx, nullptr);
         });
 
+    RegisterAlias("lead", "at");
     RegisterExprUdf("first_value")
         .list_argument_at(0)
         .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* input) {

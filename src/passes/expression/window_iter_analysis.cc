@@ -82,7 +82,7 @@ Status WindowIterAnalysis::VisitCall(
     WindowIterRank* rank) {
     CHECK_TRUE(arg_ranks.size() == fn->GetArgSize(), kCodegenError,
                "Incompatible arg num: ", arg_ranks.size(), ", ",
-               fn->GetArgSize());
+               fn->GetArgSize(), " function name ", fn->GetFlatString());
     switch (fn->GetType()) {
         case node::kUdafDef: {
             auto udaf = dynamic_cast<node::UdafDefNode*>(fn);

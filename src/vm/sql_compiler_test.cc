@@ -33,8 +33,6 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
 #include "vm/simple_catalog.h"
 #include "testing/test_base.h"
 #include "testing/engine_test_base.h"
@@ -48,7 +46,8 @@ namespace hybridse {
 namespace vm {
 
 using hybridse::sqlcase::SqlCase;
-const std::vector<std::string> FILTERS({"physical-plan-unsupport", "plan-unsupport", "parser-unsupport"});
+const std::vector<std::string> FILTERS({"physical-plan-unsupport",  "zetasql-unsupport",
+                                        "plan-unsupport", "parser-unsupport"});
 
 class SqlCompilerTest : public ::testing::TestWithParam<SqlCase> {};
 INSTANTIATE_TEST_CASE_P(

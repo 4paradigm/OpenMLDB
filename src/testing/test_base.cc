@@ -355,7 +355,7 @@ void ExtractExprListFromSimpleSql(::hybridse::node::NodeManager* nm,
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status base_status;
     if (::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, nm,
-                                                            base_status) == 0) {
+                                                            base_status)) {
         std::cout << base_status.str();
         std::cout << *(plan_trees[0]) << std::endl;
     } else {
@@ -383,7 +383,7 @@ void ExtractExprFromSimpleSql(::hybridse::node::NodeManager* nm,
     ::hybridse::base::Status base_status;
     ASSERT_EQ(0, base_status.code);
     if (::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, nm,
-                                                            base_status) == 0) {
+                                                            base_status)) {
         std::cout << base_status.str();
         std::cout << *(plan_trees[0]) << std::endl;
     } else {

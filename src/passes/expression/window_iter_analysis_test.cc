@@ -35,8 +35,8 @@ TEST_F(WindowIterAnalysisTest, Test) {
         {"sum(col_0 + 1)", 1},
         {"sum(col_0 + sum(col_1))", 2},
         {"sum(col_0 + sum(col_1 + sum(col_2)))", 3},
-        {"at(col_0, 1)", 1},
-        {"at(col_0, min(col_0))", 1},
+        {"lead(col_0, 1)", 1},
+        {"lead(col_0, min(col_0))", 1},
         {"count(fz_window_split(cast(col_0 as string), \",\"))", 1},
     };
 

@@ -24,11 +24,11 @@
 #include "base/spin_lock.h"
 #include "brpc/channel.h"
 #include "node/node_manager.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
 #include "proto/dbms.pb.h"
 #include "sdk/result_set_impl.h"
 #include "sdk/tablet_sdk.h"
+#include "plan/plan_api.h"
+#include "plan/planner.h"
 
 namespace hybridse {
 namespace sdk {
@@ -218,22 +218,11 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
                                                      sdk::Status *status) {
     std::shared_ptr<ResultSetImpl> empty;
     node::NodeManager node_manager;
-    parser::HybridSeParser parser;
-    plan::SimplePlanner planner(&node_manager);
     DLOG(INFO) << "start to execute script from dbms:\n" << sql;
 
     base::Status sql_status;
-    node::NodePointVector parser_trees;
-    parser.parse(sql, parser_trees, &node_manager, sql_status);
-    if (0 != sql_status.code) {
-        LOG(WARNING) << sql_status.str();
-        status->code = sql_status.code;
-        status->msg = sql_status.str();
-        return empty;
-    }
     node::PlanNodeList plan_trees;
-    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
-
+    plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
     if (0 != sql_status.code) {
         status->code = sql_status.code;
         status->msg = sql_status.str();
@@ -268,10 +257,9 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
             ::hybridse::type::TableDef *table =
                 add_table_request.mutable_table();
             table->set_catalog(catalog);
-            hybridse::plan::Planner::TransformTableDef(
-                create->GetTableName(), create->GetColumnDescList(), table,
-                sql_status);
-            if (0 != sql_status.code) {
+            sql_status = hybridse::plan::Planner::TransformTableDef(
+                create->GetTableName(), create->GetColumnDescList(), table);
+            if (!sql_status.isOK()) {
                 status->code = sql_status.code;
                 status->msg = sql_status.str();
                 LOG(WARNING) << status->msg;

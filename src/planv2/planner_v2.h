@@ -39,17 +39,12 @@ using node::PlanNodeList;
 
 class SimplePlannerV2 : public SimplePlanner {
  public:
-    explicit SimplePlannerV2(node::NodeManager *manager)
-        : SimplePlanner(manager, true, false, false) {}
-    SimplePlannerV2(node::NodeManager *manager, bool is_batch_mode,
-                  bool is_cluster_optimized = false,
-                  bool enable_batch_window_parallelization = false)
-        : SimplePlanner(manager, is_batch_mode, is_cluster_optimized,
-                  enable_batch_window_parallelization) {}
-    int CreateASTScriptPlan(const zetasql::ASTScript* script,
-                       PlanNodeList &plan_trees,  // NOLINT
-                       Status &status);           // NOLINT (runtime/references)
-    base::Status CreateASTQueryPlan(const zetasql::ASTQuery *root, PlanNode **plan_tree);
+    explicit SimplePlannerV2(node::NodeManager *manager) : SimplePlanner(manager, true, false, false) {}
+    SimplePlannerV2(node::NodeManager *manager, bool is_batch_mode, bool is_cluster_optimized = false,
+                    bool enable_batch_window_parallelization = false)
+        : SimplePlanner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization) {}
+    base::Status CreateASTScriptPlan(const zetasql::ASTScript *script,
+                            PlanNodeList &plan_trees);           // NOLINT (runtime/references)
 };
 
 }  // namespace plan

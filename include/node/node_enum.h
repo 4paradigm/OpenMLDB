@@ -213,14 +213,13 @@ enum JoinType {
     kJoinTypeRight,
     kJoinTypeInner,
     kJoinTypeConcat,
+    kJoinTypeComma
 };
 
 enum UnionType { kUnionTypeDistinct, kUnionTypeAll };
 
 enum CmdType {
-    kCmdCreateGroup,
     kCmdCreateDatabase,
-    kCmdSource,
     kCmdUseDatabase,
     kCmdShowDatabases,
     kCmdShowTables,
@@ -243,6 +242,7 @@ enum PlanType {
     kPlanTypeFuncDef,
     kPlanTypeCreate,
     kPlanTypeInsert,
+    kPlanTypeExplain,
     kPlanTypeScan,
     kPlanTypeQuery,
     kPlanTypeLimit,

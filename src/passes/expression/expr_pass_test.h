@@ -21,11 +21,10 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "parser/parser.h"
 #include "passes/expression/expr_pass.h"
 #include "passes/lambdafy_projects.h"
 #include "passes/resolve_fn_and_attrs.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 #include "udf/default_udf_library.h"
 #include "vm/schemas_context.h"
 
@@ -34,15 +33,9 @@ namespace passes {
 
 void InitFunctionLet(const std::string& sql, node::ExprAnalysisContext* ctx,
                      node::LambdaNode** result) {
-    parser::HybridSeParser parser;
     Status status;
-    plan::SimplePlanner planner(ctx->node_manager());
-    node::NodePointVector list1;
-    int ok = parser.parse(sql, list1, ctx->node_manager(), status);
-    ASSERT_EQ(0, ok);
-
     node::PlanNodeList trees;
-    planner.CreatePlanTree(list1, trees, status);
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, trees, ctx->node_manager(), status)) << status;
     ASSERT_EQ(1u, trees.size());
 
     auto query_plan = dynamic_cast<node::QueryPlanNode*>(trees[0]);

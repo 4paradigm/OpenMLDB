@@ -42,8 +42,7 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
+#include "plan/plan_api.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/jit.h"
@@ -85,25 +84,6 @@ node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
     return pp_node_ptr;
 }
 
-void AddFunc(const std::string& fn, ::hybridse::node::NodeManager* manager,
-             ::llvm::Module* m) {
-    if (fn.empty()) {
-        return;
-    }
-    ::hybridse::node::NodePointVector trees;
-    ::hybridse::parser::HybridSeParser parser;
-    ::hybridse::base::Status status;
-    int ret = parser.parse(fn, trees, manager, status);
-    ASSERT_EQ(0, ret);
-    FnIRBuilder fn_ir_builder(m);
-    for (node::SqlNode* node : trees) {
-        LOG(INFO) << "Add Func: " << *node;
-        ::llvm::Function* func = nullptr;
-        bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node),
-                                      &func, status);
-        ASSERT_TRUE(ok);
-    }
-}
 
 void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
                        vm::SchemasContext* schemas_ctx, std::string udf_str,
@@ -114,19 +94,12 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
     auto m = make_unique<Module>("test_project", *ctx);
 
     // Parse SQL
-    ::hybridse::node::NodePointVector list;
-    ::hybridse::parser::HybridSeParser parser;
     ::hybridse::base::Status status;
     auto lib = udf::DefaultUdfLibrary::get();
-    AddFunc(udf_str, manager, m.get());
+    ASSERT_TRUE(udf_str.empty()) << "Un-support user define function";
     m->print(::llvm::errs(), NULL);
-    int ret = parser.parse(sql, list, manager, status);
-    ASSERT_EQ(0, ret);
-    ASSERT_EQ(1u, list.size());
-    ::hybridse::plan::SimplePlanner planner(manager);
     ::hybridse::node::PlanNodeList plan;
-    ret = planner.CreatePlanTree(list, plan, status);
-    ASSERT_EQ(0, ret);
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan, manager, status)) << status;
     hybridse::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
 
     // Create physical function def

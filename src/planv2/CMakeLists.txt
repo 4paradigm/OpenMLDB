@@ -1,3 +1,4 @@
+#[[
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,3 +35,4 @@ target_link_libraries(planner_v2_test gtest hybridse_planner_v2 hybridse_core gl
 
 add_test(planner_v2_test ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/planner_v2_test --gtest_output=xml:${CMAKE_BINARY_DIR}/planner_v2_test.xml)
 list(APPEND test_list planner_v2_test)
+]]

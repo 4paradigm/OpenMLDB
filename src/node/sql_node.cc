@@ -2063,10 +2063,11 @@ void InputParameterNode::Print(std::ostream &output, const std::string &org_tab)
 }
 
 Status StringToDataType(const std::string identifier, DataType* type) {
+    CHECK_TRUE(nullptr != type, common::kNullPointer, "Can't convert type string, output datatype is nullptr")
     const auto lower_identifier = boost::to_lower_copy(identifier);
     auto it = type_map.find(lower_identifier);
     if (it == type_map.end()) {
-        return Status(common::kTypeError, "unknow DataType identifier: " + identifier);
+        return Status(common::kTypeError, "Unknow DataType identifier: " + identifier);
     }
 
     *type = it->second;

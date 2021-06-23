@@ -30,72 +30,55 @@ NodeManager::~NodeManager() {
     }
 }
 
-QueryNode *NodeManager::MakeSelectQueryNode(
-    bool is_distinct, SqlNodeList *select_list_ptr,
-    SqlNodeList *tableref_list_ptr, ExprNode *where_expr,
-    ExprListNode *group_expr_list, ExprNode *having_expr,
-    ExprNode *order_expr_list, SqlNodeList *window_list_ptr,
-    SqlNode *limit_ptr) {
+QueryNode *NodeManager::MakeSelectQueryNode(bool is_distinct, SqlNodeList *select_list_ptr,
+                                            SqlNodeList *tableref_list_ptr, ExprNode *where_expr,
+                                            ExprListNode *group_expr_list, ExprNode *having_expr,
+                                            ExprNode *order_expr_list, SqlNodeList *window_list_ptr,
+                                            SqlNode *limit_ptr) {
     SelectQueryNode *node_ptr =
-        new SelectQueryNode(is_distinct, select_list_ptr, tableref_list_ptr,
-                            where_expr, group_expr_list, having_expr,
-                            dynamic_cast<OrderByNode *>(order_expr_list),
-                            window_list_ptr, limit_ptr);
+        new SelectQueryNode(is_distinct, select_list_ptr, tableref_list_ptr, where_expr, group_expr_list, having_expr,
+                            dynamic_cast<OrderByNode *>(order_expr_list), window_list_ptr, limit_ptr);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
-QueryNode *NodeManager::MakeUnionQueryNode(QueryNode *left, QueryNode *right,
-                                           bool is_all) {
+QueryNode *NodeManager::MakeUnionQueryNode(QueryNode *left, QueryNode *right, bool is_all) {
     UnionQueryNode *node_ptr = new UnionQueryNode(left, right, is_all);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
-TableRefNode *NodeManager::MakeTableNode(const std::string &name,
-                                         const std::string &alias) {
+TableRefNode *NodeManager::MakeTableNode(const std::string &name, const std::string &alias) {
     TableRefNode *node_ptr = new TableNode(name, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
-TableRefNode *NodeManager::MakeJoinNode(const TableRefNode *left,
-                                        const TableRefNode *right,
-                                        const JoinType type,
-                                        const ExprNode *condition,
-                                        const std::string alias) {
-    TableRefNode *node_ptr =
-        new JoinNode(left, right, type, nullptr, condition, alias);
+TableRefNode *NodeManager::MakeJoinNode(const TableRefNode *left, const TableRefNode *right, const JoinType type,
+                                        const ExprNode *condition, const std::string alias) {
+    TableRefNode *node_ptr = new JoinNode(left, right, type, nullptr, condition, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
-TableRefNode *NodeManager::MakeLastJoinNode(const TableRefNode *left,
-                                            const TableRefNode *right,
-                                            const ExprNode *orders,
-                                            const ExprNode *condition,
-                                            const std::string alias) {
+TableRefNode *NodeManager::MakeLastJoinNode(const TableRefNode *left, const TableRefNode *right, const ExprNode *orders,
+                                            const ExprNode *condition, const std::string alias) {
     if (nullptr != orders && node::kExprOrder != orders->GetExprType()) {
-        LOG(WARNING)
-            << "fail to create last join node with invalid order type " +
-                   NameOfSqlNodeType(orders->GetType());
+        LOG(WARNING) << "fail to create last join node with invalid order type " + NameOfSqlNodeType(orders->GetType());
         return nullptr;
     }
-    TableRefNode *node_ptr = new JoinNode(
-        left, right, node::kJoinTypeLast,
-        dynamic_cast<const OrderByNode *>(orders), condition, alias);
+    TableRefNode *node_ptr =
+        new JoinNode(left, right, node::kJoinTypeLast, dynamic_cast<const OrderByNode *>(orders), condition, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
-TableRefNode *NodeManager::MakeQueryRefNode(const QueryNode *sub_query,
-                                            const std::string &alias) {
+TableRefNode *NodeManager::MakeQueryRefNode(const QueryNode *sub_query, const std::string &alias) {
     TableRefNode *node_ptr = new QueryRefNode(sub_query, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
-SqlNode *NodeManager::MakeResTargetNode(ExprNode *node,
-                                        const std::string &name) {
+SqlNode *NodeManager::MakeResTargetNode(ExprNode *node, const std::string &name) {
     ResTarget *node_ptr = new ResTarget(name, node);
     return RegisterNode(node_ptr);
 }
@@ -104,27 +87,20 @@ SqlNode *NodeManager::MakeLimitNode(int count) {
     LimitNode *node_ptr = new LimitNode(count);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
-                                        ExprNode *orders, SqlNode *frame) {
+SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders, SqlNode *frame) {
     return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false);
 }
-SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
-                                        ExprNode *orders, SqlNode *frame,
+SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders, SqlNode *frame,
                                         bool open_interval_window) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame,
-                             open_interval_window, false);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, open_interval_window, false);
 }
-SqlNode *NodeManager::MakeWindowDefNode(SqlNodeList *union_tables,
-                                        ExprListNode *partitions,
-                                        ExprNode *orders, SqlNode *frame,
-                                        bool exclude_current_time,
-                                        bool instance_not_in_window) {
+SqlNode *NodeManager::MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode *partitions, ExprNode *orders,
+                                        SqlNode *frame, bool exclude_current_time, bool instance_not_in_window) {
     WindowDefNode *node_ptr = new WindowDefNode();
     if (nullptr != orders) {
         if (node::kExprOrder != orders->GetExprType()) {
-            LOG(WARNING)
-                << "fail to create window node with invalid order type " +
-                       NameOfSqlNodeType(orders->GetType());
+            LOG(WARNING) << "fail to create window node with invalid order type " +
+                                NameOfSqlNodeType(orders->GetType());
             delete node_ptr;
             return nullptr;
         }
@@ -144,19 +120,16 @@ SqlNode *NodeManager::MakeWindowDefNode(const std::string &name) {
     return RegisterNode(node_ptr);
 }
 
-WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1,
-                                        const WindowDefNode *w2) {
+WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1, const WindowDefNode *w2) {
     if (nullptr == w1 || nullptr == w2) {
         LOG(WARNING) << "Fail to Merge Window: input windows are null";
         return nullptr;
     }
-    return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
-        w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
-        MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
-        w1->exclude_current_time(), w1->instance_not_in_window()));
+    return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
+                                                           MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
+                                                           w1->exclude_current_time(), w1->instance_not_in_window()));
 }
-FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
-    FrameNode *frame1) {
+FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1) {
     if (nullptr == frame1) {
         return nullptr;
     }
@@ -167,8 +140,7 @@ FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
                 frame1,
                 dynamic_cast<FrameNode *>(MakeFrameNode(
                     kFrameRows, nullptr,
-                    dynamic_cast<FrameExtent *>(MakeFrameExtent(
-                        MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
+                    dynamic_cast<FrameExtent *>(MakeFrameExtent(MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
                     0)));
         }
         default: {
@@ -177,15 +149,13 @@ FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(
     }
     return nullptr;
 }
-FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
-                                       const FrameNode *frame2) {
+FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1, const FrameNode *frame2) {
     if (nullptr == frame1 || nullptr == frame2) {
         LOG(WARNING) << "Fail to Merge Frame: input frames are null";
         return nullptr;
     }
-    FrameType frame_type = frame1->frame_type() == frame2->frame_type()
-                               ? frame1->frame_type()
-                               : kFrameRowsMergeRowsRange;
+    FrameType frame_type =
+        frame1->frame_type() == frame2->frame_type() ? frame1->frame_type() : kFrameRowsMergeRowsRange;
     FrameExtent *frame_range = nullptr;
     if (nullptr == frame1->frame_range()) {
         frame_range = frame2->frame_range();
@@ -222,11 +192,9 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1,
         FrameBound *end = end_compared >= 1 ? end1 : end2;
         frame_rows = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
     }
-    int64_t maxsize = frame1->frame_maxsize() == 0 ? frame2->frame_maxsize()
-                                                   : frame1->frame_maxsize();
+    int64_t maxsize = frame1->frame_maxsize() == 0 ? frame2->frame_maxsize() : frame1->frame_maxsize();
 
-    return dynamic_cast<FrameNode *>(
-        MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));
+    return dynamic_cast<FrameNode *>(MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));
 }
 SqlNode *NodeManager::MakeFrameBound(BoundType bound_type) {
     FrameBound *node_ptr = new FrameBound(bound_type);
@@ -269,17 +237,14 @@ SqlNode *NodeManager::MakeFrameBound(BoundType bound_type, int64_t offset) {
     return RegisterNode(node_ptr);
 }
 SqlNode *NodeManager::MakeFrameExtent(SqlNode *start, SqlNode *end) {
-    FrameExtent *node_ptr = new FrameExtent(dynamic_cast<FrameBound *>(start),
-                                            dynamic_cast<FrameBound *>(end));
+    FrameExtent *node_ptr = new FrameExtent(dynamic_cast<FrameBound *>(start), dynamic_cast<FrameBound *>(end));
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type,
-                                    SqlNode *frame_extent) {
+SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent) {
     int64_t max_size = 0;
     return MakeFrameNode(frame_type, frame_extent, max_size);
 }
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent,
-                                    ExprNode *frame_size) {
+SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent, ExprNode *frame_size) {
     if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
         LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
         return nullptr;
@@ -302,8 +267,7 @@ SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent,
     return MakeFrameNode(frame_type, frame_extent, max_size);
 }
 
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent,
-                                    int64_t maxsize) {
+SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent, int64_t maxsize) {
     if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
         LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
         return nullptr;
@@ -311,33 +275,28 @@ SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent,
 
     switch (frame_type) {
         case kFrameRows: {
-            FrameNode *node_ptr = new FrameNode(
-                frame_type, nullptr, dynamic_cast<FrameExtent *>(frame_extent),
-                maxsize);
+            FrameNode *node_ptr =
+                new FrameNode(frame_type, nullptr, dynamic_cast<FrameExtent *>(frame_extent), maxsize);
             return RegisterNode(node_ptr);
         }
         case kFrameRange:
         case kFrameRowsRange:
         case kFrameRowsMergeRowsRange: {
-            FrameNode *node_ptr = new FrameNode(
-                frame_type, dynamic_cast<FrameExtent *>(frame_extent), nullptr,
-                maxsize);
+            FrameNode *node_ptr =
+                new FrameNode(frame_type, dynamic_cast<FrameExtent *>(frame_extent), nullptr, maxsize);
             return RegisterNode(node_ptr);
         }
     }
     return nullptr;
 }
 
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type,
-                                    FrameExtent *frame_range,
-                                    FrameExtent *frame_rows, int64_t maxsize) {
-    FrameNode *node_ptr =
-        new FrameNode(frame_type, frame_range, frame_rows, maxsize);
+SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, FrameExtent *frame_range, FrameExtent *frame_rows,
+                                    int64_t maxsize) {
+    FrameNode *node_ptr = new FrameNode(frame_type, frame_range, frame_rows, maxsize);
     return RegisterNode(node_ptr);
 }
 
-OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
-                                          const bool is_asc) {
+OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order, const bool is_asc) {
     std::vector<bool> is_asc_list;
     if (nullptr != order) {
         for (size_t i = 0; i < order->GetChildNum(); i++) {
@@ -347,8 +306,7 @@ OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
     OrderByNode *node_ptr = new OrderByNode(order, is_asc_list, is_asc);
     return RegisterNode(node_ptr);
 }
-OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
-                                          const std::vector<bool>& is_asc_list) {
+OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order, const std::vector<bool> &is_asc_list) {
     bool is_asc = true;
     for (bool flag : is_asc_list) {
         if (!flag) {
@@ -360,45 +318,34 @@ OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
     return RegisterNode(node_ptr);
 }
 
-ColumnRefNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
-                                              const std::string &relation_name,
+ColumnRefNode *NodeManager::MakeColumnRefNode(const std::string &column_name, const std::string &relation_name,
                                               const std::string &db_name) {
-    ColumnRefNode *node_ptr =
-        new ColumnRefNode(column_name, relation_name, db_name);
+    ColumnRefNode *node_ptr = new ColumnRefNode(column_name, relation_name, db_name);
 
     return RegisterNode(node_ptr);
 }
 
-ColumnIdNode *NodeManager::MakeColumnIdNode(size_t column_id) {
-    return RegisterNode(new ColumnIdNode(column_id));
-}
+ColumnIdNode *NodeManager::MakeColumnIdNode(size_t column_id) { return RegisterNode(new ColumnIdNode(column_id)); }
 
-GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input,
-                                            const std::string &column_name,
-                                            size_t column_id) {
+GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input, const std::string &column_name, size_t column_id) {
     return RegisterNode(new GetFieldExpr(input, column_name, column_id));
 }
 GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input, size_t idx) {
     return RegisterNode(new GetFieldExpr(input, std::to_string(idx), idx));
 }
 
-ColumnRefNode *NodeManager::MakeColumnRefNode(
-    const std::string &column_name, const std::string &relation_name) {
+ColumnRefNode *NodeManager::MakeColumnRefNode(const std::string &column_name, const std::string &relation_name) {
     return MakeColumnRefNode(column_name, relation_name, "");
 }
-CastExprNode *NodeManager::MakeCastNode(const node::DataType cast_type,
-                                        ExprNode *expr) {
+CastExprNode *NodeManager::MakeCastNode(const node::DataType cast_type, ExprNode *expr) {
     CastExprNode *node_ptr = new CastExprNode(cast_type, expr);
     return RegisterNode(node_ptr);
 }
-WhenExprNode *NodeManager::MakeWhenNode(ExprNode *when_expr,
-                                        ExprNode *then_expr) {
+WhenExprNode *NodeManager::MakeWhenNode(ExprNode *when_expr, ExprNode *then_expr) {
     WhenExprNode *node_ptr = new WhenExprNode(when_expr, then_expr);
     return RegisterNode(node_ptr);
 }
-ExprNode *NodeManager::MakeSimpleCaseWhenNode(ExprNode *case_expr,
-                                              ExprListNode *when_list_expr,
-                                              ExprNode *else_expr) {
+ExprNode *NodeManager::MakeSimpleCaseWhenNode(ExprNode *case_expr, ExprListNode *when_list_expr, ExprNode *else_expr) {
     if (nullptr == when_list_expr || when_list_expr->GetChildNum() == 0) {
         return nullptr;
     }
@@ -409,95 +356,59 @@ ExprNode *NodeManager::MakeSimpleCaseWhenNode(ExprNode *case_expr,
         }
         auto when_expr = dynamic_cast<WhenExprNode *>(expr);
 
-        bool_when_expr->AddChild(MakeWhenNode(
-            MakeBinaryExprNode(case_expr, when_expr->when_expr(), kFnOpEq),
-            when_expr->then_expr()));
+        bool_when_expr->AddChild(
+            MakeWhenNode(MakeBinaryExprNode(case_expr, when_expr->when_expr(), kFnOpEq), when_expr->then_expr()));
     }
     return MakeSearchedCaseWhenNode(bool_when_expr, else_expr);
 }
-ExprNode *NodeManager::MakeSearchedCaseWhenNode(ExprListNode *when_list_expr,
-                                                ExprNode *else_expr) {
+ExprNode *NodeManager::MakeSearchedCaseWhenNode(ExprListNode *when_list_expr, ExprNode *else_expr) {
     if (nullptr == else_expr) {
         else_expr = MakeConstNode();
     }
-    CaseWhenExprNode *node_ptr =
-        new CaseWhenExprNode(when_list_expr, else_expr);
-    return RegisterNode(node_ptr);
-}
-ExprNode *NodeManager::MakeTimeFuncNode(const TimeUnit time_unit,
-                                        ExprListNode *list_ptr) {
-    std::string fn_name = TimeUnitName(time_unit);
-
-    if (fn_name.empty() || fn_name == "unknow") {
-        LOG(WARNING) << "Fail to build time function node" << fn_name;
-        return nullptr;
-    }
-    FnDefNode *def_node =
-        dynamic_cast<FnDefNode *>(MakeUnresolvedFnDefNode(fn_name));
-    CallExprNode *node_ptr = new CallExprNode(def_node, list_ptr, NULL);
+    CaseWhenExprNode *node_ptr = new CaseWhenExprNode(when_list_expr, else_expr);
     return RegisterNode(node_ptr);
 }
 
-CallExprNode *NodeManager::MakeFuncNode(const std::string &name,
-                                        const std::vector<ExprNode *> &args,
+CallExprNode *NodeManager::MakeFuncNode(const std::string &name, const std::vector<ExprNode *> &args,
                                         const SqlNode *over) {
     ExprListNode args_node;
     for (auto child : args) {
         args_node.AddChild(child);
     }
-    FnDefNode *def_node =
-        dynamic_cast<FnDefNode *>(MakeUnresolvedFnDefNode(name));
-    CallExprNode *node_ptr = new CallExprNode(
-        def_node, &args_node, dynamic_cast<const WindowDefNode *>(over));
+    FnDefNode *def_node = dynamic_cast<FnDefNode *>(MakeUnresolvedFnDefNode(name));
+    CallExprNode *node_ptr = new CallExprNode(def_node, &args_node, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
 
-CallExprNode *NodeManager::MakeFuncNode(const std::string &name,
-                                        ExprListNode *list_ptr,
-                                        const SqlNode *over) {
-    FnDefNode *def_node =
-        dynamic_cast<FnDefNode *>(MakeUnresolvedFnDefNode(name));
-    CallExprNode *node_ptr = new CallExprNode(
-        def_node, list_ptr, dynamic_cast<const WindowDefNode *>(over));
+CallExprNode *NodeManager::MakeFuncNode(const std::string &name, ExprListNode *list_ptr, const SqlNode *over) {
+    FnDefNode *def_node = dynamic_cast<FnDefNode *>(MakeUnresolvedFnDefNode(name));
+    CallExprNode *node_ptr = new CallExprNode(def_node, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
 
-CallExprNode *NodeManager::MakeFuncNode(FnDefNode *fn, ExprListNode *list_ptr,
-                                        const SqlNode *over) {
-    CallExprNode *node_ptr = new CallExprNode(
-        fn, list_ptr, dynamic_cast<const WindowDefNode *>(over));
+CallExprNode *NodeManager::MakeFuncNode(FnDefNode *fn, ExprListNode *list_ptr, const SqlNode *over) {
+    CallExprNode *node_ptr = new CallExprNode(fn, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
 
-CallExprNode *NodeManager::MakeFuncNode(FnDefNode *fn,
-                                        const std::vector<ExprNode *> &args,
-                                        const SqlNode *over) {
+CallExprNode *NodeManager::MakeFuncNode(FnDefNode *fn, const std::vector<ExprNode *> &args, const SqlNode *over) {
     ExprListNode args_node;
     for (auto child : args) {
         args_node.AddChild(child);
     }
-    CallExprNode *node_ptr = new CallExprNode(
-        fn, &args_node, dynamic_cast<const WindowDefNode *>(over));
+    CallExprNode *node_ptr = new CallExprNode(fn, &args_node, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
 
-ConstNode *NodeManager::MakeConstNode(bool value) {
-    return RegisterNode(new ConstNode(value));
-}
-ConstNode *NodeManager::MakeConstNode(int16_t value) {
-    return RegisterNode(new ConstNode(value));
-}
-ConstNode *NodeManager::MakeConstNode(int value) {
-    return RegisterNode(new ConstNode(value));
-}
+ConstNode *NodeManager::MakeConstNode(bool value) { return RegisterNode(new ConstNode(value)); }
+ConstNode *NodeManager::MakeConstNode(int16_t value) { return RegisterNode(new ConstNode(value)); }
+ConstNode *NodeManager::MakeConstNode(int value) { return RegisterNode(new ConstNode(value)); }
 
 ConstNode *NodeManager::MakeConstNode(int value, TTLType ttl_type) {
     return RegisterNode(new ConstNode(value, ttl_type));
 }
 
-ConstNode *NodeManager::MakeConstNode(int64_t value) {
-    return RegisterNode(new ConstNode(value));
-}
+ConstNode *NodeManager::MakeConstNode(int64_t value) { return RegisterNode(new ConstNode(value)); }
 
 ConstNode *NodeManager::MakeConstNode(int64_t value, TTLType ttl_type) {
     return RegisterNode(new ConstNode(value, ttl_type));
@@ -507,69 +418,24 @@ ConstNode *NodeManager::MakeConstNode(int64_t value, DataType time_type) {
     return RegisterNode(new ConstNode(value, time_type));
 }
 
-ConstNode *NodeManager::MakeConstNode(float value) {
-    return RegisterNode(new ConstNode(value));
-}
+ConstNode *NodeManager::MakeConstNode(float value) { return RegisterNode(new ConstNode(value)); }
 
-ConstNode *NodeManager::MakeConstNode(double value) {
-    return RegisterNode(new ConstNode(value));
-}
+ConstNode *NodeManager::MakeConstNode(double value) { return RegisterNode(new ConstNode(value)); }
 
-ConstNode *NodeManager::MakeConstNode(const char *value) {
-    return RegisterNode(new ConstNode(value));
-}
-ConstNode *NodeManager::MakeConstNode(const std::string &value) {
-    return RegisterNode(new ConstNode(value));
-}
-ConstNode *NodeManager::MakeConstNode() {
-    return RegisterNode(new ConstNode());
-}
-ConstNode *NodeManager::MakeConstNode(DataType type) {
-    return RegisterNode(new ConstNode(type));
-}
-ConstNode *NodeManager::MakeConstNodeINT16MAX() {
-    return MakeConstNode(static_cast<int16_t>(INT16_MAX));
-}
-ConstNode *NodeManager::MakeConstNodeINT32MAX() {
-    return MakeConstNode(static_cast<int32_t>(INT32_MAX));
-}
-ConstNode *NodeManager::MakeConstNodeINT64MAX() {
-    return MakeConstNode(static_cast<int64_t>(INT64_MAX));
-}
-ConstNode *NodeManager::MakeConstNodeFLOATMAX() {
-    return MakeConstNode(static_cast<float>(FLT_MAX));
-}
-ConstNode *NodeManager::MakeConstNodeDOUBLEMAX() {
-    return MakeConstNode(static_cast<double>(DBL_MAX));
-}
-ConstNode *NodeManager::MakeConstNodeINT16MIN() {
-    return MakeConstNode(static_cast<int16_t>(INT16_MIN));
-}
-ConstNode *NodeManager::MakeConstNodeINT32MIN() {
-    return MakeConstNode(static_cast<int32_t>(INT32_MIN));
-}
-ConstNode *NodeManager::MakeConstNodeINT64MIN() {
-    return MakeConstNode(static_cast<int64_t>(INT64_MIN));
-}
-ConstNode *NodeManager::MakeConstNodeFLOATMIN() {
-    return MakeConstNode(static_cast<float>(FLT_MIN));
-}
-ConstNode *NodeManager::MakeConstNodeDOUBLEMIN() {
-    return MakeConstNode(static_cast<double>(DBL_MIN));
-}
-ConstNode *NodeManager::MakeConstNodePlaceHolder() {
-    return MakeConstNode(hybridse::node::kPlaceholder);
-}
+ConstNode *NodeManager::MakeConstNode(const char *value) { return RegisterNode(new ConstNode(value)); }
+ConstNode *NodeManager::MakeConstNode(const std::string &value) { return RegisterNode(new ConstNode(value)); }
+ConstNode *NodeManager::MakeConstNode() { return RegisterNode(new ConstNode()); }
+
+ConstNode *NodeManager::MakeConstNode(DataType type) { return RegisterNode(new ConstNode(type)); }
+ConstNode *NodeManager::MakeConstNodePlaceHolder() { return MakeConstNode(hybridse::node::kPlaceholder); }
 ExprIdNode *NodeManager::MakeExprIdNode(const std::string &name) {
-    return RegisterNode(
-        new ::hybridse::node::ExprIdNode(name, exprid_idx_counter_++));
+    return RegisterNode(new ::hybridse::node::ExprIdNode(name, exprid_idx_counter_++));
 }
 ExprIdNode *NodeManager::MakeUnresolvedExprId(const std::string &name) {
     return RegisterNode(new ::hybridse::node::ExprIdNode(name, -1));
 }
 
-BinaryExpr *NodeManager::MakeBinaryExprNode(ExprNode *left, ExprNode *right,
-                                            FnOperator op) {
+BinaryExpr *NodeManager::MakeBinaryExprNode(ExprNode *left, ExprNode *right, FnOperator op) {
     ::hybridse::node::BinaryExpr *bexpr = new ::hybridse::node::BinaryExpr(op);
     bexpr->AddChild(left);
     bexpr->AddChild(right);
@@ -582,10 +448,8 @@ UnaryExpr *NodeManager::MakeUnaryExprNode(ExprNode *left, FnOperator op) {
     return RegisterNode(uexpr);
 }
 
-SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
-                                          const std::string &table_name,
-                                          SqlNodeList *column_desc_list,
-                                          SqlNodeList *table_option_list) {
+SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::string &table_name,
+                                          SqlNodeList *column_desc_list, SqlNodeList *table_option_list) {
     int replica_num = 1;
     int partition_num = 1;
     SqlNodeList partition_meta_list;
@@ -594,27 +458,20 @@ SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
             if (nullptr != node_ptr) {
                 switch (node_ptr->GetType()) {
                     case kReplicaNum: {
-                        replica_num = dynamic_cast<ReplicaNumNode *>(node_ptr)
-                                          ->GetReplicaNum();
+                        replica_num = dynamic_cast<ReplicaNumNode *>(node_ptr)->GetReplicaNum();
                         break;
                     }
                     case kPartitionNum: {
-                        partition_num =
-                            dynamic_cast<PartitionNumNode *>(node_ptr)
-                                ->GetPartitionNum();
+                        partition_num = dynamic_cast<PartitionNumNode *>(node_ptr)->GetPartitionNum();
                         break;
                     }
                     case kDistributions: {
-                        auto d_list =
-                            dynamic_cast<DistributionsNode *>(node_ptr)
-                                ->GetDistributionList();
+                        auto d_list = dynamic_cast<DistributionsNode *>(node_ptr)->GetDistributionList();
                         if (nullptr != d_list) {
                             for (auto meta_ptr : d_list->GetList()) {
                                 if (nullptr != meta_ptr) {
                                     if (meta_ptr->GetType() != kPartitionMeta) {
-                                        LOG(WARNING) << "can not handle type "
-                                                     << NameOfSqlNodeType(
-                                                            meta_ptr->GetType())
+                                        LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(meta_ptr->GetType())
                                                      << " for table node";
                                     }
                                     partition_meta_list.PushBack(meta_ptr);
@@ -624,19 +481,16 @@ SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
                         break;
                     }
                     default: {
-                        LOG(WARNING) << "can not handle type "
-                                     << NameOfSqlNodeType(node_ptr->GetType())
+                        LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(node_ptr->GetType())
                                      << " for table node";
                     }
                 }
             }
         }
     }
-    CreateStmt *node_ptr =
-        new CreateStmt(table_name, op_if_not_exist, replica_num, partition_num);
+    CreateStmt *node_ptr = new CreateStmt(table_name, op_if_not_exist, replica_num, partition_num);
     FillSqlNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
-    FillSqlNodeList2NodeVector(&partition_meta_list,
-                               node_ptr->GetDistributionList());
+    FillSqlNodeList2NodeVector(&partition_meta_list, node_ptr->GetDistributionList());
     return RegisterNode(node_ptr);
 }
 
@@ -646,36 +500,28 @@ SqlNode *NodeManager::MakeColumnIndexNode(SqlNodeList *index_item_list) {
         for (auto node_ptr : index_item_list->GetList()) {
             switch (node_ptr->GetType()) {
                 case kIndexKey:
-                    index_ptr->SetKey(
-                        dynamic_cast<IndexKeyNode *>(node_ptr)->GetKey());
+                    index_ptr->SetKey(dynamic_cast<IndexKeyNode *>(node_ptr)->GetKey());
                     break;
                 case kIndexTs:
-                    index_ptr->SetTs(
-                        dynamic_cast<IndexTsNode *>(node_ptr)->GetColumnName());
+                    index_ptr->SetTs(dynamic_cast<IndexTsNode *>(node_ptr)->GetColumnName());
                     break;
                 case kIndexVersion:
-                    index_ptr->SetVersion(
-                        dynamic_cast<IndexVersionNode *>(node_ptr)
-                            ->GetColumnName());
+                    index_ptr->SetVersion(dynamic_cast<IndexVersionNode *>(node_ptr)->GetColumnName());
 
-                    index_ptr->SetVersionCount(
-                        dynamic_cast<IndexVersionNode *>(node_ptr)->GetCount());
+                    index_ptr->SetVersionCount(dynamic_cast<IndexVersionNode *>(node_ptr)->GetCount());
                     break;
                 case kIndexTTL: {
-                    IndexTTLNode *ttl_node =
-                        dynamic_cast<IndexTTLNode *>(node_ptr);
+                    IndexTTLNode *ttl_node = dynamic_cast<IndexTTLNode *>(node_ptr);
                     index_ptr->SetTTL(ttl_node->GetTTLExpr());
                     break;
                 }
                 case kIndexTTLType: {
-                    IndexTTLTypeNode *ttl_type_node =
-                        dynamic_cast<IndexTTLTypeNode *>(node_ptr);
+                    IndexTTLTypeNode *ttl_type_node = dynamic_cast<IndexTTLTypeNode *>(node_ptr);
                     index_ptr->set_ttl_type(ttl_type_node->ttl_type());
                     break;
                 }
                 default: {
-                    LOG(WARNING) << "can not handle type "
-                                 << NameOfSqlNodeType(node_ptr->GetType())
+                    LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(node_ptr->GetType())
                                  << " for column index";
                 }
             }
@@ -683,15 +529,12 @@ SqlNode *NodeManager::MakeColumnIndexNode(SqlNodeList *index_item_list) {
     }
     return RegisterNode(index_ptr);
 }
-SqlNode *NodeManager::MakeColumnIndexNode(SqlNodeList *keys, SqlNode *ts,
-                                          SqlNode *ttl, SqlNode *version) {
+SqlNode *NodeManager::MakeColumnIndexNode(SqlNodeList *keys, SqlNode *ts, SqlNode *ttl, SqlNode *version) {
     SqlNode *node_ptr = new SqlNode(kColumnIndex, 0, 0);
     return RegisterNode(node_ptr);
 }
 
-SqlNode *NodeManager::MakeColumnDescNode(const std::string &column_name,
-                                         const DataType data_type,
-                                         bool op_not_null) {
+SqlNode *NodeManager::MakeColumnDescNode(const std::string &column_name, const DataType data_type, bool op_not_null) {
     SqlNode *node_ptr = new ColumnDefNode(column_name, data_type, op_not_null);
     return RegisterNode(node_ptr);
 }
@@ -717,15 +560,6 @@ ExprListNode *NodeManager::MakeExprList() {
 ExprListNode *NodeManager::MakeExprList(ExprNode *expr_node) {
     ExprListNode *new_list_ptr = new ExprListNode();
     new_list_ptr->AddChild(expr_node);
-    RegisterNode(new_list_ptr);
-    return new_list_ptr;
-}
-
-ExprListNode *NodeManager::MakeExprList(ExprNode *expr_node_1,
-                                        ExprNode *expr_node_2) {
-    ExprListNode *new_list_ptr = new ExprListNode();
-    new_list_ptr->AddChild(expr_node_1);
-    new_list_ptr->AddChild(expr_node_2);
     RegisterNode(new_list_ptr);
     return new_list_ptr;
 }
@@ -759,14 +593,12 @@ PlanNode *NodeManager::MakeTablePlanNode(const std::string &table_name) {
     return RegisterNode(node_ptr);
 }
 
-PlanNode *NodeManager::MakeRenamePlanNode(PlanNode *node,
-                                          std::string alias_name) {
+PlanNode *NodeManager::MakeRenamePlanNode(PlanNode *node, std::string alias_name) {
     PlanNode *node_ptr = new RenamePlanNode(node, alias_name);
     return RegisterNode(node_ptr);
 }
 
-FilterPlanNode *NodeManager::MakeFilterPlanNode(PlanNode *node,
-                                                const ExprNode *condition) {
+FilterPlanNode *NodeManager::MakeFilterPlanNode(PlanNode *node, const ExprNode *condition) {
     node::FilterPlanNode *node_ptr = new FilterPlanNode(node, condition);
     RegisterNode(node_ptr);
     return node_ptr;
@@ -778,41 +610,32 @@ WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
     return node_ptr;
 }
 
-ProjectListNode *NodeManager::MakeProjectListPlanNode(
-    const WindowPlanNode *w_ptr, const bool need_agg) {
+ProjectListNode *NodeManager::MakeProjectListPlanNode(const WindowPlanNode *w_ptr, const bool need_agg) {
     ProjectListNode *node_ptr = new ProjectListNode(w_ptr, need_agg);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
-FnNode *NodeManager::MakeFnHeaderNode(const std::string &name,
-                                      FnNodeList *plist,
-                                      const TypeNode *return_type) {
-    ::hybridse::node::FnNodeFnHeander *fn_header =
-        new FnNodeFnHeander(name, plist, return_type);
+FnNode *NodeManager::MakeFnHeaderNode(const std::string &name, FnNodeList *plist, const TypeNode *return_type) {
+    ::hybridse::node::FnNodeFnHeander *fn_header = new FnNodeFnHeander(name, plist, return_type);
     return RegisterNode(fn_header);
 }
 
 FnNode *NodeManager::MakeFnDefNode(const FnNode *header, FnNodeList *block) {
-    ::hybridse::node::FnNodeFnDef *fn_def =
-        new FnNodeFnDef(dynamic_cast<const FnNodeFnHeander *>(header), block);
+    ::hybridse::node::FnNodeFnDef *fn_def = new FnNodeFnDef(dynamic_cast<const FnNodeFnHeander *>(header), block);
     return RegisterNode(fn_def);
 }
-FnNode *NodeManager::MakeAssignNode(const std::string &name,
-                                    ExprNode *expression) {
+FnNode *NodeManager::MakeAssignNode(const std::string &name, ExprNode *expression) {
     auto var = MakeExprIdNode(name);
-    ::hybridse::node::FnAssignNode *fn_assign =
-        new hybridse::node::FnAssignNode(var, expression);
+    ::hybridse::node::FnAssignNode *fn_assign = new hybridse::node::FnAssignNode(var, expression);
     return RegisterNode(fn_assign);
 }
 
-FnNode *NodeManager::MakeAssignNode(const std::string &name,
-                                    ExprNode *expression, const FnOperator op) {
+FnNode *NodeManager::MakeAssignNode(const std::string &name, ExprNode *expression, const FnOperator op) {
     auto lhs_var = MakeExprIdNode(name);
     auto rhs_var = MakeUnresolvedExprId(name);
     ::hybridse::node::FnAssignNode *fn_assign =
-        new hybridse::node::FnAssignNode(
-            lhs_var, MakeBinaryExprNode(rhs_var, expression, op));
+        new hybridse::node::FnAssignNode(lhs_var, MakeBinaryExprNode(rhs_var, expression, op));
     return RegisterNode(fn_assign);
 }
 FnNode *NodeManager::MakeReturnStmtNode(ExprNode *value) {
@@ -832,62 +655,50 @@ FnNode *NodeManager::MakeElifStmtNode(ExprNode *value) {
     FnNode *fn_node = new FnElifNode(value);
     return RegisterNode(fn_node);
 }
-FnNode *NodeManager::MakeFnNode(const SqlNodeType &type) {
-    return RegisterNode(new FnNode(type));
-}
+FnNode *NodeManager::MakeFnNode(const SqlNodeType &type) { return RegisterNode(new FnNode(type)); }
 
 FnNodeList *NodeManager::MakeFnListNode() {
     FnNodeList *fn_list = new FnNodeList();
     RegisterNode(fn_list);
     return fn_list;
 }
+FnNodeList *NodeManager::MakeFnListNode(node::FnNode *fn_node) {
+    FnNodeList *fn_list = new FnNodeList();
+    fn_list->AddChild(fn_node);
+    RegisterNode(fn_list);
+    return fn_list;
+}
 
 FnIfBlock *NodeManager::MakeFnIfBlock(FnIfNode *if_node, FnNodeList *block) {
-    ::hybridse::node::FnIfBlock *if_block =
-        new ::hybridse::node::FnIfBlock(if_node, block);
+    ::hybridse::node::FnIfBlock *if_block = new ::hybridse::node::FnIfBlock(if_node, block);
     RegisterNode(if_block);
     return if_block;
 }
 
-FnElifBlock *NodeManager::MakeFnElifBlock(FnElifNode *elif_node,
-                                          FnNodeList *block) {
-    ::hybridse::node::FnElifBlock *elif_block =
-        new ::hybridse::node::FnElifBlock(elif_node, block);
+FnElifBlock *NodeManager::MakeFnElifBlock(FnElifNode *elif_node, FnNodeList *block) {
+    ::hybridse::node::FnElifBlock *elif_block = new ::hybridse::node::FnElifBlock(elif_node, block);
     RegisterNode(elif_block);
     return elif_block;
 }
-FnIfElseBlock *NodeManager::MakeFnIfElseBlock(FnIfBlock *if_block,
+FnIfElseBlock *NodeManager::MakeFnIfElseBlock(FnIfBlock *if_block, const std::vector<FnNode *> &elif_blocks,
                                               FnElseBlock *else_block) {
     ::hybridse::node::FnIfElseBlock *if_else_block =
-        new ::hybridse::node::FnIfElseBlock(if_block, else_block);
+        new ::hybridse::node::FnIfElseBlock(if_block, elif_blocks, else_block);
     RegisterNode(if_else_block);
     return if_else_block;
 }
 FnElseBlock *NodeManager::MakeFnElseBlock(FnNodeList *block) {
-    ::hybridse::node::FnElseBlock *else_block =
-        new ::hybridse::node::FnElseBlock(block);
+    ::hybridse::node::FnElseBlock *else_block = new ::hybridse::node::FnElseBlock(block);
     RegisterNode(else_block);
     return else_block;
 }
 
-FnParaNode *NodeManager::MakeFnParaNode(const std::string &name,
-                                        const TypeNode *para_type) {
+FnParaNode *NodeManager::MakeFnParaNode(const std::string &name, const TypeNode *para_type) {
     auto expr_id = MakeExprIdNode(name);
     expr_id->SetOutputType(para_type);
-    ::hybridse::node::FnParaNode *para_node =
-        new ::hybridse::node::FnParaNode(expr_id);
+    ::hybridse::node::FnParaNode *para_node = new ::hybridse::node::FnParaNode(expr_id);
     return RegisterNode(para_node);
 }
-
-SqlNode *NodeManager::MakeKeyNode(SqlNodeList *key_list) {
-    SqlNode *node_ptr = new SqlNode(kIndexKey, 0, 0);
-    return RegisterNode(node_ptr);
-}
-SqlNode *NodeManager::MakeKeyNode(const std::string &key) {
-    SqlNode *node_ptr = new SqlNode(kIndexKey, 0, 0);
-    return RegisterNode(node_ptr);
-}
-
 SqlNode *NodeManager::MakeIndexKeyNode(const std::string &key) {
     SqlNode *node_ptr = new IndexKeyNode(key);
     return RegisterNode(node_ptr);
@@ -909,8 +720,7 @@ SqlNode *NodeManager::MakeIndexVersionNode(const std::string &version) {
     SqlNode *node_ptr = new IndexVersionNode(version);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeIndexVersionNode(const std::string &version,
-                                           int count) {
+SqlNode *NodeManager::MakeIndexVersionNode(const std::string &version, int count) {
     SqlNode *node_ptr = new IndexVersionNode(version, count);
     return RegisterNode(node_ptr);
 }
@@ -918,38 +728,30 @@ SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type) {
     SqlNode *node_ptr = new CmdNode(cmd_type);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
-                                  const std::string &arg) {
+SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::string &arg) {
     CmdNode *node_ptr = new CmdNode(cmd_type);
     node_ptr->AddArg(arg);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
-                                  const std::string &index_name,
+SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::string &index_name,
                                   const std::string &table_name) {
     CmdNode *node_ptr = new CmdNode(cmd_type);
     node_ptr->AddArg(index_name);
     node_ptr->AddArg(table_name);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name,
-                                          const std::string &table_name,
+SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name, const std::string &table_name,
                                           ColumnIndexNode *index) {
-    CreateIndexNode *node_ptr =
-        new CreateIndexNode(index_name, table_name, index);
+    CreateIndexNode *node_ptr = new CreateIndexNode(index_name, table_name, index);
     return RegisterNode(node_ptr);
 }
-AllNode *NodeManager::MakeAllNode(const std::string &relation_name) {
-    return MakeAllNode(relation_name, "");
-}
+AllNode *NodeManager::MakeAllNode(const std::string &relation_name) { return MakeAllNode(relation_name, ""); }
 
-AllNode *NodeManager::MakeAllNode(const std::string &relation_name,
-                                  const std::string &db_name) {
+AllNode *NodeManager::MakeAllNode(const std::string &relation_name, const std::string &db_name) {
     return RegisterNode(new AllNode(relation_name, db_name));
 }
 
-SqlNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
-                                          const ExprListNode *columns_expr,
+SqlNode *NodeManager::MakeInsertTableNode(const std::string &table_name, const ExprListNode *columns_expr,
                                           const ExprListNode *values) {
     if (nullptr == columns_expr) {
         InsertStmt *node_ptr = new InsertStmt(table_name, values->children_);
@@ -959,142 +761,114 @@ SqlNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
         for (auto expr : columns_expr->children_) {
             switch (expr->GetExprType()) {
                 case kExprColumnRef: {
-                    ColumnRefNode *column_ref =
-                        dynamic_cast<ColumnRefNode *>(expr);
+                    ColumnRefNode *column_ref = dynamic_cast<ColumnRefNode *>(expr);
                     column_names.push_back(column_ref->GetColumnName());
                     break;
                 }
                 default: {
-                    LOG(WARNING)
-                        << "Can't not handle insert column name with type"
-                        << ExprTypeName(expr->GetExprType());
+                    LOG(WARNING) << "Can't not handle insert column name with type"
+                                 << ExprTypeName(expr->GetExprType());
                 }
             }
         }
-        InsertStmt *node_ptr =
-            new InsertStmt(table_name, column_names, values->children_);
+        InsertStmt *node_ptr = new InsertStmt(table_name, column_names, values->children_);
         return RegisterNode(node_ptr);
     }
 }
 
-DatasetNode *NodeManager::MakeDataset(const std::string &table) {
-    return RegisterNode(new DatasetNode(table));
-}
+DatasetNode *NodeManager::MakeDataset(const std::string &table) { return RegisterNode(new DatasetNode(table)); }
 
-MapNode *NodeManager::MakeMapNode(const NodePointVector &nodes) {
-    return RegisterNode(new MapNode(nodes));
-}
+MapNode *NodeManager::MakeMapNode(const NodePointVector &nodes) { return RegisterNode(new MapNode(nodes)); }
 
 TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base) {
     TypeNode *node_ptr = new TypeNode(base);
     RegisterNode(node_ptr);
     return node_ptr;
 }
-TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base,
-                                    const hybridse::node::TypeNode *v1) {
+TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base, const hybridse::node::TypeNode *v1) {
     TypeNode *node_ptr = new TypeNode(base, v1);
     RegisterNode(node_ptr);
     return node_ptr;
 }
-TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base,
-                                    hybridse::node::DataType v1) {
+TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base, hybridse::node::DataType v1) {
     TypeNode *node_ptr = new TypeNode(base, MakeTypeNode(v1));
     RegisterNode(node_ptr);
     return node_ptr;
 }
-TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base,
-                                    hybridse::node::DataType v1,
+TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base, hybridse::node::DataType v1,
                                     hybridse::node::DataType v2) {
     TypeNode *node_ptr = new TypeNode(base, MakeTypeNode(v1), MakeTypeNode(v2));
     RegisterNode(node_ptr);
     return node_ptr;
 }
-OpaqueTypeNode *NodeManager::MakeOpaqueType(size_t bytes) {
-    return RegisterNode(new OpaqueTypeNode(bytes));
-}
-RowTypeNode *NodeManager::MakeRowType(
-    const std::vector<const codec::Schema *> &schema_source) {
+OpaqueTypeNode *NodeManager::MakeOpaqueType(size_t bytes) { return RegisterNode(new OpaqueTypeNode(bytes)); }
+RowTypeNode *NodeManager::MakeRowType(const std::vector<const codec::Schema *> &schema_source) {
     return RegisterNode(new RowTypeNode(schema_source));
 }
 RowTypeNode *NodeManager::MakeRowType(const vm::SchemasContext *schemas_ctx) {
     return RegisterNode(new RowTypeNode(schemas_ctx));
 }
 
-FnNode *NodeManager::MakeForInStmtNode(const std::string &var_name,
-                                       ExprNode *expression) {
+FnNode *NodeManager::MakeForInStmtNode(const std::string &var_name, ExprNode *expression) {
     auto var = MakeExprIdNode(var_name);
     FnForInNode *node_ptr = new FnForInNode(var, expression);
     return RegisterNode(node_ptr);
 }
 
-FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
-                                          FnNodeList *block) {
+FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node, FnNodeList *block) {
     FnForInBlock *node_ptr = new FnForInBlock(for_in_node, block);
     RegisterNode(node_ptr);
     return node_ptr;
 }
-PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right,
-                                    JoinType join_type,
-                                    const OrderByNode *order_by,
+PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type, const OrderByNode *order_by,
                                     const ExprNode *condition) {
-    node::JoinPlanNode *node_ptr =
-        new JoinPlanNode(left, right, join_type, order_by, condition);
+    node::JoinPlanNode *node_ptr = new JoinPlanNode(left, right, join_type, order_by, condition);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {
     node::QueryPlanNode *select_plan_ptr = new QueryPlanNode(node);
     return RegisterNode(select_plan_ptr);
 }
-PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node,
-                                         const ExprListNode *by_list) {
+PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list) {
     node::GroupPlanNode *node_ptr = new GroupPlanNode(node, by_list);
     return RegisterNode(node_ptr);
 }
-PlanNode *NodeManager::MakeProjectPlanNode(
-    PlanNode *node, const std::string &table,
-    const PlanNodeList &projection_list,
-    const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping) {
-    node::ProjectPlanNode *node_ptr =
-        new ProjectPlanNode(node, table, projection_list, pos_mapping);
+PlanNode *NodeManager::MakeProjectPlanNode(PlanNode *node, const std::string &table,
+                                           const PlanNodeList &projection_list,
+                                           const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping) {
+    node::ProjectPlanNode *node_ptr = new ProjectPlanNode(node, table, projection_list, pos_mapping);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {
     node::LimitPlanNode *node_ptr = new LimitPlanNode(node, limit_cnt);
     return RegisterNode(node_ptr);
 }
-ProjectNode *NodeManager::MakeProjectNode(const int32_t pos,
-                                          const std::string &name,
-                                          const bool is_aggregation,
-                                          node::ExprNode *expression,
-                                          node::FrameNode *frame) {
-    node::ProjectNode *node_ptr =
-        new ProjectNode(pos, name, is_aggregation, expression, frame);
+ProjectNode *NodeManager::MakeProjectNode(const int32_t pos, const std::string &name, const bool is_aggregation,
+                                          node::ExprNode *expression, node::FrameNode *frame) {
+    node::ProjectNode *node_ptr = new ProjectNode(pos, name, is_aggregation, expression, frame);
     RegisterNode(node_ptr);
     return node_ptr;
 }
-CreatePlanNode *NodeManager::MakeCreateTablePlanNode(
-    const std::string &table_name, int replica_num, int partition_num,
-    const NodePointVector &column_list,
-    const NodePointVector &partition_meta_list) {
+CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string &table_name, int replica_num, int partition_num,
+                                                     const NodePointVector &column_list,
+                                                     const NodePointVector &partition_meta_list) {
     node::CreatePlanNode *node_ptr =
-        new CreatePlanNode(table_name, replica_num, partition_num, column_list,
-                           partition_meta_list);
+        new CreatePlanNode(table_name, replica_num, partition_num, column_list, partition_meta_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
-CreateProcedurePlanNode *NodeManager::MakeCreateProcedurePlanNode(
-    const std::string &sp_name, const NodePointVector &input_parameter_list,
-    const PlanNodeList &inner_plan_node_list) {
-    node::CreateProcedurePlanNode *node_ptr = new CreateProcedurePlanNode(
-        sp_name, input_parameter_list, inner_plan_node_list);
+CreateProcedurePlanNode *NodeManager::MakeCreateProcedurePlanNode(const std::string &sp_name,
+                                                                  const NodePointVector &input_parameter_list,
+                                                                  const PlanNodeList &inner_plan_node_list) {
+    node::CreateProcedurePlanNode *node_ptr =
+        new CreateProcedurePlanNode(sp_name, input_parameter_list, inner_plan_node_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
 CmdPlanNode *NodeManager::MakeCmdPlanNode(const CmdNode *node) {
-    node::CmdPlanNode *node_ptr =
-        new CmdPlanNode(node->GetCmdType(), node->GetArgs());
+    node::CmdPlanNode *node_ptr = new CmdPlanNode(node->GetCmdType(), node->GetArgs());
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -1108,16 +882,12 @@ FuncDefPlanNode *NodeManager::MakeFuncPlanNode(FnNodeFnDef *node) {
     RegisterNode(node_ptr);
     return node_ptr;
 }
-QueryExpr *NodeManager::MakeQueryExprNode(const QueryNode *query) {
-    return RegisterNode(new QueryExpr(query));
-}
-PlanNode *NodeManager::MakeSortPlanNode(PlanNode *node,
-                                        const OrderByNode *order_list) {
+QueryExpr *NodeManager::MakeQueryExprNode(const QueryNode *query) { return RegisterNode(new QueryExpr(query)); }
+PlanNode *NodeManager::MakeSortPlanNode(PlanNode *node, const OrderByNode *order_list) {
     node::SortPlanNode *node_ptr = new SortPlanNode(node, order_list);
     return RegisterNode(node_ptr);
 }
-PlanNode *NodeManager::MakeUnionPlanNode(PlanNode *left, PlanNode *right,
-                                         const bool is_all) {
+PlanNode *NodeManager::MakeUnionPlanNode(PlanNode *left, PlanNode *right, const bool is_all) {
     node::UnionPlanNode *node_ptr = new UnionPlanNode(left, right, is_all);
     return RegisterNode(node_ptr);
 }
@@ -1125,20 +895,15 @@ PlanNode *NodeManager::MakeDistinctPlanNode(PlanNode *node) {
     node::DistinctPlanNode *node_ptr = new DistinctPlanNode(node);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeExplainNode(const QueryNode *query,
-                                      ExplainType explain_type) {
+SqlNode *NodeManager::MakeExplainNode(const QueryNode *query, ExplainType explain_type) {
     node::ExplainNode *node_ptr = new ExplainNode(query, explain_type);
     return RegisterNode(node_ptr);
 }
-ProjectNode *NodeManager::MakeAggProjectNode(const int32_t pos,
-                                             const std::string &name,
-                                             node::ExprNode *expression,
+ProjectNode *NodeManager::MakeAggProjectNode(const int32_t pos, const std::string &name, node::ExprNode *expression,
                                              node::FrameNode *frame) {
     return MakeProjectNode(pos, name, true, expression, frame);
 }
-ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos,
-                                             const std::string &name,
-                                             node::ExprNode *expression) {
+ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos, const std::string &name, node::ExprNode *expression) {
     return MakeProjectNode(pos, name, false, expression, nullptr);
 }
 
@@ -1156,62 +921,48 @@ ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
         return left_node;
     }
     for (size_t i = 1; i < expr_list->children_.size(); i++) {
-        left_node = MakeBinaryExprNode(left_node, expr_list->children_[i],
-                                       node::kFnOpAnd);
+        left_node = MakeBinaryExprNode(left_node, expr_list->children_[i], node::kFnOpAnd);
     }
     return left_node;
 }
 
-ExternalFnDefNode *NodeManager::MakeExternalFnDefNode(
-    const std::string &function_name, void *function_ptr,
-    const node::TypeNode *ret_type, bool ret_nullable,
-    const std::vector<const node::TypeNode *> &arg_types,
-    const std::vector<int> &arg_nullable, int variadic_pos,
-    bool return_by_arg) {
-    return RegisterNode(new node::ExternalFnDefNode(
-        function_name, function_ptr, ret_type, ret_nullable, arg_types,
-        arg_nullable, variadic_pos, return_by_arg));
+ExternalFnDefNode *NodeManager::MakeExternalFnDefNode(const std::string &function_name, void *function_ptr,
+                                                      const node::TypeNode *ret_type, bool ret_nullable,
+                                                      const std::vector<const node::TypeNode *> &arg_types,
+                                                      const std::vector<int> &arg_nullable, int variadic_pos,
+                                                      bool return_by_arg) {
+    return RegisterNode(new node::ExternalFnDefNode(function_name, function_ptr, ret_type, ret_nullable, arg_types,
+                                                    arg_nullable, variadic_pos, return_by_arg));
 }
 
-node::ExternalFnDefNode *NodeManager::MakeUnresolvedFnDefNode(
-    const std::string &function_name) {
-    return RegisterNode(new node::ExternalFnDefNode(
-        function_name, nullptr, nullptr, true, {}, {}, -1, false));
+node::ExternalFnDefNode *NodeManager::MakeUnresolvedFnDefNode(const std::string &function_name) {
+    return RegisterNode(new node::ExternalFnDefNode(function_name, nullptr, nullptr, true, {}, {}, -1, false));
 }
 
-node::UdfDefNode *NodeManager::MakeUdfDefNode(FnNodeFnDef *def) {
-    return RegisterNode(new node::UdfDefNode(def));
+node::UdfDefNode *NodeManager::MakeUdfDefNode(FnNodeFnDef *def) { return RegisterNode(new node::UdfDefNode(def)); }
+
+node::UdfByCodeGenDefNode *NodeManager::MakeUdfByCodeGenDefNode(const std::string &name,
+                                                                const std::vector<const node::TypeNode *> &arg_types,
+                                                                const std::vector<int> &arg_nullable,
+                                                                const node::TypeNode *ret_type, bool ret_nullable) {
+    return RegisterNode(new node::UdfByCodeGenDefNode(name, arg_types, arg_nullable, ret_type, ret_nullable));
 }
 
-node::UdfByCodeGenDefNode *NodeManager::MakeUdfByCodeGenDefNode(
-    const std::string &name,
-    const std::vector<const node::TypeNode *> &arg_types,
-    const std::vector<int> &arg_nullable, const node::TypeNode *ret_type,
-    bool ret_nullable) {
-    return RegisterNode(new node::UdfByCodeGenDefNode(
-        name, arg_types, arg_nullable, ret_type, ret_nullable));
+node::UdafDefNode *NodeManager::MakeUdafDefNode(const std::string &name, const std::vector<const TypeNode *> &arg_types,
+                                                ExprNode *init, FnDefNode *update_func, FnDefNode *merge_func,
+                                                FnDefNode *output_func) {
+    return RegisterNode(new node::UdafDefNode(name, arg_types, init, update_func, merge_func, output_func));
 }
 
-node::UdafDefNode *NodeManager::MakeUdafDefNode(
-    const std::string &name, const std::vector<const TypeNode *> &arg_types,
-    ExprNode *init, FnDefNode *update_func, FnDefNode *merge_func,
-    FnDefNode *output_func) {
-    return RegisterNode(new node::UdafDefNode(
-        name, arg_types, init, update_func, merge_func, output_func));
-}
-
-LambdaNode *NodeManager::MakeLambdaNode(const std::vector<ExprIdNode *> &args,
-                                        ExprNode *body) {
+LambdaNode *NodeManager::MakeLambdaNode(const std::vector<ExprIdNode *> &args, ExprNode *body) {
     return RegisterNode(new node::LambdaNode(args, body));
 }
 
-CondExpr *NodeManager::MakeCondExpr(ExprNode *condition, ExprNode *left,
-                                    ExprNode *right) {
+CondExpr *NodeManager::MakeCondExpr(ExprNode *condition, ExprNode *left, ExprNode *right) {
     return RegisterNode(new CondExpr(condition, left, right));
 }
 
-SqlNode *NodeManager::MakePartitionMetaNode(RoleType role_type,
-                                            const std::string &endpoint) {
+SqlNode *NodeManager::MakePartitionMetaNode(RoleType role_type, const std::string &endpoint) {
     SqlNode *node_ptr = new PartitionMetaNode(endpoint, role_type);
     return RegisterNode(node_ptr);
 }
@@ -1231,12 +982,10 @@ SqlNode *NodeManager::MakeDistributionsNode(SqlNodeList *distribution_list) {
     return RegisterNode(index_ptr);
 }
 
-SqlNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name,
-                                              SqlNodeList *input_parameter_list,
+SqlNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name, SqlNodeList *input_parameter_list,
                                               SqlNode *inner_node) {
     CreateSpStmt *node_ptr = new CreateSpStmt(sp_name);
-    FillSqlNodeList2NodeVector(input_parameter_list,
-                               node_ptr->GetInputParameterList());
+    FillSqlNodeList2NodeVector(input_parameter_list, node_ptr->GetInputParameterList());
     std::vector<SqlNode *> &list = node_ptr->GetInnerNodeList();
     list.push_back(inner_node);
     return RegisterNode(node_ptr);
@@ -1252,26 +1001,15 @@ SqlNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name,
     return RegisterNode(node_ptr);
 }
 
-SqlNode *NodeManager::MakeInputParameterNode(bool is_constant,
-                                             const std::string &column_name,
-                                             DataType data_type) {
-    SqlNode *node_ptr =
-        new InputParameterNode(column_name, data_type, is_constant);
+SqlNode *NodeManager::MakeInputParameterNode(bool is_constant, const std::string &column_name, DataType data_type) {
+    SqlNode *node_ptr = new InputParameterNode(column_name, data_type, is_constant);
     return RegisterNode(node_ptr);
 }
 
-void NodeManager::SetNodeUniqueId(ExprNode *node) {
-    node->SetNodeId(expr_idx_counter_++);
-}
-void NodeManager::SetNodeUniqueId(TypeNode *node) {
-    node->SetNodeId(type_idx_counter_++);
-}
-void NodeManager::SetNodeUniqueId(PlanNode *node) {
-    node->SetNodeId(plan_idx_counter_++);
-}
-void NodeManager::SetNodeUniqueId(vm::PhysicalOpNode *node) {
-    node->SetNodeId(physical_plan_idx_counter_++);
-}
+void NodeManager::SetNodeUniqueId(ExprNode *node) { node->SetNodeId(expr_idx_counter_++); }
+void NodeManager::SetNodeUniqueId(TypeNode *node) { node->SetNodeId(type_idx_counter_++); }
+void NodeManager::SetNodeUniqueId(PlanNode *node) { node->SetNodeId(plan_idx_counter_++); }
+void NodeManager::SetNodeUniqueId(vm::PhysicalOpNode *node) { node->SetNodeId(physical_plan_idx_counter_++); }
 
 }  // namespace node
 }  // namespace hybridse

@@ -38,7 +38,7 @@ cases:
       WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
   - id: 3-2
     desc: 单行+单window+自定义聚合函数
-    mode: zetasql-unsupport
+    tags: ["TODO", "zetasql-unsupport"]
     sql: |
       %%fun
       def test_sum(col:list<int>):int
@@ -70,7 +70,7 @@ cases:
       w2 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
   - id: 4-3
     desc: 单行+两window+自定义聚合函数
-    mode: zetasql-unsupport
+    tags: ["TODO", "zetasql-unsupport"]
     sql: |
       %%fun
       def test_sum(col:list<int>):int
@@ -97,7 +97,7 @@ cases:
       w3 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
   - id: 5-2
     desc: 单行+三个window+自定义聚合函数,w1和w2命中索引
-    mode: zetasql-unsupport
+    tags: ["TODO", "zetasql-unsupport"]
     sql: |
       %%fun
       def test_sum(col:list<int>):int

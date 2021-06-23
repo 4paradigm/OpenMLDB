@@ -92,7 +92,7 @@ cd /HybridSE
 mkdir build
 cd build
 cmake ..
-make -j$(nproc) hybridse_proto && make -j$(nproc) hybridse_parser && make -j$(nproc) simple_engine_demo
+make -j$(nproc) hybridse_proto && make -j$(nproc) simple_engine_demo
 ./src/simple_engine_demo
 ```
 `simple_engine_demo`是基于HyrbidSE实现的内存表SQL引擎。更多细节可参见文档：[如何实现一个简单引擎](https://github.com/4paradigm/HybridSQL-docs/blob/feat/simple_engine_demo_doc/hybridse/usage/simple_engine_demo.md)
@@ -105,7 +105,7 @@ make -j$(nproc) hybridse_proto && make -j$(nproc) hybridse_parser && make -j$(np
   cd /HybridSE
   mkdir build 
   cmake .. -DEXAMPLES_ENABLE=ON 
-  make -j$(nproc) hybridse_proto && make -j$(nproc) hybride_parser && make -j$(nproc) toydb
+  make -j$(nproc) hybridse_proto && make -j$(nproc) toydb
   ```
 
 + 启动 ToyDB
