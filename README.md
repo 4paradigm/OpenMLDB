@@ -67,10 +67,10 @@ sh init.sh
 python3 import.py
  
 # Run feature extraction and model training
-sh train.sh
+python3 train.py ./fe.sql /tmp/model.txt
  
 # Start HTTP serevice for inference with OpenMLDB
-sh start_predict_server.sh
+sh start_predict_server.sh ./fe.sql 8887 /tmp/model.txt
  
 # Run inference with HTTP request
 python3 predict.py

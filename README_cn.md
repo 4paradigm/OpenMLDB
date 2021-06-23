@@ -68,10 +68,10 @@ sh init.sh
 python3 import.py
 
 # 使用行程数据进行模型训练
-sh train.sh
+python3 train.py ./fe.sql /tmp/model.txt
 
 # 使用训练的模型搭建链接OpenMLDB的实时推理HTTP服务
-sh start_predict_server.sh
+sh start_predict_server.sh ./fe.sql 8887 /tmp/model.txt
 
 # 通过http请求发送一个推理请求
 python3 predict.py
