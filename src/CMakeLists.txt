@@ -39,6 +39,7 @@ function(compile_test DIR)
     set(TEST_LIBS apiserver nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
+    ${ZETASQL_LIBS}
     ${BRPC_LIBS})
     file(GLOB_RECURSE SRC_FILES ${DIR}/*.cc)
     set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -85,6 +86,7 @@ add_library(fedb_flags flags.cc)
 set(BIN_LIBS apiserver nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
 ${LLVM_LIBS}
+${ZETASQL_LIBS}
 ${BRPC_LIBS})
 
 if(TESTING_ENABLE)

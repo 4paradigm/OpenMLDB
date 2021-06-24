@@ -263,9 +263,9 @@ class NsClient {
         ::hybridse::node::CreatePlanNode* create_node,
         ::fedb::nameserver::TableInfo* table, hybridse::base::Status* status);
 
-    bool HandleSQLCmd(const hybridse::node::CmdNode* cmd_node,
+    bool HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node,
                       const std::string& db, hybridse::base::Status* sql_status);
-    bool HandleSQLCreateTable(const hybridse::node::NodePointVector& parser_trees,
+    bool HandleSQLCreateTable(hybridse::node::CreatePlanNode* create,
                               const std::string& db,
                               hybridse::node::NodeManager* node_manager,
                               hybridse::base::Status* sql_status);

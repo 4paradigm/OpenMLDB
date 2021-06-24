@@ -98,8 +98,13 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_ProfilerStop")
     set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
 endif ()
-set(VM_LIBS hybridse_core hybridse_sdk boost_filesystem boost_date_time boost_regex)
-set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
+
+if (NOT DEFINED CMAKE_PREFIX_PATH)
+    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/thirdparty)
+endif()
+
+set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags boost_filesystem boost_date_time boost_regex)
+set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
@@ -107,6 +112,55 @@ llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 add_definitions(${LLVM_DEFINITIONS})
 find_package(SWIG REQUIRED)
 include(UseSWIG)
+find_package(absl REQUIRED)
+
+find_package(GTest 1.10 EXACT REQUIRED)
+
+set(Protobuf_USE_STATIC_LIBS ON)
+find_package(Protobuf 3.6 EXACT REQUIRED)
+list(
+        APPEND
+        ABSL_LIBS
+        absl::algorithm
+        absl::base
+        absl::cord
+        absl::debugging
+        absl::flat_hash_map
+        absl::flags
+        absl::flags_parse
+        absl::memory
+        absl::meta
+        absl::numeric
+        absl::random_random
+        absl::strings
+        absl::strings_internal
+        absl::synchronization
+        absl::time
+        absl::status)
+
+list(APPEND ICU_LIBS icui18n icuio icuuc icudata)
+list(APPEND file_based_test_driver_LIBS
+        alternations
+        test_case_options
+        test_case_outputs
+        test_case_mode
+        logging
+        path
+        status
+        unified_diff_oss
+        ret_check
+        )
+set(ZETASQL_LIBS
+        zetasql
+        ${file_based_test_driver_LIBS}
+        ${ABSL_LIBS}
+        re2
+        ${ICU_LIBS}
+        date_proto
+        timeofday_proto
+        latlng_proto
+        )
+
 if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
 endif()
@@ -119,12 +173,12 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")
 
-include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include
-        ${PROJECT_SOURCE_DIR}/thirdparty/hybridse/include)
+include_directories(${CMAKE_PREFIX_PATH}/include
+        ${CMAKE_PREFIX_PATH}/hybridse/include)
 
-link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib 
-    ${PROJECT_SOURCE_DIR}/thirdparty/lib64
-    ${PROJECT_SOURCE_DIR}/thirdparty/hybridse/lib)
+link_directories(${CMAKE_PREFIX_PATH}/lib
+    ${CMAKE_PREFIX_PATH}/lib64
+    ${CMAKE_PREFIX_PATH}/hybridse/lib)
 
 add_subdirectory(src)
 add_custom_target(rtidbpy

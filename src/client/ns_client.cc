@@ -264,25 +264,23 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
     hybridse::node::NodeManager node_manager;
     DLOG(INFO) << "start to execute script from dbms:\n" << script;
     hybridse::base::Status sql_status;
-    hybridse::node::NodePointVector parser_trees;
-    PlanAPI::CreateSyntaxTreeFromScript(script, parser_trees, &node_manager, sql_status);
-    if (parser_trees.empty() || 0 != sql_status.code) {
+    hybridse::node::PlanNodeList plan_trees;
+    PlanAPI::CreatePlanTreeFromScript(script, plan_trees, &node_manager, sql_status);
+    if (plan_trees.empty() || 0 != sql_status.code) {
         msg = sql_status.msg;
         return false;
     }
-    hybridse::node::SqlNode* node = parser_trees[0];
+    hybridse::node::PlanNode* node = plan_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kCmdStmt: {
-            hybridse::node::CmdNode* cmd =
-                dynamic_cast<hybridse::node::CmdNode*>(node);
-            bool ok = HandleSQLCmd(cmd, db, &sql_status);
+            bool ok = HandleSQLCmd(dynamic_cast<hybridse::node::CmdPlanNode*>(node), db, &sql_status);
             if (!ok) {
                 msg = sql_status.msg;
             }
             return ok;
         }
         case hybridse::node::kCreateStmt: {
-            bool ok = HandleSQLCreateTable(parser_trees, db, &node_manager,
+            bool ok = HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), db, &node_manager,
                                            &sql_status);
             if (!ok) {
                 msg = sql_status.msg;
@@ -296,7 +294,7 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
     }
 }
 
-bool NsClient::HandleSQLCmd(const hybridse::node::CmdNode* cmd_node,
+bool NsClient::HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node,
                             const std::string& db,
                             hybridse::base::Status* sql_status) {
     switch (cmd_node->GetCmdType()) {
@@ -342,49 +340,29 @@ bool NsClient::HandleSQLCmd(const hybridse::node::CmdNode* cmd_node,
     }
 }
 
-bool NsClient::HandleSQLCreateTable(
-    const hybridse::node::NodePointVector& parser_trees, const std::string& db,
-    hybridse::node::NodeManager* node_manager, hybridse::base::Status* sql_status) {
+bool NsClient::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create, const std::string& db,
+                                    hybridse::node::NodeManager* node_manager, hybridse::base::Status* sql_status) {
     hybridse::node::PlanNodeList plan_trees;
-    PlanAPI::CreatePlanTreeFromSyntaxTree(parser_trees, plan_trees, node_manager, *sql_status);
-    if (plan_trees.empty() || 0 != sql_status->code) {
+
+    if (nullptr == create) {
+        sql_status->msg = "fail to execute plan : create plan null";
+        return false;
+    }
+    ::fedb::nameserver::CreateTableRequest request;
+    ::fedb::nameserver::GeneralResponse response;
+    ::fedb::nameserver::TableInfo* table_info = request.mutable_table_info();
+    table_info->set_db(db);
+    TransformToTableDef(create, table_info, sql_status);
+    if (0 != sql_status->code) {
+        return false;
+    }
+    client_.SendRequest(&::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+                        FLAGS_request_timeout_ms, 1);
+    sql_status->msg = response.msg();
+    if (0 != response.code()) {
         return false;
     }
 
-    hybridse::node::PlanNode* plan = plan_trees[0];
-    if (nullptr == plan) {
-        sql_status->msg = "fail to execute plan : plan null";
-        return false;
-    }
-
-    switch (plan->GetType()) {
-        case hybridse::node::kPlanTypeCreate: {
-            hybridse::node::CreatePlanNode* create =
-                dynamic_cast<hybridse::node::CreatePlanNode*>(plan);
-            ::fedb::nameserver::CreateTableRequest request;
-            ::fedb::nameserver::GeneralResponse response;
-            ::fedb::nameserver::TableInfo* table_info =
-                request.mutable_table_info();
-            table_info->set_db(db);
-            TransformToTableDef(create, table_info, sql_status);
-            if (0 != sql_status->code) {
-                return false;
-            }
-            client_.SendRequest(
-                &::fedb::nameserver::NameServer_Stub::CreateTable, &request,
-                &response, FLAGS_request_timeout_ms, 1);
-            sql_status->msg = response.msg();
-            if (0 != response.code()) {
-                return false;
-            }
-            break;
-        }
-        default: {
-            sql_status->msg = "fail to execute script with unsupported type" +
-                              hybridse::node::NameOfPlanNodeType(plan->GetType());
-            return false;
-        }
-    }
     return true;
 }
 

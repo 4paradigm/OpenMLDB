@@ -586,18 +586,18 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
     hybridse::node::NodeManager node_manager;
     DLOG(INFO) << "start to execute script from dbms:\n" << sql;
     hybridse::base::Status sql_status;
-    hybridse::node::NodePointVector parser_trees;
-    PlanAPI::CreateSyntaxTreeFromScript(sql, parser_trees, &node_manager, sql_status);
-    if (parser_trees.empty() || sql_status.code != 0) {
+    hybridse::node::PlanNodeList plan_trees;
+    PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
+    if (plan_trees.empty() || sql_status.code != 0) {
         status->code = -1;
         status->msg = sql_status.msg;
         LOG(WARNING) << status->msg;
         return false;
     }
-    hybridse::node::SqlNode* node = parser_trees[0];
-    if (node->GetType() == hybridse::node::kCreateSpStmt) {
-        ok = HandleSQLCreateProcedure(parser_trees, db, sql,
-                ns_ptr, &node_manager, &err);
+    hybridse::node::PlanNode* node = plan_trees[0];
+    if (node->GetType() == hybridse::node::kPlanTypeCreateSp) {
+        ok = HandleSQLCreateProcedure(dynamic_cast<hybridse::node::CreateProcedurePlanNode*>(node), db, sql, ns_ptr,
+                                      &node_manager, &err);
     } else {
         ok = ns_ptr->ExecuteSQL(db, sql, err);
     }
@@ -1154,150 +1154,120 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(
     return sp_info;
 }
 
-bool SQLClusterRouter::HandleSQLCreateProcedure(const hybridse::node::NodePointVector& parser_trees,
-        const std::string& db, const std::string& sql,
-        std::shared_ptr<::fedb::client::NsClient> ns_ptr,
-        hybridse::node::NodeManager* node_manager, std::string* msg) {
+bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* create_sp,
+                                                const std::string& db, const std::string& sql,
+                                                std::shared_ptr<::fedb::client::NsClient> ns_ptr,
+                                                hybridse::node::NodeManager* node_manager, std::string* msg) {
     if (node_manager == nullptr || msg == nullptr) {
         return false;
     }
-    hybridse::node::PlanNodeList plan_trees;
+    if (create_sp == nullptr) {
+        *msg = "fail to execute plan : CreateProcedurePlanNode null";
+        return false;
+    }
+    // construct sp_info
     hybridse::base::Status sql_status;
-    PlanAPI::CreatePlanTreeFromSyntaxTree(parser_trees, plan_trees, node_manager, sql_status);
-    if (plan_trees.empty() || sql_status.code != 0) {
-        *msg = sql_status.msg;
-        return false;
-    }
-
-    hybridse::node::PlanNode* plan = plan_trees[0];
-    if (plan == nullptr) {
-        *msg = "fail to execute plan : PlanNode null";
-        return false;
-    }
-    switch (plan->GetType()) {
-        case hybridse::node::kPlanTypeCreateSp: {
-            hybridse::node::CreateProcedurePlanNode* create_sp =
-                dynamic_cast<hybridse::node::CreateProcedurePlanNode*>(plan);
-            if (create_sp == nullptr) {
-                *msg = "cast CreateProcedurePlanNode failed";
-                return false;
-            }
-            // construct sp_info
-            fedb::api::ProcedureInfo sp_info;
-            sp_info.set_db_name(db);
-            sp_info.set_sp_name(create_sp->GetSpName());
-            sp_info.set_sql(sql);
-            RtidbSchema* schema = sp_info.mutable_input_schema();
-            for (auto input : create_sp->GetInputParameterList()) {
-                if (input == nullptr) {
-                    *msg = "fail to execute plan : InputParameterNode null";
-                    return false;
-                }
-                if (input->GetType() == hybridse::node::kInputParameter) {
-                    hybridse::node::InputParameterNode* input_ptr =
-                        (hybridse::node::InputParameterNode*)input;
-                    if (input_ptr == nullptr) {
-                        *msg = "cast InputParameterNode failed";
-                        return false;
-                    }
-                    fedb::common::ColumnDesc* col_desc = schema->Add();
-                    col_desc->set_name(input_ptr->GetColumnName());
-                    fedb::type::DataType rtidb_type;
-                    bool ok = ::fedb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(),
-                            &rtidb_type);
-                    if (!ok) {
-                        *msg = "convert type failed";
-                        return false;
-                    }
-                    col_desc->set_data_type(rtidb_type);
-                    col_desc->set_is_constant(input_ptr->GetIsConstant());
-                } else {
-                    *msg = "fail to execute script with unsupported type" +
-                        hybridse::node::NameOfSqlNodeType(input->GetType());
-                    return false;
-                }
-            }
-            // get input schema, check input parameter, and fill sp_info
-            std::set<size_t> input_common_column_indices;
-            for (int i = 0; i < schema->size(); ++i) {
-                if (schema->Get(i).is_constant()) {
-                    input_common_column_indices.insert(i);
-                }
-            }
-            bool ok;
-            hybridse::vm::ExplainOutput explain_output;
-            if (input_common_column_indices.empty()) {
-                ok = cluster_sdk_->GetEngine()->Explain(
-                    sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status);
-            } else {
-                ok = cluster_sdk_->GetEngine()->Explain(
-                    sql, db, hybridse::vm::kBatchRequestMode, input_common_column_indices,
-                    &explain_output, &sql_status);
-            }
-            if (!ok) {
-                *msg = "fail to explain sql" + sql_status.msg;
-                return false;
-            }
-            RtidbSchema rtidb_input_schema;
-            if (!fedb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
-                *msg = "convert input schema failed";
-                return false;
-            }
-            if (!CheckParameter(*schema, rtidb_input_schema)) {
-                *msg = "check input parameter failed";
-                return false;
-            }
-            sp_info.mutable_input_schema()->CopyFrom(*schema);
-            // get output schema, and fill sp_info
-            RtidbSchema rtidb_output_schema;
-            if (!fedb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
-                *msg = "convert output schema failed";
-                return false;
-            }
-            sp_info.mutable_output_schema()->CopyFrom(rtidb_output_schema);
-            sp_info.set_main_table(explain_output.request_name);
-            // get dependent tables, and fill sp_info
-            std::set<std::string> tables;
-            ::hybridse::base::Status status;
-            if (!cluster_sdk_->GetEngine()->GetDependentTables(sql, db, ::hybridse::vm::kRequestMode, &tables,
-                                                               status)) {
-                LOG(WARNING) << "fail to get dependent tables: " << status.msg;
-                return false;
-            }
-            for (auto& table : tables) {
-                sp_info.add_tables(table);
-            }
-            // send request to ns client
-            if (!ns_ptr->CreateProcedure(sp_info, options_.request_timeout, msg)) {
-                *msg = "create procedure failed, msg: " + *msg;
-                return false;
-            }
-            break;
+    fedb::api::ProcedureInfo sp_info;
+    sp_info.set_db_name(db);
+    sp_info.set_sp_name(create_sp->GetSpName());
+    sp_info.set_sql(sql);
+    RtidbSchema* schema = sp_info.mutable_input_schema();
+    for (auto input : create_sp->GetInputParameterList()) {
+        if (input == nullptr) {
+            *msg = "fail to execute plan : InputParameterNode null";
+            return false;
         }
-        default: {
-            *msg = "fail to execute script with unsupported type " +
-                              hybridse::node::NameOfPlanNodeType(plan->GetType());
+        if (input->GetType() == hybridse::node::kInputParameter) {
+            hybridse::node::InputParameterNode* input_ptr = (hybridse::node::InputParameterNode*)input;
+            if (input_ptr == nullptr) {
+                *msg = "cast InputParameterNode failed";
+                return false;
+            }
+            fedb::common::ColumnDesc* col_desc = schema->Add();
+            col_desc->set_name(input_ptr->GetColumnName());
+            fedb::type::DataType rtidb_type;
+            bool ok = ::fedb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(), &rtidb_type);
+            if (!ok) {
+                *msg = "convert type failed";
+                return false;
+            }
+            col_desc->set_data_type(rtidb_type);
+            col_desc->set_is_constant(input_ptr->GetIsConstant());
+        } else {
+            *msg = "fail to execute script with unsupported type" + hybridse::node::NameOfSqlNodeType(input->GetType());
             return false;
         }
     }
+    // get input schema, check input parameter, and fill sp_info
+    std::set<size_t> input_common_column_indices;
+    for (int i = 0; i < schema->size(); ++i) {
+        if (schema->Get(i).is_constant()) {
+            input_common_column_indices.insert(i);
+        }
+    }
+    bool ok;
+    hybridse::vm::ExplainOutput explain_output;
+    if (input_common_column_indices.empty()) {
+        ok = cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status);
+    } else {
+        ok = cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kBatchRequestMode, input_common_column_indices,
+                                                &explain_output, &sql_status);
+    }
+    if (!ok) {
+        *msg = "fail to explain sql" + sql_status.msg;
+        return false;
+    }
+    RtidbSchema rtidb_input_schema;
+    if (!fedb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
+        *msg = "convert input schema failed";
+        return false;
+    }
+    if (!CheckParameter(*schema, rtidb_input_schema)) {
+        *msg = "check input parameter failed";
+        return false;
+    }
+    sp_info.mutable_input_schema()->CopyFrom(*schema);
+    // get output schema, and fill sp_info
+    RtidbSchema rtidb_output_schema;
+    if (!fedb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
+        *msg = "convert output schema failed";
+        return false;
+    }
+    sp_info.mutable_output_schema()->CopyFrom(rtidb_output_schema);
+    sp_info.set_main_table(explain_output.request_name);
+    // get dependent tables, and fill sp_info
+    std::set<std::string> tables;
+    ::hybridse::base::Status status;
+    if (!cluster_sdk_->GetEngine()->GetDependentTables(sql, db, ::hybridse::vm::kRequestMode, &tables, status)) {
+        LOG(WARNING) << "fail to get dependent tables: " << status.msg;
+        return false;
+    }
+    for (auto& table : tables) {
+        sp_info.add_tables(table);
+    }
+    // send request to ns client
+    if (!ns_ptr->CreateProcedure(sp_info, options_.request_timeout, msg)) {
+        *msg = "create procedure failed, msg: " + *msg;
+        return false;
+    }
+
     return true;
 }
 
-bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter,
-        const RtidbSchema& input_schema) {
+bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema) {
     if (parameter.size() != input_schema.size()) {
         return false;
     }
     for (int32_t i = 0; i < parameter.size(); i++) {
         if (parameter.Get(i).name() != input_schema.Get(i).name()) {
-            LOG(WARNING) << "check column name failed, expect " << input_schema.Get(i).name()
-                << ", but " << parameter.Get(i).name();
+            LOG(WARNING) << "check column name failed, expect " << input_schema.Get(i).name() << ", but "
+                         << parameter.Get(i).name();
             return false;
         }
         if (parameter.Get(i).data_type() != input_schema.Get(i).data_type()) {
             LOG(WARNING) << "check column type failed, expect "
-                << fedb::type::DataType_Name(input_schema.Get(i).data_type())
-                << ", but " << fedb::type::DataType_Name(parameter.Get(i).data_type());
+                         << fedb::type::DataType_Name(input_schema.Get(i).data_type()) << ", but "
+                         << fedb::type::DataType_Name(parameter.Get(i).data_type());
             return false;
         }
     }
@@ -1307,8 +1277,8 @@ bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter,
 bool SQLClusterRouter::CheckSQLSyntax(const std::string& sql) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
-    hybridse::node::NodePointVector parser_trees;
-    hybridse::plan::PlanAPI::CreateSyntaxTreeFromScript(sql, parser_trees, &node_manager, sql_status);
+    hybridse::node::PlanNodeList plan_trees;
+    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
     if (0 != sql_status.code) {
         LOG(WARNING) << sql_status.str();
         return false;
