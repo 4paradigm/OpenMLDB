@@ -19,9 +19,9 @@
 cd /depends
 if [[ ! -d thirdparty && -r thirdparty.tar.gz ]]; then
     mkdir -p thirdparty
-    tar xvzf thirdparty.tar.gz -C thirdparty --strip-components=1
+    tar xzf thirdparty.tar.gz -C thirdparty --strip-components=1
     curl -SL -o libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta16/libzetasql-0.2.0-beta16-linux-x86_64.tar.gz
-    tar xvzf libzetasql.tar.gz -C  thirdparty --strip-components 1
+    tar xzf libzetasql.tar.gz -C  thirdparty --strip-components 1
     rm libzetasql.tar.gz
 fi
 
