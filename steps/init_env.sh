@@ -16,7 +16,7 @@
 
 # init_env.sh
 
-cd /depends && tar -zxf thirdparty.tar.gz
+cd /depends
 if [[ ! -d thirdparty && -r thirdparty.tar.gz ]]; then
     mkdir -p thirdparty
     tar xvzf thirdparty.tar.gz -C thirdparty --strip-components=1
