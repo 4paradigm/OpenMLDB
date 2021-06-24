@@ -13,7 +13,7 @@ create table `behaviourTable`(
 `startperiod` string,
 `yumid` string,
 index(key=(`tdid`), ts=`eventTime`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `bo_aie_recommendation`(
 `id` string,
 `ingestionTime` timestamp,
@@ -218,7 +218,7 @@ create table `bo_aie_recommendation`(
 `u_deliverycard_flag` int,
 `u_dashencard_flag` int,
 index(key=(`id`), ttl=1, ttl_type=latest)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `feedbackTable`(
 `itemId` string,
 `reqId` string,
@@ -227,4 +227,4 @@ create table `feedbackTable`(
 `ingestionTime` timestamp,
 `actionValue` int,
 index(key=(`instanceKey`), ttl=1, ttl_type=latest)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;

@@ -204,7 +204,7 @@ public class DDLEngineTest {
                 "`ingestionTime` bigint,\n" +
                 "`actionValue` int,\n" +
                 "index(key=(`reqId`), ttl=1, ttl_type=latest)\n" +
-                ") replicanum=1, partitionnum=1 ;";
+                ") options ( replicanum=1, partitionnum=1 ) ;";
 
         try {
             String ddlSql = DDLEngine.genFedbDdl(nameParquetMap, sql, 1, 1).trim();

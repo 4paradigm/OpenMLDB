@@ -4,7 +4,7 @@ create table `action`(
 `ingestionTime` timestamp,
 `actionValue` double,
 index(key=(`reqId`), ttl=1, ttl_type=latest)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `bo_hislabel`(
 `ingestionTime` timestamp,
 `zUserId` string,
@@ -12,7 +12,7 @@ create table `bo_hislabel`(
 `nRequestTime` timestamp,
 `fWatchedTimeLen` double,
 index(key=(`zUserId`,`uUserId`), ts=`ingestionTime`, ttl=2881m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `flattenRequest`(
 `reqId` string,
 `eventTime` timestamp,
@@ -101,4 +101,4 @@ index(key=(`zUserId`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
 index(key=(`uPlayGame`), ts=`eventTime`, ttl=601m, ttl_type=absolute),
 index(key=(`uHasJoinedGroup`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
 index(key=(`zUserId`,`uUserId`), ts=`eventTime`, ttl=2881m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;

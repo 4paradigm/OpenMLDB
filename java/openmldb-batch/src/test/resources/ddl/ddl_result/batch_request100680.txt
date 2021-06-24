@@ -39,7 +39,7 @@ create table `previous_application`(
 `DAYS_TERMINATION` double,
 `NFLAG_INSURED_ON_APPROVAL` double,
 index(key=(`SK_ID_CURR`), ts=`ingestionTime`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `POS_CASH_balance`(
 `ingestionTime` timestamp,
 `eventTime` timestamp,
@@ -54,7 +54,7 @@ create table `POS_CASH_balance`(
 `SK_DPD` int,
 `SK_DPD_DEF` int,
 index(key=(`SK_ID_CURR`), ts=`ingestionTime`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `installments_payments`(
 `ingestionTime` timestamp,
 `eventTime` timestamp,
@@ -70,7 +70,7 @@ create table `installments_payments`(
 `AMT_INSTALMENT` double,
 `AMT_PAYMENT` double,
 index(key=(`SK_ID_CURR`), ts=`ingestionTime`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `bureau_balance`(
 `ingestionTime` timestamp,
 `eventTime` timestamp,
@@ -80,7 +80,7 @@ create table `bureau_balance`(
 `MONTHS_BALANCE` int,
 `STATUS` string,
 index(key=(`SK_ID_CURR`), ts=`ingestionTime`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `batch100680_flatten_request`(
 `reqId` string,
 `eventTime` timestamp,
@@ -206,14 +206,14 @@ create table `batch100680_flatten_request`(
 `AMT_REQ_CREDIT_BUREAU_QRT` double,
 `AMT_REQ_CREDIT_BUREAU_YEAR` double,
 index(key=(`SK_ID_CURR`), ts=`eventTime`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `action`(
 `reqId` string,
 `eventTime` timestamp,
 `ingestionTime` timestamp,
 `actionValue` int,
 index(key=(`reqId`), ttl=1, ttl_type=latest)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `credit_card_balance`(
 `ingestionTime` timestamp,
 `eventTime` timestamp,
@@ -243,7 +243,7 @@ create table `credit_card_balance`(
 `SK_DPD` int,
 `SK_DPD_DEF` int,
 index(key=(`SK_ID_CURR`), ts=`ingestionTime`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `bureau`(
 `ingestionTime` timestamp,
 `eventTime` timestamp,
@@ -265,4 +265,4 @@ create table `bureau`(
 `DAYS_CREDIT_UPDATE` int,
 `AMT_ANNUITY` double,
 index(key=(`SK_ID_CURR`), ts=`ingestionTime`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;

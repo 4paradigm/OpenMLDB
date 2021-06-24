@@ -24,4 +24,4 @@ create table `t1`(
 `C21` string,
 `click` int,
 index(key=(`device_ip`), ts=`time`, ttl=600m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
