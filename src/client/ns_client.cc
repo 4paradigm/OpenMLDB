@@ -262,7 +262,7 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script, std:
             return ok;
         }
         default: {
-            msg = "fail to execute script with unSuppurt type";
+            msg = "fail to execute script with unsupported type";
             return false;
         }
     }
@@ -307,7 +307,7 @@ bool NsClient::HandleSQLCmd(const hybridse::node::CmdNode* cmd_node, const std::
             }
         }
         default: {
-            sql_status->msg = "fail to execute script with unSuppurt type";
+            sql_status->msg = "fail to execute script with unsupported type";
             return false;
         }
     }
@@ -347,8 +347,8 @@ bool NsClient::HandleSQLCreateTable(const hybridse::node::NodePointVector& parse
             break;
         }
         default: {
-            sql_status->msg =
-                "fail to execute script with unSuppurt type" + hybridse::node::NameOfPlanNodeType(plan->GetType());
+            sql_status->msg = "fail to execute script with unsupported type" +
+                              hybridse::node::NameOfPlanNodeType(plan->GetType());
             return false;
         }
     }
