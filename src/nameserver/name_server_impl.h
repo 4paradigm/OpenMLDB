@@ -311,8 +311,8 @@ class NameServerImpl : public NameServer {
 
     int SyncExistTable(const std::string& alias, const std::string& name, const std::string& db,
                        const std::vector<::openmldb::nameserver::TableInfo> tables_remote,
-                       const ::openmldb::nameserver::TableInfo& table_info_local, uint32_t pid, int& code,
-                       std::string& msg);  // NOLINT
+                       const ::openmldb::nameserver::TableInfo& table_info_local, uint32_t pid, int& code,  // NOLINT
+                       std::string& msg);                                                                   // NOLINT
 
     int CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, bool is_leader,
                             std::map<uint32_t, std::vector<std::string>>& endpoint_map,  // NOLINT
@@ -707,9 +707,9 @@ class NameServerImpl : public NameServer {
                         const std::vector<::openmldb::nameserver::TableInfo>& tables);
 
     bool CompareSnapshotOffset(
-        const std::vector<TableInfo>& tables, std::string& msg,  // NOLINT
-        int& code,                                               // NOLINT
-        std::map<std::string, std::map<uint32_t, std::map<uint32_t, uint64_t>>>& table_part_offset);
+        const std::vector<TableInfo>& tables, std::string& msg,                                       // NOLINT
+        int& code,                                                                                    // NOLINT
+        std::map<std::string, std::map<uint32_t, std::map<uint32_t, uint64_t>>>& table_part_offset);  // NOLINT
 
     void DistributeTabletMode();
 

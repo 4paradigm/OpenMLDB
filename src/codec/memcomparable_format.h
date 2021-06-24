@@ -186,7 +186,7 @@ __attribute__((unused)) static int PackString(const void *src,  // The data to e
 
     for (;;) {
         // Figure out how many bytes to copy, copy them and adjust pointers
-        const size_t copy_len = std::min((size_t)RDB_ESCAPE_LENGTH - 1, src_len);
+        const size_t copy_len = std::min((size_t)RDB_ESCAPE_LENGTH - 1, src_len);  // NOLINT
         memcpy(ptr, usrc, copy_len);
         ptr += copy_len;
         usrc += copy_len;
