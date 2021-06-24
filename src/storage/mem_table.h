@@ -165,7 +165,12 @@ class MemTable : public Table {
     // Note the method should incr record_cnt_ manually
     bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
-    bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, const std::string& value) override;
+    bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimensions, const std::string& value) override;
+
+    bool GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response);
+
+    bool BulkLoad(const std::vector<DataBlock*>& data_blocks,
+                  const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes);
 
     bool Delete(const std::string& pk, uint32_t idx) override;
 

@@ -195,16 +195,16 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     return true;
 }
 
-bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, const std::string& value) {
-    if (dimensions.size() == 0 || ts_dimemsions.size() == 0) {
-        PDLOG(WARNING, "empty dimesion. tid %u pid %u", id_, pid_);
+bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimensions, const std::string& value) {
+    if (dimensions.empty() || ts_dimensions.empty()) {
+        PDLOG(WARNING, "empty dimension. tid %u pid %u", id_, pid_);
         return false;
     }
     std::map<int32_t, Slice> inner_index_key_map;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         int32_t inner_pos = table_index_.GetInnerIndexPos(iter->idx());
         if (inner_pos < 0) {
-            PDLOG(WARNING, "invalid dimesion. dimesion idx %u, tid %u pid %u", iter->idx(), id_, pid_);
+            PDLOG(WARNING, "invalid dimension. dimension idx %u, tid %u pid %u", iter->idx(), id_, pid_);
             return false;
         }
         inner_index_key_map.emplace(inner_pos, iter->key());
@@ -220,8 +220,8 @@ bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsio
             auto ts_col = index_def->GetTsColumn();
             if (ts_col) {
                 bool has_found_ts = false;
-                for (auto it = ts_dimemsions.begin(); it != ts_dimemsions.end(); it++) {
-                    if (static_cast<int>(it->idx()) == ts_col->GetTsIdx()) {
+                for (const auto& ts_dimension : ts_dimensions) {
+                    if (static_cast<int>(ts_dimension.idx()) == ts_col->GetTsIdx()) {
                         has_found_ts = true;
                         break;
                     }
@@ -236,12 +236,13 @@ bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsio
             }
         }
     }
-    DataBlock* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
+    auto* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
         bool need_put = false;
         for (const auto& index_def : inner_index->GetIndex()) {
             if (index_def->IsReady()) {
+                // TODO(hw): if we don't find this ts(has_found_ts==false), but it's ready, will put too?
                 need_put = true;
                 break;
             }
@@ -252,7 +253,7 @@ bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsio
                 seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
             }
             Segment* segment = segments_[kv.first][seg_idx];
-            segment->Put(::openmldb::base::Slice(kv.second), ts_dimemsions, block);
+            segment->Put(::openmldb::base::Slice(kv.second), ts_dimensions, block);
         }
     }
     record_cnt_.fetch_add(1, std::memory_order_relaxed);
@@ -737,6 +738,99 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
                                             ts_col->GetTsIdx());
     }
     return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
+}
+
+bool MemTable::GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response) {
+    response->set_seg_cnt(seg_cnt_);
+
+    // TODO(hw): out of range will get -1, only a temporary solution.
+    uint32_t idx = 0;
+    int32_t pos;
+    while ((pos = table_index_.GetInnerIndexPos(idx)) != -1) {
+        response->add_inner_index_pos(pos);
+        idx++;
+    }
+    // repeated InnerIndexSt, all index, even not ready
+    auto inner_indexes = table_index_.GetAllInnerIndex();
+    for (auto& i : *inner_indexes) {
+        i->GetId();
+        auto pb = response->add_inner_index();
+        for (const auto& index_def : i->GetIndex()) {
+            auto new_def = pb->add_index_def();
+            new_def->set_is_ready(index_def->GetStatus() == IndexStatus::kReady);
+            new_def->set_ts_idx(-1);
+            auto ts_col = index_def->GetTsColumn();
+            if (ts_col) {
+                new_def->set_ts_idx(ts_col->GetTsIdx());
+            }
+        }
+    }
+    // repeated InnerSegments
+    for (decltype(inner_indexes->size()) inner_id = 0; inner_id < inner_indexes->size(); ++inner_id) {
+        auto segments = segments_[inner_id];
+        auto pb_segments = response->add_inner_segments();
+        for (decltype(seg_cnt_) i = 0; i < seg_cnt_; ++i) {
+            auto seg = segments[i];
+            auto pb_seg = pb_segments->add_segment();
+            pb_seg->set_ts_cnt(seg->GetTsCnt());
+            const auto& ts_idx_map = seg->GetTsIdxMap();
+            for (auto entry : ts_idx_map) {
+                auto pb_entry = pb_seg->add_ts_idx_map();
+                pb_entry->set_key(entry.first);
+                pb_entry->set_value(entry.second);
+            }
+        }
+    }
+    return true;
+}
+
+bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
+                        const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes) {
+    // data_block[i] is the block which id == i
+    std::vector<bool> block_id_used(data_blocks.size(), false);
+    for (int i = 0; i < indexes.size(); ++i) {
+        const auto& inner_index = indexes.Get(i);
+        auto real_idx = inner_index.inner_index_id(); // TODO(hw): check
+        for (int j = 0; j < inner_index.segment_size(); ++j) {
+            const auto& segment_index = inner_index.segment(j);
+            auto seg_idx = segment_index.id(); // TODO(hw): check
+            auto segment = segments_[real_idx][seg_idx];
+            for (int key_idx = 0; key_idx < segment_index.key_entries_size(); ++key_idx) {
+                const auto& key_entries = segment_index.key_entries(key_idx);
+                auto pk = Slice(key_entries.key());
+                for (int key_entry_idx = 0; key_entry_idx < key_entries.key_entry_size(); ++key_entry_idx) {
+                    // TODO(hw): key_entry_id
+                    const auto& key_entry = key_entries.key_entry(key_entry_idx);
+                    auto key_entry_id = key_entry.key_entry_id();
+                    for (int time_idx = 0; time_idx < key_entry.time_entry_size(); ++time_idx) {
+                        const auto& time_entry = key_entry.time_entry(time_idx);
+                        auto* block =
+                            time_entry.block_id() < data_blocks.size() ? data_blocks[time_entry.block_id()] : nullptr;
+                        if (block == nullptr) {
+                            // TODO(hw): error handle
+                            LOG(INFO) << "block info mismatch";
+                            return false;
+                        }
+
+                        DLOG(INFO) << "do segment(" << real_idx << "-" << seg_idx << ") put, key" << pk.ToString()
+                                   << ", time " << time_entry.time() << ", key_entry_id " << key_entry_id
+                                   << ", block id " << time_entry.block_id();
+
+                        segment->BulkLoadPut(key_entry_id, pk, time_entry.time(), block);
+                        block_id_used.at(time_entry.block_id()) = true;
+                    }
+                }
+            }
+        }
+    }
+
+    // TODO(hw): check correctness, should be removed?
+    for (int i = 0; i < block_id_used.size(); ++i) {
+        if (!block_id_used[i]) {
+            DLOG(INFO) << i << " unused";
+        }
+    }
+    return true;
 }
 
 MemTableKeyIterator::MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,

@@ -30,6 +30,7 @@
 
 #include "base/set.h"
 #include "base/spinlock.h"
+#include "bulk_load_mgr.h"
 #include "catalog/schema_adapter.h"
 #include "catalog/tablet_catalog.h"
 #include "common/thread_pool.h"
@@ -190,7 +191,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                    ::openmldb::api::DropTableResponse* response, Closure* done);
 
     void Refresh(RpcController* controller, const ::openmldb::api::RefreshRequest* request,
-                   ::openmldb::api::GeneralResponse* response, Closure* done);
+                 ::openmldb::api::GeneralResponse* response, Closure* done);
 
     void AddReplica(RpcController* controller, const ::openmldb::api::ReplicaRequest* request,
                     ::openmldb::api::AddReplicaResponse* response, Closure* done);
@@ -339,6 +340,12 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void DropProcedure(RpcController* controller, const ::openmldb::api::DropProcedureRequest* request,
                        ::openmldb::api::GeneralResponse* response, Closure* done);
 
+    void GetBulkLoadInfo(RpcController* controller, const ::openmldb::api::BulkLoadInfoRequest* request,
+                         ::openmldb::api::BulkLoadInfoResponse* response, Closure* done);
+
+    void BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
+                  ::openmldb::api::GeneralResponse* response, Closure* done);
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
@@ -480,7 +487,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::map<uint64_t, std::list<std::shared_ptr<::openmldb::api::TaskInfo>>> task_map_;
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
-    brpc::Server* server_;
+    BulkLoadMgr bulk_load_mgr_;
+    brpc::Server* server_;  // TODO(hw): need?
     std::vector<std::string> mode_root_paths_;
     std::vector<std::string> mode_recycle_root_paths_;
     std::atomic<bool> follower_;

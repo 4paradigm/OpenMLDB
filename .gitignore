@@ -33,6 +33,7 @@ java/target
 *.idea
 *.iml
 *.DS_store
+cmake-build-*/
 
 *.pyc
 *.swp

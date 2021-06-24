@@ -443,7 +443,7 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
 }
 
 void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::RefreshRequest* request,
-        ::openmldb::api::GeneralResponse* response, Closure* done) {
+                         ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     RefreshSingleTable(request->tid());
 }
@@ -618,6 +618,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         done->Run();
         return;
     }
+
     response->set_code(::openmldb::base::ReturnCode::kOk);
     std::shared_ptr<LogReplicator> replicator;
     do {
@@ -639,6 +640,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         }
         replicator->AppendEntry(entry);
     } while (false);
+
     uint64_t end_time = ::baidu::common::timer::get_micros();
     if (start_time + FLAGS_put_slow_log_threshold < end_time) {
         std::string key;
@@ -658,6 +660,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
               request->tid(), request->pid());
     }
     done->Run();
+
     if (replicator) {
         if (FLAGS_binlog_notify_on_put) {
             replicator->Notify();
@@ -4779,6 +4782,141 @@ void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureI
     sp_cache_->InsertSQLProcedureCacheEntry(db_name, sp_name, sp_info, session.GetCompileInfo(),
                                             batch_session.GetCompileInfo());
     LOG(INFO) << "refresh procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
+}
+
+void TabletImpl::GetBulkLoadInfo(RpcController* controller, const ::openmldb::api::BulkLoadInfoRequest* request,
+                                 ::openmldb::api::BulkLoadInfoResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+
+    if (follower_.load(std::memory_order_relaxed)) {
+        response->set_code(::openmldb::base::ReturnCode::kIsFollowerCluster);
+        response->set_msg("is follower cluster");
+        return;
+    }
+
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
+    }
+    if (!table->IsLeader()) {
+        response->set_code(::openmldb::base::ReturnCode::kTableIsFollower);
+        response->set_msg("table is follower");
+        return;
+    }
+    if (table->GetTableStat() == ::openmldb::storage::kLoading) {
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
+        response->set_msg("table is loading");
+        return;
+    }
+
+    // TODO(hw): BulkLoadInfoResponse
+    //  TableIndex is inside Table, so let table fulfill the response for us.
+    DLOG(INFO) << "GetBulkLoadInfo for " << table->GetId() << "-" << table->GetPid();
+    auto* mem_table = dynamic_cast<MemTable*>(table.get());
+    mem_table->GetBulkLoadInfo(response);
+
+    response->set_code(::openmldb::base::kOk);
+    response->set_msg("ok");
+}
+
+void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
+                          ::openmldb::api::GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+
+    if (follower_.load(std::memory_order_relaxed)) {
+        response->set_code(::openmldb::base::ReturnCode::kIsFollowerCluster);
+        response->set_msg("is follower cluster");
+        return;
+    }
+    uint64_t start_time = ::baidu::common::timer::get_micros();
+    auto tid = request->tid();
+    auto pid = request->pid();
+    // TODO(hw): tid-pid use xx-xx, 方便搜索
+    std::shared_ptr<Table> table = GetTable(tid, pid);
+    if (!table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
+    }
+    if (!table->IsLeader()) {
+        response->set_code(::openmldb::base::ReturnCode::kTableIsFollower);
+        response->set_msg("table is follower");
+        return;
+    }
+    if (table->GetTableStat() == ::openmldb::storage::kLoading) {
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
+        response->set_msg("table is loading");
+        return;
+    }
+
+    // DataRegion & IndexRegion, when we get IndexRegion rpc, empty DataRegion is available
+    auto* cntl = dynamic_cast<brpc::Controller*>(controller);
+    const auto& data = cntl->request_attachment();
+    // Data is a part of MemTable data, DataReceiver of MemTable is in charge of it.
+    // Data part_id & info is in request, checked in DataAppend()
+    if (!data.empty()) {
+        if (!bulk_load_mgr_.DataAppend(tid, pid, request, data)) {
+            response->set_code(::openmldb::base::ReturnCode::kReceiveDataError);
+            response->set_msg("bulk load data region append failed");
+            LOG(WARNING) << tid << "-" << pid << " " << response->msg();
+            return;
+        }
+        DLOG(INFO) << tid << "-" << pid << " has loaded data region part " << request->part_id();
+    }
+
+    if (request->index_region_size() > 0) {
+        DLOG(INFO) << tid << "-" << pid << " get index region, do bulk load";
+        // The request may have both data & index region, data has been appended before. BulkLoadData only do bulk load
+        // to table.
+        if (!bulk_load_mgr_.BulkLoad(std::dynamic_pointer_cast<MemTable>(table), request)) {
+            response->set_code(::openmldb::base::ReturnCode::kWriteDataFailed);
+            response->set_msg("bulk load to table failed");
+            LOG(WARNING) << tid << "-" << pid << " " << response->msg();
+            return;
+        }
+        // TODO(hw):  how to find the last bulk load? or index rpcs all do {bulk load; write bin log}?
+
+        uint64_t load_time = ::baidu::common::timer::get_micros();
+        PDLOG(INFO, "%u-%u, bulk load only load cost %lu us", request->tid(), request->pid(), load_time - start_time);
+
+        response->set_code(::openmldb::base::ReturnCode::kOk);
+        std::shared_ptr<LogReplicator> replicator;
+        do {
+            replicator = GetReplicator(request->tid(), request->pid());
+            if (!replicator) {
+                PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(),
+                      request->pid());
+                break;
+            }
+
+            auto ok = bulk_load_mgr_.WriteBinlogToReplicator(tid, pid, replicator, request->index_region());
+            if (!ok) {
+                DLOG(INFO) << "write binlog failed";
+            }
+        } while (false);
+        uint64_t end_time = ::baidu::common::timer::get_micros();
+        PDLOG(INFO, "%u-%u, binlog cost %lu us", request->tid(), request->pid(), end_time - load_time);
+
+        if (replicator) {
+            if (FLAGS_binlog_notify_on_put) {
+                replicator->Notify();
+            }
+        }
+    }
+
+    if(request->eof()){
+        // no more jobs to do
+        LOG(INFO) << "get eof rpc, clean up the data receiver";
+        bulk_load_mgr_.RemoveReceiver(tid, pid);
+    }
 }
 
 }  // namespace tablet

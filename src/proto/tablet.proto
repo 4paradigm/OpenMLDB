@@ -13,13 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 syntax = "proto2";
+
 import "type.proto";
 import "common.proto";
 import "sql_procedure.proto";
 package openmldb.api;
 
 option cc_generic_services = true;
+option java_package = "com._4paradigm.openmldb.api";
+option java_outer_classname = "Tablet";
 
 enum TableMode {
     kTableLeader = 1;
@@ -31,7 +35,7 @@ enum TableState {
     kTableNormal = 1;
     kTableLoading = 2;
     kMakingSnapshot = 3;
-    kSnapshotPaused  = 4;
+    kSnapshotPaused = 4;
 }
 
 enum TabletState {
@@ -53,11 +57,11 @@ enum OPType {
     kDelReplicaOP = 3;
     kChangeLeaderOP = 4;
     kOfflineReplicaOP = 5;
-    kReAddReplicaOP = 6; 
-    kReAddReplicaNoSendOP = 7;     // need not send snapshot
-    kReAddReplicaWithDropOP = 8;   // should droptable before loadtable
-    kReAddReplicaSimplifyOP = 9;   // table is exist, need run addreplica task only
-    kUpdateTableAliveOP = 10;      // deleted
+    kReAddReplicaOP = 6;
+    kReAddReplicaNoSendOP = 7;    // need not send snapshot
+    kReAddReplicaWithDropOP = 8;  // should droptable before loadtable
+    kReAddReplicaSimplifyOP = 9;  // table is exist, need run addreplica task only
+    kUpdateTableAliveOP = 10;     // deleted
     kMigrateOP = 11;
     kReLoadTableOP = 12;
     kUpdatePartitionStatusOP = 13;
@@ -119,9 +123,9 @@ message TaskInfo {
     required TaskType task_type = 3;
     required TaskStatus status = 4;
     optional string endpoint = 5;
-    optional bool is_rpc_send = 6 [default=false];
-    repeated uint64 rep_cluster_op_id = 7; //for multi cluster
-    optional uint64 task_id = 8 [default=0];// for multi cluster 
+    optional bool is_rpc_send = 6 [default = false];
+    repeated uint64 rep_cluster_op_id = 7;      // for multi cluster
+    optional uint64 task_id = 8 [default = 0];  // for multi cluster
 }
 
 message OPInfo {
@@ -135,9 +139,9 @@ message OPInfo {
     optional string name = 8;
     optional uint32 pid = 9;
     optional uint64 parent_id = 10;
-    optional uint32 vec_idx = 11;   // the index in task_vec
-    optional uint64 remote_op_id = 12;//for multi cluster
-    optional int32 for_replica_cluster = 13 [default = 0];//for multi cluster, default 0. if 1, for multi cluster
+    optional uint32 vec_idx = 11;                           // the index in task_vec
+    optional uint64 remote_op_id = 12;                      // for multi cluster
+    optional int32 for_replica_cluster = 13 [default = 0];  // for multi cluster, default 0. if 1, for multi cluster
     optional string db = 14;
 }
 
@@ -210,8 +214,7 @@ message GeneralRequest {
     optional uint64 offset = 4;
 }
 
-message TaskStatusRequest {
-}
+message TaskStatusRequest {}
 
 message TaskStatusResponse {
     optional int32 code = 1;
@@ -240,7 +243,7 @@ message ScanRequest {
     optional uint32 limit = 4;
     optional uint32 tid = 5;
     optional uint32 pid = 6;
-    optional bool enable_remove_duplicated_record = 7 [default=false];
+    optional bool enable_remove_duplicated_record = 7 [default = false];
     optional string idx_name = 8;
     optional GetType st_type = 9 [default = kSubKeyLe];
     optional GetType et_type = 10 [default = kSubKeyGt];
@@ -255,10 +258,10 @@ message TraverseRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional string idx_name = 3;
-    optional uint32 limit = 4 [default=100];
+    optional uint32 limit = 4 [default = 100];
     optional string pk = 5;
     optional uint64 ts = 6;
-    optional bool enable_remove_duplicated_record = 7 [default=false];
+    optional bool enable_remove_duplicated_record = 7 [default = false];
 }
 
 message TraverseResponse {
@@ -285,7 +288,7 @@ message ReplicaRequest {
     optional uint32 pid = 2;
     optional string endpoint = 3;
     optional TaskInfo task_info = 4;
-    optional uint32 remote_tid = 5; //for remote
+    optional uint32 remote_tid = 5;  // for remote
 }
 
 message AddReplicaResponse {
@@ -419,7 +422,6 @@ message SendSnapshotRequest {
 }
 
 message SendIndexDataRequest {
-
     message EndpointPair {
         optional uint32 pid = 1;
         optional string endpoint = 2;
@@ -512,7 +514,7 @@ message CountRequest {
     optional string idx_name = 3;
     optional string key = 4;
     optional bool filter_expired_data = 5 [default = false];
-    optional bool enable_remove_duplicated_record = 6 [default=false];
+    optional bool enable_remove_duplicated_record = 6 [default = false];
     optional uint64 st = 7 [default = 0];
     optional GetType st_type = 8 [default = kSubKeyLe];
     optional uint64 et = 9 [default = 0];
@@ -590,8 +592,8 @@ message EmptyRequest {}
 message ConnectZKRequest {}
 message DisConnectZKRequest {}
 
-message HttpRequest { }
-message HttpResponse { }
+message HttpRequest {}
+message HttpResponse {}
 
 message DeleteIndexRequest {
     optional uint32 tid = 1;
@@ -737,8 +739,78 @@ message GetCatalogResponse {
     optional string msg = 3;
 }
 
-service TabletServer {
+message DataBlockInfo {
+    optional uint32 ref_cnt = 1;
+    optional uint64 offset = 2;  // offset in DataRegion
+    optional uint32 length = 3;
+}
 
+message Segment {
+    optional uint32 id = 1;
+    message KeyEntries {
+        optional bytes key = 1;
+        message KeyEntry {
+            optional uint32 key_entry_id = 1;
+            message TimeEntry {
+                optional uint64 time = 1;
+                optional uint32 block_id = 2;
+            }
+            repeated TimeEntry time_entry = 2;
+        }
+        repeated KeyEntry key_entry = 2;  // ts_cnt_ == key_entry_size()
+    }
+    repeated KeyEntries key_entries = 2;
+}
+
+message BulkLoadIndex {
+    optional uint32 inner_index_id = 1;
+    repeated Segment segment = 2;
+}
+
+// we use attachment(baidu_std supports) to send Data Region
+message BulkLoadRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional int32 part_id = 3;
+    repeated DataBlockInfo block_info = 4;  // idx is the block id, entries in Index are using the block id
+    repeated BulkLoadIndex index_region = 5;
+    optional bool eof = 6 [default = false];
+}
+
+message BulkLoadInfoRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message BulkLoadInfoResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint32 seg_cnt = 3;
+    repeated int32 inner_index_pos = 4;
+    message InnerIndexSt {
+        message IndexDef {
+            optional int32 ts_idx = 1 [default = -1];  // -1 means no ts_col
+            optional bool is_ready = 2;
+        }
+        repeated IndexDef index_def = 1;
+    }
+    repeated InnerIndexSt inner_index = 5; // 4&5: Table::table_index_
+
+    message InnerSegments {
+        message Segment {
+            optional uint32 ts_cnt = 1;
+            message MapFieldEntry {
+                required uint32 key = 1; // TODO(hw): java will use int, cpp uses uint32. Not good?
+                required uint32 value = 2;
+            }
+            repeated MapFieldEntry ts_idx_map = 2; // TODO(hw): proto3 supports map
+        }
+        repeated Segment segment = 1;
+    }
+    repeated InnerSegments inner_segments = 6; // MemTable::segments_
+}
+
+service TabletServer {
     // kv storage api for client
     rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
@@ -748,14 +820,14 @@ service TabletServer {
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
 
     // sql api for client
-    rpc Query(QueryRequest) returns(QueryResponse);
-    rpc SubQuery(QueryRequest) returns(QueryResponse);
-    rpc SQLBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
-    rpc SubBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
+    rpc Query(QueryRequest) returns (QueryResponse);
+    rpc SubQuery(QueryRequest) returns (QueryResponse);
+    rpc SQLBatchRequestQuery(SQLBatchRequestQueryRequest) returns (SQLBatchRequestQueryResponse);
+    rpc SubBatchRequestQuery(SQLBatchRequestQueryRequest) returns (SQLBatchRequestQueryResponse);
 
     // table api for nameserver
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
-    rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
+    rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
     rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
@@ -764,35 +836,35 @@ service TabletServer {
     rpc ExecuteGc(ExecuteGcRequest) returns (GeneralResponse);
 
     // replication api for master
-    rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
-    rpc AddReplica(ReplicaRequest) returns(AddReplicaResponse);
-    rpc DelReplica(ReplicaRequest) returns(GeneralResponse);
-    rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
-    rpc MakeSnapshot(GeneralRequest) returns(GeneralResponse);
-    rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
-    rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
-    rpc SendSnapshot(SendSnapshotRequest) returns(GeneralResponse);
+    rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);
+    rpc AddReplica(ReplicaRequest) returns (AddReplicaResponse);
+    rpc DelReplica(ReplicaRequest) returns (GeneralResponse);
+    rpc ChangeRole(ChangeRoleRequest) returns (ChangeRoleResponse);
+    rpc MakeSnapshot(GeneralRequest) returns (GeneralResponse);
+    rpc PauseSnapshot(GeneralRequest) returns (GeneralResponse);
+    rpc RecoverSnapshot(GeneralRequest) returns (GeneralResponse);
+    rpc SendSnapshot(SendSnapshotRequest) returns (GeneralResponse);
 
-    rpc SendData(SendDataRequest) returns(GeneralResponse);
+    rpc SendData(SendDataRequest) returns (GeneralResponse);
 
-    rpc SetExpire(SetExpireRequest) returns(GeneralResponse);
+    rpc SetExpire(SetExpireRequest) returns (GeneralResponse);
 
     // name server interface
-    rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
-    rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
-    rpc GetTermPair(GetTermPairRequest) returns(GetTermPairResponse);
-    rpc GetManifest(GetManifestRequest) returns(GetManifestResponse);
-    rpc CheckFile(CheckFileRequest) returns(GeneralResponse);
-    rpc DeleteBinlog(GeneralRequest) returns(GeneralResponse);
+    rpc GetTaskStatus(TaskStatusRequest) returns (TaskStatusResponse);
+    rpc DeleteOPTask(DeleteTaskRequest) returns (GeneralResponse);
+    rpc GetTermPair(GetTermPairRequest) returns (GetTermPairResponse);
+    rpc GetManifest(GetManifestRequest) returns (GetManifestResponse);
+    rpc CheckFile(CheckFileRequest) returns (GeneralResponse);
+    rpc DeleteBinlog(GeneralRequest) returns (GeneralResponse);
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
     rpc GetCatalog(GetCatalogRequest) returns (GetCatalogResponse);
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
     rpc UpdateTableMetaForAddField(UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
-    rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
-    rpc AddIndex(AddIndexRequest) returns(GeneralResponse);
-    rpc SendIndexData(SendIndexDataRequest) returns(GeneralResponse);
+    rpc GetAllSnapshotOffset(EmptyRequest) returns (TableSnapshotOffsetResponse);
+    rpc AddIndex(AddIndexRequest) returns (GeneralResponse);
+    rpc SendIndexData(SendIndexDataRequest) returns (GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
     rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
@@ -804,4 +876,8 @@ service TabletServer {
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
     rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
     rpc Refresh(RefreshRequest) returns (GeneralResponse);
+    
+    // TODO(hw): nameserver call this?
+    rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
+    rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
 }

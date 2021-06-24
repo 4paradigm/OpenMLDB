@@ -5593,7 +5593,81 @@ TEST_F(TabletImplTest, SendIndexData) {
     ::openmldb::base::GetFileSize(des_index_file, des_size);
     ASSERT_TRUE(::openmldb::base::IsExists(des_index_file));
     ASSERT_EQ(src_size, des_size);
-    ::openmldb::base::RemoveDirRecursive(FLAGS_db_root_path);
+    ::fedb::base::RemoveDirRecursive(FLAGS_db_root_path);
+}
+
+TEST_F(TabletImplTest, BulkLoad) {
+    // create table, empty data
+    TabletImpl tablet;
+    tablet.Init("");
+    uint32_t id = counter++;
+    {
+        ::fedb::api::CreateTableRequest request;
+        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        auto column = table_meta->add_column_desc();
+        column->set_name("card");
+        column->set_data_type(::fedb::type::kString);
+        column = table_meta->add_column_desc();
+        column->set_name("amt");
+        column->set_data_type(::fedb::type::kString);
+        column = table_meta->add_column_desc();
+        column->set_name("apprv_cde");
+        column->set_data_type(::fedb::type::kInt);
+        column = table_meta->add_column_desc();
+        column->set_name("ts");
+        column->set_data_type(::fedb::type::kTimestamp);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "ts", ::fedb::type::kAbsoluteTime, 0, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "amt", "amt", "ts", ::fedb::type::kAbsoluteTime, 0, 0);
+        ::fedb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+
+    // get bulk load info
+    {
+        ::fedb::api::BulkLoadInfoRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        ::fedb::api::BulkLoadInfoResponse response;
+        MockClosure closure;
+        brpc::Controller cntl;
+        tablet.GetBulkLoadInfo(&cntl, &request, &response, &closure);
+        ASSERT_EQ(0, response.code()) << response.msg();
+        LOG(INFO) << "info: " << response.DebugString();
+    }
+
+    // hash test
+    {
+        const uint32_t SEED = 0xe17a1465;
+        std::vector<std::string> keys = {"2|1", "1|1", "1|4", "2/6", "4", "6", "1"};
+        for (auto key : keys) {
+            LOG(INFO) << "hash(" << key << ") = " << ::fedb::base::hash(key.data(), key.size(), SEED) % 8;
+        }
+    }
+
+    // handle a bulk load request
+    {
+        ::fedb::api::BulkLoadRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        auto index1 = request.add_index_region();
+        auto seg1 = index1->add_segment();
+        seg1->add_key_entries()->add_key_entry()->add_time_entry();
+        request.add_index_region();
+        ::fedb::api::GeneralResponse response;
+        MockClosure closure;
+        brpc::Controller cntl;
+        cntl.request_attachment().append("123");
+        tablet.BulkLoad(&cntl, &request, &response, &closure);
+        ASSERT_EQ(0, response.code()) << response.msg();
+    }
+
+    // get data from the table
 }
 
 }  // namespace tablet
