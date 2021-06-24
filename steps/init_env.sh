@@ -17,9 +17,14 @@
 # init_env.sh
 
 cd /depends && tar -zxf thirdparty.tar.gz
-curl -SL -o libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta16/libzetasql-0.2.0-beta16-linux-x86_64.tar.gz
-tar xzf libzetasql.tar.gz -C  thirdparty --strip-components 1
-rm libzetasql.tar.gz
+if [[ ! -d thirdparty && -r thirdparty.tar.gz ]]; then
+    mkdir -p thirdparty
+    tar xzf thirdparty.tar.gz -C thirdparty --strip-components=1
+    curl -SL -o libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta16/libzetasql-0.2.0-beta16-linux-x86_64.tar.gz
+    tar xzf libzetasql.tar.gz -C  thirdparty --strip-components 1
+    rm libzetasql.tar.gz
+fi
+
 
 rm -rf thirdparty/hybridse
 mkdir -p thirdparty/hybridse
@@ -29,7 +34,7 @@ PACKAGE_NAME=hybridse-0.1.5-pre-1-linux-x86_64
 curl -LO https://github.com/jingchen2222/HybridSE/releases/download/v0.1.5-pre-1/${PACKAGE_NAME}.tar.gz
 tar zxf ${PACKAGE_NAME}.tar.gz > /dev/null
 mv ${PACKAGE_NAME}/* thirdparty/hybridse
-
+ls thirdparty/include
 cd -
 ln -sf /depends/thirdparty thirdparty
 ln -sf /depends/thirdsrc thirdsrc

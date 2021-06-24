@@ -114,8 +114,10 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 add_definitions(${LLVM_DEFINITIONS})
-find_package(SWIG REQUIRED)
-include(UseSWIG)
+if(UNIX AND NOT APPLE AND NOT DEFINED SWIG_DIR)
+    # TODO: swig 4.0.1 compiled is not portable, check 'swig -swiglib'
+    set(SWIG_DIR ${CMAKE_SOURCE_DIR}/thirdparty/share/swig/4.0.1)
+endif()
 find_package(absl REQUIRED)
 
 find_package(GTest 1.10 EXACT REQUIRED)
