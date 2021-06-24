@@ -14,20 +14,19 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_SDK_BATCH_REQUEST_RESULT_SET_SQL_H_
 #define SRC_SDK_BATCH_REQUEST_RESULT_SET_SQL_H_
 
 #include <memory>
-#include <string>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
-#include "sdk/codec_sdk.h"
 #include "proto/tablet.pb.h"
 #include "sdk/base_impl.h"
+#include "sdk/codec_sdk.h"
 #include "sdk/result_set.h"
 
 namespace openmldb {
@@ -35,9 +34,8 @@ namespace sdk {
 
 class SQLBatchRequestResultSet : public ::hybridse::sdk::ResultSet {
  public:
-    SQLBatchRequestResultSet(
-        const std::shared_ptr<::openmldb::api::SQLBatchRequestQueryResponse>& response,
-        const std::shared_ptr<brpc::Controller>& cntl);
+    SQLBatchRequestResultSet(const std::shared_ptr<::openmldb::api::SQLBatchRequestQueryResponse>& response,
+                             const std::shared_ptr<brpc::Controller>& cntl);
     ~SQLBatchRequestResultSet();
 
     bool Init();
@@ -66,8 +64,7 @@ class SQLBatchRequestResultSet : public ::hybridse::sdk::ResultSet {
 
     bool GetDate(uint32_t index, int32_t* date);
 
-    bool GetDate(uint32_t index, int32_t* year, int32_t* month,
-                         int32_t* day);
+    bool GetDate(uint32_t index, int32_t* year, int32_t* month, int32_t* day);
 
     bool GetTime(uint32_t index, int64_t* mills);
 
@@ -102,7 +99,6 @@ class SQLBatchRequestResultSet : public ::hybridse::sdk::ResultSet {
     butil::IOBuf common_buf_;
     std::shared_ptr<brpc::Controller> cntl_;
 };
-
 
 }  // namespace sdk
 }  // namespace openmldb

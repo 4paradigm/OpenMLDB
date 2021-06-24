@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "codec/sdk_codec.h"
 
 #include <set>
@@ -53,10 +52,7 @@ SDKCodec::SDKCodec(const ::openmldb::nameserver::TableInfo& table_info)
 }
 
 SDKCodec::SDKCodec(const ::openmldb::api::TableMeta& table_info)
-    : format_version_(table_info.format_version()),
-      base_schema_size_(0),
-      modify_times_(0),
-      last_ver_(1) {
+    : format_version_(table_info.format_version()), base_schema_size_(0), modify_times_(0), last_ver_(1) {
     if (table_info.column_desc_size() > 0) {
         ParseColumnDesc(table_info.column_desc());
     }
@@ -121,7 +117,7 @@ void SDKCodec::ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_sch
         int32_t times = pair.field_count();
         std::shared_ptr<Schema> base_schema = std::make_shared<Schema>(schema_);
         int remain_size = times - schema_.size();
-        if (remain_size < 0 || remain_size > add_schema.size())  {
+        if (remain_size < 0 || remain_size > add_schema.size()) {
             continue;
         }
         for (int i = 0; i < remain_size; i++) {
@@ -133,9 +129,8 @@ void SDKCodec::ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_sch
     }
 }
 
-int SDKCodec::EncodeDimension(
-    const std::map<std::string, std::string>& raw_data, uint32_t pid_num,
-    std::map<uint32_t, Dimension>* dimensions) {
+int SDKCodec::EncodeDimension(const std::map<std::string, std::string>& raw_data, uint32_t pid_num,
+                              std::map<uint32_t, Dimension>* dimensions) {
     uint32_t dimension_idx = 0;
     for (const auto& column_key : index_) {
         if (column_key.flag() != 0) {
@@ -172,8 +167,7 @@ int SDKCodec::EncodeDimension(
     return 0;
 }
 
-int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
-                              uint32_t pid_num,
+int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data, uint32_t pid_num,
                               std::map<uint32_t, Dimension>* dimensions) {
     uint32_t dimension_idx = 0;
     for (const auto& column_key : index_) {
@@ -184,8 +178,7 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
         std::string key;
         for (const auto& name : column_key.col_name()) {
             auto iter = schema_idx_map_.find(name);
-            if (iter == schema_idx_map_.end() ||
-                iter->second >= raw_data.size()) {
+            if (iter == schema_idx_map_.end() || iter->second >= raw_data.size()) {
                 return -1;
             }
             if (!key.empty()) {
@@ -196,8 +189,7 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
         if (key.empty()) {
             const std::string& name = column_key.index_name();
             auto iter = schema_idx_map_.find(name);
-            if (iter == schema_idx_map_.end() ||
-                iter->second >= raw_data.size()) {
+            if (iter == schema_idx_map_.end() || iter->second >= raw_data.size()) {
                 return -1;
             }
             key = raw_data[iter->second];
@@ -212,8 +204,8 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
     }
     return 0;
 }
-int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
-                          std::vector<uint64_t>* ts_dimensions, uint64_t default_ts) {
+int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data, std::vector<uint64_t>* ts_dimensions,
+                                uint64_t default_ts) {
     for (auto idx : ts_idx_) {
         if (idx >= raw_data.size()) {
             return -1;
@@ -230,8 +222,7 @@ int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
     }
     return 0;
 }
-int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
-                                std::vector<uint64_t>* ts_dimensions) {
+int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data, std::vector<uint64_t>* ts_dimensions) {
     for (auto idx : ts_idx_) {
         if (idx >= raw_data.size()) {
             return -1;
@@ -245,8 +236,7 @@ int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
     return 0;
 }
 
-int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
-                        std::string* row) {
+int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data, std::string* row) {
     auto ret = RowCodec::EncodeRow(raw_data, schema_, last_ver_, *row);
     return ret.code;
 }
@@ -280,8 +270,7 @@ std::vector<std::string> SDKCodec::GetColNames() {
     return cols;
 }
 
-int SDKCodec::CombinePartitionKey(const std::vector<std::string>& raw_data,
-                                  std::string* key) {
+int SDKCodec::CombinePartitionKey(const std::vector<std::string>& raw_data, std::string* key) {
     if (partition_col_idx_.empty()) {
         return -1;
     }

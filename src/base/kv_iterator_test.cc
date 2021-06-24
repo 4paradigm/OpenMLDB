@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "base/kv_iterator.h"
 
 #include <iostream>
@@ -45,8 +44,7 @@ TEST_F(KvIteratorTest, Iterator_ONE) {
     std::string* pairs = response->mutable_pairs();
     pairs->resize(17);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    ::openmldb::storage::DataBlock* db1 =
-        new ::openmldb::storage::DataBlock(1, "hello", 5);
+    ::openmldb::storage::DataBlock* db1 = new ::openmldb::storage::DataBlock(1, "hello", 5);
     ::openmldb::codec::Encode(9527, db1, data, 0);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
@@ -62,10 +60,8 @@ TEST_F(KvIteratorTest, Iterator) {
     std::string* pairs = response->mutable_pairs();
     pairs->resize(34);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    ::openmldb::storage::DataBlock* db1 =
-        new ::openmldb::storage::DataBlock(1, "hello", 5);
-    ::openmldb::storage::DataBlock* db2 =
-        new ::openmldb::storage::DataBlock(1, "hell1", 5);
+    ::openmldb::storage::DataBlock* db1 = new ::openmldb::storage::DataBlock(1, "hello", 5);
+    ::openmldb::storage::DataBlock* db2 = new ::openmldb::storage::DataBlock(1, "hell1", 5);
     ::openmldb::codec::Encode(9527, db1, data, 0);
     ::openmldb::codec::Encode(9528, db2, data, 17);
     KvIterator kv_it(response);
@@ -81,16 +77,13 @@ TEST_F(KvIteratorTest, Iterator) {
 }
 
 TEST_F(KvIteratorTest, HasPK) {
-    ::openmldb::api::TraverseResponse* response =
-        new ::openmldb::api::TraverseResponse();
+    ::openmldb::api::TraverseResponse* response = new ::openmldb::api::TraverseResponse();
 
     std::string* pairs = response->mutable_pairs();
     pairs->resize(52);
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    ::openmldb::storage::DataBlock* db1 =
-        new ::openmldb::storage::DataBlock(1, "hello", 5);
-    ::openmldb::storage::DataBlock* db2 =
-        new ::openmldb::storage::DataBlock(1, "hell1", 5);
+    ::openmldb::storage::DataBlock* db1 = new ::openmldb::storage::DataBlock(1, "hello", 5);
+    ::openmldb::storage::DataBlock* db2 = new ::openmldb::storage::DataBlock(1, "hell1", 5);
     ::openmldb::codec::EncodeFull("test1", 9527, db1, data, 0);
     ::openmldb::codec::EncodeFull("test2", 9528, db2, data, 26);
     KvIterator kv_it(response);

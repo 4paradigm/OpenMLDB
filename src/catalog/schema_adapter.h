@@ -14,46 +14,40 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CATALOG_SCHEMA_ADAPTER_H_
 #define SRC_CATALOG_SCHEMA_ADAPTER_H_
 
+#include <memory>
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <memory>
 
-#include "glog/logging.h"
-#include "proto/common.pb.h"
-#include "vm/catalog.h"
-#include "proto/tablet.pb.h"
 #include "catalog/base.h"
+#include "glog/logging.h"
 #include "node/node_enum.h"
+#include "proto/common.pb.h"
+#include "proto/tablet.pb.h"
+#include "vm/catalog.h"
 
 namespace openmldb {
 namespace catalog {
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>
-    RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>
-    RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 
-
-static const std::unordered_map<::openmldb::type::TTLType, ::hybridse::type::TTLType>
-    TTL_TYPE_MAP = {{::openmldb::type::kAbsoluteTime, ::hybridse::type::kTTLTimeLive},
-                    {::openmldb::type::kLatestTime, ::hybridse::type::kTTLCountLive},
-                    {::openmldb::type::kAbsAndLat, ::hybridse::type::kTTLTimeLiveAndCountLive},
-                    {::openmldb::type::kAbsOrLat, ::hybridse::type::kTTLTimeLiveOrCountLive}};
+static const std::unordered_map<::openmldb::type::TTLType, ::hybridse::type::TTLType> TTL_TYPE_MAP = {
+    {::openmldb::type::kAbsoluteTime, ::hybridse::type::kTTLTimeLive},
+    {::openmldb::type::kLatestTime, ::hybridse::type::kTTLCountLive},
+    {::openmldb::type::kAbsAndLat, ::hybridse::type::kTTLTimeLiveAndCountLive},
+    {::openmldb::type::kAbsOrLat, ::hybridse::type::kTTLTimeLiveOrCountLive}};
 
 class SchemaAdapter {
  public:
     SchemaAdapter() {}
     ~SchemaAdapter() {}
 
-    static bool ConvertSchemaAndIndex(const ::hybridse::vm::Schema& sql_schema,
-                                      const ::hybridse::vm::IndexList& index,
-                                      RtiDBSchema* schema_output,
-                                      RtiDBIndex* index_output) {
+    static bool ConvertSchemaAndIndex(const ::hybridse::vm::Schema& sql_schema, const ::hybridse::vm::IndexList& index,
+                                      RtiDBSchema* schema_output, RtiDBIndex* index_output) {
         if (nullptr == schema_output || nullptr == index_output) {
             LOG(WARNING) << "schema or index output ptr is null";
             return false;
@@ -82,8 +76,7 @@ class SchemaAdapter {
         return true;
     }
 
-    static bool ConvertIndex(const RtiDBIndex& index,
-                             ::hybridse::vm::IndexList* output) {
+    static bool ConvertIndex(const RtiDBIndex& index, ::hybridse::vm::IndexList* output) {
         if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";
             return false;
@@ -101,7 +94,7 @@ class SchemaAdapter {
                 auto ttl_type = key.ttl().ttl_type();
                 auto it = TTL_TYPE_MAP.find(ttl_type);
                 if (it == TTL_TYPE_MAP.end()) {
-                    LOG(WARNING) << "not found " <<  ::openmldb::type::TTLType_Name(ttl_type);
+                    LOG(WARNING) << "not found " << ::openmldb::type::TTLType_Name(ttl_type);
                     return false;
                 }
                 index->set_ttl_type(it->second);
@@ -119,8 +112,7 @@ class SchemaAdapter {
     }
 
     static bool SubSchema(const ::hybridse::vm::Schema* schema,
-            const ::google::protobuf::RepeatedField<uint32_t>& projection,
-            hybridse::vm::Schema* output) {
+                          const ::google::protobuf::RepeatedField<uint32_t>& projection, hybridse::vm::Schema* output) {
         if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";
             return false;
@@ -133,8 +125,7 @@ class SchemaAdapter {
         return true;
     }
 
-    static bool ConvertSchema(const RtiDBSchema& fedb_schema,
-                              ::hybridse::vm::Schema* output) {
+    static bool ConvertSchema(const RtiDBSchema& fedb_schema, ::hybridse::vm::Schema* output) {
         if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";
             return false;
@@ -179,18 +170,15 @@ class SchemaAdapter {
                     new_column->set_type(::hybridse::type::kVarchar);
                     break;
                 default:
-                    LOG(WARNING)
-                        << "type "
-                        << ::openmldb::type::DataType_Name(column.data_type())
-                        << " is not supported";
+                    LOG(WARNING) << "type " << ::openmldb::type::DataType_Name(column.data_type())
+                                 << " is not supported";
                     return false;
             }
         }
         return true;
     }
 
-    static bool ConvertSchema(const ::hybridse::vm::Schema& hybridse_schema,
-            RtiDBSchema* fedb_schema) {
+    static bool ConvertSchema(const ::hybridse::vm::Schema& hybridse_schema, RtiDBSchema* fedb_schema) {
         if (fedb_schema == nullptr) {
             LOG(WARNING) << "fedb_schema is null";
             return false;
@@ -205,8 +193,7 @@ class SchemaAdapter {
         return true;
     }
 
-    static bool ConvertType(hybridse::node::DataType hybridse_type,
-            openmldb::type::DataType* fedb_type) {
+    static bool ConvertType(hybridse::node::DataType hybridse_type, openmldb::type::DataType* fedb_type) {
         if (fedb_type == nullptr) {
             return false;
         }
@@ -245,8 +232,7 @@ class SchemaAdapter {
         return true;
     }
 
-    static bool ConvertType(const hybridse::type::ColumnDef& sql_column,
-            openmldb::common::ColumnDesc* fedb_column) {
+    static bool ConvertType(const hybridse::type::ColumnDef& sql_column, openmldb::common::ColumnDesc* fedb_column) {
         if (fedb_column == nullptr) {
             LOG(WARNING) << "fedb_column is null";
             return false;
@@ -283,16 +269,14 @@ class SchemaAdapter {
                 fedb_column->set_data_type(openmldb::type::kVarchar);
                 break;
             default:
-                LOG(WARNING) << "type "
-                    << hybridse::type::Type_Name(sql_column.type())
-                    << " is not supported";
+                LOG(WARNING) << "type " << hybridse::type::Type_Name(sql_column.type()) << " is not supported";
                 return false;
         }
         return true;
     }
 
     static std::shared_ptr<hybridse::sdk::ProcedureInfo> ConvertProcedureInfo(
-            const openmldb::api::ProcedureInfo& sp_info) {
+        const openmldb::api::ProcedureInfo& sp_info) {
         ::hybridse::vm::Schema hybridse_in_schema;
         if (!openmldb::catalog::SchemaAdapter::ConvertSchema(sp_info.input_schema(), &hybridse_in_schema)) {
             LOG(WARNING) << "fail to convert input schema";
@@ -311,9 +295,9 @@ class SchemaAdapter {
             table_vec.push_back(table);
         }
         std::shared_ptr<openmldb::catalog::ProcedureInfoImpl> sp_info_impl =
-            std::make_shared<openmldb::catalog::ProcedureInfoImpl>(
-                    sp_info.db_name(), sp_info.sp_name(), sp_info.sql(), input_schema, output_schema,
-                    table_vec, sp_info.main_table());
+            std::make_shared<openmldb::catalog::ProcedureInfoImpl>(sp_info.db_name(), sp_info.sp_name(), sp_info.sql(),
+                                                                   input_schema, output_schema, table_vec,
+                                                                   sp_info.main_table());
         return sp_info_impl;
     }
 };

@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-
 #pragma once
 
 #include <string>
 #include <vector>
+
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 
@@ -27,12 +27,9 @@ namespace catalog {
 
 class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
  public:
-     ProcedureInfoImpl(const std::string& db_name, const std::string& sp_name,
-             const std::string& sql,
-             const ::hybridse::sdk::SchemaImpl& input_schema,
-             const ::hybridse::sdk::SchemaImpl& output_schema,
-             const std::vector<std::string>& tables,
-             const std::string& main_table)
+    ProcedureInfoImpl(const std::string& db_name, const std::string& sp_name, const std::string& sql,
+                      const ::hybridse::sdk::SchemaImpl& input_schema, const ::hybridse::sdk::SchemaImpl& output_schema,
+                      const std::vector<std::string>& tables, const std::string& main_table)
         : db_name_(db_name),
           sp_name_(sp_name),
           sql_(sql),

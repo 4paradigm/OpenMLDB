@@ -18,14 +18,15 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "storage/table.h"
 
 namespace openmldb {
 namespace tablet {
 
-__attribute__((unused)) static bool SeekWithCount(
-    ::openmldb::storage::TableIterator* it, const uint64_t time,
-    const ::openmldb::api::GetType& type, uint32_t max_cnt, uint32_t* cnt) {
+__attribute__((unused)) static bool SeekWithCount(::openmldb::storage::TableIterator* it, const uint64_t time,
+                                                  const ::openmldb::api::GetType& type, uint32_t max_cnt,
+                                                  uint32_t* cnt) {
     if (it == NULL) {
         return false;
     }
@@ -60,8 +61,7 @@ __attribute__((unused)) static bool SeekWithCount(
     return false;
 }
 
-__attribute__((unused)) static bool Seek(::openmldb::storage::TableIterator* it,
-                                         const uint64_t time,
+__attribute__((unused)) static bool Seek(::openmldb::storage::TableIterator* it, const uint64_t time,
                                          const ::openmldb::api::GetType& type) {
     if (it == NULL) {
         return false;
@@ -88,10 +88,9 @@ __attribute__((unused)) static bool Seek(::openmldb::storage::TableIterator* it,
     return false;
 }
 
-__attribute__((unused)) static int GetIterator(
-    std::shared_ptr<::openmldb::storage::Table> table, const std::string& pk, int index,
-    std::shared_ptr<::openmldb::storage::TableIterator>* it,
-    std::shared_ptr<::openmldb::storage::Ticket>* ticket) {
+__attribute__((unused)) static int GetIterator(std::shared_ptr<::openmldb::storage::Table> table, const std::string& pk,
+                                               int index, std::shared_ptr<::openmldb::storage::TableIterator>* it,
+                                               std::shared_ptr<::openmldb::storage::Ticket>* ticket) {
     if (it == NULL || ticket == NULL) {
         return -1;
     }
@@ -116,8 +115,8 @@ struct QueryIt {
 
 class CombineIterator {
  public:
-    CombineIterator(std::vector<QueryIt> q_its, uint64_t start_time,
-                    ::openmldb::api::GetType st_type, const ::openmldb::storage::TTLSt& expired_value);
+    CombineIterator(std::vector<QueryIt> q_its, uint64_t start_time, ::openmldb::api::GetType st_type,
+                    const ::openmldb::storage::TTLSt& expired_value);
     void SeekToFirst();
     void Next();
     bool Valid();

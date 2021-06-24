@@ -18,13 +18,12 @@
 
 #include <memory>
 #include <string>
+
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "storage/table.h"
 
-typedef ::openmldb::base::Skiplist<uint32_t, uint64_t,
-                                ::openmldb::base::DefaultComparator>
-    LogParts;
+typedef ::openmldb::base::Skiplist<uint32_t, uint64_t, ::openmldb::base::DefaultComparator> LogParts;
 
 namespace openmldb {
 namespace storage {

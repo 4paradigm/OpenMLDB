@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-
 #include "base/server_name.h"
+
 #include "gtest/gtest.h"
 
 DECLARE_string(data_dir);

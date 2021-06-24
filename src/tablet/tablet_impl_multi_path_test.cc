@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-
 #include <fcntl.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <sys/stat.h>
+
 #include "base/file_util.h"
+#include "base/glog_wapper.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"
 #include "codec/flat_array.h"
@@ -29,7 +30,6 @@
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
-#include "base/glog_wapper.h"
 #include "proto/tablet.pb.h"
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
@@ -59,12 +59,12 @@ class MockClosure : public ::google::protobuf::Closure {
 using ::openmldb::api::TableStatus;
 
 inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1); // NOLINT
+    return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
 void CreateBaseTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
-                      const ::openmldb::type::TTLType& ttl_type, uint64_t ttl,
-                      uint64_t start_ts, uint32_t tid, uint32_t pid) {
+                      const ::openmldb::type::TTLType& ttl_type, uint64_t ttl, uint64_t start_ts, uint32_t tid,
+                      uint32_t pid) {
     ::openmldb::api::CreateTableRequest crequest;
     ::openmldb::api::TableMeta* table_meta = crequest.mutable_table_meta();
     ::openmldb::common::TTLSt ttl_st;
@@ -166,10 +166,9 @@ void CreateBaseTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
     ASSERT_EQ(0, drs.code());
 }
 
-void CreateTableWithoutDBRootPath(
-    ::openmldb::tablet::TabletImpl& tablet,  // NOLINT
-    const ::openmldb::type::TTLType& ttl_type, uint64_t ttl, uint64_t start_ts,
-    uint32_t tid, uint32_t pid) {
+void CreateTableWithoutDBRootPath(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
+                                  const ::openmldb::type::TTLType& ttl_type, uint64_t ttl, uint64_t start_ts,
+                                  uint32_t tid, uint32_t pid) {
     ::openmldb::api::CreateTableRequest crequest;
     ::openmldb::api::TableMeta* table_meta = crequest.mutable_table_meta();
     table_meta->set_name("table");
@@ -199,10 +198,8 @@ void CreateTableWithoutDBRootPath(
 
 // create table use advance ttl
 void CreateAdvanceTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
-                         const ::openmldb::type::TTLType& ttl_type,
-                         uint64_t abs_ttl, uint64_t lat_ttl, uint64_t start_ts,
-                         uint32_t tid, uint32_t pid,
-                         uint64_t col_abs_ttl, uint64_t col_lat_ttl) {
+                         const ::openmldb::type::TTLType& ttl_type, uint64_t abs_ttl, uint64_t lat_ttl,
+                         uint64_t start_ts, uint32_t tid, uint32_t pid, uint64_t col_abs_ttl, uint64_t col_lat_ttl) {
     ::openmldb::api::CreateTableRequest crequest;
     ::openmldb::api::TableMeta* table_meta = crequest.mutable_table_meta();
     table_meta->set_name("table");
@@ -248,10 +245,8 @@ void CreateAdvanceTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
     int count2 = 0;
     uint64_t time = 0;
     for (int i = 0; i < 1000; i++) {
-        uint64_t expire_time_ts1 =
-            ::baidu::common::timer::get_micros() / 1000 - abs_ttl * (60 * 1000);
-        uint64_t expire_time_ts2 = ::baidu::common::timer::get_micros() / 1000 -
-                                   col_abs_ttl * (60 * 1000);
+        uint64_t expire_time_ts1 = ::baidu::common::timer::get_micros() / 1000 - abs_ttl * (60 * 1000);
+        uint64_t expire_time_ts2 = ::baidu::common::timer::get_micros() / 1000 - col_abs_ttl * (60 * 1000);
         ::openmldb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(pid);
@@ -286,8 +281,7 @@ void CreateAdvanceTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
             ::openmldb::api::GetResponse response;
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
-            if (time <= expire_time_ts1 &&
-                ttl_type == ::openmldb::type::TTLType::kAbsOrLat) {
+            if (time <= expire_time_ts1 && ttl_type == ::openmldb::type::TTLType::kAbsOrLat) {
                 ASSERT_EQ(307, response.code());
             } else {
                 ++count1;
@@ -306,8 +300,7 @@ void CreateAdvanceTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
             ::openmldb::api::GetResponse response;
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
-            if (time <= expire_time_ts2 &&
-                ttl_type == ::openmldb::type::TTLType::kAbsOrLat) {
+            if (time <= expire_time_ts2 && ttl_type == ::openmldb::type::TTLType::kAbsOrLat) {
                 ASSERT_EQ(307, response.code());
             } else {
                 ++count2;
@@ -336,15 +329,9 @@ TEST_F(TabletMultiPathTest, CreateWithoutDBPath) {
     FLAGS_db_root_path = "";
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
-    CreateTableWithoutDBRootPath(tablet_impl,
-                                 ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000,
-                                 100, 0);
-    CreateTableWithoutDBRootPath(tablet_impl,
-                                 ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000,
-                                 101, 0);
-    CreateTableWithoutDBRootPath(tablet_impl,
-                                 ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000,
-                                 102, 0);
+    CreateTableWithoutDBRootPath(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000, 100, 0);
+    CreateTableWithoutDBRootPath(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000, 101, 0);
+    CreateTableWithoutDBRootPath(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000, 102, 0);
     FLAGS_db_root_path = old_db_path;
 }
 
@@ -352,8 +339,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0,
-                         1000, i + 1, i % 10);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000, i + 1, i % 10);
     }
 }
 
@@ -361,8 +347,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_latest) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 100; i < 200; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10,
-                         1000, i + 1, i % 10);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10);
     }
 }
 
@@ -370,8 +355,7 @@ TEST_F(TabletMultiPathTest, HDD_Test_read_write) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10,
-                         1000, i + 1, i % 10);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10);
     }
 }
 
@@ -379,8 +363,7 @@ TEST_F(TabletMultiPathTest, SSD_Test_read_write) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10,
-                         1000, i + 1, i % 10);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10);
     }
 }
 
@@ -389,9 +372,8 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_abs_and_lat) {
     tablet_impl.Init("");
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (uint32_t i = 20; i < 30; i++) {
-        CreateAdvanceTablet(tablet_impl, ::openmldb::type::TTLType::kAbsAndLat,
-                            2000, 500, now - 3000 * (60 * 1000) - 1000, i + 1,
-                            i % 10, 3000, 500);
+        CreateAdvanceTablet(tablet_impl, ::openmldb::type::TTLType::kAbsAndLat, 2000, 500,
+                            now - 3000 * (60 * 1000) - 1000, i + 1, i % 10, 3000, 500);
     }
 }
 
@@ -400,9 +382,8 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_abs_or_lat) {
     tablet_impl.Init("");
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (uint32_t i = 30; i < 40; i++) {
-        CreateAdvanceTablet(tablet_impl, ::openmldb::type::TTLType::kAbsOrLat, 2000,
-                            500, now - 3000 * (60 * 1000) - 1000, i + 1, i % 10,
-                            1000, 500);
+        CreateAdvanceTablet(tablet_impl, ::openmldb::type::TTLType::kAbsOrLat, 2000, 500,
+                            now - 3000 * (60 * 1000) - 1000, i + 1, i % 10, 1000, 500);
     }
 }
 

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEC_CODEC_H_
 #define SRC_CODEC_CODEC_H_
 
@@ -58,8 +57,7 @@ class RowProject {
 
     bool Init();
 
-    bool Project(const int8_t* row_ptr, uint32_t row_size, int8_t** out_ptr,
-                 uint32_t* out_size);
+    bool Project(const int8_t* row_ptr, uint32_t row_size, int8_t** out_ptr, uint32_t* out_size);
 
     uint32_t GetMaxIdx() { return max_idx_; }
 
@@ -139,9 +137,7 @@ class RowView {
     bool Reset(const int8_t* row, uint32_t size);
     bool Reset(const int8_t* row);
 
-    static uint8_t GetSchemaVersion(const int8_t* row) {
-        return *(reinterpret_cast<const uint8_t*>(row + 1));
-    }
+    static uint8_t GetSchemaVersion(const int8_t* row) { return *(reinterpret_cast<const uint8_t*>(row + 1)); }
 
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
@@ -164,14 +160,11 @@ class RowView {
         return *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
     }
 
-    int32_t GetValue(const int8_t* row, uint32_t idx,
-                     ::openmldb::type::DataType type, void* val);
+    int32_t GetValue(const int8_t* row, uint32_t idx, ::openmldb::type::DataType type, void* val);
 
-    int32_t GetInteger(const int8_t* row, uint32_t idx,
-                       ::openmldb::type::DataType type, int64_t* val);
+    int32_t GetInteger(const int8_t* row, uint32_t idx, ::openmldb::type::DataType type, int64_t* val);
 
-    int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
-                     uint32_t* length);
+    int32_t GetValue(const int8_t* row, uint32_t idx, char** val, uint32_t* length);
 
     int32_t GetStrValue(const int8_t* row, uint32_t idx, std::string* val);
     int32_t GetStrValue(uint32_t idx, std::string* val);
@@ -196,8 +189,8 @@ namespace v1 {
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 // calc the total row size with primary_size, str field count and str_size
-inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
-                                uint32_t str_size, uint32_t* str_addr_space) {
+inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt, uint32_t str_size,
+                                uint32_t* str_addr_space) {
     uint32_t total_size = primary_size + str_size;
     if (total_size + str_field_cnt <= UINT8_MAX) {
         *str_addr_space = 1;
@@ -213,8 +206,7 @@ inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
         return total_size + str_field_cnt * 4;
     }
 }
-inline int32_t AppendInt16(int8_t* buf_ptr, uint32_t buf_size, int16_t val,
-                           uint32_t field_offset) {
+inline int32_t AppendInt16(int8_t* buf_ptr, uint32_t buf_size, int16_t val, uint32_t field_offset) {
     if (field_offset + 2 > buf_size) {
         return -1;
     }
@@ -222,8 +214,7 @@ inline int32_t AppendInt16(int8_t* buf_ptr, uint32_t buf_size, int16_t val,
     return 4;
 }
 
-inline int32_t AppendFloat(int8_t* buf_ptr, uint32_t buf_size, float val,
-                           uint32_t field_offset) {
+inline int32_t AppendFloat(int8_t* buf_ptr, uint32_t buf_size, float val, uint32_t field_offset) {
     if (field_offset + 4 > buf_size) {
         return -1;
     }
@@ -231,8 +222,7 @@ inline int32_t AppendFloat(int8_t* buf_ptr, uint32_t buf_size, float val,
     return 4;
 }
 
-inline int32_t AppendInt32(int8_t* buf_ptr, uint32_t buf_size, int32_t val,
-                           uint32_t field_offset) {
+inline int32_t AppendInt32(int8_t* buf_ptr, uint32_t buf_size, int32_t val, uint32_t field_offset) {
     if (field_offset + 4 > buf_size) {
         return -1;
     }
@@ -240,8 +230,7 @@ inline int32_t AppendInt32(int8_t* buf_ptr, uint32_t buf_size, int32_t val,
     return 4;
 }
 
-inline int32_t AppendInt64(int8_t* buf_ptr, uint32_t buf_size, int64_t val,
-                           uint32_t field_offset) {
+inline int32_t AppendInt64(int8_t* buf_ptr, uint32_t buf_size, int64_t val, uint32_t field_offset) {
     if (field_offset + 8 > buf_size) {
         return -1;
     }
@@ -249,8 +238,7 @@ inline int32_t AppendInt64(int8_t* buf_ptr, uint32_t buf_size, int64_t val,
     return 8;
 }
 
-inline int32_t AppendDouble(int8_t* buf_ptr, uint32_t buf_size, double val,
-                            uint32_t field_offset) {
+inline int32_t AppendDouble(int8_t* buf_ptr, uint32_t buf_size, double val, uint32_t field_offset) {
     if (field_offset + 8 > buf_size) {
         return -1;
     }
@@ -259,10 +247,8 @@ inline int32_t AppendDouble(int8_t* buf_ptr, uint32_t buf_size, double val,
     return 8;
 }
 
-int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, int8_t* val,
-                     uint32_t size, uint32_t str_start_offset,
-                     uint32_t str_field_offset, uint32_t str_addr_space,
-                     uint32_t str_body_offset);
+int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, int8_t* val, uint32_t size, uint32_t str_start_offset,
+                     uint32_t str_field_offset, uint32_t str_addr_space, uint32_t str_body_offset);
 
 inline int8_t GetAddrSpace(uint32_t size) {
     if (size <= UINT8_MAX) {
@@ -302,12 +288,10 @@ inline double GetDoubleField(const int8_t* row, uint32_t offset) {
 }
 
 // native get string field method
-int32_t GetStrField(const int8_t* row, uint32_t str_field_offset,
-                    uint32_t next_str_field_offset, uint32_t str_start_offset,
-                    uint32_t addr_space, int8_t** data, uint32_t* size);
+int32_t GetStrField(const int8_t* row, uint32_t str_field_offset, uint32_t next_str_field_offset,
+                    uint32_t str_start_offset, uint32_t addr_space, int8_t** data, uint32_t* size);
 int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data);
-int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
-                  int32_t next_str_field_offset, int32_t str_start_offset,
+int32_t GetStrCol(int8_t* input, int32_t str_field_offset, int32_t next_str_field_offset, int32_t str_start_offset,
                   int32_t type_id, int8_t* data);
 }  // namespace v1
 

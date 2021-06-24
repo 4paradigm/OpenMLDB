@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_SET_H_
 #define SRC_BASE_SET_H_
 
-#include <mutex> // NOLINT
+#include <mutex>  // NOLINT
 #include <set>
 namespace openmldb {
 namespace base {

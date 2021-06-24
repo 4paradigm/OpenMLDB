@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "sdk/sql_insert_row.h"
 
 #include <stdint.h>
@@ -26,35 +25,31 @@
 namespace openmldb {
 namespace sdk {
 
-SQLInsertRows::SQLInsertRows(
-    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
-    std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
-    uint32_t default_str_length)
-    : table_info_(table_info),
-      schema_(schema),
-      default_map_(default_map),
-      default_str_length_(default_str_length) {}
+SQLInsertRows::SQLInsertRows(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
+                             std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
+                             uint32_t default_str_length)
+    : table_info_(table_info), schema_(schema), default_map_(default_map), default_str_length_(default_str_length) {}
 
 std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
     if (!rows_.empty() && !rows_.back()->IsComplete()) {
         return std::shared_ptr<SQLInsertRow>();
     }
-    std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(
-        table_info_, schema_, default_map_, default_str_length_);
+    std::shared_ptr<SQLInsertRow> row =
+        std::make_shared<SQLInsertRow>(table_info_, schema_, default_map_, default_str_length_);
     rows_.push_back(row);
     return row;
 }
 
-SQLInsertRow::SQLInsertRow(
-    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
-    std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
-    uint32_t default_string_length)
+SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
+                           std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
+                           uint32_t default_string_length)
     : table_info_(table_info),
       schema_(schema),
       default_map_(default_map),
       default_string_length_(default_string_length),
       rb_(table_info->column_desc()),
-      val_(), str_size_(0) {
+      val_(),
+      str_size_(0) {
     std::map<std::string, uint32_t> column_name_map;
     for (int idx = 0; idx < table_info_->column_desc_size(); idx++) {
         column_name_map.emplace(table_info_->column_desc(idx).name(), idx);
@@ -65,8 +60,7 @@ SQLInsertRow::SQLInsertRow(
         for (int idx = 0; idx < table_info_->column_key_size(); ++idx) {
             for (const auto& column : table_info_->column_key(idx).col_name()) {
                 index_map_[idx].push_back(column_name_map[column]);
-                raw_dimensions_[column_name_map[column]] =
-                    hybridse::codec::NONETOKEN;
+                raw_dimensions_[column_name_map[column]] = hybridse::codec::NONETOKEN;
             }
             if (!table_info_->column_key(idx).ts_name().empty()) {
                 ts_set_.insert(column_name_map[table_info_->column_key(idx).ts_name()]);
@@ -88,9 +82,7 @@ bool SQLInsertRow::Init(int str_length) {
     return true;
 }
 
-void SQLInsertRow::PackDimension(const std::string& val) {
-    raw_dimensions_[rb_.GetAppendPos()] = val;
-}
+void SQLInsertRow::PackDimension(const std::string& val) { raw_dimensions_[rb_.GetAppendPos()] = val; }
 
 bool SQLInsertRow::PackTs(uint64_t ts) {
     if (ts_set_.count(rb_.GetAppendPos())) {
@@ -100,8 +92,7 @@ bool SQLInsertRow::PackTs(uint64_t ts) {
     return false;
 }
 
-const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
-SQLInsertRow::GetDimensions() {
+const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& SQLInsertRow::GetDimensions() {
     if (!dimensions_.empty()) {
         return dimensions_;
     }
@@ -296,13 +287,9 @@ bool SQLInsertRow::AppendNULL() {
     return false;
 }
 
-bool SQLInsertRow::IsComplete() {
-    return rb_.IsComplete();
-}
+bool SQLInsertRow::IsComplete() { return rb_.IsComplete(); }
 
-bool SQLInsertRow::Build() {
-    return str_size_ == 0;
-}
+bool SQLInsertRow::Build() { return str_size_ == 0; }
 
 }  // namespace sdk
 }  // namespace openmldb

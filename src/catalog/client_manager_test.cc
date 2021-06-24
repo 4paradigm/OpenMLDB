@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "catalog/client_manager.h"
 
 #include "gtest/gtest.h"

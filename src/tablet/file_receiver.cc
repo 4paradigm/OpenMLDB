@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-
-
 #include "tablet/file_receiver.h"
+
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "base/strings.h"
@@ -24,14 +23,8 @@
 namespace openmldb {
 namespace tablet {
 
-FileReceiver::FileReceiver(const std::string& file_name,
-                           const std::string& dir_name, const std::string& path)
-    : file_name_(file_name),
-      dir_name_(dir_name),
-      path_(path),
-      size_(0),
-      block_id_(0),
-      file_(NULL) {}
+FileReceiver::FileReceiver(const std::string& file_name, const std::string& dir_name, const std::string& path)
+    : file_name_(file_name), dir_name_(dir_name), path_(path), size_(0), block_id_(0), file_(NULL) {}
 
 FileReceiver::~FileReceiver() {
     if (file_) fclose(file_);
@@ -79,8 +72,7 @@ int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
     size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
 #endif
     if (r < data.size()) {
-        PDLOG(WARNING, "write error. name %s%s", path_.c_str(),
-              file_name_.c_str());
+        PDLOG(WARNING, "write error. name %s%s", path_.c_str(), file_name_.c_str());
         return -1;
     }
     size_ += r;

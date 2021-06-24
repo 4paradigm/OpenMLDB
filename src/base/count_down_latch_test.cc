@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-
 #include "base/count_down_latch.h"
-#include "boost/bind.hpp"
-#include "gtest/gtest.h"
-#include "common/thread_pool.h"
 
+#include "boost/bind.hpp"
+#include "common/thread_pool.h"
+#include "gtest/gtest.h"
 
 using ::baidu::common::ThreadPool;
 

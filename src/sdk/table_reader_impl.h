@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_SDK_TABLE_READER_IMPL_H_
 #define SRC_SDK_TABLE_READER_IMPL_H_
 
@@ -38,9 +37,9 @@ class TableReaderImpl : public TableReader {
                                                    ::hybridse::sdk::Status* status);
 
     std::shared_ptr<openmldb::sdk::ScanFuture> AsyncScan(const std::string& db, const std::string& table,
-                                                      const std::string& key, int64_t st, int64_t et,
-                                                      const ScanOption& so, int64_t timeout_ms,
-                                                      ::hybridse::sdk::Status* status);
+                                                         const std::string& key, int64_t st, int64_t et,
+                                                         const ScanOption& so, int64_t timeout_ms,
+                                                         ::hybridse::sdk::Status* status);
 
  private:
     ClusterSDK* cluster_sdk_;

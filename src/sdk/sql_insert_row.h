@@ -62,10 +62,9 @@ static inline ::hybridse::sdk::DataType ConvertType(::openmldb::type::DataType t
 
 class SQLInsertRow {
  public:
-    explicit SQLInsertRow(
-        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
-        std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
-        uint32_t default_str_length);
+    explicit SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
+                          std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
+                          uint32_t default_str_length);
     ~SQLInsertRow() = default;
     bool Init(int str_length);
     bool AppendBool(bool val);
@@ -84,9 +83,7 @@ class SQLInsertRow {
     const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& GetDimensions();
     inline const std::vector<uint64_t>& GetTs() { return ts_; }
     inline const std::string& GetRow() { return val_; }
-    inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() {
-        return schema_;
-    }
+    inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() { return schema_; }
 
     const std::vector<uint32_t> GetHoleIdx() {
         std::vector<uint32_t> result;
@@ -101,15 +98,11 @@ class SQLInsertRow {
     bool AppendString(const char* string_buffer_var_name, uint32_t length);
 
  private:
-    bool DateToString(uint32_t year, uint32_t month, uint32_t day,
-                      std::string* date);
+    bool DateToString(uint32_t year, uint32_t month, uint32_t day, std::string* date);
     bool MakeDefault();
     bool PackTs(uint64_t ts);
     void PackDimension(const std::string& val);
-    inline bool IsDimension() {
-        return raw_dimensions_.find(rb_.GetAppendPos()) !=
-               raw_dimensions_.end();
-    }
+    inline bool IsDimension() { return raw_dimensions_.find(rb_.GetAppendPos()) != raw_dimensions_.end(); }
 
  private:
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info_;
@@ -129,8 +122,7 @@ class SQLInsertRow {
 class SQLInsertRows {
  public:
     SQLInsertRows(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
-                  std::shared_ptr<hybridse::sdk::Schema> schema,
-                  DefaultValueMap default_map, uint32_t str_size);
+                  std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map, uint32_t str_size);
     ~SQLInsertRows() = default;
     std::shared_ptr<SQLInsertRow> NewRow();
     inline uint32_t GetCnt() { return rows_.size(); }

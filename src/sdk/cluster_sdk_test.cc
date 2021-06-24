@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "sdk/cluster_sdk.h"
 
 #include <sched.h>
@@ -29,6 +28,7 @@
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "codec/schema_codec.h"
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
@@ -37,17 +37,14 @@
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
 #include "sdk/mini_cluster.h"
-#include "common/timer.h"
 
 namespace openmldb {
 namespace sdk {
 
 using ::openmldb::codec::SchemaCodec;
 
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>
-    RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>
-    RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }

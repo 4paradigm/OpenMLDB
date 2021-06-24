@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "storage/schema.h"
 
 #include <iostream>
@@ -22,8 +21,8 @@
 
 #include "base/glog_wapper.h"
 #include "base/slice.h"
-#include "gtest/gtest.h"
 #include "codec/schema_codec.h"
+#include "gtest/gtest.h"
 
 namespace openmldb {
 namespace storage {
@@ -204,7 +203,8 @@ TEST_F(SchemaTest, ColumnKey) {
     ASSERT_STREQ(index->GetName().c_str(), "key1");
 
     AssertIndex(*(table_index.GetIndex("key1")), "key1", "col1", "col6", 0, 10, 0, ::openmldb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key1", 0)), "key1", "col1", "col6", 0, 10, 0, ::openmldb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key1", 0)), "key1", "col1", "col6", 0, 10, 0,
+                ::openmldb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key2")), "key2", "col1", "col7", 1, 10, 0, ::openmldb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key3")), "key3", "col2", "col6", 0, 10, 0, ::openmldb::storage::kAbsoluteTime);
     auto inner_index = table_index.GetAllInnerIndex();
@@ -213,7 +213,7 @@ TEST_F(SchemaTest, ColumnKey) {
     std::vector<uint32_t> ts_vec0 = {0, 1};
     AssertInnerIndex(*(table_index.GetInnerIndex(0)), 0, index0, ts_vec0);
     std::vector<std::string> index1 = {"key3"};
-    std::vector<uint32_t> ts_vec1 = { 0 };
+    std::vector<uint32_t> ts_vec1 = {0};
     AssertInnerIndex(*(table_index.GetInnerIndex(1)), 1, index1, ts_vec1);
 }
 

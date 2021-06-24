@@ -15,16 +15,16 @@
  */
 
 #include "tablet/combine_iterator.h"
+
 #include <algorithm>
 #include <utility>
+
 #include "base/glog_wapper.h"
 
 namespace openmldb {
 namespace tablet {
 
-CombineIterator::CombineIterator(std::vector<QueryIt> q_its,
-                                 uint64_t start_time,
-                                 ::openmldb::api::GetType st_type,
+CombineIterator::CombineIterator(std::vector<QueryIt> q_its, uint64_t start_time, ::openmldb::api::GetType st_type,
                                  const ::openmldb::storage::TTLSt& expired_value)
     : q_its_(std::move(q_its)),
       st_(start_time),
@@ -35,11 +35,9 @@ CombineIterator::CombineIterator(std::vector<QueryIt> q_its,
       cur_qit_(nullptr) {}
 
 void CombineIterator::SeekToFirst() {
-    q_its_.erase(std::remove_if(q_its_.begin(), q_its_.end(),
-                                [](const QueryIt& q_it) {
-                                    return !q_it.table || !q_it.it;
-                                }),
-                 q_its_.end());
+    q_its_.erase(
+        std::remove_if(q_its_.begin(), q_its_.end(), [](const QueryIt& q_it) { return !q_it.table || !q_it.it; }),
+        q_its_.end());
     if (q_its_.empty()) {
         return;
     }
@@ -47,8 +45,7 @@ void CombineIterator::SeekToFirst() {
         st_type_ = ::openmldb::api::GetType::kSubKeyLe;
     }
     if (!::openmldb::api::GetType_IsValid(st_type_)) {
-        PDLOG(WARNING, "invalid st type %s",
-              ::openmldb::api::GetType_Name(st_type_).c_str());
+        PDLOG(WARNING, "invalid st type %s", ::openmldb::api::GetType_Name(st_type_).c_str());
         q_its_.clear();
         return;
     }
@@ -62,14 +59,12 @@ void CombineIterator::SeekToFirst() {
                         Seek(q_it.it.get(), st_, st_type_);
                         break;
                     case ::openmldb::storage::TTLType::kAbsAndLat:
-                        if (!SeekWithCount(q_it.it.get(), st_, st_type_,
-                                           expire_cnt_, &q_it.iter_pos)) {
+                        if (!SeekWithCount(q_it.it.get(), st_, st_type_, expire_cnt_, &q_it.iter_pos)) {
                             Seek(q_it.it.get(), st_, st_type_);
                         }
                         break;
                     default:
-                        SeekWithCount(q_it.it.get(), st_, st_type_, expire_cnt_,
-                                      &q_it.iter_pos);
+                        SeekWithCount(q_it.it.get(), st_, st_type_, expire_cnt_, &q_it.iter_pos);
                         break;
                 }
             }
@@ -127,10 +122,8 @@ void CombineIterator::SelectIterator() {
         }
     }
     if (need_delete) {
-        q_its_.erase(
-            std::remove_if(q_its_.begin(), q_its_.end(),
-                           [](const QueryIt& q_it) { return !q_it.it; }),
-            q_its_.end());
+        q_its_.erase(std::remove_if(q_its_.begin(), q_its_.end(), [](const QueryIt& q_it) { return !q_it.it; }),
+                     q_its_.end());
     }
 }
 
@@ -147,9 +140,7 @@ bool CombineIterator::Valid() { return cur_qit_ != nullptr; }
 
 uint64_t CombineIterator::GetTs() { return cur_qit_->it->GetKey(); }
 
-openmldb::base::Slice CombineIterator::GetValue() {
-    return cur_qit_->it->GetValue();
-}
+openmldb::base::Slice CombineIterator::GetValue() { return cur_qit_->it->GetValue(); }
 
 }  // namespace tablet
 }  // namespace openmldb

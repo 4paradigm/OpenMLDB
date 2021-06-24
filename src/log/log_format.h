@@ -41,11 +41,7 @@ enum RecordType {
     kEofType = 5
 };
 
-enum CompressType {
-    kNoCompress = 0,
-    kZlib = 1,
-    kSnappy = 2
-};
+enum CompressType { kNoCompress = 0, kZlib = 1, kSnappy = 2 };
 
 static const int kMaxRecordType = kEofType;
 
@@ -64,7 +60,7 @@ static const uint32_t kHeaderSizeForCompress = 4 + 4 + 1;
 // compress_len(4 bytes), compress_type(1 byte)
 static const uint32_t kHeaderSizeOfCompressBlock = 64;
 
-static const std::string ZLIB_COMPRESS_SUFFIX = ".zlib";  // NOLINT
+static const std::string ZLIB_COMPRESS_SUFFIX = ".zlib";      // NOLINT
 static const std::string SNAPPY_COMPRESS_SUFFIX = ".snappy";  // NOLINT
 
 }  // namespace log

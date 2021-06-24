@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
@@ -23,17 +22,17 @@
 
 #include <fcntl.h>
 #include <gflags/gflags.h>
-#include <stdio.h>
 #include <snappy.h>
+#include <stdio.h>
 #include <zlib.h>
+
+#include "base/endianconv.h"
+#include "base/glog_wapper.h"  // NOLINT
 #include "base/status.h"
 #include "base/strings.h"
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "log/log_format.h"
-#include "base/glog_wapper.h" // NOLINT
-#include "base/endianconv.h"
-
 
 using ::openmldb::base::Status;
 
@@ -46,8 +45,7 @@ namespace log {
 
 Reader::Reporter::~Reporter() {}
 
-Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
-               uint64_t initial_offset, bool compressed)
+Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum, uint64_t initial_offset, bool compressed)
     : file_(file),
       reporter_(reporter),
       checksum_(checksum),
@@ -60,18 +58,19 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       resyncing_(initial_offset > 0),
       compressed_(compressed),
       uncompress_buf_(nullptr) {
-          if (compressed_) {
-              block_size_ = kCompressBlockSize;
-              uncompress_buf_ = new char[block_size_];
-              header_size_ = kHeaderSizeForCompress;
-          } else {
-              block_size_ = kBlockSize;
-              header_size_ = kHeaderSize;
-          }
-          backing_store_ = new char[block_size_];
-          DLOG(INFO) << "block_size_: " << block_size_ << ", " << "header_size_: " << header_size_ << ", "
-              << "compressed_: " << compressed_;
-      }
+    if (compressed_) {
+        block_size_ = kCompressBlockSize;
+        uncompress_buf_ = new char[block_size_];
+        header_size_ = kHeaderSizeForCompress;
+    } else {
+        block_size_ = kBlockSize;
+        header_size_ = kHeaderSize;
+    }
+    backing_store_ = new char[block_size_];
+    DLOG(INFO) << "block_size_: " << block_size_ << ", "
+               << "header_size_: " << header_size_ << ", "
+               << "compressed_: " << compressed_;
+}
 
 Reader::~Reader() {
     delete[] backing_store_;
@@ -123,9 +122,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
         // ReadPhysicalRecord may have only had an empty trailer remaining in
         // its internal buffer. Calculate the offset of the next physical record
         // now that it has returned, properly accounting for its header size.
-        uint64_t physical_record_offset = end_of_buffer_offset_ -
-                                          buffer_.size() - header_size_ -
-                                          fragment.size();
+        uint64_t physical_record_offset = end_of_buffer_offset_ - buffer_.size() - header_size_ - fragment.size();
 
         if (resyncing_) {
             if (record_type == kMiddleType) {
@@ -153,8 +150,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
                 scratch->clear();
                 *record = fragment;
                 last_record_offset_ = prospective_record_offset;
-                last_record_end_offset_ =
-                    end_of_buffer_offset_ - buffer_.size();
+                last_record_end_offset_ = end_of_buffer_offset_ - buffer_.size();
                 if (offset) {
                     last_end_of_buffer_offset_ = offset;
                 }
@@ -189,9 +185,9 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
             case kMiddleType:
                 if (!in_fragmented_record) {
                     DEBUGLOG(
-                          "missing start of fragmented record(1). fragment "
-                          "size %u",
-                          fragment.size());
+                        "missing start of fragmented record(1). fragment "
+                        "size %u",
+                        fragment.size());
                 } else {
                     scratch->append(fragment.data(), fragment.size());
                 }
@@ -200,15 +196,14 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
             case kLastType:
                 if (!in_fragmented_record) {
                     DEBUGLOG(
-                          "missing start of fragmented record(2). fragment "
-                          "size %u",
-                          fragment.size());
+                        "missing start of fragmented record(2). fragment "
+                        "size %u",
+                        fragment.size());
                 } else {
                     scratch->append(fragment.data(), fragment.size());
                     *record = Slice(*scratch);
                     last_record_offset_ = prospective_record_offset;
-                    last_record_end_offset_ =
-                        end_of_buffer_offset_ - buffer_.size();
+                    last_record_end_offset_ = end_of_buffer_offset_ - buffer_.size();
                     if (offset) {
                         last_end_of_buffer_offset_ = offset;
                     }
@@ -236,12 +231,9 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
             default: {
                 char buf[40];
-                snprintf(buf, sizeof(buf), "unknown record type %u",
-                         record_type);
+                snprintf(buf, sizeof(buf), "unknown record type %u", record_type);
                 DEBUGLOG("%s", buf);
-                ReportCorruption((fragment.size() +
-                                  (in_fragmented_record ? scratch->size() : 0)),
-                                 buf);
+                ReportCorruption((fragment.size() + (in_fragmented_record ? scratch->size() : 0)), buf);
                 in_fragmented_record = false;
                 scratch->clear();
                 return Status::InvalidRecord(Slice(buf, strlen(buf)));
@@ -255,13 +247,10 @@ uint64_t Reader::LastRecordOffset() { return last_record_offset_; }
 
 uint64_t Reader::LastRecordEndOffset() { return last_record_end_offset_; }
 
-void Reader::ReportCorruption(uint64_t bytes, const char* reason) {
-    ReportDrop(bytes, Status::Corruption(reason));
-}
+void Reader::ReportCorruption(uint64_t bytes, const char* reason) { ReportDrop(bytes, Status::Corruption(reason)); }
 
 void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
-    if (reporter_ != NULL &&
-        end_of_buffer_offset_ - buffer_.size() - bytes >= initial_offset_) {
+    if (reporter_ != NULL && end_of_buffer_offset_ - buffer_.size() - bytes >= initial_offset_) {
         reporter_->Corruption(static_cast<size_t>(bytes), reason);
     }
 }
@@ -272,8 +261,7 @@ void Reader::GoBackToLastBlock() {
     if (last_end_of_buffer_offset_ > offset_in_block) {
         block_start_location = last_end_of_buffer_offset_ - offset_in_block;
     }
-    DEBUGLOG("go back block from[%lu] to [%lu]", end_of_buffer_offset_,
-          block_start_location);
+    DEBUGLOG("go back block from[%lu] to [%lu]", end_of_buffer_offset_, block_start_location);
     end_of_buffer_offset_ = block_start_location;
     buffer_.clear();
     file_->Seek(block_start_location);
@@ -308,7 +296,8 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             memrev32ifbe(static_cast<void*>(&compress_len));
             CompressType compress_type = kNoCompress;
             memcpy(static_cast<void*>(&compress_type), data + sizeof(uint32_t), 1);
-            DLOG(INFO) << "compress_len: " << compress_len << ", " << "compress_type: " << compress_type;
+            DLOG(INFO) << "compress_len: " << compress_len << ", "
+                       << "compress_type: " << compress_type;
             // read compressed data
             Slice block;
             status = file_->Read(compress_len, &block, backing_store_);
@@ -321,7 +310,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             switch (compress_type) {
                 case kSnappy: {
                     snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len),
-                        reinterpret_cast<size_t*>(&uncompress_len));
+                                                  reinterpret_cast<size_t*>(&uncompress_len));
                     if (!snappy::RawUncompress(block_data, static_cast<size_t>(compress_len), uncompress_buf_)) {
                         PDLOG(WARNING, "bad record when uncompress block, compress type: %d", compress_type);
                         return kBadRecord;
@@ -351,8 +340,8 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                 }
             }
             if (uncompress_len != static_cast<int32_t>(block_size_)) {
-                PDLOG(WARNING, "bad record when uncompress block, uncompress_len: %d, block_size_: %d",
-                        uncompress_len, block_size_);
+                PDLOG(WARNING, "bad record when uncompress block, uncompress_len: %d, block_size_: %d", uncompress_len,
+                      block_size_);
                 return kBadRecord;
             }
             DLOG(INFO) << "uncompress_len: " << uncompress_len;
@@ -368,8 +357,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             return kWaitRecord;
         }
         if (buffer_.size() < static_cast<size_t>(header_size_)) {
-            DEBUGLOG("read buffer size[%d] less than header_size_[%d]",
-                  buffer_.size(), header_size_);
+            DEBUGLOG("read buffer size[%d] less than header_size_[%d]", buffer_.size(), header_size_);
             return kWaitRecord;
         }
     }
@@ -392,8 +380,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
         length = a | (b << 8) | (c << 16) | (d << 24);
     }
     if (static_cast<size_t>(header_size_ + length) > buffer_.size()) {
-        DEBUGLOG("end of file %d, header size %d data length %d",
-              buffer_.size(), header_size_, length);
+        DEBUGLOG("end of file %d, header size %d data length %d", buffer_.size(), header_size_, length);
         return kWaitRecord;
     }
     // Check crc
@@ -436,8 +423,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
 
     buffer_.remove_prefix(header_size_ + length);
     // Skip physical record that started before initial_offset_
-    if (end_of_buffer_offset_ - buffer_.size() - header_size_ - length <
-        initial_offset_) {
+    if (end_of_buffer_offset_ - buffer_.size() - header_size_ - length < initial_offset_) {
         result->clear();
         PDLOG(WARNING, "bad record with initial_offset");
         return kBadRecord;
@@ -446,8 +432,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     return type;
 }
 
-LogReader::LogReader(LogParts* logs, const std::string& log_path, bool compressed)
-    : log_path_(log_path) {
+LogReader::LogReader(LogParts* logs, const std::string& log_path, bool compressed) : log_path_(log_path) {
     sf_ = NULL;
     reader_ = NULL;
     logs_ = logs;
@@ -461,9 +446,7 @@ LogReader::~LogReader() {
     delete reader_;
 }
 
-void LogReader::SetOffset(uint64_t start_offset) {
-    start_offset_ = start_offset;
-}
+void LogReader::SetOffset(uint64_t start_offset) { start_offset_ = start_offset; }
 
 void LogReader::GoBackToLastBlock() {
     if (sf_ == NULL || reader_ == NULL) {
@@ -489,8 +472,7 @@ uint64_t LogReader::GetLastRecordEndOffset() {
     return reader_->LastRecordEndOffset();
 }
 
-::openmldb::base::Status LogReader::ReadNextRecord(::openmldb::base::Slice* record,
-                                                std::string* buffer) {
+::openmldb::base::Status LogReader::ReadNextRecord(::openmldb::base::Slice* record, std::string* buffer) {
     // first read record
     if (sf_ == NULL) {
         if (RollRLogFile() < 0) {
@@ -537,27 +519,24 @@ int LogReader::RollRLogFile() {
     int index = -1;
     if (log_part_index_ < 0) {
         while (it->Valid()) {
-            DEBUGLOG("log index[%u] and start offset %lld", it->GetKey(),
-                  it->GetValue());
+            DEBUGLOG("log index[%u] and start offset %lld", it->GetKey(), it->GetValue());
             if (it->GetValue() <= start_offset_) {
                 break;
             }
             it->Next();
         }
         if (it->Valid()) {
-            index = (int)it->GetKey(); // NOLINT
+            index = (int)it->GetKey();  // NOLINT
         } else {
-            PDLOG(WARNING, "no log part matched! start_offset[%lu]",
-                  start_offset_);
+            PDLOG(WARNING, "no log part matched! start_offset[%lu]", start_offset_);
         }
     } else {
         uint32_t log_part_index = (uint32_t)log_part_index_;
         while (it->Valid()) {
-            DEBUGLOG("log index[%u] and start offset %lu", it->GetKey(),
-                  it->GetValue());
+            DEBUGLOG("log index[%u] and start offset %lu", it->GetKey(), it->GetValue());
             // find the next of current index log file part
             if (it->GetKey() == log_part_index + 1) {
-                index = (int)it->GetKey(); // NOLINT
+                index = (int)it->GetKey();  // NOLINT
                 break;
             } else if (it->GetKey() == log_part_index) {
                 DEBUGLOG("no new file. log_part_index %d", log_part_index);
@@ -565,9 +544,8 @@ int LogReader::RollRLogFile() {
             }
             uint32_t cur_index = it->GetKey();
             it->Next();
-            if (it->Valid() && it->GetKey() <= log_part_index &&
-                cur_index > log_part_index) {
-                index = (int)cur_index; // NOLINT
+            if (it->Valid() && it->GetKey() <= log_part_index && cur_index > log_part_index) {
+                index = (int)cur_index;  // NOLINT
                 break;
             }
         }
@@ -576,17 +554,14 @@ int LogReader::RollRLogFile() {
     if (index >= 0) {
         // open a new log part file
         std::string full_path =
-            log_path_ + "/" +
-            ::openmldb::base::FormatToString(index, FLAGS_binlog_name_length) +
-            ".log";
+            log_path_ + "/" + ::openmldb::base::FormatToString(index, FLAGS_binlog_name_length) + ".log";
         if (OpenSeqFile(full_path) != 0) {
             return -1;
         }
         delete reader_;
         // roll a new log part file, reset status
         reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0, compressed_);
-        PDLOG(INFO, "roll log file from index[%d] to index[%d]",
-              log_part_index_, index);
+        PDLOG(INFO, "roll log file from index[%d] to index[%d]", log_part_index_, index);
         log_part_index_ = index;
         return 0;
     }

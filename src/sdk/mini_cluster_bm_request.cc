@@ -35,7 +35,7 @@ DEFINE_REQUEST_CASE(BM_SimpleLastJoin4Right, DEFAULT_YAML_PATH, "1");
 #define DEFINE_REQUEST_WINDOW_CASE(NAME, PATH, CASE_ID)                   \
     static void BM_Request_##NAME(benchmark::State& state) {              \
         auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                 \
-        if (!hybridse::sqlcase::SqlCase::IsDebug()) {                       \
+        if (!hybridse::sqlcase::SqlCase::IsDebug()) {                     \
             sql_case.SqlCaseRepeatConfig("window_scale", state.range(0)); \
         }                                                                 \
         MiniBenchmarkOnCase(sql_case, kRequestMode, mc, &state);          \

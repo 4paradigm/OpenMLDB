@@ -56,8 +56,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
 #include "base/endianconv.h"
+
+#include <stdint.h>
 namespace openmldb {
 namespace base {
 

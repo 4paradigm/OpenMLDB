@@ -14,24 +14,23 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEC_SCHEMA_CODEC_H_
 #define SRC_CODEC_SCHEMA_CODEC_H_
 
+#include <boost/algorithm/string.hpp>
 #include <cstring>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <memory>
-#include <boost/algorithm/string.hpp>
 
 #include "base/status.h"
 #include "codec/codec.h"
-#include "proto/name_server.pb.h"
 #include "codec/fe_row_codec.h"
 #include "codec/field_codec.h"
+#include "proto/name_server.pb.h"
 
 namespace openmldb {
 namespace codec {
@@ -39,39 +38,31 @@ namespace codec {
 constexpr uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;  // 1M
 constexpr uint32_t HEADER_BYTE_SIZE = 3;
 
-const std::string NONETOKEN = "!N@U#L$L%"; // NOLINT
-const std::string EMPTY_STRING = "!@#$%";  // NOLINT
-const std::string DEFAULT_LONG = "1";      // NOLINT
+const std::string NONETOKEN = "!N@U#L$L%";  // NOLINT
+const std::string EMPTY_STRING = "!@#$%";   // NOLINT
+const std::string DEFAULT_LONG = "1";       // NOLINT
 
-static const std::unordered_map<std::string, ::openmldb::type::DataType>
-    DATA_TYPE_MAP = {{"bool", ::openmldb::type::kBool},
-                     {"smallint", ::openmldb::type::kSmallInt},
-                     {"uint16", ::openmldb::type::kSmallInt},
-                     {"int16", ::openmldb::type::kSmallInt},
-                     {"int", ::openmldb::type::kInt},
-                     {"int32", ::openmldb::type::kInt},
-                     {"uint32", ::openmldb::type::kInt},
-                     {"bigint", ::openmldb::type::kBigInt},
-                     {"int64", ::openmldb::type::kBigInt},
-                     {"uint64", ::openmldb::type::kBigInt},
-                     {"float", ::openmldb::type::kFloat},
-                     {"double", ::openmldb::type::kDouble},
-                     {"varchar", ::openmldb::type::kVarchar},
-                     {"string", openmldb::type::DataType::kString},
-                     {"date", ::openmldb::type::kDate},
-                     {"timestamp", ::openmldb::type::kTimestamp}};
+static const std::unordered_map<std::string, ::openmldb::type::DataType> DATA_TYPE_MAP = {
+    {"bool", ::openmldb::type::kBool},       {"smallint", ::openmldb::type::kSmallInt},
+    {"uint16", ::openmldb::type::kSmallInt}, {"int16", ::openmldb::type::kSmallInt},
+    {"int", ::openmldb::type::kInt},         {"int32", ::openmldb::type::kInt},
+    {"uint32", ::openmldb::type::kInt},      {"bigint", ::openmldb::type::kBigInt},
+    {"int64", ::openmldb::type::kBigInt},    {"uint64", ::openmldb::type::kBigInt},
+    {"float", ::openmldb::type::kFloat},     {"double", ::openmldb::type::kDouble},
+    {"varchar", ::openmldb::type::kVarchar}, {"string", openmldb::type::DataType::kString},
+    {"date", ::openmldb::type::kDate},       {"timestamp", ::openmldb::type::kTimestamp}};
 
-static const std::unordered_map<::openmldb::type::DataType, std::string>
-    DATA_TYPE_STR_MAP = {{::openmldb::type::kBool, "bool"},
-                         {::openmldb::type::kSmallInt, "smallInt"},
-                         {::openmldb::type::kInt, "int"},
-                         {::openmldb::type::kBigInt, "bigInt"},
-                         {::openmldb::type::kFloat, "float"},
-                         {::openmldb::type::kDouble, "double"},
-                         {::openmldb::type::kTimestamp, "timestamp"},
-                         {::openmldb::type::kDate, "date"},
-                         {::openmldb::type::kVarchar, "varchar"},
-                         {::openmldb::type::kString, "string"}};
+static const std::unordered_map<::openmldb::type::DataType, std::string> DATA_TYPE_STR_MAP = {
+    {::openmldb::type::kBool, "bool"},
+    {::openmldb::type::kSmallInt, "smallInt"},
+    {::openmldb::type::kInt, "int"},
+    {::openmldb::type::kBigInt, "bigInt"},
+    {::openmldb::type::kFloat, "float"},
+    {::openmldb::type::kDouble, "double"},
+    {::openmldb::type::kTimestamp, "timestamp"},
+    {::openmldb::type::kDate, "date"},
+    {::openmldb::type::kVarchar, "varchar"},
+    {::openmldb::type::kString, "string"}};
 
 enum ColType {
     kString = 0,
@@ -103,13 +94,15 @@ struct ColumnDesc {
 
 class SchemaCodec {
  public:
-    static void SetColumnDesc(::openmldb::common::ColumnDesc* desc, const std::string& name, ::openmldb::type::DataType type) {
+    static void SetColumnDesc(::openmldb::common::ColumnDesc* desc, const std::string& name,
+                              ::openmldb::type::DataType type) {
         desc->set_name(name);
         desc->set_data_type(type);
     }
 
     static void SetIndex(::openmldb::common::ColumnKey* index, const std::string& name, const std::string& col_name,
-            const std::string& ts_name, ::openmldb::type::TTLType ttl_type, uint64_t abs_ttl, uint64_t lat_ttl) {
+                         const std::string& ts_name, ::openmldb::type::TTLType ttl_type, uint64_t abs_ttl,
+                         uint64_t lat_ttl) {
         index->set_index_name(name);
         std::vector<std::string> parts;
         boost::split(parts, col_name, boost::is_any_of("|"));
@@ -159,23 +152,33 @@ class SchemaCodec {
 
     static hybridse::type::Type ConvertType(openmldb::type::DataType type) {
         switch (type) {
-            case openmldb::type::kBool: return hybridse::type::kBool;
-            case openmldb::type::kSmallInt: return hybridse::type::kInt16;
-            case openmldb::type::kInt: return hybridse::type::kInt32;
-            case openmldb::type::kBigInt: return hybridse::type::kInt64;
-            case openmldb::type::kFloat: return hybridse::type::kFloat;
-            case openmldb::type::kDouble: return hybridse::type::kDouble;
-            case openmldb::type::kDate: return hybridse::type::kDate;
-            case openmldb::type::kTimestamp: return hybridse::type::kTimestamp;
-            case openmldb::type::kVarchar: return hybridse::type::kVarchar;
-            case openmldb::type::kString: return hybridse::type::kVarchar;
-            default: return hybridse::type::kNull;
+            case openmldb::type::kBool:
+                return hybridse::type::kBool;
+            case openmldb::type::kSmallInt:
+                return hybridse::type::kInt16;
+            case openmldb::type::kInt:
+                return hybridse::type::kInt32;
+            case openmldb::type::kBigInt:
+                return hybridse::type::kInt64;
+            case openmldb::type::kFloat:
+                return hybridse::type::kFloat;
+            case openmldb::type::kDouble:
+                return hybridse::type::kDouble;
+            case openmldb::type::kDate:
+                return hybridse::type::kDate;
+            case openmldb::type::kTimestamp:
+                return hybridse::type::kTimestamp;
+            case openmldb::type::kVarchar:
+                return hybridse::type::kVarchar;
+            case openmldb::type::kString:
+                return hybridse::type::kVarchar;
+            default:
+                return hybridse::type::kNull;
         }
     }
 
-    static void GetSchemaData(
-        const std::map<std::string, std::string>& columns_map,
-        const Schema& schema, Schema& new_schema) {  // NOLINT
+    static void GetSchemaData(const std::map<std::string, std::string>& columns_map, const Schema& schema,
+                              Schema& new_schema) {  // NOLINT
         for (int i = 0; i < schema.size(); i++) {
             const ::openmldb::common::ColumnDesc& col = schema.Get(i);
             const std::string& col_name = col.name();
@@ -187,15 +190,13 @@ class SchemaCodec {
         }
     }
 
-    static openmldb::base::ResultMsg GetCdColumns(const Schema& schema,
-            const std::map<std::string, std::string>& cd_columns_map,
-            ::google::protobuf::RepeatedPtrField<::openmldb::api::Columns>*
-            cd_columns) {
+    static openmldb::base::ResultMsg GetCdColumns(
+        const Schema& schema, const std::map<std::string, std::string>& cd_columns_map,
+        ::google::protobuf::RepeatedPtrField<::openmldb::api::Columns>* cd_columns) {
         openmldb::base::ResultMsg rm;
         std::map<std::string, ::openmldb::type::DataType> name_type_map;
         for (const auto& col_desc : schema) {
-            name_type_map.insert(std::make_pair(
-                        col_desc.name(), col_desc.data_type()));
+            name_type_map.insert(std::make_pair(col_desc.name(), col_desc.data_type()));
         }
         for (const auto& kv : cd_columns_map) {
             auto iter = name_type_map.find(kv.first);

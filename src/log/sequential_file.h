@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_LOG_SEQUENTIAL_FILE_H_
 #define SRC_LOG_SEQUENTIAL_FILE_H_
 
 #include <stdint.h>
+
 #include <string>
 
 namespace openmldb {

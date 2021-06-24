@@ -29,8 +29,8 @@
 #include "base/glog_wapper.h"
 #include "boost/algorithm/string.hpp"
 #include "catalog/schema_adapter.h"
-#include "common/timer.h"
 #include "codec/fe_row_codec.h"
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
@@ -68,7 +68,7 @@ class SQLSDKTest : public openmldb::test::SQLCaseTest {
                              std::shared_ptr<SQLRouter> router, InsertRule insert_rule);
 
     static void CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_view,
-                                           std::shared_ptr<openmldb::sdk::SQLRequestRow> request_row);
+                                              std::shared_ptr<openmldb::sdk::SQLRequestRow> request_row);
     static void BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints);
     static void RunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
@@ -293,7 +293,7 @@ void SQLSDKTest::InsertTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
 }
 
 void SQLSDKTest::CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_view,
-                                            std::shared_ptr<openmldb::sdk::SQLRequestRow> request_row) {
+                                               std::shared_ptr<openmldb::sdk::SQLRequestRow> request_row) {
     ASSERT_EQ(row_view->GetSchema()->size(), request_row->GetSchema()->GetColumnCnt());
 
     int32_t init_size = 0;
@@ -816,7 +816,6 @@ INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestWindowMaxSize, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_maxsize.yaml")));
 
-
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestWindowUnion, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_window_union.yaml")));
@@ -872,15 +871,15 @@ INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestIndexOptimized, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestDebugIssues, SQLSDKQueryTest,
-                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
 
 // myhug 场景正确性验证
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzMyhug, SQLSDKQueryTest,
-                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
 
 // luoji 场景正确性验证
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzLuoji, SQLSDKQueryTest,
-                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
 
 }  // namespace sdk
 }  // namespace openmldb

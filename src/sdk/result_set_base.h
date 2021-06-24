@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_SDK_RESULT_SET_BASE_H_
 #define SRC_SDK_RESULT_SET_BASE_H_
 #include <memory>

@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CATALOG_CLIENT_MANAGER_H_
 #define SRC_CATALOG_CLIENT_MANAGER_H_
 
 #include <map>
-#include <set>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>

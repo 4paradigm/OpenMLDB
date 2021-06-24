@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_SKIPLIST_H_
 #define SRC_BASE_SKIPLIST_H_
 
 #include <assert.h>
 #include <stdint.h>
+
 #include <atomic>
 #include <iostream>
+
 #include "base/random.h"
 
 namespace openmldb {
@@ -48,7 +49,7 @@ class Node {
         nexts_ = new std::atomic<Node<K, V>*>[height];
     }
 
-    Node(uint8_t height) : height_(height), key_(), value_() { // NOLINT
+    Node(uint8_t height) : height_(height), key_(), value_() {  // NOLINT
         nexts_ = new std::atomic<Node<K, V>*>[height];
     }
 
@@ -109,7 +110,7 @@ class Skiplist {
     ~Skiplist() { delete head_; }
 
     // Insert need external synchronized
-    uint8_t Insert(const K& key, V& value) { // NOLINT
+    uint8_t Insert(const K& key, V& value) {  // NOLINT
         uint8_t height = RandomHeight();
         Node<K, V>* pre[MaxHeight];
         FindLessOrEqual(key, pre);
@@ -221,8 +222,7 @@ class Skiplist {
             if (pos_node == NULL) {  // doesnt find pos, just return
                 return NULL;
             }
-            if (compare_(pos_node->GetKey(), key) >=
-                0) {  // find key before pos, mark it
+            if (compare_(pos_node->GetKey(), key) >= 0) {  // find key before pos, mark it
                 find_key = true;
             }
             pos_node = pos_node->GetNext(0);
@@ -242,7 +242,7 @@ class Skiplist {
         return node->GetValue();
     }
 
-    int Get(const K& key, V& v) { // NOLINT
+    int Get(const K& key, V& v) {  // NOLINT
         Node<K, V>* node = FindEqual(key);
         if (node != NULL && compare_(node->GetKey(), key) == 0) {
             v = node->GetValue();
@@ -292,7 +292,7 @@ class Skiplist {
     }
 
     // Need external synchronized
-    bool AddToFirst(const K& key, V& value) { // NOLINT
+    bool AddToFirst(const K& key, V& value) {  // NOLINT
         {
             Node<K, V>* node = head_->GetNext(0);
             if (node != NULL && compare_(key, node->GetKey()) > 0) {
@@ -320,7 +320,7 @@ class Skiplist {
 
     class Iterator {
      public:
-        Iterator(Skiplist<K, V, Comparator>* list) : node_(NULL), list_(list) {} // NOLINT
+        Iterator(Skiplist<K, V, Comparator>* list) : node_(NULL), list_(list) {}  // NOLINT
         ~Iterator() {}
 
         bool Valid() const { return node_ != NULL; }
@@ -363,7 +363,7 @@ class Skiplist {
     Iterator* NewIterator() { return new Iterator(this); }
 
  private:
-    Node<K, V>* NewNode(const K& key, V& value, uint8_t height) { // NOLINT
+    Node<K, V>* NewNode(const K& key, V& value, uint8_t height) {  // NOLINT
         Node<K, V>* node = new Node<K, V>(key, value, height);
         return node;
     }
@@ -431,9 +431,7 @@ class Skiplist {
         return (node != NULL) && (compare_(key, node->GetKey()) > 0);
     }
 
-    uint8_t GetMaxHeight() const {
-        return max_height_.load(std::memory_order_relaxed);
-    }
+    uint8_t GetMaxHeight() const { return max_height_.load(std::memory_order_relaxed); }
 
     Node<K, V>* SplitOnPosNode(uint64_t pos, Node<K, V>* pos_node) {
         Node<K, V>* node = head_;
@@ -450,8 +448,7 @@ class Skiplist {
             }
             for (uint8_t i = 1; i < node->Height(); i++) {
                 Node<K, V>* next = node->GetNext(i);
-                if (next != NULL &&
-                    compare_(pos_node->GetKey(), next->GetKey()) <= 0) {
+                if (next != NULL && compare_(pos_node->GetKey(), next->GetKey()) <= 0) {
                     node->SetNext(i, NULL);
                 }
             }

@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-
 #include "base/skiplist.h"
-#include <vector>
+
 #include <string>
+#include <vector>
+
 #include "base/slice.h"
 #include "gtest/gtest.h"
 
@@ -37,9 +38,7 @@ class SkiplistTest : public ::testing::Test {
 };
 
 struct SliceComparator {
-    int operator()(const Slice& a, const Slice& b) const {
-        return a.compare(b);
-    }
+    int operator()(const Slice& a, const Slice& b) const { return a.compare(b); }
 };
 
 std::vector<uint8_t> vec = {1, 2, 5, 10, 12};
@@ -72,9 +71,7 @@ struct KE {
 };
 
 struct StrComparator {
-    int operator()(const std::string& a, const std::string& b) const {
-        return a.compare(b);
-    }
+    int operator()(const std::string& a, const std::string& b) const { return a.compare(b); }
 };
 
 TEST_F(NodeTest, SetNext) {
@@ -107,7 +104,7 @@ TEST_F(NodeTest, SliceTest) {
     sl.Insert(key, v);
     Slice pk("test1");
     KE* n = sl.Get(pk);
-    ASSERT_TRUE(pk.compare(n->k) == 0); // NOLINT
+    ASSERT_TRUE(pk.compare(n->k) == 0);  // NOLINT
 }
 
 TEST_F(NodeTest, AddToFirst) {
@@ -125,8 +122,7 @@ TEST_F(NodeTest, AddToFirst) {
         uint32_t value1 = 1;
         bool ok = sl.AddToFirst(key1, value1);
         ASSERT_TRUE(ok);
-        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it =
-            sl.NewIterator();
+        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
         it->SeekToFirst();
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(1, (signed)it->GetKey());
@@ -160,8 +156,7 @@ TEST_F(SkiplistTest, InsertAndIterator) {
         uint32_t key4 = 3;
         uint32_t value4 = 6;
         sl.Insert(key4, value4);
-        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it =
-            sl.NewIterator();
+        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
         it->Seek(0);
         ASSERT_EQ(1, (signed)it->GetKey());
         ASSERT_EQ(2, (signed)it->GetValue());
@@ -270,8 +265,7 @@ TEST_F(SkiplistTest, Split1) {
         ASSERT_EQ(3, (signed)node->GetKey());
         node = node->GetNext(0);
         ASSERT_TRUE(node == NULL);
-        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it =
-            sl.NewIterator();
+        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
         it->Seek(0);
         ASSERT_EQ(0, (signed)it->GetKey());
         it->Next();
@@ -314,8 +308,7 @@ TEST_F(SkiplistTest, SplitByPos) {
         ASSERT_EQ(3, (signed)node->GetKey());
         node = node->GetNext(0);
         ASSERT_TRUE(node == NULL);
-        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it =
-            sl.NewIterator();
+        Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
         it->Seek(0);
         ASSERT_EQ(0, (signed)it->GetKey());
         it->Next();
@@ -545,8 +538,7 @@ TEST_F(SkiplistTest, Iterator2) {
     std::string k1 = "a";
     std::string v2 = "b";
     sl.Insert(k1, v2);
-    Skiplist<std::string, std::string, StrComparator>::Iterator* it =
-        sl.NewIterator();
+    Skiplist<std::string, std::string, StrComparator>::Iterator* it = sl.NewIterator();
     it->Seek("h");
     ASSERT_EQ("h", it->GetKey());
     it->Next();
@@ -586,8 +578,7 @@ TEST_F(SkiplistTest, Remove) {
     ASSERT_FALSE(node == NULL);
     ASSERT_EQ("b", node->GetKey());
     ASSERT_EQ("c", node->GetValue());
-    Skiplist<std::string, std::string, StrComparator>::Iterator* it =
-        sl.NewIterator();
+    Skiplist<std::string, std::string, StrComparator>::Iterator* it = sl.NewIterator();
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ("a", it->GetKey());
@@ -613,7 +604,7 @@ TEST_F(SkiplistTest, Get) {
     sl.Insert(key, value);
     int32_t ret = sl.Get(1);
     ASSERT_EQ(1, ret);
-    ASSERT_FALSE(sl.Get(2) == 2); // NOLINT
+    ASSERT_FALSE(sl.Get(2) == 2);  // NOLINT
 }
 
 TEST_F(SkiplistTest, GetLast) {
@@ -654,8 +645,7 @@ TEST_F(SkiplistTest, Duplicate) {
         sl.Insert(key, value);
     }
 
-    Skiplist<uint32_t, uint32_t, DescComparator>::Iterator* it =
-        sl.NewIterator();
+    Skiplist<uint32_t, uint32_t, DescComparator>::Iterator* it = sl.NewIterator();
     ASSERT_EQ(3u, it->GetSize());
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());

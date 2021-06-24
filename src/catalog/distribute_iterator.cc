@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-
 #include "catalog/distribute_iterator.h"
 
 namespace openmldb {
 namespace catalog {
 
-FullTableIterator::FullTableIterator(std::shared_ptr<Tables> tables) :
-    tables_(tables), cur_pid_(0), it_(), key_(0), value_() {}
+FullTableIterator::FullTableIterator(std::shared_ptr<Tables> tables)
+    : tables_(tables), cur_pid_(0), it_(), key_(0), value_() {}
 
 void FullTableIterator::SeekToFirst() {
     it_.reset();
@@ -36,9 +35,7 @@ void FullTableIterator::SeekToFirst() {
     }
 }
 
-bool FullTableIterator::Valid() const {
-    return it_ && it_->Valid();
-}
+bool FullTableIterator::Valid() const { return it_ && it_->Valid(); }
 
 void FullTableIterator::Next() {
     it_->Next();
@@ -62,8 +59,8 @@ void FullTableIterator::Next() {
 }
 
 const ::hybridse::codec::Row& FullTableIterator::GetValue() {
-    value_ = ::hybridse::codec::Row(::hybridse::base::RefCountedSlice::Create(
-        it_->GetValue().data(), it_->GetValue().size()));
+    value_ = ::hybridse::codec::Row(
+        ::hybridse::base::RefCountedSlice::Create(it_->GetValue().data(), it_->GetValue().size()));
     return value_;
 }
 

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <unistd.h>
@@ -22,13 +21,13 @@
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "client/ns_client.h"
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
-#include "common/timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -63,7 +62,7 @@ class NewServerEnvTest : public ::testing::Test {
     ~NewServerEnvTest() {}
 };
 
-void StartNameServer(brpc::Server& server, const std::string& real_ep) { //NOLINT
+void StartNameServer(brpc::Server& server, const std::string& real_ep) {  // NOLINT
     NameServerImpl* nameserver = new NameServerImpl();
     bool ok = nameserver->Init(real_ep);
     ASSERT_EQ(true, nameserver->RegisterName());
@@ -80,7 +79,7 @@ void StartNameServer(brpc::Server& server, const std::string& real_ep) { //NOLIN
     sleep(2);
 }
 
-void StartTablet(brpc::Server& server, const std::string& real_ep) { //NOLINT
+void StartTablet(brpc::Server& server, const std::string& real_ep) {  // NOLINT
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     bool ok = tablet->Init(real_ep);
     ASSERT_TRUE(ok);
@@ -98,22 +97,20 @@ void StartTablet(brpc::Server& server, const std::string& real_ep) { //NOLINT
     sleep(2);
 }
 
-void SetSdkEndpoint(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client, //NOLINT
-        const std::string& server_name, const std::string& sdk_endpoint) {
+void SetSdkEndpoint(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client,  // NOLINT
+                    const std::string& server_name, const std::string& sdk_endpoint) {
     ::openmldb::nameserver::SetSdkEndpointRequest request;
     request.set_server_name(server_name);
     request.set_sdk_endpoint(sdk_endpoint);
     ::openmldb::nameserver::GeneralResponse response;
-    bool ok = name_server_client.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::SetSdkEndpoint,
-            &request, &response, FLAGS_request_timeout_ms, 1);
+    bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::SetSdkEndpoint, &request,
+                                             &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
 }
 
 void ShowNameServer(std::map<std::string, std::string>* map) {
     std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
-    zk_client = std::make_shared<::openmldb::zk::ZkClient>(
-            FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
+    zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
     if (!zk_client->Init()) {
         ASSERT_TRUE(false);
     }
@@ -134,8 +131,7 @@ void ShowNameServer(std::map<std::string, std::string>* map) {
         std::string real_endpoint;
         std::string name = "/map/names/" + kv.first;
         if (zk_client->IsExistNode(FLAGS_zk_root_path + name) == 0) {
-            if (!zk_client->GetNodeValue(FLAGS_zk_root_path + name,
-                        real_endpoint) || real_endpoint.empty()) {
+            if (!zk_client->GetNodeValue(FLAGS_zk_root_path + name, real_endpoint) || real_endpoint.empty()) {
                 ASSERT_TRUE(false);
             }
         }
@@ -187,13 +183,11 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
         // showtablet
         ::openmldb::nameserver::ShowTabletRequest request;
         ::openmldb::nameserver::ShowTabletResponse response;
-        bool ok = name_server_client.SendRequest(
-                &::openmldb::nameserver::NameServer_Stub::ShowTablet,
-                &request, &response, FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTablet, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
 
-        ::openmldb::nameserver::TabletStatus status =
-            response.tablets(0);
+        ::openmldb::nameserver::TabletStatus status = response.tablets(0);
         ASSERT_EQ("tb1", status.endpoint());
         ASSERT_EQ(tb_real_ep_1, status.real_endpoint());
         ASSERT_EQ("kTabletHealthy", status.state());
@@ -216,9 +210,8 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
         // show sdkendpoint
         ::openmldb::nameserver::ShowSdkEndpointRequest request;
         ::openmldb::nameserver::ShowSdkEndpointResponse response;
-        bool ok = name_server_client.SendRequest(
-                &::openmldb::nameserver::NameServer_Stub::
-                ShowSdkEndpoint, &request, &response, FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowSdkEndpoint, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
 
         auto status = response.tablets(0);
@@ -297,9 +290,8 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
         meta = partion->add_partition_meta();
         meta->set_endpoint("tb2");
         meta->set_is_leader(false);
-        ok = name_server_client.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+                                            FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
@@ -308,8 +300,8 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
         request.set_name(name);
-        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable,
-                    &request, &response, FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         tid = response.table_info(0).tid();
     }
@@ -321,8 +313,8 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
         put_request.set_value("a");
         put_request.set_tid(tid);
         put_request.set_pid(0);
-        ok = tb_client_1.SendRequest(&::openmldb::api::TabletServer_Stub::Put, &put_request,
-                &put_response, FLAGS_request_timeout_ms, 1);
+        ok = tb_client_1.SendRequest(&::openmldb::api::TabletServer_Stub::Put, &put_request, &put_response,
+                                     FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, put_response.code());
     }
@@ -331,8 +323,8 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
         ::openmldb::api::TraverseResponse traverse_response;
         traverse_request.set_pid(0);
         traverse_request.set_tid(tid);
-        ok = tb_client_1.SendRequest(&::openmldb::api::TabletServer_Stub::Traverse,
-                &traverse_request, &traverse_response, FLAGS_request_timeout_ms, 1);
+        ok = tb_client_1.SendRequest(&::openmldb::api::TabletServer_Stub::Traverse, &traverse_request,
+                                     &traverse_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, traverse_response.code());
         ASSERT_EQ(1u, traverse_response.count());
@@ -345,8 +337,8 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
         ::openmldb::api::TraverseResponse traverse_response;
         traverse_request.set_tid(tid);
         traverse_request.set_pid(0);
-        ok = tb_client_2.SendRequest(&::openmldb::api::TabletServer_Stub::Traverse,
-                &traverse_request, &traverse_response, FLAGS_request_timeout_ms, 1);
+        ok = tb_client_2.SendRequest(&::openmldb::api::TabletServer_Stub::Traverse, &traverse_request,
+                                     &traverse_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, traverse_response.code());
         ASSERT_EQ(1u, traverse_response.count());

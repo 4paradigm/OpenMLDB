@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CATALOG_DISTRIBUTE_ITERATOR_H_
 #define SRC_CATALOG_DISTRIBUTE_ITERATOR_H_
 
@@ -31,8 +30,7 @@ namespace catalog {
 
 using Tables = std::map<uint32_t, std::shared_ptr<::openmldb::storage::Table>>;
 
-class FullTableIterator
-    : public ::hybridse::codec::ConstIterator<uint64_t, ::hybridse::codec::Row> {
+class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hybridse::codec::Row> {
  public:
     explicit FullTableIterator(std::shared_ptr<Tables> tables);
     void Seek(const uint64_t& ts) override {}

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -54,14 +53,10 @@ TEST_F(CodecTest, EncodeRows) {
     std::string test1 = "value1";
     std::string test2 = "value2";
     std::string empty;
-    uint32_t total_block_size =
-        test1.length() + test2.length() + empty.length();
-    data.emplace_back(
-        1, std::move(::openmldb::base::Slice(test1.c_str(), test1.length())));
-    data.emplace_back(
-        2, std::move(::openmldb::base::Slice(test2.c_str(), test2.length())));
-    data.emplace_back(
-        3, std::move(::openmldb::base::Slice(empty.c_str(), empty.length())));
+    uint32_t total_block_size = test1.length() + test2.length() + empty.length();
+    data.emplace_back(1, std::move(::openmldb::base::Slice(test1.c_str(), test1.length())));
+    data.emplace_back(2, std::move(::openmldb::base::Slice(test2.c_str(), test2.length())));
+    data.emplace_back(3, std::move(::openmldb::base::Slice(empty.c_str(), empty.length())));
     std::string pairs;
     int32_t size = ::openmldb::codec::EncodeRows(data, total_block_size, &pairs);
     ASSERT_EQ(size, 3 * 12 + 6 + 6);
@@ -369,13 +364,11 @@ TEST_F(CodecTest, ManyCol) {
         row.resize(size);
         builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
         for (int idx = 0; idx < col_num; idx++) {
-            ASSERT_TRUE(
-                builder.AppendString(std::to_string(base + idx).c_str(), 10));
+            ASSERT_TRUE(builder.AppendString(std::to_string(base + idx).c_str(), 10));
             ASSERT_TRUE(builder.AppendInt64(ts + idx));
             ASSERT_TRUE(builder.AppendDouble(1.3));
         }
-        RowView view(def.column_desc(), reinterpret_cast<int8_t*>(&(row[0])),
-                     size);
+        RowView view(def.column_desc(), reinterpret_cast<int8_t*>(&(row[0])), size);
         for (int idx = 0; idx < col_num; idx++) {
             char* ch = NULL;
             uint32_t length = 0;

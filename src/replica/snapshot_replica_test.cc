@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
@@ -23,9 +22,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include "base/file_util.h"
-#include "client/tablet_client.h"
 #include "base/glog_wapper.h"
+#include "client/tablet_client.h"
+#include "common/thread_pool.h"
+#include "common/timer.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "replica/replicate_node.h"
@@ -33,8 +35,6 @@
 #include "storage/table.h"
 #include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
-#include "common/thread_pool.h"
-#include "common/timer.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -47,7 +47,7 @@ using ::openmldb::tablet::TabletImpl;
 DECLARE_string(db_root_path);
 DECLARE_string(endpoint);
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
 
 namespace openmldb {
 namespace replica {
@@ -88,9 +88,8 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =
-        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::openmldb::type::TTLType::kAbsoluteTime, 16, 0,
-                           ::openmldb::type::CompressType::kNoCompress);
+        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints, ::openmldb::type::TTLType::kAbsoluteTime, 16,
+                           0, ::openmldb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
 
     std::string end_point = "127.0.0.1:18530";
@@ -129,9 +128,8 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =
-        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::openmldb::type::TTLType::kAbsoluteTime, 16, 0,
-                           ::openmldb::type::CompressType::kNoCompress);
+        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints, ::openmldb::type::TTLType::kAbsoluteTime, 16,
+                           0, ::openmldb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     ret = client.Put(tid, pid, "testkey", cur_time, "value1");
@@ -162,9 +160,8 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     // server.RunUntilAskedToQuit();
     ::openmldb::client::TabletClient client1(follower_point, "");
     client1.Init();
-    ret = client1.CreateTable("table1", tid, pid, 14400, 0, false, endpoints,
-                              ::openmldb::type::TTLType::kAbsoluteTime, 16, 0,
-                              ::openmldb::type::CompressType::kNoCompress);
+    ret = client1.CreateTable("table1", tid, pid, 14400, 0, false, endpoints, ::openmldb::type::TTLType::kAbsoluteTime,
+                              16, 0, ::openmldb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);
     sleep(3);
@@ -198,8 +195,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
         ASSERT_EQ(0, grs.code());
         ASSERT_EQ(12, (int64_t)grs.offset());
         ASSERT_EQ(1, grs.follower_info_size());
-        ASSERT_STREQ(follower_point.c_str(),
-                     grs.follower_info(0).endpoint().c_str());
+        ASSERT_STREQ(follower_point.c_str(), grs.follower_info(0).endpoint().c_str());
         ASSERT_EQ(12, (int64_t)grs.follower_info(0).offset());
     }
     ::openmldb::api::DropTableRequest dr;

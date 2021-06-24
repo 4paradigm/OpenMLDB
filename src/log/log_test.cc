@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
+#include <gtest/gtest.h>
 #include <sched.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -27,12 +26,12 @@
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
+#include "config.h"  // NOLINT
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
-#include "config.h" // NOLINT
 
 using ::openmldb::base::Slice;
 using ::openmldb::base::Status;
@@ -68,7 +67,7 @@ void InitTypeCrc(uint32_t* type_crc) {
 void GenPhysicalRecord(RecordType t, const char* ptr, size_t n,
                        int& block_offset_,                   // NOLINT
                        std::vector<std::string>& rec_vec) {  // NOLINT
-    assert(n <= 0xffff);  // Must fit in two bytes
+    assert(n <= 0xffff);                                     // Must fit in two bytes
     assert(block_offset_ + kHeaderSize + n <= kBlockSize);
     // Format the header
     char buf[kHeaderSize];
@@ -162,10 +161,8 @@ TEST_F(LogWRTest, TestWriteSize) {
 }
 
 TEST_F(LogWRTest, TestWriteAndRead) {
-    std::vector<std::string> val_vec1{
-        "hello", std::string(block_size_ - header_size_, 'a')};
-    std::vector<std::string> val_vec2{
-        "hello1", std::string(block_size_ - header_size_, 'b')};
+    std::vector<std::string> val_vec1{"hello", std::string(block_size_ - header_size_, 'a')};
+    std::vector<std::string> val_vec2{"hello1", std::string(block_size_ - header_size_, 'b')};
     for (int i = 0; i < 1; i++) {
         std::string log_dir = "/tmp/" + GenRand() + "/";
         ::openmldb::base::MkdirRecur(log_dir);
@@ -205,7 +202,7 @@ TEST_F(LogWRTest, TestWriteAndRead) {
         std::string scratch2;
         Slice value2;
         status = reader2.ReadRecord(&value2, &scratch2);
-        std::cout << "status: "  << status.ToString() << std::endl;
+        std::cout << "status: " << status.ToString() << std::endl;
         ASSERT_TRUE(status.ok());
         ASSERT_EQ(val_vec2[i], value2.ToString());
     }

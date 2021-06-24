@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <unistd.h>
@@ -27,8 +26,8 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
-#include "tablet/tablet_impl.h"
 #include "sdk/sql_router.h"
+#include "tablet/tablet_impl.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -40,8 +39,8 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_bool(auto_failover);
 
-using ::openmldb::zk::ZkClient;
 using ::openmldb::nameserver::NameServerImpl;
+using ::openmldb::zk::ZkClient;
 
 namespace openmldb {
 namespace tablet {
@@ -73,7 +72,7 @@ std::shared_ptr<openmldb::sdk::SQLRouter> GetNewSQLRouter() {
     return openmldb::sdk::NewClusterSQLRouter(sql_opt);
 }
 
-void StartNameServer(brpc::Server& server) { //NOLINT
+void StartNameServer(brpc::Server& server) {  // NOLINT
     NameServerImpl* nameserver = new NameServerImpl();
     bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
@@ -89,7 +88,7 @@ void StartNameServer(brpc::Server& server) { //NOLINT
     sleep(2);
 }
 
-void StartTablet(brpc::Server* server, ::openmldb::tablet::TabletImpl* tablet) { //NOLINT
+void StartTablet(brpc::Server* server, ::openmldb::tablet::TabletImpl* tablet) {  // NOLINT
     bool ok = tablet->Init("");
     ASSERT_TRUE(ok);
     brpc::ServerOptions options;
@@ -105,15 +104,14 @@ void StartTablet(brpc::Server* server, ::openmldb::tablet::TabletImpl* tablet) {
     sleep(2);
 }
 
-void DropTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
-        const std::string& db, const std::string& table_name, bool success) {
+void DropTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client,  // NOLINT
+               const std::string& db, const std::string& table_name, bool success) {
     ::openmldb::nameserver::DropTableRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_db(db);
     request.set_name(table_name);
-    bool ok = name_server_client.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::DropTable,
-            &request, &response, FLAGS_request_timeout_ms, 1);
+    bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropTable, &request, &response,
+                                             FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     if (success) {
         ASSERT_EQ(response.code(), 0);
@@ -122,29 +120,27 @@ void DropTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& n
     }
 }
 
-void DropProcedure(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
-        const std::string& db, const std::string& sp_name) {
+void DropProcedure(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client,  // NOLINT
+                   const std::string& db, const std::string& sp_name) {
     ::openmldb::nameserver::DropProcedureRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_db_name(db);
     request.set_sp_name(sp_name);
-    bool ok = name_server_client.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::DropProcedure,
-            &request, &response, FLAGS_request_timeout_ms, 1);
+    bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropProcedure, &request,
+                                             &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(response.code(), 0);
 }
 
-void ShowTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
+void ShowTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client,  // NOLINT
 
-        const std::string& db, int32_t size) {
+               const std::string& db, int32_t size) {
     ::openmldb::nameserver::ShowTableRequest request;
     ::openmldb::nameserver::ShowTableResponse response;
     request.set_db(db);
     request.set_show_all(true);
-    bool ok = name_server_client.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable,
-            &request, &response, FLAGS_request_timeout_ms, 1);
+    bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                             FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(response.table_info_size(), size);
 }
@@ -172,13 +168,11 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
         // showtablet
         ::openmldb::nameserver::ShowTabletRequest request;
         ::openmldb::nameserver::ShowTabletResponse response;
-        bool ok = name_server_client.SendRequest(
-                &::openmldb::nameserver::NameServer_Stub::ShowTablet,
-                &request, &response, FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTablet, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(response.tablets_size(), 1);
-        ::openmldb::nameserver::TabletStatus status =
-            response.tablets(0);
+        ::openmldb::nameserver::TabletStatus status = response.tablets(0);
         ASSERT_EQ(FLAGS_endpoint, status.endpoint());
         ASSERT_EQ("kTabletHealthy", status.state());
     }
@@ -207,18 +201,16 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     }
     ASSERT_TRUE(router->RefreshCatalog());
     // insert
-    std::string insert_sql =
-        "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    std::string insert_sql = "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
     ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     // create procedure
     std::string sp_name = "sp";
     std::string sql =
         "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS"
         " (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-    std::string sp_ddl =
-        "create procedure " + sp_name +
-        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
-        " begin " + sql + " end;";
+    std::string sp_ddl = "create procedure " + sp_name +
+                         " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" +
+                         ")" + " begin " + sql + " end;";
     if (!router->ExecuteDDL(db, sp_ddl, &status)) {
         FAIL() << "fail to create procedure";
     }
@@ -301,13 +293,11 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
         // showtablet
         ::openmldb::nameserver::ShowTabletRequest request;
         ::openmldb::nameserver::ShowTabletResponse response;
-        bool ok = name_server_client.SendRequest(
-                &::openmldb::nameserver::NameServer_Stub::ShowTablet,
-                &request, &response, FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTablet, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(response.tablets_size(), 1);
-        ::openmldb::nameserver::TabletStatus status =
-            response.tablets(0);
+        ::openmldb::nameserver::TabletStatus status = response.tablets(0);
         ASSERT_EQ(FLAGS_endpoint, status.endpoint());
         ASSERT_EQ("kTabletHealthy", status.state());
     }
@@ -348,18 +338,16 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     }
     ASSERT_TRUE(router->RefreshCatalog());
     // insert
-    std::string insert_sql =
-        "insert into trans1 values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    std::string insert_sql = "insert into trans1 values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
     ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     // create procedure
     std::string sp_name = "sp";
     std::string sql =
         "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS"
         " (UNION trans1 PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-    std::string sp_ddl =
-        "create procedure " + sp_name +
-        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
-        " begin " + sql + " end;";
+    std::string sp_ddl = "create procedure " + sp_name +
+                         " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" +
+                         ")" + " begin " + sql + " end;";
     if (!router->ExecuteDDL(db, sp_ddl, &status)) {
         FAIL() << "fail to create procedure";
     }
@@ -408,10 +396,9 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
 
     // create another procedure
     std::string sp_name1 = "sp1";
-    std::string sp_ddl1 =
-        "create procedure " + sp_name1 +
-        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
-        " begin " + sql + " end;";
+    std::string sp_ddl1 = "create procedure " + sp_name1 +
+                          " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" +
+                          ")" + " begin " + sql + " end;";
     if (!router->ExecuteDDL(db, sp_ddl1, &status)) {
         FAIL() << "fail to create procedure";
     }

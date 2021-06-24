@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <sched.h>
@@ -23,13 +22,13 @@
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "client/ns_client.h"
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
-#include "common/timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -48,7 +47,7 @@ namespace openmldb {
 namespace nameserver {
 
 void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
-        ::openmldb::nameserver::TableInfo* table_meta) {
+                      ::openmldb::nameserver::TableInfo* table_meta) {
     auto column_desc = table_meta->add_column_desc();
     column_desc->set_name("idx0");
     column_desc->set_data_type(::openmldb::type::kString);
@@ -79,30 +78,27 @@ class NameServerImplRemoteTest : public ::testing::Test {
     NameServerImplRemoteTest() {}
     ~NameServerImplRemoteTest() {}
     void Start(NameServerImpl* nameserver) { nameserver->running_ = true; }
-    std::vector<std::list<std::shared_ptr<OPData>>>& GetTaskVec(
-        NameServerImpl* nameserver) {
+    std::vector<std::list<std::shared_ptr<OPData>>>& GetTaskVec(NameServerImpl* nameserver) {
         return nameserver->task_vec_;
     }
-    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>&
-    GetTableInfo(NameServerImpl* nameserver) {
+    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>& GetTableInfo(
+        NameServerImpl* nameserver) {
         return nameserver->table_info_;
     }
-    ZoneInfo* GetZoneInfo(NameServerImpl* nameserver) {
-        return &(nameserver->zone_info_);
-    }
+    ZoneInfo* GetZoneInfo(NameServerImpl* nameserver) { return &(nameserver->zone_info_); }
     void CreateTableRemoteBeforeAddRepClusterFunc(
         NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
-        ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1, //NOLINT
-        ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2, //NOLINT
+        ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,  // NOLINT
+        ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,  // NOLINT
         std::string db);
     void CreateAndDropTableRemoteFunc(
         NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
-        ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1, //NOLINT
-        ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2, //NOLINT
+        ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,  // NOLINT
+        ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,  // NOLINT
         std::string db);
 };
 
-void StartNameServer(brpc::Server& server,  // NOLINT
+void StartNameServer(brpc::Server& server,          // NOLINT
                      NameServerImpl* nameserver) {  // NOLINT
     bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
@@ -177,9 +173,8 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         PartitionMeta* meta1 = partion1->add_partition_meta();
         meta1->set_endpoint("127.0.0.1:9931");
         meta1->set_is_leader(true);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
+                                              &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(307, response.code());
 
@@ -188,9 +183,8 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         PartitionMeta* meta2 = partion2->add_partition_meta();
         meta2->set_endpoint("127.0.0.1:9931");
         meta2->set_is_leader(true);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
+                                              &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         sleep(3);
@@ -199,9 +193,8 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
         request.set_db(db);
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(0, response.table_info_size());
@@ -210,9 +203,8 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         ::openmldb::nameserver::SwitchModeRequest request;
         ::openmldb::nameserver::GeneralResponse response;
         request.set_sm(kLEADER);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::SwitchMode, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::SwitchMode, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
     }
     {
         std::string alias = "remote";
@@ -222,9 +214,8 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         add_request.set_alias(alias);
         add_request.set_zk_path(FLAGS_zk_root_path);
         add_request.set_zk_endpoints(FLAGS_zk_cluster);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::AddReplicaCluster,
-            &add_request, &add_response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::AddReplicaCluster, &add_request,
+                                              &add_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, add_response.code());
         sleep(20);
@@ -233,23 +224,21 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
         request.set_db(db);
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.table_info_size());
         ASSERT_EQ(name, response.table_info(0).name());
         ASSERT_EQ(3, response.table_info(0).table_partition_size());
     }
-    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>&
-        table_info_map_r = GetTableInfo(nameserver_2);
+    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>& table_info_map_r =
+        GetTableInfo(nameserver_2);
     uint32_t rtid = 0;
     for (const auto& table_info : table_info_map_r) {
         if (table_info.second->name() == name) {
             rtid = table_info.second->tid();
-            for (const auto& table_partition :
-                 table_info.second->table_partition()) {
+            for (const auto& table_partition : table_info.second->table_partition()) {
                 if (table_partition.pid() == 1) {
                     ASSERT_EQ(0, table_partition.remote_partition_meta_size());
                 }
@@ -257,15 +246,13 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
             break;
         }
     }
-    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>&
-        table_info_map = GetTableInfo(nameserver_1);
+    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>& table_info_map =
+        GetTableInfo(nameserver_1);
     for (const auto& table_info : table_info_map) {
         if (table_info.second->name() == name) {
-            for (const auto& table_partition :
-                 table_info.second->table_partition()) {
+            for (const auto& table_partition : table_info.second->table_partition()) {
                 if (table_partition.pid() == 1) {
-                    for (const auto& meta :
-                         table_partition.remote_partition_meta()) {
+                    for (const auto& meta : table_partition.remote_partition_meta()) {
                         ASSERT_EQ(rtid, meta.remote_tid());
                         ASSERT_EQ("remote", meta.alias());
                     }
@@ -280,9 +267,8 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         request.set_name(name);
         request.set_db(db);
         ::openmldb::nameserver::GeneralResponse response;
-        bool ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::DropTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropTable, &request,
+                                                   &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         sleep(5);
@@ -291,9 +277,8 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
         request.set_db(db);
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(0, response.table_info_size());
@@ -338,9 +323,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     StartTablet(&server3);
 
     // test remote without db
-    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2,
-                                             name_server_client_1,
-                                             name_server_client_2, "");
+    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2,
+                                             "");
 }
 
 TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
@@ -386,31 +370,27 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
         ::openmldb::nameserver::CreateDatabaseRequest request;
         ::openmldb::nameserver::GeneralResponse response;
         request.set_db(db);
-        bool ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateDatabase, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateDatabase, &request,
+                                                   &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
     // use db create table
-    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2,
-                                             name_server_client_1,
-                                             name_server_client_2, db);
+    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2,
+                                             db);
 }
 
 void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
     NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,
-    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,
-    std::string db) {
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2, std::string db) {
     bool ok = false;
     {
         ::openmldb::nameserver::SwitchModeRequest request;
         ::openmldb::nameserver::GeneralResponse response;
         request.set_sm(kLEADER);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::SwitchMode, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::SwitchMode, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
     }
     {
         std::string alias = "remote";
@@ -420,9 +400,8 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
         add_request.set_alias(alias);
         add_request.set_zk_path(FLAGS_zk_root_path);
         add_request.set_zk_endpoints(FLAGS_zk_cluster);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::AddReplicaCluster,
-            &add_request, &add_response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::AddReplicaCluster, &add_request,
+                                              &add_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, add_response.code());
         sleep(2);
@@ -444,9 +423,8 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
         PartitionMeta* meta1 = partion1->add_partition_meta();
         meta1->set_endpoint("127.0.0.1:9931");
         meta1->set_is_leader(true);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
+                                              &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(307, response.code());
 
@@ -455,9 +433,8 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
         PartitionMeta* meta2 = partion2->add_partition_meta();
         meta2->set_endpoint("127.0.0.1:9931");
         meta2->set_is_leader(true);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
+                                              &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         sleep(5);
@@ -465,23 +442,21 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
     {
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.table_info_size());
         ASSERT_EQ(name, response.table_info(0).name());
         ASSERT_EQ(3, response.table_info(0).table_partition_size());
     }
-    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>&
-        table_info_map_r = GetTableInfo(nameserver_2);
+    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>& table_info_map_r =
+        GetTableInfo(nameserver_2);
     uint32_t rtid = 0;
     for (const auto& table_info : table_info_map_r) {
         if (table_info.second->name() == name) {
             rtid = table_info.second->tid();
-            for (const auto& table_partition :
-                 table_info.second->table_partition()) {
+            for (const auto& table_partition : table_info.second->table_partition()) {
                 if (table_partition.pid() == 1) {
                     ASSERT_EQ(0, table_partition.remote_partition_meta_size());
                 }
@@ -489,15 +464,13 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
             break;
         }
     }
-    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>&
-        table_info_map = GetTableInfo(nameserver_1);
+    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>& table_info_map =
+        GetTableInfo(nameserver_1);
     for (const auto& table_info : table_info_map) {
         if (table_info.second->name() == name) {
-            for (const auto& table_partition :
-                 table_info.second->table_partition()) {
+            for (const auto& table_partition : table_info.second->table_partition()) {
                 if (table_partition.pid() == 1) {
-                    for (const auto& meta :
-                         table_partition.remote_partition_meta()) {
+                    for (const auto& meta : table_partition.remote_partition_meta()) {
                         ASSERT_EQ(rtid, meta.remote_tid());
                         ASSERT_EQ("remote", meta.alias());
                     }
@@ -511,9 +484,8 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
         ::openmldb::nameserver::DropTableRequest request;
         request.set_name(name);
         ::openmldb::nameserver::GeneralResponse response;
-        bool ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::DropTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropTable, &request,
+                                                   &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         sleep(5);
@@ -521,9 +493,8 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
     {
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(0, response.table_info_size());
@@ -573,16 +544,13 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
         ::openmldb::nameserver::CreateDatabaseRequest request;
         ::openmldb::nameserver::GeneralResponse response;
         request.set_db(db);
-        bool ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateDatabase, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateDatabase, &request,
+                                                   &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
 
-    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2,
-                                 name_server_client_1, name_server_client_2,
-                                 db);
+    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, db);
 }
 
 TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
@@ -622,9 +590,7 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     brpc::Server server3;
     StartTablet(&server3);
 
-    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2,
-                                 name_server_client_1, name_server_client_2,
-                                 "");
+    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, "");
 }
 
 TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
@@ -684,9 +650,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::openmldb::nameserver::SwitchModeRequest request;
         ::openmldb::nameserver::GeneralResponse response;
         request.set_sm(kLEADER);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::SwitchMode, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::SwitchMode, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
     }
     {
         std::string alias = "remote";
@@ -696,9 +661,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         add_request.set_alias(alias);
         add_request.set_zk_path(FLAGS_zk_root_path);
         add_request.set_zk_endpoints(FLAGS_zk_cluster);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::AddReplicaCluster,
-            &add_request, &add_response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::AddReplicaCluster, &add_request,
+                                              &add_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, add_response.code());
         sleep(2);
@@ -709,8 +673,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -751,9 +714,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         meta_33->set_endpoint("127.0.0.1:9951");
         meta_33->set_is_leader(false);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
-            &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
+                                                   &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -764,28 +726,23 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
         request.set_name(name);
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.table_info_size());
         ASSERT_EQ(name, response.table_info(0).name());
         ASSERT_EQ(3, response.table_info(0).table_partition_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(0).partition_meta_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(1).partition_meta_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(2).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(0).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(1).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(2).partition_meta_size());
     }
 
     name = "test" + GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -808,9 +765,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         meta_31->set_endpoint("127.0.0.1:9951");
         meta_31->set_is_leader(true);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
-            &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
+                                                   &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -821,28 +777,23 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
         request.set_name(name);
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.table_info_size());
         ASSERT_EQ(name, response.table_info(0).name());
         ASSERT_EQ(3, response.table_info(0).table_partition_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(0).partition_meta_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(1).partition_meta_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(2).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(0).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(1).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(2).partition_meta_size());
     }
 
     name = "test" + GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -871,9 +822,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         meta_31->set_endpoint("127.0.0.1:9951");
         meta_31->set_is_leader(true);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
-            &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
+                                                   &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -884,20 +834,16 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
         request.set_name(name);
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.table_info_size());
         ASSERT_EQ(name, response.table_info(0).name());
         ASSERT_EQ(3, response.table_info(0).table_partition_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(0).partition_meta_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(1).partition_meta_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(2).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(0).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(1).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(2).partition_meta_size());
     }
 
     FLAGS_endpoint = "127.0.0.1:9952";
@@ -909,8 +855,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -951,9 +896,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         meta_33->set_endpoint("127.0.0.1:9951");
         meta_33->set_is_leader(false);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
-            &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
+                                                   &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -964,28 +908,23 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
         request.set_name(name);
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.table_info_size());
         ASSERT_EQ(name, response.table_info(0).name());
         ASSERT_EQ(3, response.table_info(0).table_partition_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(0).partition_meta_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(1).partition_meta_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(2).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(0).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(1).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(2).partition_meta_size());
     }
 
     name = "test" + GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -1017,9 +956,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         meta_33->set_endpoint("127.0.0.1:9951");
         meta_33->set_is_leader(false);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
-            &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
+                                                   &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -1030,28 +968,23 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
         request.set_name(name);
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.table_info_size());
         ASSERT_EQ(name, response.table_info(0).name());
         ASSERT_EQ(3, response.table_info(0).table_partition_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(0).partition_meta_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(1).partition_meta_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(2).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(0).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(1).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(2).partition_meta_size());
     }
 
     name = "test" + GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -1068,9 +1001,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         meta_13->set_endpoint("127.0.0.1:9951");
         meta_13->set_is_leader(false);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
-            &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfo, &request,
+                                                   &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -1081,16 +1013,14 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::openmldb::nameserver::ShowTableRequest request;
         ::openmldb::nameserver::ShowTableResponse response;
         request.set_name(name);
-        ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.table_info_size());
         ASSERT_EQ(name, response.table_info(0).name());
         ASSERT_EQ(1, response.table_info(0).table_partition_size());
-        ASSERT_EQ(
-            1, response.table_info(0).table_partition(0).partition_meta_size());
+        ASSERT_EQ(1, response.table_info(0).table_partition(0).partition_meta_size());
     }
 }
 
@@ -1150,9 +1080,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::openmldb::nameserver::SwitchModeRequest request;
         ::openmldb::nameserver::GeneralResponse response;
         request.set_sm(kLEADER);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::SwitchMode, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::SwitchMode, &request, &response,
+                                              FLAGS_request_timeout_ms, 1);
     }
     {
         std::string alias = "remote";
@@ -1162,9 +1091,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         add_request.set_alias(alias);
         add_request.set_zk_path(FLAGS_zk_root_path);
         add_request.set_zk_endpoints(FLAGS_zk_cluster);
-        ok = name_server_client_1.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::AddReplicaCluster,
-            &add_request, &add_response, FLAGS_request_timeout_ms, 1);
+        ok = name_server_client_1.SendRequest(&::openmldb::nameserver::NameServer_Stub::AddReplicaCluster, &add_request,
+                                              &add_response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, add_response.code());
         sleep(2);
@@ -1175,8 +1103,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -1217,9 +1144,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         meta_33->set_endpoint("127.0.0.1:9951");
         meta_33->set_is_leader(false);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
-            &request, &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
+                                                   &request, &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -1231,8 +1157,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -1255,9 +1180,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         meta_31->set_endpoint("127.0.0.1:9951");
         meta_31->set_is_leader(true);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
-            &request, &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
+                                                   &request, &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -1269,8 +1193,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -1299,9 +1222,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         meta_31->set_endpoint("127.0.0.1:9951");
         meta_31->set_is_leader(true);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
-            &request, &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
+                                                   &request, &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -1318,8 +1240,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -1360,9 +1281,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         meta_33->set_endpoint("127.0.0.1:9951");
         meta_33->set_is_leader(false);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
-            &request, &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
+                                                   &request, &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -1374,8 +1294,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -1407,9 +1326,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         meta_33->set_endpoint("127.0.0.1:9951");
         meta_33->set_is_leader(false);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
-            &request, &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
+                                                   &request, &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
@@ -1421,8 +1339,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
-        ::openmldb::nameserver::ZoneInfo* zone_info_p =
-            request.mutable_zone_info();
+        ::openmldb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
@@ -1439,9 +1356,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         meta_13->set_endpoint("127.0.0.1:9951");
         meta_13->set_is_leader(false);
 
-        bool ok = name_server_client_2.SendRequest(
-            &::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
-            &request, &response, FLAGS_request_timeout_ms, 3);
+        bool ok = name_server_client_2.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTableInfoSimply,
+                                                   &request, &response, FLAGS_request_timeout_ms, 3);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());

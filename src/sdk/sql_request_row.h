@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_SDK_SQL_REQUEST_ROW_H_
 #define SRC_SDK_SQL_REQUEST_ROW_H_
 
@@ -35,8 +34,7 @@ namespace sdk {
 class SQLRequestRow {
  public:
     SQLRequestRow() {}
-    SQLRequestRow(std::shared_ptr<hybridse::sdk::Schema> schema,
-            const std::set<std::string>& record_cols);
+    SQLRequestRow(std::shared_ptr<hybridse::sdk::Schema> schema, const std::set<std::string>& record_cols);
     ~SQLRequestRow() {}
     bool Init(int32_t str_length);
     bool AppendBool(bool val);
@@ -49,16 +47,12 @@ class SQLRequestRow {
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const std::string& val);
-    bool AppendString(const char *string_buffer_var_name, uint32_t length);
+    bool AppendString(const char* string_buffer_var_name, uint32_t length);
     bool AppendNULL();
     bool Build();
-    inline bool OK() {
-        return is_ok_;
-    }
+    inline bool OK() { return is_ok_; }
     inline const std::string& GetRow() { return val_; }
-    inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() {
-        return schema_;
-    }
+    inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() { return schema_; }
     bool GetRecordVal(const std::string& col, std::string* val);
 
  private:
@@ -83,26 +77,20 @@ class SQLRequestRow {
     std::map<std::string, std::string> record_value_;
 };
 
-
 class ColumnIndicesSet;
 
 /**
-  * SDK input interface for batch request, with common column encoding optimization.
-  */
+ * SDK input interface for batch request, with common column encoding optimization.
+ */
 class SQLRequestRowBatch {
  public:
-    SQLRequestRowBatch(std::shared_ptr<hybridse::sdk::Schema> schema,
-                       std::shared_ptr<ColumnIndicesSet> indices);
+    SQLRequestRowBatch(std::shared_ptr<hybridse::sdk::Schema> schema, std::shared_ptr<ColumnIndicesSet> indices);
     bool AddRow(std::shared_ptr<SQLRequestRow> row);
     int Size() const { return non_common_slices_.size(); }
 
-    const std::set<size_t>& common_column_indices() const {
-        return common_column_indices_;
-    }
+    const std::set<size_t>& common_column_indices() const { return common_column_indices_; }
 
-    const std::string* GetCommonSlice() const {
-        return &common_slice_;
-    }
+    const std::string* GetCommonSlice() const { return &common_slice_; }
 
     const std::string* GetNonCommonSlice(uint32_t idx) const {
         if (idx >= non_common_slices_.size()) {
@@ -129,8 +117,7 @@ class SQLRequestRowBatch {
 
 class ColumnIndicesSet {
  public:
-    explicit ColumnIndicesSet(std::shared_ptr<hybridse::sdk::Schema> schema)
-        : bound_(schema->GetColumnCnt()) {}
+    explicit ColumnIndicesSet(std::shared_ptr<hybridse::sdk::Schema> schema) : bound_(schema->GetColumnCnt()) {}
 
     bool Empty() const { return common_column_indices_.empty(); }
 

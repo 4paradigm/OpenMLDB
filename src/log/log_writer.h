@@ -22,7 +22,9 @@
 #define SRC_LOG_LOG_WRITER_H_
 
 #include <stdint.h>
+
 #include <string>
+
 #include "base/slice.h"
 #include "base/status.h"
 #include "log/log_format.h"
@@ -51,17 +53,11 @@ class Writer {
     Status AddRecord(const Slice& slice);
     Status EndLog();
 
-    inline CompressType GetCompressType() {
-        return compress_type_;
-    }
+    inline CompressType GetCompressType() { return compress_type_; }
 
-    inline uint32_t GetBlockSize() {
-        return block_size_;
-    }
+    inline uint32_t GetBlockSize() { return block_size_; }
 
-    inline uint32_t GetHeaderSize() {
-        return header_size_;
-    }
+    inline uint32_t GetHeaderSize() { return header_size_; }
 
     CompressType GetCompressType(const std::string& compress_type);
 
@@ -101,9 +97,7 @@ struct WriteHandle {
         lw_ = new Writer(compress_type, wf_, dest_length);
     }
 
-    ::openmldb::base::Status Write(const ::openmldb::base::Slice& slice) {
-        return lw_->AddRecord(slice);
-    }
+    ::openmldb::base::Status Write(const ::openmldb::base::Slice& slice) { return lw_->AddRecord(slice); }
 
     ::openmldb::base::Status Sync() { return wf_->Sync(); }
 

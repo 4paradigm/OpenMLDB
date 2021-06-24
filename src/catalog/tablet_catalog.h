@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CATALOG_TABLET_CATALOG_H_
 #define SRC_CATALOG_TABLET_CATALOG_H_
 
@@ -34,7 +33,6 @@
 
 namespace openmldb {
 namespace catalog {
-
 
 class TabletPartitionHandler;
 class TabletTableHandler;
@@ -202,7 +200,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     std::shared_ptr<::hybridse::vm::Tablet> GetTablet(const std::string &index_name, const std::string &pk) override;
     std::shared_ptr<::hybridse::vm::Tablet> GetTablet(const std::string &index_name,
-                                                   const std::vector<std::string> &pks) override;
+                                                      const std::vector<std::string> &pks) override;
 
     inline int32_t GetTid() { return table_st_.GetTid(); }
 
@@ -236,8 +234,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
 typedef std::map<std::string, std::map<std::string, std::shared_ptr<TabletTableHandler>>> TabletTables;
 typedef std::map<std::string, std::shared_ptr<::hybridse::type::Database>> TabletDB;
-typedef std::map<std::string,
-        std::map<std::string, std::shared_ptr<::hybridse::sdk::ProcedureInfo>>> Procedures;
+typedef std::map<std::string, std::map<std::string, std::shared_ptr<::hybridse::sdk::ProcedureInfo>>> Procedures;
 
 class TabletCatalog : public ::hybridse::vm::Catalog {
  public:
@@ -263,10 +260,10 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
     bool DeleteDB(const std::string &db);
 
     void Refresh(const std::vector<::openmldb::nameserver::TableInfo> &table_info_vec, uint64_t version,
-            const Procedures& db_sp_map);
+                 const Procedures &db_sp_map);
 
     bool AddProcedure(const std::string &db, const std::string &sp_name,
-            const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
+                      const std::shared_ptr<hybridse::sdk::ProcedureInfo> &sp_info);
 
     bool DropProcedure(const std::string &db, const std::string &sp_name);
 
@@ -279,10 +276,10 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
         local_sp_tablet_ = local_sp_tablet;
     }
 
-    std::shared_ptr<::hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db,
-            const std::string& sp_name) override;
+    std::shared_ptr<::hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string &db,
+                                                                     const std::string &sp_name) override;
 
-    const Procedures& GetProcedures();
+    const Procedures &GetProcedures();
 
  private:
     ::openmldb::base::SpinMutex mu_;

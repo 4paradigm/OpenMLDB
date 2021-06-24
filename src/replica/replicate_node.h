@@ -18,8 +18,9 @@
 #define SRC_REPLICA_REPLICATE_NODE_H_
 
 #include <atomic>
-#include <vector>
 #include <string>
+#include <vector>
+
 #include "base/skiplist.h"
 #include "bthread/bthread.h"
 #include "bthread/condition_variable.h"
@@ -33,18 +34,13 @@ namespace openmldb {
 namespace replica {
 
 using ::openmldb::log::LogReader;
-typedef ::openmldb::base::Skiplist<uint32_t, uint64_t,
-                                ::openmldb::base::DefaultComparator>
-    LogParts;
+typedef ::openmldb::base::Skiplist<uint32_t, uint64_t, ::openmldb::base::DefaultComparator> LogParts;
 
 class ReplicateNode {
  public:
-    ReplicateNode(const std::string& point, LogParts* logs,
-                  const std::string& log_path, uint32_t tid, uint32_t pid,
-                  std::atomic<uint64_t>* term,
-                  std::atomic<uint64_t>* leader_log_offset, bthread::Mutex* mu,
-                  bthread::ConditionVariable* cv, bool rep_follower,
-                  std::atomic<uint64_t>* follower_offset,
+    ReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path, uint32_t tid, uint32_t pid,
+                  std::atomic<uint64_t>* term, std::atomic<uint64_t>* leader_log_offset, bthread::Mutex* mu,
+                  bthread::ConditionVariable* cv, bool rep_follower, std::atomic<uint64_t>* follower_offset,
                   const std::string& real_point);
     int Init();
 
@@ -93,8 +89,7 @@ class ReplicateNode {
     bthread::ConditionVariable* cv_;
     uint32_t go_back_cnt_;
     std::atomic<bool> rep_node_;
-    std::atomic<uint64_t>*
-        follower_offset_;  // max local cluster follower offset
+    std::atomic<uint64_t>* follower_offset_;  // max local cluster follower offset
 };
 
 }  // namespace replica

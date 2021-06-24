@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-
 #include <string>
 #include <vector>
+
 #include "base/glog_wapper.h"
 #include "base/strings.h"
 #include "codec/codec.h"
@@ -34,14 +34,7 @@ struct TestArgs {
     void* out_ptr;
     uint32_t out_size;
     Schema output_schema;
-    TestArgs()
-        : schema(),
-          plist(),
-          row_ptr(NULL),
-          row_size(0),
-          out_ptr(NULL),
-          out_size(0),
-          output_schema() {}
+    TestArgs() : schema(), plist(), row_ptr(NULL), row_size(0), out_ptr(NULL), out_size(0), output_schema() {}
     ~TestArgs() {}
 };
 
@@ -71,8 +64,7 @@ std::vector<TestArgs*> GenCommonCase() {
         RowBuilder input_rb(testargs->schema);
         uint32_t input_row_size = input_rb.CalTotalLength(0);
         void* input_ptr = ::malloc(input_row_size);
-        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr),
-                           input_row_size);
+        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
         int16_t c1 = 1;
         input_rb.AppendInt16(c1);
         int32_t c2 = 2;
@@ -81,8 +73,7 @@ std::vector<TestArgs*> GenCommonCase() {
         RowBuilder output_rb(testargs->output_schema);
         uint32_t output_row_size = output_rb.CalTotalLength(0);
         void* output_ptr = ::malloc(output_row_size);
-        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr),
-                            output_row_size);
+        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
         output_rb.AppendInt32(c2);
         uint32_t* idx = testargs->plist.Add();
         *idx = 1;
@@ -116,8 +107,7 @@ std::vector<TestArgs*> GenCommonCase() {
         std::string hello = "hello";
         uint32_t input_row_size = input_rb.CalTotalLength(hello.size());
         void* input_ptr = ::malloc(input_row_size);
-        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr),
-                           input_row_size);
+        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
         int16_t c1 = 1;
         input_rb.AppendInt16(c1);
         int32_t c2 = 2;
@@ -129,8 +119,7 @@ std::vector<TestArgs*> GenCommonCase() {
         RowBuilder output_rb(testargs->output_schema);
         uint32_t output_row_size = output_rb.CalTotalLength(hello.size());
         void* output_ptr = ::malloc(output_row_size);
-        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr),
-                            output_row_size);
+        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
         output_rb.AppendString(hello.c_str(), hello.size());
         uint32_t* idx = testargs->plist.Add();
         *idx = 3;
@@ -167,8 +156,7 @@ std::vector<TestArgs*> GenCommonCase() {
         std::string hello = "hello";
         uint32_t input_row_size = input_rb.CalTotalLength(hello.size());
         void* input_ptr = ::malloc(input_row_size);
-        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr),
-                           input_row_size);
+        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
         int16_t c1 = 1;
         input_rb.AppendInt16(c1);
         int32_t c2 = 2;
@@ -180,8 +168,7 @@ std::vector<TestArgs*> GenCommonCase() {
         RowBuilder output_rb(testargs->output_schema);
         uint32_t output_row_size = output_rb.CalTotalLength(hello.size());
         void* output_ptr = ::malloc(output_row_size);
-        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr),
-                            output_row_size);
+        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
         output_rb.AppendString(hello.c_str(), hello.size());
         output_rb.AppendInt64(c3);
         uint32_t* idx = testargs->plist.Add();
@@ -222,8 +209,7 @@ std::vector<TestArgs*> GenCommonCase() {
         std::string hello = "hello";
         uint32_t input_row_size = input_rb.CalTotalLength(hello.size());
         void* input_ptr = ::malloc(input_row_size);
-        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr),
-                           input_row_size);
+        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
         int16_t c1 = 1;
         input_rb.AppendInt16(c1);
         int32_t c2 = 2;
@@ -234,8 +220,7 @@ std::vector<TestArgs*> GenCommonCase() {
         RowBuilder output_rb(testargs->output_schema);
         uint32_t output_row_size = output_rb.CalTotalLength(hello.size());
         void* output_ptr = ::malloc(output_row_size);
-        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr),
-                            output_row_size);
+        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
         output_rb.AppendString(hello.c_str(), hello.size());
         output_rb.AppendNULL();
         uint32_t* idx = testargs->plist.Add();
@@ -275,8 +260,7 @@ std::vector<TestArgs*> GenCommonCase() {
         RowBuilder input_rb(testargs->schema);
         uint32_t input_row_size = input_rb.CalTotalLength(0);
         void* input_ptr = ::malloc(input_row_size);
-        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr),
-                           input_row_size);
+        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
         int16_t c1 = 1;
         input_rb.AppendInt16(c1);
         int32_t c2 = 2;
@@ -288,8 +272,7 @@ std::vector<TestArgs*> GenCommonCase() {
         RowBuilder output_rb(testargs->output_schema);
         uint32_t output_row_size = output_rb.CalTotalLength(0);
         void* output_ptr = ::malloc(output_row_size);
-        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr),
-                            output_row_size);
+        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
         output_rb.AppendNULL();
         output_rb.AppendInt64(c3);
         uint32_t* idx = testargs->plist.Add();
@@ -305,8 +288,7 @@ std::vector<TestArgs*> GenCommonCase() {
     return args;
 }
 
-void CompareRow(RowView* left, RowView* right,
-        const Schema& schema) {
+void CompareRow(RowView* left, RowView* right, const Schema& schema) {
     for (int32_t i = 0; i < schema.size(); i++) {
         uint32_t idx = (uint32_t)i;
         const common::ColumnDesc& column = schema.Get(i);
@@ -407,8 +389,7 @@ TEST_P(ProjectCodecTest, common_case) {
     ASSERT_TRUE(rp.Init());
     int8_t* output = NULL;
     uint32_t output_size = 0;
-    ASSERT_TRUE(rp.Project(reinterpret_cast<int8_t*>(args->row_ptr),
-                           args->row_size, &output, &output_size));
+    ASSERT_TRUE(rp.Project(reinterpret_cast<int8_t*>(args->row_ptr), args->row_size, &output, &output_size));
     ASSERT_EQ(output_size, args->out_size);
     RowView left(args->output_schema);
     left.Reset(output, output_size);
@@ -417,8 +398,7 @@ TEST_P(ProjectCodecTest, common_case) {
     CompareRow(&left, &right, args->output_schema);
 }
 
-INSTANTIATE_TEST_SUITE_P(ProjectCodecTestPrefix, ProjectCodecTest,
-                        testing::ValuesIn(GenCommonCase()));
+INSTANTIATE_TEST_SUITE_P(ProjectCodecTestPrefix, ProjectCodecTest, testing::ValuesIn(GenCommonCase()));
 
 }  // namespace codec
 }  // namespace openmldb

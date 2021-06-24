@@ -126,7 +126,8 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
 
                     if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows,
+                                                             rs);
                     }
                     state.SkipWithError("BENCHMARK DEBUG");
                 } else {
@@ -142,7 +143,8 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
 
                     if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows,
+                                                             rs);
                     }
                     state.SkipWithError("BENCHMARK DEBUG");
                 }
@@ -317,7 +319,8 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
 
                     if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows,
+                                                             rs);
                     }
                 } else {
                     auto rs = router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status);
@@ -332,7 +335,8 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
 
                     if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows,
+                                                             rs);
                     }
                 }
                 break;

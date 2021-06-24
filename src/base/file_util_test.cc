@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "base/file_util.h"
 
 #include <algorithm>

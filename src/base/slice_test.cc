@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-
 #include "base/slice.h"
+
 #include "gtest/gtest.h"
 
 namespace openmldb {

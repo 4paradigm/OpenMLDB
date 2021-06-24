@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_LOG_WRITABLE_FILE_H_
 #define SRC_LOG_WRITABLE_FILE_H_
 

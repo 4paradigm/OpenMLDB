@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_COUNT_DOWN_LATCH_H_
 #define SRC_BASE_COUNT_DOWN_LATCH_H_
-#include <condition_variable> // NOLINT
-#include <mutex> // NOLINT
+#include <condition_variable>  // NOLINT
+#include <mutex>               // NOLINT
 
 namespace openmldb {
 namespace base {

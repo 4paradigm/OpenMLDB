@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_SLICE_H_
 #define SRC_BASE_SLICE_H_
 
@@ -41,8 +40,7 @@ class Slice {
 
     Slice(const char* s)  // NOLINT
         : need_free_(false), size_(strlen(s)), data_(s) {}
-    Slice(const char* d, size_t n, bool need_free)
-        : need_free_(need_free), size_(n), data_(d) {}
+    Slice(const char* d, size_t n, bool need_free) : need_free_(need_free), size_(n), data_(d) {}
     // Return a pointer to the beginning of the referenced data
     const char* data() const { return data_; }
 
@@ -63,8 +61,7 @@ class Slice {
         }
     }
 
-    Slice(Slice&& s) noexcept
-        : need_free_(s.need_free_), size_(s.size()), data_(s.data()) {
+    Slice(Slice&& s) noexcept : need_free_(s.need_free_), size_(s.size()), data_(s.data()) {
         s.need_free_ = false;
         s.size_ = 0;
         s.data_ = NULL;
@@ -104,8 +101,7 @@ class Slice {
         return *this;
     }
 
-    Slice(const Slice& s)
-        : need_free_(false), size_(s.size()), data_(s.data()) {}
+    Slice(const Slice& s) : need_free_(false), size_(s.size()), data_(s.data()) {}
 
     // Change this slice to refer to an empty array
     void clear() {
@@ -130,9 +126,7 @@ class Slice {
     int compare(const Slice& b) const;
 
     // Return true iff "x" is a prefix of "*this"
-    bool starts_with(const Slice& x) const {
-        return ((size_ >= x.size_) && (memcmp(data_, x.data_, x.size_) == 0));
-    }
+    bool starts_with(const Slice& x) const { return ((size_ >= x.size_) && (memcmp(data_, x.data_, x.size_) == 0)); }
 
  private:
     bool need_free_;
@@ -142,8 +136,7 @@ class Slice {
 };
 
 inline bool operator==(const Slice& x, const Slice& y) {
-    return ((x.size() == y.size()) &&
-            (memcmp(x.data(), y.data(), x.size()) == 0));
+    return ((x.size() == y.size()) && (memcmp(x.data(), y.data(), x.size()) == 0));
 }
 
 inline bool operator!=(const Slice& x, const Slice& y) { return !(x == y); }

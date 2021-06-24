@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_GLOG_WAPPER_H_
 #define SRC_BASE_GLOG_WAPPER_H_
 
+#include <boost/format.hpp>
 #include <cstdarg>
 #include <iostream>
 #include <string>
-#include <boost/format.hpp>
+
 #include "glog/logging.h"
 
 using google::ERROR;
@@ -58,16 +58,13 @@ inline void SetLogFile(std::string path) {
 
 using ::openmldb::base::DEBUG;
 
-#define PDLOG(level, fmt, args...)      \
-    COMPACT_GOOGLE_LOG_##level.stream() \
-        << ::openmldb::base::FormatArgs(fmt, ##args)
+#define PDLOG(level, fmt, args...) COMPACT_GOOGLE_LOG_##level.stream() << ::openmldb::base::FormatArgs(fmt, ##args)
 
-#define DEBUGLOG(fmt, args...)                             \
-    {                                                      \
-        if (::openmldb::base::log_level == -1)                \
-            COMPACT_GOOGLE_LOG_INFO.stream()               \
-                << ::openmldb::base::FormatArgs(fmt, ##args); \
-    }                                                      \
+#define DEBUGLOG(fmt, args...)                                                             \
+    {                                                                                      \
+        if (::openmldb::base::log_level == -1)                                             \
+            COMPACT_GOOGLE_LOG_INFO.stream() << ::openmldb::base::FormatArgs(fmt, ##args); \
+    }                                                                                      \
     while (0)
 
 #endif  // SRC_BASE_GLOG_WAPPER_H_

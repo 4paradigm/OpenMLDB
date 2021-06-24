@@ -14,27 +14,24 @@
  * limitations under the License.
  */
 
-
 #include "storage/snapshot.h"
+
 #include <fcntl.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "base/glog_wapper.h" // NOLINT
 
-
+#include "base/glog_wapper.h"  // NOLINT
 
 namespace openmldb {
 namespace storage {
 
-const std::string MANIFEST = "MANIFEST"; // NOLINT
+const std::string MANIFEST = "MANIFEST";  // NOLINT
 
-int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count,
-                          uint64_t offset, uint64_t term) {
-    DEBUGLOG("record offset[%lu]. add snapshot[%s] key_count[%lu]", offset,
-          snapshot_name.c_str(), key_count);
+int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term) {
+    DEBUGLOG("record offset[%lu]. add snapshot[%s] key_count[%lu]", offset, snapshot_name.c_str(), key_count);
     std::string full_path = snapshot_path_ + MANIFEST;
     std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
     ::openmldb::api::Manifest manifest;
@@ -55,23 +52,20 @@ int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count,
         PDLOG(WARNING, "write error. path[%s]", tmp_file.c_str());
         io_error = true;
     }
-    if (!io_error &&
-        ((fflush(fd_write) == EOF) || fsync(fileno(fd_write)) == -1)) {
+    if (!io_error && ((fflush(fd_write) == EOF) || fsync(fileno(fd_write)) == -1)) {
         PDLOG(WARNING, "flush error. path[%s]", tmp_file.c_str());
         io_error = true;
     }
     fclose(fd_write);
     if (!io_error && rename(tmp_file.c_str(), full_path.c_str()) == 0) {
-        DEBUGLOG("%s generate success. path[%s]", MANIFEST.c_str(),
-              full_path.c_str());
+        DEBUGLOG("%s generate success. path[%s]", MANIFEST.c_str(), full_path.c_str());
         return 0;
     }
     unlink(tmp_file.c_str());
     return -1;
 }
 
-int Snapshot::GetLocalManifest(const std::string& full_path,
-                               ::openmldb::api::Manifest& manifest) {
+int Snapshot::GetLocalManifest(const std::string& full_path, ::openmldb::api::Manifest& manifest) {
     int fd = open(full_path.c_str(), O_RDONLY);
     if (fd < 0) {
         PDLOG(INFO, "[%s] is not exist", MANIFEST.c_str());

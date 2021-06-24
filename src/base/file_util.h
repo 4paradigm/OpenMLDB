@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_FILE_UTIL_H_
 #define SRC_BASE_FILE_UTIL_H_
 
@@ -25,10 +24,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <vector>
-#include <string>
-#include "base/glog_wapper.h" // NOLINT
 
+#include <string>
+#include <vector>
+
+#include "base/glog_wapper.h"  // NOLINT
 
 namespace openmldb {
 namespace base {
@@ -44,8 +44,7 @@ inline static bool Mkdir(const std::string& path) {
     if (ret == 0 || errno == EEXIST) {
         return true;
     }
-    PDLOG(WARNING, "mkdir %s failed err[%d: %s]", path.c_str(), errno,
-          strerror(errno));
+    PDLOG(WARNING, "mkdir %s failed err[%d: %s]", path.c_str(), errno, strerror(errno));
     return false;
 }
 
@@ -58,12 +57,10 @@ inline static bool IsExists(const std::string& path) {
     return true;
 }
 
-inline static bool Rename(const std::string& source,
-                          const std::string& target) {
+inline static bool Rename(const std::string& source, const std::string& target) {
     int ret = ::rename(source.c_str(), target.c_str());
     if (ret != 0) {
-        PDLOG(WARNING, "fail to rename %s to %s with error %s", source.c_str(),
-              target.c_str(), strerror(errno));
+        PDLOG(WARNING, "fail to rename %s to %s with error %s", source.c_str(), target.c_str(), strerror(errno));
         return false;
     }
     return true;
@@ -114,8 +111,7 @@ inline static int GetFileName(const std::string& path,
     }
     DIR* dir = opendir(path.c_str());
     if (dir == NULL) {
-        PDLOG(WARNING, "fail to open path %s for %s", path.c_str(),
-              strerror(errno));
+        PDLOG(WARNING, "fail to open path %s for %s", path.c_str(), strerror(errno));
         return -1;
     }
     struct dirent* ptr;
@@ -127,8 +123,7 @@ inline static int GetFileName(const std::string& path,
         std::string file_path = path + "/" + ptr->d_name;
         int ret = lstat(file_path.c_str(), &stat_buf);
         if (ret == -1) {
-            PDLOG(WARNING, "stat path %s failed err[%d: %s]", file_path.c_str(),
-                  errno, strerror(errno));
+            PDLOG(WARNING, "stat path %s failed err[%d: %s]", file_path.c_str(), errno, strerror(errno));
             closedir(dir);
             return -1;
         }
@@ -148,8 +143,7 @@ inline static bool GetFileSize(const std::string& file_path,
     }
     struct stat stat_buf;
     if (lstat(file_path.c_str(), &stat_buf) < 0) {
-        PDLOG(WARNING, "stat path %s failed err[%d: %s]", file_path.c_str(),
-              errno, strerror(errno));
+        PDLOG(WARNING, "stat path %s failed err[%d: %s]", file_path.c_str(), errno, strerror(errno));
         return false;
     }
     if (S_ISREG(stat_buf.st_mode)) {
@@ -176,9 +170,8 @@ inline static bool RemoveDir(const std::string& path) {
     return true;
 }
 
-inline static int GetChildFileName(
-    const std::string& path,
-    std::vector<std::string>& file_vec) {  // NOLINT
+inline static int GetChildFileName(const std::string& path,
+                                   std::vector<std::string>& file_vec) {  // NOLINT
     if (path.empty()) {
         return -1;
     }
@@ -245,8 +238,7 @@ static bool GetDirSizeRecur(const std::string& path,
     for (const auto& file : file_vec) {
         struct stat stat_buf;
         if (lstat(file.c_str(), &stat_buf) < 0) {
-            PDLOG(WARNING, "stat path %s failed err[%d: %s]", path.c_str(),
-                  errno, strerror(errno));
+            PDLOG(WARNING, "stat path %s failed err[%d: %s]", path.c_str(), errno, strerror(errno));
             return false;
         }
         if (IsFolder(file)) {
@@ -261,8 +253,7 @@ static bool GetDirSizeRecur(const std::string& path,
     return true;
 }
 
-__attribute__((unused)) static bool CopyFile(const std::string& src_file,
-                                             const std::string& desc_file) {
+__attribute__((unused)) static bool CopyFile(const std::string& src_file, const std::string& desc_file) {
     if (!IsExists(src_file)) {
         return false;
     }

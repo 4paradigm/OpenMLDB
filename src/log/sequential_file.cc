@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
@@ -23,10 +22,10 @@
 
 #include <errno.h>
 #include <stdio.h>
+
+#include "base/glog_wapper.h"  // NOLINT
 #include "base/slice.h"
 #include "base/status.h"
-#include "base/glog_wapper.h" // NOLINT
-
 
 using ::openmldb::base::Slice;
 using ::openmldb::base::Status;
@@ -40,8 +39,7 @@ class PosixSequentialFile : public SequentialFile {
     FILE* file_;
 
  public:
-    PosixSequentialFile(const std::string& fname, FILE* f)
-        : filename_(fname), file_(f) {}
+    PosixSequentialFile(const std::string& fname, FILE* f) : filename_(fname), file_(f) {}
 
     virtual ~PosixSequentialFile() { fclose(file_); }
 
@@ -93,9 +91,7 @@ class PosixSequentialFile : public SequentialFile {
     }
 };
 
-SequentialFile* NewSeqFile(const std::string& fname, FILE* f) {
-    return new PosixSequentialFile(fname, f);
-}
+SequentialFile* NewSeqFile(const std::string& fname, FILE* f) { return new PosixSequentialFile(fname, f); }
 
 }  // namespace log
 }  // namespace openmldb

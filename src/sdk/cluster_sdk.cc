@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-
 #include "sdk/cluster_sdk.h"
 
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
 #include <snappy.h>
+
 #include <algorithm>
 #include <map>
 #include <memory>
@@ -28,6 +28,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "base/hash.h"
 #include "base/strings.h"
 #include "boost/bind.hpp"
@@ -82,8 +83,7 @@ bool ClusterSDK::Init() {
         return false;
     }
     LOG(INFO) << "init zk client with zk cluster " << options_.zk_cluster << " , zk path " << options_.zk_path
-                 << ",session timeout " << options_.session_timeout << " and session id "
-                 << zk_client_->GetSessionTerm();
+              << ",session timeout " << options_.session_timeout << " and session id " << zk_client_->GetSessionTerm();
 
     ::hybridse::vm::EngineOptions eopt;
     eopt.set_compile_only(true);
@@ -137,8 +137,7 @@ bool ClusterSDK::CreateNsClient() {
     }
 }
 
-bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
-        const std::vector<std::string>& sp_datas) {
+bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas, const std::vector<std::string>& sp_datas) {
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::map<std::string, std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>> mapping;
     auto new_catalog = std::make_shared<::openmldb::catalog::SDKCatalog>(client_manager_);
@@ -176,8 +175,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
     for (const auto& node : sp_datas) {
         if (node.empty()) continue;
         std::string value;
-        bool ok = zk_client_->GetNodeValue(
-                sp_root_path_ + "/" + node, value);
+        bool ok = zk_client_->GetNodeValue(sp_root_path_ + "/" + node, value);
         if (!ok) {
             LOG(WARNING) << "fail to get procedure data. node: " << node;
             continue;
@@ -187,28 +185,26 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         ::openmldb::api::ProcedureInfo sp_info_pb;
         ok = sp_info_pb.ParseFromString(uncompressed);
         if (!ok) {
-            LOG(WARNING) << "fail to parse procedure proto. node: " << node << " value: "<< value;
+            LOG(WARNING) << "fail to parse procedure proto. node: " << node << " value: " << value;
             continue;
         }
         DLOG(INFO) << "parse procedure " << sp_info_pb.sp_name() << " ok";
         // conver to ProcedureInfoImpl
         auto sp_info = openmldb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
         if (!sp_info) {
-            LOG(WARNING) << "convert procedure info failed, sp_name: "
-                << sp_info_pb.sp_name() << " db: " << sp_info_pb.db_name();
+            LOG(WARNING) << "convert procedure info failed, sp_name: " << sp_info_pb.sp_name()
+                         << " db: " << sp_info_pb.db_name();
             continue;
         }
         auto it = db_sp_map.find(sp_info->GetDbName());
         if (it == db_sp_map.end()) {
-            std::map<std::string,
-                     std::shared_ptr<hybridse::sdk::ProcedureInfo>>
-                     sp_in_db = {{sp_info->GetSpName(), sp_info}};
+            std::map<std::string, std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_in_db = {
+                {sp_info->GetSpName(), sp_info}};
             db_sp_map.insert(std::make_pair(sp_info->GetDbName(), sp_in_db));
         } else {
             it->second.insert(std::make_pair(sp_info->GetSpName(), sp_info));
         }
-        DLOG(INFO) << "load procedure info with sp name " << sp_info->GetSpName()
-            << " in db " << sp_info->GetDbName();
+        DLOG(INFO) << "load procedure info with sp name " << sp_info->GetSpName() << " in db " << sp_info->GetDbName();
     }
     if (!new_catalog->Init(tables, db_sp_map)) {
         LOG(WARNING) << "fail to init catalog";
@@ -257,8 +253,7 @@ bool ClusterSDK::InitCatalog() {
     if (zk_client_->IsExistNode(sp_root_path_) == 0) {
         bool ok = zk_client_->GetChildren(sp_root_path_, sp_datas);
         if (!ok) {
-            LOG(WARNING) << "fail to get procedure list with path "
-                         << sp_root_path_;
+            LOG(WARNING) << "fail to get procedure list with path " << sp_root_path_;
             return false;
         }
     } else {
@@ -277,7 +272,7 @@ uint32_t ClusterSDK::GetTableId(const std::string& db, const std::string& tname)
 }
 
 std::shared_ptr<::openmldb::nameserver::TableInfo> ClusterSDK::GetTableInfo(const std::string& db,
-                                                                         const std::string& tname) {
+                                                                            const std::string& tname) {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {
@@ -331,7 +326,7 @@ bool ClusterSDK::GetRealEndpoint(const std::string& endpoint, std::string* real_
 std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet() { return GetCatalog()->GetTablet(); }
 
 std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
-                                                                        const std::string& name) {
+                                                                           const std::string& name) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         ::openmldb::catalog::SDKTableHandler* sdk_table_handler =
@@ -361,8 +356,8 @@ bool ClusterSDK::GetTablet(const std::string& db, const std::string& name,
     return false;
 }
 
-std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db, const std::string& name,
-                                                                        uint32_t pid) {
+std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
+                                                                           const std::string& name, uint32_t pid) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         ::openmldb::catalog::SDKTableHandler* sdk_table_handler =
@@ -374,8 +369,9 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const
     return std::shared_ptr<::openmldb::catalog::TabletAccessor>();
 }
 
-std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db, const std::string& name,
-                                                                        const std::string& pk) {
+std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
+                                                                           const std::string& name,
+                                                                           const std::string& pk) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         auto sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
@@ -391,8 +387,9 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const
     return std::shared_ptr<::openmldb::catalog::TabletAccessor>();
 }
 
-std::shared_ptr<hybridse::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(
-        const std::string& db, const std::string& sp_name, std::string* msg) {
+std::shared_ptr<hybridse::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(const std::string& db,
+                                                                           const std::string& sp_name,
+                                                                           std::string* msg) {
     if (msg == nullptr) {
         *msg = "null ptr";
         return nullptr;
@@ -411,8 +408,7 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(
     }
 }
 
-std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> ClusterSDK::GetProcedureInfo(
-        std::string* msg) {
+std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> ClusterSDK::GetProcedureInfo(std::string* msg) {
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos;
     if (msg == nullptr) {
         *msg = "null ptr";

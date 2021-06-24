@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -23,10 +22,12 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+
 #include <iostream>
+
 #include "base/file_util.h"
-#include "base/strings.h"
 #include "base/glog_wapper.h"
+#include "base/strings.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
@@ -75,8 +76,8 @@ int GetManifest(const std::string file, ::openmldb::api::Manifest* manifest) {
     return 0;
 }
 
-bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
-                  uint32_t& binlog_index, uint64_t offset, // NOLINT
+bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path, uint32_t& binlog_index,
+                  uint64_t offset,  // NOLINT
                   bool append_end = true) {
     if (*wh != NULL) {
         if (append_end) {
@@ -126,8 +127,8 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 4, 3, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("test", 4, 3, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);
@@ -251,8 +252,8 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 4, 4, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("test", 4, 4, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(4, 4, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -324,8 +325,8 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     wh->Sync();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 3, 3, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("test", 3, 3, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(3, 3, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -365,8 +366,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::openmldb::log::WritableFile* wf =
-            ::openmldb::log::NewWritableFile(snapshot1, fd_w);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot1, fd_w);
         ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
         {
             ::openmldb::api::LogEntry entry;
@@ -412,8 +412,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         std::string full_path = snapshot_dir + "/" + snapshot2;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::openmldb::log::WritableFile* wf =
-            ::openmldb::log::NewWritableFile(snapshot2, fd_w);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot2, fd_w);
         ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
         ::openmldb::api::LogEntry entry;
         entry.set_pk("test1");
@@ -439,8 +438,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 3, 2, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("test", 3, 2, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(3, 2, log_part, FLAGS_db_root_path);
@@ -503,8 +502,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::openmldb::log::WritableFile* wf =
-            ::openmldb::log::NewWritableFile(snapshot1, fd_w);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot1, fd_w);
         ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
         {
             ::openmldb::api::LogEntry entry;
@@ -550,8 +548,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
         std::string full_path = snapshot_dir + "/" + snapshot2;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::openmldb::log::WritableFile* wf =
-            ::openmldb::log::NewWritableFile(snapshot2, fd_w);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot2, fd_w);
         ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
         ::openmldb::api::LogEntry entry;
         entry.set_pk("test1");
@@ -581,7 +578,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
     SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::openmldb::type::kAbsoluteTime, 0, 0);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "merchant", "merchant", "", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "merchant", "merchant", "", ::openmldb::type::kAbsoluteTime, 0,
+                          0);
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
     table->Init();
     table->DeleteIndex("merchant");
@@ -634,8 +632,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::openmldb::log::WritableFile* wf =
-            ::openmldb::log::NewWritableFile(snapshot1, fd_w);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot1, fd_w);
         ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
         ::openmldb::api::LogEntry entry;
         entry.set_pk("test0");
@@ -665,8 +662,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
         std::string full_path = snapshot_dir + "/" + snapshot2;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::openmldb::log::WritableFile* wf =
-            ::openmldb::log::NewWritableFile(snapshot2, fd_w);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot2, fd_w);
         ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
         ::openmldb::api::LogEntry entry;
         entry.set_pk("test1");
@@ -692,8 +688,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
 
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 2, 2, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("test", 2, 2, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(2, 2, log_part, FLAGS_db_root_path);
@@ -725,8 +721,8 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "tx_log", 1, 1, 8, mapping, 2, ::openmldb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("tx_log", 1, 1, 8, mapping, 2, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -780,8 +776,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_term(6);
         if (count == 20) {
             // set one timeout key
-            entry.set_ts(::baidu::common::timer::get_micros() / 1000 -
-                         4 * 60 * 1000);
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
         } else {
             entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         }
@@ -878,7 +873,8 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
     SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::openmldb::type::kAbsoluteTime, 2, 0);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "merchant", "merchant", "", ::openmldb::type::kAbsoluteTime, 2, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "merchant", "merchant", "", ::openmldb::type::kAbsoluteTime, 2,
+                          0);
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
     table->Init();
     uint64_t offset = 0;
@@ -919,8 +915,7 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         entry.set_term(6);
         if (count == 20) {
             // set one timeout key
-            entry.set_ts(::baidu::common::timer::get_micros() / 1000 -
-                         4 * 60 * 1000);
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
         } else {
             entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         }
@@ -1019,7 +1014,8 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts", ::openmldb::type::kTimestamp);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "date", ::openmldb::type::kString);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "card|merchant", "", ::openmldb::type::kAbsOrLat, 0, 1);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "card|merchant", "", ::openmldb::type::kAbsOrLat, 0,
+                          1);
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
     table->Init();
 
@@ -1078,8 +1074,8 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "tx_log", 5, 1, 8, mapping, 4, ::openmldb::type::TTLType::kLatestTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("tx_log", 5, 1, 8, mapping, 4, ::openmldb::type::TTLType::kLatestTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1214,10 +1210,8 @@ TEST_F(SnapshotTest, RecordOffset) {
 
 TEST_F(SnapshotTest, Recover_empty_binlog) {
     uint32_t tid = GenRand();
-    std::string snapshot_dir =
-        FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/";
-    std::string binlog_dir =
-        FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
+    std::string snapshot_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/";
+    std::string binlog_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
     LogParts* log_part = new LogParts(12, 4, scmp);
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1283,8 +1277,8 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
 
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", tid, 0, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("test", tid, 0, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(tid, 0, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -1350,8 +1344,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
         printf("path:%s\n", full_path.c_str());
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
-        ::openmldb::log::WritableFile* wf =
-            ::openmldb::log::NewWritableFile(snapshot1, fd_w);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot1, fd_w);
         ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
         ::openmldb::api::LogEntry entry;
         entry.set_pk("test0");
@@ -1446,8 +1439,8 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "tx_log", 1, 10, 8, mapping, 2, ::openmldb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("tx_log", 1, 10, 8, mapping, 2, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -1501,8 +1494,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
         entry.set_term(6);
         if (count == 20) {
             // set one timeout key
-            entry.set_ts(::baidu::common::timer::get_micros() / 1000 -
-                         4 * 60 * 1000);
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
         } else {
             entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         }
@@ -1639,8 +1631,8 @@ TEST_F(SnapshotTest, Recover_large_snapshot) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 100, 0, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("test", 100, 0, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);
@@ -1705,8 +1697,8 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 100, 0, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("test", 100, 0, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);

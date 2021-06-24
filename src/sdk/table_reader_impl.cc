@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "sdk/table_reader_impl.h"
 
 #include <memory>
@@ -89,9 +88,9 @@ class ScanFutureImpl : public ScanFuture {
 TableReaderImpl::TableReaderImpl(ClusterSDK* cluster_sdk) : cluster_sdk_(cluster_sdk) {}
 
 std::shared_ptr<openmldb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::string& db, const std::string& table,
-                                                                   const std::string& key, int64_t st, int64_t et,
-                                                                   const ScanOption& so, int64_t timeout_ms,
-                                                                   ::hybridse::sdk::Status* status) {
+                                                                      const std::string& key, int64_t st, int64_t et,
+                                                                      const ScanOption& so, int64_t timeout_ms,
+                                                                      ::hybridse::sdk::Status* status) {
     auto table_handler = cluster_sdk_->GetCatalog()->GetTable(db, table);
     if (!table_handler) {
         LOG(WARNING) << "fail to get table " << table << "desc from catalog";
@@ -147,8 +146,8 @@ std::shared_ptr<openmldb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std:
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> TableReaderImpl::Scan(const std::string& db, const std::string& table,
-                                                             const std::string& key, int64_t st, int64_t et,
-                                                             const ScanOption& so, ::hybridse::sdk::Status* status) {
+                                                                const std::string& key, int64_t st, int64_t et,
+                                                                const ScanOption& so, ::hybridse::sdk::Status* status) {
     auto table_handler = cluster_sdk_->GetCatalog()->GetTable(db, table);
     if (!table_handler) {
         LOG(WARNING) << "fail to get table " << table << "desc from catalog";

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #pragma once
 
 #include <algorithm>
@@ -34,13 +33,7 @@ namespace storage {
 
 static constexpr uint32_t MAX_INDEX_NUM = 200;
 
-enum TTLType {
-    kAbsoluteTime = 1,
-    kRelativeTime = 2,
-    kLatestTime = 3,
-    kAbsAndLat = 4,
-    kAbsOrLat = 5
-};
+enum TTLType { kAbsoluteTime = 1, kRelativeTime = 2, kLatestTime = 3, kAbsAndLat = 4, kAbsOrLat = 5 };
 
 struct TTLSt {
     TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(::openmldb::storage::TTLType::kAbsoluteTime) {}
@@ -227,23 +220,23 @@ class IndexDef {
 
 class InnerIndexSt {
  public:
-     InnerIndexSt(uint32_t id, const std::vector<std::shared_ptr<IndexDef>>& index) :
-         id_(id), index_(index), ts_() {
+    InnerIndexSt(uint32_t id, const std::vector<std::shared_ptr<IndexDef>>& index) : id_(id), index_(index), ts_() {
         for (const auto& cur_index : index) {
             auto ts_col = cur_index->GetTsColumn();
             if (ts_col && ts_col->GetTsIdx() >= 0) {
                 ts_.push_back(ts_col->GetTsIdx());
             }
         }
-     }
-     inline uint32_t GetId() const { return id_; }
-     inline const std::vector<uint32_t>& GetTsIdx() const { return ts_; }
-     inline const std::vector<std::shared_ptr<IndexDef>>& GetIndex() const { return index_; }
-     uint32_t GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t lat_max_height) const;
+    }
+    inline uint32_t GetId() const { return id_; }
+    inline const std::vector<uint32_t>& GetTsIdx() const { return ts_; }
+    inline const std::vector<std::shared_ptr<IndexDef>>& GetIndex() const { return index_; }
+    uint32_t GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t lat_max_height) const;
+
  private:
-     const uint32_t id_;
-     const std::vector<std::shared_ptr<IndexDef>> index_;
-     std::vector<uint32_t> ts_;
+    const uint32_t id_;
+    const std::vector<std::shared_ptr<IndexDef>> index_;
+    std::vector<uint32_t> ts_;
 };
 
 bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b);

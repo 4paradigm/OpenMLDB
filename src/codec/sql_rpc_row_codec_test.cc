@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "codec/sql_rpc_row_codec.h"
 
 #include <memory>

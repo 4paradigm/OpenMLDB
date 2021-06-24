@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
+#include "codec/flat_array.h"
 
 #include <iostream>
+
 #include "base/strings.h"
-#include "codec/flat_array.h"
 #include "gtest/gtest.h"
 
 namespace openmldb {

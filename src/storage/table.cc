@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-
 #include "storage/table.h"
+
 #include <algorithm>
 #include <utility>
+
 #include "base/glog_wapper.h"
 #include "codec/schema_codec.h"
 
@@ -26,13 +27,10 @@ namespace storage {
 
 Table::Table() {}
 
-Table::Table(const std::string &name,
-             uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader,
-             uint64_t ttl_offset,
-             const std::map<std::string, uint32_t> &mapping,
-             ::openmldb::type::TTLType ttl_type,
+Table::Table(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader, uint64_t ttl_offset,
+             const std::map<std::string, uint32_t>& mapping, ::openmldb::type::TTLType ttl_type,
              ::openmldb::type::CompressType compress_type)
-      : name_(name),
+    : name_(name),
       id_(id),
       pid_(pid),
       ttl_offset_(ttl_offset),
@@ -52,7 +50,7 @@ Table::Table(const std::string &name,
     }
     last_make_snapshot_time_ = 0;
     std::map<uint32_t, std::string> idx_map;
-    for (const auto &kv : mapping) {
+    for (const auto& kv : mapping) {
         idx_map.emplace(kv.second, kv.first);
     }
     for (const auto& kv : idx_map) {
@@ -72,7 +70,7 @@ void Table::AddVersionSchema(const ::openmldb::api::TableMeta& table_meta) {
     new_versions->insert(std::make_pair(1, std::make_shared<Schema>(table_meta.column_desc())));
     for (const auto& ver : table_meta.schema_versions()) {
         int remain_size = ver.field_count() - table_meta.column_desc_size();
-        if (remain_size < 0)  {
+        if (remain_size < 0) {
             LOG(INFO) << "do not need add ver " << ver.id() << " because remain size less than 0";
             continue;
         }
@@ -90,7 +88,7 @@ void Table::AddVersionSchema(const ::openmldb::api::TableMeta& table_meta) {
     std::atomic_store_explicit(&version_schema_, new_versions, std::memory_order_relaxed);
 }
 
-void Table::SetTableMeta(::openmldb::api::TableMeta& table_meta) { // NOLINT
+void Table::SetTableMeta(::openmldb::api::TableMeta& table_meta) {  // NOLINT
     auto cur_table_meta = std::make_shared<::openmldb::api::TableMeta>(table_meta);
     std::atomic_store_explicit(&table_meta_, cur_table_meta, std::memory_order_release);
     AddVersionSchema(table_meta);
@@ -158,8 +156,7 @@ void Table::UpdateTTL() {
 }
 
 bool Table::InitFromMeta() {
-    if (table_meta_->has_mode() &&
-        table_meta_->mode() != ::openmldb::api::TableMode::kTableLeader) {
+    if (table_meta_->has_mode() && table_meta_->mode() != ::openmldb::api::TableMode::kTableLeader) {
         is_leader_ = false;
     }
     if (InitColumnDesc() < 0) {

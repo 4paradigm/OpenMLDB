@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "storage/table.h"
-#include "common/timer.h"
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/heap-checker.h"
 #endif

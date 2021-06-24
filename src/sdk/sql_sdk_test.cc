@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "sdk/sql_sdk_test.h"
 
 #include <sched.h>
@@ -28,12 +27,12 @@
 #include "base/glog_wapper.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
-#include "common/timer.h"
 
 namespace openmldb {
 namespace sdk {
@@ -50,8 +49,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
 }
 
 static bool IsSupportMode(const std::string& mode) {
-    if (mode.find("rtidb-unsupport") != std::string::npos ||
-            mode.find("request-unsupport") != std::string::npos) {
+    if (mode.find("rtidb-unsupport") != std::string::npos || mode.find("request-unsupport") != std::string::npos) {
         return false;
     }
     return true;

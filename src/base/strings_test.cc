@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-
 #include "base/strings.h"
+
 #include "gtest/gtest.h"
 
 namespace openmldb {
@@ -61,8 +61,8 @@ TEST_F(StringsTest, ReadableTime) {
 }
 
 TEST_F(StringsTest, getNowTimeInSecond) {
-//  ASSERT_EQ(1573620180, ParseTimeToSecond("20191113124300", "%Y%m%d%H%M%S"));
-//  ASSERT_EQ(1582952399, ParseTimeToSecond("20200229125959", "%Y%m%d%H%M%S"));
+    //  ASSERT_EQ(1573620180, ParseTimeToSecond("20191113124300", "%Y%m%d%H%M%S"));
+    //  ASSERT_EQ(1582952399, ParseTimeToSecond("20200229125959", "%Y%m%d%H%M%S"));
 }
 
 }  // namespace base

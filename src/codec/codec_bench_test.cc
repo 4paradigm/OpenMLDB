@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-
 #include <iostream>
+
 #include "base/kv_iterator.h"
-#include "common/timer.h"
 #include "codec/row_codec.h"
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
@@ -35,12 +35,10 @@ class CodecBenchmarkTest : public ::testing::Test {
 };
 
 void RunHasTs(::openmldb::storage::DataBlock* db) {
-    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>>
-        datas;
+    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> datas;
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.emplace_back(
-            1000, std::move(::openmldb::base::Slice(db->data, db->size)));
+        datas.emplace_back(1000, std::move(::openmldb::base::Slice(db->data, db->size)));
         total_block_size += db->size;
     }
     std::string pairs;
@@ -94,14 +92,12 @@ TEST_F(CodecBenchmarkTest, ProjectTest) {
         for (int32_t j = 0; j < 1000; j++) {
             int8_t* data = NULL;
             uint32_t size = 0;
-            rp.Project(reinterpret_cast<int8_t*>(ptr), total_size, &data,
-                       &size);
+            rp.Project(reinterpret_cast<int8_t*>(ptr), total_size, &data, &size);
             free(reinterpret_cast<void*>(data));
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
-    std::cout << "project 1000 records avg consumed:" << consumed / 100 << "μs"
-              << std::endl;
+    std::cout << "project 1000 records avg consumed:" << consumed / 100 << "μs" << std::endl;
 }
 
 TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
@@ -109,8 +105,7 @@ TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
     for (uint32_t i = 0; i < 128; i++) {
         bd[i] = 'a';
     }
-    ::openmldb::storage::DataBlock* block =
-        new ::openmldb::storage::DataBlock(1, bd, 128);
+    ::openmldb::storage::DataBlock* block = new ::openmldb::storage::DataBlock(1, bd, 128);
     for (uint32_t i = 0; i < 10; i++) {
         RunHasTs(block);
         RunNoneTs(block);
@@ -128,10 +123,8 @@ TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
         RunNoneTs(block);
     }
     pconsumed = ::baidu::common::timer::get_micros() - pconsumed;
-    std::cout << "encode 1000 records has ts avg consumed:" << consumed / 10000
-              << "μs" << std::endl;
-    std::cout << "encode 1000 records has no ts avg consumed "
-              << pconsumed / 10000 << "μs" << std::endl;
+    std::cout << "encode 1000 records has ts avg consumed:" << consumed / 10000 << "μs" << std::endl;
+    std::cout << "encode 1000 records has no ts avg consumed " << pconsumed / 10000 << "μs" << std::endl;
 }
 
 TEST_F(CodecBenchmarkTest, Encode) {
@@ -142,8 +135,7 @@ TEST_F(CodecBenchmarkTest, Encode) {
     }
 
     for (uint32_t i = 0; i < 1000; i++) {
-        ::openmldb::storage::DataBlock* block =
-            new ::openmldb::storage::DataBlock(1, bd, 400);
+        ::openmldb::storage::DataBlock* block = new ::openmldb::storage::DataBlock(1, bd, 400);
         data.push_back(block);
     }
 
@@ -188,8 +180,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
     }
 
     for (uint32_t i = 0; i < 1000; i++) {
-        ::openmldb::storage::DataBlock* block =
-            new ::openmldb::storage::DataBlock(1, bd, 400);
+        ::openmldb::storage::DataBlock* block = new ::openmldb::storage::DataBlock(1, bd, 400);
         data.push_back(block);
     }
     char buffer[400 * 1000 + 1000 * 12];

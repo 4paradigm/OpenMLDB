@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-
 #pragma once
 
 #include <string>
+
 #include "base/slice.h"
 
 namespace openmldb {

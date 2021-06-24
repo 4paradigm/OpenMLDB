@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "catalog/sdk_catalog.h"
 
 #include "base/hash.h"
@@ -24,10 +23,12 @@
 namespace openmldb {
 namespace catalog {
 
-SDKTableHandler::SDKTableHandler(const ::openmldb::nameserver::TableInfo& meta,
-        const ClientManager& client_manager)
-    : meta_(meta), schema_(), name_(meta.name()), db_(meta.db()),
-    table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)) {}
+SDKTableHandler::SDKTableHandler(const ::openmldb::nameserver::TableInfo& meta, const ClientManager& client_manager)
+    : meta_(meta),
+      schema_(),
+      name_(meta.name()),
+      db_(meta.db()),
+      table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)) {}
 
 bool SDKTableHandler::Init() {
     if (meta_.format_version() != 1) {
@@ -75,16 +76,14 @@ bool SDKTableHandler::Init() {
             const std::string& key = index_def.first_keys(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
-                LOG(WARNING)
-                    << "column " << key << " does not exist in table " << name_;
+                LOG(WARNING) << "column " << key << " does not exist in table " << name_;
                 return false;
             }
             index_st.keys.push_back(it->second);
         }
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
-    DLOG(INFO) << "init table handler for table " << name_ << " in db " << db_
-               << " done";
+    DLOG(INFO) << "init table handler for table " << name_ << " in db " << db_ << " done";
     return true;
 }
 
@@ -126,9 +125,8 @@ bool SDKCatalog::Init(const std::vector<::openmldb::nameserver::TableInfo>& tabl
         }
         auto db_it = tables_.find(table->GetDatabase());
         if (db_it == tables_.end()) {
-            auto result_pair = tables_.insert(std::make_pair(
-                    table->GetDatabase(),
-                    std::map<std::string, std::shared_ptr<SDKTableHandler>>()));
+            auto result_pair = tables_.insert(
+                std::make_pair(table->GetDatabase(), std::map<std::string, std::shared_ptr<SDKTableHandler>>()));
             db_it = result_pair.first;
         }
         db_it->second.insert(std::make_pair(table->GetName(), table));
@@ -137,8 +135,8 @@ bool SDKCatalog::Init(const std::vector<::openmldb::nameserver::TableInfo>& tabl
     return true;
 }
 
-std::shared_ptr<::hybridse::vm::TableHandler> SDKCatalog::GetTable(
-    const std::string& db, const std::string& table_name) {
+std::shared_ptr<::hybridse::vm::TableHandler> SDKCatalog::GetTable(const std::string& db,
+                                                                   const std::string& table_name) {
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
         return std::shared_ptr<::hybridse::vm::TableHandler>();
@@ -150,12 +148,10 @@ std::shared_ptr<::hybridse::vm::TableHandler> SDKCatalog::GetTable(
     return it->second;
 }
 
-std::shared_ptr<TabletAccessor> SDKCatalog::GetTablet() const {
-    return client_manager_->GetTablet();
-}
+std::shared_ptr<TabletAccessor> SDKCatalog::GetTablet() const { return client_manager_->GetTablet(); }
 
-std::shared_ptr<::hybridse::sdk::ProcedureInfo> SDKCatalog::GetProcedureInfo(
-        const std::string& db, const std::string& sp_name) {
+std::shared_ptr<::hybridse::sdk::ProcedureInfo> SDKCatalog::GetProcedureInfo(const std::string& db,
+                                                                             const std::string& sp_name) {
     auto db_sp_it = db_sp_map_.find(db);
     if (db_sp_it == db_sp_map_.end()) {
         return nullptr;

@@ -22,9 +22,9 @@
 #include "base/glog_wapper.h"
 #include "base/hash.h"
 #include "base/slice.h"
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "storage/record.h"
-#include "common/timer.h"
 
 DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);
@@ -102,14 +102,14 @@ bool MemTable::Init() {
             cur_key_entry_max_height = global_key_entry_max_height;
         } else {
             cur_key_entry_max_height = inner_indexs->at(i)->GetKeyEntryMaxHeight(FLAGS_absolute_default_skiplist_height,
-                    FLAGS_latest_default_skiplist_height);
+                                                                                 FLAGS_latest_default_skiplist_height);
         }
         Segment** seg_arr = new Segment*[seg_cnt_];
         if (!ts_vec.empty()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(cur_key_entry_max_height, ts_vec);
-                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u",
-                      i, j, cur_key_entry_max_height, ts_vec.size(), id_, pid_);
+                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", i, j,
+                      cur_key_entry_max_height, ts_vec.size(), id_, pid_);
             }
         } else {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -366,8 +366,8 @@ void MemTable::SchedGc() {
                 segment->ExecuteGc(ttl_st_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             }
             seg_gc_time = ::baidu::common::timer::get_micros() / 1000 - seg_gc_time;
-            PDLOG(INFO, "gc segment[%u][%u] done consumed %lu for table %s tid %u pid %u",
-                  i, j, seg_gc_time, name_.c_str(), id_, pid_);
+            PDLOG(INFO, "gc segment[%u][%u] done consumed %lu for table %s tid %u pid %u", i, j, seg_gc_time,
+                  name_.c_str(), id_, pid_);
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
@@ -383,7 +383,7 @@ void MemTable::SchedGc() {
 // tll as ms
 uint64_t MemTable::GetExpireTime(const TTLSt& ttl_st) {
     if (!enable_gc_.load(std::memory_order_relaxed) || ttl_st.abs_ttl == 0 ||
-            ttl_st.ttl_type == ::openmldb::storage::TTLType::kLatestTime) {
+        ttl_st.ttl_type == ::openmldb::storage::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -634,14 +634,14 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
         if (!ts_vec.empty()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
-                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u",
-                        inner_id, j, FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
+                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", inner_id, j,
+                      FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
             }
         } else {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height);
-                PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u",
-                        inner_id, j, FLAGS_absolute_default_skiplist_height, id_, pid_);
+                PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u", inner_id, j,
+                      FLAGS_absolute_default_skiplist_height, id_, pid_);
             }
         }
         index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1);
@@ -651,8 +651,8 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
         }
         segments_[inner_id] = seg_arr;
         if (!column_key.ts_name().empty()) {
-            auto ts_col = std::make_shared<ColumnDef>(column_key.ts_name(), 0,
-                    ::openmldb::type::kTimestamp, true, ts_mapping_[column_key.ts_name()]);
+            auto ts_col = std::make_shared<ColumnDef>(column_key.ts_name(), 0, ::openmldb::type::kTimestamp, true,
+                                                      ts_mapping_[column_key.ts_name()]);
             index_def->SetTsColumn(ts_col);
         }
         if (column_key.has_ttl()) {
@@ -661,7 +661,7 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             index_def->SetTTL(*(table_index_.GetIndex(0)->GetTTL()));
         }
         index_def->SetInnerPos(inner_id);
-        std::vector<std::shared_ptr<IndexDef>> index_vec = { index_def };
+        std::vector<std::shared_ptr<IndexDef>> index_vec = {index_def};
         auto inner_index_st = std::make_shared<InnerIndexSt>(inner_id, index_vec);
         table_index_.AddInnerIndex(inner_index_st);
         table_index_.SetInnerIndexPos(new_table_meta->column_key_size() - 1, inner_id);
@@ -733,8 +733,8 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
     uint32_t real_idx = index_def->GetInnerPos();
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
-                    expire_time, expire_cnt, ts_col->GetTsIdx());
+        return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt,
+                                            ts_col->GetTsIdx());
     }
     return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
 }
@@ -860,9 +860,8 @@ void MemTableKeyIterator::NextPK() {
 }
 
 MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
-                                                   ::openmldb::storage::TTLType ttl_type,
-                                                   uint64_t expire_time, uint64_t expire_cnt,
-                                                   uint32_t ts_index)
+                                                   ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
+                                                   uint64_t expire_cnt, uint32_t ts_index)
     : segments_(segments),
       seg_cnt_(seg_cnt),
       seg_idx_(0),
@@ -885,8 +884,8 @@ MemTableTraverseIterator::~MemTableTraverseIterator() {
 }
 
 bool MemTableTraverseIterator::Valid() {
-    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL
-        && it_->Valid() && !expire_value_.IsExpired(it_->GetKey(), record_idx_);
+    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid() &&
+           !expire_value_.IsExpired(it_->GetKey(), record_idx_);
 }
 
 void MemTableTraverseIterator::Next() {

@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-
 #include "codec/memcomparable_format.h"
+
 #include <string>
 #include <vector>
+
 #include "gtest/gtest.h"
 
 namespace openmldb {
@@ -143,8 +144,7 @@ TEST_F(MemComFormatTest, TestFloatingNum) {
 TEST_F(MemComFormatTest, TestVarchar) {
     std::vector<std::string> vec;
     const int arr_len = 6;
-    std::string arr[arr_len] = {"12345678", "123456789", "1234567890123456789",
-                                "",         " ",         "1234567"};
+    std::string arr[arr_len] = {"12345678", "123456789", "1234567890123456789", "", " ", "1234567"};
     for (int i = 0; i < arr_len; i++) {
         //  pack varchar
         std::string str = arr[i];

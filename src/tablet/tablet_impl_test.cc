@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "tablet/tablet_impl.h"
 
 #include <fcntl.h>
@@ -27,6 +26,7 @@
 #include <utility>
 
 #include "base/file_util.h"
+#include "base/glog_wapper.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"
 #include "boost/lexical_cast.hpp"
@@ -34,13 +34,12 @@
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
-#include "base/glog_wapper.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "common/timer.h"
 
 DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
@@ -59,8 +58,7 @@ namespace openmldb {
 namespace tablet {
 
 using ::openmldb::api::TableStatus;
-using Schema =
-    ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
 using ::openmldb::codec::SchemaCodec;
 
 uint32_t counter = 10;
@@ -83,9 +81,8 @@ class TabletImplTest : public ::testing::Test {
     ~TabletImplTest() {}
 };
 
-bool RollWLogFile(::openmldb::storage::WriteHandle** wh,
-                  ::openmldb::storage::LogParts* logs, const std::string& log_path,
-                  uint32_t& binlog_index, uint64_t offset,  // NOLINT
+bool RollWLogFile(::openmldb::storage::WriteHandle** wh, ::openmldb::storage::LogParts* logs,
+                  const std::string& log_path, uint32_t& binlog_index, uint64_t offset,  // NOLINT
                   bool append_end = true) {
     if (*wh != NULL) {
         if (append_end) {
@@ -138,7 +135,7 @@ void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
 }
 
 void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
-        ::openmldb::api::TableMeta* table_meta) {
+                      ::openmldb::api::TableMeta* table_meta) {
     auto column_desc = table_meta->add_column_desc();
     column_desc->set_name("idx0");
     column_desc->set_data_type(::openmldb::type::kString);
@@ -160,8 +157,8 @@ void PackDefaultDimension(const std::string& key, ::openmldb::api::PutRequest* r
     dimension->set_idx(0);
 }
 
-int GetTTL(TabletImpl& tablet, uint32_t tid, uint32_t pid, const std::string& index_name, // NOLINT
-        ::openmldb::common::TTLSt* ttl) {
+int GetTTL(TabletImpl& tablet, uint32_t tid, uint32_t pid, const std::string& index_name,  // NOLINT
+           ::openmldb::common::TTLSt* ttl) {
     ::openmldb::api::GetTableSchemaRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
@@ -1102,14 +1099,12 @@ TEST_F(TabletImplTest, MultiGet) {
     deleteindex_request.set_idx_name("pk");
     deleteindex_request.set_tid(id);
     deleteindex_request.set_pid(1);
-    tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response,
-                       &closure);
+    tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
     ASSERT_EQ(142, deleteindex_response.code());
     // delete other index
     deleteindex_request.set_idx_name("amt");
     deleteindex_request.set_tid(id);
-    tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response,
-                       &closure);
+    tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
     ASSERT_EQ(0, deleteindex_response.code());
 
     // get index not found
@@ -1149,8 +1144,7 @@ TEST_F(TabletImplTest, CreateTable) {
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        std::string file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" +
-                           std::to_string(1) + "/table_meta.txt";
+        std::string file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
         int fd = open(file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -1285,8 +1279,7 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(2, (signed)srp.count());
-    ::openmldb::base::KvIterator* kv_it =
-        new ::openmldb::base::KvIterator(&srp, false);
+    ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(&srp, false);
     ASSERT_EQ(9539, (signed)kv_it->GetKey());
     ASSERT_STREQ("test9539", kv_it->GetValue().ToString().c_str());
     kv_it->Next();
@@ -1334,8 +1327,7 @@ TEST_F(TabletImplTest, Traverse) {
     for (int cnt = 0; cnt < 13; cnt++) {
         uint64_t cur_ts = 9539 - cnt;
         ASSERT_EQ(cur_ts, kv_it->GetKey());
-        ASSERT_STREQ(std::string("test" + std::to_string(cur_ts)).c_str(),
-                     kv_it->GetValue().ToString().c_str());
+        ASSERT_STREQ(std::string("test" + std::to_string(cur_ts)).c_str(), kv_it->GetValue().ToString().c_str());
         kv_it->Next();
     }
     ASSERT_FALSE(kv_it->Valid());
@@ -2045,8 +2037,7 @@ TEST_F(TabletImplTest, Recover) {
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
-        std::string file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" +
-                           std::to_string(1) + "/table_meta.txt";
+        std::string file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
         int fd = open(file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -2129,8 +2120,7 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         table_meta->set_seg_cnt(8);
         table_meta->set_term(1024);
 
-        ::openmldb::common::ColumnDesc* column_desc1 =
-            table_meta->add_column_desc();
+        ::openmldb::common::ColumnDesc* column_desc1 = table_meta->add_column_desc();
         column_desc1->set_name("card");
         column_desc1->set_data_type(::openmldb::type::kString);
         ::openmldb::common::ColumnDesc* column_desc2 = table_meta->add_column_desc();
@@ -2168,8 +2158,7 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         deleteindex_request.set_idx_name("mcc");
         deleteindex_request.set_tid(id);
         deleteindex_request.set_pid(1);
-        tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response,
-                           &closure);
+        tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
         ASSERT_EQ(0, deleteindex_response.code());
     }
     // load
@@ -2210,10 +2199,8 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     FLAGS_binlog_delete_interval = 1000;
     FLAGS_make_snapshot_threshold_offset = 0;
     uint32_t tid = counter++;
-    ::openmldb::storage::LogParts* log_part =
-        new ::openmldb::storage::LogParts(12, 4, scmp);
-    std::string binlog_dir =
-        FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
+    ::openmldb::storage::LogParts* log_part = new ::openmldb::storage::LogParts(12, 4, scmp);
+    std::string binlog_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
     ::openmldb::storage::WriteHandle* wh = NULL;
@@ -2330,9 +2317,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
         sleep(1);
-        std::string manifest_file = FLAGS_db_root_path + "/" +
-                                    std::to_string(tid) +
-                                    "_0/snapshot/MANIFEST";
+        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/MANIFEST";
         int fd = open(manifest_file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -2343,8 +2328,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
 
         sleep(10);
         std::vector<std::string> vec;
-        std::string binlog_path =
-            FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
+        std::string binlog_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
         ::openmldb::base::GetFileName(binlog_path, vec);
         ASSERT_EQ(4, (signed)vec.size());
         std::sort(vec.begin(), vec.end());
@@ -2958,16 +2942,14 @@ TEST_F(TabletImplTest, GetTermPair) {
     ASSERT_FALSE(pair_response.has_table());
     ASSERT_EQ(1, (signed)pair_response.offset());
 
-    std::string manifest_file =
-        FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+    std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
     int fd = open(manifest_file.c_str(), O_RDONLY);
     ASSERT_GT(fd, 0);
     google::protobuf::io::FileInputStream fileInput(fd);
     fileInput.SetCloseOnDelete(true);
     ::openmldb::api::Manifest manifest;
     google::protobuf::TextFormat::Parse(&fileInput, &manifest);
-    std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) +
-                                "_1/snapshot/" + manifest.name();
+    std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
     unlink(snapshot_file.c_str());
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
@@ -3016,8 +2998,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
         sleep(1);
-        std::string manifest_file = FLAGS_db_root_path + "/" +
-                                    std::to_string(id) + "_1/snapshot/MANIFEST";
+        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
         int fd = open(manifest_file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -3054,8 +3035,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
         sleep(1);
-        std::string manifest_file = FLAGS_db_root_path + "/" +
-                                    std::to_string(id) + "_1/snapshot/MANIFEST";
+        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
         int fd = open(manifest_file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -3063,9 +3043,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ::openmldb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(1, (signed)manifest.offset());
-        std::string snapshot_file = FLAGS_db_root_path + "/" +
-                                    std::to_string(id) + "_1/snapshot/" +
-                                    manifest.name();
+        std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
         unlink(snapshot_file.c_str());
         FLAGS_make_snapshot_threshold_offset = offset;
     }
@@ -3507,7 +3485,6 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(109, gresponse.code());
 
-
         ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(10, (signed)cur_ttl.abs_ttl());
@@ -3661,12 +3638,18 @@ TEST_F(TabletImplTest, AbsAndLat) {
         desc = table_meta->add_column_desc();
         desc->set_name("ts6");
         desc->set_data_type(::openmldb::type::kBigInt);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index0", "test", "ts1", ::openmldb::type::kAbsAndLat, 100, 10);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "test", "ts2", ::openmldb::type::kAbsAndLat, 50, 8);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "test", "ts3", ::openmldb::type::kAbsAndLat, 70, 5);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index3", "test", "ts4", ::openmldb::type::kAbsAndLat, 0, 5);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index4", "test", "ts5", ::openmldb::type::kAbsAndLat, 50, 0);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "index5", "test", "ts6", ::openmldb::type::kAbsAndLat, 0, 0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index0", "test", "ts1", ::openmldb::type::kAbsAndLat, 100,
+                              10);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "test", "ts2", ::openmldb::type::kAbsAndLat, 50,
+                              8);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "test", "ts3", ::openmldb::type::kAbsAndLat, 70,
+                              5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index3", "test", "ts4", ::openmldb::type::kAbsAndLat, 0,
+                              5);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index4", "test", "ts5", ::openmldb::type::kAbsAndLat, 50,
+                              0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "index5", "test", "ts6", ::openmldb::type::kAbsAndLat, 0,
+                              0);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response, &closure);
@@ -3711,8 +3694,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index0");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
@@ -3724,8 +3706,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index1");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(80, (signed)srp->count());
@@ -3737,8 +3718,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index2");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(70, (signed)srp->count());
@@ -3750,8 +3730,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index3");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
@@ -3763,8 +3742,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index4");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
@@ -3776,8 +3754,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index5");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
@@ -4607,8 +4584,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts1");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
@@ -4619,8 +4595,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts2");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
@@ -4631,8 +4606,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts3");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(60, (signed)srp->count());
@@ -4644,8 +4618,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts4");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
@@ -4657,8 +4630,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts5");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
@@ -4670,8 +4642,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts6");
-        ::openmldb::api::TraverseResponse* srp =
-            new ::openmldb::api::TraverseResponse();
+        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
@@ -5414,10 +5385,8 @@ TEST_F(TabletImplTest, DelRecycle) {
     FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
     std::string tmp_recycle_path = "/tmp/gtest/recycle";
     ::openmldb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
-    ::openmldb::base::MkdirRecur(
-        "/tmp/gtest/recycle/99_1_binlog_20191111070955/binlog/");
-    ::openmldb::base::MkdirRecur(
-        "/tmp/gtest/recycle/100_2_20191111115149/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/99_1_binlog_20191111070955/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/100_2_20191111115149/binlog/");
     TabletImpl tablet;
     tablet.Init("");
 
@@ -5428,10 +5397,8 @@ TEST_F(TabletImplTest, DelRecycle) {
     sleep(30);
 
     std::string now_time = ::openmldb::base::GetNowTime();
-    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/99_3_" + now_time +
-                              "/binlog/");
-    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/100_4_binlog_" + now_time +
-                              "/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/99_3_" + now_time + "/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/100_4_binlog_" + now_time + "/binlog/");
     file_vec.clear();
     ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(4, (signed)file_vec.size());
@@ -5600,8 +5567,7 @@ TEST_F(TabletImplTest, SendIndexData) {
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
-    std::string index_file_path =
-        FLAGS_db_root_path + "/" + std::to_string(id) + "_0/index/";
+    std::string index_file_path = FLAGS_db_root_path + "/" + std::to_string(id) + "_0/index/";
     ::openmldb::base::MkdirRecur(index_file_path);
     std::string index_file = index_file_path + "0_1_index.data";
     FILE* f = fopen(index_file.c_str(), "w+");
@@ -5622,8 +5588,7 @@ TEST_F(TabletImplTest, SendIndexData) {
     tablet.SendIndexData(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     sleep(2);
-    std::string des_index_file = FLAGS_db_root_path + "/" + std::to_string(id) +
-                                 "_1/index/0_1_index.data";
+    std::string des_index_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/index/0_1_index.data";
     uint64_t des_size = 0;
     ::openmldb::base::GetFileSize(des_index_file, des_size);
     ASSERT_TRUE(::openmldb::base::IsExists(des_index_file));

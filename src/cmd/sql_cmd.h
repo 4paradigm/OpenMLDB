@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CMD_SQL_CMD_H_
 #define SRC_CMD_SQL_CMD_H_
 #include <algorithm>
-#include <string>
-#include <vector>
-#include <utility>
 #include <map>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "base/linenoise.h"
 #include "base/texttable.h"
@@ -56,8 +55,7 @@ const std::string LOGO =  // NOLINT
     " |_|  \\___||_____/|____/\n";
 
 const std::string VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." +  // NOLINT
-                            std::to_string(FEDB_VERSION_MINOR) + "." +
-                            std::to_string(FEDB_VERSION_BUG) + "." +
+                            std::to_string(FEDB_VERSION_MINOR) + "." + std::to_string(FEDB_VERSION_BUG) + "." +
                             FEDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
 
 std::string db = "";  // NOLINT
@@ -153,8 +151,7 @@ void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set
     stream << result_set->Size() << " rows in set" << std::endl;
 }
 
-void PrintTableIndex(std::ostream &stream,
-                     const ::hybridse::vm::IndexList &index_list) {
+void PrintTableIndex(std::ostream &stream, const ::hybridse::vm::IndexList &index_list) {
     ::hybridse::base::TextTable t('-', ' ', ' ');
     t.add("#");
     t.add("name");
@@ -178,7 +175,8 @@ void PrintTableIndex(std::ostream &stream,
         for (int i = 0; i < index.ttl_size(); i++) {
             oss << index.ttl(i);
             if (i != index.ttl_size() - 1) {
-                oss << "m" << ",";
+                oss << "m"
+                    << ",";
             }
         }
         t.add(oss.str());
@@ -220,8 +218,7 @@ void PrintTableSchema(std::ostream &stream, const ::hybridse::vm::Schema &schema
     stream << t;
 }
 
-void PrintItems(std::ostream &stream, const std::string &head,
-                const std::vector<std::string> &items) {
+void PrintItems(std::ostream &stream, const std::string &head, const std::vector<std::string> &items) {
     if (items.empty()) {
         stream << "Empty set" << std::endl;
         return;
@@ -243,8 +240,7 @@ void PrintItems(std::ostream &stream, const std::string &head,
     }
 }
 
-void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
-        std::ostream &stream) {
+void PrintItems(const std::vector<std::pair<std::string, std::string>> &items, std::ostream &stream) {
     if (items.empty()) {
         stream << "Empty set" << std::endl;
         return;
@@ -268,11 +264,10 @@ void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
     }
 }
 
-void PrintProcedureSchema(const std::string& head,
-        const ::hybridse::sdk::Schema &sdk_schema, std::ostream &stream) {
+void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema &sdk_schema, std::ostream &stream) {
     try {
-        const ::hybridse::sdk::SchemaImpl& schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl&>(sdk_schema);
-        auto& schema = schema_impl.GetSchema();
+        const ::hybridse::sdk::SchemaImpl &schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl &>(sdk_schema);
+        auto &schema = schema_impl.GetSchema();
         if (schema.empty()) {
             stream << "Empty set" << std::endl;
             return;
@@ -295,12 +290,12 @@ void PrintProcedureSchema(const std::string& head,
             t.end_of_row();
         }
         stream << t << std::endl;
-    } catch(std::bad_cast) {
+    } catch (std::bad_cast) {
         return;
     }
 }
 
-void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
+void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo &sp_info) {
     std::vector<std::pair<std::string, std::string>> vec;
     std::pair<std::string, std::string> pair = std::make_pair(sp_info.GetDbName(), sp_info.GetSpName());
     vec.push_back(pair);
@@ -351,8 +346,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
                 return;
             }
             ::hybridse::vm::Schema output_schema;
-            ::openmldb::catalog::SchemaAdapter::ConvertSchema(
-                table->column_desc(), &output_schema);
+            ::openmldb::catalog::SchemaAdapter::ConvertSchema(table->column_desc(), &output_schema);
             PrintTableSchema(std::cout, output_schema);
             ::hybridse::vm::IndexList index_list;
             ::openmldb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
@@ -368,8 +362,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             if (ok) {
                 std::cout << "Create database success" << std::endl;
             } else {
-                std::cout << "Create database failed for " << error
-                          << std::endl;
+                std::cout << "Create database failed for " << error << std::endl;
             }
             break;
         }
@@ -407,8 +400,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             printf("Drop table %s? yes/no\n", name.c_str());
             std::string input;
             std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(),
-                           ::tolower);
+            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
             if (input != "yes") {
                 printf("'drop %s' cmd is canceled!\n", name.c_str());
                 return;
@@ -419,8 +411,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
                 std::cout << "drop ok" << std::endl;
                 sr->RefreshCatalog();
             } else {
-                std::cout << "failed to drop. error msg: " << error
-                          << std::endl;
+                std::cout << "failed to drop. error msg: " << error << std::endl;
             }
             break;
         }
@@ -428,15 +419,12 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             std::string index_name = cmd_node->GetArgs()[0];
             std::string table_name = cmd_node->GetArgs()[1];
             std::string error;
-            printf("Drop index %s on %s? yes/no\n", index_name.c_str(),
-                   table_name.c_str());
+            printf("Drop index %s on %s? yes/no\n", index_name.c_str(), table_name.c_str());
             std::string input;
             std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(),
-                           ::tolower);
+            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
             if (input != "yes") {
-                printf("'Drop index %s on %s' cmd is canceled!\n",
-                       index_name.c_str(), table_name.c_str());
+                printf("'Drop index %s on %s' cmd is canceled!\n", index_name.c_str(), table_name.c_str());
                 return;
             }
             auto ns = cs->GetNsClient();
@@ -444,8 +432,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             if (ok) {
                 std::cout << "drop index ok" << std::endl;
             } else {
-                std::cout << "Fail to drop index. error msg: " << error
-                          << std::endl;
+                std::cout << "Fail to drop index. error msg: " << error << std::endl;
             }
             break;
         }
@@ -461,8 +448,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             }
             std::string sp_name = cmd_node->GetArgs()[1];
             std::string error;
-            std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info =
-                cs->GetProcedureInfo(db_name, sp_name, &error);
+            std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cs->GetProcedureInfo(db_name, sp_name, &error);
             if (!sp_info) {
                 std::cout << "Fail to show procdure. error msg: " << error << std::endl;
                 return;
@@ -472,11 +458,10 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
         }
         case hybridse::node::kCmdShowProcedures: {
             std::string error;
-            std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos =
-                cs->GetProcedureInfo(&error);
+            std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos = cs->GetProcedureInfo(&error);
             std::vector<std::pair<std::string, std::string>> pairs;
             for (uint32_t i = 0; i < sp_infos.size(); i++) {
-                auto& sp_info = sp_infos.at(i);
+                auto &sp_info = sp_infos.at(i);
                 pairs.push_back(std::make_pair(sp_info->GetDbName(), sp_info->GetSpName()));
             }
             PrintItems(pairs, std::cout);
@@ -492,8 +477,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             printf("Drop store procedure %s? yes/no\n", sp_name.c_str());
             std::string input;
             std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(),
-                           ::tolower);
+            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
             if (input != "yes") {
                 printf("'drop %s' cmd is canceled!\n", sp_name.c_str());
                 return;
@@ -503,8 +487,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             if (ok) {
                 std::cout << "drop ok" << std::endl;
             } else {
-                std::cout << "failed to drop. error msg: " << error
-                          << std::endl;
+                std::cout << "failed to drop. error msg: " << error << std::endl;
             }
             break;
         }
@@ -531,8 +514,7 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     if (ok) {
         std::cout << "create index ok" << std::endl;
     } else {
-        std::cout << "failed to create index. error msg: " << error
-                  << std::endl;
+        std::cout << "failed to create index. error msg: " << error << std::endl;
         return;
     }
 }
@@ -550,8 +532,7 @@ void HandleSQL(const std::string &sql) {
     hybridse::node::SqlNode *node = parser_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kCmdStmt: {
-            hybridse::node::CmdNode *cmd =
-                dynamic_cast<hybridse::node::CmdNode *>(node);
+            hybridse::node::CmdNode *cmd = dynamic_cast<hybridse::node::CmdNode *>(node);
             HandleCmd(cmd);
             return;
         }
@@ -588,8 +569,7 @@ void HandleSQL(const std::string &sql) {
                 std::cout << "please use database first" << std::endl;
                 return;
             }
-            hybridse::node::CreateIndexNode *create_index_node =
-                dynamic_cast<hybridse::node::CreateIndexNode *>(node);
+            hybridse::node::CreateIndexNode *create_index_node = dynamic_cast<hybridse::node::CreateIndexNode *>(node);
             HandleCreateIndex(create_index_node);
             return;
         }
@@ -646,8 +626,7 @@ void HandleCli() {
     }
     std::string ns_endpoint = cs->GetNsClient()->GetEndpoint();
     std::string display_prefix = ns_endpoint + "/" + db + "> ";
-    std::string multi_line_perfix =
-        std::string(display_prefix.length() - 3, ' ') + "-> ";
+    std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
     bool multi_line = false;
     while (true) {
@@ -656,8 +635,7 @@ void HandleCli() {
             buffer = FLAGS_cmd;
             db = FLAGS_database;
         } else {
-            char *line = ::openmldb::base::linenoise(
-                multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
+            char *line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
             if (line == NULL) {
                 return;
             }
@@ -677,8 +655,7 @@ void HandleCli() {
             HandleSQL(sql);
             multi_line = false;
             display_prefix = ns_endpoint + "/" + db + "> ";
-            multi_line_perfix =
-                std::string(display_prefix.length() - 3, ' ') + "-> ";
+            multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
             sql.clear();
         } else {
             sql.append("\n");

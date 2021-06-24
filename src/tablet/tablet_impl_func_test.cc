@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <fcntl.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -54,8 +53,7 @@ inline std::string GenRand() {
 }
 
 void CreateBaseTable(::openmldb::storage::Table*& table,  // NOLINT
-                     const ::openmldb::type::TTLType& ttl_type, uint64_t ttl,
-                     uint64_t start_ts) {
+                     const ::openmldb::type::TTLType& ttl_type, uint64_t ttl, uint64_t start_ts) {
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table");
     table_meta.set_tid(1);
@@ -91,8 +89,7 @@ void CreateBaseTable(::openmldb::storage::Table*& table,  // NOLINT
         ts->set_idx(1);
         ts->set_ts(start_ts + i);
         std::string value = "value" + std::to_string(i);
-        ASSERT_TRUE(
-            table->Put(request.dimensions(), request.ts_dimensions(), value));
+        ASSERT_TRUE(table->Put(request.dimensions(), request.ts_dimensions(), value));
     }
     return;
 }
@@ -103,8 +100,7 @@ class TabletFuncTest : public ::testing::Test {
     ~TabletFuncTest() {}
 };
 
-void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
-                           uint64_t expired_ts) {
+void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts, uint64_t expired_ts) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     std::string value;
     uint64_t ts;
@@ -294,8 +290,7 @@ TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
     CreateBaseTable(table, ::openmldb::type::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::openmldb::storage::Ticket>();
-    ::openmldb::storage::TableIterator* it =
-        table->NewIterator("card0", *query_its[0].ticket);
+    ::openmldb::storage::TableIterator* it = table->NewIterator("card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetLatestIndexAssert(&query_its);
@@ -306,8 +301,7 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts0_iterator) {
     CreateBaseTable(table, ::openmldb::type::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::openmldb::storage::Ticket>();
-    ::openmldb::storage::TableIterator* it =
-        table->NewIterator(0, "card0", *query_its[0].ticket);
+    ::openmldb::storage::TableIterator* it = table->NewIterator(0, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetLatestIndexAssert(&query_its);
@@ -318,8 +312,7 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
     CreateBaseTable(table, ::openmldb::type::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::openmldb::storage::Ticket>();
-    ::openmldb::storage::TableIterator* it =
-        table->NewIterator(1, "card0", *query_its[0].ticket);
+    ::openmldb::storage::TableIterator* it = table->NewIterator(1, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetLatestIndexAssert(&query_its);
@@ -331,8 +324,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_default_iterator) {
     CreateBaseTable(table, ::openmldb::type::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::openmldb::storage::Ticket>();
-    ::openmldb::storage::TableIterator* it =
-        table->NewIterator("card0", *query_its[0].ticket);
+    ::openmldb::storage::TableIterator* it = table->NewIterator("card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);
@@ -344,8 +336,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts0_iterator) {
     CreateBaseTable(table, ::openmldb::type::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::openmldb::storage::Ticket>();
-    ::openmldb::storage::TableIterator* it =
-        table->NewIterator(0, "card0", *query_its[0].ticket);
+    ::openmldb::storage::TableIterator* it = table->NewIterator(0, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);
@@ -357,8 +348,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     CreateBaseTable(table, ::openmldb::type::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
     query_its[0].ticket = std::make_shared<::openmldb::storage::Ticket>();
-    ::openmldb::storage::TableIterator* it =
-        table->NewIterator(1, "card0", *query_its[0].ticket);
+    ::openmldb::storage::TableIterator* it = table->NewIterator(1, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);

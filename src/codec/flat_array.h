@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEC_FLAT_ARRAY_H_
 #define SRC_CODEC_FLAT_ARRAY_H_
 
@@ -38,18 +37,10 @@ static const uint16_t MAX_STRING_LENGTH = 32767;
 class FlatArrayCodec {
  public:
     FlatArrayCodec(std::string* buffer, uint16_t col_cnt)
-        : buffer_(buffer),
-          col_cnt_(col_cnt),
-          cur_cnt_(0),
-          datas_(col_cnt_),
-          modify_times_(0) {}
+        : buffer_(buffer), col_cnt_(col_cnt), cur_cnt_(0), datas_(col_cnt_), modify_times_(0) {}
 
     FlatArrayCodec(std::string* buffer, uint16_t col_cnt, int modify_times)
-        : buffer_(buffer),
-          col_cnt_(col_cnt),
-          cur_cnt_(0),
-          datas_(col_cnt_),
-          modify_times_(modify_times) {}
+        : buffer_(buffer), col_cnt_(col_cnt), cur_cnt_(0), datas_(col_cnt_), modify_times_(modify_times) {}
     FlatArrayCodec() : col_cnt_(0), cur_cnt_(0), modify_times_(0) {}
     ~FlatArrayCodec() {}
 
@@ -235,8 +226,7 @@ class FlatArrayCodec {
                 cbuffer += 1;
             }
             if (!col.buffer.empty()) {
-                memcpy(cbuffer, static_cast<const void*>(col.buffer.c_str()),
-                       col.buffer.size());
+                memcpy(cbuffer, static_cast<const void*>(col.buffer.c_str()), col.buffer.size());
             }
             cbuffer += col.buffer.size();
         }
@@ -282,12 +272,7 @@ class FlatArrayCodec {
 class FlatArrayIterator {
  public:
     FlatArrayIterator(const char* buffer, uint32_t bsize, uint16_t column_size)
-        : buffer_(buffer),
-          col_cnt_(0),
-          bsize_(bsize),
-          type_(kUnknown),
-          fsize_(0),
-          offset_(0) {
+        : buffer_(buffer), col_cnt_(0), bsize_(bsize), type_(kUnknown), fsize_(0), offset_(0) {
         // for the case of adding field
         if (column_size < 128) {
             if ((uint8_t)(buffer_[0] & 0x80) != 0) {
@@ -553,8 +538,7 @@ class FlatArrayIterator {
             buffer_ += 1;
             offset_++;
         } else {
-            fsize_ = (((uint8_t)(buffer_[0]) & 0x7F) << 8) |
-                     ((uint8_t)buffer_[1] & 0xFF);
+            fsize_ = (((uint8_t)(buffer_[0]) & 0x7F) << 8) | ((uint8_t)buffer_[1] & 0xFF);
             buffer_ += 2;
             offset_ += 2;
         }

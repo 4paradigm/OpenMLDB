@@ -17,10 +17,10 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include <memory>
 
 #include "codec/schema_codec.h"
 #include "proto/common.pb.h"
@@ -40,25 +40,21 @@ class SDKCodec {
 
     explicit SDKCodec(const ::openmldb::api::TableMeta& table_info);
 
-    int EncodeDimension(const std::map<std::string, std::string>& raw_data,
-                        uint32_t pid_num,
+    int EncodeDimension(const std::map<std::string, std::string>& raw_data, uint32_t pid_num,
                         std::map<uint32_t, Dimension>* dimensions);
 
-    int EncodeDimension(const std::vector<std::string>& raw_data,
-                        uint32_t pid_num,
+    int EncodeDimension(const std::vector<std::string>& raw_data, uint32_t pid_num,
                         std::map<uint32_t, Dimension>* dimensions);
 
-    int EncodeTsDimension(const std::vector<std::string>& raw_data,
-                          std::vector<uint64_t>* ts_dimensions);
-    int EncodeTsDimension(const std::vector<std::string>& raw_data,
-                          std::vector<uint64_t>* ts_dimensions, uint64_t default_ts);
+    int EncodeTsDimension(const std::vector<std::string>& raw_data, std::vector<uint64_t>* ts_dimensions);
+    int EncodeTsDimension(const std::vector<std::string>& raw_data, std::vector<uint64_t>* ts_dimensions,
+                          uint64_t default_ts);
 
     int EncodeRow(const std::vector<std::string>& raw_data, std::string* row);
 
     int DecodeRow(const std::string& row, std::vector<std::string>* value);
 
-    int CombinePartitionKey(const std::vector<std::string>& raw_data,
-                            std::string* key);
+    int CombinePartitionKey(const std::vector<std::string>& raw_data, std::string* key);
 
     inline bool HasTSCol() const { return !ts_idx_.empty(); }
 

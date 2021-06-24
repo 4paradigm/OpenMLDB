@@ -16,22 +16,24 @@
 
 #include <gflags/gflags.h>
 #include <sched.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <iostream>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <fstream>
+#include <iostream>
+
 #include "base/file_util.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
 
-using ::openmldb::log::SequentialFile;
-using ::openmldb::log::Reader;
+using ::openmldb::base::ParseFileNameFromPath;
 using ::openmldb::base::Slice;
 using ::openmldb::base::Status;
 using ::openmldb::log::NewSeqFile;
-using ::openmldb::base::ParseFileNameFromPath;
+using ::openmldb::log::Reader;
+using ::openmldb::log::SequentialFile;
 
 namespace openmldb {
 namespace tools {
@@ -47,8 +49,8 @@ void ReadLog(const std::string& full_path) {
     SequentialFile* rf = NewSeqFile(full_path, fd_r);
     std::string scratch;
     bool for_snapshot = false;
-    if (full_path.find(openmldb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos
-            || full_path.find(openmldb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
+    if (full_path.find(openmldb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos ||
+        full_path.find(openmldb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
         for_snapshot = true;
     }
     Reader reader(rf, NULL, true, 0, for_snapshot);
@@ -66,16 +68,14 @@ void ReadLog(const std::string& full_path) {
             my_cout << entry.ts() << std::endl;
         } else {
             for (int i = 0; i < entry.ts_dimensions_size(); i++) {
-                my_cout << entry.ts_dimensions(i).idx() << "\t" <<
-                    entry.ts_dimensions(i).ts() << std::endl;
+                my_cout << entry.ts_dimensions(i).idx() << "\t" << entry.ts_dimensions(i).ts() << std::endl;
             }
         }
         if (entry.dimensions_size() == 0) {
             my_cout << entry.pk() << std::endl;
         } else {
             for (int i = 0; i < entry.dimensions_size(); i++) {
-                my_cout << entry.dimensions(i).idx() << "\t"
-                    << entry.dimensions(i).key().c_str() << std::endl;
+                my_cout << entry.dimensions(i).idx() << "\t" << entry.dimensions(i).key().c_str() << std::endl;
             }
         }
         success_cnt++;

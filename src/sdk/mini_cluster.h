@@ -19,6 +19,7 @@
 
 #include <sched.h>
 #include <unistd.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -58,12 +59,7 @@ constexpr int MAX_TABLET_NUM = 3;
 class MiniCluster {
  public:
     explicit MiniCluster(int32_t zk_port)
-        : zk_port_(zk_port),
-          ns_(),
-          tablet_num_(2),
-          zk_cluster_(),
-          zk_path_(),
-          ns_client_(NULL) {}
+        : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {}
     ~MiniCluster() {}
     bool SetUp(int tablet_num = 2) {
         if (tablet_num > MAX_TABLET_NUM) {
@@ -77,9 +73,8 @@ class MiniCluster {
         zk_path_ = "/mini_cluster_" + GenRand();
         sleep(1);
         LOG(INFO) << "zk cluster " << zk_cluster_ << " zk path " << zk_path_
-            << " enable_distsql = " << FLAGS_enable_distsql;
-        ::openmldb::nameserver::NameServerImpl* nameserver =
-            new ::openmldb::nameserver::NameServerImpl();
+                  << " enable_distsql = " << FLAGS_enable_distsql;
+        ::openmldb::nameserver::NameServerImpl* nameserver = new ::openmldb::nameserver::NameServerImpl();
         bool ok = nameserver->Init(zk_cluster_, zk_path_, ns_endpoint, "");
         if (!ok) {
             return false;
@@ -101,12 +96,11 @@ class MiniCluster {
         tablet_num_ = tablet_num;
         for (int i = 0; i < tablet_num; i++) {
             if (!StartTablet(&tb_servers_[i])) {
-               LOG(WARNING) << "fail to start tablet";
-               return false;
+                LOG(WARNING) << "fail to start tablet";
+                return false;
             }
         }
-        LOG(INFO) << "start mini cluster with zk cluster " << zk_cluster_
-                  << " and zk path " << zk_path_;
+        LOG(INFO) << "start mini cluster with zk cluster " << zk_cluster_ << " and zk path " << zk_path_;
         LOG(INFO) << "----- ns " << ns_endpoint;
         for (auto tb_endpoint : tb_endpoints_) {
             LOG(INFO) << "----- tb " << tb_endpoint;
@@ -150,9 +144,7 @@ class MiniCluster {
         return std::to_string(rand() % 1000 + 10000);  // NOLINT
     }
 
-    const std::vector<std::string>& GetTbEndpoint() const {
-        return tb_endpoints_;
-    }
+    const std::vector<std::string>& GetTbEndpoint() const { return tb_endpoints_; }
 
  private:
     bool StartTablet(brpc::Server* tb_server) {

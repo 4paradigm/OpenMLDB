@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "storage/ticket.h"
 
 namespace openmldb {

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "catalog/client_manager.h"
 
 #include <utility>
@@ -64,9 +63,7 @@ const ::hybridse::codec::Row& TabletRowHandler::GetValue() {
     }
     row_ = hybridse::codec::Row();
     if (0 != response->byte_size() &&
-        !codec::DecodeRpcRow(cntl->response_attachment(), 0,
-                             response->byte_size(), response->row_slices(),
-                             &row_)) {
+        !codec::DecodeRpcRow(cntl->response_attachment(), 0, response->byte_size(), response->row_slices(), &row_)) {
         status_.code = hybridse::common::kRpcError;
         status_.msg = "response content decode fail";
         return row_;
@@ -214,9 +211,9 @@ bool AsyncTablesHandler::SyncAllTableHandlers() {
 }
 
 std::shared_ptr<::hybridse::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
-                                                                  const std::string& sql,
-                                                                  const ::hybridse::codec::Row& row,
-                                                                  const bool is_procedure, const bool is_debug) {
+                                                                     const std::string& sql,
+                                                                     const ::hybridse::codec::Row& row,
+                                                                     const bool is_procedure, const bool is_debug) {
     DLOG(INFO) << "SubQuery taskid: " << task_id << " is_procedure=" << is_procedure;
     auto client = GetClient();
     if (!client) {
@@ -257,11 +254,11 @@ std::shared_ptr<::hybridse::vm::RowHandler> TabletAccessor::SubQuery(uint32_t ta
 }
 
 std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
-                                                                    const std::string& sql,
-                                                                    const std::set<size_t>& common_column_indices,
-                                                                    const std::vector<::hybridse::codec::Row>& rows,
-                                                                    const bool request_is_common,
-                                                                    const bool is_procedure, const bool is_debug) {
+                                                                       const std::string& sql,
+                                                                       const std::set<size_t>& common_column_indices,
+                                                                       const std::vector<::hybridse::codec::Row>& rows,
+                                                                       const bool request_is_common,
+                                                                       const bool is_procedure, const bool is_debug) {
     DLOG(INFO) << "SubQuery batch request, taskid=" << task_id << ", is_procedure=" << is_procedure;
     auto client = GetClient();
     if (!client) {
@@ -290,7 +287,7 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
             size_t common_slice_size = 0;
             if (!codec::EncodeRpcRow(rows[0], &io_buf, &common_slice_size)) {
                 return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
-                                                                        "encode common row buf failed");
+                                                                           "encode common row buf failed");
             }
             request.add_row_sizes(common_slice_size);
             request.set_common_slices(rows[0].GetRowPtrCnt());
@@ -299,7 +296,7 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
             size_t uncommon_slice_size = 0;
             if (!codec::EncodeRpcRow(rows[0], &io_buf, &uncommon_slice_size)) {
                 return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
-                                                                        "encode uncommon row buf failed");
+                                                                           "encode uncommon row buf failed");
             }
             request.add_row_sizes(uncommon_slice_size);
             request.set_non_common_slices(rows[0].GetRowPtrCnt());
@@ -310,7 +307,7 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
             size_t uncommon_slice_size = 0;
             if (!codec::EncodeRpcRow(row, &io_buf, &uncommon_slice_size)) {
                 return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
-                                                                        "encode uncommon row buf failed");
+                                                                           "encode uncommon row buf failed");
             }
             request.add_row_sizes(uncommon_slice_size);
             request.set_non_common_slices(row.GetRowPtrCnt());
@@ -323,7 +320,7 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
     if (!client->SubBatchRequestQuery(request, callback)) {
         LOG(WARNING) << "fail to query tablet";
         return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kRpcError,
-                                                                "fail to batch request query");
+                                                                   "fail to batch request query");
     }
     return async_table_handler;
 }
@@ -335,11 +332,11 @@ std::shared_ptr<hybridse::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t tas
                                                              "TabletsAccessor Unsupport SubQuery with request");
 }
 std::shared_ptr<hybridse::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
-                                                                   const std::string& sql,
-                                                                   const std::set<size_t>& common_column_indices,
-                                                                   const std::vector<hybridse::codec::Row>& rows,
-                                                                   const bool request_is_common,
-                                                                   const bool is_procedure, const bool is_debug) {
+                                                                      const std::string& sql,
+                                                                      const std::set<size_t>& common_column_indices,
+                                                                      const std::vector<hybridse::codec::Row>& rows,
+                                                                      const bool request_is_common,
+                                                                      const bool is_procedure, const bool is_debug) {
     auto tables_handler = std::make_shared<AsyncTablesHandler>();
     std::vector<std::vector<hybridse::vm::Row>> accessors_rows(accessors_.size());
     for (size_t idx = 0; idx < rows.size(); idx++) {
@@ -390,7 +387,8 @@ TableClientManager::TableClientManager(const TablePartitions& partitions, const 
     }
 }
 
-TableClientManager::TableClientManager(const ::openmldb::storage::TableSt& table_st, const ClientManager& client_manager) {
+TableClientManager::TableClientManager(const ::openmldb::storage::TableSt& table_st,
+                                       const ClientManager& client_manager) {
     for (const auto& partition_st : *(table_st.GetPartitions())) {
         uint32_t pid = partition_st.GetPid();
         if (pid > partition_managers_.size()) {

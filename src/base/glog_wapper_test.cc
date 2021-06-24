@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "base/glog_wapper.h"
 
 #include <iostream>
@@ -41,8 +40,7 @@ TEST_F(GlogWapperTest, Log) {
     PDLOG(WARNING, "this is a warning %s", "hello");
     DEBUGLOG("hello %d", 233);
     uint64_t time = 123456;
-    DEBUGLOG("[Gc4TTL] segment gc with key %lu, consumed %lu, count %lu", time,
-             time + 100, time - 100);
+    DEBUGLOG("[Gc4TTL] segment gc with key %lu, consumed %lu, count %lu", time, time + 100, time - 100);
 }
 
 }  // namespace base

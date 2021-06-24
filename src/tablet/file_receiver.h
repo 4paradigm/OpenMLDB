@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #pragma once
 
 #include <string>
@@ -24,8 +23,7 @@ namespace tablet {
 
 class FileReceiver {
  public:
-    FileReceiver(const std::string& file_name, const std::string& dir_name,
-                 const std::string& path);
+    FileReceiver(const std::string& file_name, const std::string& dir_name, const std::string& path);
     ~FileReceiver();
     FileReceiver(const FileReceiver&) = delete;
     FileReceiver& operator=(const FileReceiver&) = delete;

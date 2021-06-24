@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-#include <vector>
 #include "codec/field_codec.h"
+
+#include <vector>
+
 #include "gtest/gtest.h"
 
 namespace openmldb {
@@ -83,7 +85,7 @@ TEST_F(SingleColumnCodecTest, TestEncodec) {
     ::openmldb::codec::Convert(double_val, buf);
     vec.push_back(val_7);
 }
-}  // namespace base
+}  // namespace codec
 {
     // decode part
     bool v1 = false;

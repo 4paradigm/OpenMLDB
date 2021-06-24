@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
@@ -23,9 +22,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include "base/file_util.h"
-#include "client/tablet_client.h"
 #include "base/glog_wapper.h"
+#include "client/tablet_client.h"
+#include "common/thread_pool.h"
+#include "common/timer.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "replica/replicate_node.h"
@@ -33,8 +35,6 @@
 #include "storage/table.h"
 #include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
-#include "common/thread_pool.h"
-#include "common/timer.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -86,9 +86,8 @@ TEST_F(BinlogTest, DeleteBinlog) {
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =
-        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::openmldb::type::TTLType::kAbsoluteTime, 16, 0,
-                           ::openmldb::type::CompressType::kNoCompress);
+        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints, ::openmldb::type::TTLType::kAbsoluteTime, 16,
+                           0, ::openmldb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -122,7 +121,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
 }  // namespace replica
 }  // namespace openmldb
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "base/status.h"
 
 namespace openmldb {
@@ -80,8 +79,7 @@ std::string Status::ToString() const {
                 type = "End of file";
                 break;
             default:
-                snprintf(tmp, sizeof(tmp),
-                         "Unknown code(%d): ", static_cast<int>(code()));
+                snprintf(tmp, sizeof(tmp), "Unknown code(%d): ", static_cast<int>(code()));
                 type = tmp;
                 break;
         }

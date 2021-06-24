@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-
 #include "storage/schema.h"
+
 #include <atomic>
 #include <map>
 #include <set>
 #include <utility>
+
 #include "codec/schema_codec.h"
 #include "glog/logging.h"
 
@@ -29,7 +30,8 @@ namespace storage {
 ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null)
     : name_(name), id_(id), type_(type), not_null_(not_null), ts_idx_(-1) {}
 
-ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null, int32_t ts_idx)
+ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null,
+                     int32_t ts_idx)
     : name_(name), id_(id), type_(type), not_null_(not_null), ts_idx_(ts_idx) {}
 
 std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
@@ -75,18 +77,36 @@ void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
     return column_key;
 }
 
-IndexDef::IndexDef(const std::string& name, uint32_t id) : name_(name), index_id_(id), inner_pos_(0),
-     status_(IndexStatus::kReady),
-     type_(::openmldb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
+IndexDef::IndexDef(const std::string& name, uint32_t id)
+    : name_(name),
+      index_id_(id),
+      inner_pos_(0),
+      status_(IndexStatus::kReady),
+      type_(::openmldb::type::IndexType::kTimeSerise),
+      columns_(),
+      ttl_st_(),
+      ts_column_(nullptr) {}
 
 IndexDef::IndexDef(const std::string& name, uint32_t id, IndexStatus status)
-    : name_(name), index_id_(id), inner_pos_(0), status_(status),
-      type_(::openmldb::type::IndexType::kTimeSerise), columns_(), ttl_st_(), ts_column_(nullptr) {}
+    : name_(name),
+      index_id_(id),
+      inner_pos_(0),
+      status_(status),
+      type_(::openmldb::type::IndexType::kTimeSerise),
+      columns_(),
+      ttl_st_(),
+      ts_column_(nullptr) {}
 
 IndexDef::IndexDef(const std::string& name, uint32_t id, const IndexStatus& status, ::openmldb::type::IndexType type,
                    const std::vector<ColumnDef>& columns)
-    : name_(name), index_id_(id), inner_pos_(0), status_(status), type_(type), columns_(columns),
-      ttl_st_(), ts_column_(nullptr) {}
+    : name_(name),
+      index_id_(id),
+      inner_pos_(0),
+      status_(status),
+      type_(type),
+      columns_(columns),
+      ttl_st_(),
+      ts_column_(nullptr) {}
 
 void IndexDef::SetTTL(const TTLSt& ttl) {
     auto cur_ttl = std::make_shared<TTLSt>(ttl);
@@ -98,16 +118,14 @@ std::shared_ptr<TTLSt> IndexDef::GetTTL() const {
     return ttl;
 }
 
-TTLType IndexDef::GetTTLType() const {
-    return GetTTL()->ttl_type;
-}
+TTLType IndexDef::GetTTLType() const { return GetTTL()->ttl_type; }
 
 uint32_t InnerIndexSt::GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t lat_max_height) const {
     uint32_t max_height = lat_max_height;
     for (const auto& cur_index : index_) {
         ::openmldb::storage::TTLType ttl_type = cur_index->GetTTLType();
         if (ttl_type == ::openmldb::storage::TTLType::kAbsoluteTime ||
-                ttl_type == ::openmldb::storage::TTLType::kAbsAndLat) {
+            ttl_type == ::openmldb::storage::TTLType::kAbsAndLat) {
             max_height = abs_max_height;
             break;
         }
@@ -152,7 +170,8 @@ void TableIndex::ReSet() {
     std::atomic_store_explicit(&unique_col_name_vec_, new_unique_vec, std::memory_order_relaxed);
 }
 
-int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping) {
+int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta,
+                              std::map<std::string, uint8_t>* ts_mapping) {
     if (ts_mapping == nullptr) {
         return -1;
     }
@@ -163,7 +182,7 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta, std:
     if (table_meta.column_desc_size() > 0) {
         std::set<std::string> ts_col_set;
         int set_ts_cnt = 0;
-        for (const auto &column_key : table_meta.column_key()) {
+        for (const auto& column_key : table_meta.column_key()) {
             if (!column_key.ts_name().empty()) {
                 set_ts_cnt++;
                 ts_col_set.insert(column_key.ts_name());
@@ -199,7 +218,7 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta, std:
         }
         key_idx = 0;
         for (int pos = 0; pos < table_meta.column_key_size(); pos++) {
-            const auto& column_key =  table_meta.column_key(pos);
+            const auto& column_key = table_meta.column_key(pos);
             std::string name = column_key.index_name();
             ::openmldb::storage::IndexStatus status;
             if (column_key.flag()) {
@@ -212,7 +231,7 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta, std:
                 col_vec.push_back(*(col_map[cur_col_name]));
             }
             auto index = std::make_shared<IndexDef>(column_key.index_name(), key_idx, status,
-                    ::openmldb::type::IndexType::kTimeSerise, col_vec);
+                                                    ::openmldb::type::IndexType::kTimeSerise, col_vec);
             if (!column_key.ts_name().empty()) {
                 const std::string& ts_name = column_key.ts_name();
                 index->SetTsColumn(col_map[ts_name]);
@@ -254,7 +273,7 @@ void TableIndex::FillIndexVal(const ::openmldb::api::TableMeta& table_meta, uint
         std::vector<std::vector<std::shared_ptr<IndexDef>>> pos_index_vec;
         uint32_t inner_cnt = 0;
         for (int idx = 0; idx < table_meta.column_key_size(); idx++) {
-            const auto& column_key =  table_meta.column_key(idx);
+            const auto& column_key = table_meta.column_key(idx);
             std::string combine_col_name;
             if (column_key.col_name_size() == 0) {
                 combine_col_name = column_key.index_name();
@@ -290,7 +309,7 @@ void TableIndex::FillIndexVal(const ::openmldb::api::TableMeta& table_meta, uint
         for (uint32_t idx = 0; idx < indexs_->size(); idx++) {
             auto& index = indexs_->at(idx);
             index->SetInnerPos(idx);
-            std::vector<std::shared_ptr<IndexDef>> vec = { index };
+            std::vector<std::shared_ptr<IndexDef>> vec = {index};
             inner_indexs_->push_back(std::make_shared<InnerIndexSt>(idx, vec));
             column_key_2_inner_index_[idx]->store(idx, std::memory_order_relaxed);
         }
@@ -344,7 +363,7 @@ std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx) {
 std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx, uint32_t ts_idx) {
     auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
     if (idx < indexs->size()) {
-        auto index =  indexs->at(idx);
+        auto index = indexs->at(idx);
         auto ts_col = index->GetTsColumn();
         if (ts_col && ts_col->GetTsIdx() == static_cast<int>(ts_idx)) {
             return index;

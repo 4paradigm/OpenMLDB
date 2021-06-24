@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
+#include "storage/segment.h"
 
 #include <iostream>
 #include <string>
-#include "storage/segment.h"
+
+#include "base/glog_wapper.h"  // NOLINT
 #include "base/slice.h"
-#include "storage/record.h"
 #include "gtest/gtest.h"
-#include "base/glog_wapper.h" // NOLINT
+#include "storage/record.h"
 
 using ::openmldb::base::Slice;
 
@@ -269,8 +270,7 @@ TEST_F(SegmentTest, TestGc4TTLAndHead) {
     ASSERT_EQ(0, (int64_t)gc_idx_cnt);
     ASSERT_EQ(0, (int64_t)gc_record_cnt);
     ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-    segment.Gc4TTLAndHead(9765, 0, gc_idx_cnt, gc_record_cnt,
-                          gc_record_byte_size);
+    segment.Gc4TTLAndHead(9765, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(0, (int64_t)gc_idx_cnt);
     ASSERT_EQ(0, (int64_t)gc_record_cnt);
     ASSERT_EQ(0, (int64_t)gc_record_byte_size);
@@ -284,24 +284,21 @@ TEST_F(SegmentTest, TestGc4TTLAndHead) {
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
-    segment.Gc4TTLAndHead(9765, 3, gc_idx_cnt, gc_record_cnt,
-                          gc_record_byte_size);
+    segment.Gc4TTLAndHead(9765, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(0, (int64_t)gc_idx_cnt);
     ASSERT_EQ(0, (int64_t)gc_record_cnt);
     ASSERT_EQ(0, (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
-    segment.Gc4TTLAndHead(9766, 2, gc_idx_cnt, gc_record_cnt,
-                          gc_record_byte_size);
+    segment.Gc4TTLAndHead(9766, 2, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(2, (int64_t)gc_idx_cnt);
     ASSERT_EQ(2, (int64_t)gc_record_cnt);
     ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
-    segment.Gc4TTLAndHead(9770, 1, gc_idx_cnt, gc_record_cnt,
-                          gc_record_byte_size);
+    segment.Gc4TTLAndHead(9770, 1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(3, (int64_t)gc_idx_cnt);
     ASSERT_EQ(3, (int64_t)gc_record_cnt);
     ASSERT_EQ(3 * GetRecordSize(5), (int64_t)gc_record_byte_size);
@@ -323,8 +320,7 @@ TEST_F(SegmentTest, TestGc4TTLOrHead) {
     ASSERT_EQ(0, (int64_t)gc_idx_cnt);
     ASSERT_EQ(0, (int64_t)gc_record_cnt);
     ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-    segment.Gc4TTLOrHead(9765, 0, gc_idx_cnt, gc_record_cnt,
-                         gc_record_byte_size);
+    segment.Gc4TTLOrHead(9765, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(1, (int64_t)gc_idx_cnt);
     ASSERT_EQ(1, (int64_t)gc_record_cnt);
     ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
@@ -338,24 +334,21 @@ TEST_F(SegmentTest, TestGc4TTLOrHead) {
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
-    segment.Gc4TTLOrHead(9765, 3, gc_idx_cnt, gc_record_cnt,
-                         gc_record_byte_size);
+    segment.Gc4TTLOrHead(9765, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(0, (int64_t)gc_idx_cnt);
     ASSERT_EQ(0, (int64_t)gc_record_cnt);
     ASSERT_EQ(0, (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
-    segment.Gc4TTLOrHead(9766, 2, gc_idx_cnt, gc_record_cnt,
-                         gc_record_byte_size);
+    segment.Gc4TTLOrHead(9766, 2, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(2, (int64_t)gc_idx_cnt);
     ASSERT_EQ(2, (int64_t)gc_record_cnt);
     ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
-    segment.Gc4TTLOrHead(9770, 1, gc_idx_cnt, gc_record_cnt,
-                         gc_record_byte_size);
+    segment.Gc4TTLOrHead(9770, 1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(3, (int64_t)gc_idx_cnt);
     ASSERT_EQ(3, (int64_t)gc_record_cnt);
     ASSERT_EQ(3 * GetRecordSize(5), (int64_t)gc_record_byte_size);

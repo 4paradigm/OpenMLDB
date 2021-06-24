@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #pragma once
 
 #include <atomic>
@@ -36,46 +35,31 @@ typedef google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> Dimension
 typedef google::protobuf::RepeatedPtrField<::openmldb::api::TSDimension> TSDimensions;
 using Schema = google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
 
-enum TableStat {
-    kUndefined = 0,
-    kNormal,
-    kLoading,
-    kMakingSnapshot,
-    kSnapshotPaused
-};
+enum TableStat { kUndefined = 0, kNormal, kLoading, kMakingSnapshot, kSnapshotPaused };
 
 class Table {
  public:
     Table();
-    Table(const std::string& name,
-          uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader,
-          uint64_t ttl_offset, const std::map<std::string, uint32_t>& mapping,
-          ::openmldb::type::TTLType ttl_type,
+    Table(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader, uint64_t ttl_offset,
+          const std::map<std::string, uint32_t>& mapping, ::openmldb::type::TTLType ttl_type,
           ::openmldb::type::CompressType compress_type);
     virtual ~Table() {}
     virtual bool Init() = 0;
 
     int InitColumnDesc();
 
-    virtual bool Put(const std::string& pk, uint64_t time, const char* data,
-                     uint32_t size) = 0;
+    virtual bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) = 0;
 
-    virtual bool Put(uint64_t time, const std::string& value,
-                     const Dimensions& dimensions) = 0;
+    virtual bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) = 0;
 
-    virtual bool Put(const Dimensions& dimensions,
-                     const TSDimensions& ts_dimemsions,
-                     const std::string& value) = 0;
+    virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, const std::string& value) = 0;
 
     bool Put(const ::openmldb::api::LogEntry& entry) {
         if (entry.dimensions_size() > 0) {
-            return entry.ts_dimensions_size() > 0
-                       ? Put(entry.dimensions(), entry.ts_dimensions(),
-                             entry.value())
-                       : Put(entry.ts(), entry.value(), entry.dimensions());
+            return entry.ts_dimensions_size() > 0 ? Put(entry.dimensions(), entry.ts_dimensions(), entry.value())
+                                                  : Put(entry.ts(), entry.value(), entry.dimensions());
         } else {
-            return Put(entry.pk(), entry.ts(), entry.value().c_str(),
-                       entry.value().size());
+            return Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
         }
     }
 
@@ -118,29 +102,19 @@ class Table {
 
     void SetLeader(bool is_leader) { is_leader_ = is_leader; }
 
-    inline uint32_t GetTableStat() {
-        return table_status_.load(std::memory_order_relaxed);
-    }
+    inline uint32_t GetTableStat() { return table_status_.load(std::memory_order_relaxed); }
 
-    inline void SetTableStat(uint32_t table_status) {
-        table_status_.store(table_status, std::memory_order_relaxed);
-    }
+    inline void SetTableStat(uint32_t table_status) { table_status_.store(table_status, std::memory_order_relaxed); }
 
-    inline uint64_t GetDiskused() {
-        return diskused_.load(std::memory_order_relaxed);
-    }
+    inline uint64_t GetDiskused() { return diskused_.load(std::memory_order_relaxed); }
 
-    inline void SetDiskused(uint64_t size) {
-        diskused_.store(size, std::memory_order_relaxed);
-    }
+    inline void SetDiskused(uint64_t size) { diskused_.store(size, std::memory_order_relaxed); }
 
     inline void SetSchema(const std::string& schema) { schema_.assign(schema); }
 
     inline const std::string& GetSchema() { return schema_; }
 
-    inline const ::openmldb::type::CompressType GetCompressType() {
-        return compress_type_;
-    }
+    inline const ::openmldb::type::CompressType GetCompressType() { return compress_type_; }
 
     void AddVersionSchema(const ::openmldb::api::TableMeta& table_meta);
 
@@ -148,7 +122,7 @@ class Table {
         return std::atomic_load_explicit(&table_meta_, std::memory_order_relaxed);
     }
 
-    void SetTableMeta(::openmldb::api::TableMeta& table_meta); // NOLINT
+    void SetTableMeta(::openmldb::api::TableMeta& table_meta);  // NOLINT
 
     std::shared_ptr<Schema> GetVersionSchema(int32_t ver) {
         auto versions = std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
@@ -163,39 +137,25 @@ class Table {
         return *std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
     }
 
-    std::vector<std::shared_ptr<IndexDef>> GetAllIndex() {
-        return table_index_.GetAllIndex();
-    }
+    std::vector<std::shared_ptr<IndexDef>> GetAllIndex() { return table_index_.GetAllIndex(); }
 
-    std::shared_ptr<IndexDef> GetIndex(const std::string& name) {
-        return table_index_.GetIndex(name);
-    }
+    std::shared_ptr<IndexDef> GetIndex(const std::string& name) { return table_index_.GetIndex(name); }
 
     std::shared_ptr<IndexDef> GetIndex(const std::string& name, uint32_t ts_idx) {
         return table_index_.GetIndex(name, ts_idx);
     }
 
-    std::shared_ptr<IndexDef> GetIndex(uint32_t idx) {
-        return table_index_.GetIndex(idx);
-    }
+    std::shared_ptr<IndexDef> GetIndex(uint32_t idx) { return table_index_.GetIndex(idx); }
 
-    std::shared_ptr<IndexDef> GetIndex(uint32_t idx, uint32_t ts_idx) {
-        return table_index_.GetIndex(idx, ts_idx);
-    }
+    std::shared_ptr<IndexDef> GetIndex(uint32_t idx, uint32_t ts_idx) { return table_index_.GetIndex(idx, ts_idx); }
 
-    std::shared_ptr<IndexDef> GetPkIndex() {
-        return table_index_.GetPkIndex();
-    }
+    std::shared_ptr<IndexDef> GetPkIndex() { return table_index_.GetPkIndex(); }
 
-    inline std::map<std::string, uint8_t>& GetTSMapping() {
-        return ts_mapping_;
-    }
+    inline std::map<std::string, uint8_t>& GetTSMapping() { return ts_mapping_; }
 
     void SetTTL(const ::openmldb::storage::UpdateTTLMeta& ttl_meta);
 
-    inline void SetMakeSnapshotTime(int64_t time) {
-        last_make_snapshot_time_ = time;
-    }
+    inline void SetMakeSnapshotTime(int64_t time) { last_make_snapshot_time_ = time; }
 
     inline int64_t GetMakeSnapshotTime() { return last_make_snapshot_time_; }
 

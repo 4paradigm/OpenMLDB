@@ -28,7 +28,9 @@
 
 #include <stdint.h>
 #include <string.h>
+
 #include <string>
+
 #include "base/port.h"
 
 namespace openmldb {
@@ -68,11 +70,10 @@ inline uint32_t DecodeFixed32(const char* ptr) {
                sizeof(result));  // gcc optimizes this to a plain load
         return result;
     } else {
-        return (
-            (static_cast<uint32_t>(static_cast<unsigned char>(ptr[0]))) |
-            (static_cast<uint32_t>(static_cast<unsigned char>(ptr[1])) << 8) |
-            (static_cast<uint32_t>(static_cast<unsigned char>(ptr[2])) << 16) |
-            (static_cast<uint32_t>(static_cast<unsigned char>(ptr[3])) << 24));
+        return ((static_cast<uint32_t>(static_cast<unsigned char>(ptr[0]))) |
+                (static_cast<uint32_t>(static_cast<unsigned char>(ptr[1])) << 8) |
+                (static_cast<uint32_t>(static_cast<unsigned char>(ptr[2])) << 16) |
+                (static_cast<uint32_t>(static_cast<unsigned char>(ptr[3])) << 24));
     }
 }
 

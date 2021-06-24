@@ -26,10 +26,10 @@ DECLARE_bool(enable_localtablet);
     static void BM_BatchRequest_##NAME(benchmark::State& state) {              \
         auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                      \
         sql_case.batch_request_optimized_ = state.range(0) == 1;               \
-        if (!hybridse::sqlcase::SqlCase::IsDebug()) {                            \
+        if (!hybridse::sqlcase::SqlCase::IsDebug()) {                          \
             sql_case.SqlCaseRepeatConfig("window_scale", state.range(1));      \
         }                                                                      \
-        if (!hybridse::sqlcase::SqlCase::IsDebug()) {                            \
+        if (!hybridse::sqlcase::SqlCase::IsDebug()) {                          \
             sql_case.SqlCaseRepeatConfig("batch_scale", state.range(2));       \
         }                                                                      \
                                                                                \

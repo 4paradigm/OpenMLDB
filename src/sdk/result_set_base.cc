@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "sdk/result_set_base.h"
 
 #include <utility>

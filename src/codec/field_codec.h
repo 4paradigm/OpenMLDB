@@ -14,20 +14,21 @@
  * limitations under the License.
  */
 
-
 #pragma once
 
 #include <stdint.h>
 #include <string.h>
+
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "base/endianconv.h"
+#include "base/glog_wapper.h"
 #include "base/strings.h"
 #include "boost/lexical_cast.hpp"
-#include "base/glog_wapper.h"
-#include "proto/type.pb.h"
 #include "codec/memcomparable_format.h"
+#include "proto/type.pb.h"
 
 namespace openmldb {
 namespace codec {
@@ -71,8 +72,7 @@ static inline void Convert(double data, char* buffer) {
     memcpy(buffer, static_cast<const void*>(&data), 8);
 }
 
-static inline bool Convert(const std::string& str, DataType data_type,
-                    std::string* out) {
+static inline bool Convert(const std::string& str, DataType data_type, std::string* out) {
     try {
         switch (data_type) {
             case ::openmldb::type::kBool: {
@@ -135,8 +135,7 @@ static inline bool Convert(const std::string& str, DataType data_type,
                 std::vector<std::string> parts;
                 ::openmldb::base::SplitString(str, "-", parts);
                 if (parts.size() != 3) {
-                    PDLOG(WARNING, "bad data format, data type %s.",
-                            openmldb::type::DataType_Name(data_type).c_str());
+                    PDLOG(WARNING, "bad data format, data type %s.", openmldb::type::DataType_Name(data_type).c_str());
                     return false;
                 }
                 uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
@@ -154,8 +153,7 @@ static inline bool Convert(const std::string& str, DataType data_type,
                 break;
             }
             default: {
-                PDLOG(WARNING, "unsupported data type %s.",
-                      openmldb::type::DataType_Name(data_type).c_str());
+                PDLOG(WARNING, "unsupported data type %s.", openmldb::type::DataType_Name(data_type).c_str());
                 return false;
             }
         }
@@ -196,40 +194,35 @@ static inline void GetDouble(const char* ch, void* res) {
     memrev64ifbe(static_cast<void*>(res));
 }
 
-__attribute__((unused)) static bool PackValue(const void *from,
-        ::openmldb::type::DataType data_type,
-        std::string* key) {
+__attribute__((unused)) static bool PackValue(const void* from, ::openmldb::type::DataType data_type,
+                                              std::string* key) {
     size_t k_size = key->size();
     int ret = 0;
     switch (data_type) {
         case ::openmldb::type::kBool: {
             key->resize(sizeof(int8_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
-            ret =
-                ::openmldb::codec::PackInteger(from, sizeof(int8_t), false, to);
+            ret = ::openmldb::codec::PackInteger(from, sizeof(int8_t), false, to);
             break;
         }
         case ::openmldb::type::kSmallInt: {
             key->resize(sizeof(int16_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
-            ret =
-                ::openmldb::codec::PackInteger(from, sizeof(int16_t), false, to);
+            ret = ::openmldb::codec::PackInteger(from, sizeof(int16_t), false, to);
             break;
         }
         case ::openmldb::type::kInt:
         case ::openmldb::type::kDate: {
             key->resize(sizeof(int32_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
-            ret =
-                ::openmldb::codec::PackInteger(from, sizeof(int32_t), false, to);
+            ret = ::openmldb::codec::PackInteger(from, sizeof(int32_t), false, to);
             break;
         }
         case ::openmldb::type::kBigInt:
         case ::openmldb::type::kTimestamp: {
             key->resize(sizeof(int64_t) + k_size);
             char* to = const_cast<char*>(key->data()) + k_size;
-            ret =
-                ::openmldb::codec::PackInteger(from, sizeof(int64_t), false, to);
+            ret = ::openmldb::codec::PackInteger(from, sizeof(int64_t), false, to);
             break;
         }
         case ::openmldb::type::kFloat: {
@@ -245,8 +238,7 @@ __attribute__((unused)) static bool PackValue(const void *from,
             break;
         }
         default: {
-            PDLOG(WARNING, "unsupported data type %s.",
-                  openmldb::type::DataType_Name(data_type).c_str());
+            PDLOG(WARNING, "unsupported data type %s.", openmldb::type::DataType_Name(data_type).c_str());
             return false;
         }
     }

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "catalog/sdk_catalog.h"
 
 #include "base/fe_status.h"

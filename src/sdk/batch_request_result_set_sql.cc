@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "sdk/batch_request_result_set_sql.h"
 
 #include <memory>
@@ -68,8 +67,7 @@ bool SQLBatchRequestResultSet::Init() {
     if (byte_size_ <= 0) return true;
 
     for (int i = 0; i < response_->common_column_indices().size(); ++i) {
-        common_column_indices_.insert(
-            response_->common_column_indices().Get(i));
+        common_column_indices_.insert(response_->common_column_indices().Get(i));
     }
     column_remap_.resize(schema.size());
     for (int i = 0; i < schema.size(); ++i) {
@@ -83,10 +81,10 @@ bool SQLBatchRequestResultSet::Init() {
         }
     }
 
-    common_row_view_ = std::unique_ptr<::hybridse::sdk::RowIOBufView>(
-        new ::hybridse::sdk::RowIOBufView(common_schema_));
-    non_common_row_view_ = std::unique_ptr<::hybridse::sdk::RowIOBufView>(
-        new ::hybridse::sdk::RowIOBufView(non_common_schema_));
+    common_row_view_ =
+        std::unique_ptr<::hybridse::sdk::RowIOBufView>(new ::hybridse::sdk::RowIOBufView(common_schema_));
+    non_common_row_view_ =
+        std::unique_ptr<::hybridse::sdk::RowIOBufView>(new ::hybridse::sdk::RowIOBufView(non_common_schema_));
 
     if (!common_schema_.empty()) {
         uint32_t row_size = 0;
@@ -114,16 +112,14 @@ bool SQLBatchRequestResultSet::IsNULL(int index) {
 
 bool SQLBatchRequestResultSet::Next() {
     index_++;
-    if (index_ < static_cast<int32_t>(response_->count()) &&
-        position_ < byte_size_) {
+    if (index_ < static_cast<int32_t>(response_->count()) && position_ < byte_size_) {
         if (non_common_schema_.empty()) {
             return true;
         }
         // get row size
         uint32_t row_size = 0;
         cntl_->response_attachment().copy_to(&row_size, 4, position_ + 2);
-        DLOG(INFO) << "row size " << row_size << " position " << position_
-                   << " byte size " << byte_size_;
+        DLOG(INFO) << "row size " << row_size << " position " << position_ << " byte size " << byte_size_;
         butil::IOBuf tmp;
         cntl_->response_attachment().append_to(&tmp, row_size, position_);
         position_ += row_size;
@@ -147,13 +143,9 @@ bool SQLBatchRequestResultSet::IsCommonColumnIdx(size_t index) const {
     return common_column_indices_.find(index) != common_column_indices_.end();
 }
 
-size_t SQLBatchRequestResultSet::GetCommonColumnNum() const {
-    return common_schema_.size();
-}
+size_t SQLBatchRequestResultSet::GetCommonColumnNum() const { return common_schema_.size(); }
 
-bool SQLBatchRequestResultSet::IsValidColumnIdx(size_t index) const {
-    return index < column_remap_.size();
-}
+bool SQLBatchRequestResultSet::IsValidColumnIdx(size_t index) const { return index < column_remap_.size(); }
 
 bool SQLBatchRequestResultSet::GetString(uint32_t index, std::string* str) {
     if (str == NULL) {
@@ -312,8 +304,7 @@ bool SQLBatchRequestResultSet::GetDate(uint32_t index, int32_t* date) {
     return ret == 0;
 }
 
-bool SQLBatchRequestResultSet::GetDate(uint32_t index, int32_t* year, int32_t* month,
-                                       int32_t* day) {
+bool SQLBatchRequestResultSet::GetDate(uint32_t index, int32_t* year, int32_t* month, int32_t* day) {
     if (day == NULL) {
         LOG(WARNING) << "input ptr is null pointer";
         return false;

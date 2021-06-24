@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-
 #include <gflags/gflags.h>
-#include "base/kv_iterator.h"
-#include "config.h" // NOLINT
-#include "gtest/gtest.h"
+
 #include "base/glog_wapper.h"
+#include "base/kv_iterator.h"
+#include "common/timer.h"
+#include "config.h"  // NOLINT
+#include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
 #include "tablet/tablet_impl.h"
-#include "common/timer.h"
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/heap-checker.h"
 #endif
@@ -32,7 +32,7 @@ DECLARE_string(db_root_path);
 namespace openmldb {
 namespace tablet {
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
 
 class MockClosure : public ::google::protobuf::Closure {
  public:

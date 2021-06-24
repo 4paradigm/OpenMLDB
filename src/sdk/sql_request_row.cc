@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-
 #include "sdk/sql_request_row.h"
 
 #include <stdint.h>
 
 #include <string>
 #include <unordered_map>
+
 #include "glog/logging.h"
 
 namespace openmldb {
@@ -29,18 +29,13 @@ namespace sdk {
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
 static constexpr uint8_t SDK_VERSION_LENGTH = 2;
 static constexpr uint8_t SDK_SIZE_LENGTH = 4;
-static constexpr uint8_t SDK_HEADER_LENGTH =
-    SDK_VERSION_LENGTH + SDK_SIZE_LENGTH;
+static constexpr uint8_t SDK_HEADER_LENGTH = SDK_VERSION_LENGTH + SDK_SIZE_LENGTH;
 static constexpr uint32_t SDK_UINT24_MAX = (1 << 24) - 1;
-static const std::unordered_map<::hybridse::sdk::DataType, uint8_t>
-    SDK_TYPE_SIZE_MAP = {{::hybridse::sdk::kTypeBool, sizeof(bool)},
-                         {::hybridse::sdk::kTypeInt16, sizeof(int16_t)},
-                         {::hybridse::sdk::kTypeInt32, sizeof(int32_t)},
-                         {::hybridse::sdk::kTypeDate, sizeof(int32_t)},
-                         {::hybridse::sdk::kTypeFloat, sizeof(float)},
-                         {::hybridse::sdk::kTypeInt64, sizeof(int64_t)},
-                         {::hybridse::sdk::kTypeTimestamp, sizeof(int64_t)},
-                         {::hybridse::sdk::kTypeDouble, sizeof(double)}};
+static const std::unordered_map<::hybridse::sdk::DataType, uint8_t> SDK_TYPE_SIZE_MAP = {
+    {::hybridse::sdk::kTypeBool, sizeof(bool)},         {::hybridse::sdk::kTypeInt16, sizeof(int16_t)},
+    {::hybridse::sdk::kTypeInt32, sizeof(int32_t)},     {::hybridse::sdk::kTypeDate, sizeof(int32_t)},
+    {::hybridse::sdk::kTypeFloat, sizeof(float)},       {::hybridse::sdk::kTypeInt64, sizeof(int64_t)},
+    {::hybridse::sdk::kTypeTimestamp, sizeof(int64_t)}, {::hybridse::sdk::kTypeDouble, sizeof(double)}};
 
 static inline uint8_t SDKGetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
@@ -54,12 +49,9 @@ static inline uint8_t SDKGetAddrLength(uint32_t size) {
     }
 }
 
-inline uint32_t SDKGetStartOffset(int32_t column_count) {
-    return SDK_HEADER_LENGTH + BitMapSize(column_count);
-}
+inline uint32_t SDKGetStartOffset(int32_t column_count) { return SDK_HEADER_LENGTH + BitMapSize(column_count); }
 
-SQLRequestRow::SQLRequestRow(std::shared_ptr<hybridse::sdk::Schema> schema,
-        const std::set<std::string>& record_cols)
+SQLRequestRow::SQLRequestRow(std::shared_ptr<hybridse::sdk::Schema> schema, const std::set<std::string>& record_cols)
     : schema_(schema),
       cnt_(0),
       size_(0),
@@ -74,8 +66,7 @@ SQLRequestRow::SQLRequestRow(std::shared_ptr<hybridse::sdk::Schema> schema,
       str_length_current_(0),
       has_error_(false),
       is_ok_(false) {
-    str_field_start_offset_ =
-        SDK_HEADER_LENGTH + BitMapSize(schema->GetColumnCnt());
+    str_field_start_offset_ = SDK_HEADER_LENGTH + BitMapSize(schema->GetColumnCnt());
     for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
         auto type = schema->GetColumnType(idx);
         if (type == ::hybridse::sdk::kTypeString) {
@@ -84,8 +75,7 @@ SQLRequestRow::SQLRequestRow(std::shared_ptr<hybridse::sdk::Schema> schema,
         } else {
             auto iter = SDK_TYPE_SIZE_MAP.find(type);
             if (iter == SDK_TYPE_SIZE_MAP.end()) {
-                LOG(WARNING)
-                    << hybridse::sdk::DataTypeName(type) << " is not supported";
+                LOG(WARNING) << hybridse::sdk::DataTypeName(type) << " is not supported";
             } else {
                 offset_vec_.push_back(str_field_start_offset_);
                 str_field_start_offset_ += iter->second;
@@ -136,22 +126,19 @@ bool SQLRequestRow::Check(hybridse::sdk::DataType type) {
         return false;
     }
     if ((int32_t)cnt_ >= schema_->GetColumnCnt()) {
-        LOG(WARNING) << "idx out of index: " << cnt_
-                     << " size=" << schema_->GetColumnCnt();
+        LOG(WARNING) << "idx out of index: " << cnt_ << " size=" << schema_->GetColumnCnt();
         return false;
     }
     auto expected_type = schema_->GetColumnType(cnt_);
     if (expected_type != type) {
-        LOG(WARNING) << "type mismatch required type "
-                     << hybridse::sdk::DataTypeName(expected_type)
+        LOG(WARNING) << "type mismatch required type " << hybridse::sdk::DataTypeName(expected_type)
                      << " but real type " << hybridse::sdk::DataTypeName(type);
         return false;
     }
     if (type != ::hybridse::sdk::kTypeString) {
         auto iter = SDK_TYPE_SIZE_MAP.find(type);
         if (iter == SDK_TYPE_SIZE_MAP.end()) {
-            LOG(WARNING) << hybridse::sdk::DataTypeName(type)
-                         << " is not supported";
+            LOG(WARNING) << hybridse::sdk::DataTypeName(type) << " is not supported";
             return false;
         }
     }
@@ -277,11 +264,9 @@ bool SQLRequestRow::AppendDouble(double val) {
     return true;
 }
 
-bool SQLRequestRow::AppendString(const std::string& val) {
-    return AppendString(val.data(), val.size());
-}
+bool SQLRequestRow::AppendString(const std::string& val) { return AppendString(val.data(), val.size()); }
 
-bool SQLRequestRow::AppendString(const char *string_buffer_var_name, uint32_t length) {
+bool SQLRequestRow::AppendString(const char* string_buffer_var_name, uint32_t length) {
     if (!Check(::hybridse::sdk::kTypeString)) return false;
     if (str_offset_ + length > size_) return false;
     int8_t* ptr = buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
@@ -317,16 +302,14 @@ bool SQLRequestRow::AppendNULL() {
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
     auto type = schema_->GetColumnType(cnt_);
     if (type == ::hybridse::sdk::kTypeString) {
-        ptr = buf_ + str_field_start_offset_ +
-              str_addr_length_ * offset_vec_[cnt_];
+        ptr = buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
         if (str_addr_length_ == 1) {
             *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
         } else if (str_addr_length_ == 2) {
             *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
         } else if (str_addr_length_ == 3) {
             *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
-            *(reinterpret_cast<uint8_t*>(ptr + 1)) =
-                (str_offset_ & 0xFF00) >> 8;
+            *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset_ & 0xFF00) >> 8;
             *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
         } else {
             *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
@@ -341,8 +324,8 @@ bool SQLRequestRow::Build() {
         return false;
     }
     if (str_length_current_ != str_length_expect_) {
-        LOG(WARNING) << "str_length_current_ != str_length_expect_ "
-                     << str_length_current_ << ", " << str_length_expect_;
+        LOG(WARNING) << "str_length_current_ != str_length_expect_ " << str_length_current_ << ", "
+                     << str_length_expect_;
         return false;
     }
     int32_t cnt = cnt_;
@@ -400,8 +383,8 @@ void ColumnIndicesSet::AddCommonColumnIdx(size_t idx) {
 }
 
 SQLRequestRowBatch::SQLRequestRowBatch(std::shared_ptr<hybridse::sdk::Schema> schema,
-                                       std::shared_ptr<ColumnIndicesSet> indices):
-    common_selector_(nullptr), non_common_selector_(nullptr) {
+                                       std::shared_ptr<ColumnIndicesSet> indices)
+    : common_selector_(nullptr), non_common_selector_(nullptr) {
     if (schema == nullptr) {
         LOG(WARNING) << "Null input schema";
         return;
@@ -442,16 +425,14 @@ bool SQLRequestRowBatch::AddRow(std::shared_ptr<SQLRequestRow> row) {
     // non-common
     if (common_column_indices_.empty() ||
         common_column_indices_.size() == static_cast<size_t>(request_schema_.size())) {
-        non_common_slices_.emplace_back(std::string(
-            reinterpret_cast<char*>(input_buf), input_size));
+        non_common_slices_.emplace_back(std::string(reinterpret_cast<char*>(input_buf), input_size));
         return true;
     }
 
     if (non_common_slices_.empty()) {
         int8_t* common_buf = nullptr;
         size_t common_size = 0;
-        if (!common_selector_->Select(input_buf, input_size,
-                                      &common_buf, &common_size)) {
+        if (!common_selector_->Select(input_buf, input_size, &common_buf, &common_size)) {
             LOG(WARNING) << "Extract common slice failed";
             return false;
         }
@@ -460,13 +441,11 @@ bool SQLRequestRowBatch::AddRow(std::shared_ptr<SQLRequestRow> row) {
     }
     int8_t* non_common_buf = nullptr;
     size_t non_common_size = 0;
-    if (!non_common_selector_->Select(input_buf, input_size,
-                                      &non_common_buf, &non_common_size)) {
+    if (!non_common_selector_->Select(input_buf, input_size, &non_common_buf, &non_common_size)) {
         LOG(WARNING) << "Extract non-common slice failed";
         return false;
     }
-    non_common_slices_.emplace_back(std::string(
-        reinterpret_cast<char*>(non_common_buf), non_common_size));
+    non_common_slices_.emplace_back(std::string(reinterpret_cast<char*>(non_common_buf), non_common_size));
     free(non_common_buf);
     return true;
 }
