@@ -7,7 +7,7 @@ jobs:
   cpp_ut:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.2.0
+      image: ghcr.io/4paradigm/hybridsql:0.3.0
     steps:
       - uses: actions/checkout@v1
       - name: uncompress_thirdparty
