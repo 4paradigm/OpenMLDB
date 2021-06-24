@@ -55,7 +55,7 @@ public class DDLEngineTest {
                                 "`col8` timestamp,\n" +
                                 "`col9` date,\n" +
                                 "index(key=(`col2`), ttl=1, ttl_type=latest)\n" +
-                                ") replicanum=1, partitionnum=2 ;\n"
+                                ") options ( replicanum=1, partitionnum=2 ) ;\n"
                 },
                 new Object[] {
                         "加法 和 乘法 输出列名有重复",
@@ -81,7 +81,7 @@ public class DDLEngineTest {
                                 "`advc_limit` double,\n" +
                                 "`repay_status` string,\n" +
                                 "index(key=(`new_user_id`), ts=`ingestionTime`, ttl=92160m, ttl_type=absolute)\n" +
-                                ") replicanum=1, partitionnum=3 ;\n" +
+                                ") options ( replicanum=1, partitionnum=3 ) ;\n" +
                                 "create table `bo_user`(\n" +
                                 "`ingestionTime` timestamp,\n" +
                                 "`new_user_id` string,\n" +
@@ -91,7 +91,7 @@ public class DDLEngineTest {
                                 "`marriage` string,\n" +
                                 "`hukou_typ` string,\n" +
                                 "index(key=(`new_user_id`), ttl=1, ttl_type=latest)\n" +
-                                ") replicanum=1, partitionnum=3 ;\n" +
+                                ") options ( replicanum=1, partitionnum=3 ) ;\n" +
                                 "create table `bo_browse_history`(\n" +
                                 "`ingestionTime` timestamp,\n" +
                                 "`new_user_id` string,\n" +
@@ -99,14 +99,14 @@ public class DDLEngineTest {
                                 "`action` string,\n" +
                                 "`subaction` string,\n" +
                                 "index(key=(`new_user_id`), ts=`ingestionTime`, ttl=92160m, ttl_type=absolute)\n" +
-                                ") replicanum=1, partitionnum=3 ;\n" +
+                                ") options ( replicanum=1, partitionnum=3 ) ;\n" +
                                 "create table `action`(\n" +
                                 "`reqId` string,\n" +
                                 "`eventTime` timestamp,\n" +
                                 "`ingestionTime` timestamp,\n" +
                                 "`actionValue` int,\n" +
                                 "index(key=(`reqId`), ttl=1, ttl_type=latest)\n" +
-                                ") replicanum=1, partitionnum=3 ;\n" +
+                                ") options ( replicanum=1, partitionnum=3 ) ;\n" +
                                 "create table `bo_detail`(\n" +
                                 "`ingestionTime` timestamp,\n" +
                                 "`new_user_id` string,\n" +
@@ -115,7 +115,7 @@ public class DDLEngineTest {
                                 "`trx_amt` double,\n" +
                                 "`is_slry` string,\n" +
                                 "index(key=(`new_user_id`), ts=`ingestionTime`, ttl=92160m, ttl_type=absolute)\n" +
-                                ") replicanum=1, partitionnum=3 ;\n" +
+                                ") options ( replicanum=1, partitionnum=3 ) ;\n" +
                                 "create table `batch100504_flatten_request`(\n" +
                                 "`reqId` string,\n" +
                                 "`eventTime` timestamp,\n" +
@@ -125,7 +125,7 @@ public class DDLEngineTest {
                                 "`split_id` int,\n" +
                                 "`time1` string,\n" +
                                 "index(key=(`new_user_id`), ts=`eventTime`, ttl=92160m, ttl_type=absolute)\n" +
-                                ") replicanum=1, partitionnum=3 ;\n"
+                                ") options ( replicanum=1, partitionnum=3 ) ;\n"
                 }
         };
     }
