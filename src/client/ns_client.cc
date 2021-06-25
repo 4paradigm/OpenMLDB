@@ -272,14 +272,14 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
     }
     hybridse::node::PlanNode* node = plan_trees[0];
     switch (node->GetType()) {
-        case hybridse::node::kCmdStmt: {
+        case hybridse::node::kPlanTypeCmd: {
             bool ok = HandleSQLCmd(dynamic_cast<hybridse::node::CmdPlanNode*>(node), db, &sql_status);
             if (!ok) {
                 msg = sql_status.msg;
             }
             return ok;
         }
-        case hybridse::node::kCreateStmt: {
+        case hybridse::node::kPlanTypeCreate: {
             bool ok = HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), db, &node_manager,
                                            &sql_status);
             if (!ok) {

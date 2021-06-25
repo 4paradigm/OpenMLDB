@@ -116,14 +116,14 @@ llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 add_definitions(${LLVM_DEFINITIONS})
 if(UNIX AND NOT APPLE AND NOT DEFINED SWIG_DIR)
     # TODO: swig 4.0.1 compiled is not portable, check 'swig -swiglib'
-    set(SWIG_DIR ${CMAKE_SOURCE_DIR}/thirdparty/share/swig/4.0.1)
+    set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
 endif()
 find_package(absl REQUIRED)
 
 find_package(GTest 1.10 EXACT REQUIRED)
 
-set(Protobuf_USE_STATIC_LIBS ON)
-find_package(Protobuf 3.6 EXACT REQUIRED)
+#set(Protobuf_USE_STATIC_LIBS ON)
+#find_package(Protobuf 3.6 EXACT REQUIRED)
 list(
         APPEND
         ABSL_LIBS

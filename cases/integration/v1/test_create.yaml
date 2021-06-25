@@ -168,11 +168,17 @@ cases:
     expect:
       success: false
   -
-    id: 14
+    id: 14-1
     desc: 表名为保留关键字
-    sql: create table table(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    sql: create table order(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
     expect:
       success: false
+  -
+    id: 14-2
+    desc: 表名为非保留关键字
+    sql: create table table(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: true
   -
     id: 15
     desc: 列名以数字开头
@@ -180,9 +186,15 @@ cases:
     expect:
       success: false
   -
-    id: 16
+    id: 16-1
     desc: 列名为保留关键字
     sql: create table {auto}(use string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 16-2
+    desc: 列名为非保留关键字
+    sql: create table {auto}(column string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
     expect:
       success: false
   -
@@ -190,7 +202,7 @@ cases:
     desc: 语句缺少分号
     sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
     expect:
-      success: false
+      success: true
   -
     id: 18
     desc: 列的类型不存在
@@ -400,7 +412,7 @@ cases:
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
-      index(key=(c3), ts=c4)) replicanum=2;
+      index(key=(c3), ts=c4)) OPTIONS (replicanum=2);
     expect:
       success: true
   -
@@ -409,21 +421,26 @@ cases:
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
-      index(key=(c3),ts=c4)) replicanum=2, distribution(leader="{tb_endpoint_0}", follower="{tb_endpoint_1}");
+      index(key=(c3),ts=c4)) OPTIONS (replicanum=2,
+      distribution = [("{tb_endpoint_0}", ["{tb_endpoint_1}"])]);
+
     expect:
       success: true
   -
     id: 40
-    desc: create with replica num and distribution
+    desc: create with replica num 3 and distribution endpoints 2
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
-      index(key=(c3),ts=c4)) replicanum=3, distribution(leader="{tb_endpoint_0}", follower="{tb_endpoint_1}");
+      index(key=(c3),ts=c4)) OPTIONS (
+        replicanum=3,
+        distribution = [("{tb_endpoint_0}", ["{tb_endpoint_1}"])]
+      );
     expect:
       success: false
   -
     id: 41
-    desc: create with replica num and distribution
+    desc: create with replica num and distribution, duplicate endpoint
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -490,7 +507,7 @@ cases:
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
-      index(key=(c3), ts=c4)) partitionnum=8;
+      index(key=(c3), ts=c4)) OPTIONS (partitionnum=8);
     expect:
       success: true
   -
@@ -499,7 +516,7 @@ cases:
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
-      index(key=(c3), ts=c4)) replicanum=2, partitionnum=8;
+      index(key=(c3), ts=c4)) OPTIONS (replicanum=2, partitionnum=8);
     expect:
       success: true
   -

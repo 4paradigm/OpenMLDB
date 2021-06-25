@@ -489,6 +489,10 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
         if (!column_map.empty()) {
             i = column_map.at(idx);
         }
+        if (hybridse::node::kExprPrimary != row->children_.at(i)->GetExprType()) {
+            LOG(WARNING) << "insert value isn't const value";
+            return DefaultValueMap();
+        }
         ::hybridse::node::ConstNode* primary =
             dynamic_cast<::hybridse::node::ConstNode*>(row->children_.at(i));
         if (!primary->IsPlaceholder()) {
