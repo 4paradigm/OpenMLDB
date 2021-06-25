@@ -221,6 +221,14 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
         return;
     }
     auto sp_info = router->ShowProcedure(sql_case.db(), sql_case.sp_name_, &status);
+    for(int try_n = 0; try_n < 3; try_n++) {
+        if (sp_info && status.code == 0) {
+            break;
+        }
+        sp_info = router->ShowProcedure(sql_case.db(), sql_case.sp_name_, &status);
+        LOG(WARNING) << "Procedure not found, try " << try_n << " times";
+        sleep(1);
+    }
     ASSERT_TRUE(sp_info && status.code == 0) << status.msg;
     if (is_batch) {
         std::set<size_t> input_common_indices;
