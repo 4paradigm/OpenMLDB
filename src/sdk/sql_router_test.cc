@@ -980,7 +980,7 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 bigint,"
-                      "index(key=col1, ts=col2)) partitionnum=8;";
+                      "index(key=col1, ts=col2)) options(partitionnum=8);";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());

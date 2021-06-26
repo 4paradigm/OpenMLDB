@@ -71,7 +71,7 @@ TEST_F(SQLClusterTest, cluster_insert) {
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 bigint,"
-                      "index(key=col1, ts=col2)) partitionnum=8;";
+                      "index(key=col1, ts=col2)) options(partitionnum=8);";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -111,7 +111,8 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         "                col1 bigint,\n"
         "                col2 string,\n"
         "                col3 bigint,\n"
-        "                index(key=col2, ts=col3)) partitionnum=2;";
+        "                index(key=col2, ts=col3)) "
+        "options(partitionnum=2);";
     SQLRouterOptions sql_opt;
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
@@ -352,7 +353,8 @@ TEST_F(SQLClusterTest, create_table) {
         std::string ddl = "create table " + name +
                           "("
                           "col1 string, col2 bigint,"
-                          "index(key=col1, ts=col2)) partitionnum=3;";
+                          "index(key=col1, ts=col2)) "
+                          "options(partitionnum=3);";
         ok = router->ExecuteDDL(db, ddl, &status);
         ASSERT_TRUE(ok);
     }

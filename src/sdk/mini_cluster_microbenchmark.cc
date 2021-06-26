@@ -416,7 +416,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
                          "(id int, c1 string, c2 string, c3 string, c4 string, "
                          "c6 double, c7 timestamp, "
                          "index(key=(c1), ts=c7, ttl=3650d)"
-                         ") partitionnum=8;";
+                         ") options(partitionnum=8);";
     router->ExecuteDDL(db, create, &status);
     if (status.msg != "ok") {
         std::cout << "fail to create table" << std::endl;
@@ -500,7 +500,7 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
                          "index(key=(c2), ts=c7, ttl=3650d), "
                          "index(key=(c3), ts=c7, ttl=3650d), "
                          "index(key=(c4), ts=c7, ttl=3650d) "
-                         ") partitionnum=8;";
+                         ") options(partitionnum=8);";
     router->ExecuteDDL(db, create, &status);
     if (status.msg != "ok") {
         std::cout << "fail to create table" << std::endl;
