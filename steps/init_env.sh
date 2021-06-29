@@ -34,7 +34,6 @@ PACKAGE_NAME=hybridse-0.1.5-pre-2-linux-x86_64
 curl -LO https://github.com/jingchen2222/HybridSE/releases/download/v0.1.5-pre-2/hybridse-0.1.5-pre-2-linux-x86_64.tar.gz
 tar zxf ${PACKAGE_NAME}.tar.gz > /dev/null
 mv ${PACKAGE_NAME}/* thirdparty/hybridse
-ls thirdparty/include
 cd -
 ln -sf /depends/thirdparty thirdparty
 ln -sf /depends/thirdsrc thirdsrc

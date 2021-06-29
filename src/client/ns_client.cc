@@ -342,8 +342,6 @@ bool NsClient::HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node,
 
 bool NsClient::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create, const std::string& db,
                                     hybridse::node::NodeManager* node_manager, hybridse::base::Status* sql_status) {
-    hybridse::node::PlanNodeList plan_trees;
-
     if (nullptr == create) {
         sql_status->msg = "fail to execute plan : create plan null";
         return false;

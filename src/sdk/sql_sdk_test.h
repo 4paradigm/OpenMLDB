@@ -220,11 +220,13 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     if (!sql_case.expect().success_) {
         return;
     }
+    ASSERT_TRUE(0 == status.code) << status.msg;
     auto sp_info = router->ShowProcedure(sql_case.db(), sql_case.sp_name_, &status);
     for(int try_n = 0; try_n < 3; try_n++) {
         if (sp_info && status.code == 0) {
             break;
         }
+        ASSERT_TRUE(router->RefreshCatalog());
         sp_info = router->ShowProcedure(sql_case.db(), sql_case.sp_name_, &status);
         LOG(WARNING) << "Procedure not found, try " << try_n << " times";
         sleep(1);
