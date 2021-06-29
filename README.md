@@ -1,102 +1,123 @@
 
-![](images/fedb_black.png)
+<div align=center><img src="./images/openmldb_logo.png"/></div>
 
-- [**Slack Channel**](https://join.slack.com/t/hybridsql-ws/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
-- [**Discussions**](https://github.com/4paradigm/fedb/discussions)
-- [**中文README**](README_cn.md)
+[![build status](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml/badge.svg?branch=openmldb)](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml)
+[![docker pulls](https://img.shields.io/docker/pulls/4pdosc/openmldb.svg)](https://hub.docker.com/r/4pdosc/openmldb)
+[![slack](https://img.shields.io/badge/Slack-Join%20Slack-blue)](https://join.slack.com/t/hybridsql-ws/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
+[![discuss](https://img.shields.io/badge/Discuss-Ask%20Questions-blue)](https://github.com/4paradigm/OpenMLDB/discussions)
 
-## Introduction
+English version|[中文版](README_cn.md)
 
-FEDB is a NewSQL database optimised for online inferencing and decision making applications. These applications feed a pre-trained model with real-time features extracted from multiple time series windows for evaluating new data to support decision making. Existing in-memory databases cost hundreds or even thousands of milliseconds so they cannot meet the requirements of online inferencing and decisioning applications.
 
-FEDB uses a double-layer skiplist as the core data structure. With all the data in memory and extreme compilation optimization of SQL, FEDB significantly reduces execution latency.
+## What is OpenMLDB 
 
-- __High Performance__
+OpenMLDB is an open-source database designed and optimized to enable data correctness & efficiency for machine learning driven applications. Besides the 10x faster ML application landing experience, OpenMLDB provides the unified computing & storage engines to reduce the complexity and cost of development and operation.
 
-   The benchmark shows that FEDB can be one to two orders of magnitude faster than SingleStore and SAP HANA.
+## Who Uses OpenMLDB 
+The OpenMLDB project originated from several enterprise AI data products(RTiDB, SparkFE & FeDB) at 4Paradigm. OpenMLDB is now used in production to serve machine learning scenarios in many leading companies, with more than 120 industry landed use cases including content recommender system, ads CTR prediction, AIOps, anti-money laundering, anti-fraud recognition, intelligent marketing, etc. 
 
-- __SQL Compatible__
+## Features
 
-   FEDB is compatible with most of ANSI SQL syntax. You can implement your applications with SQLAlchemy or JDBC.
+* **Consistency**
 
-- __Online-offline Consistency__
+    OpenMLDB ensures the consistency for online and offline. Data scientists can use OpenMLDB for feature extration which will avoid crossing data. The online and offline computation are consistent because of using the same LLVM IR for complication. To encure the consistency of storage, OpenMLDB will synchronize data for offline and online. Users do not need to manage multiple data sources for online and offline, which may avoid the inconsistency from features or data.
+    
+* **High Performance**
 
-   Machine learning applications powered by FEDB can be launched easily and ensure online and offline consistency, greatly reducing the cost of landing machine learning scenarios.
+    OpenMLDB implements the native SQL compiler with C++ and LLVM. It contains tens of optimization passes for physical plans and expressions. It can generate optmized binary code for different hardware and optmize the memory layout for feature storage. The storage and cost for features can be 9x times lower than the similar databases. The performance of real-time execution can be 9x times better and the performance of batch processing can be 6x times better.
 
-- __High Availability__
+* **High Availability**
 
-   Support auto failover and scaling horizontally.
+    OpenMLDB supports distributed massive-parallel processing and database storage. It supports automatical failover to avoid the single point of failure.
 
-Note: The latest released FEDB is unstable and not recommend to be used in production environment.
+* **ANSI SQL Support**
 
-### Architecture
+    OpenMLDB supports user-friendly SQL interface which is compatible with most ANSI SQL and extends syntax for AI secenarios. Take the time serial features as example, OpenMLDB not only supports the syntax of Over Window but also supports the new syntax for sliding window with instance table and real-time window aggregation with current row data.
 
-[See more](https://github.com/4paradigm/HybridSQL-docs/blob/main/fedb/architecture/architecture.md) 
+* **AI Optimization**
 
-## Quick Start
+    OpenMLDB is designed for optimizing AI scenarios. For storage we design the efficient data struct to storage features which gets better the utilization of space and performance than the similar products. For computation we provide the usual methods for table join and the UDF/UDAF for most machine learning scenarios.
 
-### Build on Linux
+* **Easy To Use**
 
-```
-docker pull 4pdosc/centos6_gcc7_hybridsql:0.1.1
-git clone https://github.com/4paradigm/fedb.git
-cd fedb
-docker run -v `pwd`:/fedb -it 4pdosc/centos6_gcc7_hybridsql:0.1.1
-cd /fedb
-sh steps/init_env.sh
-mkdir -p build && cd build && cmake ../ && make -j5 fedb
-```
-
-### Demo
-
-* [Predict taxi trip duration](https://github.com/4paradigm/DemoApps/tree/main/predict-taxi-trip-duration)
-* Detect the healthy of online transaction and make an alert -oncoming
-* Online real-time transaction fraud detection -oncoming
+    OpenMLDB is easy to use just like other standalone database. Not only data scientists but also application developers can use SQL to develop the machine learning applications which includes massive-parallel processing and real-time feature extraction. With this database it is easy for AI landing with lowest cost.
 
 ## Performance
 
-In AI scenarios most real-time features are time-related and required to be computed over multiple time windows. So we use computation TopN queries as benchmark scenario.
+Comparing with the mainstream databases, OpenMLDB achieves better performance for different size of data and computational complexity.
 
-### Server Specification
-The server spec is as follows:
+![Online Benchmark](./images/online_benchmark.png)
 
-|Item|Spec|
-|---|----|
-|CPU|Intel Xeon Platinum 8280L Processor|
-|Memory|384 GB|
-|OS|CentOS-7 with kernel 5.1.9-1.el7|
+Comparing with the popular Spark computation framework, using OpenMLDB for batch data process can achieve better performance and lower TCO especially with optimization for skew window data.
 
-### Benchmark Results
+![Offline Benchmark](./images/offline_benchmark.png)
 
-![Benchmark](images/benchmark.png)
+## QuickStart
 
-The benchmark result shows that FEDB can be one to two orders of magnitude faster than SingleStore and SAP HANA. Please check our [VLDB'21 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf) for more benchmarks.
+Take Predict Taxi Tour Duration as example, we can use OpenMLDB to develop and deploy ML applications easily.
 
-## Roadmap
+```bash
+# Start docker image
+docker run -it 4pdosc/openmldb:0.1.0 bash
+ 
+# Initilize the environment
+sh init.sh
+ 
+# Import the data to OpenMLDB
+python3 import.py
+ 
+# Run feature extraction and model training
+python3 train.py ./fe.sql /tmp/model.txt
+ 
+# Start HTTP serevice for inference with OpenMLDB
+sh start_predict_server.sh ./fe.sql 8887 /tmp/model.txt
+ 
+# Run inference with HTTP request
+python3 predict.py
+```
 
-### ANSI SQL Compatibility
+## Architecture 
 
-FEDB is currently compatible with mainstream DDL and DML syntax, and will gradually enhances the compatibility of ANSI SQL syntax.
+<div align=center><img src="./images/openmldb_architecture.png"/></div>
 
-* [2021H1] Support the standard syntax of Window, Where, Group By and Join ect.
-* [2021H1&H2] Expand AI-oriented SQL syntax and UDAF functions.
+## Status and Roadmap
 
-### Features
-
-In order to meet the high performance requirements of realtime inference and decisioning scenarios, FEDB chooses memory as the storage engine medium. At present, the memory storage engine used in the industry has memory fragmentation and recovery efficiency problems. FEDB plans to optimize the memory allocation algorithm to reduce fragmentation and accelerate data recovery with [PMEM](https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html)(Intel Optane DC Persistent Memory Module).
-
-* [2021H1]Provide a new strategy of memory allocation to reduce memory fragmentation.
-* [2021H2]Support PMEM-based storage engine.
-
-### Build Ecosystem
-FEDB has python client and java client which support most of JDBC API. FEDB will make a connection with big data ecosystem for integrating with Flink/Kafka/Spark simplily.
-
-* [2021H1&H2]Support Flink/Kafka/Spark connector.
+### Status of Project
 
 
-## Feedback and Getting involved
-* Report bugs, ask questions or give suggestions by [Github Issues](https://github.com/4paradigm/fedb/issues/new).
-* Cannot find what you are looking for? Have a question or idea? Please post your questions or comments on our [slack](https://hybridsql-ws.slack.com/archives/C01R7L7AL3W).
+* SQL compiler and optimizer[Complete]
+    * Support ANSI SQL compiler[Complete]
+    * Support optimizing physical plans and expressions[Complete]
+    * Support code generation for functions[Complete]
+* Front-end programming interfaces[In Process]
+    * Support JDBC protocol[Complete]
+    * Support C++、Python SDK[Complete]
+    * Support RESTful API[In Process]
+* Online/offline computaion engine[Complete]
+    * Support online database computaion engine[Complete]
+    * Support offline batch process computaion engine[Complete]
+* Unified storage engine[In Process]
+    * Support distributed memory storage[Complete]
+    * Support synchronization for online and offline data[In Process]
+
+### Roadmap
+
+* SQL Compatibility
+    * Support more `Window` types and `Where`, `GroupBy` with complex expressions[2021H2]
+    * Support more SQL syntax and UDF/UDAF functions for AI scenarios[2021H2]
+* Performance Improvement
+    * Logical and physical plan optimization for batch mode and request mode data processing[2021H2]
+    * High-performance, distributed execution plan generation and codegen[2021H2]
+    * More classic SQL expression pass support[2022H1]
+    * Integrate the optimization passes for Native LastJoin which is used in AI scenarios[2021H2]
+    * Provide a new strategy of memory allocation to reduce memory fragmentation[2022H1]
+* Ecosystem Integration
+    * Adapt to various encoding format in row and column, be compatible with Apache Arrow[2021H2]
+    * Adapt to open source SQL compute framework like FlinkSQL[2022H1]
+    * Support popular programing languages，including C++, Java, Python, Go, Rust etc[2021H2]
+    * Support PMEM-based storage engine[2022H1]
+    * Support Flink/Kafka/Spark connector[2022H1]
 
 ## License
-Apache License 2.0
+
+[Apache License 2.0](./LICENSE)
