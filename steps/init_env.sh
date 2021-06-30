@@ -30,8 +30,8 @@ rm -rf thirdparty/hybridse
 mkdir -p thirdparty/hybridse
 #PACKAGE_NAME=hybridse-0.1.1-linux-x86_64
 #curl -LO  https://github.com/4paradigm/HybridSE/releases/download/v0.1.1/${PACKAGE_NAME}.tar.gz
-PACKAGE_NAME=hybridse-0.1.5-pre-2-linux-x86_64
-curl -LO https://github.com/jingchen2222/HybridSE/releases/download/v0.1.5-pre-2/hybridse-0.1.5-pre-2-linux-x86_64.tar.gz
+PACKAGE_NAME=hybridse-0.1.5-pre-3-linux-x86_64
+curl -LO https://github.com/jingchen2222/HybridSE/releases/download/v0.1.5-pre-3/hybridse-0.1.5-pre-3-linux-x86_64.tar.gz
 tar zxf ${PACKAGE_NAME}.tar.gz > /dev/null
 mv ${PACKAGE_NAME}/* thirdparty/hybridse
 cd -
