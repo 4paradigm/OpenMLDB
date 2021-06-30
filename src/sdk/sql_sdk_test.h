@@ -163,7 +163,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         if (!create.empty()) {
             router->ExecuteDDL(sql_case.db(), create, &status);
             ASSERT_TRUE(router->RefreshCatalog());
-            ASSERT_TRUE(status.code == 0) << status;
+            ASSERT_TRUE(status.code == 0) << status.msg;
         }
     }
     DLOG(INFO) << "Create Tables DONE";
