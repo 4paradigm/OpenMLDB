@@ -32,6 +32,7 @@ namespace zk {
 
 static bool call_invoked = false;
 static uint32_t endpoint_size = 2;
+static uint32_t session_timeout = 10000;
 class ZkClientTest : public ::testing::Test {
  public:
     ZkClientTest() {}
@@ -48,13 +49,13 @@ void WatchCallback(const std::vector<std::string>& endpoints) {
 }
 
 TEST_F(ZkClientTest, BadZk) {
-    ZkClient client("127.0.0.1:13181", "", 1000, "127.0.0.1:9527", "/rtidb");
+    ZkClient client("127.0.0.1:13181", "", session_timeout, "127.0.0.1:9527", "/rtidb");
     bool ok = client.Init();
     ASSERT_FALSE(ok);
 }
 
 TEST_F(ZkClientTest, Init) {
-    ZkClient client("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/rtidb");
+    ZkClient client("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
     ok = client.Register();
@@ -70,8 +71,7 @@ TEST_F(ZkClientTest, Init) {
     ok = client.WatchNodes();
     ASSERT_TRUE(ok);
     {
-        ZkClient client2(
-                "127.0.0.1:6181", "", 1000, "127.0.0.1:9528", "/rtidb");
+        ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9528", "/rtidb");
         ok = client2.Init();
         client2.Register();
         ASSERT_TRUE(ok);
@@ -100,7 +100,7 @@ TEST_F(ZkClientTest, CreateNode) {
     ret = client.IsExistNode(node);
     ASSERT_EQ(ret, 0);
 
-    ZkClient client2("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/rtidb1");
+    ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb1");
     ok = client2.Init();
     ASSERT_TRUE(ok);
 
@@ -111,7 +111,7 @@ TEST_F(ZkClientTest, CreateNode) {
 }
 
 TEST_F(ZkClientTest, ZkNodeChange) {
-    ZkClient client("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/rtidb1");
+    ZkClient client("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb1");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
 
@@ -123,7 +123,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     ret = client.IsExistNode(node);
     ASSERT_EQ(ret, 0);
 
-    ZkClient client2("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/rtidb1");
+    ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb1");
     ok = client2.Init();
     ASSERT_TRUE(ok);
     std::atomic<bool> detect(false);
