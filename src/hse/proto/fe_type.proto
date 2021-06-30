@@ -1,0 +1,95 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package hybridse.type;
+option cc_generic_services = false;
+option java_package = "com._4paradigm.hybridse.type";
+option java_outer_classname = "TypeOuterClass";
+enum Type {
+    kBool = 0;
+    kInt16 = 1;
+    kInt32 = 3;
+    kInt64 = 5;
+    kFloat = 7;
+    kDouble = 8;
+    kVarchar = 9;
+    kDate = 10;
+    kTimestamp = 11;
+    kBlob = 12;
+    kNull = 101;
+}
+
+enum TTLType {
+    kTTLTimeLive = 1;
+    kTTLCountLive = 2;
+    kTTLTimeLiveAndCountLive = 3;
+    kTTLTimeLiveOrCountLive = 4;
+    kTTLNone = 5;
+}
+
+message ColumnDef {
+    optional string name = 1;
+    optional Type type = 2;
+    optional uint32 offset = 3;
+    optional bool is_not_null = 4;
+    optional bool is_constant = 5 [default = false];
+}
+
+message IndexDef {
+    optional string name = 1;
+    repeated string first_keys = 2;
+    optional string second_key = 3;
+    repeated string partion_keys = 4;
+    repeated uint64 ttl = 5;
+    optional TTLType ttl_type = 6;
+    optional uint32 ts_offset = 7;
+}
+
+message User {
+    optional string name = 1;
+    optional string token = 2;
+    optional uint64 id = 3;
+    optional uint64 ctime = 4;
+}
+
+message Group {
+    optional string name = 1;
+    optional uint64 ctime = 3;
+    optional uint64 owner = 4;
+}
+
+message CataLog {
+    optional string name = 1;
+    optional uint64 ctime = 3;
+    optional uint64 utime = 5;
+}
+
+message TableDef {
+    repeated ColumnDef columns = 1;
+    optional string name = 2;
+    optional string catalog = 4;
+    optional uint64 ctime = 5;
+    optional uint64 utime = 6;
+    repeated IndexDef indexes = 7;
+    optional uint32 partitions = 8 [default = 1];
+}
+
+message Database {
+    optional string name = 1;
+    optional uint64 ctime = 2;
+    optional uint64 utime = 3;
+    repeated TableDef tables = 4;
+}
