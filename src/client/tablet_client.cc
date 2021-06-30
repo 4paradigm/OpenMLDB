@@ -551,22 +551,6 @@ bool TabletClient::ChangeRole(
     return false;
 }
 
-bool TabletClient::SetMaxConcurrency(const std::string& key,
-                                     int32_t max_concurrency) {
-    ::fedb::api::SetConcurrencyRequest request;
-    request.set_key(key);
-    request.set_max_concurrency(max_concurrency);
-    ::fedb::api::SetConcurrencyResponse response;
-    bool ret =
-        client_.SendRequest(&::fedb::api::TabletServer_Stub::SetConcurrency,
-                            &request, &response, FLAGS_request_timeout_ms, 1);
-    if (!ret || response.code() != 0) {
-        std::cout << response.msg() << std::endl;
-        return false;
-    }
-    return true;
-}
-
 bool TabletClient::GetTaskStatus(::fedb::api::TaskStatusResponse& response) {
     ::fedb::api::TaskStatusRequest request;
     bool ret =

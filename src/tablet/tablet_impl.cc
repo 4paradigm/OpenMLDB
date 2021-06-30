@@ -3898,36 +3898,6 @@ void TabletImpl::DisConnectZK(RpcController* controller,
     return;
 }
 
-void TabletImpl::SetConcurrency(
-    RpcController* ctrl, const ::fedb::api::SetConcurrencyRequest* request,
-    ::fedb::api::SetConcurrencyResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    if (server_ == NULL) {
-        response->set_code(-1);
-        response->set_msg("server is NULL");
-        return;
-    }
-
-    if (request->max_concurrency() < 0) {
-        response->set_code(::fedb::base::ReturnCode::kInvalidConcurrency);
-        response->set_msg("invalid concurrency " + request->max_concurrency());
-        return;
-    }
-
-    if (SERVER_CONCURRENCY_KEY.compare(request->key()) == 0) {
-        PDLOG(INFO, "update server max concurrency to %d",
-              request->max_concurrency());
-        server_->ResetMaxConcurrency(request->max_concurrency());
-    } else {
-        PDLOG(INFO, "update server api %s max concurrency to %d",
-              request->key().c_str(), request->max_concurrency());
-        server_->MaxConcurrencyOf(this, request->key()) =
-            request->max_concurrency();
-    }
-    response->set_code(::fedb::base::ReturnCode::kOk);
-    response->set_msg("ok");
-}
-
 void TabletImpl::SetTaskStatus(
     std::shared_ptr<::fedb::api::TaskInfo>& task_ptr,
     ::fedb::api::TaskStatus status) {

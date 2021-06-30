@@ -203,11 +203,6 @@ class TabletImpl : public ::fedb::api::TabletServer {
                     const ::fedb::api::ReplicaRequest* request,
                     ::fedb::api::AddReplicaResponse* response, Closure* done);
 
-    void SetConcurrency(RpcController* ctrl,
-                        const ::fedb::api::SetConcurrencyRequest* request,
-                        ::fedb::api::SetConcurrencyResponse* response,
-                        Closure* done);
-
     void DelReplica(RpcController* controller,
                     const ::fedb::api::ReplicaRequest* request,
                     ::fedb::api::GeneralResponse* response, Closure* done);
