@@ -131,7 +131,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     ASSERT_TRUE(ok);
     ok = client.SetNodeValue(node, "2");
     ASSERT_TRUE(ok);
-    for (int i = 0 ; i < 20; i++) {
+    for (int i = 0 ; i < 30; i++) {
         if (detect.load()) {
             break;
         }
@@ -141,7 +141,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     detect.store(false);
     ok = client.SetNodeValue(node, "3");
     ASSERT_TRUE(ok);
-    for (int i = 0 ; i < 20; i++) {
+    for (int i = 0 ; i < 30; i++) {
         if (detect.load()) {
             break;
         }
