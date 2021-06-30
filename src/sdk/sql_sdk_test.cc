@@ -102,7 +102,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
         boost::contains(sql_case.mode(), "rtidb-batch-unsupport") ||
-        boost::contains(sql_case.mode(), "batch-unsupport")) {
+        boost::contains(sql_case.mode(), "batch-unsupport") ||
+        boost::contains(sql_case.mode(), "standalone-unsupport")) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
