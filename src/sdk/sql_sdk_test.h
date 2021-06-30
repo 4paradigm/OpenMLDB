@@ -161,6 +161,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         if (!create.empty()) {
             router->ExecuteDDL(sql_case.db(), create, &status);
             ASSERT_TRUE(router->RefreshCatalog());
+            ASSERT_TRUE(status.code == 0) << status;
         }
     }
     DLOG(INFO) << "Create Tables DONE";
@@ -173,7 +174,8 @@ void SQLSDKTest::DropTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
     // create and insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t"), i);
+            LOG(WARNING) << "Skip drop table with empty table name";
+            continue;
         }
         // create table
         std::string drop = "drop table " + sql_case.inputs()[i].name_ + ";";
