@@ -129,8 +129,9 @@ class SQLSDKBatchRequestQueryTest : public SQLSDKQueryTest {
 
 void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                           std::shared_ptr<SQLRouter> router) {
-    boost::replace_all(sql_case.db_, "{auto}",
-                       hybridse::sqlcase::SqlCase::GenRand("auto_db") + std::to_string((long)time(NULL)));
+    if (sql_case.db().empty()) {
+        sql_case.db_ = hybridse::sqlcase::SqlCase::GenRand("auto_db") + std::to_string((long)time(NULL));
+    }
     DLOG(INFO) << "Create DB " << sql_case.db_ << " BEGIN";
     hybridse::sdk::Status status;
     std::vector<std::string> dbs;

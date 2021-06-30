@@ -596,7 +596,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::fedb::sdk::MiniCluster mc(6181);
     ::fedb::sdk::mc_ = &mc;
-    int ok = ::fedb::sdk::mc_->SetUp(2);
+    int ok = ::fedb::sdk::mc_->SetUp(1);
     sleep(1);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::fedb::sdk::router_ = ::fedb::sdk::GetNewSQLRouter();
