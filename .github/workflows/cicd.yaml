@@ -92,7 +92,7 @@ jobs:
 
   publish-test-results:
     runs-on: ubuntu-latest
-    needs: ["cpp_ut", "sql_sdk_test"]
+    needs: ["cpp_ut", "sql_sdk_test", "sql_cluster_test"]
     # the action will only run on 4paradigm/fedb's context, not for fork repo or dependabot
     if: >
       always() && github.event_name == 'push' || (

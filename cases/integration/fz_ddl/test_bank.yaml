@@ -1,4 +1,4 @@
-db: bank
+db: bank_{auto}
 cases:
   - desc: bank test
     mode: rtidb-batch-unsupport

@@ -58,7 +58,8 @@ class SQLSDKTest : public fedb::test::SQLCaseTest {
     void SetUp() { LOG(INFO) << "SQLSDKTest TearDown"; }
     void TearDown() { LOG(INFO) << "SQLSDKTest TearDown"; }
 
-    static void CreateDB(const hybridse::sqlcase::SqlCase& sql_case, std::shared_ptr<SQLRouter> router);
+    static void CreateDB(hybridse::sqlcase::SqlCase& sql_case, // NOLINT
+                         std::shared_ptr<SQLRouter> router);
     static void CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                              std::shared_ptr<SQLRouter> router, int partition_num = 1);
 
@@ -126,8 +127,10 @@ class SQLSDKBatchRequestQueryTest : public SQLSDKQueryTest {
                                                 std::shared_ptr<SQLRouter> router, bool is_asyn);
 };
 
-void SQLSDKTest::CreateDB(const hybridse::sqlcase::SqlCase& sql_case, std::shared_ptr<SQLRouter> router) {
-    DLOG(INFO) << "Create DB BEGIN";
+void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case, // NOLINT
+                                  std::shared_ptr<SQLRouter> router) {
+    boost::replace_all(sql_case.db_, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_db"));
+    DLOG(INFO) << "Create DB " << sql_case.db_ << " BEGIN";
     hybridse::sdk::Status status;
     std::vector<std::string> dbs;
     ASSERT_TRUE(router->ShowDB(&dbs, &status));
