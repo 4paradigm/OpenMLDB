@@ -61,6 +61,13 @@ static bool IsSupportMode(const std::string& mode) {
 TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-batch-unsupport") ||
+        boost::contains(sql_case.mode(), "batch-unsupport") ||
+        boost::contains(sql_case.mode(), "standalone-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
     SQLRouterOptions sql_opt;
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
