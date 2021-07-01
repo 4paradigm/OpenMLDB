@@ -21,7 +21,7 @@
 #include <boost/function.hpp>
 #include "base/ringqueue.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 class TaskPool {
  public:
@@ -95,11 +95,11 @@ class TaskPool {
     }
     bool stop_;
     uint32_t threads_num_;
-    ::fedb::base::RingQueue<Task> queue_;
+    ::openmldb::base::RingQueue<Task> queue_;
     std::vector<pthread_t> tids_;
     std::condition_variable work_cv_, queue_cv_;
     std::mutex mutex_;
 };
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_BASE_TASKPOOL_HPP_

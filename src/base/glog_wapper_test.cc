@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "base/glog_wapper.h"
 
 #include <iostream>
@@ -22,7 +21,7 @@
 
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class GlogWapperTest : public ::testing::Test {
@@ -32,21 +31,20 @@ class GlogWapperTest : public ::testing::Test {
 };
 
 TEST_F(GlogWapperTest, Log) {
-    ::fedb::base::SetLogLevel(DEBUG);
+    ::openmldb::base::SetLogLevel(DEBUG);
     std::string path = "hello";
-    ::fedb::base::SetLogFile(path);
+    ::openmldb::base::SetLogFile(path);
     PDLOG(INFO, "hello %d %f", 290, 3.1);
     std::string s = "word";
     PDLOG(INFO, "hello %s", s);
     PDLOG(WARNING, "this is a warning %s", "hello");
     DEBUGLOG("hello %d", 233);
     uint64_t time = 123456;
-    DEBUGLOG("[Gc4TTL] segment gc with key %lu, consumed %lu, count %lu", time,
-             time + 100, time - 100);
+    DEBUGLOG("[Gc4TTL] segment gc with key %lu, consumed %lu, count %lu", time, time + 100, time - 100);
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

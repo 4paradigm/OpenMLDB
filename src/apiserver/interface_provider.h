@@ -34,7 +34,7 @@
 #include "butil/iobuf.h"       // IOBuf
 #include "proto/http.pb.h"
 
-namespace fedb {
+namespace openmldb {
 namespace http {
 
 class PathPart;
@@ -183,4 +183,4 @@ Archiver& operator&(Archiver& ar, GeneralError& s) {  // NOLINT
 }
 
 }  // namespace http
-}  // namespace fedb
+}  // namespace openmldb

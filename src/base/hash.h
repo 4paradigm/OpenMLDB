@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_HASH_H_
 #define SRC_BASE_HASH_H_
 
 #include <string>
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 static inline uint32_t hash(const void* key, uint32_t len, uint32_t seed) {
@@ -116,6 +115,6 @@ static inline int64_t hash64(const std::string& key) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_BASE_HASH_H_

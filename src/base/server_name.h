@@ -14,29 +14,28 @@
  * limitations under the License.
  */
 
-
 #pragma once
 
 #include <gflags/gflags.h>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include "base/file_util.h"
-#include "base/id_generator.h"
-#include "base/glog_wapper.h"
 
-namespace fedb {
+#include <fstream>
+#include <iostream>
+#include <string>
+
+#include "base/file_util.h"
+#include "base/glog_wapper.h"
+#include "base/id_generator.h"
+
+namespace openmldb {
 namespace base {
 
-bool WriteTxt(const std::string& full_path,
-        std::string* name) {
+bool WriteTxt(const std::string& full_path, std::string* name) {
     if (name == nullptr) {
         return false;
     }
     std::ofstream my_cout(full_path);
     if (my_cout.fail()) {
-        PDLOG(WARNING, "init ofstream failed, path %s",
-                full_path.data());
+        PDLOG(WARNING, "init ofstream failed, path %s", full_path.data());
         return false;
     }
     IdGenerator ig;
@@ -47,15 +46,13 @@ bool WriteTxt(const std::string& full_path,
     return true;
 }
 
-bool ReadTxt(const std::string& full_path,
-        std::string* name) {
+bool ReadTxt(const std::string& full_path, std::string* name) {
     if (name == nullptr) {
         return false;
     }
     std::ifstream infile(full_path);
     if (infile.fail()) {
-        PDLOG(WARNING, "init ifstream failed, path %s",
-                full_path.data());
+        PDLOG(WARNING, "init ifstream failed, path %s", full_path.data());
         return false;
     }
     getline(infile, *name);
@@ -69,8 +66,7 @@ bool GetNameFromTxt(const std::string& data_dir, std::string* name) {
     }
     if (!IsExists(data_dir)) {
         if (!MkdirRecur(data_dir)) {
-            PDLOG(WARNING, "make dir failed, path %s",
-                    data_dir.data());
+            PDLOG(WARNING, "make dir failed, path %s", data_dir.data());
             return false;
         }
     }
@@ -82,4 +78,4 @@ bool GetNameFromTxt(const std::string& data_dir, std::string* name) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb

@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-
 #include "zk/dist_lock.h"
+
 #include <gtest/gtest.h>
 #include <sched.h>
 #include <unistd.h>
+
 #include <boost/bind.hpp>
+
 #include "zk/zk_client.h"
 extern "C" {
 #include "zookeeper/zookeeper.h"
 }
 
-
-
-namespace fedb {
+namespace openmldb {
 namespace zk {
 
 static bool call_invoked = false;
@@ -43,12 +43,10 @@ void OnLockedCallback() { call_invoked = true; }
 void OnLostCallback() {}
 
 TEST_F(DistLockTest, Lock) {
-    ZkClient client(
-            "127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/rtidb_lock");
+    ZkClient client("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/rtidb_lock");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
-    DistLock lock("/rtidb_lock/nameserver_lock", &client,
-                  boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback),
+    DistLock lock("/rtidb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback),
                   "endpoint1");
     lock.Lock();
     sleep(5);
@@ -61,16 +59,14 @@ TEST_F(DistLockTest, Lock) {
     lock.CurrentLockValue(current_lock);
     ASSERT_EQ("endpoint1", current_lock);
     call_invoked = false;
-    ZkClient client2(
-            "127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/rtidb_lock");
+    ZkClient client2("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/rtidb_lock");
     ok = client2.Init();
     if (!ok) {
         lock.Stop();
         ASSERT_TRUE(false);
     }
-    DistLock lock2("/rtidb_lock/nameserver_lock", &client2,
-                   boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback),
-                   "endpoint2");
+    DistLock lock2("/rtidb_lock/nameserver_lock", &client2, boost::bind(&OnLockedCallback),
+                   boost::bind(&OnLostCallback), "endpoint2");
     lock2.Lock();
     sleep(5);
     ASSERT_FALSE(call_invoked);
@@ -81,7 +77,7 @@ TEST_F(DistLockTest, Lock) {
 }
 
 }  // namespace zk
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     srand(time(NULL));

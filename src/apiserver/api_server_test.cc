@@ -24,7 +24,7 @@
 #include "json2pb/rapidjson.h"
 #include "sdk/mini_cluster.h"
 
-namespace fedb {
+namespace openmldb {
 namespace http {
 
 class APIServerTestEnv : public testing::Environment {
@@ -45,7 +45,7 @@ class APIServerTestEnv : public testing::Environment {
         cluster_options.zk_cluster = mc->GetZkCluster();
         cluster_options.zk_path = mc->GetZkPath();
         // Owned by queue_svc
-        cluster_sdk = new ::fedb::sdk::ClusterSDK(cluster_options);
+        cluster_sdk = new ::openmldb::sdk::ClusterSDK(cluster_options);
         ASSERT_TRUE(cluster_sdk->Init()) << "Fail to connect to db";
         queue_svc.reset(new APIServerImpl);
         ASSERT_TRUE(queue_svc->Init(cluster_sdk));
@@ -95,7 +95,7 @@ class APIServerTestEnv : public testing::Environment {
     }
 
     std::string db;
-    ::fedb::sdk::ClusterSDK* cluster_sdk;
+    ::openmldb::sdk::ClusterSDK* cluster_sdk;
     std::shared_ptr<sdk::MiniCluster> mc;
     std::shared_ptr<APIServerImpl> queue_svc;
     brpc::Server server;
@@ -639,10 +639,10 @@ TEST_F(APIServerTest, getTables) {
 }
 
 }  // namespace http
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char* argv[]) {
-    testing::AddGlobalTestEnvironment(fedb::http::APIServerTestEnv::Instance());
+    testing::AddGlobalTestEnvironment(openmldb::http::APIServerTestEnv::Instance());
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();

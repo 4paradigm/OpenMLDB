@@ -34,13 +34,13 @@
 #include "sdk/mini_cluster.h"
 #include "vm/catalog.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 
-::fedb::sdk::MiniCluster* mc_;
+::openmldb::sdk::MiniCluster* mc_;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -1003,19 +1003,19 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_zk_session_timeout = 100000;
-    ::fedb::sdk::MiniCluster mc(6181);
-    ::fedb::sdk::mc_ = &mc;
-    int ok = ::fedb::sdk::mc_->SetUp(1);
+    ::openmldb::sdk::MiniCluster mc(6181);
+    ::openmldb::sdk::mc_ = &mc;
+    int ok = ::openmldb::sdk::mc_->SetUp(1);
     sleep(1);
     srand(time(NULL));
     ok = RUN_ALL_TESTS();
-    ::fedb::sdk::mc_->Close();
+    ::openmldb::sdk::mc_->Close();
     return ok;
 }
