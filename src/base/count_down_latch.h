@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_COUNT_DOWN_LATCH_H_
 #define SRC_BASE_COUNT_DOWN_LATCH_H_
-#include <condition_variable> // NOLINT
-#include <mutex> // NOLINT
+#include <condition_variable>  // NOLINT
+#include <mutex>               // NOLINT
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class CountDownLatch {
@@ -64,5 +63,5 @@ class CountDownLatch {
 };
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_BASE_COUNT_DOWN_LATCH_H_

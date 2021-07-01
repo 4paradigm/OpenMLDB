@@ -14,17 +14,15 @@
  * limitations under the License.
  */
 
-
 #include "sdk/sql_router.h"
 
 #include "glog/logging.h"
 #include "sdk/sql_cluster_router.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
-std::shared_ptr<SQLRouter> NewClusterSQLRouter(
-    const SQLRouterOptions& options) {
+std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options) {
     auto router = std::make_shared<SQLClusterRouter>(options);
     if (!router->Init()) {
         LOG(WARNING) << "fail to init sql cluster router";
@@ -34,4 +32,4 @@ std::shared_ptr<SQLRouter> NewClusterSQLRouter(
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb

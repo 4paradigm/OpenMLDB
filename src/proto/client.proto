@@ -15,7 +15,7 @@
  */
 
 import "common.proto";
-package fedb.client;
+package openmldb.client;
 
 message TablePartition {
     required string endpoint = 1;
@@ -27,12 +27,12 @@ message TableInfo {
     required string name = 1;
     optional uint32 seg_cnt = 2 [default = 8];
     repeated TablePartition table_partition = 3;
-    repeated fedb.common.ColumnDesc column_desc = 4;
+    repeated openmldb.common.ColumnDesc column_desc = 4;
     optional uint32 partition_num = 5;
     optional uint32 replica_num = 6; // contain the leader
     optional string compress_type = 7 [default = "kNoCompress"];
     optional uint32 key_entry_max_height = 8;
-    repeated fedb.common.ColumnKey column_key = 9;
+    repeated openmldb.common.ColumnKey column_key = 9;
     optional uint32 format_version = 10 [default = 0];
     repeated string partition_key = 11;
 }

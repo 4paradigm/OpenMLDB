@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "storage/table.h"
-#include "common/timer.h"
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/heap-checker.h"
 #endif
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 class TableMemTest : public ::testing::Test {
@@ -55,7 +54,7 @@ TEST_F(TableMemTest, Memory) {
 }
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CATALOG_DISTRIBUTE_ITERATOR_H_
 #define SRC_CATALOG_DISTRIBUTE_ITERATOR_H_
 
@@ -26,13 +25,12 @@
 #include "storage/table.h"
 #include "vm/catalog.h"
 
-namespace fedb {
+namespace openmldb {
 namespace catalog {
 
-using Tables = std::map<uint32_t, std::shared_ptr<::fedb::storage::Table>>;
+using Tables = std::map<uint32_t, std::shared_ptr<::openmldb::storage::Table>>;
 
-class FullTableIterator
-    : public ::hybridse::codec::ConstIterator<uint64_t, ::hybridse::codec::Row> {
+class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hybridse::codec::Row> {
  public:
     explicit FullTableIterator(std::shared_ptr<Tables> tables);
     void Seek(const uint64_t& ts) override {}
@@ -47,7 +45,7 @@ class FullTableIterator
  private:
     std::shared_ptr<Tables> tables_;
     uint32_t cur_pid_;
-    std::unique_ptr<::fedb::storage::TableIterator> it_;
+    std::unique_ptr<::openmldb::storage::TableIterator> it_;
     uint64_t key_;
     ::hybridse::codec::Row value_;
 };
@@ -72,5 +70,5 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
 };
 
 }  // namespace catalog
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_CATALOG_DISTRIBUTE_ITERATOR_H_

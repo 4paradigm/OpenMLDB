@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-
 #include "base/file_util.h"
 
 #include <algorithm>
 
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 class FileUtilTest : public ::testing::Test {
  public:
@@ -128,13 +127,13 @@ TEST_F(FileUtilTest, CopyFile) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    ::fedb::base::SetLogLevel(INFO);
-    ::fedb::base::RemoveDirRecursive("/tmp/gtest");
+    ::openmldb::base::SetLogLevel(INFO);
+    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     int ret = RUN_ALL_TESTS();
-    ::fedb::base::RemoveDirRecursive("/tmp/gtest");
+    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     return ret;
 }

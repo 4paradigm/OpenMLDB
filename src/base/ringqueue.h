@@ -14,26 +14,20 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_RINGQUEUE_H_
 #define SRC_BASE_RINGQUEUE_H_
 
-#include <condition_variable> // NOLINT
+#include <condition_variable>  // NOLINT
 #include <cstdint>
-#include <mutex> // NOLINT
+#include <mutex>  // NOLINT
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 template <class T>
 class RingQueue {
  public:
-    explicit RingQueue(uint32_t size = 100)
-        : max_size_(size),
-          buf_(new T[size]),
-          head_(0),
-          tail_(0),
-          full_(false) {}
+    explicit RingQueue(uint32_t size = 100) : max_size_(size), buf_(new T[size]), head_(0), tail_(0), full_(false) {}
 
     ~RingQueue() { delete[] buf_; }
     bool full() const { return full_; }
@@ -78,6 +72,6 @@ class RingQueue {
 };
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_BASE_RINGQUEUE_H_

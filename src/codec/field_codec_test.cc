@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-#include <vector>
 #include "codec/field_codec.h"
+
+#include <vector>
+
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
 class SingleColumnCodecTest : public ::testing::Test {
@@ -33,14 +35,14 @@ TEST_F(SingleColumnCodecTest, TestEncodec) {
      {std::string val_1 = "";
     val_1.resize(1);
     char* buf = const_cast<char*>(val_1.data());
-    ::fedb::codec::Convert(true, buf);
+    ::openmldb::codec::Convert(true, buf);
     vec.push_back(val_1);
 }
 {
     std::string val_2 = "";
     val_2.resize(1);
     char* buf = const_cast<char*>(val_2.data());
-    ::fedb::codec::Convert(false, buf);
+    ::openmldb::codec::Convert(false, buf);
     vec.push_back(val_2);
 }
 {
@@ -48,7 +50,7 @@ TEST_F(SingleColumnCodecTest, TestEncodec) {
     std::string val_3 = "";
     val_3.resize(2);
     char* buf = const_cast<char*>(val_3.data());
-    ::fedb::codec::Convert(int16_val, buf);
+    ::openmldb::codec::Convert(int16_val, buf);
     vec.push_back(val_3);
 }
 {
@@ -56,7 +58,7 @@ TEST_F(SingleColumnCodecTest, TestEncodec) {
     std::string val_4 = "";
     val_4.resize(4);
     char* buf = const_cast<char*>(val_4.data());
-    ::fedb::codec::Convert(int32_val, buf);
+    ::openmldb::codec::Convert(int32_val, buf);
     vec.push_back(val_4);
 }
 {
@@ -64,7 +66,7 @@ TEST_F(SingleColumnCodecTest, TestEncodec) {
     std::string val_5 = "";
     val_5.resize(8);
     char* buf = const_cast<char*>(val_5.data());
-    ::fedb::codec::Convert(int64_val, buf);
+    ::openmldb::codec::Convert(int64_val, buf);
     vec.push_back(val_5);
 }
 {
@@ -72,7 +74,7 @@ TEST_F(SingleColumnCodecTest, TestEncodec) {
     std::string val_6 = "";
     val_6.resize(4);
     char* buf = const_cast<char*>(val_6.data());
-    ::fedb::codec::Convert(float_val, buf);
+    ::openmldb::codec::Convert(float_val, buf);
     vec.push_back(val_6);
 }
 {
@@ -80,114 +82,114 @@ TEST_F(SingleColumnCodecTest, TestEncodec) {
     std::string val_7 = "";
     val_7.resize(8);
     char* buf = const_cast<char*>(val_7.data());
-    ::fedb::codec::Convert(double_val, buf);
+    ::openmldb::codec::Convert(double_val, buf);
     vec.push_back(val_7);
 }
-}  // namespace base
+}  // namespace codec
 {
     // decode part
     bool v1 = false;
-    ::fedb::codec::GetBool(vec[0].data(), &v1);
+    ::openmldb::codec::GetBool(vec[0].data(), &v1);
     ASSERT_EQ(v1, true);
 
     bool v2 = true;
-    ::fedb::codec::GetBool(vec[1].data(), &v2);
+    ::openmldb::codec::GetBool(vec[1].data(), &v2);
     ASSERT_EQ(v2, false);
 
     int16_t v3 = 0;
-    ::fedb::codec::GetInt16(vec[2].data(), &v3);
+    ::openmldb::codec::GetInt16(vec[2].data(), &v3);
     ASSERT_EQ(v3, 33);
 
     int32_t v4 = 0;
-    ::fedb::codec::GetInt32(vec[3].data(), &v4);
+    ::openmldb::codec::GetInt32(vec[3].data(), &v4);
     ASSERT_EQ(v4, 44);
 
     int64_t v5 = 0;
-    ::fedb::codec::GetInt64(vec[4].data(), &v5);
+    ::openmldb::codec::GetInt64(vec[4].data(), &v5);
     ASSERT_EQ(v5, 55);
 
     float v6 = 0.0;
-    ::fedb::codec::GetFloat(vec[5].data(), &v6);
+    ::openmldb::codec::GetFloat(vec[5].data(), &v6);
     ASSERT_EQ(v6, 3.3f);
 
     double v7 = 0.0;
-    ::fedb::codec::GetDouble(vec[6].data(), &v7);
+    ::openmldb::codec::GetDouble(vec[6].data(), &v7);
     ASSERT_EQ(v7, 4.4);
 }
-}  // namespace fedb
+}  // namespace openmldb
 
 TEST_F(SingleColumnCodecTest, TestBatchEncodec) {
     std::vector<std::string> vec;
     {// encode part
      {std::string val_1 = "";
-    ::fedb::codec::Convert("true", ::fedb::type::kBool, &val_1);
+    ::openmldb::codec::Convert("true", ::openmldb::type::kBool, &val_1);
     vec.push_back(val_1);
 }
 {
     std::string val_2 = "";
-    ::fedb::codec::Convert("false", ::fedb::type::kBool, &val_2);
+    ::openmldb::codec::Convert("false", ::openmldb::type::kBool, &val_2);
     vec.push_back(val_2);
 }
 {
     std::string val_3 = "";
-    ::fedb::codec::Convert("33", ::fedb::type::kSmallInt, &val_3);
+    ::openmldb::codec::Convert("33", ::openmldb::type::kSmallInt, &val_3);
     vec.push_back(val_3);
 }
 {
     std::string val_4 = "";
-    ::fedb::codec::Convert("44", ::fedb::type::kInt, &val_4);
+    ::openmldb::codec::Convert("44", ::openmldb::type::kInt, &val_4);
     vec.push_back(val_4);
 }
 {
     std::string val_5 = "";
-    ::fedb::codec::Convert("55", ::fedb::type::kBigInt, &val_5);
+    ::openmldb::codec::Convert("55", ::openmldb::type::kBigInt, &val_5);
     vec.push_back(val_5);
 }
 {
     std::string val_6 = "";
-    ::fedb::codec::Convert("3.3", ::fedb::type::kFloat, &val_6);
+    ::openmldb::codec::Convert("3.3", ::openmldb::type::kFloat, &val_6);
     vec.push_back(val_6);
 }
 {
     std::string val_7 = "";
-    ::fedb::codec::Convert("4.4", ::fedb::type::kDouble, &val_7);
+    ::openmldb::codec::Convert("4.4", ::openmldb::type::kDouble, &val_7);
     vec.push_back(val_7);
 }
 }
 {
     // decode part
     bool v1 = false;
-    ::fedb::codec::GetBool(vec[0].data(), &v1);
+    ::openmldb::codec::GetBool(vec[0].data(), &v1);
     ASSERT_EQ(v1, true);
 
     bool v2 = true;
-    ::fedb::codec::GetBool(vec[1].data(), &v2);
+    ::openmldb::codec::GetBool(vec[1].data(), &v2);
     ASSERT_EQ(v2, false);
 
     int16_t v3 = 0;
-    ::fedb::codec::GetInt16(vec[2].data(), &v3);
+    ::openmldb::codec::GetInt16(vec[2].data(), &v3);
     ASSERT_EQ(v3, 33);
 
     int32_t v4 = 0;
-    ::fedb::codec::GetInt32(vec[3].data(), &v4);
+    ::openmldb::codec::GetInt32(vec[3].data(), &v4);
     ASSERT_EQ(v4, 44);
 
     int64_t v5 = 0;
-    ::fedb::codec::GetInt64(vec[4].data(), &v5);
+    ::openmldb::codec::GetInt64(vec[4].data(), &v5);
     ASSERT_EQ(v5, 55);
 
     float v6 = 0.0;
-    ::fedb::codec::GetFloat(vec[5].data(), &v6);
+    ::openmldb::codec::GetFloat(vec[5].data(), &v6);
     ASSERT_EQ(v6, 3.3f);
 
     double v7 = 0.0;
-    ::fedb::codec::GetDouble(vec[6].data(), &v7);
+    ::openmldb::codec::GetDouble(vec[6].data(), &v7);
     ASSERT_EQ(v7, 4.4);
 }
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

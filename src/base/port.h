@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
@@ -28,8 +27,7 @@
 #if __APPLE__
 #include <machine/endian.h>
 #if defined(__DARWIN_LITTLE_ENDIAN) && defined(__DARWIN_BYTE_ORDER)
-#define PLATFORM_IS_LITTLE_ENDIAN \
-    (__DARWIN_BYTE_ORDER == __DARWIN_LITTLE_ENDIAN)
+#define PLATFORM_IS_LITTLE_ENDIAN (__DARWIN_BYTE_ORDER == __DARWIN_LITTLE_ENDIAN)
 #endif
 #elif defined(OS_SOLARIS)
 #include <sys/isa_defs.h>
@@ -38,8 +36,7 @@
 #else
 #define PLATFORM_IS_LITTLE_ENDIAN false
 #endif
-#elif defined(OS_FREEBSD) || defined(OS_OPENBSD) || defined(OS_NETBSD) || \
-    defined(OS_DRAGONFLYBSD)
+#elif defined(OS_FREEBSD) || defined(OS_OPENBSD) || defined(OS_NETBSD) || defined(OS_DRAGONFLYBSD)
 #include <sys/endian.h>
 #include <sys/types.h>
 #define PLATFORM_IS_LITTLE_ENDIAN (_BYTE_ORDER == _LITTLE_ENDIAN)
@@ -53,12 +50,12 @@
 #define PLATFORM_IS_LITTLE_ENDIAN (__BYTE_ORDER == __LITTLE_ENDIAN)
 #endif
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 static const bool kLittleEndian = PLATFORM_IS_LITTLE_ENDIAN;
 #undef PLATFORM_IS_LITTLE_ENDIAN
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_BASE_PORT_H_
