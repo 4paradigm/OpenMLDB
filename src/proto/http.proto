@@ -1,4 +1,4 @@
-package fedb.http;
+package openmldb.http;
 
 option cc_generic_services = true;
 

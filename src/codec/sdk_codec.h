@@ -17,48 +17,44 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include <memory>
 
 #include "codec/schema_codec.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
-using Index = google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>;
+using Index = google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>;
 using Dimension = std::vector<std::pair<std::string, uint32_t>>;
-using Schema = google::protobuf::RepeatedPtrField<fedb::common::ColumnDesc>;
-using VerSchema = google::protobuf::RepeatedPtrField<fedb::common::VersionPair>;
+using Schema = google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
+using VerSchema = google::protobuf::RepeatedPtrField<openmldb::common::VersionPair>;
 
 class SDKCodec {
  public:
-    explicit SDKCodec(const ::fedb::nameserver::TableInfo& table_info);
+    explicit SDKCodec(const ::openmldb::nameserver::TableInfo& table_info);
 
-    explicit SDKCodec(const ::fedb::api::TableMeta& table_info);
+    explicit SDKCodec(const ::openmldb::api::TableMeta& table_info);
 
-    int EncodeDimension(const std::map<std::string, std::string>& raw_data,
-                        uint32_t pid_num,
+    int EncodeDimension(const std::map<std::string, std::string>& raw_data, uint32_t pid_num,
                         std::map<uint32_t, Dimension>* dimensions);
 
-    int EncodeDimension(const std::vector<std::string>& raw_data,
-                        uint32_t pid_num,
+    int EncodeDimension(const std::vector<std::string>& raw_data, uint32_t pid_num,
                         std::map<uint32_t, Dimension>* dimensions);
 
-    int EncodeTsDimension(const std::vector<std::string>& raw_data,
-                          std::vector<uint64_t>* ts_dimensions);
-    int EncodeTsDimension(const std::vector<std::string>& raw_data,
-                          std::vector<uint64_t>* ts_dimensions, uint64_t default_ts);
+    int EncodeTsDimension(const std::vector<std::string>& raw_data, std::vector<uint64_t>* ts_dimensions);
+    int EncodeTsDimension(const std::vector<std::string>& raw_data, std::vector<uint64_t>* ts_dimensions,
+                          uint64_t default_ts);
 
     int EncodeRow(const std::vector<std::string>& raw_data, std::string* row);
 
     int DecodeRow(const std::string& row, std::vector<std::string>* value);
 
-    int CombinePartitionKey(const std::vector<std::string>& raw_data,
-                            std::string* key);
+    int CombinePartitionKey(const std::vector<std::string>& raw_data, std::string* key);
 
     inline bool HasTSCol() const { return !ts_idx_.empty(); }
 
@@ -84,4 +80,4 @@ class SDKCodec {
 };
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb

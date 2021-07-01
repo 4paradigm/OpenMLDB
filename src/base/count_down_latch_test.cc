@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-
 #include "base/count_down_latch.h"
-#include "boost/bind.hpp"
-#include "gtest/gtest.h"
-#include "common/thread_pool.h"
 
+#include "boost/bind.hpp"
+#include "common/thread_pool.h"
+#include "gtest/gtest.h"
 
 using ::baidu::common::ThreadPool;
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class CountDownLatchTest : public ::testing::Test {
@@ -63,7 +62,7 @@ TEST_F(CountDownLatchTest, MultiIsDone) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

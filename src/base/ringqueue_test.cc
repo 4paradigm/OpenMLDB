@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-
 #include "base/ringqueue.h"
+
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class RingQueueTest : public ::testing::Test {
@@ -79,7 +79,7 @@ TEST_F(RingQueueTest, pop) {
 }
 
 };  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

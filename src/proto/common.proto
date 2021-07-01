@@ -15,10 +15,10 @@
  */
 
 import "type.proto";
-package fedb.common;
+package openmldb.common;
 
 option cc_generic_services = false;
-option java_package = "com._4paradigm.fedb.common";
+option java_package = "com._4paradigm.openmldb.common";
 option java_outer_classname = "Common";
 
 message KvPair {
@@ -38,13 +38,13 @@ message VersionPair {
 
 message ColumnDesc {
     required string name = 1;
-    optional fedb.type.DataType data_type = 2;
+    optional openmldb.type.DataType data_type = 2;
     optional bool not_null = 3 [default = false];
     optional bool is_constant = 4 [default = false];
 }
 
 message TTLSt {
-    optional fedb.type.TTLType ttl_type = 1 [default = kAbsoluteTime];
+    optional openmldb.type.TTLType ttl_type = 1 [default = kAbsoluteTime];
     optional uint64 abs_ttl = 2 [default = 0];
     optional uint64 lat_ttl = 3 [default = 0];
 }

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_STORAGE_MEM_TABLE_H_
 #define SRC_STORAGE_MEM_TABLE_H_
 
@@ -31,18 +30,17 @@
 #include "storage/ticket.h"
 #include "vm/catalog.h"
 
-using ::fedb::api::LogEntry;
-using ::fedb::base::Slice;
+using ::openmldb::api::LogEntry;
+using ::openmldb::base::Slice;
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
-typedef google::protobuf::RepeatedPtrField<::fedb::api::Dimension> Dimensions;
+typedef google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> Dimensions;
 
 class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
  public:
-    MemTableWindowIterator(TimeEntries::Iterator* it,
-                           ::fedb::storage::TTLType ttl_type, uint64_t expire_time,
+    MemTableWindowIterator(TimeEntries::Iterator* it, ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
                            uint64_t expire_cnt)
         : it_(it), record_idx_(0), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
 
@@ -64,8 +62,7 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
 
     // TODO(wangtaize) unify the row object
     inline const ::hybridse::codec::Row& GetValue() {
-        row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data),
-                it_->GetValue()->size);
+        row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data), it_->GetValue()->size);
         return row_;
     }
     inline void Seek(const uint64_t& key) { it_->Seek(key); }
@@ -81,9 +78,8 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
 
 class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
  public:
-    MemTableKeyIterator(Segment** segments, uint32_t seg_cnt,
-                        ::fedb::storage::TTLType ttl_type, uint64_t expire_time,
-                        uint64_t expire_cnt, uint32_t ts_index);
+    MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
+                        uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
 
     ~MemTableKeyIterator();
 
@@ -109,7 +105,7 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
     uint32_t seg_idx_;
     KeyEntries::Iterator* pk_it_;
     TimeEntries::Iterator* it_;
-    ::fedb::storage::TTLType ttl_type_;
+    ::openmldb::storage::TTLType ttl_type_;
     uint64_t expire_time_;
     uint64_t expire_cnt_;
     uint32_t ts_index_;
@@ -119,15 +115,13 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
 
 class MemTableTraverseIterator : public TableIterator {
  public:
-    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
-                             ::fedb::storage::TTLType ttl_type,
-                             uint64_t expire_time,
-                             uint64_t expire_cnt, uint32_t ts_index);
+    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
+                             uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
     virtual ~MemTableTraverseIterator();
     inline bool Valid() override;
     void Next() override;
     void Seek(const std::string& key, uint64_t time) override;
-    fedb::base::Slice GetValue() const override;
+    openmldb::base::Slice GetValue() const override;
     std::string GetPK() const override;
     uint64_t GetKey() const override;
     void SeekToFirst() override;
@@ -152,11 +146,10 @@ class MemTableTraverseIterator : public TableIterator {
 
 class MemTable : public Table {
  public:
-    MemTable(const std::string& name, uint32_t id, uint32_t pid,
-             uint32_t seg_cnt, const std::map<std::string, uint32_t>& mapping,
-             uint64_t ttl, ::fedb::type::TTLType ttl_type);
+    MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
+             const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::openmldb::type::TTLType ttl_type);
 
-    explicit MemTable(const ::fedb::api::TableMeta& table_meta);
+    explicit MemTable(const ::openmldb::api::TableMeta& table_meta);
     virtual ~MemTable();
     MemTable(const MemTable&) = delete;
     MemTable& operator=(const MemTable&) = delete;
@@ -164,26 +157,22 @@ class MemTable : public Table {
     bool Init() override;
 
     // Put a record
-    bool Put(const std::string& pk, uint64_t time, const char* data,
-             uint32_t size) override;
+    bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) override;
 
     // Put a multi dimension record
-    bool Put(uint64_t time, const std::string& value,
-             const Dimensions& dimensions) override;
+    bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) override;
 
     // Note the method should incr record_cnt_ manually
     bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
-    bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions,
-             const std::string& value) override;
+    bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, const std::string& value) override;
 
     bool Delete(const std::string& pk, uint32_t idx) override;
 
     // use the first demission
     TableIterator* NewIterator(const std::string& pk, Ticket& ticket) override;
 
-    TableIterator* NewIterator(uint32_t index, const std::string& pk,
-                               Ticket& ticket) override;
+    TableIterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) override;
 
     TableIterator* NewTraverseIterator(uint32_t index) override;
 
@@ -202,44 +191,32 @@ class MemTable : public Table {
     uint64_t GetRecordIdxByteSize();
     uint64_t GetRecordPkCnt();
 
-    void SetCompressType(::fedb::type::CompressType compress_type);
-    ::fedb::type::CompressType GetCompressType();
+    void SetCompressType(::openmldb::type::CompressType compress_type);
+    ::openmldb::type::CompressType GetCompressType();
 
-    inline uint64_t GetRecordByteSize() const {
-        return record_byte_size_.load(std::memory_order_relaxed);
-    }
+    inline uint64_t GetRecordByteSize() const { return record_byte_size_.load(std::memory_order_relaxed); }
 
-    uint64_t GetRecordCnt() const override {
-        return record_cnt_.load(std::memory_order_relaxed);
-    }
+    uint64_t GetRecordCnt() const override { return record_cnt_.load(std::memory_order_relaxed); }
 
     inline uint32_t GetSegCnt() const { return seg_cnt_; }
 
-    inline void SetExpire(bool is_expire) {
-        enable_gc_.store(is_expire, std::memory_order_relaxed);
-    }
+    inline void SetExpire(bool is_expire) { enable_gc_.store(is_expire, std::memory_order_relaxed); }
 
     uint64_t GetExpireTime(const TTLSt& ttl_st) override;
 
-    bool IsExpire(const ::fedb::api::LogEntry& entry) override;
+    bool IsExpire(const ::openmldb::api::LogEntry& entry) override;
 
-    inline bool GetExpireStatus() {
-        return enable_gc_.load(std::memory_order_relaxed);
-    }
+    inline bool GetExpireStatus() { return enable_gc_.load(std::memory_order_relaxed); }
 
-    inline void RecordCntIncr() {
-        record_cnt_.fetch_add(1, std::memory_order_relaxed);
-    }
+    inline void RecordCntIncr() { record_cnt_.fetch_add(1, std::memory_order_relaxed); }
 
-    inline void RecordCntIncr(uint32_t cnt) {
-        record_cnt_.fetch_add(cnt, std::memory_order_relaxed);
-    }
+    inline void RecordCntIncr(uint32_t cnt) { record_cnt_.fetch_add(cnt, std::memory_order_relaxed); }
 
     inline uint32_t GetKeyEntryHeight() { return key_entry_max_height_; }
 
     bool DeleteIndex(std::string idx_name);
 
-    bool AddIndex(const ::fedb::common::ColumnKey& column_key);
+    bool AddIndex(const ::openmldb::common::ColumnKey& column_key);
 
  private:
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
@@ -258,6 +235,6 @@ class MemTable : public Table {
 };
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_STORAGE_MEM_TABLE_H_
