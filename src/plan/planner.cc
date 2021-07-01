@@ -410,6 +410,18 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 plan_trees.push_back(fn_plan);
                 break;
             }
+            case ::hybridse::node::kExplainStmt: {
+                node::PlanNode* explan_plan = nullptr;
+                CHECK_STATUS(CreateExplainPlan(parser_tree, &explan_plan))
+                plan_trees.push_back(explan_plan);
+                break;
+            }
+            case ::hybridse::node::kCreateIndexStmt: {
+                node::PlanNode* create_index_plan = nullptr;
+                CHECK_STATUS(CreateCreateIndexPlan(parser_tree, &create_index_plan))
+                plan_trees.push_back(create_index_plan);
+                break;
+            }
             default: {
                 FAIL_STATUS(common::kPlanError, "can not handle tree type ",
                             node::NameOfSqlNodeType(parser_tree->GetType()))
@@ -446,17 +458,35 @@ base::Status Planner::CreateInsertPlan(const node::SqlNode *root, node::PlanNode
     *output = node_manager_->MakeInsertPlanNode(dynamic_cast<const node::InsertStmt *>(root));
     return base::Status::OK();
 }
+base::Status Planner::CreateExplainPlan(const node::SqlNode *root, node::PlanNode **output) {
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create explain plan node: query tree node it null")
 
+    CHECK_TRUE(root->GetType() == node::kExplainStmt, common::kPlanError,
+               "fail to create explain plan node: query tree node it not kExplainStmt")
+    *output = node_manager_->MakeExplainPlanNode(dynamic_cast<const node::ExplainNode *>(root));
+    return base::Status::OK();
+}
+base::Status Planner::CreateCreateIndexPlan(const node::SqlNode *root, node::PlanNode **output) {
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create index plan node: query tree node it null")
+
+    CHECK_TRUE(root->GetType() == node::kCreateIndexStmt, common::kPlanError,
+               "fail to create explain plan node: query tree node it not kCreateIndexStmt")
+    *output = node_manager_->MakeCreateCreateIndexPlanNode(dynamic_cast<const node::CreateIndexNode *>(root));
+    return base::Status::OK();
+}
 base::Status Planner::CreateCmdPlan(const SqlNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create cmd plan node: query tree node it null")
     CHECK_TRUE(root->GetType() == node::kCmdStmt, common::kPlanError,
-               "fail to create cmd plan node: query tree node it not cmd type")
+               "fail to create cmd plan node: query tree node it not kCmdStmt")
     *output = node_manager_->MakeCmdPlanNode(dynamic_cast<const node::CmdNode *>(root));
     return base::Status::OK();
 }
 
 base::Status Planner::CreateCreateProcedurePlan(const node::SqlNode *root, const PlanNodeList &inner_plan_node_list,
                                                 node::PlanNode **output) {
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create procedure plan node: query tree node it null")
+    CHECK_TRUE(root->GetType() == node::kCreateSpStmt, common::kPlanError,
+               "fail to create procedure plan node: query tree node it not kCreateSpStmt")
     const node::CreateSpStmt *create_sp_tree = (const node::CreateSpStmt *)root;
     *output = node_manager_->MakeCreateProcedurePlanNode(create_sp_tree->GetSpName(),
                                                          create_sp_tree->GetInputParameterList(), inner_plan_node_list);

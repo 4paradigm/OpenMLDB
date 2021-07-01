@@ -419,6 +419,9 @@ std::shared_ptr<SimpleCatalog> BuildSimpleCatalog() {
 }
 bool InitSimpleCataLogFromSqlCase(SqlCase& sql_case,  // NOLINT
                                   std::shared_ptr<SimpleCatalog> catalog) {
+    if (sql_case.db_.empty()) {
+        sql_case.db_ =  sqlcase::SqlCase::GenRand("auto_db");
+    }
     hybridse::type::Database db;
     db.set_name(sql_case.db());
     for (int32_t i = 0; i < sql_case.CountInputs(); i++) {

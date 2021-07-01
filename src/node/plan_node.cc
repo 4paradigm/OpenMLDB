@@ -230,7 +230,7 @@ void PrintPlanVector(std::ostream &output, const std::string &tab,
         output << tab << SPACE_ST << vector_name << ": []";
         return;
     }
-    output << tab << SPACE_ST << vector_name << "[list]: ";
+    output << tab << SPACE_ST << vector_name << "[list]:";
     const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
     int i = 0;
     int vec_size = vec.size();
@@ -353,6 +353,12 @@ void FuncDefPlanNode::Print(std::ostream &output,
     PlanNode::Print(output, orgTab);
     output << "\n";
     PrintSqlNode(output, orgTab + "\t", fn_def_, "fun_def", true);
+}
+void CreateIndexPlanNode::Print(std::ostream &output,
+                            const std::string &orgTab) const {
+    PlanNode::Print(output, orgTab);
+    output << "\n";
+    PrintSqlNode(output, orgTab + "\t", create_index_node_, "create_index_node", true);
 }
 void ProjectPlanNode::Print(std::ostream &output,
                             const std::string &org_tab) const {

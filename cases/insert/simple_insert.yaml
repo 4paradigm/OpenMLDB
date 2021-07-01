@@ -27,15 +27,17 @@ cases:
           col4 double not null,
           col5 bigint not null,
           col6 string not null,
+          col7 timestamp not null,
+          col8 date not null,
           index(key=(col2), ts=col5)
           );
-        insert: insert into t1 values("hello", 1, 2, 3.3f, 4.4, 5L, "world");
+        insert: insert into t1 values("hello", 1, 2, 3.3f, 4.4, 5L, "world", 12345678L, "2020-05-21");
     sql: select * from t1;
     output:
-      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, col7:timestamp, col8:date
       order: col1
       data: |
-        hello, 1, 2, 3.3, 4.4, 5, world
+        hello, 1, 2, 3.3, 4.4, 5, world, 12345678, 2020-05-21
   - id: 1
     desc: 简单INSERT 多行
     db: db_1
@@ -155,7 +157,7 @@ cases:
           create table t1 (
           col0 string not null,
           col1 int not null,
-          col2 smallint not null,
+          col2 smallint,
           col3 float not null,
           col4 double not null,
           col5 bigint not null,

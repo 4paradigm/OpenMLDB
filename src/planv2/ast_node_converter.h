@@ -100,6 +100,8 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
                                     node::InsertStmt** output);
 base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::NodeManager* node_manager,
                                   node::CmdNode** output);
+base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement* root, node::NodeManager* node_manager,
+                                         node::CreateIndexNode** output);
 }  // namespace plan
 }  // namespace hybridse
 #endif  // SRC_PLANV2_AST_NODE_CONVERTER_H_

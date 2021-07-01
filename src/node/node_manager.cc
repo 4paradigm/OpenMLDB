@@ -703,6 +703,10 @@ SqlNode *NodeManager::MakeIndexKeyNode(const std::string &key) {
     SqlNode *node_ptr = new IndexKeyNode(key);
     return RegisterNode(node_ptr);
 }
+SqlNode *NodeManager::MakeIndexKeyNode(const std::vector<std::string> &keys) {
+    SqlNode *node_ptr = new IndexKeyNode(keys);
+    return RegisterNode(node_ptr);
+}
 SqlNode *NodeManager::MakeIndexTsNode(const std::string &ts) {
     SqlNode *node_ptr = new IndexTsNode(ts);
     return RegisterNode(node_ptr);
@@ -877,8 +881,18 @@ InsertPlanNode *NodeManager::MakeInsertPlanNode(const InsertStmt *node) {
     RegisterNode(node_ptr);
     return node_ptr;
 }
+ExplainPlanNode *NodeManager::MakeExplainPlanNode(const ExplainNode *node) {
+    node::ExplainPlanNode *node_ptr = new ExplainPlanNode(node);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
 FuncDefPlanNode *NodeManager::MakeFuncPlanNode(FnNodeFnDef *node) {
     node::FuncDefPlanNode *node_ptr = new FuncDefPlanNode(node);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+CreateIndexPlanNode* NodeManager::MakeCreateCreateIndexPlanNode(const CreateIndexNode* node) {
+    node::CreateIndexPlanNode *node_ptr = new CreateIndexPlanNode(node);
     RegisterNode(node_ptr);
     return node_ptr;
 }

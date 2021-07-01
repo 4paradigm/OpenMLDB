@@ -171,7 +171,7 @@ cases:
           |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
-          |      +-keys: ab
+          |      +-keys: a,b
           |      +-ts_col: column2
           |      +-abs_ttl: 86400000
           |      +-lat_ttl: -2
@@ -551,3 +551,88 @@ cases:
                     +-window_list: []
 
 
+
+
+  - id: 22
+    desc: create index 1
+    sql: |
+      CREATE INDEX index1 ON t1 (col1, col2) OPTIONS (ts=col3, ttl=30d, ttl_type=absolute);
+    expect:
+      node_tree_str: |
+        +-node[kCreateIndexStmt]
+          +-index_name: index1
+          +-table_name: t1
+          +-index:
+            +-node[kColumnIndex]
+              +-keys: col1,col2
+              +-ts_col: col3
+              +-abs_ttl: 2592000000
+              +-lat_ttl: -2
+              +-ttl_type: absolute
+              +-version_column: <nil>
+              +-version_count: 0
+  - id: 23
+    desc: create index 2
+    sql: |
+      CREATE INDEX index1 ON t1 (col1, col2) OPTIONS (ts=col3, ttl=100, ttl_type=latest);
+    expect:
+      node_tree_str: |
+        +-node[kCreateIndexStmt]
+          +-index_name: index1
+          +-table_name: t1
+          +-index:
+            +-node[kColumnIndex]
+              +-keys: col1,col2
+              +-ts_col: col3
+              +-abs_ttl: -2
+              +-lat_ttl: 100
+              +-ttl_type: latest
+              +-version_column: <nil>
+              +-version_count: 0
+  - id: 24
+    desc: Create table statement (typical 4)
+    tags: ["TODO"]
+    sql: |
+      create table if not exists t3 (a int32, b timestamp, INDEX index1 (a) OPTIONS (ignored_key='seb', ts=b, ttl=1800,
+      ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, ignored_option = 'abc',
+      distribution = [ ('leader1', ['fo1', 'fo2'])])
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t3
+          +-IF NOT EXIST: 1
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: a
+          |  |    +-column_type: int32
+          |  |    +-NOT NULL: 0
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: b
+          |  |    +-column_type: timestamp
+          |  |    +-NOT NULL: 0
+          |  +-2:
+          |    +-node[kColumnIndex]
+          |      +-keys: a
+          |      +-ts_col: b
+          |      +-abs_ttl: -2
+          |      +-lat_ttl: 1800
+          |      +-ttl_type: absorlat
+          |      +-version_column: a
+          |      +-version_count: 1
+          +-replica_num: 4
+          +-partition_num: 5
+          +-distribution_list[list]:
+            +-0:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: leader1
+            |    +-role_type: leader
+            +-1:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: fo1
+            |    +-role_type: follower
+            +-2:
+              +-node[kPartitionMeta]
+                +-endpoint: fo2
+                +-role_type: follower

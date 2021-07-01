@@ -1643,6 +1643,7 @@ TEST_P(PlannerV2ErrorTest, BatchModePlanErrorTest) {
     base::Status status;
     node::PlanNodeList plan_trees;
     ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, true)) << status;
+    LOG(INFO) << status;
 }
 
 TEST_F(PlannerV2ErrorTest, SqlSyntaxErrorTest) {

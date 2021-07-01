@@ -259,6 +259,7 @@ enum PlanType {
     kPlanTypeWindow,
     kProjectNode,
     kPlanTypeCreateSp,
+    kPlanTypeCreateIndex,
     kUnknowPlan = 100,
 };
 

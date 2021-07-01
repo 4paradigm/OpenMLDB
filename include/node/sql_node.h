@@ -58,6 +58,14 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "desc table";
         case kCmdDropTable:
             return "drop table";
+        case kCmdShowProcedures:
+            return "show procedure";
+        case kCmdShowCreateSp:
+            return "show create procedure";
+        case kCmdDropSp:
+            return "drop procedure";
+        case kCmdDropIndex:
+            return "drop index";
         case kCmdExit:
             return "exit";
         default:
@@ -618,7 +626,7 @@ class SelectQueryNode : public QueryNode {
 
     void SetLimit(SqlNode *limit) { limit_ptr_ = limit; }
 
-    void SetOrder(OrderByNode* order) { order_clause_ptr_ = order; }
+    void SetOrder(OrderByNode *order) { order_clause_ptr_ = order; }
 
     int GetDistinctOpt() const { return distinct_opt_; }
     // Print
@@ -1590,7 +1598,11 @@ class InsertStmt : public SqlNode {
  public:
     InsertStmt(const std::string &table_name, const std::vector<std::string> &columns,
                const std::vector<ExprNode *> &values)
-        : SqlNode(kInsertStmt, 0, 0), table_name_(table_name), columns_(columns), values_(values), is_all_(false) {}
+        : SqlNode(kInsertStmt, 0, 0),
+          table_name_(table_name),
+          columns_(columns),
+          values_(values),
+          is_all_(columns.empty()) {}
 
     InsertStmt(const std::string &table_name, const std::vector<ExprNode *> &values)
         : SqlNode(kInsertStmt, 0, 0), table_name_(table_name), values_(values), is_all_(true) {}
@@ -1642,7 +1654,8 @@ class CreateStmt : public SqlNode {
 class IndexKeyNode : public SqlNode {
  public:
     IndexKeyNode() : SqlNode(kIndexKey, 0, 0) {}
-    explicit IndexKeyNode(const std::string &key) : SqlNode(kIndexKey, 0, 0) { key_.push_back(key); }
+    explicit IndexKeyNode(const std::string &key) : SqlNode(kIndexKey, 0, 0), key_({key}) {}
+    explicit IndexKeyNode(const std::vector<std::string> &keys) : SqlNode(kIndexKey, 0, 0), key_(keys) {}
     ~IndexKeyNode() {}
     void AddKey(const std::string &key) { key_.push_back(key); }
     std::vector<std::string> &GetKey() { return key_; }

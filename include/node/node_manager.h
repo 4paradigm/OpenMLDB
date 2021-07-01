@@ -151,6 +151,7 @@ class NodeManager {
                                  SqlNode *version);
     SqlNode *MakeColumnIndexNode(SqlNodeList *index_item_list);
     SqlNode *MakeIndexKeyNode(const std::string &key);
+    SqlNode *MakeIndexKeyNode(const std::vector<std::string> &keys);
     SqlNode *MakeIndexTsNode(const std::string &ts);
     SqlNode *MakeIndexTTLNode(ExprListNode *ttl_expr);
     SqlNode *MakeIndexTTLTypeNode(const std::string &ttl_type);
@@ -244,6 +245,7 @@ class NodeManager {
     SqlNode *MakeCreateIndexNode(const std::string &index_name,
                                  const std::string &table_name,
                                  ColumnIndexNode *index);
+
     // Make NodeList
     SqlNode *MakeExplainNode(const QueryNode *query,
                              node::ExplainType explain_type);
@@ -278,6 +280,7 @@ class NodeManager {
         const std::string &sp_name, const NodePointVector &input_parameter_list,
         const PlanNodeList &inner_plan_node_list);
 
+    CreateIndexPlanNode* MakeCreateCreateIndexPlanNode(const CreateIndexNode* node);
     SqlNode *MakeCreateProcedureNode(const std::string &sp_name,
                                               SqlNodeList *input_parameter_list,
                                               SqlNodeList *inner_node_list);
@@ -285,7 +288,7 @@ class NodeManager {
     CmdPlanNode *MakeCmdPlanNode(const CmdNode *node);
 
     InsertPlanNode *MakeInsertPlanNode(const InsertStmt *node);
-
+    ExplainPlanNode *MakeExplainPlanNode(const ExplainNode *node);
     FuncDefPlanNode *MakeFuncPlanNode(FnNodeFnDef *node);
 
     PlanNode *MakeRenamePlanNode(PlanNode *node, const std::string alias_name);

@@ -37,7 +37,7 @@ cases:
         create: |
           create table {0} (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
           index(key=(c1), ts=c7));
-        insert: insert into {0} values('aa',2,3,1.1,2.1,1590738989000L,'2020-05-01');
+        insert: insert into {0} values('aa',2,3L,1.1f,2.1,1590738989000L,'2020-05-01');
     sql: select * from {0};
     expect:
       columns : ["c1 string", "c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -79,7 +79,8 @@ cases:
         create: |
           create table {0} ( c1 string NOT NULL, c2 timestamp,
           index(key=(c1), ts=c2));
-    sql: insert into {0} (c1,c2,c3) values(NULL,1590738989000L);
+        insert: insert into {0} (c1,c2) values(NULL,1590738989000L);
+    sql: select * from {0};
     expect:
       success: false
   -
@@ -104,7 +105,8 @@ cases:
         create: |
           create table {0} ( c1 string NOT NULL, c2 timestamp,
           index(key=(c1), ts=c2));
-    sql: insert into {0}1 (c1,c2) values('aa',1590738989000L);
+        insert: insert into {0}1 (c1,c2) values('aa',1590738989000L);
+    sql: select * from {0};
     expect:
       success: false
   -
@@ -115,7 +117,8 @@ cases:
         create: |
           create table {0} ( c1 string NOT NULL, c2 timestamp,
           index(key=(c1), ts=c2));
-    sql: insert into {0} (c1,c3) values('aa',1590738989000L);
+        insert: insert into {0} (c1,c3) values('aa',1590738989000L);
+    sql: select * from {0};
     expect:
       success: false
   -
@@ -137,7 +140,8 @@ cases:
         create: |
           create table {0} ( c1 string, c2 timestamp,
           index(key=(c1), ts=c2));
-    sql: insert into {0} (c1,c2) values(aa,1590738989000L);
+        insert: insert into {0} (c1,c2) values(aa,1590738989000L);
+    sql: select * from {0};
     expect:
       success: false
   -

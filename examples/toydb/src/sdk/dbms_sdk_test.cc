@@ -570,7 +570,7 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(rs);
     codec::RowView row_view(schema);
-    int order_idx = -1;
+    int order_idx = 0;
     for (int i = 0; i < schema.size(); i++) {
         if (schema.Get(i).name() == order_col) {
             order_idx = i;
@@ -662,8 +662,11 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
     }
 }
 INSTANTIATE_TEST_CASE_P(
-    SdkInsert, DBMSSdkTest,
+    SdkSimpleInsert, DBMSSdkTest,
     testing::ValuesIn(sqlcase::InitCases("/cases/insert/simple_insert.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    SdkInsert, DBMSSdkTest,
+    testing::ValuesIn(sqlcase::InitCases("/cases/integration/v1/test_insert.yaml")));
 
 TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     auto sql_case = GetParam();
@@ -672,6 +675,9 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
         ::hybridse::sdk::CreateDBMSSdk(endpoint);
 
+    if (sql_case.db_.empty()) {
+        sql_case.db_ = sqlcase::SqlCase::GenRand("auto_db");
+    }
     std::string db = sql_case.db();
     {
         Status status;
@@ -698,7 +704,13 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
             boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
             LOG(INFO) << insert;
             dbms_sdk->ExecuteQuery(db, insert, &status);
-            ASSERT_EQ(0, static_cast<int>(status.code));
+            if (!sql_case.expect_.success_) {
+                ASSERT_NE(0, static_cast<int>(status.code));
+                LOG(INFO) << status.msg;
+                return;
+            } else {
+                ASSERT_EQ(0, static_cast<int>(status.code));
+            }
         }
     }
     {

@@ -295,58 +295,62 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
     request->set_table(table_name);
     request->set_db(db);
 
-    std::map<std::string, node::ExprNode*> column_value_map;
+    std::unordered_set<std::string> column_set;
+    for (size_t i = 0; i < schema.columns().size(); i++) {
+        column_set.insert(schema.columns(i).name());
+    }
+    std::map<std::string, node::ConstNode*> column_value_map;
     if (!columns.empty()) {
         if (columns.size() != values->children_.size()) {
-            status->msg =
-                "Fail Build Request: insert column size != value size";
+            status->msg = "Fail Build Request: insert column size != value size";
             status->code = -1;
             LOG(WARNING) << status->msg;
             return;
         }
         for (size_t i = 0; i < columns.size(); i++) {
-            column_value_map.insert(
-                std::make_pair(columns[i], values->children_[i]));
+            if (node::kExprPrimary != values->children_[i]->GetExprType()) {
+                status->code = common::kTypeError;
+                status->msg =
+                    "Fail insert value with type " + node::ExprTypeName(values->children_[i]->GetExprType());
+                return;
+            }
+            if (column_set.find(columns[i]) == column_set.end()) {
+                status->code = common::kTypeError;
+                status->msg =
+                    "Fail insert: column " + columns[i] + "not exist";
+                return;
+            }
+            column_value_map.insert(std::make_pair(columns[i], dynamic_cast<node::ConstNode*>(values->children_[i])));
         }
     } else {
-        if (schema.columns().size() !=
-            static_cast<int32_t>(values->children_.size())) {
-            status->msg =
-                "Fail Build Request: insert column size != value size";
+        if (schema.columns().size() != static_cast<int32_t>(values->children_.size())) {
+            status->msg = "Fail Build Request: insert column size != value size";
             status->code = -1;
             LOG(WARNING) << status->msg;
             return;
         }
         for (int i = 0; i < schema.columns().size(); i++) {
+            if (node::kExprPrimary != values->children_[i]->GetExprType()) {
+                status->code = common::kTypeError;
+                status->msg = "Fail insert value with type " + node::ExprTypeName(values->children_[i]->GetExprType());
+                return;
+            }
             column_value_map.insert(
-                std::make_pair(schema.columns(i).name(), values->children_[i]));
+                std::make_pair(schema.columns(i).name(), dynamic_cast<node::ConstNode*>(values->children_[i])));
         }
     }
     uint32_t str_size = 0;
-    for (auto value : values->children_) {
-        switch (value->GetExprType()) {
-            case node::kExprPrimary: {
-                node::ConstNode* primary =
-                    dynamic_cast<node::ConstNode*>(value);
-                switch (primary->GetDataType()) {
-                    case node::kVarchar: {
-                        str_size += strlen(primary->GetStr());
-                        break;
-                    }
-                    default: {
-                        continue;
-                    }
-                }
-                break;
-            }
-            default: {
-                status->code = common::kTypeError;
-                status->msg = "can not insert value with type " +
-                              node::ExprTypeName(value->GetExprType());
-                return;
-            }
+    for (auto column : schema.columns()) {
+        std::string column_name = column.name();
+        auto expr_node_it = column_value_map.find(column_name);
+        if (expr_node_it == column_value_map.cend()) {
+            continue;
+        }
+        if (type::kVarchar == column.type() && !expr_node_it->second->IsNull()) {
+            str_size += strlen(expr_node_it->second->GetStr());
         }
     }
+
     codec::RowBuilder rb(schema.columns());
     uint32_t row_size = rb.CalTotalLength(str_size);
     std::string* row = request->mutable_row();
@@ -360,12 +364,23 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
         std::string column_name = it->name();
         auto expr_node_it = column_value_map.find(column_name);
         if (expr_node_it == column_value_map.cend()) {
+            if (it->is_not_null()) {
+                status->code = common::kTypeError;
+                status->msg = "Un-support insert null into NOT NULL column " + it->name();
+                LOG(WARNING) << status->msg;
+                return;
+            }
             rb.AppendNULL();
             continue;
         }
-        const node::ConstNode* primary =
-            dynamic_cast<const node::ConstNode*>(expr_node_it->second);
+        const node::ConstNode* primary = expr_node_it->second;
         if (primary->IsNull()) {
+            if (it->is_not_null()) {
+                status->code = common::kTypeError;
+                status->msg = "Un-support insert null into NOT NULL column " + it->name();
+                LOG(WARNING) << status->msg;
+                return;
+            }
             rb.AppendNULL();
             continue;
         }
@@ -396,8 +411,7 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
                 break;
             }
             case type::kVarchar: {
-                ok = rb.AppendString(primary->GetStr(),
-                                     strlen(primary->GetStr()));
+                ok = rb.AppendString(primary->GetStr(), strlen(primary->GetStr()));
                 break;
             }
             case type::kTimestamp: {
@@ -417,16 +431,14 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
             }
             default: {
                 status->code = common::kTypeError;
-                status->msg = "can not handle data type " +
-                              node::DataTypeName(primary->GetDataType());
+                status->msg = "can not handle data type " + node::DataTypeName(primary->GetDataType());
                 LOG(WARNING) << status->msg;
                 return;
             }
         }
         if (!ok) {
             status->code = common::kTypeError;
-            status->msg = "can not handle data type " +
-                          node::DataTypeName(primary->GetDataType());
+            status->msg = "can not handle data type " + node::DataTypeName(primary->GetDataType());
 
             LOG(WARNING) << status->msg;
             return;
@@ -435,8 +447,7 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
     status->code = 0;
 }
 
-void TabletSdkImpl::Insert(const std::string& db, const std::string& sql,
-                           sdk::Status* status) {
+void TabletSdkImpl::Insert(const std::string& db, const std::string& sql, sdk::Status* status) {
     if (status == NULL) {
         LOG(WARNING) << "status is null";
         return;
@@ -456,8 +467,7 @@ void TabletSdkImpl::Insert(const std::string& db, const std::string& sql,
     node::PlanNode* plan = plan_trees[0];
     switch (plan->GetType()) {
         case node::kPlanTypeInsert: {
-            node::InsertPlanNode* insert_plan =
-                dynamic_cast<node::InsertPlanNode*>(plan);
+            node::InsertPlanNode* insert_plan = dynamic_cast<node::InsertPlanNode*>(plan);
 
             const node::InsertStmt* insert_stmt = insert_plan->GetInsertNode();
             if (nullptr == insert_stmt) {
@@ -465,12 +475,10 @@ void TabletSdkImpl::Insert(const std::string& db, const std::string& sql,
                 status->msg = "fail to execute insert statement with null node";
                 return;
             }
-            for (auto iter = insert_stmt->values_.cbegin();
-                 iter != insert_stmt->values_.cend(); iter++) {
+            for (auto iter = insert_stmt->values_.cbegin(); iter != insert_stmt->values_.cend(); iter++) {
                 tablet::InsertRequest request;
-                BuildInsertRequest(
-                    db, insert_stmt->table_name_, insert_stmt->columns_,
-                    dynamic_cast<node::ExprListNode*>(*iter), &request, status);
+                BuildInsertRequest(db, insert_stmt->table_name_, insert_stmt->columns_,
+                                   dynamic_cast<node::ExprListNode*>(*iter), &request, status);
                 if (status->code != 0) {
                     return;
                 }
@@ -484,8 +492,7 @@ void TabletSdkImpl::Insert(const std::string& db, const std::string& sql,
         }
         default: {
             status->code = common::kUnSupport;
-            status->msg = "can not execute plan type " +
-                          node::NameOfPlanNodeType(plan->GetType());
+            status->msg = "can not execute plan type " + node::NameOfPlanNodeType(plan->GetType());
             return;
         }
     }

@@ -53,7 +53,7 @@ class SqlCase {
         std::string order_;
         std::set<size_t> common_column_indices_;
         // SqlNode's TreeString output
-        std::optional<std::string> node_tree_str_;
+        std::string node_tree_str_;
         bool success_ = true;
     };
     SqlCase() {}

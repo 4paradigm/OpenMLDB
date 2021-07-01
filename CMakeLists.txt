@@ -248,7 +248,7 @@ endif ()
 if (CMAKE_INSTALL_PREFIX STREQUAL "")
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
 endif ()
-install(TARGETS hybridse_core hybridse_sdk
+install(TARGETS hybridse_core hybridse_sdk hybridse_flags
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

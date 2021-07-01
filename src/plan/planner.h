@@ -69,6 +69,8 @@ class Planner {
     base::Status CreateTableReferencePlanNode(const node::TableRefNode *root, node::PlanNode **output);
     base::Status CreateCmdPlan(const SqlNode *root, node::PlanNode **output);
     base::Status CreateInsertPlan(const SqlNode *root, node::PlanNode **output);
+    base::Status CreateExplainPlan(const SqlNode *root, node::PlanNode **output);
+    base::Status CreateCreateIndexPlan(const SqlNode *root, node::PlanNode **output);
     base::Status CreateFuncDefPlan(const SqlNode *root, node::PlanNode **output);
     base::Status CreateWindowPlanNode(const node::WindowDefNode *w_ptr, node::WindowPlanNode *plan_node);
     base::Status CreateCreateProcedurePlan(const node::SqlNode *root, const PlanNodeList &inner_plan_node_list,

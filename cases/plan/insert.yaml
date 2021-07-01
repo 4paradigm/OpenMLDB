@@ -27,3 +27,113 @@ cases:
   - id: 4
     desc: INSERT MIN_INT
     sql: insert into t1 (col1, col2, col3, col4) values(1, 2147483647, -2147483647, "string");
+
+  - id: 5
+    desc: INSERT without specify column
+    sql: insert into t1 values(1, 2L, 3.0f, 4.0, 1590738990000L, "hello", "2021-05-20");
+    expect:
+      node_tree_str: |
+        +-node[kInsertStmt]
+          +-table_name: t1
+          +-columns: all
+          +-values[list]:
+          |  +-0:
+          |    +-expr[primary]
+          |      +-value: 1
+          |      +-type: int32
+          |    +-expr[primary]
+          |      +-value: 2
+          |      +-type: int64
+          |    +-expr[primary]
+          |      +-value: 3.000000
+          |      +-type: float
+          |    +-expr[primary]
+          |      +-value: 4.000000
+          |      +-type: double
+          |    +-expr[primary]
+          |      +-value: 1590738990000
+          |      +-type: int64
+          |    +-expr[primary]
+          |      +-value: hello
+          |      +-type: string
+          |    +-expr[primary]
+          |      +-value: 2021-05-20
+          |      +-type: string
+
+  - id: 6
+    desc: INSERT with specify column
+    sql: insert into t1 (col1, col2, col3, col4, col5, col6, col7) values(1, 2L, 3.0f, 4.0, 1590738990000L, "hello", "2021-05-20");
+    expect:
+      node_tree_str: |
+        +-node[kInsertStmt]
+          +-table_name: t1
+          +-columns: col1,col2,col3,col4,col5,col6,col7
+          +-values[list]:
+          |  +-0:
+          |    +-expr[primary]
+          |      +-value: 1
+          |      +-type: int32
+          |    +-expr[primary]
+          |      +-value: 2
+          |      +-type: int64
+          |    +-expr[primary]
+          |      +-value: 3.000000
+          |      +-type: float
+          |    +-expr[primary]
+          |      +-value: 4.000000
+          |      +-type: double
+          |    +-expr[primary]
+          |      +-value: 1590738990000
+          |      +-type: int64
+          |    +-expr[primary]
+          |      +-value: hello
+          |      +-type: string
+          |    +-expr[primary]
+          |      +-value: 2021-05-20
+          |      +-type: string
+
+  - id: 7
+    desc: INSERT with placeholder 1
+    sql: insert into t1 values(1, ?, ?, ?);
+    expect:
+      node_tree_str: |
+        +-node[kInsertStmt]
+          +-table_name: t1
+          +-columns: all
+          +-values[list]:
+          |  +-0:
+          |    +-expr[primary]
+          |      +-value: 1
+          |      +-type: int32
+          |    +-expr[primary]
+          |      +-value: placeholder
+          |      +-type: placeholder
+          |    +-expr[primary]
+          |      +-value: placeholder
+          |      +-type: placeholder
+          |    +-expr[primary]
+          |      +-value: placeholder
+          |      +-type: placeholder
+
+  - id: 8
+    desc: INSERT with placeholder 2
+    sql: insert into t1 (col1, col2, col3, col4) values(1, ?, ?, ?);
+    expect:
+      node_tree_str: |
+        +-node[kInsertStmt]
+          +-table_name: t1
+          +-columns: col1,col2,col3,col4
+          +-values[list]:
+          |  +-0:
+          |    +-expr[primary]
+          |      +-value: 1
+          |      +-type: int32
+          |    +-expr[primary]
+          |      +-value: placeholder
+          |      +-type: placeholder
+          |    +-expr[primary]
+          |      +-value: placeholder
+          |      +-type: placeholder
+          |    +-expr[primary]
+          |      +-value: placeholder
+          |      +-type: placeholder

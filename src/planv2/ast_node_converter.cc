@@ -336,6 +336,15 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             *output = node_manager->MakeCastNode(data_type, expr_node);
             return base::Status::OK();
         }
+        case zetasql::AST_PARAMETER_EXPR: {
+            const zetasql::ASTParameterExpr* parameter_expr = ast_expression->GetAsOrNull<zetasql::ASTParameterExpr>();
+            CHECK_TRUE(nullptr != parameter_expr, common::kSqlError, "not an ASTParameterExpr")
+
+            CHECK_TRUE(nullptr == parameter_expr->name(), common::kSqlError, "Un-support Named Parameter Expression ",
+                       parameter_expr->name()->GetAsString());
+            *output = node_manager->MakeConstNodePlaceHolder();
+            return base::Status::OK();
+        }
         case zetasql::AST_INT_LITERAL: {
             const zetasql::ASTIntLiteral* literal = ast_expression->GetAsOrDie<zetasql::ASTIntLiteral>();
             CHECK_TRUE(!literal->is_hex(), common::kSqlError, "Un-support hex integer literal: ", literal->image());
@@ -535,9 +544,29 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = cmd_node;
             break;
         }
+        case zetasql::AST_EXPLAIN_STATEMENT: {
+            const zetasql::ASTExplainStatement* explain_statement =
+                statement->GetAsOrNull<zetasql::ASTExplainStatement>();
+            CHECK_TRUE(nullptr != explain_statement, common::kSqlError, "not an ASTExplainStatement")
+            CHECK_TRUE(nullptr != explain_statement->statement(), common::kSqlError, "can't explan null statement")
+            CHECK_TRUE(zetasql::AST_QUERY_STATEMENT == explain_statement->statement()->node_kind(), common::kSqlError,
+                       "Un-support explain statement with type ", explain_statement->statement()->GetNodeKindString())
+            node::SqlNode* query_node = nullptr;
+            CHECK_STATUS(ConvertStatement(explain_statement->statement(), node_manager, &query_node))
+            *output = node_manager->MakeExplainNode(dynamic_cast<node::QueryNode*>(query_node),
+                                                    node::ExplainType::kExplainPhysical);
+            break;
+        }
+        case zetasql::AST_CREATE_INDEX_STATEMENT: {
+            const zetasql::ASTCreateIndexStatement* create_index_stmt =
+                statement->GetAsOrNull<zetasql::ASTCreateIndexStatement>();
+            node::CreateIndexNode* create_index_node;
+            CHECK_STATUS(ConvertCreateIndexStatement(create_index_stmt, node_manager, &create_index_node))
+            *output = create_index_node;
+            break;
+        }
         default: {
-            return base::Status(common::kSqlError,
-                                absl::StrCat("Un-support statement type: ", statement->GetNodeKindString()));
+            FAIL_STATUS(common::kSqlError, "Un-support statement type: ", statement->GetNodeKindString());
         }
     }
     return base::Status::OK();
@@ -1140,7 +1169,7 @@ base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::
                 }
                 default: {
                     return base::Status(common::kSqlError, absl::StrCat("unsupported column schema type: ",
-                                                                         zetasql::ASTNode::NodeKindToString(kind)));
+                                                                        zetasql::ASTNode::NodeKindToString(kind)));
                 }
             }
             break;
@@ -1200,8 +1229,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                 auto ast_struct_expr = entry->value()->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
                 CHECK_TRUE(ast_struct_expr != nullptr, common::kSqlError, "not a ASTStructConstructorWithParens");
 
-                CHECK_TRUE(!ast_struct_expr->field_expressions().empty(), common::kSqlError,
-                           "index key list is empty");
+                CHECK_TRUE(!ast_struct_expr->field_expressions().empty(), common::kSqlError, "index key list is empty");
 
                 int field_expr_len = ast_struct_expr->field_expressions().size();
                 std::string key_str;
@@ -1227,7 +1255,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
             }
             default: {
                 return base::Status(common::kSqlError, absl::StrCat("unsupported key option value, type: ",
-                                                                     entry->value()->GetNodeKindString()));
+                                                                    entry->value()->GetNodeKindString()));
             }
         }
     } else if (boost::equals("ts", name)) {
@@ -1324,7 +1352,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
             }
             default: {
                 return base::Status(common::kSqlError, absl::StrCat("unsupported node kind for index version: ",
-                                                                     entry->value()->GetNodeKindString()));
+                                                                    entry->value()->GetNodeKindString()));
             }
         }
     }
@@ -1355,8 +1383,7 @@ base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::Nod
         CHECK_TRUE(1 == arry_expr->elements().size(), common::kSqlError, "Un-support multiple distributions currently")
         for (const auto e : arry_expr->elements()) {
             const auto ele = e->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
-            CHECK_TRUE(ele != nullptr, common::kSqlError,
-                       "distribution element is not ASTStructConstructorWithParens");
+            CHECK_TRUE(ele != nullptr, common::kSqlError, "distribution element is not ASTStructConstructorWithParens");
             CHECK_TRUE(ele->field_expressions().size() == 2, common::kSqlError, "distribution element has size != 2");
 
             node::SqlNodeList* partition_mata_nodes = node_manager->MakeNodeList();
@@ -1455,8 +1482,8 @@ base::Status AstPathExpressionToStringList(const zetasql::ASTPathExpression* pat
                                            std::vector<std::string>& strs) {  // NOLINT
     CHECK_TRUE(path_expr != nullptr, common::kSqlError, "not an ASTPathExpression");
     for (size_t i = 0; i < path_expr->num_names(); i++) {
-        CHECK_TRUE(nullptr != path_expr->name(i), common::kSqlError,
-                   "fail to convert path expression to string: name[", i, "] is nullptr")
+        CHECK_TRUE(nullptr != path_expr->name(i), common::kSqlError, "fail to convert path expression to string: name[",
+                   i, "] is nullptr")
         strs.push_back(path_expr->name(i)->GetAsString());
     }
     return base::Status::OK();
@@ -1539,16 +1566,21 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
         }
     }
 
+    CHECK_TRUE(root->GetTargetPathForNonNested().ok(), common::kSqlError,
+               "Un-support insert statement with illegal target table path")
     CHECK_TRUE(nullptr != root->rows(), common::kSqlError, "Un-support insert statement with empty values")
     node::ExprListNode* rows = node_manager->MakeExprList();
     for (auto row : root->rows()->rows()) {
         CHECK_TRUE(nullptr != row, common::kSqlError, "Un-support insert statement with null row")
         node::ExprListNode* row_values;
         CHECK_STATUS(ConvertExprNodeList(row->values(), node_manager, &row_values))
-        CHECK_TRUE(root->GetTargetPathForNonNested().ok(), common::kSqlError,
-                   "Un-support insert statement with illegal target table path")
+        for (auto expr : row_values->children_) {
+            CHECK_TRUE(nullptr != expr && node::kExprPrimary == expr->GetExprType(), common::kSqlError,
+                       "Un-support insert statement with un-const value")
+        }
         rows->AddChild(row_values);
     }
+
     *output = dynamic_cast<node::InsertStmt*>(node_manager->MakeInsertTableNode(
         root->GetTargetPathForNonNested().value()->ToIdentifierPathString(), column_list, rows));
     return base::Status::OK();
@@ -1594,6 +1626,51 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
             FAIL_STATUS(common::kSqlError, "Un-support DROP ", root->GetNodeKindString());
         }
     }
+    return base::Status::OK();
+}
+base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement* root, node::NodeManager* node_manager,
+                                         node::CreateIndexNode** output) {
+    CHECK_TRUE(nullptr != root, common::kSqlError, "not an ASTCreateIndexStatement")
+    std::string index_name = "";
+    CHECK_TRUE(nullptr != root->name(), common::kSqlError, "can't create index without index name");
+    CHECK_STATUS(AstPathExpressionToString(root->name(), &index_name));
+
+    std::vector<std::string> table_path;
+    CHECK_TRUE(nullptr != root->table_name(), common::kSqlError, "can't create index without table");
+    CHECK_STATUS(AstPathExpressionToStringList(root->table_name(), table_path));
+    CHECK_TRUE(table_path.size() >= 1 && table_path.size() <= 2, common::kSqlError,
+               "can't crete index with invalid table path")
+
+    CHECK_TRUE(nullptr != root->index_item_list(), common::kSqlError, "can't create index with empty index items");
+
+    std::vector<std::string> keys;
+    for (const auto ordering_expression : root->index_item_list()->ordering_expressions()) {
+        CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == ordering_expression->expression()->node_kind(), common::kSqlError,
+                   "Un-support index key type ", ordering_expression->expression()->GetNodeKindString())
+        CHECK_TRUE(!ordering_expression->descending(), common::kSqlError,
+                   "Un-support descending index key")
+        std::vector<std::string> path;
+        CHECK_STATUS(AstPathExpressionToStringList(
+            ordering_expression->expression()->GetAsOrNull<zetasql::ASTPathExpression>(), path));
+        CHECK_TRUE(path.size() == 1, common::kSqlError, "Un-support index key path size = ", path.size());
+        keys.push_back(path.back());
+    }
+    node::SqlNodeList* index_node_list = node_manager->MakeNodeList();
+
+    node::SqlNode* index_key_node = node_manager->MakeIndexKeyNode(keys);
+    index_node_list->PushBack(index_key_node);
+    for (const auto option : root->options_list()->options_entries()) {
+        node::SqlNode* node = nullptr;
+        CHECK_STATUS(ConvertIndexOption(option, node_manager, &node));
+        if (node != nullptr) {
+            // NOTE: unhandled option will return OK, but node is not set
+            index_node_list->PushBack(node);
+        }
+    }
+    node::ColumnIndexNode* column_index_node =
+        static_cast<node::ColumnIndexNode*>(node_manager->MakeColumnIndexNode(index_node_list));
+    *output = dynamic_cast<node::CreateIndexNode*>(
+        node_manager->MakeCreateIndexNode(index_name, table_path.back(), column_index_node));
     return base::Status::OK();
 }
 }  // namespace plan

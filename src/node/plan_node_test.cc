@@ -197,7 +197,7 @@ TEST_F(PlanNodeTest, MultiPlanNodeTest) {
     std::cout << oss.str();
     ASSERT_EQ(
         "+-[kUnknow]\n"
-        "  +-children[list]: \n"
+        "  +-children[list]:\n"
         "    +-[kUnknow]\n"
         "    +-[kUnknow]\n"
         "    +-[kUnknow]",

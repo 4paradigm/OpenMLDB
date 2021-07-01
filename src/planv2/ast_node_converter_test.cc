@@ -588,6 +588,115 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
                      common::kSqlError, "Un-support multiple statements inside ASTBeginEndBlock");
 }
 
+TEST_F(ASTNodeConverterTest, ConvertCreateIndexOKTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string& sql) -> void {
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTCreateIndexStatement>());
+
+        const auto create_index = statement->GetAsOrDie<zetasql::ASTCreateIndexStatement>();
+        node::CreateIndexNode* stmt;
+        auto s = ConvertCreateIndexStatement(create_index, &node_manager, &stmt);
+        EXPECT_EQ(common::kOk, s.code);
+    };
+
+    const std::string sql1 = R"sql(
+        CREATE INDEX index1 ON t1 (col1, col2)
+        OPTIONS(ts=std_ts, ttl_type=absolute, ttl=30d);
+        )sql";
+    expect_converted(sql1);
+}
+
+TEST_F(ASTNodeConverterTest, ConvertCreateIndexFailTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string& sql, const int code, std::string msg) -> void {
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        node::SqlNode* stmt;
+        auto s = ConvertStatement(statement, &node_manager, &stmt);
+        EXPECT_EQ(code, s.code);
+        EXPECT_EQ(msg, s.msg) << s << "\nexpect msg: " << msg;
+    };
+    {
+        const std::string sql = R"sql(
+        CREATE INDEX index1 ON t1 (col1 ASC, col2 DESC)
+        OPTIONS(ts=std_ts, ttl_type=absolute, ttl=30d);
+        )sql";
+        expect_converted(sql, common::kSqlError, "Un-support descending index key");
+    }
+    {
+        const std::string sql = R"sql(
+        CREATE INDEX index1 ON t1 (col1 DESC, col2 DESC)
+        OPTIONS(ts=std_ts, ttl_type=absolute, ttl=30d);
+        )sql";
+        expect_converted(sql, common::kSqlError, "Un-support descending index key");
+    }
+}
+
+TEST_F(ASTNodeConverterTest, ConvertInsertStmtOKTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string& sql) -> void {
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTInsertStatement>());
+
+        const auto index_stmt = statement->GetAsOrDie<zetasql::ASTInsertStatement>();
+        node::InsertStmt* stmt;
+        auto s = ConvertInsertStatement(index_stmt, &node_manager, &stmt);
+        EXPECT_EQ(common::kOk, s.code);
+        stmt->Print(std::cout, "");
+    };
+    {
+        const std::string sql = R"sql(
+        INSERT into t1 values (1, 2L, 3.0f, 4.0, "hello", "world", "2021-05-23")
+        )sql";
+        expect_converted(sql);
+    }
+    {
+        const std::string sql = R"sql(
+        INSERT into t1 (col1, col2, col3, col4, col5, col6)values (1, 2L, 3.0f, 4.0, "hello", "world", "2021-05-23")
+        )sql";
+        expect_converted(sql);
+    }
+    {
+        const std::string sql = R"sql(
+        INSERT into t1 values (1, 2L, ?, ?, "hello", ?, ?)
+        )sql";
+        expect_converted(sql);
+    }
+}
+
+TEST_F(ASTNodeConverterTest, ConvertInsertStmtFailTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string& sql, const int code, std::string msg) -> void {
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTInsertStatement>());
+
+        const auto index_stmt = statement->GetAsOrDie<zetasql::ASTInsertStatement>();
+        node::InsertStmt* stmt;
+        auto s = ConvertInsertStatement(index_stmt, &node_manager, &stmt);
+        EXPECT_EQ(code, s.code);
+        EXPECT_EQ(msg, s.msg) << s << "\nexpect msg: " << msg;
+    };
+    {
+        const std::string sql = R"sql(
+        INSERT into t1 values (1, @ a, @ b)
+        )sql";
+        expect_converted(sql, common::kSqlError, "Un-support Named Parameter Expression a");
+    }
+    {
+        const std::string sql = R"sql(
+        INSERT into t1 values (1, 2L, aaa)
+        )sql";
+        expect_converted(sql, common::kSqlError, "Un-support insert statement with un-const value");
+    }
+}
 TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
     node::NodeManager node_manager;
     auto expect_converted = [&](const std::string& sql, const int code, const std::string& msg) {
@@ -824,18 +933,23 @@ TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
     std::unique_ptr<zetasql::ParserOutput> parser_output;
     ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
     const auto* statement = parser_output->statement();
-
+    DLOG(INFO) << "\n" << statement->DebugString();
     node::SqlNode* output;
     base::Status status;
     status = ConvertStatement(statement, manager_, &output);
     EXPECT_EQ(common::kOk, status.code) << status.msg << status.trace;
-    if (status.isOK() && GetParam().expect().node_tree_str_.has_value()) {
-        EXPECT_EQ(GetParam().expect().node_tree_str_.value(), output->GetTreeString());
+    if (status.isOK() && !GetParam().expect().node_tree_str_.empty()) {
+        LOG(INFO) << "\n" << output->GetTreeString();
+        EXPECT_EQ(GetParam().expect().node_tree_str_, output->GetTreeString());
     }
 }
 const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport", "zetasql-unsupport"});
-INSTANTIATE_TEST_CASE_P(PlannerV2Test, ASTNodeConverterTest,
+INSTANTIATE_TEST_CASE_P(ASTCreateStatementTest, ASTNodeConverterTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
+INSTANTIATE_TEST_CASE_P(ASTInsertStatementTest, ASTNodeConverterTest,
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml", FILTERS)));
+INSTANTIATE_TEST_CASE_P(ASTCmdStatementTest, ASTNodeConverterTest,
+                        testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
 
 }  // namespace plan
 }  // namespace hybridse
