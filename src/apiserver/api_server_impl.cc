@@ -441,9 +441,6 @@ void APIServerImpl::RegisterGetTable() {
                           writer.StartObject();
                           writer.Member("code") & -1;
                           writer.Member("msg") & std::string("DB not found");
-                          writer.Member("tables");
-                          writer.StartArray();
-                          writer.EndArray();
                           writer.EndObject();
                           return;
                       }
@@ -482,9 +479,6 @@ void APIServerImpl::RegisterGetTable() {
                           writer.StartObject();
                           writer.Member("code") & -1;
                           writer.Member("msg") & std::string("DB not found");
-                          writer.Member("table");
-                          writer.StartObject();
-                          writer.EndObject();
                           writer.EndObject();
                           return;
                       }
@@ -495,9 +489,6 @@ void APIServerImpl::RegisterGetTable() {
                       if (table_info == nullptr) {
                           writer.Member("code") & -1;
                           writer.Member("msg") & std::string("Table not found");
-                          writer.Member("table");
-                          writer.StartObject();
-                          writer.EndObject();
                       } else {
                           writer.Member("code") & 0;
                           writer.Member("msg") & std::string("ok");
