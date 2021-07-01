@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-
 #include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>
+
 #include <boost/bind.hpp>
-#include "base/kv_iterator.h"
-#include "gtest/gtest.h"
+
 #include "base/glog_wapper.h"
+#include "base/kv_iterator.h"
+#include "common/timer.h"
+#include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
 #include "tablet/tablet_impl.h"
-#include "common/timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -33,16 +34,16 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 
-using ::fedb::zk::ZkClient;
+using ::openmldb::zk::ZkClient;
 
-namespace fedb {
+namespace openmldb {
 namespace tablet {
 
 uint32_t counter = 10;
 static bool call_invoked = false;
 static size_t endpoint_size = 1;
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
 
 void WatchCallback(const std::vector<std::string>& endpoints) {
     if (call_invoked) {
@@ -88,13 +89,13 @@ TEST_F(TabletImplTest, KeepAlive) {
 }
 
 }  // namespace tablet
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::fedb::base::SetLogLevel(DEBUG);
+    ::openmldb::base::SetLogLevel(DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::fedb::tablet::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }

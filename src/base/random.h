@@ -23,7 +23,7 @@
 
 #include <stdint.h>
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 // A very simple random number generator.  Not especially good at
@@ -76,7 +76,7 @@ class Random {
 };
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_BASE_RANDOM_H_
 

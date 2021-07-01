@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <sched.h>
@@ -23,6 +22,7 @@
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "client/ns_client.h"
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
@@ -30,7 +30,6 @@
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
-#include "common/timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -45,32 +44,32 @@ DECLARE_bool(auto_failover);
 DECLARE_bool(enable_timeseries_table);
 
 using brpc::Server;
-using fedb::tablet::TabletImpl;
-using ::fedb::zk::ZkClient;
+using openmldb::tablet::TabletImpl;
+using ::openmldb::zk::ZkClient;
 using std::shared_ptr;
 using std::string;
 using std::tuple;
 using std::vector;
 
-namespace fedb {
+namespace openmldb {
 namespace nameserver {
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
-void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::fedb::type::TTLType ttl_type,
-        ::fedb::nameserver::TableInfo* table_meta) {
+void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
+                      ::openmldb::nameserver::TableInfo* table_meta) {
     auto column_desc = table_meta->add_column_desc();
     column_desc->set_name("idx0");
-    column_desc->set_data_type(::fedb::type::kString);
+    column_desc->set_data_type(::openmldb::type::kString);
     auto column_desc1 = table_meta->add_column_desc();
     column_desc1->set_name("value");
-    column_desc1->set_data_type(::fedb::type::kString);
+    column_desc1->set_data_type(::openmldb::type::kString);
     auto column_key = table_meta->add_column_key();
     column_key->set_index_name("idx0");
     column_key->add_col_name("idx0");
-    ::fedb::common::TTLSt* ttl_st = column_key->mutable_ttl();
+    ::openmldb::common::TTLSt* ttl_st = column_key->mutable_ttl();
     ttl_st->set_abs_ttl(abs_ttl);
     ttl_st->set_lat_ttl(lat_ttl);
     ttl_st->set_ttl_type(ttl_type);
@@ -87,12 +86,11 @@ class NameServerImplTest : public ::testing::Test {
     NameServerImplTest() {}
     ~NameServerImplTest() {}
     void Start(NameServerImpl* nameserver) { nameserver->running_ = true; }
-    std::vector<std::list<std::shared_ptr<OPData>>>& GetTaskVec(
-        NameServerImpl* nameserver) {
+    std::vector<std::list<std::shared_ptr<OPData>>>& GetTaskVec(NameServerImpl* nameserver) {
         return nameserver->task_vec_;
     }
-    std::map<std::string, std::shared_ptr<::fedb::nameserver::TableInfo>>&
-    GetTableInfo(NameServerImpl* nameserver) {
+    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>& GetTableInfo(
+        NameServerImpl* nameserver) {
         return nameserver->table_info_;
     }
 };
@@ -115,10 +113,9 @@ bool StartNS(const std::string& endpoint, brpc::Server* server, brpc::ServerOpti
     return true;
 }
 
-bool StartTablet(const std::string& endpoint,
-        brpc::Server* server, brpc::ServerOptions* options) {
+bool StartTablet(const std::string& endpoint, brpc::Server* server, brpc::ServerOptions* options) {
     FLAGS_endpoint = endpoint;
-    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     if (!tablet->Init("")) {
         return false;
     }
@@ -137,14 +134,13 @@ bool StartTablet(const std::string& endpoint,
     return true;
 }
 
-bool CreateDB(::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
-        const std::string& db_name) {
-    ::fedb::nameserver::CreateDatabaseRequest request;
+bool CreateDB(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client,  // NOLINT
+              const std::string& db_name) {
+    ::openmldb::nameserver::CreateDatabaseRequest request;
     request.set_db(db_name);
-    ::fedb::nameserver::GeneralResponse response;
-    bool ret = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::CreateDatabase, &request, &response,
-        FLAGS_request_timeout_ms, 1);
+    ::openmldb::nameserver::GeneralResponse response;
+    bool ret = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateDatabase, &request,
+                                              &response, FLAGS_request_timeout_ms, 1);
     return ret;
 }
 
@@ -157,8 +153,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     brpc::ServerOptions options;
     brpc::Server server;
     ASSERT_TRUE(StartNS("127.0.0.1:9631", &server, &options));
-    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(
-            "127.0.0.1:9631", "");
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client("127.0.0.1:9631", "");
     name_server_client.Init();
 
     brpc::ServerOptions options1;
@@ -171,29 +166,26 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     std::string name = "test" + GenRand();
     table_info->set_name(name);
     TablePartition* partion = table_info->add_table_partition();
-    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
+    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     partion->set_pid(0);
     PartitionMeta* meta = partion->add_partition_meta();
     meta->set_endpoint("127.0.0.1:9530");
     meta->set_is_leader(true);
-    bool ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-        FLAGS_request_timeout_ms, 1);
+    bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+                                             FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
 
     MakeSnapshotNSRequest m_request;
     m_request.set_name(name);
     m_request.set_pid(0);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::MakeSnapshotNS, &m_request,
-        &response, FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::MakeSnapshotNS, &m_request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
 
     sleep(5);
 
-    ZkClient zk_client(FLAGS_zk_cluster, "", 1000, FLAGS_endpoint,
-                       FLAGS_zk_root_path);
+    ZkClient zk_client(FLAGS_zk_cluster, "", 1000, FLAGS_endpoint, FLAGS_zk_root_path);
     ok = zk_client.Init();
     ASSERT_TRUE(ok);
     std::string op_index_node = FLAGS_zk_root_path + "/op/op_index";
@@ -208,30 +200,26 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     std::string table_index_node = FLAGS_zk_root_path + "/table/table_index";
     ok = zk_client.GetNodeValue(table_index_node, value);
     ASSERT_TRUE(ok);
-    std::string snapshot_path =
-        FLAGS_db_root_path + "/" + value + "_0/snapshot/";
+    std::string snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
     std::vector<std::string> vec;
-    int cnt = ::fedb::base::GetFileName(snapshot_path, vec);
+    int cnt = ::openmldb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
     ASSERT_EQ(2, (int64_t)vec.size());
 
-    std::string table_data_node =
-        FLAGS_zk_root_path + "/table/table_data/" + name;
+    std::string table_data_node = FLAGS_zk_root_path + "/table/table_data/" + name;
     ok = zk_client.GetNodeValue(table_data_node, value);
     ASSERT_TRUE(ok);
-    ::fedb::nameserver::TableInfo table_info1;
+    ::openmldb::nameserver::TableInfo table_info1;
     table_info1.ParseFromString(value);
     ASSERT_STREQ(table_info->name().c_str(), table_info1.name().c_str());
-    ASSERT_EQ(table_info->table_partition_size(),
-              table_info1.table_partition_size());
+    ASSERT_EQ(table_info->table_partition_size(), table_info1.table_partition_size());
 
     // check drop table
     DropTableRequest drop_request;
     drop_request.set_name(name);
     response.Clear();
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::DropTable, &drop_request,
-        &response, FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropTable, &drop_request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
     ok = zk_client.GetNodeValue(table_data_node, value);
@@ -241,23 +229,20 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     std::string db = "db" + GenRand();
     CreateDatabaseRequest db_request;
     db_request.set_db(db);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::CreateDatabase, &db_request,
-        &response, FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateDatabase, &db_request,
+                                        &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
 
     table_info->set_db(db);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-        FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
 
     m_request.set_db(db);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::MakeSnapshotNS, &m_request,
-        &response, FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::MakeSnapshotNS, &m_request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
 
     sleep(5);
@@ -266,9 +251,8 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ShowTableResponse sr_response;
     sr_request.set_name(name);
     sr_request.set_db(db);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::ShowTable, &sr_request,
-        &sr_response, FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &sr_request, &sr_response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(1, sr_response.table_info_size());
     const TableInfo& table = sr_response.table_info(0);
@@ -287,24 +271,21 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_TRUE(ok);
     snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
     vec.clear();
-    cnt = ::fedb::base::GetFileName(snapshot_path, vec);
+    cnt = ::openmldb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
     ASSERT_EQ(2, (int64_t)vec.size());
 
-    table_data_node = FLAGS_zk_root_path + "/table/db_table_data/" +
-                      std::to_string(table.tid());
+    table_data_node = FLAGS_zk_root_path + "/table/db_table_data/" + std::to_string(table.tid());
     ok = zk_client.GetNodeValue(table_data_node, value);
     ASSERT_TRUE(ok);
     table_info1.ParseFromString(value);
     ASSERT_STREQ(table_info->name().c_str(), table_info1.name().c_str());
-    ASSERT_EQ(table_info->table_partition_size(),
-              table_info1.table_partition_size());
+    ASSERT_EQ(table_info->table_partition_size(), table_info1.table_partition_size());
 
     drop_request.set_db(db);
     response.Clear();
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::DropTable, &drop_request,
-        &response, FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropTable, &drop_request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
     ok = zk_client.GetNodeValue(table_data_node, value);
@@ -350,7 +331,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::fedb::client::NsClient name_server_client(endpoint, "");
+    ::openmldb::client::NsClient name_server_client(endpoint, "");
     name_server_client.Init();
     std::string key = "auto_failover";
     std::string msg;
@@ -366,7 +347,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     ASSERT_STREQ(conf_map[key].c_str(), "true");
     ret = name_server_client.DisConnectZK(msg);
     sleep(5);
-    ::fedb::client::NsClient name_server_client1(endpoint1, "");
+    ::openmldb::client::NsClient name_server_client1(endpoint1, "");
     name_server_client1.Init();
     ret = name_server_client1.ConfGet(key, conf_map, msg);
     ASSERT_TRUE(ret);
@@ -394,11 +375,11 @@ TEST_F(NameServerImplTest, CreateTable) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9531";
-    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     ok = tablet->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
@@ -431,12 +412,11 @@ TEST_F(NameServerImplTest, CreateTable) {
     TablePartition* partion1 = table_info->add_table_partition();
     partion1->set_pid(2);
     PartitionMeta* meta1 = partion1->add_partition_meta();
-    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
+    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     meta1->set_endpoint("127.0.0.1:9531");
     meta1->set_is_leader(true);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-        FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(307, response.code());
 
@@ -445,9 +425,8 @@ TEST_F(NameServerImplTest, CreateTable) {
     PartitionMeta* meta2 = partion2->add_partition_meta();
     meta2->set_endpoint("127.0.0.1:9531");
     meta2->set_is_leader(true);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-        FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
     delete nameserver;
@@ -473,12 +452,12 @@ TEST_F(NameServerImplTest, Offline) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9533";
-    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
-    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     ok = tablet->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
@@ -497,8 +476,8 @@ TEST_F(NameServerImplTest, Offline) {
     ASSERT_TRUE(ok);
 
     FLAGS_endpoint = "127.0.0.1:9534";
-    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
-    ::fedb::tablet::TabletImpl* tablet2 = new ::fedb::tablet::TabletImpl();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
     ok = tablet2->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
@@ -535,9 +514,8 @@ TEST_F(NameServerImplTest, Offline) {
     PartitionMeta* meta1 = partion1->add_partition_meta();
     meta1->set_endpoint("127.0.0.1:9534");
     meta1->set_is_leader(true);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-        FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(307, response.code());
 
@@ -546,27 +524,25 @@ TEST_F(NameServerImplTest, Offline) {
     PartitionMeta* meta2 = partion2->add_partition_meta();
     meta2->set_endpoint("127.0.0.1:9534");
     meta2->set_is_leader(true);
-    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-        FLAGS_request_timeout_ms, 1);
+    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
     sleep(2);
     {
-        ::fedb::api::ConnectZKRequest request;
-        ::fedb::api::GeneralResponse response;
+        ::openmldb::api::ConnectZKRequest request;
+        ::openmldb::api::GeneralResponse response;
         MockClosure closure;
         tablet->ConnectZK(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
     sleep(6);
     {
-        ::fedb::nameserver::ShowTableRequest request;
-        ::fedb::nameserver::ShowTableResponse response;
-        ok = name_server_client.SendRequest(
-            &::fedb::nameserver::NameServer_Stub::ShowTable, &request,
-            &response, FLAGS_request_timeout_ms, 1);
+        ::openmldb::nameserver::ShowTableRequest request;
+        ::openmldb::nameserver::ShowTableResponse response;
+        ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                            FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
@@ -594,11 +570,11 @@ TEST_F(NameServerImplTest, SetTablePartition) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9531";
-    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     ok = tablet->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
@@ -620,12 +596,11 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     std::string msg;
     ConfSetRequest conf_request;
     GeneralResponse conf_response;
-    ::fedb::nameserver::Pair* conf = conf_request.mutable_conf();
+    ::openmldb::nameserver::Pair* conf = conf_request.mutable_conf();
     conf->set_key("auto_failover");
     conf->set_value("false");
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::ConfSet, &conf_request,
-        &conf_response, FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ConfSet, &conf_request,
+                                        &conf_response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
 
     CreateTableRequest request;
@@ -633,7 +608,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     TableInfo* table_info = request.mutable_table_info();
     std::string name = "test" + GenRand();
     table_info->set_name(name);
-    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
+    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
     PartitionMeta* meta = partion->add_partition_meta();
@@ -644,9 +619,8 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     PartitionMeta* meta1 = partion1->add_partition_meta();
     meta1->set_endpoint("127.0.0.1:9531");
     meta1->set_is_leader(true);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-        FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(307, response.code());
 
@@ -655,44 +629,38 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     PartitionMeta* meta2 = partion2->add_partition_meta();
     meta2->set_endpoint("127.0.0.1:9531");
     meta2->set_is_leader(true);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-        FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
 
-    ::fedb::nameserver::GetTablePartitionRequest get_request;
-    ::fedb::nameserver::GetTablePartitionResponse get_response;
+    ::openmldb::nameserver::GetTablePartitionRequest get_request;
+    ::openmldb::nameserver::GetTablePartitionResponse get_response;
     get_request.set_name(name);
     get_request.set_pid(0);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::GetTablePartition, &get_request,
-        &get_response, FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::GetTablePartition, &get_request,
+                                        &get_response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, get_response.code());
-    ::fedb::nameserver::TablePartition table_partition;
+    ::openmldb::nameserver::TablePartition table_partition;
     table_partition.CopyFrom(get_response.table_partition());
     ASSERT_EQ(1, table_partition.partition_meta_size());
     ASSERT_TRUE(table_partition.partition_meta(0).is_leader());
 
-    ::fedb::nameserver::PartitionMeta* partition_meta =
-        table_partition.mutable_partition_meta(0);
+    ::openmldb::nameserver::PartitionMeta* partition_meta = table_partition.mutable_partition_meta(0);
     partition_meta->set_is_leader(false);
-    ::fedb::nameserver::SetTablePartitionRequest set_request;
-    ::fedb::nameserver::GeneralResponse set_response;
+    ::openmldb::nameserver::SetTablePartitionRequest set_request;
+    ::openmldb::nameserver::GeneralResponse set_response;
     set_request.set_name(name);
-    ::fedb::nameserver::TablePartition* cur_table_partition =
-        set_request.mutable_table_partition();
+    ::openmldb::nameserver::TablePartition* cur_table_partition = set_request.mutable_table_partition();
     cur_table_partition->CopyFrom(table_partition);
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::SetTablePartition, &set_request,
-        &set_response, FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::SetTablePartition, &set_request,
+                                        &set_response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, set_response.code());
 
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::GetTablePartition, &get_request,
-        &get_response, FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::GetTablePartition, &get_request,
+                                        &get_response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, get_response.code());
     ASSERT_FALSE(get_response.table_partition().partition_meta(0).is_leader());
@@ -724,7 +692,7 @@ TEST_F(NameServerImplTest, CancelOP) {
     ConfSetRequest conf_request;
     GeneralResponse conf_response;
     MockClosure closure;
-    ::fedb::nameserver::Pair* conf = conf_request.mutable_conf();
+    ::openmldb::nameserver::Pair* conf = conf_request.mutable_conf();
     conf->set_key("auto_failover");
     conf->set_value("false");
     nameserver->ConfSet(NULL, &conf_request, &conf_response, &closure);
@@ -736,16 +704,15 @@ TEST_F(NameServerImplTest, CancelOP) {
     nameserver->CancelOP(NULL, &request, &response, &closure);
     ASSERT_EQ(312, response.code());
 
-    std::vector<std::list<std::shared_ptr<OPData>>>& task_vec =
-        GetTaskVec(nameserver);
+    std::vector<std::list<std::shared_ptr<OPData>>>& task_vec = GetTaskVec(nameserver);
     task_vec.resize(FLAGS_name_server_task_max_concurrency);
     std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
     uint64_t op_id = 10;
     op_data->op_info_.set_op_id(op_id);
-    op_data->op_info_.set_op_type(::fedb::api::OPType::kDelReplicaOP);
+    op_data->op_info_.set_op_type(::openmldb::api::OPType::kDelReplicaOP);
     op_data->op_info_.set_task_index(0);
     op_data->op_info_.set_data("");
-    op_data->op_info_.set_task_status(::fedb::api::kInited);
+    op_data->op_info_.set_task_status(::openmldb::api::kInited);
     op_data->op_info_.set_name("test");
     op_data->op_info_.set_pid(0);
     op_data->op_info_.set_parent_id(UINT64_MAX);
@@ -755,7 +722,7 @@ TEST_F(NameServerImplTest, CancelOP) {
     response.Clear();
     nameserver->CancelOP(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
-    ASSERT_TRUE(op_data->op_info_.task_status() == ::fedb::api::kCanceled);
+    ASSERT_TRUE(op_data->op_info_.task_status() == ::openmldb::api::kCanceled);
     delete nameserver;
 }
 
@@ -772,8 +739,7 @@ bool InitRpc(Server* server, google::protobuf::Service* general_svr) {
     return true;
 }
 
-void InitTablet(int port, vector<Server*> services,
-                vector<shared_ptr<TabletImpl>*> impls, vector<string*> eps) {
+void InitTablet(int port, vector<Server*> services, vector<shared_ptr<TabletImpl>*> impls, vector<string*> eps) {
     if (services.size() != impls.size()) {
         PDLOG(WARNING, "services and impls size not equal");
         exit(1);
@@ -806,8 +772,7 @@ void InitTablet(int port, vector<Server*> services,
     return;
 }
 
-void InitNs(int port, vector<Server*> services,
-            vector<shared_ptr<NameServerImpl>*> impls, vector<string*> eps) {
+void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl>*> impls, vector<string*> eps) {
     if (services.size() != impls.size()) {
         PDLOG(WARNING, "services and impls size not equal");
         exit(1);
@@ -838,8 +803,7 @@ void InitNs(int port, vector<Server*> services,
 }
 
 TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
-    std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1,
-        f2_ns2;
+    std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
     Server f1_ns1_svr, f1_ns2_svr, f1_t1_svr, f1_t2_svr;
@@ -943,16 +907,14 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     table_info->set_name(name);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
-    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
-    f2_ns1->CreateTable(NULL, &create_table_request, &general_response,
-                        &closure);
+    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+    f2_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
     ASSERT_EQ(0, general_response.code());
     general_response.Clear();
 
     ShowTableRequest show_table_request;
     ShowTableResponse show_table_response;
-    f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response,
-                      &closure);
+    f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
     ASSERT_EQ(1, show_table_response.table_info_size());
     show_table_response.Clear();
 
@@ -969,8 +931,7 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     f2_ns1->DropTable(NULL, &drop_table_request, &general_response, &closure);
     ASSERT_EQ(0, general_response.code());
     show_table_response.Clear();
-    f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response,
-                      &closure);
+    f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
     ASSERT_EQ(0, show_table_response.table_info_size());
     general_response.Clear();
 
@@ -980,8 +941,7 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
 
     GeneralRequest general_request;
     ShowReplicaClusterResponse show_replica_cluster_response;
-    m1_ns1->ShowReplicaCluster(NULL, &general_request,
-                               &show_replica_cluster_response, &closure);
+    m1_ns1->ShowReplicaCluster(NULL, &general_request, &show_replica_cluster_response, &closure);
     ASSERT_EQ(2, show_replica_cluster_response.replicas_size());
     show_replica_cluster_response.Clear();
 
@@ -989,12 +949,10 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     RemoveReplicaOfRequest remove_replica_of_request;
     remove_replica_of_request.set_alias("f2");
     {
-        m1_ns1->RemoveReplicaCluster(NULL, &remove_replica_of_request,
-                                     &general_response, &closure);
+        m1_ns1->RemoveReplicaCluster(NULL, &remove_replica_of_request, &general_response, &closure);
         ASSERT_EQ(0, general_response.code());
         general_response.Clear();
-        m1_ns1->ShowReplicaCluster(NULL, &general_request,
-                                   &show_replica_cluster_response, &closure);
+        m1_ns1->ShowReplicaCluster(NULL, &general_request, &show_replica_cluster_response, &closure);
         ASSERT_EQ(1, show_replica_cluster_response.replicas_size());
         show_replica_cluster_response.Clear();
     }
@@ -1005,16 +963,14 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
         m1_ns1->AddReplicaCluster(NULL, &cd, &general_response, &closure);
         ASSERT_EQ(0, general_response.code());
         general_response.Clear();
-        m1_ns1->ShowReplicaCluster(NULL, &general_request,
-                                   &show_replica_cluster_response, &closure);
+        m1_ns1->ShowReplicaCluster(NULL, &general_request, &show_replica_cluster_response, &closure);
         ASSERT_EQ(2, show_replica_cluster_response.replicas_size());
         show_replica_cluster_response.Clear();
     }
 }
 
 TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
-    std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1,
-        f2_ns2;
+    std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
     Server f1_ns1_svr, f1_ns2_svr, f1_t1_svr, f1_t2_svr;
@@ -1106,8 +1062,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
 
     GeneralRequest general_request;
     ShowReplicaClusterResponse show_replica_cluster_response;
-    m1_ns1->ShowReplicaCluster(NULL, &general_request,
-                               &show_replica_cluster_response, &closure);
+    m1_ns1->ShowReplicaCluster(NULL, &general_request, &show_replica_cluster_response, &closure);
     ASSERT_EQ(2, show_replica_cluster_response.replicas_size());
     show_replica_cluster_response.Clear();
 
@@ -1117,17 +1072,15 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     table_info->set_name(name);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
-    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
+    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
 
-    m1_ns1->CreateTable(NULL, &create_table_request, &general_response,
-                        &closure);
+    m1_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
     ASSERT_EQ(0, general_response.code());
     ShowTableRequest show_table_request;
     ShowTableResponse show_table_response;
     sleep(10);
     for (auto& ns : nss) {
-        ns->ShowTable(NULL, &show_table_request, &show_table_response,
-                      &closure);
+        ns->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
         ASSERT_EQ(1, show_table_response.table_info_size());
         ASSERT_EQ(name, show_table_response.table_info(0).name());
         show_table_response.Clear();
@@ -1140,24 +1093,21 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     drop_table_request.Clear();
     sleep(8);
     for (auto& ns : nss) {
-        ns->ShowTable(NULL, &show_table_request, &show_table_response,
-                      &closure);
+        ns->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
         ASSERT_EQ(0, show_table_response.table_info_size());
         show_table_response.Clear();
     }
     RemoveReplicaOfRequest remove_replica_of_request;
     for (auto s : replica_names) {
         remove_replica_of_request.set_alias(s);
-        m1_ns1->RemoveReplicaCluster(NULL, &remove_replica_of_request,
-                                     &general_response, &closure);
+        m1_ns1->RemoveReplicaCluster(NULL, &remove_replica_of_request, &general_response, &closure);
         ASSERT_EQ(0, general_response.code());
         general_response.Clear();
     }
     name = "test" + GenRand();
     table_info->set_name(name);
 
-    m1_ns1->CreateTable(NULL, &create_table_request, &general_response,
-                        &closure);
+    m1_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
     ASSERT_EQ(0, general_response.code());
 
     for (uint64_t i = 0; i < replica_names.size(); i++) {
@@ -1169,8 +1119,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     }
     sleep(4);
     for (auto& ns : nss) {
-        ns->ShowTable(NULL, &show_table_request, &show_table_response,
-                      &closure);
+        ns->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
         ASSERT_EQ(1, show_table_response.table_info_size());
         ASSERT_EQ(name, show_table_response.table_info(0).name());
         show_table_response.Clear();
@@ -1178,8 +1127,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
 }
 
 TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
-    std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1,
-        f2_ns2;
+    std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
     Server f1_ns1_svr, f1_ns2_svr, f1_t1_svr, f1_t2_svr;
@@ -1256,24 +1204,20 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         table_info->set_name(name);
         table_info->set_partition_num(1);
         table_info->set_replica_num(2);
-        AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
-        f2_ns1->CreateTable(NULL, &create_table_request, &general_response,
-                            &closure);
+        AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+        f2_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
         ASSERT_EQ(0, general_response.code());
         ShowTableRequest show_table_request;
         ShowTableResponse show_table_response;
-        f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response,
-                          &closure);
+        f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
         ASSERT_EQ(1, show_table_response.table_info_size());
         show_table_response.Clear();
         DropTableRequest drop_table_request;
         drop_table_request.set_name(name);
-        f2_ns1->DropTable(NULL, &drop_table_request, &general_response,
-                          &closure);
+        f2_ns1->DropTable(NULL, &drop_table_request, &general_response, &closure);
         ASSERT_EQ(0, general_response.code());
         show_table_response.Clear();
-        f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response,
-                          &closure);
+        f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
         ASSERT_EQ(0, show_table_response.table_info_size());
         general_response.Clear();
     }
@@ -1300,8 +1244,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
 
     GeneralRequest general_request;
     ShowReplicaClusterResponse show_replica_cluster_response;
-    m1_ns1->ShowReplicaCluster(NULL, &general_request,
-                               &show_replica_cluster_response, &closure);
+    m1_ns1->ShowReplicaCluster(NULL, &general_request, &show_replica_cluster_response, &closure);
     ASSERT_EQ(2, show_replica_cluster_response.replicas_size());
     show_replica_cluster_response.Clear();
 
@@ -1309,7 +1252,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     string name = "test" + GenRand();
     TableInfo* table_info = create_table_request.mutable_table_info();
     table_info->set_name(name);
-    AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
+    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     TablePartition* partition = table_info->add_table_partition();
     partition->set_pid(0);
     PartitionMeta* meta1 = partition->add_partition_meta();
@@ -1323,8 +1266,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     general_response.Clear();
 
     for (auto& ns : follower_nss) {
-        ns->CreateTable(NULL, &create_table_request, &general_response,
-                        &closure);
+        ns->CreateTable(NULL, &create_table_request, &general_response, &closure);
         ASSERT_EQ(501, general_response.code());
         general_response.Clear();
     }
@@ -1333,24 +1275,20 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     ShowTableRequest show_table_request;
     ShowTableResponse show_table_response;
 
-    m1_ns1->ShowTable(NULL, &show_table_request, &show_table_response,
-                      &closure);
+    m1_ns1->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
     ASSERT_EQ(1, show_table_response.table_info_size());
     ASSERT_EQ(name, show_table_response.table_info(0).name());
     uint32_t tid = show_table_response.table_info().begin()->tid();
     show_table_response.Clear();
     for (auto& ns : nss) {
-        ns->ShowTable(NULL, &show_table_request, &show_table_response,
-                      &closure);
+        ns->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
         ASSERT_EQ(1, show_table_response.table_info_size());
-        ASSERT_EQ(2, show_table_response.table_info(0)
-                         .table_partition(0)
-                         .partition_meta_size());
+        ASSERT_EQ(2, show_table_response.table_info(0).table_partition(0).partition_meta_size());
         ASSERT_EQ(name, show_table_response.table_info(0).name());
         show_table_response.Clear();
     }
-    ::fedb::api::PutRequest put_request;
-    ::fedb::api::PutResponse put_response;
+    ::openmldb::api::PutRequest put_request;
+    ::openmldb::api::PutResponse put_response;
     string pk = "1";
     put_request.set_pk(pk);
     put_request.set_time(1);
@@ -1363,39 +1301,36 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     std::vector<shared_ptr<TabletImpl>> tablets{m1_t1, m1_t2, f1_t1, f1_t2};
     std::vector<shared_ptr<TabletImpl>> f2_tablets{f2_t1, f2_t2};
     {
-        ::fedb::api::TraverseRequest traverse_request;
-        ::fedb::api::TraverseResponse traverse_response;
+        ::openmldb::api::TraverseRequest traverse_request;
+        ::openmldb::api::TraverseResponse traverse_response;
         traverse_request.set_pid(0);
         traverse_request.set_tid(tid);
         for (auto& tablet : tablets) {
-            tablet->Traverse(NULL, &traverse_request, &traverse_response,
-                             &closure);
+            tablet->Traverse(NULL, &traverse_request, &traverse_response, &closure);
             ASSERT_EQ(0, traverse_response.code());
             ASSERT_EQ(1, (int64_t)traverse_response.count());
             traverse_response.Clear();
         }
     }
     {
-        ::fedb::api::TraverseRequest traverse_request;
-        ::fedb::api::TraverseResponse traverse_response;
+        ::openmldb::api::TraverseRequest traverse_request;
+        ::openmldb::api::TraverseResponse traverse_response;
         traverse_request.set_pid(0);
         traverse_request.set_tid(tid + 1);
         for (auto& tablet : f2_tablets) {
-            tablet->Traverse(NULL, &traverse_request, &traverse_response,
-                             &closure);
+            tablet->Traverse(NULL, &traverse_request, &traverse_response, &closure);
             ASSERT_EQ(0, traverse_response.code());
             ASSERT_EQ(1, (int64_t)traverse_response.count());
             traverse_response.Clear();
         }
     }
-    ::fedb::api::ScanRequest scan_request;
+    ::openmldb::api::ScanRequest scan_request;
     scan_request.set_pk(pk);
     scan_request.set_st(0);
     scan_request.set_et(0);
     scan_request.set_tid(tid);
     scan_request.set_pid(0);
-    ::fedb::api::ScanResponse* scan_response =
-        new ::fedb::api::ScanResponse();
+    ::openmldb::api::ScanResponse* scan_response = new ::openmldb::api::ScanResponse();
     sleep(4);
     for (auto& tablet : tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
@@ -1415,8 +1350,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         change_leader_request.set_name(name);
         change_leader_request.set_pid(0);
         change_leader_request.set_candidate_leader(m1_t2_ep);
-        m1_ns1->ChangeLeader(NULL, &change_leader_request, &general_response,
-                             &closure);
+        m1_ns1->ChangeLeader(NULL, &change_leader_request, &general_response, &closure);
         ASSERT_EQ(0, general_response.code());
         sleep(6);
         general_response.Clear();
@@ -1424,8 +1358,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         recover_table_request.set_name(name);
         recover_table_request.set_pid(0);
         recover_table_request.set_endpoint(m1_t1_ep);
-        m1_ns1->RecoverTable(NULL, &recover_table_request, &general_response,
-                             &closure);
+        m1_ns1->RecoverTable(NULL, &recover_table_request, &general_response, &closure);
         ASSERT_EQ(0, general_response.code());
         general_response.Clear();
     }
@@ -1456,14 +1389,10 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         i->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
         ASSERT_EQ(0, show_table_response.code());
         ASSERT_EQ(1, show_table_response.table_info_size());
-        ASSERT_EQ(2, show_table_response.table_info(0)
-                         .table_partition(0)
-                         .partition_meta_size());
+        ASSERT_EQ(2, show_table_response.table_info(0).table_partition(0).partition_meta_size());
         ASSERT_EQ(name, show_table_response.table_info(0).name());
         string leader_ep, follower_ep;
-        for (auto part : show_table_response.table_info(0)
-                             .table_partition(0)
-                             .partition_meta()) {
+        for (auto part : show_table_response.table_info(0).table_partition(0).partition_meta()) {
             if (part.is_leader() && part.is_alive()) {
                 leader_ep = part.endpoint();
             } else {
@@ -1478,8 +1407,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         change_leader_request.set_name(name);
         change_leader_request.set_pid(0);
         change_leader_request.set_candidate_leader(follower_ep);
-        i->ChangeLeader(NULL, &change_leader_request, &general_response,
-                        &closure);
+        i->ChangeLeader(NULL, &change_leader_request, &general_response, &closure);
         ASSERT_EQ(0, general_response.code());
         general_response.Clear();
         show_table_response.Clear();
@@ -1488,8 +1416,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         recover_table_request.set_name(name);
         recover_table_request.set_pid(0);
         recover_table_request.set_endpoint(leader_ep);
-        i->RecoverTable(NULL, &recover_table_request, &general_response,
-                        &closure);
+        i->RecoverTable(NULL, &recover_table_request, &general_response, &closure);
         ASSERT_EQ(0, general_response.code());
         general_response.Clear();
     }
@@ -1525,8 +1452,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
     brpc::ServerOptions options;
     brpc::Server server;
     ASSERT_TRUE(StartNS("127.0.0.1:9634", &server, &options));
-    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(
-        "127.0.0.1:9634", "");
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client("127.0.0.1:9634", "");
     name_server_client.Init();
 
     brpc::ServerOptions options1;
@@ -1546,7 +1472,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         std::string name = "test" + GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
-        AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
+        AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
         PartitionMeta* meta = partion->add_partition_meta();
@@ -1557,9 +1483,8 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9536");
         meta->set_is_leader(true);
-        bool ok = name_server_client.SendRequest(
-            &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-            FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
@@ -1568,9 +1493,8 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
     std::map<std::string, uint64_t> version_map;
     ShowCatalogRequest request;
     ShowCatalogResponse response;
-    bool ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::ShowCatalog, &request, &response,
-        FLAGS_request_timeout_ms, 1);
+    bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowCatalog, &request, &response,
+                                             FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(response.catalog_size(), 2);
     for (const auto& cur_catalog : response.catalog()) {
@@ -1585,7 +1509,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         std::string name = "test" + GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
-        AddDefaultSchema(0, 0, ::fedb::type::kAbsoluteTime, table_info);
+        AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
         PartitionMeta* meta = partion->add_partition_meta();
@@ -1596,18 +1520,16 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9536");
         meta->set_is_leader(true);
-        bool ok = name_server_client.SendRequest(
-            &::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-            FLAGS_request_timeout_ms, 1);
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
     sleep(2);
     ShowCatalogRequest request1;
     ShowCatalogResponse response1;
-    ok = name_server_client.SendRequest(
-        &::fedb::nameserver::NameServer_Stub::ShowCatalog, &request1, &response1,
-        FLAGS_request_timeout_ms, 1);
+    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowCatalog, &request1, &response1,
+                                        FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(response1.catalog_size(), 2);
     for (const auto& cur_catalog : response1.catalog()) {
@@ -1617,14 +1539,14 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
 }
 
 }  // namespace nameserver
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::fedb::base::SetLogLevel(INFO);
+    ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::fedb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
     return RUN_ALL_TESTS();
 }

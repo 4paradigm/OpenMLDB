@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "codec/sdk_codec.h"
 
 #include <set>
@@ -24,10 +23,10 @@
 #include "base/hash.h"
 #include "codec/row_codec.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
-SDKCodec::SDKCodec(const ::fedb::nameserver::TableInfo& table_info)
+SDKCodec::SDKCodec(const ::openmldb::nameserver::TableInfo& table_info)
     : format_version_(table_info.format_version()),
       base_schema_size_(0),
       modify_times_(0),
@@ -52,11 +51,8 @@ SDKCodec::SDKCodec(const ::fedb::nameserver::TableInfo& table_info)
     }
 }
 
-SDKCodec::SDKCodec(const ::fedb::api::TableMeta& table_info)
-    : format_version_(table_info.format_version()),
-      base_schema_size_(0),
-      modify_times_(0),
-      last_ver_(1) {
+SDKCodec::SDKCodec(const ::openmldb::api::TableMeta& table_info)
+    : format_version_(table_info.format_version()), base_schema_size_(0), modify_times_(0), last_ver_(1) {
     if (table_info.column_desc_size() > 0) {
         ParseColumnDesc(table_info.column_desc());
     }
@@ -100,7 +96,7 @@ void SDKCodec::ParseAddedColumnDesc(const Schema& column_desc) {
     if (format_version_ == 1) {
         uint32_t idx = schema_.size();
         for (const auto& col : column_desc) {
-            fedb::common::ColumnDesc* new_col = schema_.Add();
+            openmldb::common::ColumnDesc* new_col = schema_.Add();
             new_col->CopyFrom(col);
             schema_idx_map_.emplace(col.name(), idx);
             idx++;
@@ -121,11 +117,11 @@ void SDKCodec::ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_sch
         int32_t times = pair.field_count();
         std::shared_ptr<Schema> base_schema = std::make_shared<Schema>(schema_);
         int remain_size = times - schema_.size();
-        if (remain_size < 0 || remain_size > add_schema.size())  {
+        if (remain_size < 0 || remain_size > add_schema.size()) {
             continue;
         }
         for (int i = 0; i < remain_size; i++) {
-            fedb::common::ColumnDesc* col = base_schema->Add();
+            openmldb::common::ColumnDesc* col = base_schema->Add();
             col->CopyFrom(add_schema.Get(i));
         }
         version_schema_.insert(std::make_pair(ver, base_schema));
@@ -133,9 +129,8 @@ void SDKCodec::ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_sch
     }
 }
 
-int SDKCodec::EncodeDimension(
-    const std::map<std::string, std::string>& raw_data, uint32_t pid_num,
-    std::map<uint32_t, Dimension>* dimensions) {
+int SDKCodec::EncodeDimension(const std::map<std::string, std::string>& raw_data, uint32_t pid_num,
+                              std::map<uint32_t, Dimension>* dimensions) {
     uint32_t dimension_idx = 0;
     for (const auto& column_key : index_) {
         if (column_key.flag() != 0) {
@@ -163,7 +158,7 @@ int SDKCodec::EncodeDimension(
         }
         uint32_t pid = 0;
         if (pid_num > 0) {
-            pid = (uint32_t)(::fedb::base::hash64(key) % pid_num);
+            pid = (uint32_t)(::openmldb::base::hash64(key) % pid_num);
         }
         auto pair = dimensions->emplace(pid, Dimension());
         pair.first->second.emplace_back(std::move(key), dimension_idx);
@@ -172,8 +167,7 @@ int SDKCodec::EncodeDimension(
     return 0;
 }
 
-int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
-                              uint32_t pid_num,
+int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data, uint32_t pid_num,
                               std::map<uint32_t, Dimension>* dimensions) {
     uint32_t dimension_idx = 0;
     for (const auto& column_key : index_) {
@@ -184,8 +178,7 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
         std::string key;
         for (const auto& name : column_key.col_name()) {
             auto iter = schema_idx_map_.find(name);
-            if (iter == schema_idx_map_.end() ||
-                iter->second >= raw_data.size()) {
+            if (iter == schema_idx_map_.end() || iter->second >= raw_data.size()) {
                 return -1;
             }
             if (!key.empty()) {
@@ -196,15 +189,14 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
         if (key.empty()) {
             const std::string& name = column_key.index_name();
             auto iter = schema_idx_map_.find(name);
-            if (iter == schema_idx_map_.end() ||
-                iter->second >= raw_data.size()) {
+            if (iter == schema_idx_map_.end() || iter->second >= raw_data.size()) {
                 return -1;
             }
             key = raw_data[iter->second];
         }
         uint32_t pid = 0;
         if (pid_num > 0) {
-            pid = (uint32_t)(::fedb::base::hash64(key) % pid_num);
+            pid = (uint32_t)(::openmldb::base::hash64(key) % pid_num);
         }
         auto pair = dimensions->emplace(pid, Dimension());
         pair.first->second.emplace_back(std::move(key), dimension_idx);
@@ -212,13 +204,13 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data,
     }
     return 0;
 }
-int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
-                          std::vector<uint64_t>* ts_dimensions, uint64_t default_ts) {
+int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data, std::vector<uint64_t>* ts_dimensions,
+                                uint64_t default_ts) {
     for (auto idx : ts_idx_) {
         if (idx >= raw_data.size()) {
             return -1;
         }
-        if (fedb::codec::NONETOKEN == raw_data[idx]) {
+        if (openmldb::codec::NONETOKEN == raw_data[idx]) {
             ts_dimensions->push_back(default_ts);
             continue;
         }
@@ -230,8 +222,7 @@ int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
     }
     return 0;
 }
-int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
-                                std::vector<uint64_t>* ts_dimensions) {
+int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data, std::vector<uint64_t>* ts_dimensions) {
     for (auto idx : ts_idx_) {
         if (idx >= raw_data.size()) {
             return -1;
@@ -245,8 +236,7 @@ int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
     return 0;
 }
 
-int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
-                        std::string* row) {
+int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data, std::string* row) {
     auto ret = RowCodec::EncodeRow(raw_data, schema_, last_ver_, *row);
     return ret.code;
 }
@@ -254,7 +244,7 @@ int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
 int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value) {
     if (format_version_ == 1) {
         const int8_t* data = reinterpret_cast<const int8_t*>(row.data());
-        int32_t ver = fedb::codec::RowView::GetSchemaVersion(data);
+        int32_t ver = openmldb::codec::RowView::GetSchemaVersion(data);
         auto it = version_schema_.find(ver);
         if (it == version_schema_.end()) {
             return -1;
@@ -264,7 +254,7 @@ int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value)
             return -1;
         }
     } else {
-        fedb::base::Slice data(row);
+        openmldb::base::Slice data(row);
         if (!RowCodec::DecodeRow(base_schema_size_, base_schema_size_ + modify_times_, data, value)) {
             return -1;
         }
@@ -280,8 +270,7 @@ std::vector<std::string> SDKCodec::GetColNames() {
     return cols;
 }
 
-int SDKCodec::CombinePartitionKey(const std::vector<std::string>& raw_data,
-                                  std::string* key) {
+int SDKCodec::CombinePartitionKey(const std::vector<std::string>& raw_data, std::string* key) {
     if (partition_col_idx_.empty()) {
         return -1;
     }
@@ -297,4 +286,4 @@ int SDKCodec::CombinePartitionKey(const std::vector<std::string>& raw_data,
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb

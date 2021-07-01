@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <unistd.h>
@@ -27,8 +26,8 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
-#include "tablet/tablet_impl.h"
 #include "sdk/sql_router.h"
+#include "tablet/tablet_impl.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -40,10 +39,10 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_bool(auto_failover);
 
-using ::fedb::zk::ZkClient;
-using ::fedb::nameserver::NameServerImpl;
+using ::openmldb::nameserver::NameServerImpl;
+using ::openmldb::zk::ZkClient;
 
-namespace fedb {
+namespace openmldb {
 namespace tablet {
 
 inline std::string GenRand() {
@@ -64,16 +63,16 @@ class SqlClusterTest : public ::testing::Test {
     ~SqlClusterTest() {}
 };
 
-std::shared_ptr<fedb::sdk::SQLRouter> GetNewSQLRouter() {
+std::shared_ptr<openmldb::sdk::SQLRouter> GetNewSQLRouter() {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
-    fedb::sdk::SQLRouterOptions sql_opt;
+    openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = FLAGS_zk_cluster;
     sql_opt.zk_path = FLAGS_zk_root_path;
     sql_opt.enable_debug = true;
-    return fedb::sdk::NewClusterSQLRouter(sql_opt);
+    return openmldb::sdk::NewClusterSQLRouter(sql_opt);
 }
 
-void StartNameServer(brpc::Server& server) { //NOLINT
+void StartNameServer(brpc::Server& server) {  // NOLINT
     NameServerImpl* nameserver = new NameServerImpl();
     bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
@@ -89,7 +88,7 @@ void StartNameServer(brpc::Server& server) { //NOLINT
     sleep(2);
 }
 
-void StartTablet(brpc::Server* server, ::fedb::tablet::TabletImpl* tablet) { //NOLINT
+void StartTablet(brpc::Server* server, ::openmldb::tablet::TabletImpl* tablet) {  // NOLINT
     bool ok = tablet->Init("");
     ASSERT_TRUE(ok);
     brpc::ServerOptions options;
@@ -105,15 +104,14 @@ void StartTablet(brpc::Server* server, ::fedb::tablet::TabletImpl* tablet) { //N
     sleep(2);
 }
 
-void DropTable(::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
-        const std::string& db, const std::string& table_name, bool success) {
-    ::fedb::nameserver::DropTableRequest request;
-    ::fedb::nameserver::GeneralResponse response;
+void DropTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client,  // NOLINT
+               const std::string& db, const std::string& table_name, bool success) {
+    ::openmldb::nameserver::DropTableRequest request;
+    ::openmldb::nameserver::GeneralResponse response;
     request.set_db(db);
     request.set_name(table_name);
-    bool ok = name_server_client.SendRequest(
-            &::fedb::nameserver::NameServer_Stub::DropTable,
-            &request, &response, FLAGS_request_timeout_ms, 1);
+    bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropTable, &request, &response,
+                                             FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     if (success) {
         ASSERT_EQ(response.code(), 0);
@@ -122,29 +120,27 @@ void DropTable(::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>& name_serv
     }
 }
 
-void DropProcedure(::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
-        const std::string& db, const std::string& sp_name) {
-    ::fedb::nameserver::DropProcedureRequest request;
-    ::fedb::nameserver::GeneralResponse response;
+void DropProcedure(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client,  // NOLINT
+                   const std::string& db, const std::string& sp_name) {
+    ::openmldb::nameserver::DropProcedureRequest request;
+    ::openmldb::nameserver::GeneralResponse response;
     request.set_db_name(db);
     request.set_sp_name(sp_name);
-    bool ok = name_server_client.SendRequest(
-            &::fedb::nameserver::NameServer_Stub::DropProcedure,
-            &request, &response, FLAGS_request_timeout_ms, 1);
+    bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropProcedure, &request,
+                                             &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(response.code(), 0);
 }
 
-void ShowTable(::fedb::RpcClient<::fedb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
+void ShowTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client,  // NOLINT
 
-        const std::string& db, int32_t size) {
-    ::fedb::nameserver::ShowTableRequest request;
-    ::fedb::nameserver::ShowTableResponse response;
+               const std::string& db, int32_t size) {
+    ::openmldb::nameserver::ShowTableRequest request;
+    ::openmldb::nameserver::ShowTableResponse response;
     request.set_db(db);
     request.set_show_all(true);
-    bool ok = name_server_client.SendRequest(
-            &::fedb::nameserver::NameServer_Stub::ShowTable,
-            &request, &response, FLAGS_request_timeout_ms, 1);
+    bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
+                                             FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(response.table_info_size(), size);
 }
@@ -158,27 +154,25 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     FLAGS_endpoint = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server);
-    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9831";
     FLAGS_db_root_path = "/tmp/" + GenRand();
     brpc::Server tb_server1;
-    ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server1, tablet1);
 
     {
         // showtablet
-        ::fedb::nameserver::ShowTabletRequest request;
-        ::fedb::nameserver::ShowTabletResponse response;
-        bool ok = name_server_client.SendRequest(
-                &::fedb::nameserver::NameServer_Stub::ShowTablet,
-                &request, &response, FLAGS_request_timeout_ms, 1);
+        ::openmldb::nameserver::ShowTabletRequest request;
+        ::openmldb::nameserver::ShowTabletResponse response;
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTablet, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(response.tablets_size(), 1);
-        ::fedb::nameserver::TabletStatus status =
-            response.tablets(0);
+        ::openmldb::nameserver::TabletStatus status = response.tablets(0);
         ASSERT_EQ(FLAGS_endpoint, status.endpoint());
         ASSERT_EQ("kTabletHealthy", status.state());
     }
@@ -207,18 +201,16 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     }
     ASSERT_TRUE(router->RefreshCatalog());
     // insert
-    std::string insert_sql =
-        "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    std::string insert_sql = "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
     ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     // create procedure
     std::string sp_name = "sp";
     std::string sql =
         "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS"
         " (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-    std::string sp_ddl =
-        "create procedure " + sp_name +
-        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
-        " begin " + sql + " end;";
+    std::string sp_ddl = "create procedure " + sp_name +
+                         " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" +
+                         ")" + " begin " + sql + " end;";
     if (!router->ExecuteDDL(db, sp_ddl, &status)) {
         FAIL() << "fail to create procedure";
     }
@@ -252,7 +244,7 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     ASSERT_FALSE(rs);
     // restart
     brpc::Server tb_server2;
-    ::fedb::tablet::TabletImpl* tablet2 = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server2, tablet2);
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
@@ -287,27 +279,25 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     FLAGS_endpoint = "127.0.0.1:9632";
     brpc::Server ns_server;
     StartNameServer(ns_server);
-    ::fedb::RpcClient<::fedb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9832";
     FLAGS_db_root_path = "/tmp/" + GenRand();
     brpc::Server tb_server1;
-    ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server1, tablet1);
 
     {
         // showtablet
-        ::fedb::nameserver::ShowTabletRequest request;
-        ::fedb::nameserver::ShowTabletResponse response;
-        bool ok = name_server_client.SendRequest(
-                &::fedb::nameserver::NameServer_Stub::ShowTablet,
-                &request, &response, FLAGS_request_timeout_ms, 1);
+        ::openmldb::nameserver::ShowTabletRequest request;
+        ::openmldb::nameserver::ShowTabletResponse response;
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTablet, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(response.tablets_size(), 1);
-        ::fedb::nameserver::TabletStatus status =
-            response.tablets(0);
+        ::openmldb::nameserver::TabletStatus status = response.tablets(0);
         ASSERT_EQ(FLAGS_endpoint, status.endpoint());
         ASSERT_EQ("kTabletHealthy", status.state());
     }
@@ -348,18 +338,16 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     }
     ASSERT_TRUE(router->RefreshCatalog());
     // insert
-    std::string insert_sql =
-        "insert into trans1 values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    std::string insert_sql = "insert into trans1 values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
     ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     // create procedure
     std::string sp_name = "sp";
     std::string sql =
         "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS"
         " (UNION trans1 PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-    std::string sp_ddl =
-        "create procedure " + sp_name +
-        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
-        " begin " + sql + " end;";
+    std::string sp_ddl = "create procedure " + sp_name +
+                         " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" +
+                         ")" + " begin " + sql + " end;";
     if (!router->ExecuteDDL(db, sp_ddl, &status)) {
         FAIL() << "fail to create procedure";
     }
@@ -393,7 +381,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     ASSERT_FALSE(rs);
     // restart
     brpc::Server tb_server2;
-    ::fedb::tablet::TabletImpl* tablet2 = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server2, tablet2);
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
@@ -408,10 +396,9 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
 
     // create another procedure
     std::string sp_name1 = "sp1";
-    std::string sp_ddl1 =
-        "create procedure " + sp_name1 +
-        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
-        " begin " + sql + " end;";
+    std::string sp_ddl1 = "create procedure " + sp_name1 +
+                          " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" +
+                          ")" + " begin " + sql + " end;";
     if (!router->ExecuteDDL(db, sp_ddl1, &status)) {
         FAIL() << "fail to create procedure";
     }
@@ -437,13 +424,13 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
 }
 
 }  // namespace tablet
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 2000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::fedb::base::SetLogLevel(INFO);
+    ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();
 }

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CODEC_SQL_RPC_ROW_CODEC_H_
 #define SRC_CODEC_SQL_RPC_ROW_CODEC_H_
 
@@ -29,7 +28,7 @@
 #include "codec/row.h"
 #include "sdk/base.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
 bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, hybridse::codec::Row* row);
@@ -39,5 +38,5 @@ bool EncodeRpcRow(const hybridse::codec::Row& row, butil::IOBuf* buf, size_t* to
 bool EncodeRpcRow(const int8_t* buf, size_t size, butil::IOBuf* io_buf);
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_CODEC_SQL_RPC_ROW_CODEC_H_

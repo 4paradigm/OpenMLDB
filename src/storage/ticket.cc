@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-
 #include "storage/ticket.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 Ticket::Ticket() {}
@@ -46,4 +45,4 @@ void Ticket::Pop() {
 }
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb

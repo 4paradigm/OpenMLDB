@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
@@ -23,9 +22,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include "base/file_util.h"
-#include "client/tablet_client.h"
 #include "base/glog_wapper.h"
+#include "client/tablet_client.h"
+#include "common/thread_pool.h"
+#include "common/timer.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "replica/replicate_node.h"
@@ -33,23 +35,21 @@
 #include "storage/table.h"
 #include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
-#include "common/thread_pool.h"
-#include "common/timer.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
-using ::fedb::storage::DataBlock;
-using ::fedb::storage::Table;
-using ::fedb::storage::Ticket;
-using ::fedb::tablet::TabletImpl;
+using ::openmldb::storage::DataBlock;
+using ::openmldb::storage::Table;
+using ::openmldb::storage::Ticket;
+using ::openmldb::tablet::TabletImpl;
 
 DECLARE_string(db_root_path);
 DECLARE_string(endpoint);
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
 
-namespace fedb {
+namespace openmldb {
 namespace replica {
 
 class MockClosure : public ::google::protobuf::Closure {
@@ -67,7 +67,7 @@ class SnapshotReplicaTest : public ::testing::Test {
 };
 
 TEST_F(SnapshotReplicaTest, AddReplicate) {
-    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     tablet->Init("");
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -84,13 +84,12 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     uint32_t tid = 2;
     uint32_t pid = 123;
 
-    ::fedb::client::TabletClient client(leader_point, "");
+    ::openmldb::client::TabletClient client(leader_point, "");
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =
-        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::fedb::type::TTLType::kAbsoluteTime, 16, 0,
-                           ::fedb::type::CompressType::kNoCompress);
+        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints, ::openmldb::type::TTLType::kAbsoluteTime, 16,
+                           0, ::openmldb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
 
     std::string end_point = "127.0.0.1:18530";
@@ -98,16 +97,16 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     ASSERT_TRUE(ret);
     sleep(1);
 
-    ::fedb::api::TableStatus table_status;
+    ::openmldb::api::TableStatus table_status;
     ASSERT_TRUE(client.GetTableStatus(tid, pid, table_status));
-    ASSERT_EQ(::fedb::api::kTableNormal, table_status.state());
+    ASSERT_EQ(::openmldb::api::kTableNormal, table_status.state());
 
     ret = client.DelReplica(tid, pid, end_point);
     ASSERT_TRUE(ret);
 }
 
 TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
-    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     tablet->Init("");
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -125,13 +124,12 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     uint32_t tid = 1;
     uint32_t pid = 123;
 
-    ::fedb::client::TabletClient client(leader_point, "");
+    ::openmldb::client::TabletClient client(leader_point, "");
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =
-        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
-                           ::fedb::type::TTLType::kAbsoluteTime, 16, 0,
-                           ::fedb::type::CompressType::kNoCompress);
+        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints, ::openmldb::type::TTLType::kAbsoluteTime, 16,
+                           0, ::openmldb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     ret = client.Put(tid, pid, "testkey", cur_time, "value1");
@@ -147,7 +145,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     FLAGS_endpoint = "127.0.0.1:18530";
-    ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     tablet1->Init("");
     brpc::Server server1;
     if (server1.AddService(tablet1, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -160,16 +158,15 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
         exit(1);
     }
     // server.RunUntilAskedToQuit();
-    ::fedb::client::TabletClient client1(follower_point, "");
+    ::openmldb::client::TabletClient client1(follower_point, "");
     client1.Init();
-    ret = client1.CreateTable("table1", tid, pid, 14400, 0, false, endpoints,
-                              ::fedb::type::TTLType::kAbsoluteTime, 16, 0,
-                              ::fedb::type::CompressType::kNoCompress);
+    ret = client1.CreateTable("table1", tid, pid, 14400, 0, false, endpoints, ::openmldb::type::TTLType::kAbsoluteTime,
+                              16, 0, ::openmldb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);
     sleep(3);
 
-    ::fedb::api::ScanRequest sr;
+    ::openmldb::api::ScanRequest sr;
     MockClosure closure;
     sr.set_tid(tid);
     sr.set_pid(pid);
@@ -177,7 +174,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     sr.set_st(cur_time + 1);
     sr.set_et(cur_time - 1);
     sr.set_limit(10);
-    ::fedb::api::ScanResponse srp;
+    ::openmldb::api::ScanResponse srp;
     tablet1->Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(1, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
@@ -190,28 +187,27 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     ASSERT_EQ(1, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
     {
-        ::fedb::api::GetTableFollowerRequest gr;
-        ::fedb::api::GetTableFollowerResponse grs;
+        ::openmldb::api::GetTableFollowerRequest gr;
+        ::openmldb::api::GetTableFollowerResponse grs;
         gr.set_tid(tid);
         gr.set_pid(pid);
         tablet->GetTableFollower(NULL, &gr, &grs, &closure);
         ASSERT_EQ(0, grs.code());
         ASSERT_EQ(12, (int64_t)grs.offset());
         ASSERT_EQ(1, grs.follower_info_size());
-        ASSERT_STREQ(follower_point.c_str(),
-                     grs.follower_info(0).endpoint().c_str());
+        ASSERT_STREQ(follower_point.c_str(), grs.follower_info(0).endpoint().c_str());
         ASSERT_EQ(12, (int64_t)grs.follower_info(0).offset());
     }
-    ::fedb::api::DropTableRequest dr;
+    ::openmldb::api::DropTableRequest dr;
     dr.set_tid(tid);
     dr.set_pid(pid);
-    ::fedb::api::DropTableResponse drs;
+    ::openmldb::api::DropTableResponse drs;
     tablet->DropTable(NULL, &dr, &drs, &closure);
     sleep(2);
 }
 
 TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
-    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     tablet->Init("");
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -226,28 +222,28 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     }
     uint32_t tid = 1;
     uint32_t pid = 123;
-    ::fedb::client::TabletClient client(leader_point, "");
+    ::openmldb::client::TabletClient client(leader_point, "");
     client.Init();
-    ::fedb::api::TableMeta table_meta;
+    ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("test");
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
     table_meta.set_seg_cnt(8);
-    ::fedb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
+    ::openmldb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
     column_desc1->set_name("card");
-    column_desc1->set_data_type(::fedb::type::kString);
-    ::fedb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
+    column_desc1->set_data_type(::openmldb::type::kString);
+    ::openmldb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
     column_desc2->set_name("mcc");
-    column_desc2->set_data_type(::fedb::type::kString);
-    ::fedb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
+    column_desc2->set_data_type(::openmldb::type::kString);
+    ::openmldb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
     column_desc3->set_name("amt");
-    column_desc3->set_data_type(::fedb::type::kDouble);
-    ::fedb::common::ColumnDesc* column_desc4 = table_meta.add_column_desc();
+    column_desc3->set_data_type(::openmldb::type::kDouble);
+    ::openmldb::common::ColumnDesc* column_desc4 = table_meta.add_column_desc();
     column_desc4->set_name("ts1");
-    column_desc4->set_data_type(::fedb::type::kBigInt);
-    ::fedb::common::ColumnDesc* column_desc5 = table_meta.add_column_desc();
+    column_desc4->set_data_type(::openmldb::type::kBigInt);
+    ::openmldb::common::ColumnDesc* column_desc5 = table_meta.add_column_desc();
     column_desc5->set_name("ts2");
-    column_desc5->set_data_type(::fedb::type::kBigInt);
+    column_desc5->set_data_type(::openmldb::type::kBigInt);
     auto column_key1 = table_meta.add_column_key();
     column_key1->set_index_name("card");
     column_key1->set_ts_name("ts1");
@@ -264,7 +260,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     column_key3->set_ts_name("ts1");
     ttl = column_key3->mutable_ttl();
     ttl->set_abs_ttl(0);
-    table_meta.set_mode(::fedb::api::TableMode::kTableLeader);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     bool ret = client.CreateTable(table_meta);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -277,7 +273,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
 
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     FLAGS_endpoint = "127.0.0.1:18530";
-    ::fedb::tablet::TabletImpl* tablet1 = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     tablet1->Init("");
     brpc::Server server1;
     if (server1.AddService(tablet1, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -289,15 +285,15 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
         PDLOG(WARNING, "fail to start server %s", follower_point.c_str());
         exit(1);
     }
-    ::fedb::client::TabletClient client1(follower_point, "");
+    ::openmldb::client::TabletClient client1(follower_point, "");
     client1.Init();
-    table_meta.set_mode(::fedb::api::TableMode::kTableFollower);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableFollower);
     ret = client1.CreateTable(table_meta);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);
     sleep(3);
 
-    ::fedb::api::ScanRequest sr;
+    ::openmldb::api::ScanRequest sr;
     MockClosure closure;
     sr.set_tid(tid);
     sr.set_pid(pid);
@@ -305,27 +301,27 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     sr.set_idx_name("card1");
     sr.set_st(cur_time + 1);
     sr.set_et(0);
-    ::fedb::api::ScanResponse srp;
+    ::openmldb::api::ScanResponse srp;
     tablet1->Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(1, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
 
-    ::fedb::api::DropTableRequest dr;
+    ::openmldb::api::DropTableRequest dr;
     dr.set_tid(tid);
     dr.set_pid(pid);
-    ::fedb::api::DropTableResponse drs;
+    ::openmldb::api::DropTableResponse drs;
     tablet->DropTable(NULL, &dr, &drs, &closure);
     tablet1->DropTable(NULL, &dr, &drs, &closure);
     sleep(1);
 }
 
 }  // namespace replica
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::fedb::base::SetLogLevel(INFO);
+    ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     return RUN_ALL_TESTS();

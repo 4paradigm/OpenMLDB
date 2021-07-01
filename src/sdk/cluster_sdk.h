@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_SDK_CLUSTER_SDK_H_
 #define SRC_SDK_CLUSTER_SDK_H_
 
@@ -29,13 +28,13 @@
 #include "client/tablet_client.h"
 #include "common/thread_pool.h"
 #include "vm/catalog.h"
-#include "zk/zk_client.h"
 #include "vm/engine.h"
+#include "zk/zk_client.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
-using fedb::catalog::Procedures;
+using openmldb::catalog::Procedures;
 
 struct ClusterOptions {
     std::string zk_cluster;
@@ -53,55 +52,44 @@ class ClusterSDK {
 
     bool Refresh();
 
-    inline uint64_t GetClusterVersion() {
-        return cluster_version_.load(std::memory_order_relaxed);
-    }
+    inline uint64_t GetClusterVersion() { return cluster_version_.load(std::memory_order_relaxed); }
 
-    inline std::shared_ptr<::fedb::catalog::SDKCatalog> GetCatalog() {
-        std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+    inline std::shared_ptr<::openmldb::catalog::SDKCatalog> GetCatalog() {
+        std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
         return catalog_;
     }
     uint32_t GetTableId(const std::string& db, const std::string& tname);
 
-    std::shared_ptr<::fedb::nameserver::TableInfo> GetTableInfo(
-        const std::string& db, const std::string& tname);
-    std::vector<std::shared_ptr<::fedb::nameserver::TableInfo>> GetTables(
-        const std::string& db);
+    std::shared_ptr<::openmldb::nameserver::TableInfo> GetTableInfo(const std::string& db, const std::string& tname);
+    std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> GetTables(const std::string& db);
 
-    inline std::shared_ptr<::fedb::client::NsClient> GetNsClient() {
-        auto ns_client =  std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
+    inline std::shared_ptr<::openmldb::client::NsClient> GetNsClient() {
+        auto ns_client = std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
         if (ns_client) return ns_client;
         CreateNsClient();
         return std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
     }
-    bool GetRealEndpoint(const std::string& endpoint,
-            std::string* real_endpoint);
+    bool GetRealEndpoint(const std::string& endpoint, std::string* real_endpoint);
 
-    std::shared_ptr<::fedb::catalog::TabletAccessor> GetTablet();
-    bool GetTablet(const std::string& db, const  std::string& name,
-            std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>>* tablets);
-    std::shared_ptr<::fedb::catalog::TabletAccessor> GetTablet(const std::string& db,
-                                                                   const std::string& name);
-    std::shared_ptr<::fedb::catalog::TabletAccessor> GetTablet(const std::string& db,
-                                                                   const std::string& name,
+    std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet();
+    bool GetTablet(const std::string& db, const std::string& name,
+                   std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>* tablets);
+    std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet(const std::string& db, const std::string& name);
+    std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet(const std::string& db, const std::string& name,
                                                                    uint32_t pid);
-    std::shared_ptr<::fedb::catalog::TabletAccessor> GetTablet(const std::string& db,
-                                                                   const std::string& name,
+    std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet(const std::string& db, const std::string& name,
                                                                    const std::string& pk);
 
-    std::shared_ptr<hybridse::sdk::ProcedureInfo> GetProcedureInfo(
-            const std::string& db, const std::string& sp_name, std::string* msg);
+    std::shared_ptr<hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db, const std::string& sp_name,
+                                                                   std::string* msg);
 
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
 
-    inline ::hybridse::vm::Engine* GetEngine() {
-        return engine_;
-    }
+    inline ::hybridse::vm::Engine* GetEngine() { return engine_; }
 
  private:
     bool InitCatalog();
-    bool RefreshCatalog(const std::vector<std::string>& table_datas,
-            const std::vector<std::string>& sp_datas);
+    bool RefreshCatalog(const std::vector<std::string>& table_datas, const std::vector<std::string>& sp_datas);
     bool InitTabletClient();
     bool CreateNsClient();
     void WatchNotify();
@@ -113,22 +101,19 @@ class ClusterSDK {
     std::string nodes_root_path_;
     std::string table_root_path_;
     std::string notify_path_;
-    ::fedb::zk::ZkClient* zk_client_;
-    ::fedb::base::SpinMutex mu_;
-    std::shared_ptr<::fedb::catalog::ClientManager> client_manager_;
-    std::map<
-        std::string,
-        std::map<std::string, std::shared_ptr<::fedb::nameserver::TableInfo>>>
-        table_to_tablets_;
-    std::shared_ptr<::fedb::catalog::SDKCatalog> catalog_;
-    std::shared_ptr<::fedb::client::NsClient> ns_client_;
+    ::openmldb::zk::ZkClient* zk_client_;
+    ::openmldb::base::SpinMutex mu_;
+    std::shared_ptr<::openmldb::catalog::ClientManager> client_manager_;
+    std::map<std::string, std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>> table_to_tablets_;
+    std::shared_ptr<::openmldb::catalog::SDKCatalog> catalog_;
+    std::shared_ptr<::openmldb::client::NsClient> ns_client_;
     ::baidu::common::ThreadPool pool_;
     uint64_t session_id_;
-    ::fedb::base::Random rand_;
+    ::openmldb::base::Random rand_;
     std::string sp_root_path_;
     ::hybridse::vm::Engine* engine_;
 };
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_SDK_CLUSTER_SDK_H_

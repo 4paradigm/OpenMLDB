@@ -14,24 +14,17 @@
  * limitations under the License.
  */
 
-
-
 #include "tablet/file_receiver.h"
+
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "base/strings.h"
 
-namespace fedb {
+namespace openmldb {
 namespace tablet {
 
-FileReceiver::FileReceiver(const std::string& file_name,
-                           const std::string& dir_name, const std::string& path)
-    : file_name_(file_name),
-      dir_name_(dir_name),
-      path_(path),
-      size_(0),
-      block_id_(0),
-      file_(NULL) {}
+FileReceiver::FileReceiver(const std::string& file_name, const std::string& dir_name, const std::string& path)
+    : file_name_(file_name), dir_name_(dir_name), path_(path), size_(0), block_id_(0), file_(NULL) {}
 
 FileReceiver::~FileReceiver() {
     if (file_) fclose(file_);
@@ -45,7 +38,7 @@ bool FileReceiver::Init() {
     if (path_.back() != '/') {
         path_.append("/");
     }
-    if (!::fedb::base::MkdirRecur(path_)) {
+    if (!::openmldb::base::MkdirRecur(path_)) {
         PDLOG(WARNING, "mkdir failed! path[%s]", path_.c_str());
         return false;
     }
@@ -79,8 +72,7 @@ int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
     size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
 #endif
     if (r < data.size()) {
-        PDLOG(WARNING, "write error. name %s%s", path_.c_str(),
-              file_name_.c_str());
+        PDLOG(WARNING, "write error. name %s%s", path_.c_str(), file_name_.c_str());
         return -1;
     }
     size_ += r;
@@ -91,8 +83,8 @@ int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
 void FileReceiver::SaveFile() {
     std::string full_path = path_ + file_name_;
     std::string tmp_file_path = full_path + ".tmp";
-    if (::fedb::base::IsExists(full_path)) {
-        std::string backup_file = full_path + "." + ::fedb::base::GetNowTime();
+    if (::openmldb::base::IsExists(full_path)) {
+        std::string backup_file = full_path + "." + ::openmldb::base::GetNowTime();
         rename(full_path.c_str(), backup_file.c_str());
     }
     rename(tmp_file_path.c_str(), full_path.c_str());
@@ -100,4 +92,4 @@ void FileReceiver::SaveFile() {
 }
 
 }  // namespace tablet
-}  // namespace fedb
+}  // namespace openmldb

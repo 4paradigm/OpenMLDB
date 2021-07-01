@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CATALOG_CLIENT_MANAGER_H_
 #define SRC_CATALOG_CLIENT_MANAGER_H_
 
 #include <map>
-#include <set>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -33,14 +32,14 @@
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 
-namespace fedb {
+namespace openmldb {
 namespace catalog {
 
-using TablePartitions = ::google::protobuf::RepeatedPtrField<::fedb::nameserver::TablePartition>;
+using TablePartitions = ::google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>;
 
 class TabletRowHandler : public ::hybridse::vm::RowHandler {
  public:
-    TabletRowHandler(const std::string& db, fedb::RpcCallback<fedb::api::QueryResponse>* callback);
+    TabletRowHandler(const std::string& db, openmldb::RpcCallback<openmldb::api::QueryResponse>* callback);
     ~TabletRowHandler();
     explicit TabletRowHandler(::hybridse::base::Status status);
     const ::hybridse::vm::Schema* GetSchema() override { return nullptr; }
@@ -55,11 +54,11 @@ class TabletRowHandler : public ::hybridse::vm::RowHandler {
     std::string name_;
     ::hybridse::base::Status status_;
     ::hybridse::codec::Row row_;
-    fedb::RpcCallback<fedb::api::QueryResponse>* callback_;
+    openmldb::RpcCallback<openmldb::api::QueryResponse>* callback_;
 };
 class AsyncTableHandler : public ::hybridse::vm::MemTableHandler {
  public:
-    explicit AsyncTableHandler(fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback,
+    explicit AsyncTableHandler(openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback,
                                const bool is_common);
     ~AsyncTableHandler() {
         if (nullptr != callback_) {
@@ -89,7 +88,7 @@ class AsyncTableHandler : public ::hybridse::vm::MemTableHandler {
  private:
     void SyncRpcResponse();
     hybridse::base::Status status_;
-    fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback_;
+    openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback_;
     bool request_is_common_;
 };
 class AsyncTablesHandler : public ::hybridse::vm::MemTableHandler {
@@ -133,15 +132,15 @@ class TabletAccessor : public ::hybridse::vm::Tablet {
  public:
     explicit TabletAccessor(const std::string& name) : name_(name), tablet_client_() {}
 
-    TabletAccessor(const std::string& name, const std::shared_ptr<::fedb::client::TabletClient>& client)
+    TabletAccessor(const std::string& name, const std::shared_ptr<::openmldb::client::TabletClient>& client)
         : name_(name), tablet_client_(client) {}
 
-    std::shared_ptr<::fedb::client::TabletClient> GetClient() {
+    std::shared_ptr<::openmldb::client::TabletClient> GetClient() {
         return std::atomic_load_explicit(&tablet_client_, std::memory_order_relaxed);
     }
 
     bool UpdateClient(const std::string& endpoint) {
-        auto client = std::make_shared<::fedb::client::TabletClient>(name_, endpoint);
+        auto client = std::make_shared<::openmldb::client::TabletClient>(name_, endpoint);
         if (client->Init() != 0) {
             return false;
         }
@@ -149,7 +148,7 @@ class TabletAccessor : public ::hybridse::vm::Tablet {
         return true;
     }
 
-    bool UpdateClient(const std::shared_ptr<::fedb::client::TabletClient>& client) {
+    bool UpdateClient(const std::shared_ptr<::openmldb::client::TabletClient>& client) {
         std::atomic_store_explicit(&tablet_client_, client, std::memory_order_relaxed);
         return true;
     }
@@ -168,7 +167,7 @@ class TabletAccessor : public ::hybridse::vm::Tablet {
 
  private:
     std::string name_;
-    std::shared_ptr<::fedb::client::TabletClient> tablet_client_;
+    std::shared_ptr<::openmldb::client::TabletClient> tablet_client_;
 };
 class TabletsAccessor : public ::hybridse::vm::Tablet {
  public:
@@ -223,7 +222,7 @@ class PartitionClientManager {
     uint32_t pid_;
     std::shared_ptr<TabletAccessor> leader_;
     std::vector<std::shared_ptr<TabletAccessor>> followers_;
-    ::fedb::base::Random rand_;
+    ::openmldb::base::Random rand_;
 };
 
 class ClientManager;
@@ -232,7 +231,7 @@ class TableClientManager {
  public:
     TableClientManager(const TablePartitions& partitions, const ClientManager& client_manager);
 
-    TableClientManager(const ::fedb::storage::TableSt& table_st, const ClientManager& client_manager);
+    TableClientManager(const ::openmldb::storage::TableSt& table_st, const ClientManager& client_manager);
 
     void Show() const {
         DLOG(INFO) << "show client manager ";
@@ -256,7 +255,7 @@ class TableClientManager {
         return std::shared_ptr<PartitionClientManager>();
     }
 
-    bool UpdatePartitionClientManager(const ::fedb::storage::PartitionSt& partition,
+    bool UpdatePartitionClientManager(const ::openmldb::storage::PartitionSt& partition,
                                       const ClientManager& client_manager);
 
     std::shared_ptr<TabletAccessor> GetTablet(uint32_t pid) const {
@@ -297,15 +296,15 @@ class ClientManager {
 
     bool UpdateClient(const std::map<std::string, std::string>& real_ep_map);
 
-    bool UpdateClient(const std::map<std::string, std::shared_ptr<::fedb::client::TabletClient>>& tablet_clients);
+    bool UpdateClient(const std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>>& tablet_clients);
 
  private:
     std::unordered_map<std::string, std::string> real_endpoint_map_;
     std::unordered_map<std::string, std::shared_ptr<TabletAccessor>> clients_;
-    mutable ::fedb::base::SpinMutex mu_;
-    mutable ::fedb::base::Random rand_;
+    mutable ::openmldb::base::SpinMutex mu_;
+    mutable ::openmldb::base::Random rand_;
 };
 
 }  // namespace catalog
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_CATALOG_CLIENT_MANAGER_H_

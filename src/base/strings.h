@@ -14,27 +14,25 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_STRINGS_H_
 #define SRC_BASE_STRINGS_H_
 
 #include <sys/time.h>
 #include <time.h>
+
 #include <iostream>
 #include <string>
 #include <vector>
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
-static const char LABELS[10] = {'0', '1', '2', '3', '4',
-                                '5', '6', '7', '8', '9'};
+static const char LABELS[10] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 static const uint32_t TIME_OFFSET[] = {1000, 60, 60, 24};
 static const char* TIME_LABEL[] = {"ms", "s", "m", "h", "d"};
 
-static inline void SplitString(const std::string& full,
-                               const std::string& delim,
-                               std::vector<std::string>& result) { // NOLINT
+static inline void SplitString(const std::string& full, const std::string& delim,
+                               std::vector<std::string>& result) {  // NOLINT
     result.clear();
     if (full.empty()) {
         return;
@@ -133,8 +131,7 @@ static inline std::string NumToString(double num) {
 
 static inline std::string HumanReadableString(int64_t num) {
     static const int max_shift = 6;
-    static const char* const prefix[max_shift + 1] = {"",   " K", " M", " G",
-                                                      " T", " P", " E"};
+    static const char* const prefix[max_shift + 1] = {"", " K", " M", " G", " T", " P", " E"};
     int shift = 0;
     double v = num;
     while ((num >>= 10) > 0 && shift < max_shift) {
@@ -164,7 +161,7 @@ static inline bool IsNumber(const std::string& str) {
 
 static inline std::string GetNowTime() {
     time_t rawtime = time(0);
-    tm* timeinfo = localtime(&rawtime); // NOLINT
+    tm* timeinfo = localtime(&rawtime);  // NOLINT
     char buf[20];
     strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
     return std::string(buf);
@@ -179,13 +176,12 @@ static inline int GetNowHour() {
     return t.tm_hour;
 }
 
-static inline int64_t ParseTimeToSecond(const std::string& time_str,
-                                        const std::string& format_time) {
+static inline int64_t ParseTimeToSecond(const std::string& time_str, const std::string& format_time) {
     struct tm timeinfo;
     strptime(time_str.c_str(), format_time.c_str(), &timeinfo);
     return mktime(&timeinfo);
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_BASE_STRINGS_H_
