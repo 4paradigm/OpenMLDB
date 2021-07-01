@@ -28,11 +28,19 @@ jobs:
           server-id: ossrh
           server-username: MAVEN_USERNAME
           server-password: MAVEN_TOKEN
+          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
+
+      - name: Import GPG key
+        if: ${{ github.event_name == 'push' }}
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v3
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Build Core
         run: |
           ./tools/hybridse_build.sh
-          
+
       - name: Core Test
         run: |
           ./tools/hybridse_core_test.sh
@@ -65,8 +73,15 @@ jobs:
           path: build/src/sdk/libhybridse*.so
           name: lib-artifacts
 
+      - name: Prepare Maven Release Deploy
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=$(echo $VERSION | sed -e 's/^v//')
+          ./java/prepare_release.sh $VERSION
+
       - name: Publish Java Library
-        if: ${{ github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name == 'push' }}
         working-directory: java
         run: |
           mvn --batch-mode deploy
@@ -74,6 +89,7 @@ jobs:
           MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Create Archive
         if: ${{ github.event_name == 'push' }}
@@ -111,6 +127,15 @@ jobs:
           server-id: ossrh
           server-username: MAVEN_USERNAME
           server-password: MAVEN_TOKEN
+          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
+
+      - name: Import GPG key
+        if: ${{ github.event_name == 'push' }}
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v3
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          # passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Install thirdparty
         run: |
@@ -155,15 +180,24 @@ jobs:
           path: build/src/sdk/libhybridse*.dylib
           name: lib-artifacts
 
+      - name: Prepare Maven Release Deploy
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=$(echo $VERSION | sed -e 's/^v//')
+          ./java/prepare_release.sh $VERSION
+
       - name: Publish Java Library
-        if: ${{ github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name == 'push' }}
         working-directory: java
         run: |
-          mvn --batch-mode -pl hybridse-native -P macos deploy
-          mvn --batch-mode -pl hybridse-sdk -P macos deploy
+          mvn --batch-mode -P macos clean install
+          mvn --batch-mode -P macos -pl hybridse-native deploy
+          mvn --batch-mode -P macos -pl hybridse-sdk deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Create Archive
         if: ${{ github.event_name == 'push' }}
@@ -189,7 +223,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.3.0
     needs: ["macos-build"]
     if: >
-      success() && github.ref == 'refs/heads/main'
+      success() && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v2
         with:
@@ -207,6 +241,14 @@ jobs:
           server-id: ossrh
           server-username: MAVEN_USERNAME
           server-password: MAVEN_TOKEN
+          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
+
+      - name: Import GPG key
+        if: ${{ github.event_name == 'push' }}
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v3
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Build Core
         run: |
@@ -216,15 +258,24 @@ jobs:
         run: |
           cp libhybridse_*.dylib java/hybridse-native/src/main/resources/
 
+      - name: Prepare Maven Release Deploy
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=$(echo $VERSION | sed -e 's/^v//')
+          ./java/prepare_release.sh $VERSION
+
       - name: Publish Java Library
         working-directory: java
         run: |
+          mvn --batch-mode -P allinone clean install
           mvn --batch-mode -P allinone -pl hybridse-native deploy
           mvn --batch-mode -P allinone -pl hybridse-sdk deploy
         env:
           MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
   release:
     runs-on: ubuntu-latest
