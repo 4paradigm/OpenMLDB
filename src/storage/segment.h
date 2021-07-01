@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_STORAGE_SEGMENT_H_
 #define SRC_STORAGE_SEGMENT_H_
 
@@ -23,6 +22,7 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <vector>
+
 #include "base/skiplist.h"
 #include "base/slice.h"
 #include "proto/tablet.pb.h"
@@ -30,13 +30,12 @@
 #include "storage/schema.h"
 #include "storage/ticket.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
-typedef google::protobuf::RepeatedPtrField<::fedb::api::TSDimension>
-    TSDimensions;
+typedef google::protobuf::RepeatedPtrField<::openmldb::api::TSDimension> TSDimensions;
 
-using ::fedb::base::Slice;
+using ::openmldb::base::Slice;
 
 class Segment;
 class Ticket;
@@ -47,8 +46,7 @@ struct DataBlock {
     uint32_t size;
     char* data;
 
-    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len)
-        : dim_cnt_down(dim_cnt), size(len), data(NULL) {
+    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len) : dim_cnt_down(dim_cnt), size(len), data(NULL) {
         data = new char[len];
         memcpy(data, input, len);
     }
@@ -72,8 +70,7 @@ struct TimeComparator {
 };
 
 static const TimeComparator tcmp;
-typedef ::fedb::base::Skiplist<uint64_t, DataBlock*, TimeComparator>
-    TimeEntries;
+typedef ::openmldb::base::Skiplist<uint64_t, DataBlock*, TimeComparator> TimeEntries;
 
 class MemTableIterator : public TableIterator {
  public:
@@ -82,7 +79,7 @@ class MemTableIterator : public TableIterator {
     void Seek(const uint64_t time) override;
     bool Valid() override;
     void Next() override;
-    fedb::base::Slice GetValue() const override;
+    openmldb::base::Slice GetValue() const override;
     uint64_t GetKey() const override;
     void SeekToFirst() override;
     void SeekToLast() override;
@@ -94,8 +91,7 @@ class MemTableIterator : public TableIterator {
 class KeyEntry {
  public:
     KeyEntry() : entries(12, 4, tcmp), refs_(0), count_(0) {}
-    explicit KeyEntry(uint8_t height)
-        : entries(height, 4, tcmp), refs_(0), count_(0) {}
+    explicit KeyEntry(uint8_t height) : entries(height, 4, tcmp), refs_(0), count_(0) {}
     ~KeyEntry() {}
 
     // just return the count of datablock
@@ -133,17 +129,11 @@ class KeyEntry {
 };
 
 struct SliceComparator {
-    int operator()(const ::fedb::base::Slice& a,
-                   const ::fedb::base::Slice& b) const {
-        return a.compare(b);
-    }
+    int operator()(const ::openmldb::base::Slice& a, const ::openmldb::base::Slice& b) const { return a.compare(b); }
 };
 
-typedef ::fedb::base::Skiplist<::fedb::base::Slice, void*, SliceComparator>
-    KeyEntries;
-typedef ::fedb::base::Skiplist<uint64_t, ::fedb::base::Node<Slice, void*>*,
-                                TimeComparator>
-    KeyEntryNodeList;
+typedef ::openmldb::base::Skiplist<::openmldb::base::Slice, void*, SliceComparator> KeyEntries;
+typedef ::openmldb::base::Skiplist<uint64_t, ::openmldb::base::Node<Slice, void*>*, TimeComparator> KeyEntryNodeList;
 
 class Segment {
  public:
@@ -157,8 +147,7 @@ class Segment {
 
     void Put(const Slice& key, uint64_t time, DataBlock* row);
 
-    void Put(const Slice& key, const TSDimensions& ts_dimension,
-             DataBlock* row);
+    void Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock* row);
 
     // Get time data
     bool Get(const Slice& key, uint64_t time, DataBlock** block);
@@ -169,27 +158,29 @@ class Segment {
 
     uint64_t Release();
 
-    void ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, // NOLINT
-                   uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size); // NOLINT
-    void ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt, // NOLINT
-            uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size); // NOLINT
+    void ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt,                          // NOLINT
+                   uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);            // NOLINT
+    void ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt,  // NOLINT
+                   uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);            // NOLINT
 
     void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt,  // NOLINT
                 uint64_t& gc_record_cnt,                    // NOLINT
                 uint64_t& gc_record_byte_size);             // NOLINT
-    void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt,       // NOLINT
-                 uint64_t& gc_record_cnt,                       // NOLINT
-                 uint64_t& gc_record_byte_size);                // NOLINT
+    void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt,   // NOLINT
+                 uint64_t& gc_record_cnt,                   // NOLINT
+                 uint64_t& gc_record_byte_size);            // NOLINT
     void Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt,
-                       uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
-                       uint64_t& gc_record_byte_size);                 // NOLINT
+                       uint64_t& gc_idx_cnt,            // NOLINT
+                       uint64_t& gc_record_cnt,         // NOLINT
+                       uint64_t& gc_record_byte_size);  // NOLINT
     void Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt,
-                      uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
-                      uint64_t& gc_record_byte_size);                 // NOLINT
-    void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map,
-                   uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
-                   uint64_t& gc_record_byte_size);                 // NOLINT
-    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);  // NOLINT
+                      uint64_t& gc_idx_cnt,                                            // NOLINT
+                      uint64_t& gc_record_cnt,                                         // NOLINT
+                      uint64_t& gc_record_byte_size);                                  // NOLINT
+    void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt,  // NOLINT
+                   uint64_t& gc_record_cnt,                                            // NOLINT
+                   uint64_t& gc_record_byte_size);                                     // NOLINT
+    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);                   // NOLINT
     MemTableIterator* NewIterator(const Slice& key, uint32_t idx,
                                   Ticket& ticket);  // NOLINT
 
@@ -219,13 +210,9 @@ class Segment {
         return 0;
     }
 
-    inline uint64_t GetIdxByteSize() {
-        return idx_byte_size_.load(std::memory_order_relaxed);
-    }
+    inline uint64_t GetIdxByteSize() { return idx_byte_size_.load(std::memory_order_relaxed); }
 
-    inline uint64_t GetPkCnt() {
-        return pk_cnt_.load(std::memory_order_relaxed);
-    }
+    inline uint64_t GetPkCnt() { return pk_cnt_.load(std::memory_order_relaxed); }
 
     void GcFreeList(uint64_t& entry_gc_idx_cnt,      // NOLINT
                     uint64_t& gc_record_cnt,         // NOLINT
@@ -236,27 +223,24 @@ class Segment {
     int GetCount(const Slice& key, uint64_t& count);                // NOLINT
     int GetCount(const Slice& key, uint32_t idx, uint64_t& count);  // NOLINT
 
-    void IncrGcVersion() {
-        gc_version_.fetch_add(1, std::memory_order_relaxed);
-    }
+    void IncrGcVersion() { gc_version_.fetch_add(1, std::memory_order_relaxed); }
 
     void ReleaseAndCount(uint64_t& gc_idx_cnt,            // NOLINT
                          uint64_t& gc_record_cnt,         // NOLINT
                          uint64_t& gc_record_byte_size);  // NOLINT
 
  private:
-    void FreeList(::fedb::base::Node<uint64_t, DataBlock*>* node,
-                  uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
-                  uint64_t& gc_record_byte_size);                 // NOLINT
-    void SplitList(KeyEntry* entry, uint64_t ts,
-                   ::fedb::base::Node<uint64_t, DataBlock*>** node);
+    void FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,
+                  uint64_t& gc_record_cnt,         // NOLINT
+                  uint64_t& gc_record_byte_size);  // NOLINT
+    void SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node);
 
     void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,  // NOLINT
                          uint64_t& gc_record_cnt,                 // NOLINT
                          uint64_t& gc_record_byte_size);          // NOLINT
-    void FreeEntry(::fedb::base::Node<Slice, void*>* entry_node,
-                   uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,  // NOLINT
-                   uint64_t& gc_record_byte_size);                 // NOLINT
+    void FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64_t& gc_idx_cnt,
+                   uint64_t& gc_record_cnt,         // NOLINT
+                   uint64_t& gc_record_byte_size);  // NOLINT
 
  private:
     KeyEntries* entries_;
@@ -276,5 +260,5 @@ class Segment {
 };
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_STORAGE_SEGMENT_H_

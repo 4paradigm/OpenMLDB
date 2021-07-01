@@ -14,25 +14,24 @@
  * limitations under the License.
  */
 
-
 #include "codec/codec.h"
-#include <array>
+
 #include <algorithm>
+#include <array>
 #include <unordered_set>
 
 #include "base/glog_wapper.h"
 #include "boost/lexical_cast.hpp"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
 
-static const std::unordered_set<::fedb::type::DataType> TYPE_SET(
-    {::fedb::type::kBool, ::fedb::type::kSmallInt, ::fedb::type::kInt,
-     ::fedb::type::kBigInt, ::fedb::type::kFloat, ::fedb::type::kDouble,
-     ::fedb::type::kDate, ::fedb::type::kTimestamp, ::fedb::type::kVarchar,
-     ::fedb::type::kString});
+static const std::unordered_set<::openmldb::type::DataType> TYPE_SET(
+    {::openmldb::type::kBool, ::openmldb::type::kSmallInt, ::openmldb::type::kInt, ::openmldb::type::kBigInt,
+     ::openmldb::type::kFloat, ::openmldb::type::kDouble, ::openmldb::type::kDate, ::openmldb::type::kTimestamp,
+     ::openmldb::type::kVarchar, ::openmldb::type::kString});
 
 static constexpr std::array<uint32_t, 9> TYPE_SIZE_ARRAY = {
     0,
@@ -70,10 +69,9 @@ RowBuilder::RowBuilder(const Schema& schema)
       schema_version_(1) {
     str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema.size());
     for (int idx = 0; idx < schema.size(); idx++) {
-        const ::fedb::common::ColumnDesc& column = schema.Get(idx);
-        fedb::type::DataType cur_type = column.data_type();
-        if (cur_type == ::fedb::type::kVarchar ||
-            cur_type == ::fedb::type::kString) {
+        const ::openmldb::common::ColumnDesc& column = schema.Get(idx);
+        openmldb::type::DataType cur_type = column.data_type();
+        if (cur_type == ::openmldb::type::kVarchar || cur_type == ::openmldb::type::kString) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
@@ -87,17 +85,12 @@ RowBuilder::RowBuilder(const Schema& schema)
     }
 }
 
-void RowBuilder::SetSchemaVersion(uint8_t version) {
-    schema_version_ = version;
-}
+void RowBuilder::SetSchemaVersion(uint8_t version) { schema_version_ = version; }
 
-bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
-    return SetBuffer(buf, size, true);
-}
+bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) { return SetBuffer(buf, size, true); }
 
 bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size, bool need_clear) {
-    if (buf == NULL || size == 0 ||
-        size < str_field_start_offset_ + str_field_cnt_) {
+    if (buf == NULL || size == 0 || size < str_field_start_offset_ + str_field_cnt_) {
         return false;
     }
     buf_ = buf;
@@ -133,11 +126,11 @@ uint32_t RowBuilder::CalTotalLength(uint32_t string_length) {
     return 0;
 }
 
-bool RowBuilder::Check(uint32_t index, ::fedb::type::DataType type) {
+bool RowBuilder::Check(uint32_t index, ::openmldb::type::DataType type) {
     if ((int32_t)index >= schema_.size()) {
         return false;
     }
-    const ::fedb::common::ColumnDesc& column = schema_.Get(index);
+    const ::openmldb::common::ColumnDesc& column = schema_.Get(index);
     if (column.data_type() != type) {
         return false;
     }
@@ -154,7 +147,7 @@ bool RowBuilder::AppendDate(int32_t date) {
 }
 
 bool RowBuilder::SetDate(uint32_t index, int32_t date) {
-    if (!Check(index, ::fedb::type::kDate)) return false;
+    if (!Check(index, ::openmldb::type::kDate)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int32_t*>(ptr)) = date;
@@ -167,12 +160,11 @@ bool RowBuilder::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
     return true;
 }
 
-bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month,
-                         uint32_t day) {
+bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t day) {
     if (year < 1900 || year > 9999) return false;
     if (month < 1 || month > 12) return false;
     if (day < 1 || day > 31) return false;
-    if (!Check(index, ::fedb::type::kDate)) return false;
+    if (!Check(index, ::openmldb::type::kDate)) return false;
     int8_t* ptr = buf_ + offset_vec_[index];
     int32_t data = (year - 1900) << 16;
     data = data | ((month - 1) << 8);
@@ -194,12 +186,11 @@ bool RowBuilder::AppendNULL() {
 }
 
 bool RowBuilder::SetNULL(uint32_t index) {
-    const ::fedb::common::ColumnDesc& column = schema_.Get(index);
+    const ::openmldb::common::ColumnDesc& column = schema_.Get(index);
     if (column.not_null()) return false;
     int8_t* ptr = buf_ + HEADER_LENGTH + (index >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (index & 0x07);
-    if (column.data_type() == ::fedb::type::kVarchar ||
-        column.data_type() == fedb::type::kString) {
+    if (column.data_type() == ::openmldb::type::kVarchar || column.data_type() == openmldb::type::kString) {
         uint32_t str_pos = offset_vec_[index];
         SetStrOffset(str_pos + 1);
     }
@@ -231,7 +222,7 @@ bool RowBuilder::AppendBool(bool val) {
 }
 
 bool RowBuilder::SetBool(uint32_t index, bool val) {
-    if (!Check(index, ::fedb::type::kBool)) return false;
+    if (!Check(index, ::openmldb::type::kBool)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<uint8_t*>(ptr)) = val ? 1 : 0;
@@ -245,7 +236,7 @@ bool RowBuilder::AppendInt32(int32_t val) {
 }
 
 bool RowBuilder::SetInt32(uint32_t index, int32_t val) {
-    if (!Check(index, ::fedb::type::kInt)) return false;
+    if (!Check(index, ::openmldb::type::kInt)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int32_t*>(ptr)) = val;
@@ -259,7 +250,7 @@ bool RowBuilder::AppendInt16(int16_t val) {
 }
 
 bool RowBuilder::SetInt16(uint32_t index, int16_t val) {
-    if (!Check(index, ::fedb::type::kSmallInt)) return false;
+    if (!Check(index, ::openmldb::type::kSmallInt)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int16_t*>(ptr)) = val;
@@ -273,7 +264,7 @@ bool RowBuilder::AppendTimestamp(int64_t val) {
 }
 
 bool RowBuilder::SetTimestamp(uint32_t index, int64_t val) {
-    if (!Check(index, ::fedb::type::kTimestamp)) return false;
+    if (!Check(index, ::openmldb::type::kTimestamp)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
@@ -287,7 +278,7 @@ bool RowBuilder::AppendInt64(int64_t val) {
 }
 
 bool RowBuilder::SetInt64(uint32_t index, int64_t val) {
-    if (!Check(index, ::fedb::type::kBigInt)) return false;
+    if (!Check(index, ::openmldb::type::kBigInt)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
@@ -301,7 +292,7 @@ bool RowBuilder::AppendFloat(float val) {
 }
 
 bool RowBuilder::SetFloat(uint32_t index, float val) {
-    if (!Check(index, ::fedb::type::kFloat)) return false;
+    if (!Check(index, ::openmldb::type::kFloat)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<float*>(ptr)) = val;
@@ -315,7 +306,7 @@ bool RowBuilder::AppendDouble(double val) {
 }
 
 bool RowBuilder::SetDouble(uint32_t index, double val) {
-    if (!Check(index, ::fedb::type::kDouble)) return false;
+    if (!Check(index, ::openmldb::type::kDouble)) return false;
     SetField(index);
     int8_t* ptr = buf_ + offset_vec_[index];
     *(reinterpret_cast<double*>(ptr)) = val;
@@ -329,8 +320,7 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
 }
 
 bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
-    if (val == NULL || (!Check(index, ::fedb::type::kVarchar) &&
-                        !Check(index, fedb::type::kString))) {
+    if (val == NULL || (!Check(index, ::openmldb::type::kVarchar) && !Check(index, openmldb::type::kString))) {
         return false;
     }
     if (str_offset_ + length > size_) return false;
@@ -349,17 +339,16 @@ bool RowBuilder::SetString(uint32_t index, const char* val, uint32_t length) {
 
 bool RowBuilder::AppendValue(const std::string& val) {
     bool ok = false;
-    const ::fedb::common::ColumnDesc& col = schema_.Get(cnt_);
+    const ::openmldb::common::ColumnDesc& col = schema_.Get(cnt_);
     try {
         switch (col.data_type()) {
-            case fedb::type::kString:
-            case fedb::type::kVarchar:
+            case openmldb::type::kString:
+            case openmldb::type::kVarchar:
                 ok = AppendString(val.c_str(), val.length());
                 break;
-            case fedb::type::kBool: {
+            case openmldb::type::kBool: {
                 std::string b_val = val;
-                std::transform(b_val.begin(), b_val.end(), b_val.begin(),
-                               ::tolower);
+                std::transform(b_val.begin(), b_val.end(), b_val.begin(), ::tolower);
                 if (b_val == "true") {
                     ok = AppendBool(true);
                 } else if (b_val == "false") {
@@ -369,27 +358,27 @@ bool RowBuilder::AppendValue(const std::string& val) {
                 }
                 break;
             }
-            case fedb::type::kSmallInt:
+            case openmldb::type::kSmallInt:
                 ok = AppendInt16(boost::lexical_cast<int16_t>(val));
                 break;
-            case fedb::type::kInt:
+            case openmldb::type::kInt:
                 ok = AppendInt32(boost::lexical_cast<int32_t>(val));
                 break;
-            case fedb::type::kBigInt:
+            case openmldb::type::kBigInt:
                 ok = AppendInt64(boost::lexical_cast<int64_t>(val));
                 break;
-            case fedb::type::kTimestamp:
+            case openmldb::type::kTimestamp:
                 ok = AppendTimestamp(boost::lexical_cast<int64_t>(val));
                 break;
-            case fedb::type::kFloat:
+            case openmldb::type::kFloat:
                 ok = AppendFloat(boost::lexical_cast<float>(val));
                 break;
-            case fedb::type::kDouble:
+            case openmldb::type::kDouble:
                 ok = AppendDouble(boost::lexical_cast<double>(val));
                 break;
-            case fedb::type::kDate: {
+            case openmldb::type::kDate: {
                 std::vector<std::string> parts;
-                ::fedb::base::SplitString(val, "-", parts);
+                ::openmldb::base::SplitString(val, "-", parts);
                 if (parts.size() != 3) {
                     ok = false;
                     break;
@@ -442,10 +431,9 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
 bool RowView::Init() {
     uint32_t offset = HEADER_LENGTH + BitMapSize(schema_.size());
     for (int idx = 0; idx < schema_.size(); idx++) {
-        const ::fedb::common::ColumnDesc& column = schema_.Get(idx);
-        fedb::type::DataType cur_type = column.data_type();
-        if (cur_type == ::fedb::type::kVarchar ||
-            cur_type == ::fedb::type::kString) {
+        const ::openmldb::common::ColumnDesc& column = schema_.Get(idx);
+        openmldb::type::DataType cur_type = column.data_type();
+        if (cur_type == ::openmldb::type::kVarchar || cur_type == ::openmldb::type::kString) {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
@@ -489,14 +477,14 @@ bool RowView::Reset(const int8_t* row) {
     return true;
 }
 
-bool RowView::CheckValid(uint32_t idx, ::fedb::type::DataType type) {
+bool RowView::CheckValid(uint32_t idx, ::openmldb::type::DataType type) {
     if (row_ == NULL || !is_valid_) {
         return false;
     }
     if ((int32_t)idx >= schema_.size()) {
         return false;
     }
-    const ::fedb::common::ColumnDesc& column = schema_.Get(idx);
+    const ::openmldb::common::ColumnDesc& column = schema_.Get(idx);
     if (column.data_type() != type) {
         return false;
     }
@@ -507,7 +495,7 @@ int32_t RowView::GetBool(uint32_t idx, bool* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::fedb::type::kBool)) {
+    if (!CheckValid(idx, ::openmldb::type::kBool)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -523,12 +511,11 @@ int32_t RowView::GetBool(uint32_t idx, bool* val) {
     return 0;
 }
 
-int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
-                         uint32_t* day) {
+int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month, uint32_t* day) {
     if (year == NULL || month == NULL || day == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::fedb::type::kDate)) {
+    if (!CheckValid(idx, ::openmldb::type::kDate)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -547,7 +534,7 @@ int32_t RowView::GetDate(uint32_t idx, int32_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::fedb::type::kDate)) {
+    if (!CheckValid(idx, ::openmldb::type::kDate)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -562,7 +549,7 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::fedb::type::kInt)) {
+    if (!CheckValid(idx, ::openmldb::type::kInt)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -577,7 +564,7 @@ int32_t RowView::GetTimestamp(uint32_t idx, int64_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::fedb::type::kTimestamp)) {
+    if (!CheckValid(idx, ::openmldb::type::kTimestamp)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -592,7 +579,7 @@ int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::fedb::type::kBigInt)) {
+    if (!CheckValid(idx, ::openmldb::type::kBigInt)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -607,7 +594,7 @@ int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::fedb::type::kSmallInt)) {
+    if (!CheckValid(idx, ::openmldb::type::kSmallInt)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -622,7 +609,7 @@ int32_t RowView::GetFloat(uint32_t idx, float* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::fedb::type::kFloat)) {
+    if (!CheckValid(idx, ::openmldb::type::kFloat)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -637,7 +624,7 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::fedb::type::kDouble)) {
+    if (!CheckValid(idx, ::openmldb::type::kDouble)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -648,24 +635,23 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
     return 0;
 }
 
-int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
-                            ::fedb::type::DataType type, int64_t* val) {
+int32_t RowView::GetInteger(const int8_t* row, uint32_t idx, ::openmldb::type::DataType type, int64_t* val) {
     int32_t ret = 0;
     switch (type) {
-        case ::fedb::type::kSmallInt: {
+        case ::openmldb::type::kSmallInt: {
             int16_t tmp_val = 0;
             ret = GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
             break;
         }
-        case ::fedb::type::kInt: {
+        case ::openmldb::type::kInt: {
             int32_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
             break;
         }
-        case ::fedb::type::kTimestamp:
-        case ::fedb::type::kBigInt: {
+        case ::openmldb::type::kTimestamp:
+        case ::openmldb::type::kBigInt: {
             int64_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
@@ -677,15 +663,14 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
     return ret;
 }
 
-int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
-                          ::fedb::type::DataType type, void* val) {
+int32_t RowView::GetValue(const int8_t* row, uint32_t idx, ::openmldb::type::DataType type, void* val) {
     if (schema_.size() == 0 || row == NULL) {
         return -1;
     }
     if ((int32_t)idx >= schema_.size()) {
         return -1;
     }
-    const ::fedb::common::ColumnDesc& column = schema_.Get(idx);
+    const ::openmldb::common::ColumnDesc& column = schema_.Get(idx);
     if (column.data_type() != type) {
         return -1;
     }
@@ -697,7 +682,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
     }
     uint32_t offset = offset_vec_.at(idx);
     switch (type) {
-        case ::fedb::type::kBool: {
+        case ::openmldb::type::kBool: {
             int8_t v = v1::GetBoolField(row, offset);
             if (v == 1) {
                 *(reinterpret_cast<bool*>(val)) = true;
@@ -706,25 +691,24 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             }
             break;
         }
-        case ::fedb::type::kSmallInt:
+        case ::openmldb::type::kSmallInt:
             *(reinterpret_cast<int16_t*>(val)) = v1::GetInt16Field(row, offset);
             break;
-        case ::fedb::type::kInt:
+        case ::openmldb::type::kInt:
             *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32Field(row, offset);
             break;
-        case ::fedb::type::kTimestamp:
-        case ::fedb::type::kBigInt:
+        case ::openmldb::type::kTimestamp:
+        case ::openmldb::type::kBigInt:
             *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64Field(row, offset);
             break;
-        case ::fedb::type::kFloat:
+        case ::openmldb::type::kFloat:
             *(reinterpret_cast<float*>(val)) = v1::GetFloatField(row, offset);
             break;
-        case ::fedb::type::kDouble:
+        case ::openmldb::type::kDouble:
             *(reinterpret_cast<double*>(val)) = v1::GetDoubleField(row, offset);
             break;
-        case ::fedb::type::kDate:
-            *(reinterpret_cast<int32_t*>(val)) =
-                static_cast<int32_t>(v1::GetInt32Field(row, offset));
+        case ::openmldb::type::kDate:
+            *(reinterpret_cast<int32_t*>(val)) = static_cast<int32_t>(v1::GetInt32Field(row, offset));
             break;
         default:
             return -1;
@@ -732,17 +716,15 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
     return 0;
 }
 
-int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
-                          uint32_t* length) {
+int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val, uint32_t* length) {
     if (schema_.size() == 0 || row == NULL || length == NULL) {
         return -1;
     }
     if ((int32_t)idx >= schema_.size()) {
         return -1;
     }
-    const ::fedb::common::ColumnDesc& column = schema_.Get(idx);
-    if (column.data_type() != ::fedb::type::kVarchar &&
-        column.data_type() != ::fedb::type::kString) {
+    const ::openmldb::common::ColumnDesc& column = schema_.Get(idx);
+    if (column.data_type() != ::openmldb::type::kVarchar && column.data_type() != ::openmldb::type::kString) {
         return -1;
     }
     uint32_t size = GetSize(row);
@@ -757,8 +739,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
     if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
         next_str_field_offset = field_offset + 1;
     }
-    return v1::GetStrField(row, field_offset, next_str_field_offset,
-                           str_field_start_offset_, GetAddrLength(size),
+    return v1::GetStrField(row, field_offset, next_str_field_offset, str_field_start_offset_, GetAddrLength(size),
                            reinterpret_cast<int8_t**>(val), length);
 }
 
@@ -767,8 +748,7 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
         return -1;
     }
 
-    if (!CheckValid(idx, ::fedb::type::kVarchar) &&
-        !CheckValid(idx, fedb::type::kString)) {
+    if (!CheckValid(idx, ::openmldb::type::kVarchar) && !CheckValid(idx, openmldb::type::kString)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -779,24 +759,20 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
         next_str_field_offset = field_offset + 1;
     }
-    return v1::GetStrField(row_, field_offset, next_str_field_offset,
-                           str_field_start_offset_, str_addr_length_,
+    return v1::GetStrField(row_, field_offset, next_str_field_offset, str_field_start_offset_, str_addr_length_,
                            reinterpret_cast<int8_t**>(val), length);
 }
 
-int32_t RowView::GetStrValue(uint32_t idx, std::string* val) {
-    return GetStrValue(row_, idx, val);
-}
+int32_t RowView::GetStrValue(uint32_t idx, std::string* val) { return GetStrValue(row_, idx, val); }
 
-int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
-                             std::string* val) {
+int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx, std::string* val) {
     if (schema_.size() == 0 || row == NULL) {
         return -1;
     }
     if ((int32_t)idx >= schema_.size()) {
         return -1;
     }
-    const ::fedb::common::ColumnDesc& column = schema_.Get(idx);
+    const ::openmldb::common::ColumnDesc& column = schema_.Get(idx);
     if (GetSize(row) <= HEADER_LENGTH) {
         return -1;
     }
@@ -805,39 +781,39 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
         return 1;
     }
     switch (column.data_type()) {
-        case ::fedb::type::kBool: {
+        case ::openmldb::type::kBool: {
             bool value = false;
-            GetValue(row, idx, ::fedb::type::kBool, &value);
+            GetValue(row, idx, ::openmldb::type::kBool, &value);
             value == true ? val->assign("true") : val->assign("false");
             break;
         }
-        case ::fedb::type::kSmallInt:
-        case ::fedb::type::kInt:
-        case ::fedb::type::kTimestamp:
-        case ::fedb::type::kBigInt: {
+        case ::openmldb::type::kSmallInt:
+        case ::openmldb::type::kInt:
+        case ::openmldb::type::kTimestamp:
+        case ::openmldb::type::kBigInt: {
             int64_t value = 0;
             GetInteger(row, idx, column.data_type(), &value);
             val->assign(std::to_string(value));
             break;
         }
-        case ::fedb::type::kFloat: {
+        case ::openmldb::type::kFloat: {
             float value = 0.0;
-            GetValue(row, idx, ::fedb::type::kFloat, &value);
+            GetValue(row, idx, ::openmldb::type::kFloat, &value);
             val->assign(std::to_string(value));
             break;
         }
-        case ::fedb::type::kDouble: {
+        case ::openmldb::type::kDouble: {
             double value = 0.0;
-            GetValue(row, idx, ::fedb::type::kDouble, &value);
+            GetValue(row, idx, ::openmldb::type::kDouble, &value);
             val->assign(std::to_string(value));
             break;
         }
-        case ::fedb::type::kDate: {
+        case ::openmldb::type::kDate: {
             uint32_t year = 0;
             uint32_t month = 0;
             uint32_t day = 0;
             int32_t date = 0;
-            GetValue(row, idx, ::fedb::type::kDate, &date);
+            GetValue(row, idx, ::openmldb::type::kDate, &date);
             day = date & 0x0000000FF;
             date = date >> 8;
             month = 1 + (date & 0x0000FF);
@@ -847,8 +823,8 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
             val->assign(ss.str());
             break;
         }
-        case ::fedb::type::kVarchar:
-        case ::fedb::type::kString: {
+        case ::openmldb::type::kVarchar:
+        case ::openmldb::type::kString: {
             char* ch = NULL;
             uint32_t size = 0;
             GetValue(row, idx, &ch, &size);
@@ -865,8 +841,7 @@ int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx,
 }
 
 namespace v1 {
-int32_t GetStrField(const int8_t* row, uint32_t field_offset,
-                    uint32_t next_str_field_offset, uint32_t str_start_offset,
+int32_t GetStrField(const int8_t* row, uint32_t field_offset, uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size) {
     if (row == NULL || data == NULL || size == NULL) return -1;
     const int8_t* row_with_offset = row + str_start_offset;
@@ -874,48 +849,38 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
     uint32_t next_str_offset = 0;
     switch (addr_space) {
         case 1: {
-            str_offset =
-                (uint8_t)(*(row_with_offset + field_offset * addr_space));
+            str_offset = (uint8_t)(*(row_with_offset + field_offset * addr_space));
             if (next_str_field_offset > 0) {
-                next_str_offset = (uint8_t)(
-                    *(row_with_offset + next_str_field_offset * addr_space));
+                next_str_offset = (uint8_t)(*(row_with_offset + next_str_field_offset * addr_space));
             }
             break;
         }
         case 2: {
-            str_offset = *(reinterpret_cast<const uint16_t*>(
-                row_with_offset + field_offset * addr_space));
+            str_offset = *(reinterpret_cast<const uint16_t*>(row_with_offset + field_offset * addr_space));
             if (next_str_field_offset > 0) {
-                next_str_offset = *(reinterpret_cast<const uint16_t*>(
-                    row_with_offset + next_str_field_offset * addr_space));
+                next_str_offset =
+                    *(reinterpret_cast<const uint16_t*>(row_with_offset + next_str_field_offset * addr_space));
             }
             break;
         }
         case 3: {
-            const int8_t* cur_row_with_offset =
-                row_with_offset + field_offset * addr_space;
+            const int8_t* cur_row_with_offset = row_with_offset + field_offset * addr_space;
             str_offset = (uint8_t)(*cur_row_with_offset);
-            str_offset =
-                (str_offset << 8) + (uint8_t)(*(cur_row_with_offset + 1));
-            str_offset =
-                (str_offset << 8) + (uint8_t)(*(cur_row_with_offset + 2));
+            str_offset = (str_offset << 8) + (uint8_t)(*(cur_row_with_offset + 1));
+            str_offset = (str_offset << 8) + (uint8_t)(*(cur_row_with_offset + 2));
             if (next_str_field_offset > 0) {
-                const int8_t* next_row_with_offset =
-                    row_with_offset + next_str_field_offset * addr_space;
+                const int8_t* next_row_with_offset = row_with_offset + next_str_field_offset * addr_space;
                 next_str_offset = (uint8_t)(*(next_row_with_offset));
-                next_str_offset = (next_str_offset << 8) +
-                                  (uint8_t)(*(next_row_with_offset + 1));
-                next_str_offset = (next_str_offset << 8) +
-                                  (uint8_t)(*(next_row_with_offset + 2));
+                next_str_offset = (next_str_offset << 8) + (uint8_t)(*(next_row_with_offset + 1));
+                next_str_offset = (next_str_offset << 8) + (uint8_t)(*(next_row_with_offset + 2));
             }
             break;
         }
         case 4: {
-            str_offset = *(reinterpret_cast<const uint32_t*>(
-                row_with_offset + field_offset * addr_space));
+            str_offset = *(reinterpret_cast<const uint32_t*>(row_with_offset + field_offset * addr_space));
             if (next_str_field_offset > 0) {
-                next_str_offset = *(reinterpret_cast<const uint32_t*>(
-                    row_with_offset + next_str_field_offset * addr_space));
+                next_str_offset =
+                    *(reinterpret_cast<const uint32_t*>(row_with_offset + next_str_field_offset * addr_space));
             }
             break;
         }
@@ -926,8 +891,7 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
     const int8_t* ptr = row + str_offset;
     *data = (int8_t*)(ptr);  // NOLINT
     if (next_str_field_offset <= 0) {
-        uint32_t total_length =
-            *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
+        uint32_t total_length = *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
         *size = total_length - str_offset;
     } else {
         *size = next_str_offset - str_offset;
@@ -937,20 +901,17 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
 
 }  // namespace v1
 
-RowProject::RowProject(const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, const ProjectList& plist):
-      plist_(plist),
+RowProject::RowProject(const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, const ProjectList& plist)
+    : plist_(plist),
       output_schema_(),
       row_builder_(NULL),
       cur_rv_(nullptr),
       max_idx_(0),
       vers_views_(),
       vers_schema_(vers_schema),
-      cur_ver_(1) {
-}
+      cur_ver_(1) {}
 
-RowProject::~RowProject() {
-    delete row_builder_;
-}
+RowProject::~RowProject() { delete row_builder_; }
 
 bool RowProject::Init() {
     if (plist_.size() <= 0) {
@@ -971,25 +932,24 @@ bool RowProject::Init() {
         vers_views_.insert(std::make_pair(it.first, rv));
     }
     if (vers_views_.empty()) {
-        LOG(WARNING)  << "empty row views";
+        LOG(WARNING) << "empty row views";
         return false;
     }
     const auto it = vers_views_.begin();
-    cur_schema_ =  vers_schema_.find(it->first)->second;
+    cur_schema_ = vers_schema_.find(it->first)->second;
     cur_rv_ = it->second;
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
-        const ::fedb::common::ColumnDesc& column = cur_schema_->Get(idx);
+        const ::openmldb::common::ColumnDesc& column = cur_schema_->Get(idx);
         output_schema_.Add()->CopyFrom(column);
     }
     row_builder_ = new RowBuilder(output_schema_);
     return true;
 }
 
-bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
-                         int8_t** output_ptr, uint32_t* out_size) {
+bool RowProject::Project(const int8_t* row_ptr, uint32_t size, int8_t** output_ptr, uint32_t* out_size) {
     if (row_ptr == NULL || output_ptr == NULL || out_size == NULL) return false;
-    uint8_t version = fedb::codec::RowView::GetSchemaVersion(row_ptr);
+    uint8_t version = openmldb::codec::RowView::GetSchemaVersion(row_ptr);
     if (version != cur_ver_) {
         auto it = vers_views_.find(version);
         if (it == vers_views_.end()) {
@@ -997,17 +957,16 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
             return false;
         }
         cur_rv_ = it->second;
-        cur_ver_  = version;
-        cur_schema_ =  vers_schema_.find(version)->second;
+        cur_ver_ = version;
+        cur_schema_ = vers_schema_.find(version)->second;
     }
     bool ok = cur_rv_->Reset(row_ptr, size);
     if (!ok) return false;
     uint32_t str_size = 0;
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
-        const ::fedb::common::ColumnDesc& column = cur_schema_->Get(idx);
-        if (column.data_type() == ::fedb::type::kVarchar ||
-            column.data_type() == ::fedb::type::kString) {
+        const ::openmldb::common::ColumnDesc& column = cur_schema_->Get(idx);
+        if (column.data_type() == ::openmldb::type::kVarchar || column.data_type() == ::openmldb::type::kString) {
             if (cur_rv_->IsNULL(idx)) continue;
             uint32_t length = 0;
             char* content = nullptr;
@@ -1023,63 +982,63 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
     row_builder_->SetBuffer(reinterpret_cast<int8_t*>(ptr), total_size);
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
-        const ::fedb::common::ColumnDesc& column = cur_schema_->Get(idx);
+        const ::openmldb::common::ColumnDesc& column = cur_schema_->Get(idx);
         int32_t ret = 0;
         if (cur_rv_->IsNULL(idx)) {
             row_builder_->AppendNULL();
             continue;
         }
         switch (column.data_type()) {
-            case ::fedb::type::kBool: {
+            case ::openmldb::type::kBool: {
                 bool val = false;
                 ret = cur_rv_->GetBool(idx, &val);
                 if (ret == 0) row_builder_->AppendBool(val);
                 break;
             }
-            case ::fedb::type::kSmallInt: {
+            case ::openmldb::type::kSmallInt: {
                 int16_t val = 0;
                 ret = cur_rv_->GetInt16(idx, &val);
                 if (ret == 0) row_builder_->AppendInt16(val);
                 break;
             }
-            case ::fedb::type::kInt: {
+            case ::openmldb::type::kInt: {
                 int32_t val = 0;
                 ret = cur_rv_->GetInt32(idx, &val);
                 if (ret == 0) row_builder_->AppendInt32(val);
                 break;
             }
-            case ::fedb::type::kDate: {
+            case ::openmldb::type::kDate: {
                 int32_t val = 0;
                 ret = cur_rv_->GetDate(idx, &val);
                 if (ret == 0) row_builder_->AppendDate(val);
                 break;
             }
-            case ::fedb::type::kBigInt: {
+            case ::openmldb::type::kBigInt: {
                 int64_t val = 0;
                 ret = cur_rv_->GetInt64(idx, &val);
                 if (ret == 0) row_builder_->AppendInt64(val);
                 break;
             }
-            case ::fedb::type::kTimestamp: {
+            case ::openmldb::type::kTimestamp: {
                 int64_t val = 0;
                 ret = cur_rv_->GetTimestamp(idx, &val);
                 if (ret == 0) row_builder_->AppendTimestamp(val);
                 break;
             }
-            case ::fedb::type::kFloat: {
+            case ::openmldb::type::kFloat: {
                 float val = 0;
                 ret = cur_rv_->GetFloat(idx, &val);
                 if (ret == 0) row_builder_->AppendFloat(val);
                 break;
             }
-            case ::fedb::type::kDouble: {
+            case ::openmldb::type::kDouble: {
                 double val = 0;
                 ret = cur_rv_->GetDouble(idx, &val);
                 if (ret == 0) row_builder_->AppendDouble(val);
                 break;
             }
-            case ::fedb::type::kString:
-            case ::fedb::type::kVarchar: {
+            case ::openmldb::type::kString:
+            case ::openmldb::type::kVarchar: {
                 char* val = NULL;
                 uint32_t size = 0;
                 ret = cur_rv_->GetString(idx, &val, &size);
@@ -1092,8 +1051,7 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
         }
         if (ret != 0) {
             delete[] ptr;
-            PDLOG(WARNING, "fail to project column %s with idx %u",
-                  column.name().c_str(), idx);
+            PDLOG(WARNING, "fail to project column %s with idx %u", column.name().c_str(), idx);
             return false;
         }
     }
@@ -1103,4 +1061,4 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb

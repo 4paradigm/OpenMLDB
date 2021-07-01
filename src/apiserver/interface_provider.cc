@@ -27,7 +27,7 @@
 #include "boost/algorithm/string/split.hpp"
 #include "glog/logging.h"
 
-namespace fedb {
+namespace openmldb {
 namespace http {
 
 std::vector<std::unique_ptr<PathPart>> Url::parsePath(bool disableIds) const {
@@ -194,4 +194,4 @@ bool InterfaceProvider::handle(const std::string& path, const brpc::HttpMethod& 
     return true;
 }
 }  // namespace http
-}  // namespace fedb
+}  // namespace openmldb

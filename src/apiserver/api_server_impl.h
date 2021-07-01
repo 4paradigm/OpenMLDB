@@ -29,14 +29,14 @@
 #include "proto/http.pb.h"
 #include "sdk/sql_cluster_router.h"
 
-namespace fedb {
+namespace openmldb {
 namespace http {
 
 using butil::rapidjson::Document;
 using butil::rapidjson::StringBuffer;
 using butil::rapidjson::Writer;
 
-// APIServer is a service for brpc::Server. The entire implement is `StartAPIServer()` in src/cmd/fedb.cc
+// APIServer is a service for brpc::Server. The entire implement is `StartAPIServer()` in src/cmd/openmldb.cc
 // Every request is handled by `Process()`, we will choose the right method of the request by `InterfaceProvider`.
 // InterfaceProvider's url parser supports to parse urls like "/a/:arg1/b/:arg2/:arg3", but doesn't support wildcards.
 // Methods should be registered in `InterfaceProvider` in the init phase.
@@ -46,7 +46,7 @@ class APIServerImpl : public APIServer {
     APIServerImpl() = default;
     ~APIServerImpl() override;
     bool Init(const sdk::ClusterOptions& options);
-    bool Init(::fedb::sdk::ClusterSDK* cluster);
+    bool Init(::openmldb::sdk::ClusterSDK* cluster);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;
     static std::string InnerTypeTransform(const std::string& s);
@@ -60,7 +60,7 @@ class APIServerImpl : public APIServer {
 
     static bool Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
                                    const butil::rapidjson::Value& common_cols_v,
-                                   std::shared_ptr<fedb::sdk::SQLRequestRow> row);
+                                   std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
     template <typename T>
     static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
                                 T row);
@@ -69,7 +69,7 @@ class APIServerImpl : public APIServer {
     std::shared_ptr<sdk::SQLRouter> sql_router_;
     InterfaceProvider provider_;
     // cluster_sdk_ is not owned by this class.
-    ::fedb::sdk::ClusterSDK* cluster_sdk_;
+    ::openmldb::sdk::ClusterSDK* cluster_sdk_;
 };
 
 struct PutResp {
@@ -116,14 +116,14 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureIn
 JsonWriter& operator&(JsonWriter& ar, GetSPResp& s);  // NOLINT
 
 JsonWriter& operator&(JsonWriter& ar,  // NOLINT
-                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc);
+                      const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& column_desc);
 
 JsonWriter& operator&(JsonWriter& ar,  // NOLINT
-                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key);
+                      const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& column_key);
 
-JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info);  // NOLINT
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::TableInfo> info);  // NOLINT
 
 }  // namespace http
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_APISERVER_API_SERVER_IMPL_H_

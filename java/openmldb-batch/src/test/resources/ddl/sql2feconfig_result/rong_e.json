@@ -1,0 +1,1770 @@
+{
+  "tableInfo": {
+    "sql_table": [
+      {
+        "name": "reqId_1",
+        "type": "string"
+      },
+      {
+        "name": "batch100426_flatten_request_reqId_original_0",
+        "type": "string"
+      },
+      {
+        "name": "batch100426_flatten_request_eventTime_original_1",
+        "type": "timestamp"
+      },
+      {
+        "name": "batch100426_flatten_request_cino_original_2",
+        "type": "string"
+      },
+      {
+        "name": "batch100426_flatten_request_sample_date_original_3",
+        "type": "timestamp"
+      },
+      {
+        "name": "batch100426_flatten_request_previous_month_last_day_original_4",
+        "type": "timestamp"
+      },
+      {
+        "name": "reqId_6",
+        "type": "string"
+      },
+      {
+        "name": "batch100416_feedbackTable_actionValue_multi_direct_5",
+        "type": "int"
+      },
+      {
+        "name": "batch100416_feedbackTable_cino_multi_direct_6",
+        "type": "string"
+      },
+      {
+        "name": "batch100416_feedbackTable_previous_month_last_day_multi_direct_7",
+        "type": "timestamp"
+      },
+      {
+        "name": "batch100416_feedbackTable_sample_date_multi_direct_8",
+        "type": "timestamp"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_admin_level_cd_multi_direct_9",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_belong_corp_type_cd_multi_direct_10",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_belong_level1_branch_multi_direct_11",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_belong_level2_branch_multi_direct_12",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_belong_subbranch_multi_direct_13",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_birth_dt_multi_direct_14",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_black_card_cust_ind_multi_direct_15",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_blklist_cust_ind_multi_direct_16",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_career_cd_multi_direct_17",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_cert_num_multi_direct_18",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_cert_num_valid_dt_multi_direct_19",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_cert_type_cd_multi_direct_20",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_corp_addr_multi_direct_21",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_corp_name_multi_direct_22",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_corp_tel_multi_direct_23",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_corp_type_cd_multi_direct_24",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_curr_work_start_dt_multi_direct_25",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_edu_degree_cd_multi_direct_26",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_elite_cust_ind_multi_direct_27",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_family_addr_zip_cd_multi_direct_28",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_gender_cd_multi_direct_29",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_gold_card_ind_multi_direct_30",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_home_addr_multi_direct_31",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_home_tel_multi_direct_32",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_indv_webbank_ind_multi_direct_33",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_last_update_dt_multi_direct_34",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_marriage_status_cd_multi_direct_35",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_mobile_multi_direct_36",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_nation_cd_multi_direct_37",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_note_mobbank_ind_multi_direct_38",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_party_age_multi_direct_39",
+        "type": "int"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_party_name_multi_direct_40",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_per_bank_cust_ind_multi_direct_41",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_plati_card_cust_ind_multi_direct_42",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_pre_apprv_cust_ind_multi_direct_43",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_scd_nation_cd_multi_direct_44",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_serv_cust_mger_multi_direct_45",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_setup_cust_org_multi_direct_46",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_setup_dt_multi_direct_47",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_status_multi_direct_48",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_telbank_ind_multi_direct_49",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_vip_cust_ind_multi_direct_50",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_wap_mobbank_ind_multi_direct_51",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_year_income_multi_direct_52",
+        "type": "float"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_c01006_zone_num_multi_direct_53",
+        "type": "string"
+      },
+      {
+        "name": "batch100418_c01_indv_cust_basic_info_ingestionTime_multi_direct_54",
+        "type": "timestamp"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_agrunno_multi_last_value_333",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_allyno_multi_last_value_334",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_ass3_multi_last_value_335",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_backup_multi_last_value_336",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_backup3_multi_last_value_337",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_bankcardavgamt6_multi_last_value_338",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_birthdate_multi_last_value_339",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_cardkind_multi_last_value_340",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_cardlogo_multi_last_value_341",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_cardtype_multi_last_value_342",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_chardata1_multi_last_value_343",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_chardata2_multi_last_value_344",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_chnltype_multi_last_value_345",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_clientkind_multi_last_value_346",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_clientlv_multi_last_value_347",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_consmloanavgbal6_multi_last_value_348",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_crdtcardavgamt6_multi_last_value_349",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_crdtcrdodavgbal6_multi_last_value_350",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_crdtdpsitavgbal6_multi_last_value_351",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_crdtlevel_multi_last_value_352",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_crdtscore_multi_last_value_353",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_crezono_multi_last_value_354",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_csortcode_multi_last_value_355",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_cunscore_multi_last_value_356",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_currdpsitavgbal6_multi_last_value_357",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_currfundavgbal6_multi_last_value_358",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_currpeaf_multi_last_value_359",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_custcode_multi_last_value_360",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_custname_multi_last_value_361",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_custrank_multi_last_value_362",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_custsort_multi_last_value_363",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_deadline_multi_last_value_364",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_debtcardavgamt6_multi_last_value_365",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_dpsitavgbal6_multi_last_value_366",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_dsbrno_multi_last_value_367",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_dsempycode_multi_last_value_368",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_dszono_multi_last_value_369",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_eacode_multi_last_value_370",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_eadate_multi_last_value_371",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_efftdate_multi_last_value_372",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_extdata1_multi_last_value_373",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_extdata2_multi_last_value_374",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_extdata3_multi_last_value_375",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_extdata4_multi_last_value_376",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_extdata5_multi_last_value_377",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_field1_multi_last_value_378",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_field2_multi_last_value_379",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_field3_multi_last_value_380",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_field4_multi_last_value_381",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_field5_multi_last_value_382",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_field6_multi_last_value_383",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_field9_multi_last_value_384",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_forgncurtp_multi_last_value_385",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_frnllmt_multi_last_value_386",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_frnulmt_multi_last_value_387",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_goldavgbal6_multi_last_value_388",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_groupno_multi_last_value_389",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_halfyearavgasse_multi_last_value_390",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_halfyearavglong_multi_last_value_391",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_halfyearavgshor_multi_last_value_392",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_houseloanavgbal6_multi_last_value_393",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_iasc_multi_last_value_394",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_ifsc_multi_last_value_395",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_ingestionTime_multi_last_value_396",
+        "type": "timestamp"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_insureavgbal6_multi_last_value_397",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_ipcc_multi_last_value_398",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_isstcst_multi_last_value_399",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_liabavgbal6_multi_last_value_400",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_loanavgbal6_multi_last_value_401",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_lstubrno_multi_last_value_402",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_lstudate_multi_last_value_403",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_lstutime_multi_last_value_404",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_lstutlno_multi_last_value_405",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_lstuzono_multi_last_value_406",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_ltkxavgbal6_multi_last_value_407",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_minxwscore_multi_last_value_408",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_ncurrfundavgbal6_multi_last_value_409",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_nltkxavgbal6_multi_last_value_410",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_notes_multi_last_value_411",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_operloanavgbal6_multi_last_value_412",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_percrlmt_multi_last_value_413",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_plancode_multi_last_value_414",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_presvmgmtavgbal6_multi_last_value_415",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_providpsitavgbal6_multi_last_value_416",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_recomcred_multi_last_value_417",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_rmbllmt_multi_last_value_418",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_rmbulmt_multi_last_value_419",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_salarycusttype_multi_last_value_420",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_scrmarkll_multi_last_value_421",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_scrmarkul_multi_last_value_422",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_setbrno_multi_last_value_423",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_setdate_multi_last_value_424",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_settime_multi_last_value_425",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_settlno_multi_last_value_426",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_setzono_multi_last_value_427",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_syscore_multi_last_value_428",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_tbmbflag_multi_last_value_429",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_tbondavgbal6_multi_last_value_430",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_timedpsitavgbal6_multi_last_value_431",
+        "type": "float"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_tizocode_multi_last_value_432",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_tlcrdtyp_multi_last_value_433",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_unitname_multi_last_value_434",
+        "type": "string"
+      },
+      {
+        "name": "batch100424_dcm_bcs_bthrspea_s_xwscore_multi_last_value_435",
+        "type": "float"
+      },
+      {
+        "name": "reqId_56",
+        "type": "string"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_asset_total_bal_multi_min_55",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_asset_total_bal_multi_min_56",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_asset_bal_12_multi_min_57",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_asset_bal_12_multi_min_58",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_asset_bal_3_multi_avg_59",
+        "type": "double"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_asset_bal_3_multi_avg_60",
+        "type": "double"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_asset_bal_6_multi_min_61",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_asset_bal_6_multi_min_62",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_asset_bal_month_multi_avg_63",
+        "type": "double"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_asset_bal_month_multi_avg_64",
+        "type": "double"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_asset_bal_year_multi_avg_65",
+        "type": "double"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_asset_bal_year_multi_avg_66",
+        "type": "double"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_dpsit_bal_12_multi_max_67",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_dpsit_bal_12_multi_max_68",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_dpsit_bal_3_multi_max_69",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_avg_dpsit_bal_3_multi_max_70",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_card_total_bal_multi_max_71",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_card_total_bal_multi_max_72",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_dpsit_total_bal_multi_max_73",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_dpsit_total_bal_multi_max_74",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_liab_total_bal_multi_max_75",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_liab_total_bal_multi_max_76",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_loan_total_bal_multi_max_77",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_loan_total_bal_multi_max_78",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_mid_busi_total_bal_multi_min_79",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_mid_busi_total_bal_multi_min_80",
+        "type": "float"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_acct_max_belong_org_num_multi_count_81",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_acct_max_belong_org_num_multi_count_82",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_asset_max_belong_org_num_multi_top3frequency_83",
+        "type": "string"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_asset_max_belong_org_num_multi_top3frequency_84",
+        "type": "string"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_chrem_acct_belong_org_num_multi_unique_count_85",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_chrem_acct_belong_org_num_multi_unique_count_86",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_cust_belong_org_num_multi_count_87",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_cust_belong_org_num_multi_count_88",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_cust_mger_belong_org_num_multi_unique_count_89",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_cust_mger_belong_org_num_multi_unique_count_90",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_cust_mger_id_multi_unique_count_91",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_cust_mger_id_multi_unique_count_92",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_cust_mger_name_multi_unique_count_93",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_cust_mger_name_multi_unique_count_94",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_deflt_cust_ind_multi_unique_count_95",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_deflt_cust_ind_multi_unique_count_96",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_elite_cust_ind_multi_unique_count_97",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_elite_cust_ind_multi_unique_count_98",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_etime_cust_ind_multi_top3frequency_99",
+        "type": "string"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_etime_cust_ind_multi_top3frequency_100",
+        "type": "string"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_moneylink_cust_ind_multi_unique_count_101",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_moneylink_cust_ind_multi_unique_count_102",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_valid_cust_ind_multi_unique_count_103",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_valid_cust_ind_multi_unique_count_104",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_zone_num_multi_unique_count_105",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100417_c01_cust_belong_info_c01007_zone_num_multi_unique_count_106",
+        "type": "bigint"
+      },
+      {
+        "name": "reqId_108",
+        "type": "string"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_adv_money_amt_multi_min_107",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_adv_money_amt_multi_min_108",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_deduct_amt_multi_min_109",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_deduct_amt_multi_max_110",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_deflt_amt_multi_min_111",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_deflt_amt_multi_min_112",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_od_prin_multi_avg_113",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_od_prin_multi_min_114",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_remain_amt_multi_avg_115",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_remain_amt_multi_max_116",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_tx_amt_multi_max_117",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_tx_amt_multi_max_118",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_unback_cash_prin_amt_multi_min_119",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_unback_cash_prin_amt_multi_max_120",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_card_hlder_comm_fee_multi_min_121",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_card_hlder_comm_fee_multi_avg_122",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_consm_amt_multi_min_123",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_consm_amt_multi_avg_124",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_enter_acct_amt_multi_min_125",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_enter_acct_amt_multi_avg_126",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_enter_acct_term_multi_avg_127",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_enter_acct_term_multi_max_128",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_mercht_comm_fee_multi_max_129",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_mercht_comm_fee_multi_avg_130",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_od_amt_multi_max_131",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_od_amt_multi_max_132",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_plan_term_multi_min_133",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_plan_term_multi_avg_134",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_remain_term_multi_max_135",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_remain_term_multi_avg_136",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_rtn_goods_amt_multi_max_137",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_rtn_goods_amt_multi_avg_138",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_total_term_multi_min_139",
+        "type": "float"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_total_term_multi_avg_140",
+        "type": "double"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_agt_modif_num_multi_count_141",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_agt_modif_num_multi_top3frequency_142",
+        "type": "string"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_agt_num_multi_unique_count_143",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_agt_num_multi_count_144",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_agt_status_cd_multi_count_145",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_agt_status_cd_multi_unique_count_146",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_src_cd_multi_count_147",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_amort_pay_src_cd_multi_unique_count_148",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_app_dt_multi_unique_count_149",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_app_dt_multi_count_150",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_biz_type_num_multi_count_151",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_biz_type_num_multi_unique_count_152",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_cash_amort_ind_multi_count_153",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_cash_amort_ind_multi_top3frequency_154",
+        "type": "string"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_crdt_belong_org_num_multi_count_155",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_crdt_belong_org_num_multi_unique_count_156",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_curr_cd_multi_count_157",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_curr_cd_multi_unique_count_158",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_effect_dt_multi_unique_count_159",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_effect_dt_multi_count_160",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_indv_corp_ind_multi_count_161",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_indv_corp_ind_multi_unique_count_162",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_init_consm_dt_multi_count_163",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_init_consm_dt_multi_unique_count_164",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_init_consm_tx_index_ref_num_multi_count_165",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_init_consm_tx_index_ref_num_multi_unique_count_166",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_int_org_num_multi_count_167",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_int_org_num_multi_unique_count_168",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_item_amort_ind_multi_count_169",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_item_amort_ind_multi_top3frequency_170",
+        "type": "string"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_mcc_industry_cd_multi_count_171",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_mcc_industry_cd_multi_unique_count_172",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_mercht_dept_num_multi_count_173",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_mercht_dept_num_multi_unique_count_174",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_proc_org_num_multi_count_175",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_proc_org_num_multi_unique_count_176",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_rela_cap_acct_modif_num_multi_count_177",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_rela_cap_acct_modif_num_multi_unique_count_178",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_rela_cap_acct_num_multi_count_179",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_rela_cap_acct_num_multi_unique_count_180",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_rela_cap_card_num_multi_count_181",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_rela_cap_card_num_multi_unique_count_182",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_tx_cd_multi_count_183",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_tx_cd_multi_unique_count_184",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_yd_card_ind_multi_count_185",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_yd_card_ind_multi_top3frequency_186",
+        "type": "string"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_zone_num_multi_count_187",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100421_card_amort_pay_agt_c03039_zone_num_multi_unique_count_188",
+        "type": "bigint"
+      },
+      {
+        "name": "reqId_190",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_allyinte_multi_min_189",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_allyinte_multi_max_190",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_asintegr_multi_min_191",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_asintegr_multi_min_192",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_atexcamt_multi_max_193",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_atexcamt_multi_max_194",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_balance_multi_min_195",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_balance_multi_min_196",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_cfeeamt_multi_min_197",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_cfeeamt_multi_min_198",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_lstbal_multi_min_199",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_lstbal_multi_min_200",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_merrate_multi_min_201",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_merrate_multi_min_202",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_refamt_multi_min_203",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_refamt_multi_min_204",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_spintegr_multi_max_205",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_spintegr_multi_max_206",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_tipamt_multi_min_207",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_tipamt_multi_min_208",
+        "type": "float"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxamt_multi_avg_209",
+        "type": "double"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxamt_multi_avg_210",
+        "type": "double"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_accfix_multi_unique_count_211",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_accfix_multi_unique_count_212",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_accino_multi_count_213",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_accino_multi_count_214",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_accno_multi_unique_count_215",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_accno_multi_unique_count_216",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_agentname_multi_top3frequency_217",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_agentname_multi_top3frequency_218",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_authno_multi_unique_count_219",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_authno_multi_unique_count_220",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_authtlno_multi_top3frequency_221",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_authtlno_multi_top3frequency_222",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bkamt1_multi_count_223",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bkamt1_multi_count_224",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bkamt2_multi_top3frequency_225",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bkamt2_multi_top3frequency_226",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bkamt3_multi_top3frequency_227",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bkamt3_multi_top3frequency_228",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bkamt4_multi_top3frequency_229",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bkamt4_multi_top3frequency_230",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bkamt5_multi_top3frequency_231",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bkamt5_multi_top3frequency_232",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bknotes_multi_top3frequency_233",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bknotes_multi_top3frequency_234",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bknotes2_multi_unique_count_235",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_bknotes2_multi_unique_count_236",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_brno_multi_count_237",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_brno_multi_count_238",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_busidate_multi_count_239",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_busidate_multi_count_240",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_busitime_multi_unique_count_241",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_busitime_multi_unique_count_242",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_cashf_multi_top3frequency_243",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_cashf_multi_top3frequency_244",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_channo_multi_top3frequency_245",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_channo_multi_top3frequency_246",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_chantype_multi_top3frequency_247",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_chantype_multi_top3frequency_248",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_currtype_multi_top3frequency_249",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_currtype_multi_top3frequency_250",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_dbcrf_multi_count_251",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_dbcrf_multi_count_252",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_emvwrmod_multi_unique_count_253",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_emvwrmod_multi_unique_count_254",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_eserialno_multi_unique_count_255",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_eserialno_multi_unique_count_256",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_esubseqno_multi_top3frequency_257",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_esubseqno_multi_top3frequency_258",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_listflag_multi_top3frequency_259",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_listflag_multi_top3frequency_260",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_mcccode_multi_unique_count_261",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_mcccode_multi_unique_count_262",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_mdcardno_multi_unique_count_263",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_mdcardno_multi_unique_count_264",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_mdkmode_multi_top3frequency_265",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_mdkmode_multi_top3frequency_266",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_merchno_multi_count_267",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_merchno_multi_count_268",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_merno_multi_count_269",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_merno_multi_count_270",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_mserialn_multi_unique_count_271",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_mserialn_multi_unique_count_272",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_oflflag_multi_count_273",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_oflflag_multi_count_274",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_onusexif_multi_top3frequency_275",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_onusexif_multi_top3frequency_276",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_openzone_multi_count_277",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_openzone_multi_count_278",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_orderno_multi_top3frequency_279",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_orderno_multi_top3frequency_280",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_oserialn_multi_unique_count_281",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_oserialn_multi_unique_count_282",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_otrxserno_multi_top3frequency_283",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_otrxserno_multi_top3frequency_284",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_prirecf_multi_top3frequency_285",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_prirecf_multi_top3frequency_286",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_prodid_multi_count_287",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_prodid_multi_count_288",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_progmsg_multi_top3frequency_289",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_progmsg_multi_top3frequency_290",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_rbrno_multi_unique_count_291",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_rbrno_multi_unique_count_292",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_recipact_multi_count_293",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_recipact_multi_count_294",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_recipbkname_multi_count_295",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_recipbkname_multi_count_296",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_recipbkno_multi_count_297",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_recipbkno_multi_count_298",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_recipcty_multi_top3frequency_299",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_recipcty_multi_top3frequency_300",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_recsqno_multi_top3frequency_301",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_recsqno_multi_top3frequency_302",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_rprodid_multi_top3frequency_303",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_rprodid_multi_top3frequency_304",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_rsavname_multi_count_305",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_rsavname_multi_count_306",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_servface_multi_top3frequency_307",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_servface_multi_top3frequency_308",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_tellerno_multi_count_309",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_tellerno_multi_count_310",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_terno_multi_unique_count_311",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_terno_multi_unique_count_312",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_timestmp_multi_count_313",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_timestmp_multi_count_314",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxcode_multi_top3frequency_315",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxcode_multi_top3frequency_316",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxcountry_multi_top3frequency_317",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxcountry_multi_top3frequency_318",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxcurdicp_multi_top3frequency_319",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxcurdicp_multi_top3frequency_320",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxcurr_multi_top3frequency_321",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxcurr_multi_top3frequency_322",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxdate_multi_count_323",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxdate_multi_count_324",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxdiscp_multi_top3frequency_325",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxdiscp_multi_top3frequency_326",
+        "type": "string"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxserno_multi_unique_count_327",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxserno_multi_unique_count_328",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxsite_multi_count_329",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_trxsite_multi_count_330",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_zoneno_multi_count_331",
+        "type": "bigint"
+      },
+      {
+        "name": "batch100422_dcm_bcs_bthcrdth_h_zoneno_multi_count_332",
+        "type": "bigint"
+      }
+    ]
+  }
+}

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CATALOG_TABLET_CATALOG_H_
 #define SRC_CATALOG_TABLET_CATALOG_H_
 
@@ -32,9 +31,8 @@
 #include "storage/schema.h"
 #include "storage/table.h"
 
-namespace fedb {
+namespace openmldb {
 namespace catalog {
-
 
 class TabletPartitionHandler;
 class TabletTableHandler;
@@ -167,10 +165,10 @@ class TabletPartitionHandler : public ::hybridse::vm::PartitionHandler,
 class TabletTableHandler : public ::hybridse::vm::TableHandler,
                            public std::enable_shared_from_this<hybridse::vm::TableHandler> {
  public:
-    explicit TabletTableHandler(const ::fedb::api::TableMeta &meta,
+    explicit TabletTableHandler(const ::openmldb::api::TableMeta &meta,
                                 std::shared_ptr<hybridse::vm::Tablet> local_tablet);
 
-    explicit TabletTableHandler(const ::fedb::nameserver::TableInfo &meta,
+    explicit TabletTableHandler(const ::openmldb::nameserver::TableInfo &meta,
                                 std::shared_ptr<hybridse::vm::Tablet> local_tablet);
 
     bool Init(const ClientManager &client_manager);
@@ -202,17 +200,17 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     std::shared_ptr<::hybridse::vm::Tablet> GetTablet(const std::string &index_name, const std::string &pk) override;
     std::shared_ptr<::hybridse::vm::Tablet> GetTablet(const std::string &index_name,
-                                                   const std::vector<std::string> &pks) override;
+                                                      const std::vector<std::string> &pks) override;
 
     inline int32_t GetTid() { return table_st_.GetTid(); }
 
-    void AddTable(std::shared_ptr<::fedb::storage::Table> table);
+    void AddTable(std::shared_ptr<::openmldb::storage::Table> table);
 
     bool HasLocalTable();
 
     int DeleteTable(uint32_t pid);
 
-    void Update(const ::fedb::nameserver::TableInfo &meta, const ClientManager &client_manager);
+    void Update(const ::openmldb::nameserver::TableInfo &meta, const ClientManager &client_manager);
 
  private:
     inline int32_t GetColumnIndex(const std::string &column) {
@@ -225,7 +223,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
  private:
     ::hybridse::vm::Schema schema_;
-    ::fedb::storage::TableSt table_st_;
+    ::openmldb::storage::TableSt table_st_;
     std::shared_ptr<Tables> tables_;
     ::hybridse::vm::Types types_;
     ::hybridse::vm::IndexList index_list_;
@@ -236,8 +234,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
 typedef std::map<std::string, std::map<std::string, std::shared_ptr<TabletTableHandler>>> TabletTables;
 typedef std::map<std::string, std::shared_ptr<::hybridse::type::Database>> TabletDB;
-typedef std::map<std::string,
-        std::map<std::string, std::shared_ptr<::hybridse::sdk::ProcedureInfo>>> Procedures;
+typedef std::map<std::string, std::map<std::string, std::shared_ptr<::hybridse::sdk::ProcedureInfo>>> Procedures;
 
 class TabletCatalog : public ::hybridse::vm::Catalog {
  public:
@@ -249,7 +246,7 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 
     bool AddDB(const ::hybridse::type::Database &db);
 
-    bool AddTable(const ::fedb::api::TableMeta &meta, std::shared_ptr<::fedb::storage::Table> table);
+    bool AddTable(const ::openmldb::api::TableMeta &meta, std::shared_ptr<::openmldb::storage::Table> table);
 
     std::shared_ptr<::hybridse::type::Database> GetDatabase(const std::string &db) override;
 
@@ -262,11 +259,11 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 
     bool DeleteDB(const std::string &db);
 
-    void Refresh(const std::vector<::fedb::nameserver::TableInfo> &table_info_vec, uint64_t version,
-            const Procedures& db_sp_map);
+    void Refresh(const std::vector<::openmldb::nameserver::TableInfo> &table_info_vec, uint64_t version,
+                 const Procedures &db_sp_map);
 
     bool AddProcedure(const std::string &db, const std::string &sp_name,
-            const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
+                      const std::shared_ptr<hybridse::sdk::ProcedureInfo> &sp_info);
 
     bool DropProcedure(const std::string &db, const std::string &sp_name);
 
@@ -279,13 +276,13 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
         local_sp_tablet_ = local_sp_tablet;
     }
 
-    std::shared_ptr<::hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db,
-            const std::string& sp_name) override;
+    std::shared_ptr<::hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string &db,
+                                                                     const std::string &sp_name) override;
 
-    const Procedures& GetProcedures();
+    const Procedures &GetProcedures();
 
  private:
-    ::fedb::base::SpinMutex mu_;
+    ::openmldb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
     Procedures db_sp_map_;
@@ -296,5 +293,5 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 };
 
 }  // namespace catalog
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_CATALOG_TABLET_CATALOG_H_

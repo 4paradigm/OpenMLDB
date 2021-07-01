@@ -15,13 +15,14 @@
  */
 
 #include "test/base_test.h"
+
 #include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "sdk/base.h"
 #include "sdk/result_set.h"
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_CNT 20
-namespace fedb {
+namespace openmldb {
 namespace test {
 std::string SQLCaseTest::GenRand(const std::string &prefix) {
     return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -30,8 +31,8 @@ const std::string SQLCaseTest::AutoTableName() { return GenRand("auto_t"); }
 
 std::string SQLCaseTest::GetYAMLBaseDir() {
     std::string yaml_base_dir;
-    const char* env_name = "YMAL_CASE_BASE_DIR";
-    char* value = getenv(env_name);
+    const char *env_name = "YMAL_CASE_BASE_DIR";
+    char *value = getenv(env_name);
     if (value != nullptr) {
         yaml_base_dir.assign(value);
         if (yaml_base_dir.back() != '/') {
@@ -214,8 +215,8 @@ void SQLCaseTest::PrintRows(const hybridse::vm::Schema &schema, const std::vecto
 }
 
 const std::vector<hybridse::codec::Row> SQLCaseTest::SortRows(const hybridse::vm::Schema &schema,
-                                                           const std::vector<hybridse::codec::Row> &rows,
-                                                           const std::string &order_col) {
+                                                              const std::vector<hybridse::codec::Row> &rows,
+                                                              const std::string &order_col) {
     DLOG(INFO) << "sort rows start";
     hybridse::codec::RowView row_view(schema);
     int idx = -1;
@@ -630,4 +631,4 @@ void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::strin
 }
 
 }  // namespace test
-}  // namespace fedb
+}  // namespace openmldb

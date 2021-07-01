@@ -17,7 +17,7 @@
 import "type.proto";
 import "common.proto";
 import "sql_procedure.proto";
-package fedb.api;
+package openmldb.api;
 
 option cc_generic_services = true;
 
@@ -302,11 +302,11 @@ message TableMeta {
     repeated string replicas = 5;
     optional TableMode mode = 6;
     optional uint64 term = 7 [default = 0];
-    optional fedb.type.CompressType compress_type = 8;
+    optional openmldb.type.CompressType compress_type = 8;
     optional uint32 key_entry_max_height = 9;
-    repeated fedb.common.ColumnDesc column_desc = 10;
-    repeated fedb.common.ColumnKey column_key = 11;
-    repeated fedb.common.ColumnDesc added_column_desc = 12;
+    repeated openmldb.common.ColumnDesc column_desc = 10;
+    repeated openmldb.common.ColumnKey column_key = 11;
+    repeated openmldb.common.ColumnDesc added_column_desc = 12;
     // format_version 0 , the legacy format 1 ,the new one
     optional uint32 format_version = 13 [default = 0];
     optional string db = 14 [default = ""];
@@ -319,9 +319,9 @@ message CreateTableRequest {
 }
 message UpdateTableMetaForAddFieldRequest {
     optional uint32 tid = 1;
-    optional fedb.common.ColumnDesc column_desc = 2;
-    repeated fedb.common.ColumnDesc column_descs = 3;
-    optional fedb.common.VersionPair version_pair = 4;
+    optional openmldb.common.ColumnDesc column_desc = 2;
+    repeated openmldb.common.ColumnDesc column_descs = 3;
+    optional openmldb.common.VersionPair version_pair = 4;
 }
 
 message CreateTableResponse {
@@ -365,7 +365,7 @@ message GetTableSchemaResponse {
 message UpdateTTLRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
-    optional fedb.common.TTLSt ttl = 3;
+    optional openmldb.common.TTLSt ttl = 3;
     optional string index_name = 5;
 }
 
@@ -417,7 +417,7 @@ message ChangeRoleRequest {
     optional uint64 term = 3;
     optional TableMode mode = 4;
     repeated string replicas = 5;
-    repeated fedb.common.EndpointAndTid endpoint_tid = 6;
+    repeated openmldb.common.EndpointAndTid endpoint_tid = 6;
 }
 
 message SendSnapshotRequest {
@@ -484,7 +484,7 @@ message TableStatus {
     optional uint64 record_byte_size = 13;
     optional uint64 record_idx_byte_size = 14;
     optional uint64 record_pk_cnt = 15;
-    optional fedb.type.CompressType compress_type = 17;
+    optional openmldb.type.CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
     optional uint64 diskused = 19 [default = 0];
 }
@@ -588,7 +588,7 @@ message CheckFileRequest {
 message AddIndexRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
-    optional fedb.common.ColumnKey column_key = 3;
+    optional openmldb.common.ColumnKey column_key = 3;
 }
 
 message SetModeRequest {
@@ -614,7 +614,7 @@ message DumpIndexDataRequest {
     optional uint32 pid = 2;
     optional uint32 partition_num = 3;
     optional uint32 idx = 4;
-    optional fedb.common.ColumnKey column_key = 5;
+    optional openmldb.common.ColumnKey column_key = 5;
     optional TaskInfo task_info = 6;
 }
 
@@ -630,7 +630,7 @@ message ExtractIndexDataRequest {
     optional uint32 pid = 2;
     optional uint32 partition_num = 3;
     optional uint32 idx = 4;
-    optional fedb.common.ColumnKey column_key = 5;
+    optional openmldb.common.ColumnKey column_key = 5;
     optional TaskInfo task_info = 6;
 }
 
@@ -735,7 +735,7 @@ message ExplainResponse {
 message GetCatalogRequest {}
 
 message GetCatalogResponse {
-    optional fedb.common.CatalogInfo catalog = 1;
+    optional openmldb.common.CatalogInfo catalog = 1;
     optional int32 code = 2;
     optional string msg = 3;
 }
@@ -805,6 +805,6 @@ service TabletServer {
     rpc UpdateRealEndpointMap(UpdateRealEndpointMapRequest) returns (GeneralResponse);
 
     // sql procedure interfaces
-    rpc CreateProcedure(fedb.api.CreateProcedureRequest) returns (GeneralResponse);
-    rpc DropProcedure(fedb.api.DropProcedureRequest) returns (GeneralResponse);
+    rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
+    rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
 }

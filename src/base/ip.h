@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-
 #pragma once
 
-#include <unistd.h>
-#include <netdb.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
+
 #include <string>
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 bool GetLocalIp(std::string* ip) {
@@ -33,8 +33,7 @@ bool GetLocalIp(std::string* ip) {
     gethostname(name, sizeof(name));
     struct hostent* host = gethostbyname(name);
     char ip_str[32];
-    const char* ret = inet_ntop(host->h_addrtype,
-            host->h_addr_list[0], ip_str, sizeof(ip_str));
+    const char* ret = inet_ntop(host->h_addrtype, host->h_addr_list[0], ip_str, sizeof(ip_str));
     if (ret == NULL) {
         return false;
     }
@@ -43,4 +42,4 @@ bool GetLocalIp(std::string* ip) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb

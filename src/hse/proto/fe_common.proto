@@ -1,0 +1,56 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package hybridse.common;
+option cc_generic_services = false;
+option java_package = "com._4paradigm.hybridse.common";
+option java_outer_classname = "Common";
+
+enum StatusCode {
+    kOk = 0;
+    kRunning = 1;
+    kTypeError = 8;
+    kFileIOError = 9;
+    kUnSupport = 10;
+    kBadRequest = 11;
+    kNameExists = 12;
+    kTableExists = 13;
+    kNoDatabase = 14;
+    kTableNotFound = 15;
+    kTablePutFailed = 16;
+    kNullPointer = 17;
+    kProcedureNotFound = 18;
+    kConnError = 20;
+    kRpcError = 21;
+    kTimeoutError = 22;
+    kResponseError = 23;
+    kSqlError = 30;
+    kPlanError = 31;
+    kCallMethodError = 32;
+    kColumnNotFound = 33;
+    kIndexNotFound=34;
+    kFunError = 40;
+    kCodegenError = 50;
+    kOpGenError = 60;
+    kJitError = 70;
+    kSchemaCodecError = 71;
+
+}
+
+message Status {
+    optional StatusCode code = 1;
+    optional string msg = 2;
+}

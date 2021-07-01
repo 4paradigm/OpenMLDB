@@ -31,12 +31,12 @@ inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                     ::fedb::sdk::MiniCluster* mc);
+                     ::openmldb::sdk::MiniCluster* mc);
 void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                          ::fedb::sdk::MiniCluster* mc);
+                          ::openmldb::sdk::MiniCluster* mc);
 hybridse::sqlcase::SqlCase LoadSQLCaseWithID(const std::string& yaml, const std::string& case_id);
 void MiniBenchmarkOnCase(hybridse::sqlcase::SqlCase& sql_case, BmRunMode engine_mode,  // NOLINT
-                         ::fedb::sdk::MiniCluster* mc, benchmark::State* state);
+                         ::openmldb::sdk::MiniCluster* mc, benchmark::State* state);
 void MiniBenchmarkOnCase(const std::string& yaml_path, const std::string& case_id, BmRunMode engine_mode,
-                         ::fedb::sdk::MiniCluster* mc, benchmark::State* state);
+                         ::openmldb::sdk::MiniCluster* mc, benchmark::State* state);
 #endif  // SRC_SDK_MINI_CLUSTER_BM_H_
