@@ -438,10 +438,7 @@ void APIServerImpl::RegisterGetTable() {
                       auto db = db_it->second;
                       bool db_ok = std::find(dbs.begin(), dbs.end(), db) != dbs.end();
                       if (!db_ok) {
-                          writer.StartObject();
-                          writer.Member("code") & -1;
-                          writer.Member("msg") & std::string("DB not found");
-                          writer.EndObject();
+                          writer << err.Set("DB not found");
                           return;
                       }
                       auto tables = cluster_sdk_->GetTables(db);
@@ -476,25 +473,23 @@ void APIServerImpl::RegisterGetTable() {
                       auto db = db_it->second;
                       bool db_ok = std::find(dbs.begin(), dbs.end(), db) != dbs.end();
                       if (!db_ok) {
-                          writer.StartObject();
-                          writer.Member("code") & -1;
-                          writer.Member("msg") & std::string("DB not found");
-                          writer.EndObject();
+                          writer << err.Set("DB not found");
                           return;
                       }
                       auto table = table_it->second;
                       auto table_info = cluster_sdk_->GetTableInfo(db, table);
-                      writer.StartObject();
+                      
                       // if there is no such db or such table, table_info will be nullptr
                       if (table_info == nullptr) {
-                          writer.Member("code") & -1;
-                          writer.Member("msg") & std::string("Table not found");
+                          writer << err.Set("Table not found");
+                          return;
                       } else {
+                          writer.StartObject();
                           writer.Member("code") & 0;
                           writer.Member("msg") & std::string("ok");
                           writer.Member("table") & table_info;
+                          writer.EndObject();
                       }
-                      writer.EndObject();
                   });
 }
 
