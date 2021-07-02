@@ -32,7 +32,7 @@
 #include "apiserver/json_helper.h"
 #include "brpc/http_method.h"  // HttpMethod
 #include "butil/iobuf.h"       // IOBuf
-#include "proto/http.pb.h"
+#include "proto/api_server.pb.h"
 
 namespace openmldb {
 namespace apiserver {
