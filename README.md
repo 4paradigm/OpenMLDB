@@ -136,8 +136,7 @@ ToyDB is a simple in-memory database powered by HybridSE, supporting basic CRUD 
 
 | Project                                                 | Status        | Description                                                               |
 | :------------------------------------------------------ | :------------ | :------------------------------------------------------------------------ |
-| [FEDB](https://github.com/4paradigm/fedb)               | Open Source   | NewSQL database optimised for realtime inference and decisioning applications          |
-| [SparkFE](https://github.com/4paradigm/SparkFE) | Open Source   | LLVM-based and high-performance Spark native execution engine which is designed for feature engineering |
+| [OpenMLDB](https://github.com/4paradigm/OpenMLDB)               | Open Source   | NewSQL database optimised for realtime inference and decisioning applications          |
 | NativeFlink                                             | Under Develop | High-performance, Batch-Stream-in-onebox FlinkSQL execution engine           |
 
 ## Roadmap
