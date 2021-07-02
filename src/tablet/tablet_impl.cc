@@ -441,6 +441,11 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
     return 1;
 }
 
+void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::EmptyRequest* request,
+        ::openmldb::api::GeneralResponse* response, Closure* done) {
+    RefreshTableInfo();
+}
+
 void TabletImpl::Get(RpcController* controller, const ::openmldb::api::GetRequest* request,
                      ::openmldb::api::GetResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);

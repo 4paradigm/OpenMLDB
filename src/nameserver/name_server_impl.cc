@@ -4041,6 +4041,22 @@ bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
 
     return true;
 }
+
+void NameServerImpl::RefreshTablet() {
+    Tablets tablets;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        tablets = tablets_;
+    }
+    for (const auto& kv : tablets) {
+        if (kv.second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            PDLOG(WARNING, "endpoint [%s] is offline", kv.first.c_str());
+            continue;
+        }
+        kv.second->client_->Refresh();
+    }
+}
+
 void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                                          std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                                          uint64_t cur_term, uint32_t tid,
@@ -4068,6 +4084,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
             response.set_msg("set zk failed");
             break;
         }
+        RefreshTablet();
         if (mode_.load(std::memory_order_acquire) == kLEADER) {
             decltype(nsc_) tmp_nsc;
             {

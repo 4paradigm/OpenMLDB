@@ -807,4 +807,5 @@ service TabletServer {
     // sql procedure interfaces
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
     rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
+    rpc Refresh(EmptyRequest) returns (GeneralResponse);
 }
