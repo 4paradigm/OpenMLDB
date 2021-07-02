@@ -10043,8 +10043,8 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const CreateProc
                 sp_table_map[sp_name].push_back(depend_table);
                 table_sp_map[depend_table].push_back(sp_name);
             }
-            NotifyTableChanged();
         }
+        NotifyTableChanged();
         PDLOG(INFO, "create db store procedure success! db_name [%s] sp_name [%s] sql [%s]", db_name.c_str(),
               sp_name.c_str(), sp_info->sql().c_str());
         response->set_code(::openmldb::base::ReturnCode::kOk);
