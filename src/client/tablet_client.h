@@ -263,7 +263,7 @@ class TabletClient {
 
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
 
-    bool Refresh();
+    bool Refresh(uint32_t tid);
 
     bool SubQuery(const ::openmldb::api::QueryRequest& request,
                   openmldb::RpcCallback<openmldb::api::QueryResponse>* callback);

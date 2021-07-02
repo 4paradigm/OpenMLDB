@@ -441,9 +441,10 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
     return 1;
 }
 
-void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::EmptyRequest* request,
+void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::RefreshRequest* request,
         ::openmldb::api::GeneralResponse* response, Closure* done) {
-    RefreshTableInfo();
+    brpc::ClosureGuard done_guard(done);
+    RefreshSingleTable(request->tid());
 }
 
 void TabletImpl::Get(RpcController* controller, const ::openmldb::api::GetRequest* request,
@@ -3738,6 +3739,21 @@ void TabletImpl::CheckZkClient() {
         }
     }
     keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
+}
+
+bool TabletImpl::RefreshSingleTable(uint32_t tid) {
+    std::string value;
+    std::string node = zk_path_ + "/table/db_table_data/" + std::to_string(tid);
+    if (!zk_client_->GetNodeValue(node, value)) {
+        LOG(WARNING) << "fail to get table data. node: " << node;
+        return false;
+    }
+    ::openmldb::nameserver::TableInfo table_info;
+    if (!table_info.ParseFromString(value)) {
+        LOG(WARNING) << "fail to parse table proto. tid: " << tid << " value: " << value;
+        return false;
+    }
+    return catalog_->UpdateTableInfo(table_info);
 }
 
 void TabletImpl::RefreshTableInfo() {

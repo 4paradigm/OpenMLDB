@@ -35,7 +35,7 @@
 #include "proto/http.pb.h"
 
 namespace openmldb {
-namespace http {
+namespace apiserver {
 
 class PathPart;
 
@@ -182,5 +182,5 @@ Archiver& operator&(Archiver& ar, GeneralError& s) {  // NOLINT
     return ar.EndObject();
 }
 
-}  // namespace http
+}  // namespace apiserver
 }  // namespace openmldb

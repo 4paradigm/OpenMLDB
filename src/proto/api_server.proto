@@ -1,4 +1,4 @@
-package openmldb.http;
+package openmldb.apiserver;
 
 option cc_generic_services = true;
 
@@ -7,4 +7,5 @@ message HttpResponse {};
 
 service APIServer {
   rpc Process(HttpRequest) returns (HttpResponse);
+  rpc Refresh(HttpRequest) returns (HttpResponse);
 };

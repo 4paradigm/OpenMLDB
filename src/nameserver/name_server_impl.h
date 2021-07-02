@@ -165,7 +165,7 @@ class NameServerImpl : public NameServer {
                              std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, uint64_t cur_term,
                              uint32_t tid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
-    void RefreshTablet();
+    void RefreshTablet(uint32_t tid);
 
     void CreateTableInfoSimply(RpcController* controller, const CreateTableInfoRequest* request,
                                CreateTableInfoResponse* response, Closure* done);

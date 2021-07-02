@@ -248,6 +248,8 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 
     bool AddTable(const ::openmldb::api::TableMeta &meta, std::shared_ptr<::openmldb::storage::Table> table);
 
+    bool UpdateTableInfo(const ::openmldb::nameserver::TableInfo& table_info);
+
     std::shared_ptr<::hybridse::type::Database> GetDatabase(const std::string &db) override;
 
     std::shared_ptr<::hybridse::vm::TableHandler> GetTable(const std::string &db,

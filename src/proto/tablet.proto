@@ -732,6 +732,11 @@ message ExplainResponse {
     optional bool is_batch = 7;
 }
 
+message RefreshRequest {
+    optional uint32 tid = 1;
+    optional string procedure_name = 3;
+}
+
 message GetCatalogRequest {}
 
 message GetCatalogResponse {
@@ -807,5 +812,5 @@ service TabletServer {
     // sql procedure interfaces
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
     rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
-    rpc Refresh(EmptyRequest) returns (GeneralResponse);
+    rpc Refresh(RefreshRequest) returns (GeneralResponse);
 }

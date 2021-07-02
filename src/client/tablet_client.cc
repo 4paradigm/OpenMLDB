@@ -541,8 +541,9 @@ bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid, const ::openmldb::type:
     return false;
 }
 
-bool TabletClient::Refresh() {
-    ::openmldb::api::EmptyRequest request;
+bool TabletClient::Refresh(uint32_t tid) {
+    ::openmldb::api::RefreshRequest request;
+    request.set_tid(tid);
     ::openmldb::api::GeneralResponse response;
     bool ret = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Refresh, &request, &response,
                                    FLAGS_request_timeout_ms, FLAGS_request_max_retry);

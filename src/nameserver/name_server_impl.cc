@@ -4042,7 +4042,7 @@ bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
     return true;
 }
 
-void NameServerImpl::RefreshTablet() {
+void NameServerImpl::RefreshTablet(uint32_t tid) {
     Tablets tablets;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -4053,7 +4053,7 @@ void NameServerImpl::RefreshTablet() {
             PDLOG(WARNING, "endpoint [%s] is offline", kv.first.c_str());
             continue;
         }
-        kv.second->client_->Refresh();
+        kv.second->client_->Refresh(tid);
     }
 }
 
@@ -4084,7 +4084,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
             response.set_msg("set zk failed");
             break;
         }
-        RefreshTablet();
+        RefreshTablet(table_info->tid());
         if (mode_.load(std::memory_order_acquire) == kLEADER) {
             decltype(nsc_) tmp_nsc;
             {
