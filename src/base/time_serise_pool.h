@@ -78,19 +78,20 @@ class TimeSerisePool {
  public:
     explicit TimeSerisePool(uint32_t block_size) : block_size_(block_size) {}
     void* Alloc(uint32_t size, uint64_t time) {
-        auto pair = pool_.find(keyof(time));
+        auto key = ComputeTimeSlot(time);
+        auto pair = pool_.find(key);
         if (pair == pool_.end()) {
             auto bucket = new TimeBucket(block_size_);
             pool_.insert(
-                std::pair<uint32_t, std::unique_ptr<TimeBucket>>(keyof(time), std::unique_ptr<TimeBucket>(bucket)));
+                std::pair<uint32_t, std::unique_ptr<TimeBucket>>(key, std::unique_ptr<TimeBucket>(bucket)));
             return bucket->Alloc(size);
         }
 
         return pair->second->Alloc(size);
     }
     void Free(uint64_t time) {
-        auto pair = pool_.find(keyof(time));
-        if (pair->second->Free()) {
+        auto pair = pool_.find(ComputeTimeSlot(time));
+        if (pair != pool_.end() && pair->second->Free()) {
             pool_.erase(pair);
         }
     }
@@ -100,7 +101,7 @@ class TimeSerisePool {
     // key is the time / (60 * 60 * 1000)
     uint32_t block_size_;
     std::map<uint32_t, std::unique_ptr<TimeBucket>> pool_;
-    inline static uint32_t keyof(uint64_t time) { return time / (60 * 60 * 1000); }
+    inline static uint32_t ComputeTimeSlot(uint64_t time) { return time / (60 * 60 * 1000); }
 };
 
 }  // namespace base
