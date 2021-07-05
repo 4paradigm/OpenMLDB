@@ -20,7 +20,7 @@ cases:
       node_tree_str: |
         +-node[CMD]
           +-cmd_type: create database
-          +-args: db1
+          +-args: [db1]
   - id: 2
     desc: CREATE TABLE
     sql: CREATE TABLE schema.sql;
@@ -44,7 +44,7 @@ cases:
       node_tree_str: |
         +-node[CMD]
           +-cmd_type: desc table
-          +-args: t1
+          +-args: [t1]
   - id: 5
     desc: SHOW TABLE
     sql: SHOW TABLES;
@@ -52,7 +52,7 @@ cases:
       node_tree_str: |
         +-node[CMD]
           +-cmd_type: show tables
-          +-args: <nil>
+          +-args: []
   - id: 6
     desc: SHOW DATABASES
     sql: SHOW DATABASES;
@@ -60,7 +60,7 @@ cases:
       node_tree_str: |
         +-node[CMD]
           +-cmd_type: show databases
-          +-args: <nil>
+          +-args: []
   - id: 7
     desc: explain
     sql: explain SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;
@@ -71,27 +71,56 @@ cases:
   - id: 9
     desc: SHOW PROCEDUERS
     sql: SHOW PROCEDURES;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show procedures
+          +-args: []
   - id: 10
+    desc: SHOW PROCEDUERS
+    sql: SHOW PROCEDURE STATUS;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show procedures
+          +-args: []
+  - id: 11
+    desc: SHOW CREATE PROCEDUER
+    sql: SHOW CREATE PROCEDURE sp_name;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show create procedure
+          +-args: [sp_name]
+  - id: 12
+    desc: SHOW CREATE PROCEDUER
+    sql: SHOW CREATE PROCEDURE db.sp_name;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show create procedure
+          +-args: [db, sp_name]
+  - id: 13
     desc: DROP PROCEDUER
     sql: DROP PROCEDURE sp1;
     expect:
       node_tree_str: |
         +-node[CMD]
           +-cmd_type: drop procedure
-          +-args: sp1
-  - id: 11
+          +-args: [sp1]
+  - id: 14
     desc: DROP TABLE
     sql: DROP TABLE t1;
     expect:
       node_tree_str: |
         +-node[CMD]
           +-cmd_type: drop table
-          +-args: t1
-  - id: 11
+          +-args: [t1]
+  - id: 15
     desc: DROP INDEX
     sql: DROP INDEX t1.index1
     expect:
       node_tree_str: |
         +-node[CMD]
           +-cmd_type: drop index
-          +-args: t1,index1
+          +-args: [t1, index1]

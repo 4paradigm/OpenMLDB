@@ -504,10 +504,25 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowDatabases));
             } else if (show_id == "tables") {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowTables));
-            } else if (show_id == "procedures") {
+            } else if (show_id == "procedures" || show_id == "procedure status") {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowProcedures));
+            } else if (show_id == "create procedure") {
+                CHECK_TRUE(show_statement->optional_name() != nullptr, common::kSqlError,
+                           "show create procedure without a procedure name");
+                const auto names = show_statement->optional_name();
+                if (names->num_names() == 1) {
+                    *output = dynamic_cast<node::CmdNode*>(
+                        node_manager->MakeCmdNode(node::CmdType::kCmdShowCreateSp, names->first_name()->GetAsString()));
+                } else if (names->num_names() == 2) {
+                    *output = dynamic_cast<node::CmdNode*>(
+                        node_manager->MakeCmdNode(node::CmdType::kCmdShowCreateSp, names->first_name()->GetAsString(),
+                                                  names->last_name()->GetAsString()));
+                } else {
+                    FAIL_STATUS(common::kSqlError,
+                                "Invalid name for SHOW CREATE PROCEDURE: ", names->ToIdentifierPathString());
+                }
             } else {
-                FAIL_STATUS(common::kSqlError, "Un-support SHOW ", show_id)
+                FAIL_STATUS(common::kSqlError, "Un-support SHOW: ", show_id)
             }
             break;
         }
@@ -1441,8 +1456,6 @@ base::Status ConvertProcedureBody(const zetasql::ASTScript* body, node::NodeMana
         body->statement_list().size() == 1 && zetasql::AST_BEGIN_END_BLOCK == body->statement_list()[0]->node_kind(),
         common::kSqlError, "procedure body must have one BeginEndBlock");
     node::SqlNode* body_node = nullptr;
-    const zetasql::ASTBeginEndBlock* begin_end_block =
-        body->statement_list()[0]->GetAsOrNull<zetasql::ASTBeginEndBlock>();
     CHECK_STATUS(ConvertStatement(body->statement_list()[0], node_manager, &body_node));
     CHECK_TRUE(body_node->GetType() == node::kNodeList, common::kSqlError,
                "Inner error: procedure body is not converted to SqlNodeList");
@@ -1481,7 +1494,7 @@ base::Status AstPathExpressionToString(const zetasql::ASTPathExpression* path_ex
 base::Status AstPathExpressionToStringList(const zetasql::ASTPathExpression* path_expr,
                                            std::vector<std::string>& strs) {  // NOLINT
     CHECK_TRUE(path_expr != nullptr, common::kSqlError, "not an ASTPathExpression");
-    for (size_t i = 0; i < path_expr->num_names(); i++) {
+    for (int i = 0; i < path_expr->num_names(); i++) {
         CHECK_TRUE(nullptr != path_expr->name(i), common::kSqlError, "fail to convert path expression to string: name[",
                    i, "] is nullptr")
         strs.push_back(path_expr->name(i)->GetAsString());

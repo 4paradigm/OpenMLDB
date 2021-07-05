@@ -158,14 +158,16 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const std::str
 
 void PrintValue(std::ostream &output, const std::string &org_tab, const std::vector<std::string> &vec,
                 const std::string &item_name, bool last_child) {
-    std::string value = "";
-    for (auto item : vec) {
-        value.append(item).append(",");
+    std::stringstream ss;
+    ss << "[";
+    for (size_t i = 0; i < vec.size(); ++i) {
+        ss << vec[i];
+        if (i + 1 < vec.size()) {
+            ss << ", ";
+        }
     }
-    if (vec.size() > 0) {
-        value.pop_back();
-    }
-    output << org_tab << SPACE_ST << item_name << ": " << (value.empty() ? "<nil>" : value);
+    ss << "]";
+    output << org_tab << SPACE_ST << item_name << ": " << ss.str();
 }
 
 bool SqlNode::Equals(const SqlNode *that) const {

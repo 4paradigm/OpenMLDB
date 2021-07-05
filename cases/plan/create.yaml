@@ -171,7 +171,7 @@ cases:
           |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
-          |      +-keys: a,b
+          |      +-keys: [a, b]
           |      +-ts_col: column2
           |      +-abs_ttl: 86400000
           |      +-lat_ttl: -2
@@ -217,7 +217,7 @@ cases:
           |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
-          |      +-keys: a
+          |      +-keys: [a]
           |      +-ts_col: b
           |      +-abs_ttl: 3600000
           |      +-lat_ttl: 1800
@@ -264,7 +264,7 @@ cases:
           |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
-          |      +-keys: a
+          |      +-keys: [a]
           |      +-ts_col: b
           |      +-abs_ttl: -2
           |      +-lat_ttl: 1800
@@ -564,7 +564,7 @@ cases:
           +-table_name: t1
           +-index:
             +-node[kColumnIndex]
-              +-keys: col1,col2
+              +-keys: [col1, col2]
               +-ts_col: col3
               +-abs_ttl: 2592000000
               +-lat_ttl: -2
@@ -582,7 +582,7 @@ cases:
           +-table_name: t1
           +-index:
             +-node[kColumnIndex]
-              +-keys: col1,col2
+              +-keys: [col1, col2]
               +-ts_col: col3
               +-abs_ttl: -2
               +-lat_ttl: 100
@@ -614,7 +614,7 @@ cases:
           |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
-          |      +-keys: a
+          |      +-keys: [a]
           |      +-ts_col: b
           |      +-abs_ttl: -2
           |      +-lat_ttl: 1800

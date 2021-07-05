@@ -26,7 +26,7 @@ pushd "${CICD_RUNNER_THIRDSRC_PATH}"
 wget -nv --show-progress https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.3.1/thirdparty-2021-05-27-drawin-x86_64.tar.gz
 tar xzf thirdparty-2021-05-27-drawin-x86_64.tar.gz -C  "${CICD_RUNNER_THIRDPARTY_PATH}" --strip-components 1
 # download and install libzetasql
-wget -nv --show-progress -O libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta16/libzetasql-0.2.0-beta16-darwin-x86_64.tar.gz
+wget -nv --show-progress -O libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta17/libzetasql-0.2.0-beta17-darwin-x86_64.tar.gz
 tar xzf libzetasql.tar.gz -C  "${CICD_RUNNER_THIRDPARTY_PATH}" --strip-components 1
 echo "list files under ${CICD_RUNNER_THIRDPARTY_PATH}"
 

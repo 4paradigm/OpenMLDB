@@ -47,7 +47,7 @@ TEST_F(SqlNodeTest, StructExprNodeTest) {
     methods.AddChild(&iterator);
     struct_expr.SetMethod(&methods);
 
-    std::cout << struct_expr << std::endl;
+    DLOG(INFO) << struct_expr << std::endl;
     ASSERT_EQ(kExprStruct, struct_expr.GetExprType());
     ASSERT_EQ(&methods, struct_expr.GetMethods());
     ASSERT_EQ(&fileds, struct_expr.GetFileds());
@@ -56,7 +56,7 @@ TEST_F(SqlNodeTest, StructExprNodeTest) {
 TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
     SqlNode *node = node_manager_->MakeColumnRefNode("col", "t");
     ColumnRefNode *columnnode = dynamic_cast<ColumnRefNode *>(node);
-    std::cout << *node << std::endl;
+    DLOG(INFO) << *node << std::endl;
     ASSERT_EQ(kExprColumnRef, columnnode->GetExprType());
     ASSERT_EQ("t", columnnode->GetRelationName());
     ASSERT_EQ("col", columnnode->GetColumnName());
@@ -65,7 +65,7 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
 TEST_F(SqlNodeTest, MakeGetFieldExprTest) {
     auto row = node_manager_->MakeExprIdNode("row");
     auto node = node_manager_->MakeGetFieldExpr(row, 0);
-    std::cout << *node << std::endl;
+    DLOG(INFO) << *node << std::endl;
     ASSERT_EQ(kExprGetField, node->GetExprType());
     ASSERT_EQ("0", node->GetColumnName());
     ASSERT_EQ(kExprId, node->GetRow()->GetExprType());
@@ -73,14 +73,14 @@ TEST_F(SqlNodeTest, MakeGetFieldExprTest) {
 
 TEST_F(SqlNodeTest, MakeConstNodeStringTest) {
     ConstNode *node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode("parser string test"));
-    std::cout << *node_ptr << std::endl;
+    DLOG(INFO) << *node_ptr << std::endl;
     ASSERT_EQ(hybridse::node::kVarchar, node_ptr->GetDataType());
     ASSERT_STREQ("parser string test", node_ptr->GetStr());
 }
 
 TEST_F(SqlNodeTest, MakeConstNodeIntTest) {
     ConstNode *node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(1));
-    std::cout << *node_ptr << std::endl;
+    DLOG(INFO) << *node_ptr << std::endl;
     ASSERT_EQ(hybridse::node::kInt32, node_ptr->GetDataType());
     ASSERT_EQ(1, node_ptr->GetInt());
 
@@ -92,12 +92,12 @@ TEST_F(SqlNodeTest, MakeConstNodeLongTest) {
     int64_t val1 = 1;
     int64_t val2 = 864000000L;
     ConstNode *node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(val1));
-    std::cout << *node_ptr << std::endl;
+    DLOG(INFO) << *node_ptr << std::endl;
     ASSERT_EQ(hybridse::node::kInt64, node_ptr->GetDataType());
     ASSERT_EQ(val1, node_ptr->GetLong());
 
     node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(val2));
-    std::cout << *node_ptr << std::endl;
+    DLOG(INFO) << *node_ptr << std::endl;
     ASSERT_EQ(hybridse::node::kInt64, node_ptr->GetDataType());
     ASSERT_EQ(val2, node_ptr->GetLong());
 
@@ -107,7 +107,7 @@ TEST_F(SqlNodeTest, MakeConstNodeLongTest) {
 
 TEST_F(SqlNodeTest, MakeConstNodeDoubleTest) {
     ConstNode *node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(1.989E30));
-    std::cout << *node_ptr << std::endl;
+    DLOG(INFO) << *node_ptr << std::endl;
     ASSERT_EQ(hybridse::node::kDouble, node_ptr->GetDataType());
     ASSERT_EQ(1.989E30, node_ptr->GetDouble());
 
@@ -117,7 +117,7 @@ TEST_F(SqlNodeTest, MakeConstNodeDoubleTest) {
 
 TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
     ConstNode *node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(1.234f));
-    std::cout << *node_ptr << std::endl;
+    DLOG(INFO) << *node_ptr << std::endl;
     ASSERT_EQ(hybridse::node::kFloat, node_ptr->GetDataType());
     ASSERT_EQ(1.234f, node_ptr->GetFloat());
 
@@ -127,7 +127,7 @@ TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
 TEST_F(SqlNodeTest, MakeConstTimeTest) {
     {
         ConstNode *node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(10, node::kSecond));
-        std::cout << *node_ptr << std::endl;
+        DLOG(INFO) << *node_ptr << std::endl;
         ASSERT_EQ(hybridse::node::kSecond, node_ptr->GetDataType());
         ASSERT_EQ(10000, node_ptr->GetMillis());
 
@@ -136,7 +136,7 @@ TEST_F(SqlNodeTest, MakeConstTimeTest) {
     }
     {
         ConstNode *node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(10, node::kMinute));
-        std::cout << *node_ptr << std::endl;
+        DLOG(INFO) << *node_ptr << std::endl;
         ASSERT_EQ(hybridse::node::kMinute, node_ptr->GetDataType());
         ASSERT_EQ(10000 * 60, node_ptr->GetMillis());
 
@@ -145,7 +145,7 @@ TEST_F(SqlNodeTest, MakeConstTimeTest) {
     }
     {
         ConstNode *node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(10, node::kHour));
-        std::cout << *node_ptr << std::endl;
+        DLOG(INFO) << *node_ptr << std::endl;
         ASSERT_EQ(hybridse::node::kHour, node_ptr->GetDataType());
         ASSERT_EQ(10000 * 3600, node_ptr->GetMillis());
 
@@ -154,7 +154,7 @@ TEST_F(SqlNodeTest, MakeConstTimeTest) {
     }
     {
         ConstNode *node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(10, node::kDay));
-        std::cout << *node_ptr << std::endl;
+        DLOG(INFO) << *node_ptr << std::endl;
         ASSERT_EQ(hybridse::node::kDay, node_ptr->GetDataType());
         ASSERT_EQ(10000 * 3600 * 24, node_ptr->GetMillis());
 
@@ -178,7 +178,7 @@ TEST_F(SqlNodeTest, TimeIntervalConstGetMillisTest) {
     }
     {
         ConstNode *node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(1.234f));
-        std::cout << *node_ptr << std::endl;
+        DLOG(INFO) << *node_ptr << std::endl;
         ASSERT_EQ(hybridse::node::kFloat, node_ptr->GetDataType());
         ASSERT_EQ(-1, node_ptr->GetMillis());
     }
@@ -223,7 +223,7 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
                                      maxsize);
     WindowDefNode *node_ptr = dynamic_cast<WindowDefNode *>(
         node_manager_->MakeWindowDefNode(partitions, node_manager_->MakeOrderByNode(orders, true), frame));
-    std::cout << *node_ptr << std::endl;
+    DLOG(INFO) << *node_ptr << std::endl;
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
     //
 
@@ -235,7 +235,7 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
 
 TEST_F(SqlNodeTest, MakeWindowDefNodetWithNameTest) {
     WindowDefNode *node_ptr = dynamic_cast<WindowDefNode *>(node_manager_->MakeWindowDefNode("w1"));
-    std::cout << *node_ptr << std::endl;
+    DLOG(INFO) << *node_ptr << std::endl;
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
     ASSERT_EQ(NULL, node_ptr->GetFrame());
     ASSERT_EQ("w1", node_ptr->GetName());
@@ -266,7 +266,7 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
         node_manager_->MakeFrameExtent(node_manager_->MakeFrameBound(kPreceding),
                                        node_manager_->MakeFrameBound(kPreceding, 86400000)),
         node_manager_->MakeConstNode(100)));
-    std::cout << *node_ptr << std::endl;
+    DLOG(INFO) << *node_ptr << std::endl;
 
     ASSERT_EQ(kFrames, node_ptr->GetType());
     ASSERT_EQ(kFrameRange, node_ptr->frame_type());
@@ -698,14 +698,14 @@ TEST_F(SqlNodeTest, CreateIndexNodeTest) {
         "  +-table_name: t1\n"
         "  +-index:\n"
         "    +-node[kColumnIndex]\n"
-        "      +-keys: col4\n"
+        "      +-keys: [col4]\n"
         "      +-ts_col: col5\n"
         "      +-abs_ttl: -2\n"
         "      +-lat_ttl: -2\n"
         "      +-ttl_type: <nil>\n"
         "      +-version_column: <nil>\n"
         "      +-version_count: 0",
-        oss.str()) << oss.str();
+        oss.str());
 }
 TEST_F(SqlNodeTest, FnNodeTest) {
     node::FnNodeList *params = node_manager_->MakeFnListNode();
@@ -881,7 +881,7 @@ TEST_F(SqlNodeTest, CallExprTest) {
     ASSERT_EQ(2, node->GetChildNum());
     std::ostringstream oss;
     node->Print(oss, "");
-    std::cout << oss.str();
+    DLOG(INFO) << oss.str();
     ASSERT_EQ(
         "+-expr[function]\n"
         "  +-function:\n"
@@ -910,7 +910,7 @@ TEST_F(SqlNodeTest, ColumnIdTest) {
     ASSERT_FALSE(node::ExprEquals(node, node_manager_->MakeColumnRefNode("col1", "")));
     std::ostringstream oss;
     node->Print(oss, "");
-    std::cout << oss.str();
+    DLOG(INFO) << oss.str();
     ASSERT_EQ(
         "+-expr[column id]\n"
         "  +-column_id: 1",

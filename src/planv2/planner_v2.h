@@ -34,7 +34,6 @@ namespace plan {
 
 using base::Status;
 using node::NodePointVector;
-using node::PlanNode;
 using node::PlanNodeList;
 
 class SimplePlannerV2 : public SimplePlanner {
