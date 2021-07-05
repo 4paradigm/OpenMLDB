@@ -111,7 +111,7 @@ public class DDLEngine {
 
     public static String genFedbDdl(Map<String, String> nameParquetMap, String sql, int replicaNum, int partitionNum) throws Exception {
         String tempDB = "temp_" + System.currentTimeMillis();
-        String replicaAndPartition = String.format(" options ( replicanum=%s, partitionnum=%s )", replicaNum, partitionNum);
+        String replicaAndPartition = String.format(" options ( replicanum=%s, partitionnum=%s ) ", replicaNum, partitionNum);
         TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
         db.setName(tempDB);
 
@@ -165,7 +165,7 @@ public class DDLEngine {
 
     public static String genDDL(String sql, String schema, int replicanum, int partitionnum) throws Exception {
         String tempDB = "temp_" + System.currentTimeMillis();
-        String replicaAndPartition = String.format("options ( replicanum=%s, partitionnum=%s )", replicanum, partitionnum);
+        String replicaAndPartition = String.format(" options ( replicanum=%s, partitionnum=%s ) ", replicanum, partitionnum);
         TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
         db.setName(tempDB);
         List<TypeOuterClass.TableDef> tables = getTableDefs(schema);
