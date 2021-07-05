@@ -213,7 +213,7 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     }
     LOG(INFO) << create_sp;
     if (!create_sp.empty()) {
-        ASSERT_TRUE(router->ExecuteDDL(sql_case.db(), create_sp, &status)) << status.msg;
+        router->ExecuteDDL(sql_case.db(), create_sp, &status);
         ASSERT_TRUE(router->RefreshCatalog());
     }
     DLOG(INFO) << "Create Procedure DONE";
