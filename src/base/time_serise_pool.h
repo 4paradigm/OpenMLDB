@@ -18,24 +18,24 @@
 #define SRC_BASE_TIME_SERISE_POOL_H_
 
 #include <malloc.h>
-#include <memory>
+
 #include <map>
+#include <memory>
+#include <utility>
 
 namespace openmldb {
 namespace base {
 
-
 class TimeBucket {
-  public:
-    TimeBucket(uint32_t block_size) : block_size_(block_size), current_offset_(block_size + 1), object_num_(0) {
-        head_ = (Block*)malloc(sizeof(Block*)); //empty block at end
+ public:
+    explicit TimeBucket(uint32_t block_size)
+        : block_size_(block_size), current_offset_(block_size + 1), object_num_(0) {
+        head_ = reinterpret_cast<Block*>(malloc(sizeof(Block*)));  // empty block at end
         head_->next = NULL;
     }
-    void Clear()
-    {
+    void Clear() {
         auto p = head_;
-        while (p)
-        {
+        while (p) {
             auto q = p->next;
             free(p);
             p = q;
@@ -48,66 +48,62 @@ class TimeBucket {
             current_offset_ += size;
             return addr;
         } else {
-            auto block = (Block*)malloc(block_size_);
+            auto block = reinterpret_cast<Block*>(malloc(block_size_));
             current_offset_ = size;
             block->next = head_->next;
             head_ = block;
             return head_->data;
         }
     }
-    bool Free() // ret if fully freed
-    {
-        if (!--object_num_)
-        {
-          Clear();
-          return true;
+    bool Free() {  // ret if fully freed
+        if (!--object_num_) {
+            Clear();
+            return true;
+        } else {
+            return false;
         }
-        else return false;
     }
-  private:
+
+ private:
     uint32_t block_size_;
     uint32_t current_offset_;
     uint32_t object_num_;
     struct Block {
         Block* next;
         char data[];
-    } *head_;
+    } * head_;
 };
 
 class TimeSerisePool {
-  public:
-    explicit TimeSerisePool(uint32_t block_size) : block_size_(block_size) {
-
-    }
+ public:
+    explicit TimeSerisePool(uint32_t block_size) : block_size_(block_size) {}
     void* Alloc(uint32_t size, uint64_t time) {
-      auto pair = pool_.find(keyof(time));
-      if (pair == pool_.end()){
-        auto bucket = new TimeBucket(block_size_);
-        pool_.insert(std::pair<uint32_t, std::unique_ptr<TimeBucket>>(keyof(time), std::unique_ptr<TimeBucket>(bucket)));
-        return bucket->Alloc(size);
-      }
+        auto pair = pool_.find(keyof(time));
+        if (pair == pool_.end()) {
+            auto bucket = new TimeBucket(block_size_);
+            pool_.insert(
+                std::pair<uint32_t, std::unique_ptr<TimeBucket>>(keyof(time), std::unique_ptr<TimeBucket>(bucket)));
+            return bucket->Alloc(size);
+        }
 
-      return pair->second->Alloc(size);
+        return pair->second->Alloc(size);
     }
     void Free(uint64_t time) {
-      auto pair = pool_.find(keyof(time));
-      if (pair->second->Free()) {
-        pool_.erase(pair);
-      }
+        auto pair = pool_.find(keyof(time));
+        if (pair->second->Free()) {
+            pool_.erase(pair);
+        }
     }
-    bool Empty(){
-      return pool_.empty();
-    }
-  private:
+    bool Empty() { return pool_.empty(); }
+
+ private:
     // key is the time / (60 * 60 * 1000)
     uint32_t block_size_;
     std::map<uint32_t, std::unique_ptr<TimeBucket>> pool_;
-    inline static uint32_t keyof(uint64_t time) {
-      return time / (60 * 60 * 1000);
-    }
+    inline static uint32_t keyof(uint64_t time) { return time / (60 * 60 * 1000); }
 };
 
-}
-}
+}  // namespace base
+}  // namespace openmldb
 
-#endif // SRC_BASE_TIME_SERISE_POOL_H_
+#endif  // SRC_BASE_TIME_SERISE_POOL_H_

@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-
 #include "base/time_serise_pool.h"
 
-#include "gtest/gtest.h"
-
 #include <vector>
+
+#include "gtest/gtest.h"
 
 namespace openmldb {
 namespace base {
@@ -33,10 +32,10 @@ class TimeSerisePoolTest : public ::testing::Test {
 TEST_F(TimeSerisePoolTest, FreeToEmpty) {
     TimeSerisePool pool(1024);
     std::vector<uint64_t> times;
-    const int datasize = 1024/2;
-    char data[datasize];
+    const int datasize = 1024 / 2;
+    char *data = new char[datasize];
     for (int i = 0; i < datasize; ++i) data[i] = i * i * i;
-    for (int i = 0; i < 1000; ++i){
+    for (int i = 0; i < 1000; ++i) {
         auto time = (i * i % 7) * (60 * 60 * 1000);
         auto ptr = pool.Alloc(datasize, time);
         memcpy(ptr, data, datasize);
