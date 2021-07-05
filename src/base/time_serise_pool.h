@@ -33,7 +33,7 @@ class TimeBucket {
         head_ = reinterpret_cast<Block*>(malloc(sizeof(Block*)));  // empty block at end
         head_->next = NULL;
     }
-    void Clear() {
+    ~TimeBucket() {
         auto p = head_;
         while (p) {
             auto q = p->next;
@@ -56,12 +56,7 @@ class TimeBucket {
         }
     }
     bool Free() {  // ret if fully freed
-        if (!--object_num_) {
-            Clear();
-            return true;
-        } else {
-            return false;
-        }
+        return !--object_num_;
     }
 
  private:
