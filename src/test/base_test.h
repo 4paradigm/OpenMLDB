@@ -29,7 +29,7 @@
 #include "sdk/base.h"
 #include "sdk/result_set.h"
 
-namespace fedb {
+namespace openmldb {
 namespace test {
 class SQLCaseTest : public ::testing::TestWithParam<hybridse::sqlcase::SqlCase> {
  public:
@@ -50,8 +50,8 @@ class SQLCaseTest : public ::testing::TestWithParam<hybridse::sqlcase::SqlCase> 
     static void CheckSchema(const hybridse::vm::Schema &schema, const hybridse::sdk::Schema &exp_schema);
     static void PrintRows(const hybridse::vm::Schema &schema, const std::vector<hybridse::codec::Row> &rows);
     static const std::vector<hybridse::codec::Row> SortRows(const hybridse::vm::Schema &schema,
-                                                         const std::vector<hybridse::codec::Row> &rows,
-                                                         const std::string &order_col);
+                                                            const std::vector<hybridse::codec::Row> &rows,
+                                                            const std::string &order_col);
     static void CheckRow(hybridse::codec::RowView &row_view,  // NOLINT
                          std::shared_ptr<hybridse::sdk::ResultSet> rs);
     static void CheckRows(const hybridse::vm::Schema &schema, const std::string &order_col,
@@ -71,5 +71,5 @@ class SQLCaseTest : public ::testing::TestWithParam<hybridse::sqlcase::SqlCase> 
 };
 
 }  // namespace test
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_TEST_BASE_TEST_H_

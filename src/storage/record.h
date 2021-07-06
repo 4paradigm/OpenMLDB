@@ -14,48 +14,35 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_STORAGE_RECORD_H_
 #define SRC_STORAGE_RECORD_H_
 
 #include "storage/segment.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 static const uint32_t DATA_BLOCK_BYTE_SIZE = sizeof(DataBlock);
 static const uint32_t KEY_ENTRY_BYTE_SIZE = sizeof(KeyEntry);
-static const uint32_t ENTRY_NODE_SIZE =
-    sizeof(::fedb::base::Node<::fedb::base::Slice, void*>);
-static const uint32_t DATA_NODE_SIZE =
-    sizeof(::fedb::base::Node<uint64_t, void*>);
+static const uint32_t ENTRY_NODE_SIZE = sizeof(::openmldb::base::Node<::openmldb::base::Slice, void*>);
+static const uint32_t DATA_NODE_SIZE = sizeof(::openmldb::base::Node<uint64_t, void*>);
 static const uint32_t KEY_ENTRY_PTR_SIZE = sizeof(KeyEntry*);
 
-static inline uint32_t GetRecordSize(uint32_t value_size) {
-    return value_size + DATA_BLOCK_BYTE_SIZE;
-}
+static inline uint32_t GetRecordSize(uint32_t value_size) { return value_size + DATA_BLOCK_BYTE_SIZE; }
 
 // the input height which is the height of skiplist node
-static inline uint32_t GetRecordPkIdxSize(uint8_t height, uint32_t key_size,
-                                          uint8_t key_entry_max_height) {
-    return height * 8 + ENTRY_NODE_SIZE + KEY_ENTRY_BYTE_SIZE + key_size +
-           key_entry_max_height * 8 + DATA_NODE_SIZE;
+static inline uint32_t GetRecordPkIdxSize(uint8_t height, uint32_t key_size, uint8_t key_entry_max_height) {
+    return height * 8 + ENTRY_NODE_SIZE + KEY_ENTRY_BYTE_SIZE + key_size + key_entry_max_height * 8 + DATA_NODE_SIZE;
 }
 
-static inline uint32_t GetRecordPkMultiIdxSize(uint8_t height,
-                                               uint32_t key_size,
-                                               uint8_t key_entry_max_height,
+static inline uint32_t GetRecordPkMultiIdxSize(uint8_t height, uint32_t key_size, uint8_t key_entry_max_height,
                                                uint32_t ts_cnt) {
     return height * 8 + ENTRY_NODE_SIZE + key_size +
-           (KEY_ENTRY_PTR_SIZE + KEY_ENTRY_BYTE_SIZE +
-            key_entry_max_height * 8 + DATA_NODE_SIZE) *
-               ts_cnt;
+           (KEY_ENTRY_PTR_SIZE + KEY_ENTRY_BYTE_SIZE + key_entry_max_height * 8 + DATA_NODE_SIZE) * ts_cnt;
 }
 
-static inline uint32_t GetRecordTsIdxSize(uint8_t height) {
-    return height * 8 + DATA_NODE_SIZE;
-}
+static inline uint32_t GetRecordTsIdxSize(uint8_t height) { return height * 8 + DATA_NODE_SIZE; }
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_STORAGE_RECORD_H_

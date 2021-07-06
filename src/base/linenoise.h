@@ -60,7 +60,7 @@ extern "C" {
 #include <stddef.h>
 #endif
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 typedef struct linenoiseCompletions {
@@ -87,7 +87,7 @@ void linenoiseSetMultiLine(int ml);
 void linenoisePrintKeyCodes(void);
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #ifdef __cplusplus
 }

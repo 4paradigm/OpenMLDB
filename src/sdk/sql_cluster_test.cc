@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <sched.h>
 #include <unistd.h>
 
@@ -26,21 +25,20 @@
 #include "base/glog_wapper.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
-#include "sdk/sql_router.h"
 #include "sdk/sql_cluster_router.h"
+#include "sdk/sql_router.h"
 #include "sdk/sql_sdk_test.h"
-#include "common/timer.h"
 #include "vm/catalog.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
-::fedb::sdk::MiniCluster* mc_;
+::openmldb::sdk::MiniCluster* mc_;
 std::shared_ptr<SQLRouter> router_;
-
 
 class SQLClusterTest : public ::testing::Test {
  public:
@@ -81,15 +79,15 @@ TEST_F(SQLClusterTest, cluster_insert) {
         std::string insert = "insert into " + name + " values('" + key + "', 1590);";
         ok = router->ExecuteInsert(db, insert, &status);
         ASSERT_TRUE(ok);
-        uint32_t pid = (uint32_t)(::fedb::base::hash64(key) % 8);
+        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % 8);
         key_map[pid].push_back(key);
     }
     auto endpoints = mc_->GetTbEndpoint();
     uint32_t count = 0;
     for (const auto& endpoint : endpoints) {
-        ::fedb::tablet::TabletImpl* tb1 = mc_->GetTablet(endpoint);
-        ::fedb::api::GetTableStatusRequest request;
-        ::fedb::api::GetTableStatusResponse response;
+        ::openmldb::tablet::TabletImpl* tb1 = mc_->GetTablet(endpoint);
+        ::openmldb::api::GetTableStatusRequest request;
+        ::openmldb::api::GetTableStatusResponse response;
         MockClosure closure;
         tb1->GetTableStatus(NULL, &request, &response, &closure);
         for (const auto& table_status : response.all_table_status()) {
@@ -127,11 +125,12 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
     ASSERT_TRUE(router->CreateDB(db, &status));
     ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
     ASSERT_TRUE(router->RefreshCatalog());
-    std::string sql = "select col2, sum(col1) over w1 from t1 \n"
-                      "window w1 as (partition by col2 \n"
-                      "order by col3 rows between 3 preceding and current row);";
+    std::string sql =
+        "select col2, sum(col1) over w1 from t1 \n"
+        "window w1 as (partition by col2 \n"
+        "order by col3 rows between 3 preceding and current row);";
     auto ns_client = mc_->GetNsClient();
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     ASSERT_TRUE(ns_client->ShowTable("t1", db, false, tables, msg));
     for (int i = 0; i < 10; i++) {
@@ -145,13 +144,12 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         ASSERT_TRUE(request_row->Build());
         auto sql_cluster_router = std::dynamic_pointer_cast<SQLClusterRouter>(router);
         auto client = sql_cluster_router->GetTabletClient(db, sql, request_row);
-        int pid = ::fedb::base::hash64(pk) % 2;
+        int pid = ::openmldb::base::hash64(pk) % 2;
         ASSERT_EQ(client->GetEndpoint(), tables[0].table_partition(pid).partition_meta(0).endpoint());
     }
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table t1;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
 }
-
 
 static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
@@ -360,7 +358,7 @@ TEST_F(SQLClusterTest, create_table) {
     }
     ASSERT_TRUE(router->RefreshCatalog());
     auto ns_client = mc_->GetNsClient();
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     ASSERT_TRUE(ns_client->ShowTable("", db, false, tables, msg));
     ASSERT_TRUE(!tables.empty());
@@ -383,25 +381,25 @@ TEST_F(SQLClusterTest, create_table) {
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     FLAGS_zk_session_timeout = 100000;
-    ::fedb::sdk::MiniCluster mc(6181);
-    ::fedb::sdk::mc_ = &mc;
+    ::openmldb::sdk::MiniCluster mc(6181);
+    ::openmldb::sdk::mc_ = &mc;
     FLAGS_enable_distsql = true;
-    int ok = ::fedb::sdk::mc_->SetUp(2);
+    int ok = ::openmldb::sdk::mc_->SetUp(2);
     sleep(1);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::fedb::sdk::router_ = ::fedb::sdk::GetNewSQLRouter();
-    if (nullptr == ::fedb::sdk::router_) {
+    ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
+    if (nullptr == ::openmldb::sdk::router_) {
         LOG(ERROR) << "Fail Test with NULL SQL router";
         return -1;
     }
     ok = RUN_ALL_TESTS();
-    ::fedb::sdk::mc_->Close();
+    ::openmldb::sdk::mc_->Close();
     return ok;
 }

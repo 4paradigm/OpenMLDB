@@ -14,23 +14,24 @@
  * limitations under the License.
  */
 
-
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 //
 
 #include "log/writable_file.h"
+
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
+
 #include "base/slice.h"
 #include "base/status.h"
 
-using ::fedb::base::Slice;
-using ::fedb::base::Status;
+using ::openmldb::base::Slice;
+using ::openmldb::base::Status;
 
-namespace fedb {
+namespace openmldb {
 namespace log {
 
 static Status IOError(const std::string& context, int err_number) {
@@ -39,8 +40,7 @@ static Status IOError(const std::string& context, int err_number) {
 
 class PosixWritableFile : public WritableFile {
  public:
-    PosixWritableFile(const std::string& fname, FILE* f)
-        : filename_(fname), file_(f) {}
+    PosixWritableFile(const std::string& fname, FILE* f) : filename_(fname), file_(f) {}
 
     ~PosixWritableFile() {
         if (file_ != NULL) {
@@ -104,9 +104,7 @@ class PosixWritableFile : public WritableFile {
     FILE* file_;
 };
 
-WritableFile* NewWritableFile(const std::string& fname, FILE* f) {
-    return new PosixWritableFile(fname, f);
-}
+WritableFile* NewWritableFile(const std::string& fname, FILE* f) { return new PosixWritableFile(fname, f); }
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb

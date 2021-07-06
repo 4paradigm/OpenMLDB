@@ -21,7 +21,7 @@
 #include "sdk/mini_cluster_bm.h"
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
-::fedb::sdk::MiniCluster* mc;
+::openmldb::sdk::MiniCluster* mc;
 #define DEFINE_REQUEST_CASE(NAME, PATH, CASE_ID)                      \
     static void BM_Request_##NAME(benchmark::State& state) {          \
         MiniBenchmarkOnCase(PATH, CASE_ID, kRequestMode, mc, &state); \
@@ -35,7 +35,7 @@ DEFINE_REQUEST_CASE(BM_SimpleLastJoin4Right, DEFAULT_YAML_PATH, "1");
 #define DEFINE_REQUEST_WINDOW_CASE(NAME, PATH, CASE_ID)                   \
     static void BM_Request_##NAME(benchmark::State& state) {              \
         auto sql_case = LoadSQLCaseWithID(PATH, CASE_ID);                 \
-        if (!hybridse::sqlcase::SqlCase::IsDebug()) {                       \
+        if (!hybridse::sqlcase::SqlCase::IsDebug()) {                     \
             sql_case.SqlCaseRepeatConfig("window_scale", state.range(0)); \
         }                                                                 \
         MiniBenchmarkOnCase(sql_case, kRequestMode, mc, &state);          \
@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
     FLAGS_enable_localtablet = !hybridse::sqlcase::SqlCase::IsDisableLocalTablet();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
-    ::fedb::sdk::MiniCluster mini_cluster(6181);
+    ::openmldb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
     if (!hybridse::sqlcase::SqlCase::IsCluster()) {
         mini_cluster.SetUp(1);

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
@@ -23,15 +22,17 @@
 #define SRC_LOG_LOG_READER_H_
 
 #include <stdint.h>
+
 #include <string>
+
 #include "base/skiplist.h"
 #include "base/slice.h"
 #include "log/log_format.h"
 #include "log/sequential_file.h"
 
-using ::fedb::base::Slice;
+using ::openmldb::base::Slice;
 
-namespace fedb {
+namespace openmldb {
 
 namespace base {
 class Status;
@@ -62,8 +63,7 @@ class Reader {
     //
     // The Reader will start reading at the first record located at physical
     // position >= initial_offset within the file.
-    Reader(SequentialFile* file, Reporter* reporter, bool checksum,
-           uint64_t initial_offset, bool compressed);
+    Reader(SequentialFile* file, Reporter* reporter, bool checksum, uint64_t initial_offset, bool compressed);
 
     ~Reader();
 
@@ -72,7 +72,7 @@ class Reader {
     // "*scratch" as temporary storage.  The contents filled in *record
     // will only be valid until the next mutating operation on this
     // reader or the next mutation to *scratch.
-    ::fedb::base::Status ReadRecord(Slice* record, std::string* scratch);
+    ::openmldb::base::Status ReadRecord(Slice* record, std::string* scratch);
 
     // Returns the physical offset of the last record returned by ReadRecord.
     //
@@ -84,17 +84,11 @@ class Reader {
     void GoBackToLastBlock();
     void GoBackToStart();
 
-    inline bool GetCompressed() {
-        return compressed_;
-    }
+    inline bool GetCompressed() { return compressed_; }
 
-    inline uint32_t GetBlockSize() {
-        return block_size_;
-    }
+    inline uint32_t GetBlockSize() { return block_size_; }
 
-    inline uint32_t GetHeaderSize() {
-        return header_size_;
-    }
+    inline uint32_t GetHeaderSize() { return header_size_; }
 
  private:
     SequentialFile* const file_;
@@ -144,7 +138,7 @@ class Reader {
     bool SkipToInitialBlock();
 
     // Return type, or one of the preceding special values
-    unsigned int ReadPhysicalRecord(Slice* result, uint64_t& offset); // NOLINT
+    unsigned int ReadPhysicalRecord(Slice* result, uint64_t& offset);  // NOLINT
 
     // Reports dropped bytes to the reporter.
     // buffer_ must be updated to remove the dropped bytes prior to invocation.
@@ -156,16 +150,13 @@ class Reader {
     void operator=(const Reader&);
 };
 
-typedef ::fedb::base::Skiplist<uint32_t, uint64_t,
-                                ::fedb::base::DefaultComparator>
-    LogParts;
+typedef ::openmldb::base::Skiplist<uint32_t, uint64_t, ::openmldb::base::DefaultComparator> LogParts;
 
 class LogReader {
  public:
     LogReader(LogParts* logs, const std::string& log_path, bool compressed);
     virtual ~LogReader();
-    ::fedb::base::Status ReadNextRecord(::fedb::base::Slice* record,
-                                         std::string* buffer);
+    ::openmldb::base::Status ReadNextRecord(::openmldb::base::Slice* record, std::string* buffer);
     int RollRLogFile();
     int OpenSeqFile(const std::string& path);
     void GoBackToLastBlock();
@@ -188,6 +179,6 @@ class LogReader {
 };
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_LOG_LOG_READER_H_
