@@ -25,11 +25,11 @@
 #include "apiserver/interface_provider.h"
 #include "apiserver/json_helper.h"
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
-#include "proto/http.pb.h"
+#include "proto/api_server.pb.h"
 #include "sdk/sql_cluster_router.h"
 
 namespace openmldb {
-namespace http {
+namespace apiserver {
 
 using butil::rapidjson::Document;
 using butil::rapidjson::StringBuffer;
@@ -47,6 +47,9 @@ class APIServerImpl : public APIServer {
     bool Init(const sdk::ClusterOptions& options);
     bool Init(::openmldb::sdk::ClusterSDK* cluster);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
+                 google::protobuf::Closure* done) override;
+
+    void Refresh(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;
 
  private:
@@ -121,7 +124,7 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
 
 JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::TableInfo> info);  // NOLINT
 
-}  // namespace http
+}  // namespace apiserver
 }  // namespace openmldb
 
 #endif  // SRC_APISERVER_API_SERVER_IMPL_H_

@@ -527,6 +527,18 @@ bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid, const ::openmldb::type:
     return false;
 }
 
+bool TabletClient::Refresh(uint32_t tid) {
+    ::openmldb::api::RefreshRequest request;
+    request.set_tid(tid);
+    ::openmldb::api::GeneralResponse response;
+    bool ret = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Refresh, &request, &response,
+                                   FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
 bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
     ::openmldb::api::DeleteTaskRequest request;
     ::openmldb::api::GeneralResponse response;

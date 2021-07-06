@@ -21,7 +21,7 @@
 #include <string>
 
 namespace openmldb {
-namespace http {
+namespace apiserver {
 
 /**
 \class Archiver
@@ -137,7 +137,7 @@ JsonWriter& operator<<(JsonWriter& ar, T& s) {
     return ar & s;
 }
 
-}  // namespace http
+}  // namespace apiserver
 }  // namespace openmldb
 
 #endif  // SRC_APISERVER_JSON_HELPER_H_

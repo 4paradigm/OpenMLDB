@@ -25,7 +25,7 @@
 #include "sdk/mini_cluster.h"
 
 namespace openmldb {
-namespace http {
+namespace apiserver {
 
 class APIServerTestEnv : public testing::Environment {
  public:
@@ -638,11 +638,11 @@ TEST_F(APIServerTest, getTables) {
     }
 }
 
-}  // namespace http
+}  // namespace apiserver
 }  // namespace openmldb
 
 int main(int argc, char* argv[]) {
-    testing::AddGlobalTestEnvironment(openmldb::http::APIServerTestEnv::Instance());
+    testing::AddGlobalTestEnvironment(openmldb::apiserver::APIServerTestEnv::Instance());
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();

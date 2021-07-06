@@ -4857,7 +4857,7 @@ void StartAPIServer() {
         GetRealEndpoint(&real_endpoint);
     }
 
-    auto api_service = std::make_unique<::openmldb::http::APIServerImpl>();
+    auto api_service = std::make_unique<::openmldb::apiserver::APIServerImpl>();
     ::openmldb::sdk::ClusterOptions cluster_options;
     cluster_options.zk_cluster = FLAGS_zk_cluster;
     cluster_options.zk_path = FLAGS_zk_root_path;
