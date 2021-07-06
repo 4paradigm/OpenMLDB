@@ -29,11 +29,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Run unit tests for all-in-one
-        workdir: java/openmldb-batch
+        working-directory: java/openmldb-batch
         run: |
           mvn clean compile test -Pallinone
       - name: Run unit tests for Linux
-        workdir: java/openmldb-batch
+        working-directory: java/openmldb-batch
         run: |
           mvn clean compile test
   macos-unit-test:
@@ -52,10 +52,10 @@ jobs:
           brew install glog
           brew install yaml-cpp
       - name: Run unit tests for all-in-one
-        workdir: java/openmldb-batch
+        working-directory: java/openmldb-batch
         run: |
           mvn clean compile test -Pallinone
       - name: Run unit tests for MacOS
-        workdir: java/openmldb-batch
+        working-directory: java/openmldb-batch
         run: |
           mvn clean compile test -Pmacos
