@@ -328,7 +328,7 @@ bool NsClient::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create, cons
     if (0 != sql_status->code) {
         return false;
     }
-    client_.SendRequest(&::fedb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+    client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
                         FLAGS_request_timeout_ms, 1);
     sql_status->msg = response.msg();
     if (0 != response.code()) {
