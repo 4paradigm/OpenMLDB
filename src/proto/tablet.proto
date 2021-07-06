@@ -734,7 +734,6 @@ message ExplainResponse {
 
 message RefreshRequest {
     optional uint32 tid = 1;
-    optional string procedure_name = 3;
 }
 
 message GetCatalogRequest {}
