@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_SDK_RESULT_SET_BASE_H_
 #define SRC_SDK_RESULT_SET_BASE_H_
 #include <memory>
@@ -25,7 +24,7 @@
 #include "sdk/base_impl.h"
 #include "sdk/codec_sdk.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 class ResultSetBase {
@@ -77,6 +76,6 @@ class ResultSetBase {
 };
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_SDK_RESULT_SET_BASE_H_

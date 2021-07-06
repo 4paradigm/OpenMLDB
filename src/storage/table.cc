@@ -14,36 +14,34 @@
  * limitations under the License.
  */
 
-
 #include "storage/table.h"
+
 #include <algorithm>
 #include <utility>
+
 #include "base/glog_wapper.h"
 #include "codec/schema_codec.h"
 
-namespace fedb {
+namespace openmldb {
 namespace storage {
 
 Table::Table() {}
 
-Table::Table(const std::string &name,
-             uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader,
-             uint64_t ttl_offset,
-             const std::map<std::string, uint32_t> &mapping,
-             ::fedb::type::TTLType ttl_type,
-             ::fedb::type::CompressType compress_type)
-      : name_(name),
+Table::Table(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader, uint64_t ttl_offset,
+             const std::map<std::string, uint32_t>& mapping, ::openmldb::type::TTLType ttl_type,
+             ::openmldb::type::CompressType compress_type)
+    : name_(name),
       id_(id),
       pid_(pid),
       ttl_offset_(ttl_offset),
       is_leader_(is_leader),
       compress_type_(compress_type),
       version_schema_(),
-      update_ttl_(std::make_shared<std::vector<::fedb::storage::UpdateTTLMeta>>()) {
-    table_meta_ = std::make_shared<::fedb::api::TableMeta>();
-    ::fedb::common::TTLSt ttl_st;
+      update_ttl_(std::make_shared<std::vector<::openmldb::storage::UpdateTTLMeta>>()) {
+    table_meta_ = std::make_shared<::openmldb::api::TableMeta>();
+    ::openmldb::common::TTLSt ttl_st;
     ttl_st.set_ttl_type(ttl_type);
-    if (ttl_type == ::fedb::type::TTLType::kAbsoluteTime) {
+    if (ttl_type == ::openmldb::type::TTLType::kAbsoluteTime) {
         ttl_st.set_abs_ttl(ttl / (60 * 1000));
         ttl_st.set_lat_ttl(0);
     } else {
@@ -52,27 +50,27 @@ Table::Table(const std::string &name,
     }
     last_make_snapshot_time_ = 0;
     std::map<uint32_t, std::string> idx_map;
-    for (const auto &kv : mapping) {
+    for (const auto& kv : mapping) {
         idx_map.emplace(kv.second, kv.first);
     }
     for (const auto& kv : idx_map) {
-        ::fedb::common::ColumnDesc* column_desc = table_meta_->add_column_desc();
+        ::openmldb::common::ColumnDesc* column_desc = table_meta_->add_column_desc();
         column_desc->set_name(kv.second);
-        column_desc->set_data_type(::fedb::type::kString);
-        ::fedb::common::ColumnKey* index = table_meta_->add_column_key();
+        column_desc->set_data_type(::openmldb::type::kString);
+        ::openmldb::common::ColumnKey* index = table_meta_->add_column_key();
         index->set_index_name(kv.second);
         index->add_col_name(kv.second);
-        ::fedb::common::TTLSt* cur_ttl = index->mutable_ttl();
+        ::openmldb::common::TTLSt* cur_ttl = index->mutable_ttl();
         cur_ttl->CopyFrom(ttl_st);
     }
 }
 
-void Table::AddVersionSchema(const ::fedb::api::TableMeta& table_meta) {
+void Table::AddVersionSchema(const ::openmldb::api::TableMeta& table_meta) {
     auto new_versions = std::make_shared<std::map<int32_t, std::shared_ptr<Schema>>>();
     new_versions->insert(std::make_pair(1, std::make_shared<Schema>(table_meta.column_desc())));
     for (const auto& ver : table_meta.schema_versions()) {
         int remain_size = ver.field_count() - table_meta.column_desc_size();
-        if (remain_size < 0)  {
+        if (remain_size < 0) {
             LOG(INFO) << "do not need add ver " << ver.id() << " because remain size less than 0";
             continue;
         }
@@ -82,7 +80,7 @@ void Table::AddVersionSchema(const ::fedb::api::TableMeta& table_meta) {
         }
         std::shared_ptr<Schema> new_schema = std::make_shared<Schema>(table_meta.column_desc());
         for (int i = 0; i < remain_size; i++) {
-            fedb::common::ColumnDesc* col = new_schema->Add();
+            openmldb::common::ColumnDesc* col = new_schema->Add();
             col->CopyFrom(table_meta.added_column_desc(i));
         }
         new_versions->insert(std::make_pair(ver.id(), new_schema));
@@ -90,8 +88,8 @@ void Table::AddVersionSchema(const ::fedb::api::TableMeta& table_meta) {
     std::atomic_store_explicit(&version_schema_, new_versions, std::memory_order_relaxed);
 }
 
-void Table::SetTableMeta(::fedb::api::TableMeta& table_meta) { // NOLINT
-    auto cur_table_meta = std::make_shared<::fedb::api::TableMeta>(table_meta);
+void Table::SetTableMeta(::openmldb::api::TableMeta& table_meta) {  // NOLINT
+    auto cur_table_meta = std::make_shared<::openmldb::api::TableMeta>(table_meta);
     std::atomic_store_explicit(&table_meta_, cur_table_meta, std::memory_order_release);
     AddVersionSchema(table_meta);
 }
@@ -109,27 +107,27 @@ int Table::InitColumnDesc() {
     AddVersionSchema(*table_meta_);
     return 0;
 }
-void Table::SetTTL(const ::fedb::storage::UpdateTTLMeta& ttl_meta) {
-    std::shared_ptr<std::vector<::fedb::storage::UpdateTTLMeta>> old_ttl;
-    std::shared_ptr<std::vector<::fedb::storage::UpdateTTLMeta>> new_ttl;
-    std::vector<::fedb::storage::UpdateTTLMeta> set_ttl_vec;
+void Table::SetTTL(const ::openmldb::storage::UpdateTTLMeta& ttl_meta) {
+    std::shared_ptr<std::vector<::openmldb::storage::UpdateTTLMeta>> old_ttl;
+    std::shared_ptr<std::vector<::openmldb::storage::UpdateTTLMeta>> new_ttl;
+    std::vector<::openmldb::storage::UpdateTTLMeta> set_ttl_vec;
     do {
         old_ttl = std::atomic_load_explicit(&update_ttl_, std::memory_order_acquire);
-        new_ttl = std::make_shared<std::vector<::fedb::storage::UpdateTTLMeta>>(*old_ttl);
+        new_ttl = std::make_shared<std::vector<::openmldb::storage::UpdateTTLMeta>>(*old_ttl);
         new_ttl->push_back(ttl_meta);
     } while (!atomic_compare_exchange_weak(&update_ttl_, &old_ttl, new_ttl));
 }
 
 void Table::UpdateTTL() {
-    std::shared_ptr<std::vector<::fedb::storage::UpdateTTLMeta>> old_ttl;
-    std::shared_ptr<std::vector<::fedb::storage::UpdateTTLMeta>> new_ttl;
-    std::vector<::fedb::storage::UpdateTTLMeta> set_ttl_vec;
+    std::shared_ptr<std::vector<::openmldb::storage::UpdateTTLMeta>> old_ttl;
+    std::shared_ptr<std::vector<::openmldb::storage::UpdateTTLMeta>> new_ttl;
+    std::vector<::openmldb::storage::UpdateTTLMeta> set_ttl_vec;
     do {
         old_ttl = std::atomic_load_explicit(&update_ttl_, std::memory_order_acquire);
         if (old_ttl->empty()) {
             return;
         }
-        new_ttl = std::make_shared<std::vector<::fedb::storage::UpdateTTLMeta>>(*old_ttl);
+        new_ttl = std::make_shared<std::vector<::openmldb::storage::UpdateTTLMeta>>(*old_ttl);
         set_ttl_vec.clear();
         set_ttl_vec.swap(*new_ttl);
     } while (!atomic_compare_exchange_weak(&update_ttl_, &old_ttl, new_ttl));
@@ -148,7 +146,7 @@ void Table::UpdateTTL() {
         }
     }
     auto table_meta = std::atomic_load_explicit(&table_meta_, std::memory_order_acquire);
-    auto new_table_meta = std::make_shared<::fedb::api::TableMeta>(*table_meta);
+    auto new_table_meta = std::make_shared<::openmldb::api::TableMeta>(*table_meta);
     new_table_meta->clear_column_key();
     for (auto& index : indexs) {
         auto column_key = new_table_meta->add_column_key();
@@ -158,8 +156,7 @@ void Table::UpdateTTL() {
 }
 
 bool Table::InitFromMeta() {
-    if (table_meta_->has_mode() &&
-        table_meta_->mode() != ::fedb::api::TableMode::kTableLeader) {
+    if (table_meta_->has_mode() && table_meta_->mode() != ::openmldb::api::TableMode::kTableLeader) {
         is_leader_ = false;
     }
     if (InitColumnDesc() < 0) {
@@ -190,4 +187,4 @@ bool Table::CheckFieldExist(const std::string& name) {
 }
 
 }  // namespace storage
-}  // namespace fedb
+}  // namespace openmldb

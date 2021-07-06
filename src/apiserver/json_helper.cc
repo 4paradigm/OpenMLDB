@@ -20,8 +20,8 @@
 
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
 
-namespace fedb {
-namespace http {
+namespace openmldb {
+namespace apiserver {
 
 using butil::rapidjson::Document;
 using butil::rapidjson::SizeType;
@@ -322,5 +322,5 @@ JsonWriter& JsonWriter::SetNull() {
     WRITER->Null();
     return *this;
 }
-}  // namespace http
-}  // namespace fedb
+}  // namespace apiserver
+}  // namespace openmldb

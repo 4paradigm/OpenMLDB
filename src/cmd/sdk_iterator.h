@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-
-
 #pragma once
 
 #include <memory>
@@ -24,14 +22,12 @@
 
 #include "base/kv_iterator.h"
 
-namespace fedb {
+namespace openmldb {
 namespace cmd {
 
 class SDKIterator {
  public:
-    explicit SDKIterator(
-        std::vector<std::shared_ptr<::fedb::base::KvIterator>> iter_vec,
-        uint32_t limit)
+    explicit SDKIterator(std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec, uint32_t limit)
         : iter_vec_(iter_vec), cur_iter_(), limit_(limit), cnt_(0) {
         Next();
     }
@@ -66,13 +62,9 @@ class SDKIterator {
             }
         }
         if (need_delete) {
-            iter_vec_.erase(
-                std::remove_if(
-                    iter_vec_.begin(), iter_vec_.end(),
-                    [](const std::shared_ptr<::fedb::base::KvIterator>& it) {
-                        return !it;
-                    }),
-                iter_vec_.end());
+            iter_vec_.erase(std::remove_if(iter_vec_.begin(), iter_vec_.end(),
+                                           [](const std::shared_ptr<::openmldb::base::KvIterator>& it) { return !it; }),
+                            iter_vec_.end());
         }
         cnt_++;
     }
@@ -81,14 +73,14 @@ class SDKIterator {
 
     uint64_t GetKey() const { return cur_iter_->GetKey(); }
 
-    ::fedb::base::Slice GetValue() { return cur_iter_->GetValue(); }
+    ::openmldb::base::Slice GetValue() { return cur_iter_->GetValue(); }
 
  private:
-    std::vector<std::shared_ptr<::fedb::base::KvIterator>> iter_vec_;
-    std::shared_ptr<::fedb::base::KvIterator> cur_iter_;
+    std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec_;
+    std::shared_ptr<::openmldb::base::KvIterator> cur_iter_;
     uint32_t limit_;
     uint32_t cnt_;
 };
 
 }  // namespace cmd
-}  // namespace fedb
+}  // namespace openmldb

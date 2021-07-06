@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-
 #include "codec/memcomparable_format.h"
+
 #include <string>
 #include <vector>
+
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace openmldb {
 namespace codec {
 
 class MemComFormatTest : public ::testing::Test {
@@ -143,8 +144,7 @@ TEST_F(MemComFormatTest, TestFloatingNum) {
 TEST_F(MemComFormatTest, TestVarchar) {
     std::vector<std::string> vec;
     const int arr_len = 6;
-    std::string arr[arr_len] = {"12345678", "123456789", "1234567890123456789",
-                                "",         " ",         "1234567"};
+    std::string arr[arr_len] = {"12345678", "123456789", "1234567890123456789", "", " ", "1234567"};
     for (int i = 0; i < arr_len; i++) {
         //  pack varchar
         std::string str = arr[i];
@@ -176,7 +176,7 @@ TEST_F(MemComFormatTest, TestVarchar) {
 }
 
 }  // namespace codec
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

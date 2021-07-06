@@ -14,46 +14,44 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_REPLICA_LOG_REPLICATOR_H_
 #define SRC_REPLICA_LOG_REPLICATOR_H_
 
 #include <atomic>
-#include <condition_variable> // NOLINT
+#include <condition_variable>  // NOLINT
 #include <map>
-#include <mutex> // NOLINT
-#include <vector>
-#include <string>
 #include <memory>
+#include <mutex>  // NOLINT
+#include <string>
+#include <vector>
+
 #include "base/skiplist.h"
 #include "bthread/bthread.h"
 #include "bthread/condition_variable.h"
+#include "common/thread_pool.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
 #include "storage/table.h"
-#include "common/thread_pool.h"
 
-namespace fedb {
+namespace openmldb {
 namespace replica {
 
 using ::baidu::common::ThreadPool;
-using ::fedb::api::LogEntry;
-using ::fedb::log::Reader;
-using ::fedb::log::SequentialFile;
-using ::fedb::log::WriteHandle;
-using ::fedb::storage::Table;
+using ::openmldb::api::LogEntry;
+using ::openmldb::log::Reader;
+using ::openmldb::log::SequentialFile;
+using ::openmldb::log::WriteHandle;
+using ::openmldb::storage::Table;
 
 enum ReplicatorRole { kLeaderNode = 1, kFollowerNode };
 
 class LogReplicator {
  public:
-    LogReplicator(const std::string& path,
-            const std::map<std::string, std::string>& real_ep_map,
-            const ReplicatorRole& role, std::shared_ptr<Table> table,
-            std::atomic<bool>* follower);
+    LogReplicator(const std::string& path, const std::map<std::string, std::string>& real_ep_map,
+                  const ReplicatorRole& role, std::shared_ptr<Table> table, std::atomic<bool>* follower);
 
     ~LogReplicator();
 
@@ -62,11 +60,11 @@ class LogReplicator {
     bool StartSyncing();
 
     // the slave node receives master log entries
-    bool AppendEntries(const ::fedb::api::AppendEntriesRequest* request,
-                       ::fedb::api::AppendEntriesResponse* response);
+    bool AppendEntries(const ::openmldb::api::AppendEntriesRequest* request,
+                       ::openmldb::api::AppendEntriesResponse* response);
 
     // the master node append entry
-    bool AppendEntry(::fedb::api::LogEntry& entry); // NOLINT
+    bool AppendEntry(::openmldb::api::LogEntry& entry);  // NOLINT
 
     //  data to slave nodes
     void Notify();
@@ -78,16 +76,13 @@ class LogReplicator {
     void DeleteBinlog();
 
     // add replication
-    int AddReplicateNode(
-            const std::map<std::string, std::string>& real_ep_map);
+    int AddReplicateNode(const std::map<std::string, std::string>& real_ep_map);
     // add replication with tid
-    int AddReplicateNode(
-            const std::map<std::string, std::string>& real_ep_map,
-            uint32_t tid);
+    int AddReplicateNode(const std::map<std::string, std::string>& real_ep_map, uint32_t tid);
 
     int DelReplicateNode(const std::string& endpoint);
 
-    void GetReplicateInfo(std::map<std::string, uint64_t>& info_map); // NOLINT
+    void GetReplicateInfo(std::map<std::string, uint64_t>& info_map);  // NOLINT
 
     void MatchLogOffset();
 
@@ -101,9 +96,7 @@ class LogReplicator {
 
     LogParts* GetLogPart();
 
-    inline uint64_t GetLogOffset() {
-        return log_offset_.load(std::memory_order_relaxed);
-    }
+    inline uint64_t GetLogOffset() { return log_offset_.load(std::memory_order_relaxed); }
     void SetRole(const ReplicatorRole& role);
 
     uint64_t GetLeaderTerm();
@@ -111,7 +104,7 @@ class LogReplicator {
 
     void SetSnapshotLogPartIndex(uint64_t offset);
 
-    bool ParseBinlogIndex(const std::string& path, uint32_t& index); // NOLINT
+    bool ParseBinlogIndex(const std::string& path, uint32_t& index);  // NOLINT
 
     bool DelAllReplicateNode();
 
@@ -150,6 +143,6 @@ class LogReplicator {
 };
 
 }  // namespace replica
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_REPLICA_LOG_REPLICATOR_H_

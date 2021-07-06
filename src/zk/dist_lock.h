@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_ZK_DIST_LOCK_H_
 #define SRC_ZK_DIST_LOCK_H_
 
 #include <atomic>
-#include <mutex> // NOLINT
-#include <vector>
+#include <mutex>  // NOLINT
 #include <string>
+#include <vector>
+
 #include "boost/function.hpp"
 #include "common/thread_pool.h"
 #include "zk/zk_client.h"
 
 using ::baidu::common::ThreadPool;
-using ::fedb::zk::ZkClient;
+using ::openmldb::zk::ZkClient;
 
-namespace fedb {
+namespace openmldb {
 namespace zk {
 
 enum LockState { kLocked, kLostLock, kTryLock };
@@ -37,9 +37,8 @@ enum LockState { kLocked, kLostLock, kTryLock };
 typedef boost::function<void()> NotifyCallback;
 class DistLock {
  public:
-    DistLock(const std::string& root_path, ZkClient* zk_client,
-             NotifyCallback on_locked_cl, NotifyCallback on_lost_lock_cl,
-             const std::string& lock_value);
+    DistLock(const std::string& root_path, ZkClient* zk_client, NotifyCallback on_locked_cl,
+             NotifyCallback on_lost_lock_cl, const std::string& lock_value);
 
     ~DistLock();
 
@@ -49,7 +48,7 @@ class DistLock {
 
     bool IsLocked();
 
-    void CurrentLockValue(std::string& value); // NOLINT
+    void CurrentLockValue(std::string& value);  // NOLINT
 
  private:
     void InternalLock();
@@ -77,6 +76,6 @@ class DistLock {
 };
 
 }  // namespace zk
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_ZK_DIST_LOCK_H_

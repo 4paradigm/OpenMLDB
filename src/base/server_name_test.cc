@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-
 #include "base/server_name.h"
+
 #include "gtest/gtest.h"
 
 DECLARE_string(data_dir);
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 class ServerNameTest : public ::testing::Test {
@@ -39,12 +39,12 @@ TEST_F(ServerNameTest, GetName) {
 }
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    ::fedb::base::SetLogLevel(INFO);
-    ::fedb::base::RemoveDirRecursive("/tmp/data");
+    ::openmldb::base::SetLogLevel(INFO);
+    ::openmldb::base::RemoveDirRecursive("/tmp/data");
     int ret = RUN_ALL_TESTS();
     return ret;
 }

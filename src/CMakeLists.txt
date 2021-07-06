@@ -63,7 +63,7 @@ compile_proto(common ${PROJECT_SOURCE_DIR})
 compile_proto(tablet ${PROJECT_SOURCE_DIR})
 compile_proto(name_server ${PROJECT_SOURCE_DIR})
 compile_proto(sql_procedure ${PROJECT_SOURCE_DIR})
-compile_proto(http ${PROJECT_SOURCE_DIR})
+compile_proto(api_server ${PROJECT_SOURCE_DIR})
 
 compile_lib(fedb_codec codec "")
 compile_lib(fedb_catalog catalog "")
@@ -78,7 +78,7 @@ compile_lib(log log "flags.cc")
 compile_lib(fedb_sdk sdk "")
 compile_lib(apiserver apiserver "")
 
-add_library(fedb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/http.pb.cc)
+add_library(fedb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/api_server.pb.cc)
 
 add_library(fedb_flags flags.cc)
 
@@ -103,7 +103,7 @@ endif()
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:fedb_proto>)
 target_link_libraries(parse_log log fedb_proto base protobuf glog gflags unwind ssl crypto z snappy dl pthread)
 
-add_executable(fedb cmd/fedb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
-target_link_libraries(fedb ${BIN_LIBS})
+add_executable(openmldb cmd/openmldb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
+target_link_libraries(openmldb ${BIN_LIBS})
 
 add_subdirectory(sdk)

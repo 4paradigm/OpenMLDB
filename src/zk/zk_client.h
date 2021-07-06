@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_ZK_ZK_CLIENT_H_
 #define SRC_ZK_ZK_CLIENT_H_
 
@@ -31,11 +30,10 @@ extern "C" {
 #include "zookeeper/zookeeper.h"
 }
 
-namespace fedb {
+namespace openmldb {
 namespace zk {
 
-typedef boost::function<void(const std::vector<std::string>& endpoint)>
-    NodesChangedCallback;
+typedef boost::function<void(const std::vector<std::string>& endpoint)> NodesChangedCallback;
 
 typedef boost::function<void(void)> ItemChangedCallback;
 
@@ -46,13 +44,11 @@ class ZkClient {
     // hosts , the zookeeper server lists eg host1:2181,host2:2181
     // session_timeout, the session timeout
     // endpoint, the client endpoint
-     ZkClient(const std::string& hosts, const std::string& real_endpoint,
-             int32_t session_timeout,
+    ZkClient(const std::string& hosts, const std::string& real_endpoint, int32_t session_timeout,
              const std::string& endpoint, const std::string& zk_root_path);
 
-    ZkClient(const std::string& hosts, int32_t session_timeout,
-             const std::string& endpoint, const std::string& zk_root_path,
-             const std::string& zone_path);
+    ZkClient(const std::string& hosts, int32_t session_timeout, const std::string& endpoint,
+             const std::string& zk_root_path, const std::string& zone_path);
     ~ZkClient();
 
     // init zookeeper connections
@@ -77,7 +73,7 @@ class ZkClient {
     bool GetNodes(std::vector<std::string>& endpoints);  // NOLINT
 
     bool GetChildrenUnLocked(const std::string& path,
-                     std::vector<std::string>& children);  // NOLINT
+                             std::vector<std::string>& children);  // NOLINT
     bool GetChildren(const std::string& path,
                      std::vector<std::string>& children);  // NOLINT
 
@@ -89,14 +85,13 @@ class ZkClient {
 
     bool GetNodeValue(const std::string& node, std::string& value);  // NOLINT
     bool GetNodeValueUnLocked(const std::string& node,
-                            std::string& value);  // NOLINT
+                              std::string& value);  // NOLINT
 
     bool SetNodeValue(const std::string& node, const std::string& value);
 
-    bool SetNodeWatcher(const std::string& node, watcher_fn watcher,
-                        void* watcherCtx);
+    bool SetNodeWatcher(const std::string& node, watcher_fn watcher, void* watcherCtx);
 
-    bool Increment(const std::string&node);
+    bool Increment(const std::string& node);
 
     bool WatchChildren(const std::string& node, NodesChangedCallback callback);
 
@@ -109,8 +104,8 @@ class ZkClient {
     // create a persistence node
     bool CreateNode(const std::string& node, const std::string& value);
 
-    bool CreateNode(const std::string& node, const std::string& value,
-                    int flags, std::string& assigned_path_name);  // NOLINT
+    bool CreateNode(const std::string& node, const std::string& value, int flags,
+                    std::string& assigned_path_name);  // NOLINT
 
     bool WatchNodes();
 
@@ -127,13 +122,9 @@ class ZkClient {
         return connected_;
     }
 
-    inline bool IsRegisted() {
-        return registed_.load(std::memory_order_relaxed);
-    }
+    inline bool IsRegisted() { return registed_.load(std::memory_order_relaxed); }
 
-    inline uint64_t GetSessionTerm() {
-        return session_term_.load(std::memory_order_relaxed);
-    }
+    inline uint64_t GetSessionTerm() { return session_term_.load(std::memory_order_relaxed); }
 
     // when reconnect, need Register and Watchnodes again
     bool Reconnect();
@@ -170,6 +161,6 @@ class ZkClient {
 };
 
 }  // namespace zk
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_ZK_ZK_CLIENT_H_

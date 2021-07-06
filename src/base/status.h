@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_BASE_STATUS_H_
 #define SRC_BASE_STATUS_H_
 
 #include <string>
+
 #include "base/slice.h"
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 struct ResultMsg {
@@ -45,22 +45,15 @@ class Status {
     static Status OK() { return Status(); }
 
     // Return error status of an appropriate type.
-    static Status NotFound(const Slice& msg, const Slice& msg2 = Slice()) {
-        return Status(kNotFound, msg, msg2);
-    }
-    static Status Corruption(const Slice& msg, const Slice& msg2 = Slice()) {
-        return Status(kCorruption, msg, msg2);
-    }
+    static Status NotFound(const Slice& msg, const Slice& msg2 = Slice()) { return Status(kNotFound, msg, msg2); }
+    static Status Corruption(const Slice& msg, const Slice& msg2 = Slice()) { return Status(kCorruption, msg, msg2); }
     static Status NotSupported(const Slice& msg, const Slice& msg2 = Slice()) {
         return Status(kNotSupported, msg, msg2);
     }
-    static Status InvalidArgument(const Slice& msg,
-                                  const Slice& msg2 = Slice()) {
+    static Status InvalidArgument(const Slice& msg, const Slice& msg2 = Slice()) {
         return Status(kInvalidArgument, msg, msg2);
     }
-    static Status IOError(const Slice& msg, const Slice& msg2 = Slice()) {
-        return Status(kIOError, msg, msg2);
-    }
+    static Status IOError(const Slice& msg, const Slice& msg2 = Slice()) { return Status(kIOError, msg, msg2); }
 
     static Status InvalidRecord(const Slice& msg, const Slice& msg2 = Slice()) {
         return Status(kInvalidRecord, msg, msg2);
@@ -117,17 +110,13 @@ class Status {
         kInvalidRecord = 8
     };
 
-    Code code() const {
-        return (state_ == NULL) ? kOk : static_cast<Code>(state_[4]);
-    }
+    Code code() const { return (state_ == NULL) ? kOk : static_cast<Code>(state_[4]); }
 
     Status(Code code, const Slice& msg, const Slice& msg2);
     static const char* CopyState(const char* s);
 };
 
-inline Status::Status(const Status& s) {
-    state_ = (s.state_ == NULL) ? NULL : CopyState(s.state_);
-}
+inline Status::Status(const Status& s) { state_ = (s.state_ == NULL) ? NULL : CopyState(s.state_); }
 inline void Status::operator=(const Status& s) {
     // The following condition catches both aliasing (when this == &s),
     // and the common case where both s and *this are ok.
@@ -275,6 +264,6 @@ enum ReturnCode {
 };
 
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_BASE_STATUS_H_

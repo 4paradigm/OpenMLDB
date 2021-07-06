@@ -20,15 +20,16 @@
 
 #include "log/log_writer.h"
 
-#include <stdint.h>
 #include <snappy.h>
+#include <stdint.h>
 #include <zlib.h>
+
+#include "base/endianconv.h"
+#include "base/glog_wapper.h"  // NOLINT
 #include "log/coding.h"
 #include "log/crc32c.h"
-#include "base/glog_wapper.h" // NOLINT
-#include "base/endianconv.h"
 
-namespace fedb {
+namespace openmldb {
 namespace log {
 
 static void InitTypeCrc(uint32_t* type_crc) {
@@ -274,7 +275,8 @@ Status Writer::CompressRecord() {
         PDLOG(WARNING, "write error, compress_type: %d, msg: %s", compress_type_, s.ToString().c_str());
         return s;
     }
-    DLOG(INFO) << "compress_len: " << compress_len << ", " << "compress_type: " << compress_type_;
+    DLOG(INFO) << "compress_len: " << compress_len << ", "
+               << "compress_type: " << compress_type_;
     // fill compressed data's header
     char head_of_compress[kHeaderSizeOfCompressBlock];
     memrev32ifbe(static_cast<void*>(&compress_len));
@@ -317,4 +319,4 @@ Status Writer::AppendInternal(WritableFile* wf, int32_t leftover) {
 }
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb
