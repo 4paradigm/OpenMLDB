@@ -24,7 +24,7 @@
 #include "brpc/server.h"
 
 namespace openmldb {
-namespace http {
+namespace apiserver {
 
 APIServerImpl::~APIServerImpl() = default;
 
@@ -54,6 +54,14 @@ bool APIServerImpl::Init(::openmldb::sdk::ClusterSDK* cluster) {
     RegisterGetDB();
     RegisterGetTable();
     return true;
+}
+
+void APIServerImpl::Refresh(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
+                            google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (sql_router_) {
+        sql_router_->RefreshCatalog();
+    }
 }
 
 void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
@@ -775,5 +783,5 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::Ta
     return ar.EndObject();
 }
 
-}  // namespace http
+}  // namespace apiserver
 }  // namespace openmldb

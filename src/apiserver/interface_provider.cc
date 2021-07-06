@@ -28,7 +28,7 @@
 #include "glog/logging.h"
 
 namespace openmldb {
-namespace http {
+namespace apiserver {
 
 std::vector<std::unique_ptr<PathPart>> Url::parsePath(bool disableIds) const {
     std::deque<std::string> split_res;
@@ -193,5 +193,5 @@ bool InterfaceProvider::handle(const std::string& path, const brpc::HttpMethod& 
     request->callback(params, req_body, writer);
     return true;
 }
-}  // namespace http
+}  // namespace apiserver
 }  // namespace openmldb

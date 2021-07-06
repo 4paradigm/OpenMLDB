@@ -28,7 +28,7 @@ TABLET1=$IP:9520
 TABLET2=$IP:9521
 TABLET3=$IP:9522
 
-../build/bin/fedb --db_root_path=/rambuild/tablet0-binlogs \
+../build/bin/openmldb --db_root_path=/rambuild/tablet0-binlogs \
                    --recycle_bin_root_path=/rambuild/recycle_bin0 \
                    --endpoint=${TABLET1} --role=tablet \
                    --binlog_notify_on_put=true\
@@ -37,7 +37,7 @@ TABLET3=$IP:9522
                    --zk_root_path=/onebox > tablet0.log 2>&1 &
 
 # start tablet1
-../build/bin/fedb --db_root_path=/rambuild/tablet1-binlogs \
+../build/bin/openmldb --db_root_path=/rambuild/tablet1-binlogs \
                    --recycle_bin_root_path=/rambuild/recycle_bin1 \
                    --endpoint=${TABLET2} --role=tablet \
                    --zk_cluster=${ZK_CLUSTER}\
@@ -46,7 +46,7 @@ TABLET3=$IP:9522
                    --zk_root_path=/onebox > tablet1.log 2>&1 &
 
 # start tablet2
-../build/bin/fedb --db_root_path=/rambuild/tablet2-binlogs \
+../build/bin/openmldb --db_root_path=/rambuild/tablet2-binlogs \
                    --recycle_bin_root_path=/rambuild/recycle_bin2 \
                    --endpoint=${TABLET3} --role=tablet \
                    --binlog_notify_on_put=true\
@@ -55,7 +55,7 @@ TABLET3=$IP:9522
                    --zk_root_path=/onebox > tablet2.log 2>&1 &
 
 # start ns1
-../build/bin/fedb --endpoint=${NS1} --role=nameserver \
+../build/bin/openmldb --endpoint=${NS1} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
@@ -64,7 +64,7 @@ TABLET3=$IP:9522
 sleep 2
 
 # start ns2
-../build/bin/fedb --endpoint=${NS2} --role=nameserver \
+../build/bin/openmldb --endpoint=${NS2} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
@@ -73,7 +73,7 @@ sleep 2
 sleep 2
 
 # start ns3
-../build/bin/fedb --endpoint=${NS3} --role=nameserver \
+../build/bin/openmldb --endpoint=${NS3} --role=nameserver \
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
                    --request_timeout_ms=100000\
