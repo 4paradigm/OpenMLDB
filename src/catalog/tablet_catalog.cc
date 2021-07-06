@@ -372,6 +372,34 @@ bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_n
     return true;
 }
 
+bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& table_info) {
+    const std::string& db_name = table_info.db();
+    const std::string& table_name = table_info.name();
+    std::shared_ptr<TabletTableHandler> handler;
+    {
+        std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
+        auto db_it = tables_.find(db_name);
+        if (db_it == tables_.end()) {
+            auto result = tables_.emplace(db_name, std::map<std::string, std::shared_ptr<TabletTableHandler>>());
+            db_it = result.first;
+        }
+        auto it = db_it->second.find(table_name);
+        if (it == db_it->second.end()) {
+            handler = std::make_shared<TabletTableHandler>(table_info, local_tablet_);
+            if (!handler->Init(client_manager_)) {
+                LOG(WARNING) << "tablet handler init failed";
+                return false;
+            }
+            db_it->second.emplace(table_name, handler);
+            LOG(INFO) << "add table " << table_name << " db " << db_name;
+        } else {
+            handler = it->second;
+        }
+    }
+    handler->Update(table_info, client_manager_);
+    return true;
+}
+
 void TabletCatalog::Refresh(const std::vector<::openmldb::nameserver::TableInfo>& table_info_vec, uint64_t version,
                             const Procedures& db_sp_map) {
     std::map<std::string, std::set<std::string>> table_map;
@@ -381,28 +409,9 @@ void TabletCatalog::Refresh(const std::vector<::openmldb::nameserver::TableInfo>
         if (db_name.empty()) {
             continue;
         }
-        std::shared_ptr<TabletTableHandler> handler;
-        {
-            std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
-            auto db_it = tables_.find(db_name);
-            if (db_it == tables_.end()) {
-                auto result = tables_.emplace(db_name, std::map<std::string, std::shared_ptr<TabletTableHandler>>());
-                db_it = result.first;
-            }
-            auto it = db_it->second.find(table_name);
-            if (it == db_it->second.end()) {
-                handler = std::make_shared<TabletTableHandler>(table_info, local_tablet_);
-                if (!handler->Init(client_manager_)) {
-                    LOG(WARNING) << "tablet handler init failed";
-                    return;
-                }
-                db_it->second.emplace(table_name, handler);
-                LOG(INFO) << "add table " << table_name << " db " << db_name;
-            } else {
-                handler = it->second;
-            }
+        if (!UpdateTableInfo(table_info)) {
+            continue;
         }
-        handler->Update(table_info, client_manager_);
         auto cur_db_it = table_map.find(db_name);
         if (cur_db_it == table_map.end()) {
             auto result = table_map.emplace(db_name, std::set<std::string>());

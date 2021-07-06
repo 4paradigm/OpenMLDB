@@ -189,6 +189,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void DropTable(RpcController* controller, const ::openmldb::api::DropTableRequest* request,
                    ::openmldb::api::DropTableResponse* response, Closure* done);
 
+    void Refresh(RpcController* controller, const ::openmldb::api::RefreshRequest* request,
+                   ::openmldb::api::GeneralResponse* response, Closure* done);
+
     void AddReplica(RpcController* controller, const ::openmldb::api::ReplicaRequest* request,
                     ::openmldb::api::AddReplicaResponse* response, Closure* done);
 
@@ -393,6 +396,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void CheckZkClient();
 
     void RefreshTableInfo();
+
+    bool RefreshSingleTable(uint32_t tid);
 
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
