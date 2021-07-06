@@ -93,7 +93,6 @@ cases:
       );
   - id: 8
     desc: Create 指定副本数
-    mode: standalone-unsupport
     sql: |
       create table test(
           column1 int NOT NULL,
@@ -104,7 +103,6 @@ cases:
           index(key=column1, ts=column2)) replicanum=2;
   - id: 9
     desc: Create 指定副本数与节点分布
-    mode: standalone-unsupport
     sql: |
       create table test(
           column1 int NOT NULL,

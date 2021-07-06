@@ -49,9 +49,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
 }
 
 static bool IsSupportMode(const std::string& mode) {
-    if (mode.find("rtidb-unsupport") != std::string::npos ||
-            mode.find("standalone-unsupport") != std::string::npos ||
-            mode.find("request-unsupport") != std::string::npos) {
+    if (mode.find("rtidb-unsupport") != std::string::npos || mode.find("request-unsupport") != std::string::npos) {
         return false;
     }
     return true;
