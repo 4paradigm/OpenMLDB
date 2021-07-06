@@ -1082,7 +1082,7 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(co
 
 bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* create_sp,
                                                 const std::string& db, const std::string& sql,
-                                                std::shared_ptr<::fedb::client::NsClient> ns_ptr,
+                                                std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
                                                 hybridse::node::NodeManager* node_manager, std::string* msg) {
     if (node_manager == nullptr || msg == nullptr) {
         return false;

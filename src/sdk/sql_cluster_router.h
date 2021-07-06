@@ -175,7 +175,7 @@ class SQLClusterRouter : public SQLRouter {
 
     bool HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* plan,
             const std::string& db, const std::string& sql,
-            std::shared_ptr<::fedb::client::NsClient> ns_ptr,
+            std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
             hybridse::node::NodeManager* node_manager, std::string* msg);
 
     inline bool CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema);
