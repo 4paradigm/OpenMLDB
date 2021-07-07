@@ -96,13 +96,13 @@ uint64_t Segment::Release() {
             if (ts_cnt_ > 1) {
                 KeyEntry** entry_arr = (KeyEntry**)it->GetValue();  // NOLINT
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    cnt += entry_arr[i]->Release();
+                    cnt += entry_arr[i]->Release(pool_);
                     delete entry_arr[i];
                 }
                 delete[] entry_arr;
             } else {
                 KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
-                cnt += entry->Release();
+                cnt += entry->Release(pool_);
                 delete entry;
             }
         }
@@ -119,13 +119,13 @@ uint64_t Segment::Release() {
         if (ts_cnt_ > 1) {
             KeyEntry** entry_arr = (KeyEntry**)node->GetValue();  // NOLINT
             for (uint32_t i = 0; i < ts_cnt_; i++) {
-                entry_arr[i]->Release();
+                entry_arr[i]->Release(pool_);
                 delete entry_arr[i];
             }
             delete[] entry_arr;
         } else {
             KeyEntry* entry = (KeyEntry*)node->GetValue();  // NOLINT
-            entry->Release();
+            entry->Release(pool_);
             delete entry;
         }
         delete node;
