@@ -16,7 +16,7 @@ include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
 function(compile_proto proto_name project_dir)
 add_custom_command(OUTPUT ${project_dir}/src/proto/${proto_name}.pb.cc
-        COMMAND ${project_dir}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto
+        COMMAND ${CMAKE_PREFIX_PATH}/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto
         --cpp_out=${project_dir}/src/proto/ ${project_dir}/src/proto/${proto_name}.proto
         DEPENDS ${project_dir}/src/proto/${proto_name}.proto
         )
@@ -39,6 +39,7 @@ function(compile_test DIR)
     set(TEST_LIBS apiserver nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
+    ${ZETASQL_LIBS}
     ${BRPC_LIBS})
     file(GLOB_RECURSE SRC_FILES ${DIR}/*.cc)
     set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -85,6 +86,7 @@ add_library(fedb_flags flags.cc)
 set(BIN_LIBS apiserver nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
 ${LLVM_LIBS}
+${ZETASQL_LIBS}
 ${BRPC_LIBS})
 
 if(TESTING_ENABLE)

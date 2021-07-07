@@ -306,7 +306,7 @@ void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo &sp_info) {
     PrintProcedureSchema("Output Schema", sp_info.GetOutputSchema(), std::cout);
 }
 
-void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
+void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
     switch (cmd_node->GetCmdType()) {
         case hybridse::node::kCmdShowDatabases: {
             std::string error;
@@ -522,21 +522,22 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
 void HandleSQL(const std::string &sql) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
-    hybridse::node::NodePointVector parser_trees;
-    PlanAPI::CreateSyntaxTreeFromScript(sql, parser_trees, &node_manager, sql_status);
+    hybridse::node::PlanNodeList plan_trees;
+    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
 
     if (0 != sql_status.code) {
         std::cout << sql_status.msg << std::endl;
         return;
     }
-    hybridse::node::SqlNode *node = parser_trees[0];
+    hybridse::node::PlanNode *node = plan_trees[0];
     switch (node->GetType()) {
-        case hybridse::node::kCmdStmt: {
-            hybridse::node::CmdNode *cmd = dynamic_cast<hybridse::node::CmdNode *>(node);
+        case hybridse::node::kPlanTypeCmd: {
+            hybridse::node::CmdPlanNode *cmd =
+                dynamic_cast<hybridse::node::CmdPlanNode *>(node);
             HandleCmd(cmd);
             return;
         }
-        case hybridse::node::kExplainStmt: {
+        case hybridse::node::kPlanTypeExplain: {
             std::string empty;
             std::string mu_script = sql;
             mu_script.replace(0u, 7u, empty);
@@ -549,8 +550,8 @@ void HandleSQL(const std::string &sql) {
             std::cout << info->GetPhysicalPlan() << std::endl;
             return;
         }
-        case hybridse::node::kCreateStmt:
-        case hybridse::node::kCreateSpStmt: {
+        case hybridse::node::kPlanTypeCreate:
+        case hybridse::node::kPlanTypeCreateSp: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;
@@ -564,16 +565,17 @@ void HandleSQL(const std::string &sql) {
             }
             return;
         }
-        case hybridse::node::kCreateIndexStmt: {
+        case hybridse::node::kPlanTypeCreateIndex: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;
             }
-            hybridse::node::CreateIndexNode *create_index_node = dynamic_cast<hybridse::node::CreateIndexNode *>(node);
-            HandleCreateIndex(create_index_node);
+            hybridse::node::CreateIndexPlanNode *create_index_node =
+                dynamic_cast<hybridse::node::CreateIndexPlanNode *>(node);
+            HandleCreateIndex(create_index_node->create_index_node_);
             return;
         }
-        case hybridse::node::kInsertStmt: {
+        case hybridse::node::kPlanTypeInsert: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;
@@ -585,8 +587,8 @@ void HandleSQL(const std::string &sql) {
             }
             return;
         }
-        case hybridse::node::kFnList:
-        case hybridse::node::kQuery: {
+        case hybridse::node::kPlanTypeFuncDef:
+        case hybridse::node::kPlanTypeQuery: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;
