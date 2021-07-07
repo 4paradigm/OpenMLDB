@@ -29,10 +29,10 @@ cases:
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum,
       col6 as col6 FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY {0}.col2 ORDER BY {0}.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
-        resource: cases/resource/simple_t1.yaml
+        resource: cases/resource/simple_{0}.yaml
         index: index2:col2:col5
     expect:
       schema: id:int32, col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, col6:string
@@ -88,10 +88,10 @@ cases:
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum,
       col6 as col6 FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col0 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY {0}.col0 ORDER BY {0}.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
-        resource: cases/resource/simple_t1.yaml
+        resource: cases/resource/simple_{0}.yaml
         index: index2:col0:col5
     expect:
       schema: id:int32, col0:string, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, col6:string
@@ -113,7 +113,7 @@ cases:
       w2 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
-        resource: cases/resource/simple_t1.yaml
+        resource: cases/resource/simple_{0}.yaml
         index: index2:col2:col5
     expect:
       schema: id:int32, col2:int16, col0:string, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w2_col4_sum:double, w2_col2_sum:int16, w2_col5_sum:int64, col6:string
@@ -135,7 +135,7 @@ cases:
       w2 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
-        resource: cases/resource/simple_t1.yaml
+        resource: cases/resource/simple_{0}.yaml
         index: index2:col2:col5,index0:col0:col5
     expect:
       schema: col2:int16, col0:string, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w2_col4_sum:double, w2_col2_sum:int16, w2_col5_sum:int64, col1:int32, col6:string
@@ -158,7 +158,7 @@ cases:
       w3 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
-        resource: cases/resource/simple_t1.yaml
+        resource: cases/resource/simple_{0}.yaml
         index: index2:col2:col5,index0:col0:col5
     expect:
       schema: col2:int16, col0:string, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w3_col4_sum:double, w2_col2_sum:int16, w2_col5_sum:int64, col1:int32, col6:string
@@ -177,7 +177,7 @@ cases:
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum, col1,
       col6 as col6 FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col0, t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY {0}.col0, {0}.col2 ORDER BY {0}.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -214,7 +214,7 @@ cases:
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum, col1,
       col6 as col6 FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col0, t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY {0}.col0, {0}.col2 ORDER BY {0}.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -247,7 +247,7 @@ cases:
     db: db1
     sql: |
       SELECT col1 as id, col2, std_ts, sum(col3) OVER w1 as w1_col3_sum FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY {0}.col2 ORDER BY {0}.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -269,7 +269,7 @@ cases:
       min(std_ts) OVER w1 as w1_ts_min,
       max(std_ts) OVER w1 as w1_ts_max
       FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY {0}.col2 ORDER BY {0}.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -292,7 +292,7 @@ cases:
       min(std_date) OVER w1 as w1_date_min,
       max(std_date) OVER w1 as w1_date_max
       FROM t1
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
+      WINDOW w1 AS (PARTITION BY {0}.col2 ORDER BY {0}.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp, std_date:date
@@ -318,7 +318,7 @@ cases:
     db: db1
     sql: |
       SELECT col1 as id, col2, std_ts, sum(col3) OVER
-      (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) as w1_col3_sum FROM t1 limit 10;
+      (PARTITION BY {0}.col2 ORDER BY {0}.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) as w1_col3_sum FROM t1 limit 10;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
@@ -700,10 +700,10 @@ cases:
       sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as w3_col1_sum,
       sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 3 PRECEDING AND 2 PRECEDING) as w4_col1_sum,
       sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 40s PRECEDING AND 21s PRECEDING) as w5_col1_sum
-      FROM t1 last join t2 order by t2.std_ts2 on t1.pk1 = t2.pk2
+      FROM {0} last join {1} order by {1}.std_ts2 on {0}.pk1 = {1}.pk2
       WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     inputs:
-      - name: t1
+      -
         schema: id:int, pk1:string, col1:int32, std_ts:timestamp
         index: index2:pk1:std_ts
         data: |
@@ -721,7 +721,7 @@ cases:
           12, A, 7, 1590115480000
           13, A, 8, 1590115490000
           14, A, 9, 1590115500000
-      - name: t2
+      -
         schema: id2:int, pk2:string, col2:int32, std_ts2:timestamp
         index: index2:pk2:std_ts2
         data: |

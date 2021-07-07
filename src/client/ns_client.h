@@ -232,10 +232,12 @@ class NsClient {
     bool TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, ::openmldb::nameserver::TableInfo* table,
                              hybridse::base::Status* status);
 
-    bool HandleSQLCmd(const hybridse::node::CmdNode* cmd_node, const std::string& db,
-                      hybridse::base::Status* sql_status);
-    bool HandleSQLCreateTable(const hybridse::node::NodePointVector& parser_trees, const std::string& db,
-                              hybridse::node::NodeManager* node_manager, hybridse::base::Status* sql_status);
+    bool HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node,
+                      const std::string& db, hybridse::base::Status* sql_status);
+    bool HandleSQLCreateTable(hybridse::node::CreatePlanNode* create,
+                              const std::string& db,
+                              hybridse::node::NodeManager* node_manager,
+                              hybridse::base::Status* sql_status);
 
  private:
     std::string endpoint_;
