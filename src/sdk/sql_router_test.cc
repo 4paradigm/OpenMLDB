@@ -706,7 +706,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     ASSERT_TRUE(ok);
 
     // test int convert and float convert
-    std::string insert2 = "insert into " + name + " value('hello', ?, '2020-02-29', NULL, 123, 2.33, NULL);";
+    std::string insert2 = "insert into " + name + " values('hello', ?, '2020-02-29', NULL, 123, 2.33, NULL);";
     std::shared_ptr<SQLInsertRow> r2 = router->GetInsertRow(db, insert2, &status);
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(r2->Init(0));
@@ -715,7 +715,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     ASSERT_TRUE(ok);
 
     // test int to float
-    std::string insert3 = "insert into " + name + " value('hello', ?, '2020-12-31', NULL, NULL, 123, 123);";
+    std::string insert3 = "insert into " + name + " values('hello', ?, '2020-12-31', NULL, NULL, 123, 123);";
     std::shared_ptr<SQLInsertRow> r3 = router->GetInsertRow(db, insert3, &status);
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(r3->Init(0));
@@ -724,7 +724,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     ASSERT_TRUE(ok);
 
     // test float to int
-    std::string insert4 = "insert into " + name + " value('hello', ?, '2020-02-29', 2.33, 2.33, 123, 123);";
+    std::string insert4 = "insert into " + name + " values('hello', ?, '2020-02-29', 2.33, 2.33, 123, 123);";
     std::shared_ptr<SQLInsertRow> r4 = router->GetInsertRow(db, insert4, &status);
     ASSERT_EQ(status.code, 1);
 
@@ -980,7 +980,7 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 bigint,"
-                      "index(key=col1, ts=col2)) partitionnum=8;";
+                      "index(key=col1, ts=col2)) options(partitionnum=8);";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
