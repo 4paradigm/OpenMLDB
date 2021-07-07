@@ -736,16 +736,16 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
             ar.StartObject();
             if (ttl.has_ttl_type()) {
                 switch (ttl.ttl_type()) {
-                    case ::fedb::type::TTLType::kAbsoluteTime:
+                    case ::openmldb::type::TTLType::kAbsoluteTime:
                         ar.Member("ttl_type") & std::string("absolute");
                         break;
-                    case ::fedb::type::TTLType::kLatestTime:
+                    case ::openmldb::type::TTLType::kLatestTime:
                         ar.Member("ttl_type") & std::string("latest");
                         break;
-                    case ::fedb::type::TTLType::kAbsAndLat:
+                    case ::openmldb::type::TTLType::kAbsAndLat:
                         ar.Member("ttl_type") & std::string("absandlat");
                         break;
-                    case ::fedb::type::TTLType::kAbsOrLat:
+                    case ::openmldb::type::TTLType::kAbsOrLat:
                         ar.Member("ttl_type") & std::string("absorlat");
                         break;
                     default:
@@ -801,7 +801,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::Ta
     }
     if (info->has_compress_type()) {
         ar.Member("compress_type") &
-            APIServerImpl::InnerTypeTransform(::fedb::type::CompressType_Name(info->compress_type()));
+            APIServerImpl::InnerTypeTransform(::openmldb::type::CompressType_Name(info->compress_type()));
     }
     if (info->has_key_entry_max_height()) {
         ar.Member("key_entry_max_height") & info->key_entry_max_height();
