@@ -104,7 +104,7 @@ uint64_t Segment::Release() {
         }
         it->Next();
     }
-    entries_->Clear();
+    //entries_->Clear();
     delete it;
 
     KeyEntryNodeList::Iterator* f_it = entry_free_list_->NewIterator();
