@@ -486,7 +486,6 @@ void APIServerImpl::RegisterGetTable() {
                       }
                       auto table = table_it->second;
                       auto table_info = cluster_sdk_->GetTableInfo(db, table);
-                      
                       // if there is no such db or such table, table_info will be nullptr
                       if (table_info == nullptr) {
                           writer << err.Set("Table not found");
