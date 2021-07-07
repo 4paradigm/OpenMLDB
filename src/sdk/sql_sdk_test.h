@@ -29,18 +29,18 @@
 #include "base/glog_wapper.h"
 #include "boost/algorithm/string.hpp"
 #include "catalog/schema_adapter.h"
-#include "common/timer.h"
 #include "codec/fe_row_codec.h"
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -51,14 +51,15 @@ enum InsertRule {
     kNotInsertLastRowOfFirstInput,
     kInsertAllInputs,
 };
-class SQLSDKTest : public fedb::test::SQLCaseTest {
+class SQLSDKTest : public openmldb::test::SQLCaseTest {
  public:
-    SQLSDKTest() : fedb::test::SQLCaseTest() {}
+    SQLSDKTest() : openmldb::test::SQLCaseTest() {}
     ~SQLSDKTest() {}
     void SetUp() { LOG(INFO) << "SQLSDKTest TearDown"; }
     void TearDown() { LOG(INFO) << "SQLSDKTest TearDown"; }
 
-    static void CreateDB(const hybridse::sqlcase::SqlCase& sql_case, std::shared_ptr<SQLRouter> router);
+    static void CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
+                         std::shared_ptr<SQLRouter> router);
     static void CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                              std::shared_ptr<SQLRouter> router, int partition_num = 1);
 
@@ -68,7 +69,7 @@ class SQLSDKTest : public fedb::test::SQLCaseTest {
                              std::shared_ptr<SQLRouter> router, InsertRule insert_rule);
 
     static void CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_view,
-                                           std::shared_ptr<fedb::sdk::SQLRequestRow> request_row);
+                                              std::shared_ptr<openmldb::sdk::SQLRequestRow> request_row);
     static void BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints);
     static void RunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
@@ -126,8 +127,12 @@ class SQLSDKBatchRequestQueryTest : public SQLSDKQueryTest {
                                                 std::shared_ptr<SQLRouter> router, bool is_asyn);
 };
 
-void SQLSDKTest::CreateDB(const hybridse::sqlcase::SqlCase& sql_case, std::shared_ptr<SQLRouter> router) {
-    DLOG(INFO) << "Create DB BEGIN";
+void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
+                          std::shared_ptr<SQLRouter> router) {
+    if (sql_case.db().empty()) {
+        sql_case.db_ = hybridse::sqlcase::SqlCase::GenRand("auto_db") + std::to_string((long)time(NULL));
+    }
+    DLOG(INFO) << "Create DB " << sql_case.db_ << " BEGIN";
     hybridse::sdk::Status status;
     std::vector<std::string> dbs;
     ASSERT_TRUE(router->ShowDB(&dbs, &status));
@@ -147,7 +152,8 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
     // create and insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t"), i);
+            sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)),
+                                    i);
         }
         // create table
         std::string create;
@@ -158,6 +164,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         if (!create.empty()) {
             router->ExecuteDDL(sql_case.db(), create, &status);
             ASSERT_TRUE(router->RefreshCatalog());
+            ASSERT_TRUE(status.code == 0) << status.msg;
         }
     }
     DLOG(INFO) << "Create Tables DONE";
@@ -170,7 +177,8 @@ void SQLSDKTest::DropTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
     // create and insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t"), i);
+            LOG(WARNING) << "Skip drop table with empty table name";
+            continue;
         }
         // create table
         std::string drop = "drop table " + sql_case.inputs()[i].name_ + ";";
@@ -187,17 +195,17 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     DLOG(INFO) << "Create Procedure BEGIN";
     hybridse::sdk::Status status;
     if (sql_case.inputs()[0].name_.empty()) {
-        sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t"), 0);
+        sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)), 0);
     }
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t"));
+    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)));
     boost::trim(sql);
     LOG(INFO) << sql;
-    sql_case.sp_name_ = hybridse::sqlcase::SqlCase::GenRand("auto_sp");
+    sql_case.sp_name_ = hybridse::sqlcase::SqlCase::GenRand("auto_sp") + std::to_string((long)time(NULL));
     std::string create_sp;
     if (is_batch) {
         ASSERT_TRUE(
@@ -220,7 +228,17 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     if (!sql_case.expect().success_) {
         return;
     }
+    ASSERT_TRUE(0 == status.code) << status.msg;
     auto sp_info = router->ShowProcedure(sql_case.db(), sql_case.sp_name_, &status);
+    for (int try_n = 0; try_n < 3; try_n++) {
+        if (sp_info && status.code == 0) {
+            break;
+        }
+        ASSERT_TRUE(router->RefreshCatalog());
+        sp_info = router->ShowProcedure(sql_case.db(), sql_case.sp_name_, &status);
+        LOG(WARNING) << "Procedure not found, try " << try_n << " times";
+        sleep(1);
+    }
     ASSERT_TRUE(sp_info && status.code == 0) << status.msg;
     if (is_batch) {
         std::set<size_t> input_common_indices;
@@ -293,7 +311,7 @@ void SQLSDKTest::InsertTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
 }
 
 void SQLSDKTest::CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_view,
-                                            std::shared_ptr<fedb::sdk::SQLRequestRow> request_row) {
+                                               std::shared_ptr<openmldb::sdk::SQLRequestRow> request_row) {
     ASSERT_EQ(row_view->GetSchema()->size(), request_row->GetSchema()->GetColumnCnt());
 
     int32_t init_size = 0;
@@ -358,7 +376,7 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
     DLOG(INFO) << "format sql 1";
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t"));
+    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)));
     if (tbEndpoints.size() > 0) {
         boost::replace_all(sql, "{tb_endpoint_0}", tbEndpoints.at(0));
     }
@@ -428,7 +446,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t"));
+    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)));
     LOG(INFO) << sql;
     std::string lower_sql = sql;
     boost::to_lower(lower_sql);
@@ -577,7 +595,7 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t"));
+    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)));
     LOG(INFO) << sql;
     std::string lower_sql = sql;
     boost::to_lower(lower_sql);
@@ -816,7 +834,6 @@ INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestWindowMaxSize, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_maxsize.yaml")));
 
-
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestWindowUnion, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_window_union.yaml")));
@@ -872,16 +889,16 @@ INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestIndexOptimized, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestDebugIssues, SQLSDKQueryTest,
-                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
 
 // myhug 场景正确性验证
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzMyhug, SQLSDKQueryTest,
-                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
 
 // luoji 场景正确性验证
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzLuoji, SQLSDKQueryTest,
-                        testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_SDK_SQL_SDK_TEST_H_

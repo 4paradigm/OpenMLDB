@@ -131,11 +131,12 @@
 #include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
 #include <vector>
 
-namespace fedb {
+namespace openmldb {
 namespace base {
 
 #define LINENOISE_DEFAULT_HISTORY_MAX_LEN 1000
@@ -147,9 +148,9 @@ static linenoiseHintsCallback *hintsCallback = NULL;
 static linenoiseFreeHintsCallback *freeHintsCallback = NULL;
 
 static struct termios orig_termios; /* In order to restore at exit.*/
-static int rawmode = 0; /* For atexit() function to check if restore is needed*/
-static int mlmode = 0;  /* Multi line mode. Default is single line. */
-static int atexit_registered = 0; /* Register atexit just 1 time. */
+static int rawmode = 0;             /* For atexit() function to check if restore is needed*/
+static int mlmode = 0;              /* Multi line mode. Default is single line. */
+static int atexit_registered = 0;   /* Register atexit just 1 time. */
 static int history_max_len = LINENOISE_DEFAULT_HISTORY_MAX_LEN;
 static int history_len = 0;
 static char **history = NULL;
@@ -201,19 +202,16 @@ static void refreshLine(struct linenoiseState *l);
 /* Debugging macro. */
 #if 0
 FILE *lndebug_fp = NULL;
-#define lndebug(...)                                                           \
-    do {                                                                       \
-        if (lndebug_fp == NULL) {                                              \
-            lndebug_fp = fopen("/tmp/lndebug.txt", "a");                       \
-            fprintf(                                                           \
-                lndebug_fp,                                                    \
-                "[%d %d %d] p: %d, rows: %d, rpos: %d, max: %d, oldmax: %d\n", \
-                static_cast<int>(l->len), static_cast<int>(l->pos),            \
-                static_cast<int>(l->oldpos), plen, rows, rpos,                 \
-                static_cast<int>(l->maxrows), old_rows);                       \
-        }                                                                      \
-        fprintf(lndebug_fp, ", " __VA_ARGS__);                                 \
-        fflush(lndebug_fp);                                                    \
+#define lndebug(...)                                                                                                   \
+    do {                                                                                                               \
+        if (lndebug_fp == NULL) {                                                                                      \
+            lndebug_fp = fopen("/tmp/lndebug.txt", "a");                                                               \
+            fprintf(lndebug_fp, "[%d %d %d] p: %d, rows: %d, rpos: %d, max: %d, oldmax: %d\n",                         \
+                    static_cast<int>(l->len), static_cast<int>(l->pos), static_cast<int>(l->oldpos), plen, rows, rpos, \
+                    static_cast<int>(l->maxrows), old_rows);                                                           \
+        }                                                                                                              \
+        fprintf(lndebug_fp, ", " __VA_ARGS__);                                                                         \
+        fflush(lndebug_fp);                                                                                            \
     } while (0)
 #else
 #define lndebug(fmt, ...)
@@ -414,8 +412,7 @@ static int completeLine(struct linenoiseState *ls) {
                 default:
                     /* Update buffer and return */
                     if (i < lc.len) {
-                        nwritten =
-                            snprintf(ls->buf, ls->buflen, "%s", lc.cvec[i]);
+                        nwritten = snprintf(ls->buf, ls->buflen, "%s", lc.cvec[i]);
                         ls->len = ls->pos = nwritten;
                     }
                     stop = 1;
@@ -429,21 +426,15 @@ static int completeLine(struct linenoiseState *ls) {
 }
 
 /* Register a callback function to be called for tab-completion. */
-void linenoiseSetCompletionCallback(linenoiseCompletionCallback *fn) {
-    completionCallback = fn;
-}
+void linenoiseSetCompletionCallback(linenoiseCompletionCallback *fn) { completionCallback = fn; }
 
 /* Register a hits function to be called to show hits to the user at the
  * right of the prompt. */
-void linenoiseSetHintsCallback(linenoiseHintsCallback *fn) {
-    hintsCallback = fn;
-}
+void linenoiseSetHintsCallback(linenoiseHintsCallback *fn) { hintsCallback = fn; }
 
 /* Register a function to free the hints returned by the hints callback
  * registered with linenoiseSetHintsCallback(). */
-void linenoiseSetFreeHintsCallback(linenoiseFreeHintsCallback *fn) {
-    freeHintsCallback = fn;
-}
+void linenoiseSetFreeHintsCallback(linenoiseFreeHintsCallback *fn) { freeHintsCallback = fn; }
 
 /* This function is used by the callback function registered by the user
  * in order to add completion options given the input string when the
@@ -456,8 +447,7 @@ void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str) {
     copy = reinterpret_cast<char *>(malloc(len + 1));
     if (copy == NULL) return;
     memcpy(copy, str, len + 1);
-    cvec = reinterpret_cast<char **>(
-        realloc(lc->cvec, sizeof(char *) * (lc->len + 1)));
+    cvec = reinterpret_cast<char **>(realloc(lc->cvec, sizeof(char *) * (lc->len + 1)));
     if (cvec == NULL) {
         free(copy);
         return;
@@ -567,12 +557,10 @@ static void refreshSingleLine(struct linenoiseState *l) {
 static void refreshMultiLine(struct linenoiseState *l) {
     char seq[64];
     int plen = strlen(l->prompt);
-    int rows =
-        (plen + l->len + l->cols - 1) / l->cols; /* rows used by current buf. */
-    int rpos =
-        (plen + l->oldpos + l->cols) / l->cols; /* cursor relative row. */
-    int rpos2;                                  /* rpos after refresh. */
-    int col; /* colum position, zero-based. */
+    int rows = (plen + l->len + l->cols - 1) / l->cols; /* rows used by current buf. */
+    int rpos = (plen + l->oldpos + l->cols) / l->cols;  /* cursor relative row. */
+    int rpos2;                                          /* rpos after refresh. */
+    int col;                                            /* colum position, zero-based. */
     int old_rows = l->maxrows;
     int fd = l->ofd, j;
     struct abuf ab;
@@ -620,8 +608,7 @@ static void refreshMultiLine(struct linenoiseState *l) {
     }
 
     /* Move cursor to right position. */
-    rpos2 =
-        (plen + l->pos + l->cols) / l->cols; /* current cursor relative row. */
+    rpos2 = (plen + l->pos + l->cols) / l->cols; /* current cursor relative row. */
     lndebug("rpos2 %d", rpos2);
 
     /* Go up till we reach the expected positon. */
@@ -787,8 +774,7 @@ void linenoiseEditDeletePrevWord(struct linenoiseState *l) {
  * when ctrl+d is typed.
  *
  * The function returns the length of the current buffer. */
-static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen,
-                         const char *prompt) {
+static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, const char *prompt) {
     struct linenoiseState l;
 
     /* Populate the linenoise state that we pass to functions implementing
@@ -908,12 +894,10 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen,
                     } else {
                         switch (seq[1]) {
                             case 'A': /* Up */
-                                linenoiseEditHistoryNext(
-                                    &l, LINENOISE_HISTORY_PREV);
+                                linenoiseEditHistoryNext(&l, LINENOISE_HISTORY_PREV);
                                 break;
                             case 'B': /* Down */
-                                linenoiseEditHistoryNext(
-                                    &l, LINENOISE_HISTORY_NEXT);
+                                linenoiseEditHistoryNext(&l, LINENOISE_HISTORY_NEXT);
                                 break;
                             case 'C': /* Right */
                                 linenoiseEditMoveRight(&l);
@@ -989,11 +973,10 @@ void linenoisePrintKeyCodes(void) {
         nread = read(STDIN_FILENO, &c, 1);
         if (nread <= 0) continue;
         memmove(quit, quit + 1, sizeof(quit) - 1); /* shift string to left. */
-        quit[sizeof(quit) - 1] = c; /* Insert current char on the right. */
+        quit[sizeof(quit) - 1] = c;                /* Insert current char on the right. */
         if (memcmp(quit, "quit", sizeof(quit)) == 0) break;
 
-        printf("'%c' %02x (%d) (type quit to exit)\n", isprint(c) ? c : '?',
-               static_cast<int>(c), static_cast<int>(c));
+        printf("'%c' %02x (%d) (type quit to exit)\n", isprint(c) ? c : '?', static_cast<int>(c), static_cast<int>(c));
         printf("\r"); /* Go left edge manually, we are in raw mode. */
         fflush(stdout);
     }
@@ -1124,8 +1107,7 @@ int linenoiseHistoryAdd(const char *line) {
 
     /* Initialization on first call. */
     if (history == NULL) {
-        history =
-            reinterpret_cast<char **>(malloc(sizeof(char *) * history_max_len));
+        history = reinterpret_cast<char **>(malloc(sizeof(char *) * history_max_len));
         if (history == NULL) return 0;
         memset(history, 0, (sizeof(char *) * history_max_len));
     }
@@ -1169,8 +1151,7 @@ int linenoiseHistorySetMaxLen(int len) {
             tocopy = len;
         }
         memset(new_buffer, 0, sizeof(char *) * len);
-        memcpy(new_buffer, history + (history_len - tocopy),
-               sizeof(char *) * tocopy);
+        memcpy(new_buffer, history + (history_len - tocopy), sizeof(char *) * tocopy);
         free(history);
         history = new_buffer;
     }
@@ -1218,4 +1199,4 @@ int linenoiseHistoryLoad(const char *filename) {
     return 0;
 }
 }  // namespace base
-}  // namespace fedb
+}  // namespace openmldb

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "catalog/client_manager.h"
 
 #include <utility>
@@ -24,10 +23,10 @@
 
 DECLARE_int32(request_timeout_ms);
 
-namespace fedb {
+namespace openmldb {
 namespace catalog {
 
-TabletRowHandler::TabletRowHandler(const std::string& db, fedb::RpcCallback<fedb::api::QueryResponse>* callback)
+TabletRowHandler::TabletRowHandler(const std::string& db, openmldb::RpcCallback<openmldb::api::QueryResponse>* callback)
     : db_(db), name_(), status_(::hybridse::base::Status::Running()), row_(), callback_(callback) {
     callback_->Ref();
 }
@@ -64,9 +63,7 @@ const ::hybridse::codec::Row& TabletRowHandler::GetValue() {
     }
     row_ = hybridse::codec::Row();
     if (0 != response->byte_size() &&
-        !codec::DecodeRpcRow(cntl->response_attachment(), 0,
-                             response->byte_size(), response->row_slices(),
-                             &row_)) {
+        !codec::DecodeRpcRow(cntl->response_attachment(), 0, response->byte_size(), response->row_slices(), &row_)) {
         status_.code = hybridse::common::kRpcError;
         status_.msg = "response content decode fail";
         return row_;
@@ -75,7 +72,7 @@ const ::hybridse::codec::Row& TabletRowHandler::GetValue() {
     return row_;
 }
 
-AsyncTableHandler::AsyncTableHandler(fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>* callback,
+AsyncTableHandler::AsyncTableHandler(openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback,
                                      const bool is_common)
     : hybridse::vm::MemTableHandler("", "", nullptr),
       status_(::hybridse::base::Status::Running()),
@@ -214,16 +211,16 @@ bool AsyncTablesHandler::SyncAllTableHandlers() {
 }
 
 std::shared_ptr<::hybridse::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
-                                                                  const std::string& sql,
-                                                                  const ::hybridse::codec::Row& row,
-                                                                  const bool is_procedure, const bool is_debug) {
+                                                                     const std::string& sql,
+                                                                     const ::hybridse::codec::Row& row,
+                                                                     const bool is_procedure, const bool is_debug) {
     DLOG(INFO) << "SubQuery taskid: " << task_id << " is_procedure=" << is_procedure;
     auto client = GetClient();
     if (!client) {
         return std::make_shared<TabletRowHandler>(
             ::hybridse::base::Status(::hybridse::common::kRpcError, "get client failed"));
     }
-    ::fedb::api::QueryRequest request;
+    ::openmldb::api::QueryRequest request;
     if (is_procedure) {
         request.set_sp_name(sql);
     } else {
@@ -245,9 +242,9 @@ std::shared_ptr<::hybridse::vm::RowHandler> TabletAccessor::SubQuery(uint32_t ta
         request.set_row_size(row_size);
         request.set_row_slices(row.GetRowPtrCnt());
     }
-    auto response = std::make_shared<::fedb::api::QueryResponse>();
+    auto response = std::make_shared<::openmldb::api::QueryResponse>();
     cntl->set_timeout_ms(FLAGS_request_timeout_ms);
-    auto callback = new fedb::RpcCallback<fedb::api::QueryResponse>(response, cntl);
+    auto callback = new openmldb::RpcCallback<openmldb::api::QueryResponse>(response, cntl);
     auto row_handler = std::make_shared<TabletRowHandler>(db, callback);
     if (!client->SubQuery(request, callback)) {
         return std::make_shared<TabletRowHandler>(
@@ -257,11 +254,11 @@ std::shared_ptr<::hybridse::vm::RowHandler> TabletAccessor::SubQuery(uint32_t ta
 }
 
 std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
-                                                                    const std::string& sql,
-                                                                    const std::set<size_t>& common_column_indices,
-                                                                    const std::vector<::hybridse::codec::Row>& rows,
-                                                                    const bool request_is_common,
-                                                                    const bool is_procedure, const bool is_debug) {
+                                                                       const std::string& sql,
+                                                                       const std::set<size_t>& common_column_indices,
+                                                                       const std::vector<::hybridse::codec::Row>& rows,
+                                                                       const bool request_is_common,
+                                                                       const bool is_procedure, const bool is_debug) {
     DLOG(INFO) << "SubQuery batch request, taskid=" << task_id << ", is_procedure=" << is_procedure;
     auto client = GetClient();
     if (!client) {
@@ -270,7 +267,7 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
     auto cntl = std::make_shared<brpc::Controller>();
     auto& io_buf = cntl->request_attachment();
 
-    ::fedb::api::SQLBatchRequestQueryRequest request;
+    ::openmldb::api::SQLBatchRequestQueryRequest request;
     if (is_procedure) {
         request.set_sp_name(sql);
     } else {
@@ -290,7 +287,7 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
             size_t common_slice_size = 0;
             if (!codec::EncodeRpcRow(rows[0], &io_buf, &common_slice_size)) {
                 return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
-                                                                        "encode common row buf failed");
+                                                                           "encode common row buf failed");
             }
             request.add_row_sizes(common_slice_size);
             request.set_common_slices(rows[0].GetRowPtrCnt());
@@ -299,7 +296,7 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
             size_t uncommon_slice_size = 0;
             if (!codec::EncodeRpcRow(rows[0], &io_buf, &uncommon_slice_size)) {
                 return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
-                                                                        "encode uncommon row buf failed");
+                                                                           "encode uncommon row buf failed");
             }
             request.add_row_sizes(uncommon_slice_size);
             request.set_non_common_slices(rows[0].GetRowPtrCnt());
@@ -310,20 +307,20 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
             size_t uncommon_slice_size = 0;
             if (!codec::EncodeRpcRow(row, &io_buf, &uncommon_slice_size)) {
                 return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
-                                                                        "encode uncommon row buf failed");
+                                                                           "encode uncommon row buf failed");
             }
             request.add_row_sizes(uncommon_slice_size);
             request.set_non_common_slices(row.GetRowPtrCnt());
         }
     }
-    auto response = std::make_shared<::fedb::api::SQLBatchRequestQueryResponse>();
+    auto response = std::make_shared<::openmldb::api::SQLBatchRequestQueryResponse>();
     cntl->set_timeout_ms(FLAGS_request_timeout_ms);
-    auto callback = new fedb::RpcCallback<fedb::api::SQLBatchRequestQueryResponse>(response, cntl);
+    auto callback = new openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>(response, cntl);
     auto async_table_handler = std::make_shared<AsyncTableHandler>(callback, request_is_common);
     if (!client->SubBatchRequestQuery(request, callback)) {
         LOG(WARNING) << "fail to query tablet";
         return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kRpcError,
-                                                                "fail to batch request query");
+                                                                   "fail to batch request query");
     }
     return async_table_handler;
 }
@@ -335,11 +332,11 @@ std::shared_ptr<hybridse::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t tas
                                                              "TabletsAccessor Unsupport SubQuery with request");
 }
 std::shared_ptr<hybridse::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
-                                                                   const std::string& sql,
-                                                                   const std::set<size_t>& common_column_indices,
-                                                                   const std::vector<hybridse::codec::Row>& rows,
-                                                                   const bool request_is_common,
-                                                                   const bool is_procedure, const bool is_debug) {
+                                                                      const std::string& sql,
+                                                                      const std::set<size_t>& common_column_indices,
+                                                                      const std::vector<hybridse::codec::Row>& rows,
+                                                                      const bool request_is_common,
+                                                                      const bool is_procedure, const bool is_debug) {
     auto tables_handler = std::make_shared<AsyncTablesHandler>();
     std::vector<std::vector<hybridse::vm::Row>> accessors_rows(accessors_.size());
     for (size_t idx = 0; idx < rows.size(); idx++) {
@@ -390,7 +387,8 @@ TableClientManager::TableClientManager(const TablePartitions& partitions, const 
     }
 }
 
-TableClientManager::TableClientManager(const ::fedb::storage::TableSt& table_st, const ClientManager& client_manager) {
+TableClientManager::TableClientManager(const ::openmldb::storage::TableSt& table_st,
+                                       const ClientManager& client_manager) {
     for (const auto& partition_st : *(table_st.GetPartitions())) {
         uint32_t pid = partition_st.GetPid();
         if (pid > partition_managers_.size()) {
@@ -408,7 +406,7 @@ TableClientManager::TableClientManager(const ::fedb::storage::TableSt& table_st,
     }
 }
 
-bool TableClientManager::UpdatePartitionClientManager(const ::fedb::storage::PartitionSt& partition,
+bool TableClientManager::UpdatePartitionClientManager(const ::openmldb::storage::PartitionSt& partition,
                                                       const ClientManager& client_manager) {
     uint32_t pid = partition.GetPid();
     if (pid > partition_managers_.size()) {
@@ -432,7 +430,7 @@ bool TableClientManager::UpdatePartitionClientManager(const ::fedb::storage::Par
 }
 
 std::shared_ptr<TabletAccessor> ClientManager::GetTablet(const std::string& name) const {
-    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = clients_.find(name);
     if (it == clients_.end()) {
         return std::shared_ptr<TabletAccessor>();
@@ -441,7 +439,7 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet(const std::string& name
 }
 
 std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
-    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     if (clients_.empty()) {
         return std::shared_ptr<TabletAccessor>();
     }
@@ -461,7 +459,7 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
         DLOG(INFO) << "endpoint_map is empty";
         return true;
     }
-    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     for (const auto& kv : endpoint_map) {
         auto it = real_endpoint_map_.find(kv.first);
         if (it == real_endpoint_map_.end()) {
@@ -489,8 +487,8 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
 }
 
 bool ClientManager::UpdateClient(
-    const std::map<std::string, std::shared_ptr<::fedb::client::TabletClient>>& tablet_clients) {
-    std::lock_guard<::fedb::base::SpinMutex> lock(mu_);
+    const std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>>& tablet_clients) {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     for (const auto& kv : tablet_clients) {
         auto it = real_endpoint_map_.find(kv.first);
         if (it == real_endpoint_map_.end()) {
@@ -516,4 +514,4 @@ bool ClientManager::UpdateClient(
 }
 
 }  // namespace catalog
-}  // namespace fedb
+}  // namespace openmldb

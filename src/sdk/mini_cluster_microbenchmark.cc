@@ -32,13 +32,13 @@
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 
-::fedb::sdk::MiniCluster* mc;
+::openmldb::sdk::MiniCluster* mc;
 
 static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
-    ::fedb::nameserver::TableInfo table_info;
+    ::openmldb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
@@ -51,19 +51,19 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     RtiDBSchema* schema = table_info.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
-    col1->set_data_type(::fedb::type::kVarchar);
+    col1->set_data_type(::openmldb::type::kVarchar);
     auto col2 = schema->Add();
     col2->set_name("col2");
-    col2->set_data_type(::fedb::type::kBigInt);
+    col2->set_data_type(::openmldb::type::kBigInt);
     auto col3 = schema->Add();
     col3->set_name("col3");
-    col3->set_data_type(::fedb::type::kBigInt);
+    col3->set_data_type(::openmldb::type::kBigInt);
     auto col4 = schema->Add();
     col4->set_name("col4");
-    col4->set_data_type(::fedb::type::kBigInt);
+    col4->set_data_type(::openmldb::type::kBigInt);
     auto col5 = schema->Add();
     col5->set_name("col5");
-    col5->set_data_type(::fedb::type::kBigInt);
+    col5->set_data_type(::openmldb::type::kBigInt);
 
     RtiDBIndex* index = table_info.mutable_column_key();
     auto key1 = index->Add();
@@ -73,7 +73,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     ok = ns_client->CreateTable(table_info, error);
 
     ::hybridse::vm::Schema fe_schema;
-    ::fedb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc(), &fe_schema);
+    ::openmldb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc(), &fe_schema);
     ::hybridse::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
     uint64_t ts = 1589780888000l;
@@ -86,12 +86,12 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     rb.AppendInt64(ts);
     rb.AppendInt64(ts);
     rb.AppendInt64(ts);
-    ::fedb::sdk::ClusterOptions option;
+    ::openmldb::sdk::ClusterOptions option;
     option.zk_cluster = mc->GetZkCluster();
     option.zk_path = mc->GetZkPath();
-    ::fedb::sdk::ClusterSDK sdk(option);
+    ::openmldb::sdk::ClusterSDK sdk(option);
     sdk.Init();
-    std::vector<std::shared_ptr<::fedb::catalog::TabletAccessor>> tablet;
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablet;
     ok = sdk.GetTablet(db, name, &tablet);
     if (!ok || tablet.size() <= 0) return;
     uint32_t tid = sdk.GetTableId(db, name);
@@ -102,7 +102,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     }
     std::string sql = "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
     ::hybridse::sdk::Status status;
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -117,9 +117,9 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
 }
 
 static bool Async3Times(const std::string& db, const std::string& table, const std::string& key, int64_t st, int64_t et,
-                        std::shared_ptr<fedb::sdk::TableReader> reader, hybridse::sdk::Status* status) {
-    ::fedb::sdk::ScanOption so;
-    std::vector<std::shared_ptr<::fedb::sdk::ScanFuture>> tasks;
+                        std::shared_ptr<openmldb::sdk::TableReader> reader, hybridse::sdk::Status* status) {
+    ::openmldb::sdk::ScanOption so;
+    std::vector<std::shared_ptr<::openmldb::sdk::ScanFuture>> tasks;
     for (int i = 0; i < 3; i++) {
         auto f = reader->AsyncScan(db, table, key, st, et, so, 100, status);
         if (!f) {
@@ -134,7 +134,7 @@ static bool Async3Times(const std::string& db, const std::string& table, const s
     return true;
 }
 static void BM_SimpleTableReaderAsyncMulti(benchmark::State& state) {  // NOLINT
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -162,7 +162,7 @@ static void BM_SimpleTableReaderAsyncMulti(benchmark::State& state) {  // NOLINT
     }
     auto reader = router->GetTableReader();
 
-    ::fedb::sdk::ScanOption so;
+    ::openmldb::sdk::ScanOption so;
     auto rs = reader->Scan(db, "t1", key, st, et, so, &status);
     if (!rs || rs->Size() < 300) {
         LOG(WARNING) << "result count is mismatch";
@@ -174,7 +174,7 @@ static void BM_SimpleTableReaderAsyncMulti(benchmark::State& state) {  // NOLINT
 }
 
 static void BM_SimpleTableReaderAsync(benchmark::State& state) {  // NOLINT
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -202,7 +202,7 @@ static void BM_SimpleTableReaderAsync(benchmark::State& state) {  // NOLINT
     }
     auto reader = router->GetTableReader();
 
-    ::fedb::sdk::ScanOption so;
+    ::openmldb::sdk::ScanOption so;
     auto rs = reader->Scan(db, "t1", key, st, et, so, &status);
     if (!rs || rs->Size() < 300) {
         LOG(WARNING) << "result count is mismatch";
@@ -214,7 +214,7 @@ static void BM_SimpleTableReaderAsync(benchmark::State& state) {  // NOLINT
 }
 
 static void BM_SimpleTableReaderSync(benchmark::State& state) {  // NOLINT
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -242,7 +242,7 @@ static void BM_SimpleTableReaderSync(benchmark::State& state) {  // NOLINT
     }
     auto reader = router->GetTableReader();
 
-    ::fedb::sdk::ScanOption so;
+    ::openmldb::sdk::ScanOption so;
     auto rs = reader->Scan(db, "t1", key, st, et, so, &status);
     if (!rs || rs->Size() < 300) {
         LOG(WARNING) << "result count is mismatch";
@@ -264,7 +264,7 @@ static void GenerateInsertSQLSample(uint32_t size, std::string name, std::vector
 }
 
 static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -300,7 +300,7 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
 }
 
 static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -326,7 +326,7 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
         for (int i = 0; i < state.range(0); ++i) {
-            std::shared_ptr<::fedb::sdk::SQLInsertRow> row = router->GetInsertRow(db, insert, &status);
+            std::shared_ptr<::openmldb::sdk::SQLInsertRow> row = router->GetInsertRow(db, insert, &status);
             if (row != nullptr) {
                 row->Init(5);
                 row->AppendString("hello");
@@ -347,7 +347,7 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
 }
 
 static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOLINT
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
@@ -372,10 +372,10 @@ static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOL
     uint64_t time = 1589780888000l;
     for (auto _ : state) {
         std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
-        std::shared_ptr<::fedb::sdk::SQLInsertRows> rows = router->GetInsertRows(db, insert, &status);
+        std::shared_ptr<::openmldb::sdk::SQLInsertRows> rows = router->GetInsertRows(db, insert, &status);
         if (rows != nullptr) {
             for (int i = 0; i < state.range(0); ++i) {
-                std::shared_ptr<::fedb::sdk::SQLInsertRow> row = rows->NewRow();
+                std::shared_ptr<::openmldb::sdk::SQLInsertRow> row = rows->NewRow();
                 row->Init(5);
                 row->AppendString("hello");
                 row->AppendInt64(i + time);
@@ -395,7 +395,7 @@ static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOL
 }
 
 static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     if (hybridse::sqlcase::SqlCase::IsDebug()) {
@@ -416,7 +416,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
                          "(id int, c1 string, c2 string, c3 string, c4 string, "
                          "c6 double, c7 timestamp, "
                          "index(key=(c1), ts=c7, ttl=3650d)"
-                         ") partitionnum=8;";
+                         ") options(partitionnum=8);";
     router->ExecuteDDL(db, create, &status);
     if (status.msg != "ok") {
         std::cout << "fail to create table" << std::endl;
@@ -476,7 +476,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     }
 }
 static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     if (hybridse::sqlcase::SqlCase::IsDebug()) {
@@ -500,7 +500,7 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
                          "index(key=(c2), ts=c7, ttl=3650d), "
                          "index(key=(c3), ts=c7, ttl=3650d), "
                          "index(key=(c4), ts=c7, ttl=3650d) "
-                         ") partitionnum=8;";
+                         ") options(partitionnum=8);";
     router->ExecuteDDL(db, create, &status);
     if (status.msg != "ok") {
         std::cout << "fail to create table" << std::endl;
@@ -898,7 +898,7 @@ int main(int argc, char** argv) {
     FLAGS_enable_localtablet = !hybridse::sqlcase::SqlCase::IsDisableLocalTablet();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
-    ::fedb::sdk::MiniCluster mini_cluster(6181);
+    ::openmldb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
     if (!hybridse::sqlcase::SqlCase::IsCluster()) {
         mini_cluster.SetUp(1);

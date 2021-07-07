@@ -24,17 +24,17 @@
 
 #include <csignal>
 #include <iostream>
-#include <random>
 #include <memory>
+#include <random>
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "base/hash.h"
+#include "base/ip.h"
 #include "base/kv_iterator.h"
 #include "base/linenoise.h"
-#include "base/strings.h"
-#include "base/ip.h"
 #include "base/server_name.h"
+#include "base/strings.h"
 #if defined(__linux__) || defined(__mac_tablet__)
 #include "nameserver/name_server_impl.h"
 #include "tablet/tablet_impl.h"
@@ -61,8 +61,8 @@
 #include "version.h"  // NOLINT
 #include "vm/engine.h"
 
-using Schema = ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>;
-using TabletClient = fedb::client::TabletClient;
+using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
+using TabletClient = openmldb::client::TabletClient;
 
 DECLARE_string(endpoint);
 DECLARE_int32(port);
@@ -72,8 +72,7 @@ DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
-DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client | apiserver",
-              "Set the fedb role for start");
+DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client | apiserver", "Set the fedb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
@@ -91,10 +90,9 @@ DECLARE_bool(version);
 DECLARE_bool(use_name);
 DECLARE_string(data_dir);
 
-const std::string FEDB_VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." + // NOLINT
-                            std::to_string(FEDB_VERSION_MINOR) + "." +
-                            std::to_string(FEDB_VERSION_BUG) + "." +
-                            FEDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
+const std::string FEDB_VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." +  // NOLINT
+                                 std::to_string(FEDB_VERSION_MINOR) + "." + std::to_string(FEDB_VERSION_BUG) + "." +
+                                 FEDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -106,24 +104,24 @@ void shutdown_signal_handler(int signal) {
 void SetupLog() {
     // Config log
     if (FLAGS_log_level == "debug") {
-        ::fedb::base::SetLogLevel(DEBUG);
+        ::openmldb::base::SetLogLevel(DEBUG);
     } else {
-        ::fedb::base::SetLogLevel(INFO);
+        ::openmldb::base::SetLogLevel(INFO);
     }
     if (!FLAGS_fedb_log_dir.empty()) {
-        ::fedb::base::Mkdir(FLAGS_fedb_log_dir);
+        ::openmldb::base::Mkdir(FLAGS_fedb_log_dir);
         std::string file = FLAGS_fedb_log_dir + "/" + FLAGS_role;
-        fedb::base::SetLogFile(file);
+        openmldb::base::SetLogFile(file);
     }
 }
 
-void GetRealEndpoint(std::string *real_endpoint) {
+void GetRealEndpoint(std::string* real_endpoint) {
     if (real_endpoint == nullptr) {
         return;
     }
     if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
         std::string ip;
-        if (::fedb::base::GetLocalIp(&ip)) {
+        if (::openmldb::base::GetLocalIp(&ip)) {
             PDLOG(INFO, "local ip is: %s", ip.c_str());
         } else {
             PDLOG(WARNING, "fail to get local ip: %s", ip.c_str());
@@ -134,8 +132,7 @@ void GetRealEndpoint(std::string *real_endpoint) {
         *real_endpoint = oss.str();
         if (FLAGS_use_name) {
             std::string server_name;
-            if (!::fedb::base::GetNameFromTxt(FLAGS_data_dir,
-                        &server_name)) {
+            if (!::openmldb::base::GetNameFromTxt(FLAGS_data_dir, &server_name)) {
                 PDLOG(WARNING, "GetNameFromTxt failed");
                 exit(1);
             }
@@ -151,8 +148,7 @@ void StartNameServer() {
     SetupLog();
     std::string real_endpoint;
     GetRealEndpoint(&real_endpoint);
-    ::fedb::nameserver::NameServerImpl* name_server =
-        new ::fedb::nameserver::NameServerImpl();
+    ::openmldb::nameserver::NameServerImpl* name_server = new ::openmldb::nameserver::NameServerImpl();
     if (!name_server->Init(real_endpoint)) {
         PDLOG(WARNING, "Fail to init");
         exit(1);
@@ -252,7 +248,7 @@ void StartTablet() {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     std::string real_endpoint;
     GetRealEndpoint(&real_endpoint);
-    ::fedb::tablet::TabletImpl* tablet = new ::fedb::tablet::TabletImpl();
+    ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     bool ok = tablet->Init(real_endpoint);
     if (!ok) {
         PDLOG(WARNING, "fail to init tablet");
@@ -290,17 +286,11 @@ void StartTablet() {
 }
 #endif
 
-int PutData(
-    uint32_t tid,
-    const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
-        dimensions,
-    const std::vector<uint64_t>& ts_dimensions, uint64_t ts,
-    const std::string& value,
-    const google::protobuf::RepeatedPtrField<
-        ::fedb::nameserver::TablePartition>& table_partition,
-    uint32_t format_version) {
-    std::map<std::string, std::shared_ptr<::fedb::client::TabletClient>>
-        clients;
+int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
+            const std::vector<uint64_t>& ts_dimensions, uint64_t ts, const std::string& value,
+            const google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>& table_partition,
+            uint32_t format_version) {
+    std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> clients;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         uint32_t pid = iter->first;
         std::string endpoint;
@@ -308,13 +298,10 @@ int PutData(
             if (cur_table_partition.pid() != pid) {
                 continue;
             }
-            for (int inner_idx = 0;
-                 inner_idx < cur_table_partition.partition_meta_size();
-                 inner_idx++) {
+            for (int inner_idx = 0; inner_idx < cur_table_partition.partition_meta_size(); inner_idx++) {
                 if (cur_table_partition.partition_meta(inner_idx).is_leader() &&
                     cur_table_partition.partition_meta(inner_idx).is_alive()) {
-                    endpoint = cur_table_partition.partition_meta(inner_idx)
-                                   .endpoint();
+                    endpoint = cur_table_partition.partition_meta(inner_idx).endpoint();
                     break;
                 }
             }
@@ -332,26 +319,21 @@ int PutData(
                     real_endpoint = rit->second;
                 }
             }
-            clients.insert(std::make_pair(endpoint,
-                    std::make_shared<::fedb::client::TabletClient>(endpoint, real_endpoint)));
+            clients.insert(
+                std::make_pair(endpoint, std::make_shared<::openmldb::client::TabletClient>(endpoint, real_endpoint)));
             if (clients[endpoint]->Init() < 0) {
-                printf("tablet client init failed, endpoint is %s\n",
-                       endpoint.c_str());
+                printf("tablet client init failed, endpoint is %s\n", endpoint.c_str());
                 return -1;
             }
         }
         if (ts_dimensions.empty()) {
-            if (!clients[endpoint]->Put(tid, pid, ts, value, iter->second,
-                                        format_version)) {
-                printf("put failed. tid %u pid %u endpoint %s ts %lu \n", tid,
-                       pid, endpoint.c_str(), ts);
+            if (!clients[endpoint]->Put(tid, pid, ts, value, iter->second, format_version)) {
+                printf("put failed. tid %u pid %u endpoint %s ts %lu \n", tid, pid, endpoint.c_str(), ts);
                 return -1;
             }
         } else {
-            if (!clients[endpoint]->Put(tid, pid, iter->second, ts_dimensions,
-                                        value, format_version)) {
-                printf("put failed. tid %u pid %u endpoint %s ts_dimensions\n",
-                       tid, pid, endpoint.c_str());
+            if (!clients[endpoint]->Put(tid, pid, iter->second, ts_dimensions, value, format_version)) {
+                printf("put failed. tid %u pid %u endpoint %s ts_dimensions\n", tid, pid, endpoint.c_str());
                 return -1;
             }
         }
@@ -360,40 +342,39 @@ int PutData(
     return 0;
 }
 
-::fedb::base::ResultMsg PutSchemaData(
-    const ::fedb::nameserver::TableInfo& table_info, uint64_t ts,
-    const std::vector<std::string>& input_value) {
+::openmldb::base::ResultMsg PutSchemaData(const ::openmldb::nameserver::TableInfo& table_info, uint64_t ts,
+                                          const std::vector<std::string>& input_value) {
     std::string value;
-    ::fedb::codec::SDKCodec codec(table_info);
-    std::map<uint32_t, ::fedb::codec::Dimension> dimensions;
+    ::openmldb::codec::SDKCodec codec(table_info);
+    std::map<uint32_t, ::openmldb::codec::Dimension> dimensions;
     const int part_size = table_info.table_partition_size();
     if (table_info.partition_key_size() > 0) {
         if (codec.EncodeDimension(input_value, 0, &dimensions) < 0) {
-            return ::fedb::base::ResultMsg(-1, "Encode dimension error");
+            return ::openmldb::base::ResultMsg(-1, "Encode dimension error");
         }
         std::string key;
         if (codec.CombinePartitionKey(input_value, &key) < 0) {
-            return ::fedb::base::ResultMsg(-1, "combine partition key error");
+            return ::openmldb::base::ResultMsg(-1, "combine partition key error");
         }
-        uint32_t pid = (uint32_t)(::fedb::base::hash64(key) % part_size);
+        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % part_size);
         if (pid != 0) {
-            auto pair = dimensions.emplace(pid, ::fedb::codec::Dimension());
+            auto pair = dimensions.emplace(pid, ::openmldb::codec::Dimension());
             dimensions[0].swap(pair.first->second);
             dimensions.erase(0);
         }
     } else {
         if (codec.EncodeDimension(input_value, part_size, &dimensions) < 0) {
-            return ::fedb::base::ResultMsg(-1, "Encode dimension error");
+            return ::openmldb::base::ResultMsg(-1, "Encode dimension error");
         }
     }
     if (codec.EncodeRow(input_value, &value) < 0) {
-        return ::fedb::base::ResultMsg(-1, "Encode data error");
+        return ::openmldb::base::ResultMsg(-1, "Encode data error");
     }
     std::vector<uint64_t> ts_dimensions;
     if (codec.EncodeTsDimension(input_value, &ts_dimensions) < 0) {
-        return ::fedb::base::ResultMsg(-1, "Encode ts dimension error");
+        return ::openmldb::base::ResultMsg(-1, "Encode ts dimension error");
     }
-    if (table_info.compress_type() == ::fedb::type::CompressType::kSnappy) {
+    if (table_info.compress_type() == ::openmldb::type::CompressType::kSnappy) {
         std::string compressed;
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
@@ -402,19 +383,18 @@ int PutData(
     const uint32_t fmt_ver = table_info.format_version();
     PutData(tid, dimensions, ts_dimensions, ts, value, table_info.table_partition(), fmt_ver);
 
-    return ::fedb::base::ResultMsg(0, "ok");
+    return ::openmldb::base::ResultMsg(0, "ok");
 }
 
 int SplitPidGroup(const std::string& pid_group,
                   std::set<uint32_t>& pid_set) {  // NOLINT
     try {
-        if (::fedb::base::IsNumber(pid_group)) {
+        if (::openmldb::base::IsNumber(pid_group)) {
             pid_set.insert(boost::lexical_cast<uint32_t>(pid_group));
         } else if (pid_group.find('-') != std::string::npos) {
             std::vector<std::string> vec;
             boost::split(vec, pid_group, boost::is_any_of("-"));
-            if (vec.size() != 2 || !::fedb::base::IsNumber(vec[0]) ||
-                !::fedb::base::IsNumber(vec[1])) {
+            if (vec.size() != 2 || !::openmldb::base::IsNumber(vec[0]) || !::openmldb::base::IsNumber(vec[1])) {
                 return -1;
             }
             uint32_t start_index = boost::lexical_cast<uint32_t>(vec[0]);
@@ -427,7 +407,7 @@ int SplitPidGroup(const std::string& pid_group,
             std::vector<std::string> vec;
             boost::split(vec, pid_group, boost::is_any_of(","));
             for (const auto& pid_str : vec) {
-                if (!::fedb::base::IsNumber(pid_str)) {
+                if (!::openmldb::base::IsNumber(pid_str)) {
                     return -1;
                 }
                 pid_set.insert(boost::lexical_cast<uint32_t>(pid_str));
@@ -442,16 +422,14 @@ int SplitPidGroup(const std::string& pid_group,
     return 0;
 }
 
-bool GetParameterMap(
-    const std::string& first, const std::vector<std::string>& parts,
-    const std::string& delimiter,
-    std::map<std::string, std::string>& parameter_map) {  // NOLINT
+bool GetParameterMap(const std::string& first, const std::vector<std::string>& parts, const std::string& delimiter,
+                     std::map<std::string, std::string>& parameter_map) {  // NOLINT
     std::vector<std::string> temp_vec;
-    ::fedb::base::SplitString(parts[1], delimiter, temp_vec);
+    ::openmldb::base::SplitString(parts[1], delimiter, temp_vec);
     if (temp_vec.size() == 2 && temp_vec[0] == first && !temp_vec[1].empty()) {
         parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         for (uint32_t i = 2; i < parts.size(); i++) {
-            ::fedb::base::SplitString(parts[i], delimiter, temp_vec);
+            ::openmldb::base::SplitString(parts[i], delimiter, temp_vec);
             if (temp_vec.size() < 2 || temp_vec[1].empty()) {
                 return false;
             }
@@ -461,26 +439,18 @@ bool GetParameterMap(
     return true;
 }
 
-std::shared_ptr<::fedb::client::TabletClient> GetTabletClient(
-        const ::fedb::nameserver::TableInfo& table_info, uint32_t pid,
-        std::string& msg) {  // NOLINT
+std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const ::openmldb::nameserver::TableInfo& table_info,
+                                                                  uint32_t pid,
+                                                                  std::string& msg) {  // NOLINT
     std::string endpoint;
     for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
         if (table_info.table_partition(idx).pid() != pid) {
             continue;
         }
-        for (int inner_idx = 0;
-             inner_idx < table_info.table_partition(idx).partition_meta_size();
-             inner_idx++) {
-            if (table_info.table_partition(idx)
-                    .partition_meta(inner_idx)
-                    .is_leader() &&
-                table_info.table_partition(idx)
-                    .partition_meta(inner_idx)
-                    .is_alive()) {
-                endpoint = table_info.table_partition(idx)
-                               .partition_meta(inner_idx)
-                               .endpoint();
+        for (int inner_idx = 0; inner_idx < table_info.table_partition(idx).partition_meta_size(); inner_idx++) {
+            if (table_info.table_partition(idx).partition_meta(inner_idx).is_leader() &&
+                table_info.table_partition(idx).partition_meta(inner_idx).is_alive()) {
+                endpoint = table_info.table_partition(idx).partition_meta(inner_idx).endpoint();
                 break;
             }
         }
@@ -488,7 +458,7 @@ std::shared_ptr<::fedb::client::TabletClient> GetTabletClient(
     }
     if (endpoint.empty()) {
         msg = "cannot find healthy endpoint. pid is " + std::to_string(pid);
-        return std::shared_ptr<::fedb::client::TabletClient>();
+        return std::shared_ptr<::openmldb::client::TabletClient>();
     }
     std::string real_endpoint;
     if (!real_ep_map.empty()) {
@@ -497,7 +467,7 @@ std::shared_ptr<::fedb::client::TabletClient> GetTabletClient(
             real_endpoint = rit->second;
         }
     }
-    auto tablet_client = std::make_shared<::fedb::client::TabletClient>(endpoint, real_endpoint);
+    auto tablet_client = std::make_shared<::openmldb::client::TabletClient>(endpoint, real_endpoint);
     if (tablet_client->Init() < 0) {
         msg = "tablet client init failed, endpoint is " + endpoint;
         tablet_client.reset();
@@ -505,8 +475,7 @@ std::shared_ptr<::fedb::client::TabletClient> GetTabletClient(
     return tablet_client;
 }
 
-void HandleNSClientSetTTL(const std::vector<std::string>& parts,
-                          ::fedb::client::NsClient* client) {
+void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "bad setttl format, eg settl t1 absolute 10" << std::endl;
         return;
@@ -516,22 +485,22 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts,
         std::string err;
         uint64_t abs_ttl = 0;
         uint64_t lat_ttl = 0;
-        ::fedb::type::TTLType type = ::fedb::type::kLatestTime;
+        ::openmldb::type::TTLType type = ::openmldb::type::kLatestTime;
         if (parts[2] == "absolute") {
-            type = ::fedb::type::TTLType::kAbsoluteTime;
+            type = ::openmldb::type::TTLType::kAbsoluteTime;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             if (parts.size() == 5) {
                 index_name = parts[4];
             }
         } else if (parts[2] == "absandlat") {
-            type = ::fedb::type::TTLType::kAbsAndLat;
+            type = ::openmldb::type::TTLType::kAbsAndLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
                 index_name = parts[5];
             }
         } else if (parts[2] == "absorlat") {
-            type = ::fedb::type::TTLType::kAbsOrLat;
+            type = ::openmldb::type::TTLType::kAbsOrLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
@@ -543,8 +512,7 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts,
                 index_name = parts[4];
             }
         }
-        bool ok =
-            client->UpdateTTL(parts[1], type, abs_ttl, lat_ttl, index_name, err);
+        bool ok = client->UpdateTTL(parts[1], type, abs_ttl, lat_ttl, index_name, err);
         if (ok) {
             std::cout << "Set ttl ok !" << std::endl;
         } else {
@@ -555,8 +523,7 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNSClientCancelOP(const std::vector<std::string>& parts,
-                            ::fedb::client::NsClient* client) {
+void HandleNSClientCancelOP(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "bad cancelop format, eg cancelop 1002" << std::endl;
         return;
@@ -564,8 +531,7 @@ void HandleNSClientCancelOP(const std::vector<std::string>& parts,
     try {
         std::string err;
         if (boost::lexical_cast<int64_t>(parts[1]) <= 0) {
-            std::cout << "Invalid args. op_id should be large than zero"
-                      << std::endl;
+            std::cout << "Invalid args. op_id should be large than zero" << std::endl;
             return;
         }
         uint64_t op_id = boost::lexical_cast<uint64_t>(parts[1]);
@@ -580,8 +546,7 @@ void HandleNSClientCancelOP(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNSShowTablet(const std::vector<std::string>& parts,
-                        ::fedb::client::NsClient* client) {
+void HandleNSShowTablet(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
     row.push_back("real_endpoint");
@@ -589,7 +554,7 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
     row.push_back("age");
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
-    std::vector<::fedb::client::TabletInfo> tablets;
+    std::vector<::openmldb::client::TabletInfo> tablets;
     std::string msg;
     bool ok = client->ShowTablet(tablets, msg);
     if (!ok) {
@@ -601,25 +566,23 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
         row.push_back(tablets[i].endpoint);
         row.push_back(tablets[i].real_endpoint);
         row.push_back(tablets[i].state);
-        row.push_back(::fedb::base::HumanReadableTime(tablets[i].age));
+        row.push_back(::openmldb::base::HumanReadableTime(tablets[i].age));
         tp.AddRow(row);
     }
     tp.Print(true);
 }
 
-void HandleNSShowSdkEndpoint(const std::vector<std::string>& parts,
-                        ::fedb::client::NsClient* client) {
+void HandleNSShowSdkEndpoint(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
     row.push_back("sdk_endpoint");
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
-    std::vector<::fedb::client::TabletInfo> tablets;
+    std::vector<::openmldb::client::TabletInfo> tablets;
     std::string msg;
     bool ok = client->ShowSdkEndpoint(tablets, msg);
     if (!ok) {
-        std::cout << "Fail to show sdkendpoint. error msg: "
-            << msg << std::endl;
+        std::cout << "Fail to show sdkendpoint. error msg: " << msg << std::endl;
         return;
     }
     for (size_t i = 0; i < tablets.size(); i++) {
@@ -631,8 +594,7 @@ void HandleNSShowSdkEndpoint(const std::vector<std::string>& parts,
     tp.Print(true);
 }
 
-void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts,
-                                  ::fedb::client::NsClient* client) {
+void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format. eg removerepcluster dc2" << std::endl;
         return;
@@ -657,8 +619,7 @@ void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts,
     std::cout << "remove replica cluster ok" << std::endl;
 }
 
-void HandleNSSwitchMode(const std::vector<std::string>& parts,
-                        ::fedb::client::NsClient* client) {
+void HandleNSSwitchMode(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -671,9 +632,9 @@ void HandleNSSwitchMode(const std::vector<std::string>& parts,
     std::string msg;
     bool ok = false;
     if (parts[1] == "normal") {
-        ok = client->SwitchMode(::fedb::nameserver::kNORMAL, msg);
+        ok = client->SwitchMode(::openmldb::nameserver::kNORMAL, msg);
     } else if (parts[1] == "leader") {
-        ok = client->SwitchMode(::fedb::nameserver::kLEADER, msg);
+        ok = client->SwitchMode(::openmldb::nameserver::kLEADER, msg);
     }
     if (!ok) {
         std::cout << "Fail to swith mode. error msg: " << msg << std::endl;
@@ -682,9 +643,8 @@ void HandleNSSwitchMode(const std::vector<std::string>& parts,
     std::cout << "switchmode ok" << std::endl;
 }
 
-void HandleNSShowNameServer(const std::vector<std::string>& parts,
-                            ::fedb::client::NsClient* client,
-                            std::shared_ptr<::fedb::zk::ZkClient> zk_client) {
+void HandleNSShowNameServer(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client,
+                            std::shared_ptr<::openmldb::zk::ZkClient> zk_client) {
     if (FLAGS_zk_cluster.empty() || !zk_client) {
         std::cout << "Show nameserver failed. zk_cluster is empty" << std::endl;
         return;
@@ -703,8 +663,7 @@ void HandleNSShowNameServer(const std::vector<std::string>& parts,
             std::cout << "get endpoint failed. path " << real_path << std::endl;
             return;
         }
-        if (std::find(endpoint_vec.begin(), endpoint_vec.end(), endpoint) ==
-            endpoint_vec.end()) {
+        if (std::find(endpoint_vec.begin(), endpoint_vec.end(), endpoint) == endpoint_vec.end()) {
             endpoint_vec.push_back(endpoint);
         }
     }
@@ -739,8 +698,7 @@ void HandleNSShowNameServer(const std::vector<std::string>& parts,
     tp.Print(true);
 }
 
-void HandleNSMakeSnapshot(const std::vector<std::string>& parts,
-                          ::fedb::client::NsClient* client) {
+void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -759,8 +717,7 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNSAddReplica(const std::vector<std::string>& parts,
-                        ::fedb::client::NsClient* client) {
+void HandleNSAddReplica(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -783,8 +740,7 @@ void HandleNSAddReplica(const std::vector<std::string>& parts,
     std::cout << "AddReplica ok" << std::endl;
 }
 
-void HandleNSDelReplica(const std::vector<std::string>& parts,
-                        ::fedb::client::NsClient* client) {
+void HandleNSDelReplica(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -807,8 +763,7 @@ void HandleNSDelReplica(const std::vector<std::string>& parts,
     std::cout << "DelReplica ok" << std::endl;
 }
 
-void HandleNSClientDropTable(const std::vector<std::string>& parts,
-                             ::fedb::client::NsClient* client) {
+void HandleNSClientDropTable(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -832,8 +787,7 @@ void HandleNSClientDropTable(const std::vector<std::string>& parts,
     std::cout << "drop ok" << std::endl;
 }
 
-void HandleNSClientSyncTable(const std::vector<std::string>& parts,
-                             ::fedb::client::NsClient* client) {
+void HandleNSClientSyncTable(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() != 3 && parts.size() != 4) {
         std::cout << "Bad format for synctable! eg. synctable table_name "
                      "cluster_alias [pid]"
@@ -857,11 +811,11 @@ void HandleNSClientSyncTable(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNSClientSetSdkEndpoint(const std::vector<std::string>& parts,
-                             ::fedb::client::NsClient* client) {
+void HandleNSClientSetSdkEndpoint(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() != 3) {
         std::cout << "Bad format for setsdkendpoint!"
-            "eg. setsdkendpoint server_name sdkendpoint" << std::endl;
+                     "eg. setsdkendpoint server_name sdkendpoint"
+                  << std::endl;
         return;
     }
     std::string msg;
@@ -873,29 +827,28 @@ void HandleNSClientSetSdkEndpoint(const std::vector<std::string>& parts,
     std::cout << "setsdkendpoint ok" << std::endl;
 }
 
-void HandleNSClientAddIndex(const std::vector<std::string>& parts,
-                            ::fedb::client::NsClient* client) {
+void HandleNSClientAddIndex(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format for addindex! eg. addindex table_name "
                      "index_name [col_name] [ts_name]"
                   << std::endl;
         return;
     }
-    ::fedb::common::ColumnKey column_key;
+    ::openmldb::common::ColumnKey column_key;
     column_key.set_index_name(parts[2]);
-    std::vector<fedb::common::ColumnDesc> cols;
+    std::vector<openmldb::common::ColumnDesc> cols;
     if (parts.size() > 3) {
         std::vector<std::string> col_vec;
-        ::fedb::base::SplitString(parts[3], ",", col_vec);
+        ::openmldb::base::SplitString(parts[3], ",", col_vec);
         for (const auto& col_name : col_vec) {
             std::vector<std::string> type_pair;
-            fedb::base::SplitString(col_name, ":", type_pair);
+            openmldb::base::SplitString(col_name, ":", type_pair);
             if (type_pair.size() > 1) {
                 column_key.add_col_name(type_pair[0]);
-                fedb::common::ColumnDesc col_desc;
+                openmldb::common::ColumnDesc col_desc;
                 col_desc.set_name(type_pair[0]);
-                auto it = ::fedb::codec::DATA_TYPE_MAP.find(type_pair[1]);
-                if (it == ::fedb::codec::DATA_TYPE_MAP.end()) {
+                auto it = ::openmldb::codec::DATA_TYPE_MAP.find(type_pair[1]);
+                if (it == ::openmldb::codec::DATA_TYPE_MAP.end()) {
                     std::cerr << col_name << " type " << type_pair[0] << " invalid\n";
                     return;
                 }
@@ -925,8 +878,7 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts,
     std::cout << "addindex ok" << std::endl;
 }
 
-void HandleNSClientConfSet(const std::vector<std::string>& parts,
-                           ::fedb::client::NsClient* client) {
+void HandleNSClientConfSet(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -934,15 +886,13 @@ void HandleNSClientConfSet(const std::vector<std::string>& parts,
     std::string msg;
     bool ret = client->ConfSet(parts[1], parts[2], msg);
     if (!ret) {
-        printf("failed to set %s. error msg: %s\n", parts[1].c_str(),
-               msg.c_str());
+        printf("failed to set %s. error msg: %s\n", parts[1].c_str(), msg.c_str());
         return;
     }
     printf("set %s ok\n", parts[1].c_str());
 }
 
-void HandleNSClientConfGet(const std::vector<std::string>& parts,
-                           ::fedb::client::NsClient* client) {
+void HandleNSClientConfGet(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 1) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -955,8 +905,7 @@ void HandleNSClientConfGet(const std::vector<std::string>& parts,
     }
     bool ret = client->ConfGet(key, conf_map, msg);
     if (!ret) {
-        printf("failed to set %s. error msg: %s\n", parts[1].c_str(),
-               msg.c_str());
+        printf("failed to set %s. error msg: %s\n", parts[1].c_str(), msg.c_str());
         return;
     }
     std::vector<std::string> row;
@@ -973,8 +922,7 @@ void HandleNSClientConfGet(const std::vector<std::string>& parts,
     tp.Print(true);
 }
 
-void HandleNSClientChangeLeader(const std::vector<std::string>& parts,
-                                ::fedb::client::NsClient* client) {
+void HandleNSClientChangeLeader(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -988,8 +936,7 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts,
         }
         bool ret = client->ChangeLeader(parts[1], pid, candidate_leader, msg);
         if (!ret) {
-            std::cout << "failed to change leader. error msg: " << msg
-                      << std::endl;
+            std::cout << "failed to change leader. error msg: " << msg << std::endl;
             return;
         }
     } catch (const std::exception& e) {
@@ -999,8 +946,7 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts,
     std::cout << "change leader ok" << std::endl;
 }
 
-void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts,
-                                   ::fedb::client::NsClient* client) {
+void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -1010,29 +956,24 @@ void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts,
     if (parts.size() > 2) {
         try {
             if (boost::lexical_cast<int32_t>(parts[2]) <= 0) {
-                std::cout
-                    << "Invalid args. concurrency should be greater than 0"
-                    << std::endl;
+                std::cout << "Invalid args. concurrency should be greater than 0" << std::endl;
                 return;
             }
             concurrency = boost::lexical_cast<uint32_t>(parts[2]);
         } catch (const std::exception& e) {
-            std::cout << "Invalid args. concurrency should be uint32_t"
-                      << std::endl;
+            std::cout << "Invalid args. concurrency should be uint32_t" << std::endl;
             return;
         }
     }
     bool ret = client->OfflineEndpoint(parts[1], concurrency, msg);
     if (!ret) {
-        std::cout << "failed to offline endpoint. error msg: " << msg
-                  << std::endl;
+        std::cout << "failed to offline endpoint. error msg: " << msg << std::endl;
         return;
     }
     std::cout << "offline endpoint ok" << std::endl;
 }
 
-void HandleNSClientMigrate(const std::vector<std::string>& parts,
-                           ::fedb::client::NsClient* client) {
+void HandleNSClientMigrate(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad format. eg, migrate 127.0.0.1:9991 table1 1-10 "
                      "127.0.0.1:9992"
@@ -1040,8 +981,7 @@ void HandleNSClientMigrate(const std::vector<std::string>& parts,
         return;
     }
     if (parts[1] == parts[4]) {
-        std::cout << "migrate error. src_endpoint is same as des_endpoint"
-                  << std::endl;
+        std::cout << "migrate error. src_endpoint is same as des_endpoint" << std::endl;
         return;
     }
     std::string msg;
@@ -1056,15 +996,13 @@ void HandleNSClientMigrate(const std::vector<std::string>& parts,
     }
     bool ret = client->Migrate(parts[1], parts[2], pid_set, parts[4], msg);
     if (!ret) {
-        std::cout << "failed to migrate partition. error msg: " << msg
-                  << std::endl;
+        std::cout << "failed to migrate partition. error msg: " << msg << std::endl;
         return;
     }
     std::cout << "partition migrate ok" << std::endl;
 }
 
-void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts,
-                                   ::fedb::client::NsClient* client) {
+void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -1078,8 +1016,7 @@ void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts,
         } else if (value == "false") {
             need_restore = false;
         } else {
-            std::cout << "Invalid args. need_restore should be true or false"
-                      << std::endl;
+            std::cout << "Invalid args. need_restore should be true or false" << std::endl;
             return;
         }
     }
@@ -1087,31 +1024,25 @@ void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts,
     if (parts.size() > 3) {
         try {
             if (boost::lexical_cast<int32_t>(parts[3]) <= 0) {
-                std::cout
-                    << "Invalid args. concurrency should be greater than 0"
-                    << std::endl;
+                std::cout << "Invalid args. concurrency should be greater than 0" << std::endl;
                 return;
             }
             concurrency = boost::lexical_cast<uint32_t>(parts[3]);
         } catch (const std::exception& e) {
-            std::cout << "Invalid args. concurrency should be uint32_t"
-                      << std::endl;
+            std::cout << "Invalid args. concurrency should be uint32_t" << std::endl;
             return;
         }
     }
     std::string msg;
-    bool ret =
-        client->RecoverEndpoint(parts[1], need_restore, concurrency, msg);
+    bool ret = client->RecoverEndpoint(parts[1], need_restore, concurrency, msg);
     if (!ret) {
-        std::cout << "failed to recover endpoint. error msg: " << msg
-                  << std::endl;
+        std::cout << "failed to recover endpoint. error msg: " << msg << std::endl;
         return;
     }
     std::cout << "recover endpoint ok" << std::endl;
 }
 
-void HandleNSClientRecoverTable(const std::vector<std::string>& parts,
-                                ::fedb::client::NsClient* client) {
+void HandleNSClientRecoverTable(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -1121,8 +1052,7 @@ void HandleNSClientRecoverTable(const std::vector<std::string>& parts,
         std::string msg;
         bool ok = client->RecoverTable(parts[1], pid, parts[3], msg);
         if (!ok) {
-            std::cout << "Fail to recover table. error msg:" << msg
-                      << std::endl;
+            std::cout << "Fail to recover table. error msg:" << msg << std::endl;
             return;
         }
         std::cout << "recover table ok" << std::endl;
@@ -1131,8 +1061,7 @@ void HandleNSClientRecoverTable(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNSClientConnectZK(const std::vector<std::string> parts,
-                             ::fedb::client::NsClient* client) {
+void HandleNSClientConnectZK(const std::vector<std::string> parts, ::openmldb::client::NsClient* client) {
     std::string msg;
     bool ok = client->ConnectZK(msg);
     if (ok) {
@@ -1142,8 +1071,7 @@ void HandleNSClientConnectZK(const std::vector<std::string> parts,
     }
 }
 
-void HandleNSClientDisConnectZK(const std::vector<std::string> parts,
-                                ::fedb::client::NsClient* client) {
+void HandleNSClientDisConnectZK(const std::vector<std::string> parts, ::openmldb::client::NsClient* client) {
     std::string msg;
     bool ok = client->DisConnectZK(msg);
     if (ok) {
@@ -1153,31 +1081,28 @@ void HandleNSClientDisConnectZK(const std::vector<std::string> parts,
     }
 }
 
-void HandleNSClientShowTable(const std::vector<std::string>& parts,
-                             ::fedb::client::NsClient* client) {
+void HandleNSClientShowTable(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     std::string name;
     if (parts.size() >= 2) {
         name = parts[1];
     }
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(name, tables, msg);
     if (!ret) {
         std::cout << "failed to showtable. error msg: " << msg << std::endl;
         return;
     }
-    ::fedb::cmd::PrintTableInfo(tables);
+    ::openmldb::cmd::PrintTableInfo(tables);
 }
 
-void HandleNSClientShowSchema(const std::vector<std::string>& parts,
-                              ::fedb::client::NsClient* client) {
+void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
-        std::cout << "showschema format error. eg: showschema tablename"
-                  << std::endl;
+        std::cout << "showschema format error. eg: showschema tablename" << std::endl;
         return;
     }
     std::string name = parts[1];
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(name, tables, msg);
     if (!ret) {
@@ -1189,29 +1114,26 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts,
         return;
     }
 
-    ::fedb::cmd::PrintSchema(tables[0].column_desc(), tables[0].added_column_desc());
+    ::openmldb::cmd::PrintSchema(tables[0].column_desc(), tables[0].added_column_desc());
     printf("\n#ColumnKey\n");
-    ::fedb::cmd::PrintColumnKey(tables[0].column_key());
+    ::openmldb::cmd::PrintColumnKey(tables[0].column_key());
 }
 
-void HandleNSDelete(const std::vector<std::string>& parts,
-                    ::fedb::client::NsClient* client) {
+void HandleNSDelete(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     std::vector<std::string> vec;
-    ::fedb::base::SplitString(parts[1], "=", vec);
+    ::openmldb::base::SplitString(parts[1], "=", vec);
     if (vec.size() < 2 || vec.at(0) != "table_name") {
         if (parts.size() < 3) {
-            std::cout
-                << "delete format error. eg: delete table_name key | delete"
-                   "table_name key idx_name"
-                << std::endl;
+            std::cout << "delete format error. eg: delete table_name key | delete"
+                         "table_name key idx_name"
+                      << std::endl;
             return;
         }
-        std::vector<::fedb::nameserver::TableInfo> tables;
+        std::vector<::openmldb::nameserver::TableInfo> tables;
         std::string msg;
         bool ret = client->ShowTable(parts[1], tables, msg);
         if (!ret) {
-            std::cout << "failed to get table info. error msg: " << msg
-                      << std::endl;
+            std::cout << "failed to get table info. error msg: " << msg << std::endl;
             return;
         }
         if (tables.empty()) {
@@ -1220,10 +1142,8 @@ void HandleNSDelete(const std::vector<std::string>& parts,
         }
         uint32_t tid = tables[0].tid();
         std::string key = parts[2];
-        uint32_t pid = (uint32_t)(::fedb::base::hash64(key) %
-                                  tables[0].table_partition_size());
-        std::shared_ptr<::fedb::client::TabletClient> tablet_client =
-            GetTabletClient(tables[0], pid, msg);
+        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % tables[0].table_partition_size());
+        std::shared_ptr<::openmldb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
         if (!tablet_client) {
             std::cout << "failed to delete. error msg: " << msg << std::endl;
             return;
@@ -1250,13 +1170,10 @@ void HandleNSDelete(const std::vector<std::string>& parts,
             }
         } else {
             int failed_cnt = 0;
-            for (uint32_t cur_pid = 0;
-                 cur_pid < (uint32_t)tables[0].table_partition_size();
-                 cur_pid++) {
+            for (uint32_t cur_pid = 0; cur_pid < (uint32_t)tables[0].table_partition_size(); cur_pid++) {
                 tablet_client = GetTabletClient(tables[0], cur_pid, msg);
                 if (!tablet_client) {
-                    std::cout << "failed to delete. error msg: " << msg
-                              << std::endl;
+                    std::cout << "failed to delete. error msg: " << msg << std::endl;
                     return;
                 }
                 if (!tablet_client->Delete(tid, cur_pid, key, idx_name, msg)) {
@@ -1272,10 +1189,9 @@ void HandleNSDelete(const std::vector<std::string>& parts,
     }
 }
 
-bool GetColumnMap(
-    const std::vector<std::string>& parts,
-    std::map<std::string, std::string>& condition_columns_map,  // NOLINT
-    std::map<std::string, std::string>& value_columns_map) {    // NOLINT
+bool GetColumnMap(const std::vector<std::string>& parts,
+                  std::map<std::string, std::string>& condition_columns_map,  // NOLINT
+                  std::map<std::string, std::string>& value_columns_map) {    // NOLINT
     std::string delimiter = "=";
     bool is_condition_columns_map = false;
     std::vector<std::string> temp_vec;
@@ -1284,13 +1200,12 @@ bool GetColumnMap(
             is_condition_columns_map = true;
             continue;
         }
-        ::fedb::base::SplitString(parts[i], delimiter, temp_vec);
+        ::openmldb::base::SplitString(parts[i], delimiter, temp_vec);
         if (temp_vec.size() < 2 || temp_vec[1].empty()) {
             return false;
         }
         if (is_condition_columns_map) {
-            condition_columns_map.insert(
-                std::make_pair(temp_vec[0], temp_vec[1]));
+            condition_columns_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         } else {
             value_columns_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         }
@@ -1298,8 +1213,7 @@ bool GetColumnMap(
     return true;
 }
 
-void HandleNsUseDb(const std::vector<std::string>& parts,
-                   ::fedb::client::NsClient* client) {
+void HandleNsUseDb(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     std::string msg;
     if (parts.size() == 1) {
         client->ClearDb();
@@ -1313,11 +1227,9 @@ void HandleNsUseDb(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNsCreateDb(const std::vector<std::string>& parts,
-                      ::fedb::client::NsClient* client) {
+void HandleNsCreateDb(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
-        std::cout << "createdb format error. eg: createdb database_name"
-                  << std::endl;
+        std::cout << "createdb format error. eg: createdb database_name" << std::endl;
         return;
     }
     std::string msg;
@@ -1328,16 +1240,13 @@ void HandleNsCreateDb(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNsDropDb(const std::vector<std::string>& parts,
-                    ::fedb::client::NsClient* client) {
+void HandleNsDropDb(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
-        std::cout << "dropdb format error. eg: dropdb database_name"
-                  << std::endl;
+        std::cout << "dropdb format error. eg: dropdb database_name" << std::endl;
         return;
     }
     if (FLAGS_interactive) {
-        printf("Dropdb will drop all tables in the database %s? yes/no\n",
-               parts[1].c_str());
+        printf("Dropdb will drop all tables in the database %s? yes/no\n", parts[1].c_str());
         std::string input;
         std::cin >> input;
         std::transform(input.begin(), input.end(), input.begin(), ::tolower);
@@ -1361,26 +1270,26 @@ bool ParseCondAndOp(const std::string& source, uint64_t& first_end,  // NOLINT
             case '=':
                 first_end = i;
                 value_begin = i + 1;
-                get_type = fedb::api::kSubKeyEq;
+                get_type = openmldb::api::kSubKeyEq;
                 return true;
             case '<':
                 first_end = i;
                 if (source[i + 1] == '=') {
                     value_begin = i + 2;
-                    get_type = fedb::api::kSubKeyLe;
+                    get_type = openmldb::api::kSubKeyLe;
                 } else {
                     value_begin = i + 1;
-                    get_type = fedb::api::kSubKeyLt;
+                    get_type = openmldb::api::kSubKeyLt;
                 }
                 return true;
             case '>':
                 first_end = i;
                 if (source[i + 1] == '=') {
                     value_begin = i + 2;
-                    get_type = fedb::api::kSubKeyGe;
+                    get_type = openmldb::api::kSubKeyGe;
                 } else {
                     value_begin = i + 1;
-                    get_type = fedb::api::kSubKeyGt;
+                    get_type = openmldb::api::kSubKeyGt;
                 }
                 return true;
             default:
@@ -1390,11 +1299,10 @@ bool ParseCondAndOp(const std::string& source, uint64_t& first_end,  // NOLINT
     return false;
 }
 
-bool GetCondAndPrintColumns(
-    const std::vector<std::string>& parts,
-    std::map<std::string, std::string>& condition_columns_map,  // NOLINT
-    std::vector<std::string>& print_column,                     // NOLINT
-    fedb::api::GetType& get_type) {                            // NOLINT
+bool GetCondAndPrintColumns(const std::vector<std::string>& parts,
+                            std::map<std::string, std::string>& condition_columns_map,  // NOLINT
+                            std::vector<std::string>& print_column,                     // NOLINT
+                            openmldb::api::GetType& get_type) {                         // NOLINT
     uint64_t size = parts.size();
     uint64_t i = 2;
     if (parts[i] == "*") {
@@ -1434,16 +1342,15 @@ bool GetCondAndPrintColumns(
         std::string val = parts[i].substr(value_begin);
         condition_columns_map.insert(std::make_pair(col, val));
     }
-    get_type = static_cast<fedb::api::GetType>(first_type);
+    get_type = static_cast<openmldb::api::GetType>(first_type);
     return true;
 }
 
-void HandleNSShowCatalogVersion(::fedb::client::NsClient* client) {
+void HandleNSShowCatalogVersion(::openmldb::client::NsClient* client) {
     std::map<std::string, uint64_t> catalog_version;
     std::string error;
     client->ShowCatalogVersion(&catalog_version, &error);
-    std::unique_ptr<baidu::common::TPrinter> tp(new baidu::common::TPrinter(3,
-                        FLAGS_max_col_display_length));
+    std::unique_ptr<baidu::common::TPrinter> tp(new baidu::common::TPrinter(3, FLAGS_max_col_display_length));
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("endpoint");
@@ -1462,12 +1369,11 @@ void HandleNSShowCatalogVersion(::fedb::client::NsClient* client) {
     tp->Print(true);
 }
 
-void HandleNSShowDB(::fedb::client::NsClient* client) {
+void HandleNSShowDB(::openmldb::client::NsClient* client) {
     std::vector<std::string> dbs;
     std::string error;
     client->ShowDatabase(&dbs, error);
-    auto tp = new baidu::common::TPrinter(2,
-                        FLAGS_max_col_display_length);
+    auto tp = new baidu::common::TPrinter(2, FLAGS_max_col_display_length);
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("name");
@@ -1483,8 +1389,7 @@ void HandleNSShowDB(::fedb::client::NsClient* client) {
     delete tp;
 }
 
-void HandleNSGet(const std::vector<std::string>& parts,
-                 ::fedb::client::NsClient* client) {
+void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "get format error. eg: get table_name key ts | get "
                      "table_name key idx_name ts | get table_name=xxx key=xxx "
@@ -1512,16 +1417,14 @@ void HandleNSGet(const std::vector<std::string>& parts,
             if (iter != parameter_map.end()) {
                 table_name = iter->second;
             } else {
-                std::cout << "get format error: table_name does not exist!"
-                          << std::endl;
+                std::cout << "get format error: table_name does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("key");
             if (iter != parameter_map.end()) {
                 key = iter->second;
             } else {
-                std::cout << "get format error: key does not exist!"
-                          << std::endl;
+                std::cout << "get format error: key does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("index_name");
@@ -1532,8 +1435,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
             if (iter != parameter_map.end()) {
                 timestamp = boost::lexical_cast<uint64_t>(iter->second);
             } else {
-                std::cout << "get format error: ts does not exist!"
-                          << std::endl;
+                std::cout << "get format error: ts does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("ts_name");
@@ -1552,12 +1454,11 @@ void HandleNSGet(const std::vector<std::string>& parts,
         printf("Invalid args. ts should be unsigned int\n");
         return;
     }
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
-        std::cout << "failed to get table info. error msg: " << msg
-                  << std::endl;
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
     }
     if (tables.empty()) {
@@ -1565,13 +1466,13 @@ void HandleNSGet(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::fedb::base::hash64(key) % tables[0].table_partition_size());
+    uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % tables[0].table_partition_size());
     std::shared_ptr<TabletClient> tb_client = GetTabletClient(tables[0], pid, msg);
     if (!tb_client) {
         std::cout << "failed to get. error msg: " << msg << std::endl;
         return;
     }
-    ::fedb::codec::SDKCodec codec(tables[0]);
+    ::openmldb::codec::SDKCodec codec(tables[0]);
     bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
     if (no_schema) {
         std::string value;
@@ -1580,7 +1481,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
             std::string msg;
             bool ok = tb_client->Get(tid, pid, key, timestamp, value, ts, msg);
             if (ok) {
-                if (tables[0].compress_type() == ::fedb::type::CompressType::kSnappy) {
+                if (tables[0].compress_type() == ::openmldb::type::CompressType::kSnappy) {
                     std::string uncompressed;
                     ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
                     value = uncompressed;
@@ -1618,8 +1519,7 @@ void HandleNSGet(const std::vector<std::string>& parts,
                     std::cout << "failed to get. error msg: " << msg << std::endl;
                     return;
                 }
-                if (!tb_client->Get(tid, cur_pid, key, timestamp, index_name, ts_name, cur_value, cur_ts,
-                                        msg)) {
+                if (!tb_client->Get(tid, cur_pid, key, timestamp, index_name, ts_name, cur_value, cur_ts, msg)) {
                     failed_cnt++;
                     continue;
                 }
@@ -1628,19 +1528,18 @@ void HandleNSGet(const std::vector<std::string>& parts,
                 }
             }
             if (failed_cnt == tables[0].table_partition_size()) {
-                std::cout << "Fail to get value! error msg: " << msg
-                          << std::endl;
+                std::cout << "Fail to get value! error msg: " << msg << std::endl;
                 return;
             }
         }
-        if (tables[0].compress_type() == ::fedb::type::CompressType::kSnappy) {
+        if (tables[0].compress_type() == ::openmldb::type::CompressType::kSnappy) {
             std::string uncompressed;
             ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
             value.swap(uncompressed);
         }
         row.clear();
         codec.DecodeRow(value, &row);
-        ::fedb::cmd::TransferString(&row);
+        ::openmldb::cmd::TransferString(&row);
         row.insert(row.begin(), std::to_string(ts));
         row.insert(row.begin(), "1");
         uint64_t row_size = row.size();
@@ -1652,15 +1551,13 @@ void HandleNSGet(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNSScan(const std::vector<std::string>& parts,
-                  ::fedb::client::NsClient* client) {
+void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 5) {
-        std::cout
-            << "scan format error. eg: scan table_name pk start_time end_time "
-               "[limit] | scan table_name key key_name start_time end_time "
-               "[limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx "
-               "et=xxx ts_name=xxx [limit=xxx] [atleast=xxx]"
-            << std::endl;
+        std::cout << "scan format error. eg: scan table_name pk start_time end_time "
+                     "[limit] | scan table_name key key_name start_time end_time "
+                     "[limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx "
+                     "et=xxx ts_name=xxx [limit=xxx] [atleast=xxx]"
+                  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
@@ -1686,16 +1583,14 @@ void HandleNSScan(const std::vector<std::string>& parts,
             if (iter != parameter_map.end()) {
                 table_name = iter->second;
             } else {
-                std::cout << "scan format error: table_name does not exist!"
-                          << std::endl;
+                std::cout << "scan format error: table_name does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("key");
             if (iter != parameter_map.end()) {
                 key = iter->second;
             } else {
-                std::cout << "scan format error: key does not exist!"
-                          << std::endl;
+                std::cout << "scan format error: key does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("index_name");
@@ -1706,16 +1601,14 @@ void HandleNSScan(const std::vector<std::string>& parts,
             if (iter != parameter_map.end()) {
                 st = boost::lexical_cast<uint64_t>(iter->second);
             } else {
-                std::cout << "scan format error: st does not exist!"
-                          << std::endl;
+                std::cout << "scan format error: st does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("et");
             if (iter != parameter_map.end()) {
                 et = boost::lexical_cast<uint64_t>(iter->second);
             } else {
-                std::cout << "scan format error: et does not exist!"
-                          << std::endl;
+                std::cout << "scan format error: et does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("ts_name");
@@ -1741,7 +1634,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
         return;
     }
 
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
@@ -1753,7 +1646,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::fedb::base::hash64(key) % tables[0].table_partition_size());
+    uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % tables[0].table_partition_size());
     std::shared_ptr<TabletClient> tb_client = GetTabletClient(tables[0], pid, msg);
     if (!tb_client) {
         std::cout << "failed to scan. error msg: " << msg << std::endl;
@@ -1761,7 +1654,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
     }
     bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
     if (no_schema) {
-        std::shared_ptr<::fedb::base::KvIterator> it;
+        std::shared_ptr<::openmldb::base::KvIterator> it;
         if (is_pair_format) {
             it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
         } else {
@@ -1782,11 +1675,10 @@ void HandleNSScan(const std::vector<std::string>& parts,
             std::cout << "Fail to scan table. error msg: " << msg << std::endl;
             return;
         } else {
-            std::vector<std::shared_ptr<::fedb::base::KvIterator>> iter_vec;
+            std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec;
             iter_vec.push_back(std::move(it));
-            ::fedb::cmd::SDKIterator sdk_it(iter_vec, limit);
-            ::fedb::cmd::ShowTableRows(key, &sdk_it,
-                                        tables[0].compress_type());
+            ::openmldb::cmd::SDKIterator sdk_it(iter_vec, limit);
+            ::openmldb::cmd::ShowTableRows(key, &sdk_it, tables[0].compress_type());
         }
     } else {
         if (parts.size() < 6) {
@@ -1810,45 +1702,37 @@ void HandleNSScan(const std::vector<std::string>& parts,
                 return;
             }
         }
-        std::vector<std::shared_ptr<::fedb::base::KvIterator>> iter_vec;
+        std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec;
         if (tables[0].partition_key_size() > 0) {
-            for (uint32_t cur_pid = 0;
-                 cur_pid < (uint32_t)tables[0].table_partition_size();
-                 cur_pid++) {
+            for (uint32_t cur_pid = 0; cur_pid < (uint32_t)tables[0].table_partition_size(); cur_pid++) {
                 tb_client = GetTabletClient(tables[0], cur_pid, msg);
                 if (!tb_client) {
-                    std::cout << "failed to scan. error msg: " << msg
-                              << std::endl;
+                    std::cout << "failed to scan. error msg: " << msg << std::endl;
                     return;
                 }
-                std::shared_ptr<::fedb::base::KvIterator> it(
-                    tb_client->Scan(tid, cur_pid, key, st, et, index_name,
-                                        ts_name, limit, atleast, msg));
+                std::shared_ptr<::openmldb::base::KvIterator> it(
+                    tb_client->Scan(tid, cur_pid, key, st, et, index_name, ts_name, limit, atleast, msg));
                 if (!it) {
-                    std::cout << "Fail to scan table. error msg: " << msg
-                              << std::endl;
+                    std::cout << "Fail to scan table. error msg: " << msg << std::endl;
                     return;
                 }
                 iter_vec.push_back(std::move(it));
             }
         } else {
-            std::shared_ptr<::fedb::base::KvIterator> it(
-                tb_client->Scan(tid, pid, key, st, et, index_name, ts_name,
-                                    limit, atleast, msg));
+            std::shared_ptr<::openmldb::base::KvIterator> it(
+                tb_client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, atleast, msg));
             if (!it) {
-                std::cout << "Fail to scan table. error msg: " << msg
-                          << std::endl;
+                std::cout << "Fail to scan table. error msg: " << msg << std::endl;
                 return;
             }
             iter_vec.push_back(std::move(it));
         }
-        ::fedb::cmd::SDKIterator sdk_it(iter_vec, limit);
-        ::fedb::cmd::ShowTableRows(tables[0], &sdk_it);
+        ::openmldb::cmd::SDKIterator sdk_it(iter_vec, limit);
+        ::openmldb::cmd::ShowTableRows(tables[0], &sdk_it);
     }
 }
 
-void HandleNSCount(const std::vector<std::string>& parts,
-                   ::fedb::client::NsClient* client) {
+void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "count format error | count table_name key [col_name] "
                      "[filter_expired_data] | count table_name=xxx key=xxx "
@@ -1875,8 +1759,7 @@ void HandleNSCount(const std::vector<std::string>& parts,
         if (iter != parameter_map.end()) {
             table_name = iter->second;
         } else {
-            std::cout << "count format error: table_name does not exist!"
-                      << std::endl;
+            std::cout << "count format error: table_name does not exist!" << std::endl;
             return;
         }
         iter = parameter_map.find("key");
@@ -1902,8 +1785,7 @@ void HandleNSCount(const std::vector<std::string>& parts,
             } else if (temp_str == "false") {
                 filter_expired_data = false;
             } else {
-                printf(
-                    "filter_expired_data parameter should be true or false\n");
+                printf("filter_expired_data parameter should be true or false\n");
                 return;
             }
         }
@@ -1925,8 +1807,7 @@ void HandleNSCount(const std::vector<std::string>& parts,
             } else if (parts[4] == "false") {
                 filter_expired_data = false;
             } else {
-                printf(
-                    "filter_expired_data parameter should be true or false\n");
+                printf("filter_expired_data parameter should be true or false\n");
                 return;
             }
         } else if (parts.size() != 3) {
@@ -1934,12 +1815,11 @@ void HandleNSCount(const std::vector<std::string>& parts,
             return;
         }
     }
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
-        std::cout << "failed to get table info. error msg: " << msg
-                  << std::endl;
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
     }
     if (tables.empty()) {
@@ -1947,25 +1827,20 @@ void HandleNSCount(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::fedb::base::hash64(key) %
-                              tables[0].table_partition_size());
-    std::shared_ptr<::fedb::client::TabletClient> tablet_client =
-        GetTabletClient(tables[0], pid, msg);
+    uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % tables[0].table_partition_size());
+    std::shared_ptr<::openmldb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
     if (!tablet_client) {
-        std::cout << "failed to count. cannot not found tablet client, pid is "
-                  << pid << std::endl;
+        std::cout << "failed to count. cannot not found tablet client, pid is " << pid << std::endl;
         return;
     }
     uint64_t value = 0;
     if (tables[0].partition_key_size() == 0) {
-        if (!tablet_client->Count(tid, pid, key, index_name, ts_name,
-                                  filter_expired_data, value, msg)) {
+        if (!tablet_client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg)) {
             std::cout << "Count failed. error msg: " << msg << std::endl;
             return;
         }
     } else {
-        for (uint32_t cur_pid = 0;
-             cur_pid < (uint32_t)tables[0].table_partition_size(); cur_pid++) {
+        for (uint32_t cur_pid = 0; cur_pid < (uint32_t)tables[0].table_partition_size(); cur_pid++) {
             uint64_t cur_value = 0;
             tablet_client = GetTabletClient(tables[0], cur_pid, msg);
             if (!tablet_client) {
@@ -1974,8 +1849,7 @@ void HandleNSCount(const std::vector<std::string>& parts,
                           << cur_pid << std::endl;
                 return;
             }
-            if (!tablet_client->Count(tid, cur_pid, key, index_name, ts_name,
-                                      filter_expired_data, cur_value, msg)) {
+            if (!tablet_client->Count(tid, cur_pid, key, index_name, ts_name, filter_expired_data, cur_value, msg)) {
                 std::cout << "Count failed. error msg: " << msg << std::endl;
             }
             value += cur_value;
@@ -1984,11 +1858,9 @@ void HandleNSCount(const std::vector<std::string>& parts,
     std::cout << "count: " << value << std::endl;
 }
 
-void HandleNSPreview(const std::vector<std::string>& parts,
-                     ::fedb::client::NsClient* client) {
+void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
-        std::cout << "preview format error. eg: preview table_name [limit]"
-                  << std::endl;
+        std::cout << "preview format error. eg: preview table_name [limit]" << std::endl;
         return;
     }
     uint32_t limit = FLAGS_preview_default_limit;
@@ -2005,20 +1877,18 @@ void HandleNSPreview(const std::vector<std::string>& parts,
             return;
         }
         if (limit > FLAGS_preview_limit_max_num) {
-            printf("preview error. limit is greater than the max num %u\n",
-                   FLAGS_preview_limit_max_num);
+            printf("preview error. limit is greater than the max num %u\n", FLAGS_preview_limit_max_num);
             return;
         } else if (limit == 0) {
             printf("preview error. limit must be greater than zero\n");
             return;
         }
     }
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(parts[1], tables, msg);
     if (!ret) {
-        std::cout << "failed to get table info. error msg: " << msg
-                  << std::endl;
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
     }
     if (tables.empty()) {
@@ -2026,7 +1896,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    ::fedb::codec::SDKCodec codec(tables[0]);
+    ::openmldb::codec::SDKCodec codec(tables[0]);
     bool has_ts_col = codec.HasTSCol();
     bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
     std::vector<std::string> row;
@@ -2057,7 +1927,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
             return;
         }
         uint32_t count = 0;
-        ::fedb::base::KvIterator* it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
+        ::openmldb::base::KvIterator* it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
         if (it == NULL) {
             std::cout << "Fail to preview table" << std::endl;
             return;
@@ -2069,7 +1939,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
 
             if (no_schema) {
                 std::string value = it->GetValue().ToString();
-                if (tables[0].compress_type() == ::fedb::type::CompressType::kSnappy) {
+                if (tables[0].compress_type() == ::openmldb::type::CompressType::kSnappy) {
                     std::string uncompressed;
                     ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
                     value = uncompressed;
@@ -2082,13 +1952,13 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                     row.push_back(std::to_string(it->GetKey()));
                 }
                 std::string value;
-                if (tables[0].compress_type() == ::fedb::type::CompressType::kSnappy) {
+                if (tables[0].compress_type() == ::openmldb::type::CompressType::kSnappy) {
                     ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &value);
                 } else {
                     value.assign(it->GetValue().data(), it->GetValue().size());
                 }
                 codec.DecodeRow(value, &row);
-                ::fedb::cmd::TransferString(&row);
+                ::openmldb::cmd::TransferString(&row);
                 uint64_t row_size = row.size();
                 for (uint64_t i = 0; i < max_size - row_size; i++) {
                     row.push_back("");
@@ -2103,33 +1973,30 @@ void HandleNSPreview(const std::vector<std::string>& parts,
     tp.Print(true);
 }
 
-void HandleNSAddTableField(const std::vector<std::string>& parts,
-                           ::fedb::client::NsClient* client) {
+void HandleNSAddTableField(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() != 4) {
         std::cout << "addtablefield format error. eg: addtablefield tablename "
                      "column_name column_type"
                   << std::endl;
         return;
     }
-    auto iter = ::fedb::codec::DATA_TYPE_MAP.find(parts[3]);
-    if (iter == ::fedb::codec::DATA_TYPE_MAP.end()) {
+    auto iter = ::openmldb::codec::DATA_TYPE_MAP.find(parts[3]);
+    if (iter == ::openmldb::codec::DATA_TYPE_MAP.end()) {
         printf("type %s is invalid\n", parts[3].c_str());
         return;
     }
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(parts[1], tables, msg);
     if (!ret) {
-        std::cout << "failed to get table info. error msg: " << msg
-                  << std::endl;
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
     }
     if (tables.empty()) {
-        printf("add table field failed! table %s doesn`t exist\n",
-               parts[1].c_str());
+        printf("add table field failed! table %s doesn`t exist\n", parts[1].c_str());
         return;
     }
-    ::fedb::common::ColumnDesc column_desc;
+    ::openmldb::common::ColumnDesc column_desc;
     column_desc.set_name(parts[2]);
     column_desc.set_data_type(iter->second);
     if (!client->AddTableField(parts[1], column_desc, msg)) {
@@ -2139,26 +2006,23 @@ void HandleNSAddTableField(const std::vector<std::string>& parts,
     std::cout << "add table field ok" << std::endl;
 }
 
-void HandleNSInfo(const std::vector<std::string>& parts,
-                  ::fedb::client::NsClient* client) {
+void HandleNSInfo(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "info format error. eg: info tablename" << std::endl;
         return;
     }
     std::string name = parts[1];
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(name, tables, msg);
     if (!ret) {
-        std::cout << "failed to get table info. error msg: " << msg
-                  << std::endl;
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
     }
-    ::fedb::cmd::PrintTableInformation(tables);
+    ::openmldb::cmd::PrintTableInformation(tables);
 }
 
-void HandleNSAddReplicaCluster(const std::vector<std::string>& parts,
-                               ::fedb::client::NsClient* client) {
+void HandleNSAddReplicaCluster(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "addrepcluster format error. eg: addrepcluster "
                      "zk_endpoints zk_path alias_name"
@@ -2176,14 +2040,12 @@ void HandleNSAddReplicaCluster(const std::vector<std::string>& parts,
     std::cout << "adrepcluster ok" << std::endl;
 }
 
-void HandleShowReplicaCluster(const std::vector<std::string>& parts,
-                              ::fedb::client::NsClient* client) {
-    std::vector<std::string> row = {"zk_endpoints", "zk_path", "alias", "state",
-                                    "age"};
+void HandleShowReplicaCluster(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
+    std::vector<std::string> row = {"zk_endpoints", "zk_path", "alias", "state", "age"};
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
 
-    std::vector<::fedb::nameserver::ClusterAddAge> cluster_info;
+    std::vector<::openmldb::nameserver::ClusterAddAge> cluster_info;
     std::string msg;
     bool ok = client->ShowReplicaCluster(cluster_info, msg);
     if (!ok) {
@@ -2196,15 +2058,13 @@ void HandleShowReplicaCluster(const std::vector<std::string>& parts,
         row.push_back(i.replica().zk_path());
         row.push_back(i.replica().alias());
         row.push_back(i.state());
-        row.push_back(::fedb::base::HumanReadableTime(i.age()));
+        row.push_back(::openmldb::base::HumanReadableTime(i.age()));
         tp.AddRow(row);
     }
     tp.Print(true);
 }
 
-bool HasIsTsCol(
-    const google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>&
-        list) {
+bool HasIsTsCol(const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& list) {
     if (list.empty()) {
         return false;
     }
@@ -2216,7 +2076,7 @@ bool HasIsTsCol(
     return false;
 }
 
-void HandleNSPut(const std::vector<std::string>& parts, ::fedb::client::NsClient* client) {
+void HandleNSPut(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "put format error. eg: put table_name pk ts value | put table_name [ts] field1 field2 ...\n";
         return;
@@ -2239,7 +2099,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::fedb::client::NsClient
     } else {
         table_name = parts[1];
     }
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
@@ -2278,9 +2138,8 @@ void HandleNSPut(const std::vector<std::string>& parts, ::fedb::client::NsClient
     }
 }
 
-int SetTablePartition(
-    const ::fedb::client::TableInfo& table_info,
-    ::fedb::nameserver::TableInfo& ns_table_info) {  // NOLINT
+int SetTablePartition(const ::openmldb::client::TableInfo& table_info,
+                      ::openmldb::nameserver::TableInfo& ns_table_info) {  // NOLINT
     if (table_info.table_partition_size() > 0) {
         std::map<uint32_t, std::string> leader_map;
         std::map<uint32_t, std::set<std::string>> follower_map;
@@ -2288,17 +2147,14 @@ int SetTablePartition(
             std::string pid_group = table_info.table_partition(idx).pid_group();
             uint32_t start_index = 0;
             uint32_t end_index = 0;
-            if (::fedb::base::IsNumber(pid_group)) {
+            if (::openmldb::base::IsNumber(pid_group)) {
                 start_index = boost::lexical_cast<uint32_t>(pid_group);
                 end_index = start_index;
             } else {
                 std::vector<std::string> vec;
                 boost::split(vec, pid_group, boost::is_any_of("-"));
-                if (vec.size() != 2 || !::fedb::base::IsNumber(vec[0]) ||
-                    !::fedb::base::IsNumber(vec[1])) {
-                    printf(
-                        "Fail to create table. pid_group[%s] format error.\n",
-                        pid_group.c_str());
+                if (vec.size() != 2 || !::openmldb::base::IsNumber(vec[0]) || !::openmldb::base::IsNumber(vec[1])) {
+                    printf("Fail to create table. pid_group[%s] format error.\n", pid_group.c_str());
                     return -1;
                 }
                 start_index = boost::lexical_cast<uint32_t>(vec[0]);
@@ -2307,29 +2163,22 @@ int SetTablePartition(
             for (uint32_t pid = start_index; pid <= end_index; pid++) {
                 if (table_info.table_partition(idx).is_leader()) {
                     if (leader_map.find(pid) != leader_map.end()) {
-                        printf("Fail to create table. pid %u has two leader\n",
-                               pid);
+                        printf("Fail to create table. pid %u has two leader\n", pid);
                         return -1;
                     }
-                    leader_map.insert(std::make_pair(
-                        pid, table_info.table_partition(idx).endpoint()));
+                    leader_map.insert(std::make_pair(pid, table_info.table_partition(idx).endpoint()));
                 } else {
                     if (follower_map.find(pid) == follower_map.end()) {
-                        follower_map.insert(
-                            std::make_pair(pid, std::set<std::string>()));
+                        follower_map.insert(std::make_pair(pid, std::set<std::string>()));
                     }
-                    if (follower_map[pid].find(
-                            table_info.table_partition(idx).endpoint()) !=
-                        follower_map[pid].end()) {
+                    if (follower_map[pid].find(table_info.table_partition(idx).endpoint()) != follower_map[pid].end()) {
                         printf(
                             "Fail to create table. pid %u has same follower on "
                             "%s\n",
-                            pid,
-                            table_info.table_partition(idx).endpoint().c_str());
+                            pid, table_info.table_partition(idx).endpoint().c_str());
                         return -1;
                     }
-                    follower_map[pid].insert(
-                        table_info.table_partition(idx).endpoint());
+                    follower_map[pid].insert(table_info.table_partition(idx).endpoint());
                 }
             }
         }
@@ -2354,18 +2203,15 @@ int SetTablePartition(
                 return -1;
             }
             if (kv.second.find(iter->second) != kv.second.end()) {
-                printf("pid %u leader and follower at same endpoint %s\n",
-                       kv.first, iter->second.c_str());
+                printf("pid %u leader and follower at same endpoint %s\n", kv.first, iter->second.c_str());
                 return -1;
             }
         }
 
         for (const auto& kv : leader_map) {
-            ::fedb::nameserver::TablePartition* table_partition =
-                ns_table_info.add_table_partition();
+            ::openmldb::nameserver::TablePartition* table_partition = ns_table_info.add_table_partition();
             table_partition->set_pid(kv.first);
-            ::fedb::nameserver::PartitionMeta* partition_meta =
-                table_partition->add_partition_meta();
+            ::openmldb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
             partition_meta->set_endpoint(kv.second);
             partition_meta->set_is_leader(true);
             auto iter = follower_map.find(kv.first);
@@ -2374,15 +2220,13 @@ int SetTablePartition(
             }
             // add follower
             for (const auto& endpoint : iter->second) {
-                ::fedb::nameserver::PartitionMeta* partition_meta =
-                    table_partition->add_partition_meta();
+                ::openmldb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
                 partition_meta->set_endpoint(endpoint);
                 partition_meta->set_is_leader(false);
             }
         }
         ns_table_info.set_partition_num(ns_table_info.table_partition_size());
-        ns_table_info.set_replica_num(
-            ns_table_info.table_partition().Get(0).partition_meta_size());
+        ns_table_info.set_replica_num(ns_table_info.table_partition().Get(0).partition_meta_size());
     } else {
         if (table_info.has_partition_num()) {
             ns_table_info.set_partition_num(table_info.partition_num());
@@ -2394,22 +2238,19 @@ int SetTablePartition(
     return 0;
 }
 
-int SetColumnDesc(const ::fedb::client::TableInfo& table_info,
-                  ::fedb::nameserver::TableInfo& ns_table_info) {  // NOLINT
-    std::map<std::string, ::fedb::type::DataType> name_map;
+int SetColumnDesc(const ::openmldb::client::TableInfo& table_info,
+                  ::openmldb::nameserver::TableInfo& ns_table_info) {  // NOLINT
+    std::map<std::string, ::openmldb::type::DataType> name_map;
     std::set<std::string> index_set;
     std::set<std::string> ts_col_set;
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
         if (table_info.column_desc(idx).name() == "" ||
-            name_map.find(table_info.column_desc(idx).name()) !=
-                name_map.end()) {
-            printf("check column_desc name failed. name is %s\n",
-                   table_info.column_desc(idx).name().c_str());
+            name_map.find(table_info.column_desc(idx).name()) != name_map.end()) {
+            printf("check column_desc name failed. name is %s\n", table_info.column_desc(idx).name().c_str());
             return -1;
         }
         name_map.insert(std::make_pair(table_info.column_desc(idx).name(), table_info.column_desc(idx).data_type()));
-        ::fedb::common::ColumnDesc* column_desc =
-            ns_table_info.add_column_desc();
+        ::openmldb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc();
         column_desc->CopyFrom(table_info.column_desc(idx));
     }
 
@@ -2417,15 +2258,12 @@ int SetColumnDesc(const ::fedb::client::TableInfo& table_info,
     index_set.clear();
     std::set<std::string> key_set;
     for (int idx = 0; idx < table_info.column_key_size(); idx++) {
-        if (!table_info.column_key(idx).has_index_name() ||
-            table_info.column_key(idx).index_name().size() == 0) {
+        if (!table_info.column_key(idx).has_index_name() || table_info.column_key(idx).index_name().size() == 0) {
             printf("not set index_name in column_key\n");
             return -1;
         }
-        if (index_set.find(table_info.column_key(idx).index_name()) !=
-            index_set.end()) {
-            printf("duplicate index_name %s\n",
-                   table_info.column_key(idx).index_name().c_str());
+        if (index_set.find(table_info.column_key(idx).index_name()) != index_set.end()) {
+            printf("duplicate index_name %s\n", table_info.column_key(idx).index_name().c_str());
             return -1;
         }
         index_set.insert(table_info.column_key(idx).index_name());
@@ -2434,11 +2272,10 @@ int SetColumnDesc(const ::fedb::client::TableInfo& table_info,
             for (const auto& name : table_info.column_key(idx).col_name()) {
                 auto iter = name_map.find(name);
                 if (iter == name_map.end()) {
-                    printf("column :%s is not member of columns\n",
-                           name.c_str());
+                    printf("column :%s is not member of columns\n", name.c_str());
                     return -1;
                 }
-                if (iter->second == ::fedb::type::kFloat || iter->second == ::fedb::type::kDouble) {
+                if (iter->second == ::openmldb::type::kFloat || iter->second == ::openmldb::type::kDouble) {
                     printf("float or double column can not be index\n");
                     return -1;
                 }
@@ -2463,12 +2300,12 @@ int SetColumnDesc(const ::fedb::client::TableInfo& table_info,
                 printf("invalid ts_name %s\n", ts_name.c_str());
                 return -1;
             }
-            if (iter->second != ::fedb::type::kBigInt && iter->second != ::fedb::type::kTimestamp) {
+            if (iter->second != ::openmldb::type::kBigInt && iter->second != ::openmldb::type::kTimestamp) {
                 printf("invalid ts type ts_name %s\n", ts_name.c_str());
                 return -1;
             }
         }
-        ::fedb::common::ColumnKey* column_key = ns_table_info.add_column_key();
+        ::openmldb::common::ColumnKey* column_key = ns_table_info.add_column_key();
         column_key->CopyFrom(table_info.column_key(idx));
     }
 
@@ -2480,8 +2317,8 @@ int SetColumnDesc(const ::fedb::client::TableInfo& table_info,
 }
 
 int GenTableInfo(const std::string& path,
-                 ::fedb::nameserver::TableInfo& ns_table_info) {  // NOLINT
-    ::fedb::client::TableInfo table_info;
+                 ::openmldb::nameserver::TableInfo& ns_table_info) {  // NOLINT
+    ::openmldb::client::TableInfo table_info;
     int fd = open(path.c_str(), O_RDONLY);
     if (fd < 0) {
         std::cout << "can not open file " << path << std::endl;
@@ -2496,16 +2333,13 @@ int GenTableInfo(const std::string& path,
 
     ns_table_info.set_name(table_info.name());
     std::string compress_type = table_info.compress_type();
-    std::transform(compress_type.begin(), compress_type.end(),
-                   compress_type.begin(), ::tolower);
-    if (compress_type == "knocompress" || compress_type == "nocompress" ||
-        compress_type == "no") {
-        ns_table_info.set_compress_type(::fedb::type::CompressType::kNoCompress);
+    std::transform(compress_type.begin(), compress_type.end(), compress_type.begin(), ::tolower);
+    if (compress_type == "knocompress" || compress_type == "nocompress" || compress_type == "no") {
+        ns_table_info.set_compress_type(::openmldb::type::CompressType::kNoCompress);
     } else if (compress_type == "ksnappy" || compress_type == "snappy") {
-        ns_table_info.set_compress_type(::fedb::type::CompressType::kSnappy);
+        ns_table_info.set_compress_type(::openmldb::type::CompressType::kSnappy);
     } else {
-        printf("compress type %s is invalid\n",
-               table_info.compress_type().c_str());
+        printf("compress type %s is invalid\n", table_info.compress_type().c_str());
         return -1;
     }
     if (table_info.has_key_entry_max_height()) {
@@ -2522,8 +2356,7 @@ int GenTableInfo(const std::string& path,
                 "than 0\n");
             return -1;
         }
-        ns_table_info.set_key_entry_max_height(
-            table_info.key_entry_max_height());
+        ns_table_info.set_key_entry_max_height(table_info.key_entry_max_height());
     }
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
     ns_table_info.set_format_version(table_info.format_version());
@@ -2540,26 +2373,25 @@ int GenTableInfo(const std::string& path,
     return 0;
 }
 
-void HandleNSCreateTable(const std::vector<std::string>& parts,
-                         ::fedb::client::NsClient* client) {
-    ::fedb::nameserver::TableInfo ns_table_info;
+void HandleNSCreateTable(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
+    ::openmldb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
         if (GenTableInfo(parts[1], ns_table_info) < 0) {
             return;
         }
     } else if (parts.size() > 4) {
         ns_table_info.set_name(parts[1]);
-        ::fedb::common::TTLSt ttl_desc;
+        ::openmldb::common::TTLSt ttl_desc;
         try {
             std::vector<std::string> vec;
-            ::fedb::base::SplitString(parts[2], ":", vec);
+            ::openmldb::base::SplitString(parts[2], ":", vec);
             if (vec.size() == 2) {
                 if ((vec[0] == "latest" || vec[0] == "kLatestTime")) {
-                    ttl_desc.set_ttl_type(::fedb::type::TTLType::kLatestTime);
+                    ttl_desc.set_ttl_type(::openmldb::type::TTLType::kLatestTime);
                     ttl_desc.set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                     ttl_desc.set_abs_ttl(0);
                 } else if ((vec[0] == "absolute" || vec[0] == "kAbsoluteTime")) {
-                    ttl_desc.set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+                    ttl_desc.set_ttl_type(::openmldb::type::TTLType::kAbsoluteTime);
                     ttl_desc.set_lat_ttl(0);
                     ttl_desc.set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                 } else {
@@ -2568,11 +2400,11 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                 }
             } else if (vec.size() == 3) {
                 if ((vec[0] == "absandlat" || vec[0] == "kAbsAndLat")) {
-                    ttl_desc.set_ttl_type(::fedb::type::TTLType::kAbsAndLat);
+                    ttl_desc.set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
                     ttl_desc.set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
                     ttl_desc.set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                 } else if ((vec[0] == "absorlat" || vec[0] == "kAbsOrLat")) {
-                    ttl_desc.set_ttl_type(::fedb::type::TTLType::kAbsOrLat);
+                    ttl_desc.set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
                     ttl_desc.set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
                     ttl_desc.set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                 } else {
@@ -2580,21 +2412,19 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                     return;
                 }
             } else {
-                ttl_desc.set_ttl_type(::fedb::type::TTLType::kAbsoluteTime);
+                ttl_desc.set_ttl_type(::openmldb::type::TTLType::kAbsoluteTime);
                 ttl_desc.set_lat_ttl(0);
                 ttl_desc.set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
             }
             uint32_t partition_num = boost::lexical_cast<uint32_t>(parts[3]);
             if (partition_num == 0) {
-                std::cout << "partition_num should be large than zero"
-                          << std::endl;
+                std::cout << "partition_num should be large than zero" << std::endl;
                 return;
             }
             ns_table_info.set_partition_num(partition_num);
             uint32_t replica_num = boost::lexical_cast<uint32_t>(parts[4]);
             if (replica_num == 0) {
-                std::cout << "replica_num should be large than zero"
-                          << std::endl;
+                std::cout << "replica_num should be large than zero" << std::endl;
                 return;
             }
             ns_table_info.set_replica_num(replica_num);
@@ -2605,10 +2435,9 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
         std::set<std::string> name_set;
         for (uint32_t i = 5; i < parts.size(); i++) {
             std::vector<std::string> kv;
-            ::fedb::base::SplitString(parts[i], ":", kv);
+            ::openmldb::base::SplitString(parts[i], ":", kv);
             if (kv.size() < 2) {
-                std::cout << "create failed! schema format is illegal"
-                          << std::endl;
+                std::cout << "create failed! schema format is illegal" << std::endl;
                 return;
             }
             if (name_set.find(kv[0]) != name_set.end()) {
@@ -2616,15 +2445,14 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                 return;
             }
             std::string cur_type = kv[1];
-            std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(),
-                           ::tolower);
-            auto type_iter = ::fedb::codec::DATA_TYPE_MAP.find(cur_type);
-            if (type_iter == ::fedb::codec::DATA_TYPE_MAP.end()) {
+            std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
+            auto type_iter = ::openmldb::codec::DATA_TYPE_MAP.find(cur_type);
+            if (type_iter == ::openmldb::codec::DATA_TYPE_MAP.end()) {
                 printf("type %s is invalid\n", kv[1].c_str());
                 return;
             }
             name_set.insert(kv[0]);
-            ::fedb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc();
+            ::openmldb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc();
             column_desc->set_name(kv[0]);
             column_desc->set_data_type(type_iter->second);
 
@@ -2633,10 +2461,10 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
                     printf("float or double column can not be index\n");
                     return;
                 }
-                ::fedb::common::ColumnKey* column_key = ns_table_info.add_column_key();
+                ::openmldb::common::ColumnKey* column_key = ns_table_info.add_column_key();
                 column_key->set_index_name(kv[0]);
                 column_key->add_col_name(kv[0]);
-                ::fedb::common::TTLSt* ttl = column_key->mutable_ttl();
+                ::openmldb::common::TTLSt* ttl = column_key->mutable_ttl();
                 ttl->CopyFrom(ttl_desc);
             }
         }
@@ -2659,8 +2487,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts,
     std::cout << "Create table ok" << std::endl;
 }
 
-void HandleNSClientHelp(const std::vector<std::string>& parts,
-                        ::fedb::client::NsClient* client) {
+void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() == 1) {
         printf("addindex - add index to table \n");
         printf("addtablefield - add field to the schema table \n");
@@ -2690,8 +2517,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("put -  insert data into table\n");
         printf("quit - exit client\n");
         printf("recovertable - recover only one table partition\n");
-        printf(
-            "recoverendpoint - recover all tables in endpoint when online\n");
+        printf("recoverendpoint - recover all tables in endpoint when online\n");
         printf("scan - get records for a period of time\n");
         printf("showtable - show table info\n");
         printf("showtablet - show tablet info\n");
@@ -2708,8 +2534,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("showrepcluster - show remote replica cluster\n");
         printf("removerepcluster - remove remote replica cluste \n");
         printf("switchmode - switch cluster mode\n");
-        printf(
-            "synctable - synctable from leader cluster to replica cluster\n");
+        printf("synctable - synctable from leader cluster to replica cluster\n");
         printf("deleteindx - delete index of specified table\n");
         printf("setsdkendpoint - set sdkendpoint for external network sdk\n");
         printf("showcatalogversion - show catalog version\n");
@@ -2733,8 +2558,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         } else if (parts[1] == "put") {
             printf("desc: insert data into table\n");
             printf("usage: put table_name pk ts value\n");
-            printf(
-                "usage: put table_name ts key1 key2 ... value1 value2 ...\n");
+            printf("usage: put table_name ts key1 key2 ... value1 value2 ...\n");
             printf("ex: put table1 key1 1528872944000 value1\n");
             printf("ex: put table2 1528872944000 card0 mcc0 1.3\n");
         } else if (parts[1] == "scan") {
@@ -2747,8 +2571,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("ex: scan table1 key1 1528872944000 1528872930000 10\n");
             printf("ex: scan table1 key1 0 0 10\n");
             printf("ex: scan table2 card0 card 1528872944000 1528872930000\n");
-            printf(
-                "ex: scan table2 card0 card 1528872944000 1528872930000 10\n");
+            printf("ex: scan table2 card0 card 1528872944000 1528872930000 10\n");
             printf("ex: scan table2 card0 card  0 0 10\n");
         } else if (parts[1] == "get") {
             printf("desc: get only one record\n");
@@ -2766,8 +2589,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         } else if (parts[1] == "count") {
             printf("desc: count the num of data in specified key\n");
             printf("usage: count table_name key [filter_expired_data]\n");
-            printf(
-                "usage: count table_name key idx_name [filter_expired_data]\n");
+            printf("usage: count table_name key idx_name [filter_expired_data]\n");
             printf("ex: count table1 key1\n");
             printf("ex: count table1 key1 true\n");
             printf("ex: count table2 card0 card\n");
@@ -2863,10 +2685,8 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
                 "usage: migrate src_endpoint table_name pid_group "
                 "des_endpoint\n");
             printf("ex: migrate 172.27.2.52:9991 table1 1 172.27.2.52:9992\n");
-            printf(
-                "ex: migrate 172.27.2.52:9991 table1 1,3,5 172.27.2.52:9992\n");
-            printf(
-                "ex: migrate 172.27.2.52:9991 table1 1-5 172.27.2.52:9992\n");
+            printf("ex: migrate 172.27.2.52:9991 table1 1,3,5 172.27.2.52:9992\n");
+            printf("ex: migrate 172.27.2.52:9991 table1 1-5 172.27.2.52:9992\n");
         } else if (parts[1] == "gettablepartition") {
             printf("desc: get partition info\n");
             printf("usage: gettablepartition table_name pid\n");
@@ -2901,8 +2721,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("ex: cancelop 5\n");
         } else if (parts[1] == "updatetablealive") {
             printf("desc: update table alive status\n");
-            printf(
-                "usage: updatetablealive table_name pid endppoint is_alive\n");
+            printf("usage: updatetablealive table_name pid endppoint is_alive\n");
             printf("ex: updatetablealive t1 * 172.27.2.52:9991 no\n");
             printf("ex: updatetablealive t1 0 172.27.2.52:9991 no\n");
         } else if (parts[1] == "addtablefield") {
@@ -2945,8 +2764,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("eg: setsdkendpoint tb1 null\n");
         } else if (parts[1] == "addindex") {
             printf("desc: add new index to table\n");
-            printf(
-                "usage: addindex table_name index_name [col_name] [ts_name]\n");
+            printf("usage: addindex table_name index_name [col_name] [ts_name]\n");
             printf("ex: addindex test card\n");
             printf("ex: addindex test combine1 card,mcc\n");
             printf("ex: addindex test combine2 id,name ts1,ts2\n");
@@ -2981,8 +2799,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNSClientSetTablePartition(const std::vector<std::string>& parts,
-                                     ::fedb::client::NsClient* client) {
+void HandleNSClientSetTablePartition(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -2993,7 +2810,7 @@ void HandleNSClientSetTablePartition(const std::vector<std::string>& parts,
         std::cout << "can not open file " << parts[2] << std::endl;
         return;
     }
-    ::fedb::nameserver::TablePartition table_partition;
+    ::openmldb::nameserver::TablePartition table_partition;
     google::protobuf::io::FileInputStream fileInput(fd);
     fileInput.SetCloseOnDelete(true);
     if (!google::protobuf::TextFormat::Parse(&fileInput, &table_partition)) {
@@ -3025,23 +2842,20 @@ void HandleNSClientSetTablePartition(const std::vector<std::string>& parts,
 
     std::string msg;
     if (!client->SetTablePartition(name, table_partition, msg)) {
-        std::cout << "Fail to set table partition. error msg: " << msg
-                  << std::endl;
+        std::cout << "Fail to set table partition. error msg: " << msg << std::endl;
         return;
     }
     std::cout << "set table partition ok" << std::endl;
 }
 
-void HandleNsClientSQL(const std::string sql,
-                       ::fedb::client::NsClient* client) {
+void HandleNsClientSQL(const std::string sql, ::openmldb::client::NsClient* client) {
     std::string msg;
     if (!client->ExecuteSQL(sql, msg)) {
         std::cout << "execute sql failed, sql:" << sql << " , msg: " << msg << std::endl;
     }
 }
 
-void HandleNSClientGetTablePartition(const std::vector<std::string>& parts,
-                                     ::fedb::client::NsClient* client) {
+void HandleNSClientGetTablePartition(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -3054,11 +2868,10 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts,
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
         return;
     }
-    ::fedb::nameserver::TablePartition table_partition;
+    ::openmldb::nameserver::TablePartition table_partition;
     std::string msg;
     if (!client->GetTablePartition(name, pid, table_partition, msg)) {
-        std::cout << "Fail to get table partition. error msg: " << msg
-                  << std::endl;
+        std::cout << "Fail to get table partition. error msg: " << msg << std::endl;
         return;
     }
     std::string value;
@@ -3075,8 +2888,7 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts,
         std::cout << "write error" << std::endl;
         io_error = true;
     }
-    if (!io_error &&
-        ((fflush(fd_write) == EOF) || fsync(fileno(fd_write)) == -1)) {
+    if (!io_error && ((fflush(fd_write) == EOF) || fsync(fileno(fd_write)) == -1)) {
         std::cout << "flush error" << std::endl;
         io_error = true;
     }
@@ -3086,8 +2898,7 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts,
-                                    ::fedb::client::NsClient* client) {
+void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad format" << std::endl;
         return;
@@ -3108,8 +2919,7 @@ void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts,
         try {
             int pid_tmp = boost::lexical_cast<int32_t>(parts[2]);
             if (pid_tmp < 0) {
-                std::cout << "Invalid args. pid should be uint32_t"
-                          << std::endl;
+                std::cout << "Invalid args. pid should be uint32_t" << std::endl;
                 return;
             }
             pid = pid_tmp;
@@ -3120,15 +2930,13 @@ void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts,
     }
     std::string msg;
     if (!client->UpdateTableAliveStatus(endpoint, name, pid, is_alive, msg)) {
-        std::cout << "Fail to update table alive. error msg: " << msg
-                  << std::endl;
+        std::cout << "Fail to update table alive. error msg: " << msg << std::endl;
         return;
     }
     std::cout << "update ok" << std::endl;
 }
 
-void HandleNSShowOPStatus(const std::vector<std::string>& parts,
-                          ::fedb::client::NsClient* client) {
+void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("op_id");
     row.push_back("op_type");
@@ -3142,10 +2950,10 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
     row.push_back("for_replica_cluster");
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
-    ::fedb::nameserver::ShowOPStatusResponse response;
+    ::openmldb::nameserver::ShowOPStatusResponse response;
     std::string msg;
     std::string name;
-    uint32_t pid = ::fedb::client::INVALID_PID;
+    uint32_t pid = ::openmldb::client::INVALID_PID;
     if (parts.size() > 1) {
         name = parts[1];
     }
@@ -3171,8 +2979,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
         } else {
             row.push_back("-");
         }
-        if (response.op_status(idx).has_pid() &&
-            (response.op_status(idx).pid() != ::fedb::client::INVALID_PID)) {
+        if (response.op_status(idx).has_pid() && (response.op_status(idx).pid() != ::openmldb::client::INVALID_PID)) {
             row.push_back(std::to_string(response.op_status(idx).pid()));
         } else {
             row.push_back("-");
@@ -3186,9 +2993,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
             row.push_back(buf);
             if (response.op_status(idx).end_time() != 0) {
                 row.push_back(
-                    std::to_string(response.op_status(idx).end_time() -
-                                   response.op_status(idx).start_time()) +
-                    "s");
+                    std::to_string(response.op_status(idx).end_time() - response.op_status(idx).start_time()) + "s");
                 rawtime = (time_t)response.op_status(idx).end_time();
                 timeinfo = localtime(&rawtime);  // NOLINT
                 buf[0] = '\0';
@@ -3196,10 +3001,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
                 row.push_back(buf);
             } else {
                 uint64_t cur_time = ::baidu::common::timer::now_time();
-                row.push_back(
-                    std::to_string(cur_time -
-                                   response.op_status(idx).start_time()) +
-                    "s");
+                row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()) + "s");
                 row.push_back("-");
             }
         } else {
@@ -3218,9 +3020,8 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts,
     tp.Print(true);
 }
 
-void HandleNSClientDeleteIndex(const std::vector<std::string>& parts,
-                               ::fedb::client::NsClient* client) {
-    ::fedb::nameserver::GeneralResponse response;
+void HandleNSClientDeleteIndex(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
+    ::openmldb::nameserver::GeneralResponse response;
     if (parts.size() != 3) {
         std::cout << "Bad format" << std::endl;
         std::cout << "usage: deleteindex table_name index_name" << std::endl;
@@ -3234,9 +3035,8 @@ void HandleNSClientDeleteIndex(const std::vector<std::string>& parts,
     std::cout << "delete index ok" << std::endl;
 }
 
-void HandleClientDeleteIndex(const std::vector<std::string>& parts,
-                             ::fedb::client::TabletClient* client) {
-    ::fedb::nameserver::GeneralResponse response;
+void HandleClientDeleteIndex(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
+    ::openmldb::nameserver::GeneralResponse response;
     if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
         std::cout << "usage: deleteindex tid pid index_name" << std::endl;
@@ -3244,11 +3044,9 @@ void HandleClientDeleteIndex(const std::vector<std::string>& parts,
     }
     try {
         std::string msg;
-        if (!client->DeleteIndex(boost::lexical_cast<uint32_t>(parts[1]),
-                                 boost::lexical_cast<uint32_t>(parts[2]),
+        if (!client->DeleteIndex(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
                                  parts[3], &msg)) {
-            std::cout << "Fail to delete index. error msg: " << msg
-                      << std::endl;
+            std::cout << "Fail to delete index. error msg: " << msg << std::endl;
             return;
         }
     } catch (std::exception const& e) {
@@ -3257,38 +3055,34 @@ void HandleClientDeleteIndex(const std::vector<std::string>& parts,
     std::cout << "delete index ok" << std::endl;
 }
 
-void HandleClientSetTTL(const std::vector<std::string>& parts,
-                        ::fedb::client::TabletClient* client) {
+void HandleClientSetTTL(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 5) {
-        std::cout << "Bad setttl format, eg setttl tid pid type ttl [index_name]"
-                  << std::endl;
+        std::cout << "Bad setttl format, eg setttl tid pid type ttl [index_name]" << std::endl;
         return;
     }
     std::string index_name;
     try {
         uint64_t abs_ttl = 0;
         uint64_t lat_ttl = 0;
-        ::fedb::type::TTLType type = ::fedb::type::kLatestTime;
+        ::openmldb::type::TTLType type = ::openmldb::type::kLatestTime;
         if (parts[3] == "absolute") {
-            type = ::fedb::type::TTLType::kAbsoluteTime;
+            type = ::openmldb::type::TTLType::kAbsoluteTime;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
                 index_name = parts[5];
             } else if (parts.size() > 6) {
-                std::cout
-                    << "Bad setttl format, eg setttl tid pid type ttl [index_name]"
-                    << std::endl;
+                std::cout << "Bad setttl format, eg setttl tid pid type ttl [index_name]" << std::endl;
                 return;
             }
         } else if (parts[3] == "absandlat") {
-            type = ::fedb::type::TTLType::kAbsAndLat;
+            type = ::openmldb::type::TTLType::kAbsAndLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[5]);
             if (parts.size() == 7) {
                 index_name = parts[6];
             }
         } else if (parts[3] == "absorlat") {
-            type = ::fedb::type::TTLType::kAbsOrLat;
+            type = ::openmldb::type::TTLType::kAbsOrLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[5]);
             if (parts.size() == 7) {
@@ -3299,14 +3093,11 @@ void HandleClientSetTTL(const std::vector<std::string>& parts,
             if (parts.size() == 6) {
                 index_name = parts[5];
             } else if (parts.size() > 6) {
-                std::cout
-                    << "Bad setttl format, eg setttl tid pid type ttl [index_name]"
-                    << std::endl;
+                std::cout << "Bad setttl format, eg setttl tid pid type ttl [index_name]" << std::endl;
                 return;
             }
         }
-        bool ok = client->UpdateTTL(boost::lexical_cast<uint32_t>(parts[1]),
-                                    boost::lexical_cast<uint32_t>(parts[2]),
+        bool ok = client->UpdateTTL(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
                                     type, abs_ttl, lat_ttl, index_name);
         if (ok) {
             std::cout << "Set ttl ok !" << std::endl;
@@ -3318,8 +3109,7 @@ void HandleClientSetTTL(const std::vector<std::string>& parts,
     }
 }
 
-void HandleClientGet(const std::vector<std::string>& parts,
-                     ::fedb::client::TabletClient* client) {
+void HandleClientGet(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad get format, eg get tid pid key time" << std::endl;
         return;
@@ -3328,24 +3118,19 @@ void HandleClientGet(const std::vector<std::string>& parts,
         std::string value;
         uint64_t ts = 0;
         std::string msg;
-        bool ok = client->Get(boost::lexical_cast<uint32_t>(parts[1]),
-                              boost::lexical_cast<uint32_t>(parts[2]), parts[3],
-                              boost::lexical_cast<uint64_t>(parts[4]), value,
-                              ts, msg);
-        ::fedb::api::TableStatus table_status;
-        if (!client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]),
-                                    boost::lexical_cast<uint32_t>(parts[2]),
+        bool ok = client->Get(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
+                              parts[3], boost::lexical_cast<uint64_t>(parts[4]), value, ts, msg);
+        ::openmldb::api::TableStatus table_status;
+        if (!client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
                                     table_status)) {
             std::cout << "Fail to get table status" << std::endl;
             return;
         }
-        ::fedb::type::CompressType compress_type =
-            ::fedb::type::CompressType::kNoCompress;
-        if (table_status.compress_type() ==
-            ::fedb::type::CompressType::kSnappy) {
-            compress_type = ::fedb::type::CompressType::kSnappy;
+        ::openmldb::type::CompressType compress_type = ::openmldb::type::CompressType::kNoCompress;
+        if (table_status.compress_type() == ::openmldb::type::CompressType::kSnappy) {
+            compress_type = ::openmldb::type::CompressType::kSnappy;
         }
-        if (compress_type == ::fedb::type::CompressType::kSnappy) {
+        if (compress_type == ::openmldb::type::CompressType::kSnappy) {
             std::string uncompressed;
             ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
             value = uncompressed;
@@ -3363,7 +3148,7 @@ void HandleClientGet(const std::vector<std::string>& parts,
 }
 
 void HandleClientBenGet(std::vector<std::string>& parts,  // NOLINT
-                        ::fedb::client::TabletClient* client) {
+                        ::openmldb::client::TabletClient* client) {
     try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
@@ -3400,18 +3185,14 @@ void HandleClientBenGet(std::vector<std::string>& parts,  // NOLINT
 }
 
 // the input format like put 1 1 key time value
-void HandleClientPut(const std::vector<std::string>& parts,
-                     ::fedb::client::TabletClient* client) {
+void HandleClientPut(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 6) {
-        std::cout << "Bad put format, eg put tid pid key time value"
-                  << std::endl;
+        std::cout << "Bad put format, eg put tid pid key time value" << std::endl;
         return;
     }
     try {
-        bool ok =
-            client->Put(boost::lexical_cast<uint32_t>(parts[1]),
-                        boost::lexical_cast<uint32_t>(parts[2]), parts[3],
-                        boost::lexical_cast<uint64_t>(parts[4]), parts[5]);
+        bool ok = client->Put(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
+                              parts[3], boost::lexical_cast<uint64_t>(parts[4]), parts[5]);
         if (ok) {
             std::cout << "Put ok" << std::endl;
         } else {
@@ -3423,7 +3204,7 @@ void HandleClientPut(const std::vector<std::string>& parts,
 }
 
 void HandleClientBenPut(std::vector<std::string>& parts,  // NOLINT
-                        ::fedb::client::TabletClient* client) {
+                        ::openmldb::client::TabletClient* client) {
     try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
@@ -3459,8 +3240,7 @@ void HandleClientBenPut(std::vector<std::string>& parts,  // NOLINT
 }
 
 // the input format like create name tid pid ttl leader endpoints
-void HandleClientCreateTable(const std::vector<std::string>& parts,
-                             ::fedb::client::TabletClient* client) {
+void HandleClientCreateTable(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 6) {
         std::cout << "Bad create format, input like create <name> <tid> <pid> "
                      "<ttl> <seg_cnt>"
@@ -3471,14 +3251,14 @@ void HandleClientCreateTable(const std::vector<std::string>& parts,
     try {
         int64_t abs_ttl = 0;
         int64_t lat_ttl = 0;
-        ::fedb::type::TTLType type = ::fedb::type::TTLType::kAbsoluteTime;
+        ::openmldb::type::TTLType type = ::openmldb::type::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
             std::vector<std::string> vec;
-            ::fedb::base::SplitString(parts[4], ":", vec);
+            ::openmldb::base::SplitString(parts[4], ":", vec);
             abs_ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
             if (vec.size() > 1) {
                 if (vec[0] == "latest") {
-                    type = ::fedb::type::TTLType::kLatestTime;
+                    type = ::openmldb::type::TTLType::kLatestTime;
                     lat_ttl = abs_ttl;
                     abs_ttl = 0;
                     if (lat_ttl > FLAGS_latest_ttl_max) {
@@ -3493,9 +3273,8 @@ void HandleClientCreateTable(const std::vector<std::string>& parts,
                 }
             } else {
                 if (abs_ttl > FLAGS_absolute_ttl_max) {
-                    std::cout
-                        << "Create failed. The max num of AbsoluteTime ttl is "
-                        << FLAGS_absolute_ttl_max << std::endl;
+                    std::cout << "Create failed. The max num of AbsoluteTime ttl is " << FLAGS_absolute_ttl_max
+                              << std::endl;
                     return;
                 }
             }
@@ -3513,48 +3292,39 @@ void HandleClientCreateTable(const std::vector<std::string>& parts,
             is_leader = false;
         }
         std::vector<std::string> endpoints;
-        ::fedb::type::CompressType compress_type =
-            ::fedb::type::CompressType::kNoCompress;
+        ::openmldb::type::CompressType compress_type = ::openmldb::type::CompressType::kNoCompress;
         if (parts.size() > 7) {
             std::string raw_compress_type = parts[7];
-            std::transform(raw_compress_type.begin(), raw_compress_type.end(),
-                           raw_compress_type.begin(), ::tolower);
-            if (raw_compress_type == "knocompress" ||
-                raw_compress_type == "nocompress") {
-                compress_type = ::fedb::type::CompressType::kNoCompress;
-            } else if (raw_compress_type == "ksnappy" ||
-                       raw_compress_type == "snappy") {
-                compress_type = ::fedb::type::CompressType::kSnappy;
+            std::transform(raw_compress_type.begin(), raw_compress_type.end(), raw_compress_type.begin(), ::tolower);
+            if (raw_compress_type == "knocompress" || raw_compress_type == "nocompress") {
+                compress_type = ::openmldb::type::CompressType::kNoCompress;
+            } else if (raw_compress_type == "ksnappy" || raw_compress_type == "snappy") {
+                compress_type = ::openmldb::type::CompressType::kSnappy;
             } else {
                 printf("compress type %s is invalid\n", parts[7].c_str());
                 return;
             }
         }
-        bool ok = client->CreateTable(
-            parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-            boost::lexical_cast<uint32_t>(parts[3]), abs_ttl, lat_ttl,
-            is_leader, endpoints, type, seg_cnt, 0, compress_type);
+        bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
+                                      boost::lexical_cast<uint32_t>(parts[3]), abs_ttl, lat_ttl, is_leader, endpoints,
+                                      type, seg_cnt, 0, compress_type);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         } else {
             std::cout << "Create table ok" << std::endl;
         }
     } catch (std::exception const& e) {
-        std::cout << "Invalid args, tid , pid or ttl should be uint32_t"
-                  << std::endl;
+        std::cout << "Invalid args, tid , pid or ttl should be uint32_t" << std::endl;
     }
 }
 
-void HandleClientDropTable(const std::vector<std::string>& parts,
-                           ::fedb::client::TabletClient* client) {
+void HandleClientDropTable(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 3) {
-        std::cout << "Bad drop command, you should input like 'drop tid pid' "
-                  << std::endl;
+        std::cout << "Bad drop command, you should input like 'drop tid pid' " << std::endl;
         return;
     }
     try {
-        bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]),
-                                    boost::lexical_cast<uint32_t>(parts[2]));
+        bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
         if (ok) {
             std::cout << "Drop table ok" << std::endl;
         } else {
@@ -3565,15 +3335,13 @@ void HandleClientDropTable(const std::vector<std::string>& parts,
     }
 }
 
-void HandleClientAddReplica(const std::vector<std::string> parts,
-                            ::fedb::client::TabletClient* client) {
+void HandleClientAddReplica(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad addreplica format" << std::endl;
         return;
     }
     try {
-        bool ok = client->AddReplica(boost::lexical_cast<uint32_t>(parts[1]),
-                                     boost::lexical_cast<uint32_t>(parts[2]),
+        bool ok = client->AddReplica(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
                                      parts[3]);
         if (ok) {
             std::cout << "AddReplica ok" << std::endl;
@@ -3585,15 +3353,13 @@ void HandleClientAddReplica(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientDelReplica(const std::vector<std::string> parts,
-                            ::fedb::client::TabletClient* client) {
+void HandleClientDelReplica(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad delreplica format" << std::endl;
         return;
     }
     try {
-        bool ok = client->DelReplica(boost::lexical_cast<uint32_t>(parts[1]),
-                                     boost::lexical_cast<uint32_t>(parts[2]),
+        bool ok = client->DelReplica(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
                                      parts[3]);
         if (ok) {
             std::cout << "DelReplica ok" << std::endl;
@@ -3605,15 +3371,13 @@ void HandleClientDelReplica(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientSetExpire(const std::vector<std::string> parts,
-                           ::fedb::client::TabletClient* client) {
+void HandleClientSetExpire(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
         return;
     }
     try {
-        bool ok = client->SetExpire(boost::lexical_cast<uint32_t>(parts[1]),
-                                    boost::lexical_cast<uint32_t>(parts[2]),
+        bool ok = client->SetExpire(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
                                     parts[3] == "true" ? true : false);
         if (ok) {
             std::cout << "setexpire ok" << std::endl;
@@ -3625,8 +3389,7 @@ void HandleClientSetExpire(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientConnectZK(const std::vector<std::string> parts,
-                           ::fedb::client::TabletClient* client) {
+void HandleClientConnectZK(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     bool ok = client->ConnectZK();
     if (ok) {
         std::cout << "connect zk ok" << std::endl;
@@ -3635,8 +3398,7 @@ void HandleClientConnectZK(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientDisConnectZK(const std::vector<std::string> parts,
-                              ::fedb::client::TabletClient* client) {
+void HandleClientDisConnectZK(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     bool ok = client->DisConnectZK();
     if (ok) {
         std::cout << "disconnect zk ok" << std::endl;
@@ -3645,8 +3407,7 @@ void HandleClientDisConnectZK(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientHelp(const std::vector<std::string> parts,
-                      ::fedb::client::TabletClient* client) {
+void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 2) {
         printf("addreplica - add replica to leader\n");
         printf("changerole - change role\n");
@@ -3784,8 +3545,7 @@ void HandleClientHelp(const std::vector<std::string> parts,
             printf("ex: sendsnapshot 1 0 172.27.128.32:8541\n");
         } else if (parts[1] == "loadtable") {
             printf("desc: create table and load data\n");
-            printf(
-                "usage: loadtable table_name tid pid ttl segment_cnt is_leader");
+            printf("usage: loadtable table_name tid pid ttl segment_cnt is_leader");
             printf("ex: loadtable table1 1 0 144000 8 true memory\n");
         } else if (parts[1] == "changerole") {
             printf("desc: change role\n");
@@ -3854,14 +3614,12 @@ void HandleClientHelp(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientGetTableStatus(const std::vector<std::string> parts,
-                                ::fedb::client::TabletClient* client) {
-    std::vector<::fedb::api::TableStatus> status_vec;
+void HandleClientGetTableStatus(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
+    std::vector<::openmldb::api::TableStatus> status_vec;
     if (parts.size() == 3) {
-        ::fedb::api::TableStatus table_status;
+        ::openmldb::api::TableStatus table_status;
         try {
-            if (client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]),
-                                       boost::lexical_cast<uint32_t>(parts[2]),
+            if (client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
                                        table_status)) {
                 status_vec.push_back(table_status);
             } else {
@@ -3871,7 +3629,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts,
             std::cout << "Bad gettablestatus format" << std::endl;
         }
     } else if (parts.size() == 1) {
-        ::fedb::api::GetTableStatusResponse response;
+        ::openmldb::api::GetTableStatusResponse response;
         if (!client->GetTableStatus(response)) {
             std::cout << "gettablestatus failed" << std::endl;
             return;
@@ -3883,17 +3641,15 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts,
         std::cout << "Bad gettablestatus format" << std::endl;
         return;
     }
-    ::fedb::cmd::PrintTableStatus(status_vec);
+    ::openmldb::cmd::PrintTableStatus(status_vec);
 }
 
-void HandleClientMakeSnapshot(const std::vector<std::string> parts,
-                              ::fedb::client::TabletClient* client) {
+void HandleClientMakeSnapshot(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad MakeSnapshot format" << std::endl;
         return;
     }
-    bool ok = client->MakeSnapshot(boost::lexical_cast<uint32_t>(parts[1]),
-                                   boost::lexical_cast<uint32_t>(parts[2]), 0);
+    bool ok = client->MakeSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), 0);
     if (ok) {
         std::cout << "MakeSnapshot ok" << std::endl;
     } else {
@@ -3901,16 +3657,14 @@ void HandleClientMakeSnapshot(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientPauseSnapshot(const std::vector<std::string> parts,
-                               ::fedb::client::TabletClient* client) {
+void HandleClientPauseSnapshot(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad PauseSnapshot format" << std::endl;
         return;
     }
     try {
         bool ok =
-            client->PauseSnapshot(boost::lexical_cast<uint32_t>(parts[1]),
-                                  boost::lexical_cast<uint32_t>(parts[2]));
+            client->PauseSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
         if (ok) {
             std::cout << "PauseSnapshot ok" << std::endl;
         } else {
@@ -3921,16 +3675,14 @@ void HandleClientPauseSnapshot(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientRecoverSnapshot(const std::vector<std::string> parts,
-                                 ::fedb::client::TabletClient* client) {
+void HandleClientRecoverSnapshot(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad RecoverSnapshot format" << std::endl;
         return;
     }
     try {
         bool ok =
-            client->RecoverSnapshot(boost::lexical_cast<uint32_t>(parts[1]),
-                                    boost::lexical_cast<uint32_t>(parts[2]));
+            client->RecoverSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
         if (ok) {
             std::cout << "RecoverSnapshot ok" << std::endl;
         } else {
@@ -3941,17 +3693,14 @@ void HandleClientRecoverSnapshot(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientSendSnapshot(const std::vector<std::string> parts,
-                              ::fedb::client::TabletClient* client) {
+void HandleClientSendSnapshot(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad SendSnapshot format" << std::endl;
         return;
     }
     try {
-        bool ok = client->SendSnapshot(boost::lexical_cast<uint32_t>(parts[1]),
-                                       boost::lexical_cast<uint32_t>(parts[1]),
-                                       boost::lexical_cast<uint32_t>(parts[2]),
-                                       parts[3]);
+        bool ok = client->SendSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[1]),
+                                       boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
         if (ok) {
             std::cout << "SendSnapshot ok" << std::endl;
         } else {
@@ -3962,8 +3711,7 @@ void HandleClientSendSnapshot(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientLoadTable(const std::vector<std::string> parts,
-                           ::fedb::client::TabletClient* client) {
+void HandleClientLoadTable(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 6) {
         std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
                      "<ttl> <seg_cnt> [<is_leader>]"
@@ -3982,17 +3730,14 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
             } else if (parts[6] == "true") {
                 is_leader = true;
             } else {
-                std::cout
-                    << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
-                       "<ttl> <seg_cnt> [<is_leader>]"
-                    << std::endl;
+                std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
+                             "<ttl> <seg_cnt> [<is_leader>]"
+                          << std::endl;
                 return;
             }
         }
-        bool ok =
-            client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-                              boost::lexical_cast<uint32_t>(parts[3]), ttl,
-                              is_leader, seg_cnt);
+        bool ok = client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
+                                    boost::lexical_cast<uint32_t>(parts[3]), ttl, is_leader, seg_cnt);
         if (ok) {
             std::cout << "LoadTable ok" << std::endl;
         } else {
@@ -4003,8 +3748,7 @@ void HandleClientLoadTable(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientSetLimit(const std::vector<std::string> parts,
-                          ::fedb::client::TabletClient* client) {
+void HandleClientSetLimit(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad set limit format" << std::endl;
         return;
@@ -4039,8 +3783,7 @@ void HandleClientSetLimit(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientChangeRole(const std::vector<std::string> parts,
-                            ::fedb::client::TabletClient* client) {
+void HandleClientChangeRole(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad changerole format" << std::endl;
         return;
@@ -4051,18 +3794,16 @@ void HandleClientChangeRole(const std::vector<std::string> parts,
             termid = boost::lexical_cast<uint64_t>(parts[4]);
         }
         if (parts[3].compare("leader") == 0) {
-            bool ok = client->ChangeRole(
-                boost::lexical_cast<uint32_t>(parts[1]),
-                boost::lexical_cast<uint32_t>(parts[2]), true, termid);
+            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]),
+                                         boost::lexical_cast<uint32_t>(parts[2]), true, termid);
             if (ok) {
                 std::cout << "ChangeRole ok" << std::endl;
             } else {
                 std::cout << "Fail to change leader" << std::endl;
             }
         } else if (parts[3].compare("follower") == 0) {
-            bool ok = client->ChangeRole(
-                boost::lexical_cast<uint32_t>(parts[1]),
-                boost::lexical_cast<uint32_t>(parts[2]), false, termid);
+            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]),
+                                         boost::lexical_cast<uint32_t>(parts[2]), false, termid);
             if (ok) {
                 std::cout << "ChangeRole ok" << std::endl;
             } else {
@@ -4076,11 +3817,9 @@ void HandleClientChangeRole(const std::vector<std::string> parts,
     }
 }
 
-void HandleClientPreview(const std::vector<std::string>& parts,
-                         ::fedb::client::TabletClient* client) {
+void HandleClientPreview(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 3) {
-        std::cout << "preview format error. eg: preview tid pid [limit]"
-                  << std::endl;
+        std::cout << "preview format error. eg: preview tid pid [limit]" << std::endl;
         return;
     }
     uint32_t limit = FLAGS_preview_default_limit;
@@ -4096,8 +3835,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
             }
             limit = boost::lexical_cast<uint32_t>(parts[3]);
             if (limit > FLAGS_preview_limit_max_num) {
-                printf("preview error. limit is greater than the max num %u\n",
-                       FLAGS_preview_limit_max_num);
+                printf("preview error. limit is greater than the max num %u\n", FLAGS_preview_limit_max_num);
                 return;
             } else if (limit == 0) {
                 printf("preview error. limit must be greater than zero\n");
@@ -4108,15 +3846,15 @@ void HandleClientPreview(const std::vector<std::string>& parts,
         printf("Invalid args. tid, pid and limit should be unsigned int\n");
         return;
     }
-    ::fedb::api::TableStatus table_status;
+    ::openmldb::api::TableStatus table_status;
     if (!client->GetTableStatus(tid, pid, true, table_status)) {
         std::cout << "Fail to get table status" << std::endl;
         return;
     }
     /*std::string schema = table_status.schema();
-    std::vector<::fedb::codec::ColumnDesc> columns;
+    std::vector<::openmldb::codec::ColumnDesc> columns;
     if (!schema.empty()) {
-        ::fedb::codec::SchemaCodec codec;
+        ::openmldb::codec::SchemaCodec codec;
         codec.Decode(schema, columns);
     }
     uint32_t column_num = columns.empty() ? 4 : columns.size() + 2;
@@ -4137,7 +3875,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
     tp.AddRow(row);
     uint32_t index = 1;
     uint32_t count = 0;
-    ::fedb::base::KvIterator* it =
+    ::openmldb::base::KvIterator* it =
         client->Traverse(tid, pid, "", "", 0, limit, count);
     if (it == NULL) {
         std::cout << "Fail to preview table" << std::endl;
@@ -4149,7 +3887,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
         if (schema.empty()) {
             std::string value = it->GetValue().ToString();
             if (table_status.compress_type() ==
-                ::fedb::type::CompressType::kSnappy) {
+                ::openmldb::type::CompressType::kSnappy) {
                 std::string uncompressed;
                 ::snappy::Uncompress(value.c_str(), value.length(),
                                      &uncompressed);
@@ -4160,7 +3898,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
             row.push_back(value);
         } else {
             row.push_back(std::to_string(it->GetKey()));
-            ::fedb::api::TableMeta table_meta;
+            ::openmldb::api::TableMeta table_meta;
             bool ok = client->GetTableSchema(tid, pid, table_meta);
             if (!ok) {
                 std::cout << "No schema for table, please use command scan"
@@ -4169,19 +3907,19 @@ void HandleClientPreview(const std::vector<std::string>& parts,
                 return;
             }
             std::string value;
-            if (table_meta.compress_type() == ::fedb::type::CompressType::kSnappy) {
+            if (table_meta.compress_type() == ::openmldb::type::CompressType::kSnappy) {
                 ::snappy::Uncompress(it->GetValue().data(),
                                      it->GetValue().size(), &value);
             } else {
                 value.assign(it->GetValue().data(), it->GetValue().size());
             }
             if (table_meta.added_column_desc_size() == 0) {
-                ::fedb::codec::RowCodec::DecodeRow(
-                    columns.size(), ::fedb::base::Slice(value), &row);
+                ::openmldb::codec::RowCodec::DecodeRow(
+                    columns.size(), ::openmldb::base::Slice(value), &row);
             } else {
-                ::fedb::codec::RowCodec::DecodeRow(
+                ::openmldb::codec::RowCodec::DecodeRow(
                     columns.size() - table_meta.added_column_desc_size(),
-                    columns.size(), ::fedb::base::Slice(value), &row);
+                    columns.size(), ::openmldb::base::Slice(value), &row);
             }
         }
         tp.AddRow(row);
@@ -4193,8 +3931,7 @@ void HandleClientPreview(const std::vector<std::string>& parts,
 }
 
 // the input format like scan tid pid pk st et
-void HandleClientScan(const std::vector<std::string>& parts,
-                      ::fedb::client::TabletClient* client) {
+void HandleClientScan(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 6) {
         std::cout << "Bad scan format! eg. scan tid pid pk start_time end_time "
                      "[limit]"
@@ -4207,11 +3944,9 @@ void HandleClientScan(const std::vector<std::string>& parts,
             limit = boost::lexical_cast<uint32_t>(parts[6]);
         }
         std::string msg;
-        ::fedb::base::KvIterator* it = client->Scan(
-            boost::lexical_cast<uint32_t>(parts[1]),
-            boost::lexical_cast<uint32_t>(parts[2]), parts[3],
-            boost::lexical_cast<uint64_t>(parts[4]),
-            boost::lexical_cast<uint64_t>(parts[5]), limit, 0, msg);
+        ::openmldb::base::KvIterator* it = client->Scan(
+            boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3],
+            boost::lexical_cast<uint64_t>(parts[4]), boost::lexical_cast<uint64_t>(parts[5]), limit, 0, msg);
         if (it == NULL) {
             std::cout << "Fail to scan table. error msg: " << msg << std::endl;
         } else {
@@ -4225,8 +3960,7 @@ void HandleClientScan(const std::vector<std::string>& parts,
             uint32_t index = 1;
             while (it->Valid()) {
                 if (print) {
-                    std::cout << index << "\t" << it->GetKey() << "\t"
-                              << it->GetValue().ToString() << std::endl;
+                    std::cout << index << "\t" << it->GetKey() << "\t" << it->GetValue().ToString() << std::endl;
                 }
                 index++;
                 it->Next();
@@ -4240,17 +3974,15 @@ void HandleClientScan(const std::vector<std::string>& parts,
     }
 }
 
-void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid, uint32_t val_size,
-                              uint32_t run_times, uint32_t ns,
-                              ::fedb::client::TabletClient* client) {
+void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid, uint32_t val_size, uint32_t run_times, uint32_t ns,
+                              ::openmldb::client::TabletClient* client) {
     char val[val_size];  // NOLINT
     for (uint32_t i = 0; i < val_size; i++) {
         val[i] = '0';
     }
     std::string sval(val);
     for (uint32_t i = 0; i < run_times; i++) {
-        std::string key = boost::lexical_cast<std::string>(ns) + "test" +
-                          boost::lexical_cast<std::string>(i);
+        std::string key = boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
         for (uint32_t j = 0; j < 4000; j++) {
             client->Put(tid, pid, key, j, sval);
         }
@@ -4258,25 +3990,22 @@ void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid, uint32_t val_size,
     }
 }
 
-void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid, uint32_t run_times,
-                               uint32_t ns,
-                               ::fedb::client::TabletClient* client) {
+void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid, uint32_t run_times, uint32_t ns,
+                               ::openmldb::client::TabletClient* client) {
     uint64_t st = 999;
     uint64_t et = 0;
     std::string msg;
     for (uint32_t j = 0; j < run_times; j++) {
         for (uint32_t i = 0; i < 500 * 4; i++) {
-            std::string key = boost::lexical_cast<std::string>(ns) + "test" +
-                              boost::lexical_cast<std::string>(i);
-            ::fedb::base::KvIterator* it =
-                client->Scan(tid, pid, key, st, et, 0, 0, msg);
+            std::string key = boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
+            ::openmldb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0, 0, msg);
             delete it;
         }
         client->ShowTp();
     }
 }
 
-void HandleClientBenchmark(::fedb::client::TabletClient* client) {
+void HandleClientBenchmark(::openmldb::client::TabletClient* client) {
     uint32_t size = 40;
     uint32_t times = 10;
     std::cout << "Percentile:Start benchmark put size:40" << std::endl;
@@ -4288,35 +4017,26 @@ void HandleClientBenchmark(::fedb::client::TabletClient* client) {
     std::cout << "Percentile:Start benchmark put ha size:400" << std::endl;
     HandleClientBenchmarkPut(1, 1, 400, times, 4, client);
 
-    std::cout << "Percentile:Start benchmark put with one replica size:40"
-              << std::endl;
+    std::cout << "Percentile:Start benchmark put with one replica size:40" << std::endl;
     HandleClientBenchmarkPut(2, 1, size, times, 1, client);
-    std::cout << "Percentile:Start benchmark put with one replica size:80"
-              << std::endl;
+    std::cout << "Percentile:Start benchmark put with one replica size:80" << std::endl;
     HandleClientBenchmarkPut(2, 1, 80, times, 2, client);
-    std::cout << "Percentile:Start benchmark put with one replica  size:200"
-              << std::endl;
+    std::cout << "Percentile:Start benchmark put with one replica  size:200" << std::endl;
     HandleClientBenchmarkPut(2, 1, 200, times, 3, client);
-    std::cout << "Percentile:Start benchmark put with one replica size:400"
-              << std::endl;
+    std::cout << "Percentile:Start benchmark put with one replica size:400" << std::endl;
     HandleClientBenchmarkPut(2, 1, 400, times, 4, client);
 
-    std::cout << "Percentile:Start benchmark Scan 1000 records key size:40"
-              << std::endl;
+    std::cout << "Percentile:Start benchmark Scan 1000 records key size:40" << std::endl;
     HandleClientBenchmarkScan(1, 1, times, 1, client);
-    std::cout << "Percentile:Start benchmark Scan 1000 records key size:80"
-              << std::endl;
+    std::cout << "Percentile:Start benchmark Scan 1000 records key size:80" << std::endl;
     HandleClientBenchmarkScan(1, 1, times, 2, client);
-    std::cout << "Percentile:Start benchmark Scan 1000 records key size:200"
-              << std::endl;
+    std::cout << "Percentile:Start benchmark Scan 1000 records key size:200" << std::endl;
     HandleClientBenchmarkScan(1, 1, times, 3, client);
-    std::cout << "Percentile:Start benchmark Scan 1000 records key size:400"
-              << std::endl;
+    std::cout << "Percentile:Start benchmark Scan 1000 records key size:400" << std::endl;
     HandleClientBenchmarkScan(1, 1, times, 4, client);
 }
 
-void HandleClientGetFollower(const std::vector<std::string>& parts,
-                             ::fedb::client::TabletClient* client) {
+void HandleClientGetFollower(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad get follower format" << std::endl;
         return;
@@ -4362,8 +4082,7 @@ void HandleClientGetFollower(const std::vector<std::string>& parts,
     tp.Print(true);
 }
 
-void HandleClientCount(const std::vector<std::string>& parts,
-                       ::fedb::client::TabletClient* client) {
+void HandleClientCount(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "count format error! eg. count tid pid key [col_name] "
                      "[filter_expired_data] | count tid=xxx pid=xxx key=xxx "
@@ -4393,24 +4112,21 @@ void HandleClientCount(const std::vector<std::string>& parts,
             if (iter != parameter_map.end()) {
                 tid = boost::lexical_cast<uint32_t>(iter->second);
             } else {
-                std::cout << "count format error: tid does not exist!"
-                          << std::endl;
+                std::cout << "count format error: tid does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("pid");
             if (iter != parameter_map.end()) {
                 pid = boost::lexical_cast<uint32_t>(iter->second);
             } else {
-                std::cout << "count format error: pid does not exist!"
-                          << std::endl;
+                std::cout << "count format error: pid does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("key");
             if (iter != parameter_map.end()) {
                 key = iter->second;
             } else {
-                std::cout << "count format error: key does not exist!"
-                          << std::endl;
+                std::cout << "count format error: key does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("index_name");
@@ -4466,8 +4182,7 @@ void HandleClientCount(const std::vector<std::string>& parts,
         return;
     }
     std::string msg;
-    bool ok = client->Count(tid, pid, key, index_name, ts_name,
-                            filter_expired_data, value, msg);
+    bool ok = client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg);
     if (ok) {
         std::cout << "count: " << value << std::endl;
     } else {
@@ -4475,17 +4190,15 @@ void HandleClientCount(const std::vector<std::string>& parts,
     }
 }
 
-void HandleClientShowSchema(const std::vector<std::string>& parts,
-                            ::fedb::client::TabletClient* client) {
+void HandleClientShowSchema(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad show schema format" << std::endl;
         return;
     }
-    ::fedb::api::TableMeta table_meta;
+    ::openmldb::api::TableMeta table_meta;
     try {
-        bool ok = client->GetTableSchema(
-            boost::lexical_cast<uint32_t>(parts[1]),
-            boost::lexical_cast<uint32_t>(parts[2]), table_meta);
+        bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
+                                         boost::lexical_cast<uint32_t>(parts[2]), table_meta);
         if (!ok) {
             std::cout << "ShowSchema failed" << std::endl;
             return;
@@ -4495,21 +4208,19 @@ void HandleClientShowSchema(const std::vector<std::string>& parts,
         return;
     }
     if (table_meta.column_desc_size() > 0) {
-        ::fedb::cmd::PrintSchema(table_meta.column_desc(), table_meta.added_column_desc());
+        ::openmldb::cmd::PrintSchema(table_meta.column_desc(), table_meta.added_column_desc());
         printf("\n#ColumnKey\n");
-        ::fedb::cmd::PrintColumnKey(table_meta.column_key());
+        ::openmldb::cmd::PrintColumnKey(table_meta.column_key());
     } else {
         std::cout << "No schema for table" << std::endl;
     }
 }
 
-void HandleClientSGet(const std::vector<std::string>& parts,
-                      ::fedb::client::TabletClient* client) {
+void HandleClientSGet(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 5) {
-        std::cout
-            << "Bad sget format, eg. sget tid pid key index_name ts | sget "
-               "table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx"
-            << std::endl;
+        std::cout << "Bad sget format, eg. sget tid pid key index_name ts | sget "
+                     "table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx"
+                  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
@@ -4533,24 +4244,21 @@ void HandleClientSGet(const std::vector<std::string>& parts,
             if (iter != parameter_map.end()) {
                 tid = boost::lexical_cast<uint32_t>(iter->second);
             } else {
-                std::cout << "sget format error: tid does not exist!"
-                          << std::endl;
+                std::cout << "sget format error: tid does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("pid");
             if (iter != parameter_map.end()) {
                 pid = boost::lexical_cast<uint32_t>(iter->second);
             } else {
-                std::cout << "sget format error: pid does not exist!"
-                          << std::endl;
+                std::cout << "sget format error: pid does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("key");
             if (iter != parameter_map.end()) {
                 key = iter->second;
             } else {
-                std::cout << "sget format error: key does not exist!"
-                          << std::endl;
+                std::cout << "sget format error: key does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("index_name");
@@ -4580,7 +4288,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
                   << std::endl;
         return;
     }
-    ::fedb::api::TableMeta table_meta;
+    ::openmldb::api::TableMeta table_meta;
     bool ok = client->GetTableSchema(tid, pid, table_meta);
     if (!ok) {
         std::cout << "No schema for table ,please use command get" << std::endl;
@@ -4589,31 +4297,29 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     std::string value;
     uint64_t ts = 0;
     std::string msg;
-    ok = client->Get(tid, pid, key, timestamp, index_name, ts_name, value, ts,
-                     msg);
+    ok = client->Get(tid, pid, key, timestamp, index_name, ts_name, value, ts, msg);
     if (!ok) {
         std::cout << "Fail to sget value! error msg: " << msg << std::endl;
         return;
     }
-    ::fedb::api::TableStatus table_status;
+    ::openmldb::api::TableStatus table_status;
     if (!client->GetTableStatus(tid, pid, table_status)) {
         std::cout << "Fail to get table status" << std::endl;
         return;
     }
-    ::fedb::type::CompressType compress_type =
-        ::fedb::type::CompressType::kNoCompress;
-    if (table_status.compress_type() == ::fedb::type::CompressType::kSnappy) {
-        compress_type = ::fedb::type::CompressType::kSnappy;
+    ::openmldb::type::CompressType compress_type = ::openmldb::type::CompressType::kNoCompress;
+    if (table_status.compress_type() == ::openmldb::type::CompressType::kSnappy) {
+        compress_type = ::openmldb::type::CompressType::kSnappy;
     }
-    if (compress_type == ::fedb::type::CompressType::kSnappy) {
+    if (compress_type == ::openmldb::type::CompressType::kSnappy) {
         std::string uncompressed;
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
         value = uncompressed;
     }
     // TODO(denglong): display schema
     /*std::string schema = table_meta.schema();
-    std::vector<::fedb::codec::ColumnDesc> raw;
-    ::fedb::codec::SchemaCodec codec;
+    std::vector<::openmldb::codec::ColumnDesc> raw;
+    ::openmldb::codec::SchemaCodec codec;
     codec.Decode(schema, raw);
     ::baidu::common::TPrinter tp(raw.size() + 2, FLAGS_max_col_display_length);
     std::vector<std::string> row;
@@ -4627,25 +4333,23 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     row.push_back("1");
     row.push_back(std::to_string(ts));
     if (table_meta.added_column_desc_size() == 0) {
-        ::fedb::codec::RowCodec::DecodeRow(raw.size(),
-                                            ::fedb::base::Slice(value), &row);
+        ::openmldb::codec::RowCodec::DecodeRow(raw.size(),
+                                            ::openmldb::base::Slice(value), &row);
     } else {
-        ::fedb::codec::RowCodec::DecodeRow(
+        ::openmldb::codec::RowCodec::DecodeRow(
             raw.size() - table_meta.added_column_desc_size(), raw.size(),
-            ::fedb::base::Slice(value), &row);
+            ::openmldb::base::Slice(value), &row);
     }
     tp.AddRow(row);
     tp.Print(true);*/
 }
 
-void HandleClientSScan(const std::vector<std::string>& parts,
-                       ::fedb::client::TabletClient* client) {
+void HandleClientSScan(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 7) {
-        std::cout
-            << "Bad scan format! eg.sscan tid pid key col_name start_time "
-               "end_time [limit] | sscan table_name=xxx key=xxx index_name=xxx "
-               "st=xxx et=xxx ts_name=xxx [limit=xxx]"
-            << std::endl;
+        std::cout << "Bad scan format! eg.sscan tid pid key col_name start_time "
+                     "end_time [limit] | sscan table_name=xxx key=xxx index_name=xxx "
+                     "st=xxx et=xxx ts_name=xxx [limit=xxx]"
+                  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
@@ -4671,24 +4375,21 @@ void HandleClientSScan(const std::vector<std::string>& parts,
             if (iter != parameter_map.end()) {
                 tid = boost::lexical_cast<uint32_t>(iter->second);
             } else {
-                std::cout << "sscan format error: tid does not exist!"
-                          << std::endl;
+                std::cout << "sscan format error: tid does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("pid");
             if (iter != parameter_map.end()) {
                 pid = boost::lexical_cast<uint32_t>(iter->second);
             } else {
-                std::cout << "sscan format error: pid does not exist!"
-                          << std::endl;
+                std::cout << "sscan format error: pid does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("key");
             if (iter != parameter_map.end()) {
                 key = iter->second;
             } else {
-                std::cout << "sscan format error: key does not exist!"
-                          << std::endl;
+                std::cout << "sscan format error: key does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("index_name");
@@ -4699,16 +4400,14 @@ void HandleClientSScan(const std::vector<std::string>& parts,
             if (iter != parameter_map.end()) {
                 st = boost::lexical_cast<uint64_t>(iter->second);
             } else {
-                std::cout << "sscan format error: st does not exist!"
-                          << std::endl;
+                std::cout << "sscan format error: st does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("et");
             if (iter != parameter_map.end()) {
                 et = boost::lexical_cast<uint64_t>(iter->second);
             } else {
-                std::cout << "sscan format error: et does not exist!"
-                          << std::endl;
+                std::cout << "sscan format error: et does not exist!" << std::endl;
                 return;
             }
             iter = parameter_map.find("ts_name");
@@ -4737,26 +4436,25 @@ void HandleClientSScan(const std::vector<std::string>& parts,
         return;
     }
     std::string msg;
-    std::shared_ptr<::fedb::base::KvIterator> it(client->Scan(
-        tid, pid, key, st, et, index_name, ts_name, limit, 0, msg));
+    std::shared_ptr<::openmldb::base::KvIterator> it(
+        client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, 0, msg));
     if (!it) {
         std::cout << "Fail to scan table. error msg: " << msg << std::endl;
         return;
     }
-    ::fedb::api::TableMeta table_meta;
+    ::openmldb::api::TableMeta table_meta;
     bool ok = client->GetTableSchema(tid, pid, table_meta);
     if (!ok) {
         std::cout << "table is not exist" << std::endl;
         return;
     }
-    std::vector<std::shared_ptr<::fedb::base::KvIterator>> iter_vec;
+    std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec;
     iter_vec.push_back(std::move(it));
-    ::fedb::cmd::SDKIterator sdk_it(iter_vec, limit);
-    ::fedb::cmd::ShowTableRows(table_meta, &sdk_it);
+    ::openmldb::cmd::SDKIterator sdk_it(iter_vec, limit);
+    ::openmldb::cmd::ShowTableRows(table_meta, &sdk_it);
 }
 
-void HandleClientSPut(const std::vector<std::string>& parts,
-                      ::fedb::client::TabletClient* client) {
+void HandleClientSPut(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad put format, eg put tid pid time value" << std::endl;
         return;
@@ -4764,15 +4462,15 @@ void HandleClientSPut(const std::vector<std::string>& parts,
     try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        ::fedb::api::TableMeta table_meta;
+        ::openmldb::api::TableMeta table_meta;
         bool ok = client->GetTableSchema(tid, pid, table_meta);
         if (!ok) {
             std::cout << "Fail to get table schema" << std::endl;
             return;
         }
-        ::fedb::codec::SDKCodec codec(table_meta);
+        ::openmldb::codec::SDKCodec codec(table_meta);
         std::vector<std::string> input_value(parts.begin() + 4, parts.end());
-        std::map<uint32_t, ::fedb::codec::Dimension> dimensions;
+        std::map<uint32_t, ::openmldb::codec::Dimension> dimensions;
         if (codec.EncodeDimension(input_value, 0, &dimensions) < 0) {
             std::cout << "Encode dimension error" << std::endl;
             return;
@@ -4783,15 +4481,13 @@ void HandleClientSPut(const std::vector<std::string>& parts,
             return;
         }
 
-        if (table_meta.compress_type() == ::fedb::type::CompressType::kSnappy) {
+        if (table_meta.compress_type() == ::openmldb::type::CompressType::kSnappy) {
             std::string compressed;
             ::snappy::Compress(value.c_str(), value.length(), &compressed);
             value.swap(compressed);
         }
-        ok = client->Put(boost::lexical_cast<uint32_t>(parts[1]),
-                         boost::lexical_cast<uint32_t>(parts[2]),
-                         boost::lexical_cast<uint64_t>(parts[3]), value,
-                         dimensions[0]);
+        ok = client->Put(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
+                         boost::lexical_cast<uint64_t>(parts[3]), value, dimensions[0]);
         if (ok) {
             std::cout << "Put ok" << std::endl;
         } else {
@@ -4802,8 +4498,7 @@ void HandleClientSPut(const std::vector<std::string>& parts,
     }
 }
 
-void HandleClientDelete(const std::vector<std::string>& parts,
-                        ::fedb::client::TabletClient* client) {
+void HandleClientDelete(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad delete format" << std::endl;
         return;
@@ -4826,8 +4521,7 @@ void HandleClientDelete(const std::vector<std::string>& parts,
     }
 }
 
-void HandleClientBenScan(const std::vector<std::string>& parts,
-                         ::fedb::client::TabletClient* client) {
+void HandleClientBenScan(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     uint64_t et = 0;
     uint32_t tid = 1;
     uint32_t pid = 1;
@@ -4866,10 +4560,9 @@ void HandleClientBenScan(const std::vector<std::string>& parts,
             std::string key = std::to_string(base + dis(engine));
             uint64_t st = ::baidu::common::timer::get_micros() / 1000;
             msg.clear();
-            // ::fedb::base::KvIterator* it = client->Scan(tid, pid,
+            // ::openmldb::base::KvIterator* it = client->Scan(tid, pid,
             // key.c_str(), st, et, msg, false);
-            ::fedb::base::KvIterator* it =
-                client->Scan(tid, pid, key.c_str(), st, et, limit, 0, msg);
+            ::openmldb::base::KvIterator* it = client->Scan(tid, pid, key.c_str(), st, et, limit, 0, msg);
             delete it;
         }
         client->ShowTp();
@@ -4885,7 +4578,7 @@ void StartClient() {
     if (FLAGS_interactive) {
         std::cout << "Welcome to fedb with version " << FEDB_VERSION << std::endl;
     }
-    ::fedb::client::TabletClient client(FLAGS_endpoint, "");
+    ::openmldb::client::TabletClient client(FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {
@@ -4893,7 +4586,7 @@ void StartClient() {
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
         } else {
-            char* line = ::fedb::base::linenoise(display_prefix.c_str());
+            char* line = ::openmldb::base::linenoise(display_prefix.c_str());
             if (line == NULL) {
                 return;
             }
@@ -4901,16 +4594,16 @@ void StartClient() {
                 buffer.assign(line);
                 boost::trim(buffer);
                 if (!buffer.empty()) {
-                    ::fedb::base::linenoiseHistoryAdd(line);
+                    ::openmldb::base::linenoiseHistoryAdd(line);
                 }
             }
-            ::fedb::base::linenoiseFree(line);
+            ::openmldb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
         }
         std::vector<std::string> parts;
-        ::fedb::base::SplitString(buffer, " ", parts);
+        ::openmldb::base::SplitString(buffer, " ", parts);
         if (parts.empty()) {
             continue;
         } else if (parts[0] == "put") {
@@ -4997,10 +4690,9 @@ void StartNsClient() {
     if (FLAGS_interactive) {
         std::cout << "Welcome to fedb with version " << FEDB_VERSION << std::endl;
     }
-    std::shared_ptr<::fedb::zk::ZkClient> zk_client;
+    std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<::fedb::zk::ZkClient>(
-                FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
+        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;
@@ -5026,8 +4718,7 @@ void StartNsClient() {
             }
             std::string name_root_path = FLAGS_zk_root_path + "/map/names";
             std::vector<std::string> nodes;
-            if (!zk_client->GetChildren(name_root_path, nodes)
-                    || nodes.empty()) {
+            if (!zk_client->GetChildren(name_root_path, nodes) || nodes.empty()) {
                 std::cout << "get server name nodes failed" << std::endl;
                 return;
             }
@@ -5044,32 +4735,27 @@ void StartNsClient() {
     } else if (!FLAGS_endpoint.empty()) {
         endpoint = FLAGS_endpoint;
     } else {
-        std::cout << "Start failed! not set endpoint or zk_cluster"
-                  << std::endl;
+        std::cout << "Start failed! not set endpoint or zk_cluster" << std::endl;
         return;
     }
-    ::fedb::client::NsClient client(endpoint, real_endpoint);
+    ::openmldb::client::NsClient client(endpoint, real_endpoint);
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
         return;
     }
     std::string display_prefix = endpoint + " " + client.GetDb() + "> ";
-    std::string multi_line_perfix =
-        std::string(display_prefix.length() - 3, ' ') + "-> ";
+    std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
     bool use_sql = false;
     bool multi_line = false;
     while (true) {
         std::string buffer;
         display_prefix = endpoint + " " + client.GetDb() + "> ";
-        multi_line_perfix =
-        std::string(display_prefix.length() - 3, ' ') + "-> ";
+        multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
         } else {
-            char* line =
-                ::fedb::base::linenoise(multi_line ? multi_line_perfix.c_str()
-                                                    : display_prefix.c_str());
+            char* line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
             if (line == NULL) {
                 return;
             }
@@ -5078,10 +4764,10 @@ void StartNsClient() {
                 buffer.assign(line);
                 boost::trim(buffer);
                 if (!buffer.empty()) {
-                    ::fedb::base::linenoiseHistoryAdd(line);
+                    ::openmldb::base::linenoiseHistoryAdd(line);
                 }
             }
-            ::fedb::base::linenoiseFree(line);
+            ::openmldb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
@@ -5091,9 +4777,8 @@ void StartNsClient() {
             if (sql == "exit" || sql == "quit") {
                 use_sql = false;
                 display_prefix = endpoint + " " + client.GetDb() + "> ";
-                multi_line_perfix =
-                    std::string(display_prefix.length() - 3, ' ') + "-> ";
-                ::fedb::base::linenoiseSetMultiLine(0);
+                multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+                ::openmldb::base::linenoiseSetMultiLine(0);
             } else if (sql.back() == ';') {
                 HandleNsClientSQL(sql, &client);
                 multi_line = false;
@@ -5105,7 +4790,7 @@ void StartNsClient() {
             continue;
         }
         std::vector<std::string> parts;
-        ::fedb::base::SplitString(buffer, " ", parts);
+        ::openmldb::base::SplitString(buffer, " ", parts);
         if (parts.empty()) {
             continue;
         } else if (parts[0] == "showtablet") {
@@ -5201,9 +4886,8 @@ void StartNsClient() {
         } else if (parts[0] == "sql") {
             use_sql = true;
             display_prefix = endpoint + " " + client.GetDb() + " sql> ";
-            multi_line_perfix =
-                std::string(display_prefix.length() - 3, ' ') + "-> ";
-            ::fedb::base::linenoiseSetMultiLine(1);
+            multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+            ::openmldb::base::linenoiseSetMultiLine(1);
             sql.clear();
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
@@ -5226,8 +4910,8 @@ void StartAPIServer() {
         GetRealEndpoint(&real_endpoint);
     }
 
-    auto api_service = std::make_unique<::fedb::http::APIServerImpl>();
-    ::fedb::sdk::ClusterOptions cluster_options;
+    auto api_service = std::make_unique<::openmldb::apiserver::APIServerImpl>();
+    ::openmldb::sdk::ClusterOptions cluster_options;
     cluster_options.zk_cluster = FLAGS_zk_cluster;
     cluster_options.zk_path = FLAGS_zk_root_path;
     if (!api_service->Init(cluster_options)) {
@@ -5258,7 +4942,7 @@ int main(int argc, char* argv[]) {
     if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
-        ::fedb::cmd::HandleCli();
+        ::openmldb::cmd::HandleCli();
 #if defined(__linux__) || defined(__mac_tablet__)
     } else if (FLAGS_role == "tablet") {
         StartTablet();

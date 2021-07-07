@@ -31,7 +31,7 @@ cases:
           - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",false]
           - [2,"",0,0,0,0.0,0.0,0,null,true]
     dataProvider:
-      - ["AND","&&","OR","||","XOR"]
+      - ["AND","OR","XOR"]
       - ["{0}.c1","{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c7","{0}.c8","{0}.c9"]
     sql: select d[1] d[0] {1}.c1 as b1,d[1] d[0] {1}.c2 as b2,d[1] d[0] {1}.c3 as b3,d[1] d[0] {1}.c4 as b4,d[1] d[0] {1}.c5 as b5,d[1] d[0] {1}.c6 as b6,d[1] d[0] {1}.c7 as b7,d[1] d[0] {1}.c8 as b8,d[1] d[0] {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
     expect:
@@ -43,17 +43,9 @@ cases:
           - [false,false,false,false,false,false,false,null,true]
       1:
         rows:
-          - [true,true,true,true,true,true,true,true,false]
-          - [false,false,false,false,false,false,false,null,true]
+          - [true,true,true,true,true,true,true,true,true]
+          - [true,true,true,true,true,true,true,true,true]
       2:
-        rows:
-          - [true,true,true,true,true,true,true,true,true]
-          - [true,true,true,true,true,true,true,true,true]
-      3:
-        rows:
-           - [true,true,true,true,true,true,true,true,true]
-           - [true,true,true,true,true,true,true,true,true]
-      4:
         rows:
            - [false,false,false,false,false,false,false,false,true]
            - [true,true,true,true,true,true,true,null,false]

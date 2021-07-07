@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_LOG_SEQUENTIAL_FILE_H_
 #define SRC_LOG_SEQUENTIAL_FILE_H_
 
 #include <stdint.h>
+
 #include <string>
 
-namespace fedb {
+namespace openmldb {
 
 namespace base {
 class Status;
@@ -67,5 +67,5 @@ class SequentialFile {
 SequentialFile* NewSeqFile(const std::string& fname, FILE* f);
 
 }  // namespace log
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_LOG_SEQUENTIAL_FILE_H_

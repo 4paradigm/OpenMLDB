@@ -31,13 +31,13 @@
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc> RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey> RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 // batch request rows size == 1
 void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                     ::fedb::sdk::MiniCluster* mc) {                             // NOLINT
+                     ::openmldb::sdk::MiniCluster* mc) {                             // NOLINT
     const bool is_procedure = hybridse::sqlcase::SqlCase::IsProcedure();
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     if (hybridse::sqlcase::SqlCase::IsDebug()) {
@@ -51,11 +51,11 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
         return;
     }
     hybridse::sdk::Status status;
-    fedb::sdk::SQLSDKTest::CreateDB(sql_case, router);
-    fedb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
-    fedb::sdk::SQLSDKTest::InsertTables(sql_case, router, fedb::sdk::kInsertAllInputs);
+    openmldb::sdk::SQLSDKTest::CreateDB(sql_case, router);
+    openmldb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
+    openmldb::sdk::SQLSDKTest::InsertTables(sql_case, router, openmldb::sdk::kInsertAllInputs);
     if (is_procedure) {
-        fedb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
+        openmldb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
     }
     {
         // execute SQL
@@ -86,7 +86,7 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
         }
 
         if (hybridse::sqlcase::SqlCase::IsDebug()) {
-            fedb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
+            openmldb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
         }
 
         hybridse::codec::RowView row_view(request_table.columns());
@@ -95,17 +95,17 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
             return;
         }
         row_view.Reset(request_rows[0].buf());
-        fedb::sdk::SQLSDKTest::CovertHybridSERowToRequestRow(&row_view, request_row);
+        openmldb::sdk::SQLSDKTest::CovertHybridSERowToRequestRow(&row_view, request_row);
 
         if (!hybridse::sqlcase::SqlCase::IsDebug()) {
             for (int i = 0; i < 10; i++) {
                 if (is_procedure) {
                     LOG(INFO) << "--------syn procedure----------";
                     auto rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
-                    fedb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                 } else {
                     auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
-                    fedb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                 }
             }
             LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
@@ -116,33 +116,35 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
                     LOG(INFO) << "--------syn procedure----------";
                     auto rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
                     if (!rs) FAIL() << "sql case expect success == true";
-                    fedb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                     hybridse::type::TableDef output_table;
                     std::vector<hybridse::codec::Row> rows;
                     if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
-                        fedb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                        openmldb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
                     }
 
                     if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-                        fedb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows,
+                                                             rs);
                     }
                     state.SkipWithError("BENCHMARK DEBUG");
                 } else {
                     auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
                     if (!rs) FAIL() << "sql case expect success == true";
-                    fedb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                     hybridse::type::TableDef output_table;
                     std::vector<hybridse::codec::Row> rows;
                     if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
-                        fedb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                        openmldb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
                     }
 
                     if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-                        fedb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows,
+                                                             rs);
                     }
                     state.SkipWithError("BENCHMARK DEBUG");
                 }
@@ -161,16 +163,16 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
             }
         }
     }
-    fedb::sdk::SQLSDKTest::DropProcedure(sql_case, router);
-    fedb::sdk::SQLSDKTest::DropTables(sql_case, router);
+    openmldb::sdk::SQLSDKTest::DropProcedure(sql_case, router);
+    openmldb::sdk::SQLSDKTest::DropTables(sql_case, router);
 }
 
 hybridse::sqlcase::SqlCase LoadSQLCaseWithID(const std::string& yaml, const std::string& case_id) {
-    return hybridse::sqlcase::SqlCase::LoadSqlCaseWithID(fedb::test::SQLCaseTest::GetYAMLBaseDir(), yaml, case_id);
+    return hybridse::sqlcase::SqlCase::LoadSqlCaseWithID(openmldb::test::SQLCaseTest::GetYAMLBaseDir(), yaml, case_id);
 }
 
 void MiniBenchmarkOnCase(const std::string& yaml_path, const std::string& case_id, BmRunMode engine_mode,
-                         ::fedb::sdk::MiniCluster* mc, benchmark::State* state) {
+                         ::openmldb::sdk::MiniCluster* mc, benchmark::State* state) {
     auto target_case = LoadSQLCaseWithID(yaml_path, case_id);
     if (target_case.id() != case_id) {
         LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
@@ -180,7 +182,7 @@ void MiniBenchmarkOnCase(const std::string& yaml_path, const std::string& case_i
     MiniBenchmarkOnCase(target_case, engine_mode, mc, state);
 }
 void MiniBenchmarkOnCase(hybridse::sqlcase::SqlCase& sql_case, BmRunMode engine_mode,  // NOLINT
-                         ::fedb::sdk::MiniCluster* mc, benchmark::State* state) {
+                         ::openmldb::sdk::MiniCluster* mc, benchmark::State* state) {
     switch (engine_mode) {
         case kRequestMode: {
             BM_RequestQuery(*state, sql_case, mc);
@@ -197,14 +199,14 @@ void MiniBenchmarkOnCase(hybridse::sqlcase::SqlCase& sql_case, BmRunMode engine_
 }
 // batch request rows size >= 1
 void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                          ::fedb::sdk::MiniCluster* mc) {
+                          ::openmldb::sdk::MiniCluster* mc) {
     if (sql_case.batch_request_.columns_.empty()) {
         FAIL() << "sql case should contain batch request columns: ";
         return;
     }
     const bool enable_request_batch_optimized = state.range(0) == 1;
     const bool is_procedure = hybridse::sqlcase::SqlCase::IsProcedure();
-    ::fedb::sdk::SQLRouterOptions sql_opt;
+    ::openmldb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
     if (hybridse::sqlcase::SqlCase::IsDebug()) {
@@ -218,9 +220,9 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
         return;
     }
     hybridse::sdk::Status status;
-    fedb::sdk::SQLSDKTest::CreateDB(sql_case, router);
-    fedb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
-    fedb::sdk::SQLSDKTest::InsertTables(sql_case, router, fedb::sdk::kInsertAllInputs);
+    openmldb::sdk::SQLSDKTest::CreateDB(sql_case, router);
+    openmldb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
+    openmldb::sdk::SQLSDKTest::InsertTables(sql_case, router, openmldb::sdk::kInsertAllInputs);
     {
         // execute SQL
         std::string sql = sql_case.sql_str();
@@ -250,10 +252,10 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
         }
 
         if (hybridse::sqlcase::SqlCase::IsDebug()) {
-            fedb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
+            openmldb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
         }
 
-        auto common_column_indices = std::make_shared<fedb::sdk::ColumnIndicesSet>(request_row->GetSchema());
+        auto common_column_indices = std::make_shared<openmldb::sdk::ColumnIndicesSet>(request_row->GetSchema());
         if (enable_request_batch_optimized) {
             for (size_t idx : sql_case.batch_request_.common_column_indices_) {
                 common_column_indices->AddCommonColumnIdx(idx);
@@ -263,18 +265,18 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
             sql_case.batch_request_.common_column_indices_.clear();
         }
         if (is_procedure) {
-            fedb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
+            openmldb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
         }
 
         hybridse::codec::RowView row_view(request_table.columns());
 
         auto row_batch =
-            std::make_shared<fedb::sdk::SQLRequestRowBatch>(request_row->GetSchema(), common_column_indices);
+            std::make_shared<openmldb::sdk::SQLRequestRowBatch>(request_row->GetSchema(), common_column_indices);
 
         LOG(INFO) << "Batch Request execute sql start!";
         for (size_t i = 0; i < request_rows.size(); i++) {
             row_view.Reset(request_rows[i].buf());
-            fedb::sdk::SQLSDKTest::CovertHybridSERowToRequestRow(&row_view, request_row);
+            openmldb::sdk::SQLSDKTest::CovertHybridSERowToRequestRow(&row_view, request_row);
             ASSERT_TRUE(row_batch->AddRow(request_row));
             if (hybridse::sqlcase::SqlCase::IsDebug()) {
                 continue;
@@ -291,10 +293,10 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
                     LOG(INFO) << "--------syn procedure----------";
                     auto rs = router->CallSQLBatchRequestProcedure(sql_case.db(), sql_case.inputs()[0].name_, row_batch,
                                                                    &status);
-                    fedb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                 } else {
                     auto rs = router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status);
-                    fedb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                 }
             }
             LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
@@ -306,33 +308,35 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
                     LOG(INFO) << "--------syn procedure----------";
                     auto rs = router->CallSQLBatchRequestProcedure(sql_case.db(), sql_case.inputs()[0].name_, row_batch,
                                                                    &status);
-                    fedb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                     if (!rs) FAIL() << "sql case expect success == true";
                     hybridse::type::TableDef output_table;
                     std::vector<hybridse::codec::Row> rows;
                     if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
-                        fedb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                        openmldb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
                     }
 
                     if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-                        fedb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows,
+                                                             rs);
                     }
                 } else {
                     auto rs = router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status);
                     if (!rs) FAIL() << "sql case expect success == true";
-                    fedb::sdk::SQLSDKTest::PrintResultSet(rs);
+                    openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                     hybridse::type::TableDef output_table;
                     std::vector<hybridse::codec::Row> rows;
                     if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
-                        fedb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
+                        openmldb::sdk::SQLSDKTest::CheckSchema(output_table.columns(), *(rs->GetSchema()));
                     }
 
                     if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
                         ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-                        fedb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
+                        openmldb::sdk::SQLSDKTest::CheckRows(output_table.columns(), sql_case.expect().order_, rows,
+                                                             rs);
                     }
                 }
                 break;
@@ -350,6 +354,6 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
             }
         }
     }
-    fedb::sdk::SQLSDKTest::DropProcedure(sql_case, router);
-    fedb::sdk::SQLSDKTest::DropTables(sql_case, router);
+    openmldb::sdk::SQLSDKTest::DropProcedure(sql_case, router);
+    openmldb::sdk::SQLSDKTest::DropTables(sql_case, router);
 }

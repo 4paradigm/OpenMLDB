@@ -14,24 +14,25 @@
  * limitations under the License.
  */
 
-
 #include "zk/zk_client.h"
+
 #include <gtest/gtest.h>
 #include <sched.h>
 #include <unistd.h>
+
 #include <boost/bind.hpp>
-#include "base/glog_wapper.h" // NOLINT
+
+#include "base/glog_wapper.h"  // NOLINT
 extern "C" {
 #include "zookeeper/zookeeper.h"
 }
 
-
-
-namespace fedb {
+namespace openmldb {
 namespace zk {
 
 static bool call_invoked = false;
 static uint32_t endpoint_size = 2;
+static uint32_t session_timeout = 10000;
 class ZkClientTest : public ::testing::Test {
  public:
     ZkClientTest() {}
@@ -39,7 +40,7 @@ class ZkClientTest : public ::testing::Test {
     ~ZkClientTest() {}
 };
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
 
 void WatchCallback(const std::vector<std::string>& endpoints) {
     PDLOG(INFO, "call back with endpoints size %d", endpoints.size());
@@ -48,13 +49,13 @@ void WatchCallback(const std::vector<std::string>& endpoints) {
 }
 
 TEST_F(ZkClientTest, BadZk) {
-    ZkClient client("127.0.0.1:13181", "", 1000, "127.0.0.1:9527", "/rtidb");
+    ZkClient client("127.0.0.1:13181", "", session_timeout, "127.0.0.1:9527", "/rtidb");
     bool ok = client.Init();
     ASSERT_FALSE(ok);
 }
 
 TEST_F(ZkClientTest, Init) {
-    ZkClient client("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/rtidb");
+    ZkClient client("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
     ok = client.Register();
@@ -70,8 +71,7 @@ TEST_F(ZkClientTest, Init) {
     ok = client.WatchNodes();
     ASSERT_TRUE(ok);
     {
-        ZkClient client2(
-                "127.0.0.1:6181", "", 1000, "127.0.0.1:9528", "/rtidb");
+        ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9528", "/rtidb");
         ok = client2.Init();
         client2.Register();
         ASSERT_TRUE(ok);
@@ -88,8 +88,7 @@ TEST_F(ZkClientTest, CreateNode) {
     ASSERT_TRUE(ok);
 
     std::string assigned_path;
-    ok = client.CreateNode("/rtidb1/lock/request", "",
-                           ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path);
+    ok = client.CreateNode("/rtidb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path);
     ASSERT_TRUE(ok);
 
     std::string node = "/rtidb1/test/node" + GenRand();
@@ -100,18 +99,17 @@ TEST_F(ZkClientTest, CreateNode) {
     ret = client.IsExistNode(node);
     ASSERT_EQ(ret, 0);
 
-    ZkClient client2("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/rtidb1");
+    ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb1");
     ok = client2.Init();
     ASSERT_TRUE(ok);
 
     std::string assigned_path1;
-    ok = client2.CreateNode("/rtidb1/lock/request", "",
-                            ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path1);
+    ok = client2.CreateNode("/rtidb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path1);
     ASSERT_TRUE(ok);
 }
 
 TEST_F(ZkClientTest, ZkNodeChange) {
-    ZkClient client("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/rtidb1");
+    ZkClient client("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb1");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
 
@@ -123,15 +121,15 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     ret = client.IsExistNode(node);
     ASSERT_EQ(ret, 0);
 
-    ZkClient client2("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/rtidb1");
+    ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb1");
     ok = client2.Init();
     ASSERT_TRUE(ok);
     std::atomic<bool> detect(false);
-    ok = client2.WatchItem(node, [&detect]{ detect.store(true); });
+    ok = client2.WatchItem(node, [&detect] { detect.store(true); });
     ASSERT_TRUE(ok);
     ok = client.SetNodeValue(node, "2");
     ASSERT_TRUE(ok);
-    for (int i = 0 ; i < 20; i++) {
+    for (int i = 0 ; i < 30; i++) {
         if (detect.load()) {
             break;
         }
@@ -141,7 +139,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     detect.store(false);
     ok = client.SetNodeValue(node, "3");
     ASSERT_TRUE(ok);
-    for (int i = 0 ; i < 20; i++) {
+    for (int i = 0 ; i < 30; i++) {
         if (detect.load()) {
             break;
         }
@@ -151,7 +149,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
 }
 
 }  // namespace zk
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     srand(time(NULL));

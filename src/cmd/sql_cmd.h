@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_CMD_SQL_CMD_H_
 #define SRC_CMD_SQL_CMD_H_
 #include <algorithm>
-#include <string>
-#include <vector>
-#include <utility>
 #include <map>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "base/linenoise.h"
 #include "base/texttable.h"
@@ -41,9 +40,9 @@ DECLARE_string(zk_root_path);
 DECLARE_bool(interactive);
 DECLARE_string(cmd);
 
-using ::fedb::catalog::TTL_TYPE_MAP;
+using ::openmldb::catalog::TTL_TYPE_MAP;
 
-namespace fedb {
+namespace openmldb {
 namespace cmd {
 using hybridse::plan::PlanAPI;
 const std::string LOGO =  // NOLINT
@@ -56,13 +55,12 @@ const std::string LOGO =  // NOLINT
     " |_|  \\___||_____/|____/\n";
 
 const std::string VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." +  // NOLINT
-                            std::to_string(FEDB_VERSION_MINOR) + "." +
-                            std::to_string(FEDB_VERSION_BUG) + "." +
+                            std::to_string(FEDB_VERSION_MINOR) + "." + std::to_string(FEDB_VERSION_BUG) + "." +
                             FEDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
 
 std::string db = "";  // NOLINT
-::fedb::sdk::ClusterSDK *cs = NULL;
-::fedb::sdk::SQLClusterRouter *sr = NULL;
+::openmldb::sdk::ClusterSDK *cs = NULL;
+::openmldb::sdk::SQLClusterRouter *sr = NULL;
 
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
     if (!result_set || result_set->Size() == 0) {
@@ -153,8 +151,7 @@ void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set
     stream << result_set->Size() << " rows in set" << std::endl;
 }
 
-void PrintTableIndex(std::ostream &stream,
-                     const ::hybridse::vm::IndexList &index_list) {
+void PrintTableIndex(std::ostream &stream, const ::hybridse::vm::IndexList &index_list) {
     ::hybridse::base::TextTable t('-', ' ', ' ');
     t.add("#");
     t.add("name");
@@ -178,7 +175,8 @@ void PrintTableIndex(std::ostream &stream,
         for (int i = 0; i < index.ttl_size(); i++) {
             oss << index.ttl(i);
             if (i != index.ttl_size() - 1) {
-                oss << "m" << ",";
+                oss << "m"
+                    << ",";
             }
         }
         t.add(oss.str());
@@ -220,8 +218,7 @@ void PrintTableSchema(std::ostream &stream, const ::hybridse::vm::Schema &schema
     stream << t;
 }
 
-void PrintItems(std::ostream &stream, const std::string &head,
-                const std::vector<std::string> &items) {
+void PrintItems(std::ostream &stream, const std::string &head, const std::vector<std::string> &items) {
     if (items.empty()) {
         stream << "Empty set" << std::endl;
         return;
@@ -243,8 +240,7 @@ void PrintItems(std::ostream &stream, const std::string &head,
     }
 }
 
-void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
-        std::ostream &stream) {
+void PrintItems(const std::vector<std::pair<std::string, std::string>> &items, std::ostream &stream) {
     if (items.empty()) {
         stream << "Empty set" << std::endl;
         return;
@@ -268,11 +264,10 @@ void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
     }
 }
 
-void PrintProcedureSchema(const std::string& head,
-        const ::hybridse::sdk::Schema &sdk_schema, std::ostream &stream) {
+void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema &sdk_schema, std::ostream &stream) {
     try {
-        const ::hybridse::sdk::SchemaImpl& schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl&>(sdk_schema);
-        auto& schema = schema_impl.GetSchema();
+        const ::hybridse::sdk::SchemaImpl &schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl &>(sdk_schema);
+        auto &schema = schema_impl.GetSchema();
         if (schema.empty()) {
             stream << "Empty set" << std::endl;
             return;
@@ -295,12 +290,12 @@ void PrintProcedureSchema(const std::string& head,
             t.end_of_row();
         }
         stream << t << std::endl;
-    } catch(std::bad_cast) {
+    } catch (std::bad_cast) {
         return;
     }
 }
 
-void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
+void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo &sp_info) {
     std::vector<std::pair<std::string, std::string>> vec;
     std::pair<std::string, std::string> pair = std::make_pair(sp_info.GetDbName(), sp_info.GetSpName());
     vec.push_back(pair);
@@ -311,7 +306,7 @@ void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
     PrintProcedureSchema("Output Schema", sp_info.GetOutputSchema(), std::cout);
 }
 
-void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
+void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
     switch (cmd_node->GetCmdType()) {
         case hybridse::node::kCmdShowDatabases: {
             std::string error;
@@ -351,11 +346,10 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
                 return;
             }
             ::hybridse::vm::Schema output_schema;
-            ::fedb::catalog::SchemaAdapter::ConvertSchema(
-                table->column_desc(), &output_schema);
+            ::openmldb::catalog::SchemaAdapter::ConvertSchema(table->column_desc(), &output_schema);
             PrintTableSchema(std::cout, output_schema);
             ::hybridse::vm::IndexList index_list;
-            ::fedb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
+            ::openmldb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
             PrintTableIndex(std::cout, index_list);
             break;
         }
@@ -368,8 +362,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             if (ok) {
                 std::cout << "Create database success" << std::endl;
             } else {
-                std::cout << "Create database failed for " << error
-                          << std::endl;
+                std::cout << "Create database failed for " << error << std::endl;
             }
             break;
         }
@@ -407,8 +400,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             printf("Drop table %s? yes/no\n", name.c_str());
             std::string input;
             std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(),
-                           ::tolower);
+            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
             if (input != "yes") {
                 printf("'drop %s' cmd is canceled!\n", name.c_str());
                 return;
@@ -419,8 +411,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
                 std::cout << "drop ok" << std::endl;
                 sr->RefreshCatalog();
             } else {
-                std::cout << "failed to drop. error msg: " << error
-                          << std::endl;
+                std::cout << "failed to drop. error msg: " << error << std::endl;
             }
             break;
         }
@@ -428,15 +419,12 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             std::string index_name = cmd_node->GetArgs()[0];
             std::string table_name = cmd_node->GetArgs()[1];
             std::string error;
-            printf("Drop index %s on %s? yes/no\n", index_name.c_str(),
-                   table_name.c_str());
+            printf("Drop index %s on %s? yes/no\n", index_name.c_str(), table_name.c_str());
             std::string input;
             std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(),
-                           ::tolower);
+            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
             if (input != "yes") {
-                printf("'Drop index %s on %s' cmd is canceled!\n",
-                       index_name.c_str(), table_name.c_str());
+                printf("'Drop index %s on %s' cmd is canceled!\n", index_name.c_str(), table_name.c_str());
                 return;
             }
             auto ns = cs->GetNsClient();
@@ -444,8 +432,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             if (ok) {
                 std::cout << "drop index ok" << std::endl;
             } else {
-                std::cout << "Fail to drop index. error msg: " << error
-                          << std::endl;
+                std::cout << "Fail to drop index. error msg: " << error << std::endl;
             }
             break;
         }
@@ -461,8 +448,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             }
             std::string sp_name = cmd_node->GetArgs()[1];
             std::string error;
-            std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info =
-                cs->GetProcedureInfo(db_name, sp_name, &error);
+            std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cs->GetProcedureInfo(db_name, sp_name, &error);
             if (!sp_info) {
                 std::cout << "Fail to show procdure. error msg: " << error << std::endl;
                 return;
@@ -472,11 +458,10 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
         }
         case hybridse::node::kCmdShowProcedures: {
             std::string error;
-            std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos =
-                cs->GetProcedureInfo(&error);
+            std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos = cs->GetProcedureInfo(&error);
             std::vector<std::pair<std::string, std::string>> pairs;
             for (uint32_t i = 0; i < sp_infos.size(); i++) {
-                auto& sp_info = sp_infos.at(i);
+                auto &sp_info = sp_infos.at(i);
                 pairs.push_back(std::make_pair(sp_info->GetDbName(), sp_info->GetSpName()));
             }
             PrintItems(pairs, std::cout);
@@ -492,8 +477,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             printf("Drop store procedure %s? yes/no\n", sp_name.c_str());
             std::string input;
             std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(),
-                           ::tolower);
+            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
             if (input != "yes") {
                 printf("'drop %s' cmd is canceled!\n", sp_name.c_str());
                 return;
@@ -503,8 +487,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
             if (ok) {
                 std::cout << "drop ok" << std::endl;
             } else {
-                std::cout << "failed to drop. error msg: " << error
-                          << std::endl;
+                std::cout << "failed to drop. error msg: " << error << std::endl;
             }
             break;
         }
@@ -518,7 +501,7 @@ void HandleCmd(const hybridse::node::CmdNode *cmd_node) {
 }
 
 void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node) {
-    ::fedb::common::ColumnKey column_key;
+    ::openmldb::common::ColumnKey column_key;
     column_key.set_index_name(create_index_node->index_name_);
     for (const auto &key : create_index_node->index_->GetKey()) {
         column_key.add_col_name(key);
@@ -531,8 +514,7 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     if (ok) {
         std::cout << "create index ok" << std::endl;
     } else {
-        std::cout << "failed to create index. error msg: " << error
-                  << std::endl;
+        std::cout << "failed to create index. error msg: " << error << std::endl;
         return;
     }
 }
@@ -540,22 +522,22 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
 void HandleSQL(const std::string &sql) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
-    hybridse::node::NodePointVector parser_trees;
-    PlanAPI::CreateSyntaxTreeFromScript(sql, parser_trees, &node_manager, sql_status);
+    hybridse::node::PlanNodeList plan_trees;
+    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
 
     if (0 != sql_status.code) {
         std::cout << sql_status.msg << std::endl;
         return;
     }
-    hybridse::node::SqlNode *node = parser_trees[0];
+    hybridse::node::PlanNode *node = plan_trees[0];
     switch (node->GetType()) {
-        case hybridse::node::kCmdStmt: {
-            hybridse::node::CmdNode *cmd =
-                dynamic_cast<hybridse::node::CmdNode *>(node);
+        case hybridse::node::kPlanTypeCmd: {
+            hybridse::node::CmdPlanNode *cmd =
+                dynamic_cast<hybridse::node::CmdPlanNode *>(node);
             HandleCmd(cmd);
             return;
         }
-        case hybridse::node::kExplainStmt: {
+        case hybridse::node::kPlanTypeExplain: {
             std::string empty;
             std::string mu_script = sql;
             mu_script.replace(0u, 7u, empty);
@@ -568,8 +550,8 @@ void HandleSQL(const std::string &sql) {
             std::cout << info->GetPhysicalPlan() << std::endl;
             return;
         }
-        case hybridse::node::kCreateStmt:
-        case hybridse::node::kCreateSpStmt: {
+        case hybridse::node::kPlanTypeCreate:
+        case hybridse::node::kPlanTypeCreateSp: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;
@@ -583,17 +565,17 @@ void HandleSQL(const std::string &sql) {
             }
             return;
         }
-        case hybridse::node::kCreateIndexStmt: {
+        case hybridse::node::kPlanTypeCreateIndex: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;
             }
-            hybridse::node::CreateIndexNode *create_index_node =
-                dynamic_cast<hybridse::node::CreateIndexNode *>(node);
-            HandleCreateIndex(create_index_node);
+            hybridse::node::CreateIndexPlanNode *create_index_node =
+                dynamic_cast<hybridse::node::CreateIndexPlanNode *>(node);
+            HandleCreateIndex(create_index_node->create_index_node_);
             return;
         }
-        case hybridse::node::kInsertStmt: {
+        case hybridse::node::kPlanTypeInsert: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;
@@ -605,8 +587,8 @@ void HandleSQL(const std::string &sql) {
             }
             return;
         }
-        case hybridse::node::kFnList:
-        case hybridse::node::kQuery: {
+        case hybridse::node::kPlanTypeFuncDef:
+        case hybridse::node::kPlanTypeQuery: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;
@@ -630,24 +612,23 @@ void HandleCli() {
         std::cout << LOGO << std::endl;
         std::cout << "v" << VERSION << std::endl;
     }
-    ::fedb::sdk::ClusterOptions copt;
+    ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
-    cs = new ::fedb::sdk::ClusterSDK(copt);
+    cs = new ::openmldb::sdk::ClusterSDK(copt);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "Fail to connect to db" << std::endl;
         return;
     }
-    sr = new ::fedb::sdk::SQLClusterRouter(cs);
+    sr = new ::openmldb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
         std::cout << "Fail to connect to db" << std::endl;
         return;
     }
     std::string ns_endpoint = cs->GetNsClient()->GetEndpoint();
     std::string display_prefix = ns_endpoint + "/" + db + "> ";
-    std::string multi_line_perfix =
-        std::string(display_prefix.length() - 3, ' ') + "-> ";
+    std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
     bool multi_line = false;
     while (true) {
@@ -656,18 +637,17 @@ void HandleCli() {
             buffer = FLAGS_cmd;
             db = FLAGS_database;
         } else {
-            char *line = ::fedb::base::linenoise(
-                multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
+            char *line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
             if (line == NULL) {
                 return;
             }
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
                 if (!buffer.empty()) {
-                    ::fedb::base::linenoiseHistoryAdd(line);
+                    ::openmldb::base::linenoiseHistoryAdd(line);
                 }
             }
-            ::fedb::base::linenoiseFree(line);
+            ::openmldb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
@@ -677,8 +657,7 @@ void HandleCli() {
             HandleSQL(sql);
             multi_line = false;
             display_prefix = ns_endpoint + "/" + db + "> ";
-            multi_line_perfix =
-                std::string(display_prefix.length() - 3, ' ') + "-> ";
+            multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
             sql.clear();
         } else {
             sql.append("\n");
@@ -691,6 +670,6 @@ void HandleCli() {
 }
 
 }  // namespace cmd
-}  // namespace fedb
+}  // namespace openmldb
 
 #endif  // SRC_CMD_SQL_CMD_H_

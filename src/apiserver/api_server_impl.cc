@@ -23,14 +23,14 @@
 #include "apiserver/interface_provider.h"
 #include "brpc/server.h"
 
-namespace fedb {
-namespace http {
+namespace openmldb {
+namespace apiserver {
 
 APIServerImpl::~APIServerImpl() = default;
 
 bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
     // If cluster sdk is needed, use ptr, don't own it. SQLClusterRouter owns it.
-    auto cluster_sdk = new ::fedb::sdk::ClusterSDK(options);
+    auto cluster_sdk = new ::openmldb::sdk::ClusterSDK(options);
     bool ok = cluster_sdk->Init();
     if (!ok) {
         LOG(ERROR) << "Fail to connect to db";
@@ -39,10 +39,10 @@ bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
     return Init(cluster_sdk);
 }
 
-bool APIServerImpl::Init(::fedb::sdk::ClusterSDK* cluster) {
+bool APIServerImpl::Init(::openmldb::sdk::ClusterSDK* cluster) {
     // If cluster sdk is needed, use ptr, don't own it. SQLClusterRouter owns it.
     cluster_sdk_ = cluster;
-    auto router = std::make_shared<::fedb::sdk::SQLClusterRouter>(cluster_sdk_);
+    auto router = std::make_shared<::openmldb::sdk::SQLClusterRouter>(cluster_sdk_);
     if (!router->Init()) {
         LOG(ERROR) << "Fail to connect to db";
         return false;
@@ -54,6 +54,14 @@ bool APIServerImpl::Init(::fedb::sdk::ClusterSDK* cluster) {
     RegisterGetDB();
     RegisterGetTable();
     return true;
+}
+
+void APIServerImpl::Refresh(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
+                            google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (sql_router_) {
+        sql_router_->RefreshCatalog();
+    }
 }
 
 void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
@@ -75,7 +83,7 @@ void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const Ht
 
 bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
                                        const butil::rapidjson::Value& common_cols_v,
-                                       std::shared_ptr<fedb::sdk::SQLRequestRow> row) {
+                                       std::shared_ptr<openmldb::sdk::SQLRequestRow> row) {
     auto sch = row->GetSchema();
 
     // scan all strings to init the total string length
@@ -172,7 +180,7 @@ bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::
                 return false;
             }
             std::vector<std::string> parts;
-            ::fedb::base::SplitString(v.GetString(), "-", parts);
+            ::openmldb::base::SplitString(v.GetString(), "-", parts);
             if (parts.size() != 3) {
                 return false;
             }
@@ -315,7 +323,7 @@ void APIServerImpl::RegisterExecSP() {
         const auto& schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl&>(sp_info->GetInputSchema());
         // Hard copy, and RequestRow needs shared schema
         auto input_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(schema_impl.GetSchema());
-        auto common_column_indices = std::make_shared<fedb::sdk::ColumnIndicesSet>(input_schema);
+        auto common_column_indices = std::make_shared<openmldb::sdk::ColumnIndicesSet>(input_schema);
         decltype(common_cols_v.Size()) expected_common_size = 0;
         for (int i = 0; i < input_schema->GetColumnCnt(); ++i) {
             if (input_schema->IsConstant(i)) {
@@ -435,7 +443,7 @@ void APIServerImpl::RegisterGetTable() {
                       writer.Member("msg") & std::string("ok");
                       writer.Member("tables");
                       writer.StartArray();
-                      for (std::shared_ptr<::fedb::nameserver::TableInfo> table : tables) {
+                      for (std::shared_ptr<::openmldb::nameserver::TableInfo> table : tables) {
                           writer << table;
                       }
                       writer.EndArray();
@@ -648,7 +656,7 @@ JsonWriter& operator&(JsonWriter& ar, GetSPResp& s) {  // NOLINT
 }
 
 JsonWriter& operator&(JsonWriter& ar,  // NOLINT
-                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnDesc>& column_desc) {
+                      const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& column_desc) {
     ar.StartArray();
     for (auto column : column_desc) {
         ar.StartObject();
@@ -656,7 +664,7 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
             ar.Member("name") & column.name();
         }
         if (column.has_data_type()) {
-            ar.Member("data_type") & ::fedb::type::DataType_Name(column.data_type());
+            ar.Member("data_type") & ::openmldb::type::DataType_Name(column.data_type());
         }
         if (column.has_not_null()) {
             ar.Member("not_null") & column.not_null();
@@ -670,7 +678,7 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
 }
 
 JsonWriter& operator&(JsonWriter& ar,  // NOLINT
-                      const ::google::protobuf::RepeatedPtrField<::fedb::common::ColumnKey>& column_key) {
+                      const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& column_key) {
     ar.StartArray();
     for (auto key : column_key) {
         ar.StartObject();
@@ -695,7 +703,7 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
             auto& ttl = key.ttl();
             ar.StartObject();
             if (ttl.has_ttl_type()) {
-                ar.Member("ttl_type") & ::fedb::type::TTLType_Name(ttl.ttl_type());
+                ar.Member("ttl_type") & ::openmldb::type::TTLType_Name(ttl.ttl_type());
             }
             if (ttl.has_abs_ttl()) {
                 ar.Member("abs_ttl") & ttl.abs_ttl();
@@ -711,7 +719,7 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
 }
 
 JsonWriter& operator&(JsonWriter& ar,  // NOLINT
-                      const ::google::protobuf::RepeatedPtrField<::fedb::common::VersionPair>& schema_versions) {
+                      const ::google::protobuf::RepeatedPtrField<::openmldb::common::VersionPair>& schema_versions) {
     ar.StartArray();
     for (auto version : schema_versions) {
         ar.StartObject();
@@ -726,7 +734,7 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
     return ar.EndArray();
 }
 
-JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableInfo> info) {  // NOLINT
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::TableInfo> info) {  // NOLINT
     ar.StartObject();
     if (info->has_name()) {
         ar.Member("name") & info->name();
@@ -745,7 +753,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
         ar.Member("replica_num") & info->replica_num();
     }
     if (info->has_compress_type()) {
-        ar.Member("compress_type") & ::fedb::type::CompressType_Name(info->compress_type());
+        ar.Member("compress_type") & ::openmldb::type::CompressType_Name(info->compress_type());
     }
     if (info->has_key_entry_max_height()) {
         ar.Member("key_entry_max_height") & info->key_entry_max_height();
@@ -775,5 +783,5 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::fedb::nameserver::TableI
     return ar.EndObject();
 }
 
-}  // namespace http
-}  // namespace fedb
+}  // namespace apiserver
+}  // namespace openmldb

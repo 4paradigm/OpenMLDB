@@ -28,16 +28,16 @@
 
 %shared_ptr(hybridse::sdk::ResultSet);
 %shared_ptr(hybridse::sdk::Schema);
-%shared_ptr(fedb::sdk::SQLRouter);
-%shared_ptr(fedb::sdk::SQLRequestRow);
-%shared_ptr(fedb::sdk::SQLRequestRowBatch);
-%shared_ptr(fedb::sdk::ColumnIndicesSet);
-%shared_ptr(fedb::sdk::SQLInsertRow);
-%shared_ptr(fedb::sdk::SQLInsertRows);
-%shared_ptr(fedb::sdk::ExplainInfo);
+%shared_ptr(openmldb::sdk::SQLRouter);
+%shared_ptr(openmldb::sdk::SQLRequestRow);
+%shared_ptr(openmldb::sdk::SQLRequestRowBatch);
+%shared_ptr(openmldb::sdk::ColumnIndicesSet);
+%shared_ptr(openmldb::sdk::SQLInsertRow);
+%shared_ptr(openmldb::sdk::SQLInsertRows);
+%shared_ptr(openmldb::sdk::ExplainInfo);
 %shared_ptr(hybridse::sdk::ProcedureInfo);
-%shared_ptr(fedb::sdk::QueryFuture);
-%shared_ptr(fedb::sdk::TableReader);
+%shared_ptr(openmldb::sdk::QueryFuture);
+%shared_ptr(openmldb::sdk::TableReader);
 %template(VectorUint32) std::vector<uint32_t>;
 %template(VectorString) std::vector<std::string>;
 
@@ -51,17 +51,17 @@
 
 using hybridse::sdk::Schema;
 using hybridse::sdk::ResultSet;
-using fedb::sdk::SQLRouter;
-using fedb::sdk::SQLRouterOptions;
-using fedb::sdk::SQLRequestRow;
-using fedb::sdk::SQLRequestRowBatch;
-using fedb::sdk::ColumnIndicesSet;
-using fedb::sdk::SQLInsertRow;
-using fedb::sdk::SQLInsertRows;
-using fedb::sdk::ExplainInfo;
+using openmldb::sdk::SQLRouter;
+using openmldb::sdk::SQLRouterOptions;
+using openmldb::sdk::SQLRequestRow;
+using openmldb::sdk::SQLRequestRowBatch;
+using openmldb::sdk::ColumnIndicesSet;
+using openmldb::sdk::SQLInsertRow;
+using openmldb::sdk::SQLInsertRows;
+using openmldb::sdk::ExplainInfo;
 using hybridse::sdk::ProcedureInfo;
-using fedb::sdk::QueryFuture;
-using fedb::sdk::TableReader;
+using openmldb::sdk::QueryFuture;
+using openmldb::sdk::TableReader;
 %}
 
 %include "sdk/sql_router.h"

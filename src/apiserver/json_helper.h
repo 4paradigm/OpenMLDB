@@ -20,8 +20,8 @@
 #include <cstddef>
 #include <string>
 
-namespace fedb {
-namespace http {
+namespace openmldb {
+namespace apiserver {
 
 /**
 \class Archiver
@@ -137,7 +137,7 @@ JsonWriter& operator<<(JsonWriter& ar, T& s) {
     return ar & s;
 }
 
-}  // namespace http
-}  // namespace fedb
+}  // namespace apiserver
+}  // namespace openmldb
 
 #endif  // SRC_APISERVER_JSON_HELPER_H_

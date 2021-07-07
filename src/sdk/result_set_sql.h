@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_SDK_RESULT_SET_SQL_H_
 #define SRC_SDK_RESULT_SET_SQL_H_
 
@@ -29,7 +28,7 @@
 #include "sdk/result_set.h"
 #include "sdk/result_set_base.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 class ResultSetSQL : public ::hybridse::sdk::ResultSet {
@@ -40,11 +39,11 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
     ~ResultSetSQL();
 
     static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
-        const std::shared_ptr<::fedb::api::QueryResponse>& response, const std::shared_ptr<brpc::Controller>& cntl,
+        const std::shared_ptr<::openmldb::api::QueryResponse>& response, const std::shared_ptr<brpc::Controller>& cntl,
         ::hybridse::sdk::Status* status);
 
     static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
-        const std::shared_ptr<::fedb::api::ScanResponse>& response,
+        const std::shared_ptr<::openmldb::api::ScanResponse>& response,
         const ::google::protobuf::RepeatedField<uint32_t>& projection, const std::shared_ptr<brpc::Controller>& cntl,
         std::shared_ptr<::hybridse::vm::TableHandler> table_handler, ::hybridse::sdk::Status* status);
 
@@ -93,5 +92,5 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
 };
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 #endif  // SRC_SDK_RESULT_SET_SQL_H_

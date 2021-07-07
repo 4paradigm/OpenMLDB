@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-
 #include "replica/log_replicator.h"
+
 #include <brpc/server.h>
 #include <gtest/gtest.h>
 #include <sched.h>
@@ -23,35 +23,36 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <utility>
+
 #include "base/glog_wapper.h"
+#include "common/thread_pool.h"
+#include "common/timer.h"
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
 #include "storage/mem_table.h"
 #include "storage/segment.h"
 #include "storage/ticket.h"
-#include "common/thread_pool.h"
-#include "common/timer.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
-using ::fedb::storage::DataBlock;
-using ::fedb::storage::MemTable;
-using ::fedb::storage::Table;
-using ::fedb::storage::TableIterator;
-using ::fedb::storage::Ticket;
+using ::openmldb::storage::DataBlock;
+using ::openmldb::storage::MemTable;
+using ::openmldb::storage::Table;
+using ::openmldb::storage::TableIterator;
+using ::openmldb::storage::Ticket;
 
-namespace fedb {
+namespace openmldb {
 namespace replica {
 
 const std::map<std::string, std::string> g_endpoints;
 
-class MockTabletImpl : public ::fedb::api::TabletServer {
+class MockTabletImpl : public ::openmldb::api::TabletServer {
  public:
     MockTabletImpl(const ReplicatorRole& role, const std::string& path,
-                   const std::map<std::string, std::string>& real_ep_map,
-                   std::shared_ptr<MemTable> table)
+                   const std::map<std::string, std::string>& real_ep_map, std::shared_ptr<MemTable> table)
         : role_(role),
           path_(path),
           real_ep_map_(real_ep_map),
@@ -64,26 +65,20 @@ class MockTabletImpl : public ::fedb::api::TabletServer {
         return replicator_.Init();
     }
 
-    void Put(RpcController* controller, const ::fedb::api::PutRequest* request,
-             ::fedb::api::PutResponse* response, Closure* done) {}
+    void Put(RpcController* controller, const ::openmldb::api::PutRequest* request,
+             ::openmldb::api::PutResponse* response, Closure* done) {}
 
-    void Scan(RpcController* controller,
-              const ::fedb::api::ScanRequest* request,
-              ::fedb::api::ScanResponse* response, Closure* done) {}
+    void Scan(RpcController* controller, const ::openmldb::api::ScanRequest* request,
+              ::openmldb::api::ScanResponse* response, Closure* done) {}
 
-    void CreateTable(RpcController* controller,
-                     const ::fedb::api::CreateTableRequest* request,
-                     ::fedb::api::CreateTableResponse* response,
-                     Closure* done) {}
+    void CreateTable(RpcController* controller, const ::openmldb::api::CreateTableRequest* request,
+                     ::openmldb::api::CreateTableResponse* response, Closure* done) {}
 
-    void DropTable(RpcController* controller,
-                   const ::fedb::api::DropTableRequest* request,
-                   ::fedb::api::DropTableResponse* response, Closure* done) {}
+    void DropTable(RpcController* controller, const ::openmldb::api::DropTableRequest* request,
+                   ::openmldb::api::DropTableResponse* response, Closure* done) {}
 
-    void AppendEntries(RpcController* controller,
-                       const ::fedb::api::AppendEntriesRequest* request,
-                       ::fedb::api::AppendEntriesResponse* response,
-                       Closure* done) {
+    void AppendEntries(RpcController* controller, const ::openmldb::api::AppendEntriesRequest* request,
+                       ::openmldb::api::AppendEntriesResponse* response, Closure* done) {
         bool ok = replicator_.AppendEntries(request, response);
         if (ok) {
             PDLOG(INFO, "receive log entry from leader ok");
@@ -108,7 +103,7 @@ class MockTabletImpl : public ::fedb::api::TabletServer {
     std::atomic<bool> follower_;
 };
 
-bool ReceiveEntry(const ::fedb::api::LogEntry& entry) { return true; }
+bool ReceiveEntry(const ::openmldb::api::LogEntry& entry) { return true; }
 
 class LogReplicatorTest : public ::testing::Test {
  public:
@@ -117,7 +112,7 @@ class LogReplicatorTest : public ::testing::Test {
     ~LogReplicatorTest() {}
 };
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
 
 TEST_F(LogReplicatorTest, Init) {
     std::map<std::string, std::string> map;
@@ -125,8 +120,8 @@ TEST_F(LogReplicatorTest, Init) {
     std::map<std::string, uint32_t> mapping;
     std::atomic<bool> follower(false);
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 1, 1, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     LogReplicator replicator(folder, map, kLeaderNode, table, &follower);
     bool ok = replicator.Init();
@@ -139,12 +134,12 @@ TEST_F(LogReplicatorTest, BenchMark) {
     std::map<std::string, uint32_t> mapping;
     std::atomic<bool> follower(false);
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
-        "test", 1, 1, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table =
+        std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     table->Init();
     LogReplicator replicator(folder, map, kLeaderNode, table, &follower);
     bool ok = replicator.Init();
-    ::fedb::api::LogEntry entry;
+    ::openmldb::api::LogEntry entry;
     entry.set_term(1);
     entry.set_pk("test");
     entry.set_value("test");
@@ -160,14 +155,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>(
-        "test", 1, 1, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t7 =
+        std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:17527";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower =
-            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t7);
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -188,11 +182,11 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     ASSERT_TRUE(ok);
     // put the first row
     {
-        ::fedb::api::LogEntry entry;
-        ::fedb::api::Dimension* d1 = entry.add_dimensions();
+        ::openmldb::api::LogEntry entry;
+        ::openmldb::api::Dimension* d1 = entry.add_dimensions();
         d1->set_key("card0");
         d1->set_idx(0);
-        ::fedb::api::Dimension* d2 = entry.add_dimensions();
+        ::openmldb::api::Dimension* d2 = entry.add_dimensions();
         d2->set_key("merchant0");
         d2->set_idx(1);
         entry.set_ts(9527);
@@ -202,11 +196,11 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     }
     // the second row
     {
-        ::fedb::api::LogEntry entry;
-        ::fedb::api::Dimension* d1 = entry.add_dimensions();
+        ::openmldb::api::LogEntry entry;
+        ::openmldb::api::Dimension* d1 = entry.add_dimensions();
         d1->set_key("card1");
         d1->set_idx(0);
-        ::fedb::api::Dimension* d2 = entry.add_dimensions();
+        ::openmldb::api::Dimension* d2 = entry.add_dimensions();
         d2->set_key("merchant0");
         d2->set_idx(1);
         entry.set_ts(9526);
@@ -216,8 +210,8 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     }
     // the third row
     {
-        ::fedb::api::LogEntry entry;
-        ::fedb::api::Dimension* d1 = entry.add_dimensions();
+        ::openmldb::api::LogEntry entry;
+        ::openmldb::api::Dimension* d1 = entry.add_dimensions();
         d1->set_key("card0");
         d1->set_idx(0);
         entry.set_ts(9525);
@@ -231,14 +225,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     leader.AddReplicateNode(map);
     sleep(2);
 
-    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
-        "test", 1, 1, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t8 =
+        std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:17528";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower =
-            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -259,7 +252,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         TableIterator* it = t8->NewIterator(0, "card0", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
-        ::fedb::base::Slice value = it->GetValue();
+        ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value 1", value_str);
         ASSERT_EQ(9527, (signed)it->GetKey());
@@ -280,7 +273,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         TableIterator* it = t8->NewIterator(1, "merchant0", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
-        ::fedb::base::Slice value = it->GetValue();
+        ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value 1", value_str);
         ASSERT_EQ(9527, (signed)it->GetKey());
@@ -304,14 +297,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     brpc::Server server2;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>(
-        "test", 1, 1, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t7 =
+        std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower =
-            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t7);
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -330,7 +322,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
-    ::fedb::api::LogEntry entry;
+    ::openmldb::api::LogEntry entry;
     entry.set_pk("test_pk");
     entry.set_value("value1");
     entry.set_ts(9527);
@@ -354,14 +346,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     leader.AddReplicateNode(map, 2);
     sleep(2);
 
-    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
-        "test", 1, 1, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t8 =
+        std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower =
-            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -372,14 +363,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         }
         PDLOG(INFO, "start follower");
     }
-    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>(
-        "test", 2, 1, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t9 =
+        std::make_shared<MemTable>("test", 2, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     t9->Init();
     {
         std::string follower_addr = "127.0.0.1:18529";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower =
-            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t9);
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t9);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         follower->SetMode(true);
@@ -413,7 +403,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         TableIterator* it = t8->NewIterator("test_pk", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
-        ::fedb::base::Slice value = it->GetValue();
+        ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value1", value_str);
         ASSERT_EQ(9527, (signed)it->GetKey());
@@ -447,7 +437,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         TableIterator* it = t9->NewIterator("test_pk", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
-        ::fedb::base::Slice value = it->GetValue();
+        ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value1", value_str);
         ASSERT_EQ(9527, (signed)it->GetKey());
@@ -482,14 +472,13 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     brpc::Server server2;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>(
-        "test", 1, 1, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t7 =
+        std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower =
-            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t7);
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -508,7 +497,7 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
-    ::fedb::api::LogEntry entry;
+    ::openmldb::api::LogEntry entry;
     entry.set_pk("test_pk");
     entry.set_value("value1");
     entry.set_ts(9527);
@@ -532,14 +521,13 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     leader.AddReplicateNode(map, 2);
     sleep(2);
 
-    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
-        "test", 1, 1, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t8 =
+        std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower =
-            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -550,14 +538,13 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
         }
         PDLOG(INFO, "start follower");
     }
-    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>(
-        "test", 2, 1, 8, mapping, 0, ::fedb::type::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> t9 =
+        std::make_shared<MemTable>("test", 2, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
     t9->Init();
     {
         std::string follower_addr = "127.0.0.1:18529";
         std::string folder = "/tmp/" + GenRand() + "/";
-        MockTabletImpl* follower =
-            new MockTabletImpl(kFollowerNode, folder, g_endpoints, t9);
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t9);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         follower->SetMode(true);
@@ -592,7 +579,7 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
         TableIterator* it = t8->NewIterator("test_pk", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
-        ::fedb::base::Slice value = it->GetValue();
+        ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value1", value_str);
         ASSERT_EQ(9527, (signed)it->GetKey());
@@ -626,7 +613,7 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
         TableIterator* it = t9->NewIterator("test_pk", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
-        ::fedb::base::Slice value = it->GetValue();
+        ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value1", value_str);
         ASSERT_EQ(9527, (signed)it->GetKey());
@@ -662,11 +649,11 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
 }
 
 }  // namespace replica
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     srand(time(NULL));
-    ::fedb::base::SetLogLevel(INFO);
+    ::openmldb::base::SetLogLevel(INFO);
     ::testing::InitGoogleTest(&argc, argv);
     int ok = RUN_ALL_TESTS();
     return ok;

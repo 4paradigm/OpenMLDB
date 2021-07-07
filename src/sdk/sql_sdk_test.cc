@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "sdk/sql_sdk_test.h"
 
 #include <sched.h>
@@ -28,14 +27,14 @@
 #include "base/glog_wapper.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
-#include "common/timer.h"
 
-namespace fedb {
+namespace openmldb {
 namespace sdk {
 
 MiniCluster* mc_ = nullptr;
@@ -51,7 +50,8 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
 
 static bool IsSupportMode(const std::string& mode) {
     if (mode.find("rtidb-unsupport") != std::string::npos ||
-            mode.find("request-unsupport") != std::string::npos) {
+            mode.find("request-unsupport") != std::string::npos
+        || mode.find("standalone-unsupport") != std::string::npos) {
         return false;
     }
     return true;
@@ -60,6 +60,13 @@ static bool IsSupportMode(const std::string& mode) {
 TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-batch-unsupport") ||
+        boost::contains(sql_case.mode(), "batch-unsupport") ||
+        boost::contains(sql_case.mode(), "standalone-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
     SQLRouterOptions sql_opt;
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
@@ -101,7 +108,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
         boost::contains(sql_case.mode(), "rtidb-batch-unsupport") ||
-        boost::contains(sql_case.mode(), "batch-unsupport")) {
+        boost::contains(sql_case.mode(), "batch-unsupport") ||
+        boost::contains(sql_case.mode(), "standalone-unsupport")) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -565,7 +573,7 @@ TEST_F(SQLSDKTest, create_table) {
     }
     ASSERT_TRUE(router->RefreshCatalog());
     auto ns_client = mc_->GetNsClient();
-    std::vector<::fedb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     ASSERT_TRUE(ns_client->ShowTable("", db, false, tables, msg));
     ASSERT_TRUE(!tables.empty());
@@ -587,24 +595,24 @@ TEST_F(SQLSDKTest, create_table) {
 }
 
 }  // namespace sdk
-}  // namespace fedb
+}  // namespace openmldb
 
 int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;
-    ::fedb::sdk::MiniCluster mc(6181);
-    ::fedb::sdk::mc_ = &mc;
-    int ok = ::fedb::sdk::mc_->SetUp(2);
+    ::openmldb::sdk::MiniCluster mc(6181);
+    ::openmldb::sdk::mc_ = &mc;
+    int ok = ::openmldb::sdk::mc_->SetUp(2);
     sleep(1);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::fedb::sdk::router_ = ::fedb::sdk::GetNewSQLRouter();
-    if (nullptr == ::fedb::sdk::router_) {
+    ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
+    if (nullptr == ::openmldb::sdk::router_) {
         LOG(ERROR) << "Fail Test with NULL SQL router";
         return -1;
     }
     ok = RUN_ALL_TESTS();
-    ::fedb::sdk::mc_->Close();
+    ::openmldb::sdk::mc_->Close();
     return ok;
 }
