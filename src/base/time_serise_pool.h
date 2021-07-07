@@ -42,6 +42,7 @@ class TimeBucket {
         }
     }
     void* Alloc(uint32_t size) {
+        // return new char[size];
         object_num_++;
         if (current_offset_ + size <= block_size_ - sizeof(Block)) {
             void* addr = head_->data + current_offset_;
@@ -77,8 +78,7 @@ class TimeSerisePool {
         auto pair = pool_.find(key);
         if (pair == pool_.end()) {
             auto bucket = new TimeBucket(block_size_);
-            pool_.insert(
-                std::pair<uint32_t, std::unique_ptr<TimeBucket>>(key, std::unique_ptr<TimeBucket>(bucket)));
+            pool_.insert(std::pair<uint32_t, std::unique_ptr<TimeBucket>>(key, std::unique_ptr<TimeBucket>(bucket)));
             return bucket->Alloc(size);
         }
 
