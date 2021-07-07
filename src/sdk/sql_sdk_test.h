@@ -396,7 +396,7 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
             return;
         }
 
-        if (!rs) FAIL() << "sql case expect success == true";
+        if (!rs) FAIL() << "sql case expect success == true" << status.msg;
         std::vector<hybridse::codec::Row> rows;
         hybridse::type::TableDef output_table;
         if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
@@ -464,7 +464,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
             return;
         }
         if (!request_row) {
-            FAIL() << "sql case expect success == true";
+            FAIL() << "sql case expect success == true" << status.msg;
         }
 
         hybridse::type::TableDef insert_table;
@@ -493,7 +493,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
                 if (is_asyn) {
                     LOG(INFO) << "-------asyn procedure----------";
                     auto future = router->CallProcedure(sql_case.db(), sql_case.sp_name_, 1000, request_row, &status);
-                    if (!future || status.code != 0) FAIL() << "sql case expect success == true";
+                    if (!future || status.code != 0) FAIL() << "sql case expect success == true" << status.msg;
                     rs = future->GetResultSet(&status);
                 } else {
                     LOG(INFO) << "--------syn procedure----------";
@@ -502,7 +502,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
             } else {
                 rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
             }
-            if (!rs || status.code != 0) FAIL() << "sql case expect success == true";
+            if (!rs || status.code != 0) FAIL() << "sql case expect success == true" << status.msg;
             results.push_back(rs);
             if (!has_batch_request) {
                 LOG(INFO) << "insert request: \n" << inserts[i];
@@ -613,7 +613,7 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
         return;
     }
     if (!request_row) {
-        FAIL() << "sql case expect success == true";
+        FAIL() << "sql case expect success == true" << status.msg;
     }
 
     bool has_batch_request = !sql_case.batch_request().columns_.empty();
@@ -654,19 +654,21 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
             LOG(INFO) << "-------asyn procedure----------";
             auto future =
                 router->CallSQLBatchRequestProcedure(sql_case.db(), sql_case.sp_name_, 1000, row_batch, &status);
-            if (!future || status.code != 0) FAIL() << "sql case expect success == true";
+            if (!future || status.code != 0) FAIL() << "sql case expect success == true" << status.msg;
             results = future->GetResultSet(&status);
         } else {
             LOG(INFO) << "--------syn procedure----------";
             results = router->CallSQLBatchRequestProcedure(sql_case.db(), sql_case.sp_name_, row_batch, &status);
+            if (status.code != 0) FAIL() << "sql case expect success == true" << status.msg;
         }
     } else {
         results = router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status);
+        if (status.code != 0) FAIL() << "sql case expect success == true" << status.msg;
     }
     if (!results) {
         FAIL() << "sql case expect success == true";
     }
-    ASSERT_NO_FATAL_FAILURE(ASSERT_EQ(0, status.code));
+    ASSERT_NO_FATAL_FAILURE(ASSERT_EQ(0, status.code)) << status.msg;
     LOG(INFO) << "Batch request execute sql done!";
     ASSERT_GT(results->Size(), 0);
     std::vector<hybridse::codec::Row> rows;
