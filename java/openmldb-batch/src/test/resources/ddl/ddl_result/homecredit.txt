@@ -38,7 +38,7 @@ create table `previous_application`(
 `NFLAG_INSURED_ON_APPROVAL` double,
 `time` timestamp,
 index(key=(`SK_ID_CURR`), ts=`time`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `POS_CASH_balance`(
 `SK_ID_PREV` bigint,
 `SK_ID_CURR` bigint,
@@ -50,7 +50,7 @@ create table `POS_CASH_balance`(
 `SK_DPD_DEF` bigint,
 `time` timestamp,
 index(key=(`SK_ID_CURR`), ts=`time`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `installments_payments`(
 `SK_ID_PREV` bigint,
 `SK_ID_CURR` bigint,
@@ -62,7 +62,7 @@ create table `installments_payments`(
 `AMT_PAYMENT` double,
 `time` timestamp,
 index(key=(`SK_ID_CURR`), ts=`time`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `bureau_balance`(
 `SK_ID_BUREAU` bigint,
 `MONTHS_BALANCE` bigint,
@@ -70,7 +70,7 @@ create table `bureau_balance`(
 `SK_ID_CURR` bigint,
 `time` timestamp,
 index(key=(`SK_ID_CURR`), ts=`time`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `main`(
 `SK_ID_CURR` bigint,
 `TARGET` bigint,
@@ -196,7 +196,7 @@ create table `main`(
 `AMT_REQ_CREDIT_BUREAU_YEAR` double,
 `time` timestamp,
 index(key=(`SK_ID_CURR`), ts=`time`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `credit_card_balance`(
 `SK_ID_PREV` bigint,
 `SK_ID_CURR` bigint,
@@ -223,7 +223,7 @@ create table `credit_card_balance`(
 `SK_DPD_DEF` bigint,
 `time` timestamp,
 index(key=(`SK_ID_CURR`), ts=`time`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `bureau`(
 `SK_ID_CURR` bigint,
 `SK_ID_BUREAU` bigint,
@@ -244,4 +244,4 @@ create table `bureau`(
 `AMT_ANNUITY` double,
 `time` timestamp,
 index(key=(`SK_ID_CURR`), ts=`time`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
