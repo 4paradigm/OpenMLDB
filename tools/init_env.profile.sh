@@ -18,9 +18,6 @@ set -eE
 # goto the toplevel directory
 pushd "$(dirname "$0")/.."
 
-echo "CICD environment tag: ${CICD_RUNNER_TAG}"
-
-echo "Third party packages path: ${CICD_RUNNER_THIRDPARTY_PATH}"
 if [[ "$OSTYPE" == "linux-gnu"* ]]
 then
     # unpack thirdparty first time
@@ -35,9 +32,5 @@ then
     popd
 
     ln -sf /depends/thirdparty thirdparty
-else
-    # shellcheck disable=SC1090
-    source ~/.bash_profile
-    ln -sf "${CICD_RUNNER_THIRDPARTY_PATH}" thirdparty
 fi
 popd

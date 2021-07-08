@@ -113,8 +113,6 @@ jobs:
     name: Build in MacOS
     runs-on: macos-latest
     env:
-      CICD_RUNNER_THIRDPARTY_PATH: /Users/runner/thirdparty
-      CICD_RUNNER_THIRDSRC_PATH: /Users/runner/thirdsrc
       OS: darwin
       ARCH: x86_64
     steps:
@@ -139,9 +137,7 @@ jobs:
 
       - name: Install thirdparty
         run: |
-          brew install swig
-          brew install coreutils
-          brew install yaml-cpp
+          brew install yaml-cpp coreutils swig automake
           sh tools/install_thirdparty_mac.sh
 
       - name: Build Core

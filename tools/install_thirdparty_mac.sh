@@ -14,63 +14,47 @@
 # limitations under the License.
 set -e
 
-echo "Install thirdparty for MacOS"
-echo "CICD_RUNNER_THIRDPARTY_PATH: ${CICD_RUNNER_THIRDPARTY_PATH}"
-echo "CICD_RUNNER_THIRDSRC_PATH: ${CICD_RUNNER_THIRDSRC_PATH}"
+ROOT=$(git rev-parse --show-toplevel)
+cd "$ROOT"
 
-mkdir "${CICD_RUNNER_THIRDPARTY_PATH}"
-mkdir "${CICD_RUNNER_THIRDSRC_PATH}"
-pushd "${CICD_RUNNER_THIRDSRC_PATH}"
+echo "Install thirdparty for MacOS"
+
+# on local machine, one can tweak thirdparty path by passing extra argument
+THIRDPARTY_PATH=${1:-"$ROOT/thirdparty"}
+THIRDSRC_PATH="$ROOT/thirdsrc"
+
+echo "CICD_RUNNER_THIRDPARTY_PATH: ${THIRDPARTY_PATH}"
+echo "CICD_RUNNER_THIRDSRC_PATH: ${THIRDSRC_PATH}"
+
+mkdir -p "$THIRDPARTY_PATH"
+mkdir -p "$THIRDSRC_PATH"
+
+pushd "${THIRDSRC_PATH}"
 
 # download thirdparty-mac
-wget -nv --show-progress https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.3.1/thirdparty-2021-05-27-drawin-x86_64.tar.gz
-tar xzf thirdparty-2021-05-27-drawin-x86_64.tar.gz -C  "${CICD_RUNNER_THIRDPARTY_PATH}" --strip-components 1
+curl -SLO https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.3.1/thirdparty-2021-05-27-drawin-x86_64.tar.gz
+tar xzf thirdparty-2021-05-27-drawin-x86_64.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
 # download and install libzetasql
-wget -nv --show-progress -O libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta17/libzetasql-0.2.0-beta17-darwin-x86_64.tar.gz
-tar xzf libzetasql.tar.gz -C  "${CICD_RUNNER_THIRDPARTY_PATH}" --strip-components 1
-echo "list files under ${CICD_RUNNER_THIRDPARTY_PATH}"
+curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta17/libzetasql-0.2.0-beta17-darwin-x86_64.tar.gz
+tar xzf libzetasql.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
+echo "list files under ${THIRDPARTY_PATH}"
 
-if [ -f "bison_succ" ]; then
-  echo "bison exist"
-else
-  wget --no-check-certificate -O bison-3.4.tar.gz http://ftp.gnu.org/gnu/bison/bison-3.4.tar.gz
-  tar zxf bison-3.4.tar.gz
-  cd bison-3.4
-  ./configure --prefix="${CICD_RUNNER_THIRDPARTY_PATH}" && make install
-  cd -
-  touch bison_succ
-fi
+# TODO: use new mac thirdparty assert from https://github.com/jingchen2222/hybridsql-asserts/pull/7
+# v0.3.1 thirdparty assert have dylib for glog and gflags only
+rm -vf "$THIRDPARTY_PATH/lib/"libgflags*.dylib
+rm -vf "$THIRDPARTY_PATH/lib/"libglog*.dylib
 
-if [ -f "gflags_succ" ]; then
-  echo "gflags exist"
-else
-  wget --no-check-certificate -O gflags-2.2.2.tar.gz https://github.com/gflags/gflags/archive/refs/tags/v2.2.2.tar.gz
-  tar zxf gflags-2.2.2.tar.gz
-  cd gflags-2.2.2
-  mkdir -p b2
-  cd b2
-  cmake -DCMAKE_INSTALL_PREFIX="${CICD_RUNNER_THIRDPARTY_PATH}" -DCMAKE_CXX_FLAGS=-fPIC -DBUILD_SHARED_LIBS=ON -DBUILD_gflags_nothreads_LIB=ON ..
-  make install -j8
-  cd -
-  touch gflags_succ
-fi
+curl -SLo gflags-2.2.2.tar.gz https://github.com/gflags/gflags/archive/refs/tags/v2.2.2.tar.gz
+tar zxf gflags-2.2.2.tar.gz
 
-if [ -f "glog_succ" ]; then
-  echo "glog exist"
-else
-  wget --no-check-certificate -O glog-0.4.0.tar.gz https://github.com/google/glog/archive/refs/tags/v0.4.0.tar.gz
-  tar zxf glog-0.4.0.tar.gz
-  cd glog-0.4.0
-  mkdir -p b2
-  cd b2
-  cmake -DCMAKE_INSTALL_PREFIX="${CICD_RUNNER_THIRDPARTY_PATH}" -DCMAKE_CXX_FLAGS=-fPIC ..
-  make install -j8
-  cd -
-  touch glog_succ
-fi
+cmake -Hgflags-2.2.2 -Bb2 -DCMAKE_INSTALL_PREFIX="${THIRDPARTY_PATH}" -DCMAKE_CXX_FLAGS=-fPIC -DBUILD_STATIC_LIBS=ON
+cmake --build b2 --target install
+
+curl -SLo glog-0.4.0.tar.gz https://github.com/google/glog/archive/refs/tags/v0.4.0.tar.gz
+tar zxf glog-0.4.0.tar.gz
+pushd glog-0.4.0
+./autogen.sh && CXXFLAGS=-fPIC ./configure --prefix="$THIRDPARTY_PATH" --enable-shared=no
+make install
 popd
 
-pushd /usr/local/opt
-ln -sf ${CICD_RUNNER_THIRDPARTY_PATH} gflags
-ln -sf ${CICD_RUNNER_THIRDPARTY_PATH} glog
 popd
