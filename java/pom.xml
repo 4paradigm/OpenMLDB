@@ -7,7 +7,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.4paradigm.hybridse</groupId>
     <artifactId>hybridse-java</artifactId>
-    <version>0.1.4-SNAPSHOT</version>
+    <version>0.1.5-SNAPSHOT</version>
     <modules>
         <module>hybridse-sdk</module>
         <module>hybridse-native</module>
@@ -45,7 +45,7 @@
         <plugin.violationSeverity>error</plugin.violationSeverity>
         <spotless-maven-plugin.version>2.9.0</spotless-maven-plugin.version>
         <eclipse.jdt.version>4.13.0</eclipse.jdt.version>
-        <project.version.base>0.1.4</project.version.base>
+        <project.version.base>0.1.5</project.version.base>
         <project.version.suffix>-SNAPSHOT</project.version.suffix>
     </properties>
     <build>
