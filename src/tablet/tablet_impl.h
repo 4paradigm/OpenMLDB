@@ -195,9 +195,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void AddReplica(RpcController* controller, const ::openmldb::api::ReplicaRequest* request,
                     ::openmldb::api::AddReplicaResponse* response, Closure* done);
 
-    void SetConcurrency(RpcController* ctrl, const ::openmldb::api::SetConcurrencyRequest* request,
-                        ::openmldb::api::SetConcurrencyResponse* response, Closure* done);
-
     void DelReplica(RpcController* controller, const ::openmldb::api::ReplicaRequest* request,
                     ::openmldb::api::GeneralResponse* response, Closure* done);
 
