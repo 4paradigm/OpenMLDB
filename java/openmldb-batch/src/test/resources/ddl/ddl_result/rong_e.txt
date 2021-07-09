@@ -5,7 +5,7 @@ create table `batch100426_flatten_request`(
 `sample_date` timestamp,
 `previous_month_last_day` timestamp,
 index(key=(`cino`,`previous_month_last_day`), ts=`eventTime`, ttl=92160m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `batch100417_c01_cust_belong_info`(
 `ingestionTime` timestamp,
 `c01007_party_id` string,
@@ -37,7 +37,7 @@ create table `batch100417_c01_cust_belong_info`(
 `c01007_valid_cust_ind` string,
 `pt_dt` timestamp,
 index(key=(`c01007_party_id`,`pt_dt`), ts=`ingestionTime`, ttl=92160m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `batch100418_c01_indv_cust_basic_info`(
 `ingestionTime` timestamp,
 `c01006_party_id` string,
@@ -88,7 +88,7 @@ create table `batch100418_c01_indv_cust_basic_info`(
 `c01006_pre_apprv_cust_ind` string,
 `pt_dt` timestamp,
 index(key=(`c01006_party_id`,`pt_dt`), ttl=1, ttl_type=latest)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `batch100416_feedbackTable`(
 `reqId` string,
 `eventTime` timestamp,
@@ -99,7 +99,7 @@ create table `batch100416_feedbackTable`(
 `previous_month_last_day` timestamp,
 `label` int,
 index(key=(`reqId`), ttl=1, ttl_type=latest)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `batch100424_dcm_bcs_bthrspea_s`(
 `ingestionTime` timestamp,
 `cino` string,
@@ -209,7 +209,7 @@ create table `batch100424_dcm_bcs_bthrspea_s`(
 `tbmbflag` string,
 `pt_dt` timestamp,
 index(key=(`cino`,`pt_dt`), ts=`ingestionTime`, ttl=1, ttl_type=latest)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `batch100422_dcm_bcs_bthcrdth_h`(
 `ingestionTime` timestamp,
 `zoneno` string,
@@ -287,7 +287,7 @@ create table `batch100422_dcm_bcs_bthcrdth_h`(
 `onusexif` string,
 `pt_dt` timestamp,
 index(key=(`cino`,`pt_dt`), ts=`ingestionTime`, ttl=92160m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `batch100421_card_amort_pay_agt`(
 `ingestionTime` timestamp,
 `c03039_agt_num` string,
@@ -334,4 +334,4 @@ create table `batch100421_card_amort_pay_agt`(
 `c03039_crdt_belong_org_num` string,
 `pt_dt` timestamp,
 index(key=(`c03039_party_id`,`pt_dt`), ts=`ingestionTime`, ttl=92160m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;

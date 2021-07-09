@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "apiserver/interface_provider.h"
 #include "apiserver/json_helper.h"
@@ -48,6 +49,7 @@ class APIServerImpl : public APIServer {
     bool Init(::openmldb::sdk::ClusterSDK* cluster);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;
+    static std::string InnerTypeTransform(const std::string& s);
 
     void Refresh(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;

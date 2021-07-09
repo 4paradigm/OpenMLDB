@@ -4,7 +4,7 @@ create table `action`(
 `ingestionTime` timestamp,
 `actionValue` double,
 index(key=(`reqId`), ttl=1, ttl_type=latest)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
 create table `flattenRequest`(
 `reqId` string,
 `eventTime` timestamp,
@@ -2059,4 +2059,4 @@ create table `flattenRequest`(
 `train_condition_1` double,
 `train_condition_2` double,
 index(key=(`reqId`), ttl=1, ttl_type=latest)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
