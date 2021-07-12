@@ -3441,7 +3441,6 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
         printf("setexpire - enable or disable ttl\n");
         printf("showschema - show schema\n");
         printf("setttl - set ttl for partition\n");
-        printf("setlimit - set tablet max concurrency limit\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -3588,21 +3587,6 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
             printf("ex: setttl 1 0 absolute 10\n");
             printf("ex: setttl 2 0 latest 10\n");
             printf("ex: setttl 3 0 latest 10 ts1\n");
-        } else if (parts[1] == "setlimit") {
-            printf("desc: setlimit for tablet interface\n");
-            printf("usage: setlimit method limit\n");
-            printf(
-                "ex:setlimit Server 10, limit the server max concurrency to "
-                "10\n");
-            printf(
-                "ex:setlimit Put 10, limit the server put  max concurrency to "
-                "10\n");
-            printf(
-                "ex:setlimit Get 10, limit the server get  max concurrency to "
-                "10\n");
-            printf(
-                "ex:setlimit Scan 10, limit the server scan  max concurrency "
-                "to 10\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -3745,41 +3729,6 @@ void HandleClientLoadTable(const std::vector<std::string> parts, ::openmldb::cli
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "Bad LoadTable format" << std::endl;
-    }
-}
-
-void HandleClientSetLimit(const std::vector<std::string> parts, ::openmldb::client::TabletClient* client) {
-    if (parts.size() < 3) {
-        std::cout << "Bad set limit format" << std::endl;
-        return;
-    }
-    try {
-        std::string key = parts[1];
-        if (std::isupper(key[0])) {
-            std::string subname = key.substr(1);
-            for (char e : subname) {
-                if (std::isupper(e)) {
-                    std::cout << "Invalid args name which should be Put , Scan "
-                                 ", Get or Server"
-                              << std::endl;
-                    return;
-                }
-            }
-        } else {
-            std::cout << "Invalid args name which should be Put , Scan , Get "
-                         "or Server"
-                      << std::endl;
-            return;
-        }
-        int32_t limit = boost::lexical_cast<int32_t>(parts[2]);
-        bool ok = client->SetMaxConcurrency(key, limit);
-        if (ok) {
-            std::cout << "Set Limit ok" << std::endl;
-        } else {
-            std::cout << "Fail to set limit" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad set limit format" << std::endl;
     }
 }
 
@@ -4668,8 +4617,6 @@ void StartClient() {
             HandleClientDeleteIndex(parts, &client);
         } else if (parts[0] == "setttl") {
             HandleClientSetTTL(parts, &client);
-        } else if (parts[0] == "setlimit") {
-            HandleClientSetLimit(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

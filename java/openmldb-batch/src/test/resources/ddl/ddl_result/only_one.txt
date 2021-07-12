@@ -109,4 +109,4 @@ index(key=(`C_ACCT_CARD_NO`), ts=`D_TXN_TIME_std`, ttl=46080m, ttl_type=absolute
 index(key=(`N_BOUND_PHONE_NO`), ts=`D_TXN_TIME_std`, ttl=46080m, ttl_type=absolute),
 index(key=(`N_PHONE_NO`), ts=`D_TXN_TIME_std`, ttl=46080m, ttl_type=absolute),
 index(key=(`C_CUSTOMER_ID`), ts=`D_TXN_TIME_std`, ttl=46080m, ttl_type=absolute)
-) replicanum=1, partitionnum=1 ;
+) options ( replicanum=1, partitionnum=1 ) ;
