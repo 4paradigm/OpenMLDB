@@ -15,8 +15,8 @@
  */
 
 
-#ifndef FEDB_CONFIG_H
-#define FEDB_CONFIG_H
+#ifndef OPENMLDB_CONFIG_H
+#define OPENMLDB_CONFIG_H
 
 #cmakedefine TCMALLOC_ENABLE
 
