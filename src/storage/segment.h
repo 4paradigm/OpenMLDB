@@ -96,7 +96,7 @@ class KeyEntry {
     ~KeyEntry() {}
 
     // just return the count of datablock
-    uint64_t Release(::openmldb::base::TimeSerisePool pool) {
+    uint64_t Release(::openmldb::base::TimeSerisePool& pool) {
         uint64_t cnt = 0;
         TimeEntries::Iterator* it = entries.NewIterator();
         it->SeekToFirst();
