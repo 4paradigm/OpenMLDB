@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BASE_TIME_SERISE_POOL_H_
-#define SRC_BASE_TIME_SERISE_POOL_H_
+#ifndef SRC_BASE_TIME_Series_POOL_H_
+#define SRC_BASE_TIME_Series_POOL_H_
 
 #include <malloc.h>
 
@@ -70,9 +70,9 @@ class TimeBucket {
     } * head_;
 };
 
-class TimeSerisePool {
+class TimeSeriesPool {
  public:
-    explicit TimeSerisePool(uint32_t block_size) : block_size_(block_size) {}
+    explicit TimeSeriesPool(uint32_t block_size) : block_size_(block_size) {}
     void* Alloc(uint32_t size, uint64_t time) {
         auto key = ComputeTimeSlot(time);
         auto pair = pool_.find(key);
@@ -102,4 +102,4 @@ class TimeSerisePool {
 }  // namespace base
 }  // namespace openmldb
 
-#endif  // SRC_BASE_TIME_SERISE_POOL_H_
+#endif  // SRC_BASE_TIME_Series_POOL_H_

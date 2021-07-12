@@ -25,7 +25,7 @@
 
 #include "base/skiplist.h"
 #include "base/slice.h"
-#include "base/time_serise_pool.h"
+#include "base/time_series_pool.h"
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
 #include "storage/schema.h"
@@ -96,7 +96,7 @@ class KeyEntry {
     ~KeyEntry() {}
 
     // just return the count of datablock
-    uint64_t Release(::openmldb::base::TimeSerisePool& pool) {
+    uint64_t Release(::openmldb::base::TimeSeriesPool& pool) {
         uint64_t cnt = 0;
         TimeEntries::Iterator* it = entries.NewIterator();
         it->SeekToFirst();
@@ -259,7 +259,7 @@ class Segment {
     std::atomic<uint64_t> gc_version_;
     std::map<uint32_t, uint32_t> ts_idx_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
-    ::openmldb::base::TimeSerisePool pool_;
+    ::openmldb::base::TimeSeriesPool pool_;
     uint64_t ttl_offset_;
 };
 

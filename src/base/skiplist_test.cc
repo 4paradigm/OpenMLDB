@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "base/slice.h"
-#include "base/time_serise_pool.h"
+#include "base/time_series_pool.h"
 #include "gtest/gtest.h"
 
 namespace openmldb {
@@ -181,7 +181,7 @@ TEST_F(SkiplistTest, InsertAndIterator) {
 
 TEST_F(SkiplistTest, InsertAndIteratorWithPool) {
     Comparator cmp;
-    TimeSerisePool pool(1024);
+    TimeSeriesPool pool(1024);
     for (auto height : vec) {
         Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 1;
@@ -704,7 +704,7 @@ TEST_F(SkiplistTest, Duplicate) {
 }
 
 TEST_F(SkiplistTest, DuplicateWithPool) {
-    TimeSerisePool pool(1024);
+    TimeSeriesPool pool(1024);
     DescComparator cmp;
     Skiplist<uint32_t, uint32_t, DescComparator> sl(12, 4, cmp);
     uint32_t val = 1;

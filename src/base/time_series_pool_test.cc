@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "base/time_serise_pool.h"
+#include "base/time_series_pool.h"
 
 #include <vector>
 
@@ -23,14 +23,14 @@
 namespace openmldb {
 namespace base {
 
-class TimeSerisePoolTest : public ::testing::Test {
+class TimeSeriesPoolTest : public ::testing::Test {
  public:
-    TimeSerisePoolTest() {}
-    ~TimeSerisePoolTest() {}
+    TimeSeriesPoolTest() {}
+    ~TimeSeriesPoolTest() {}
 };
 
-TEST_F(TimeSerisePoolTest, FreeToEmpty) {
-    TimeSerisePool pool(1024);
+TEST_F(TimeSeriesPoolTest, FreeToEmpty) {
+    TimeSeriesPool pool(1024);
     std::vector<uint64_t> times;
     const int datasize = 1024 / 2;
     char *data = new char[datasize];

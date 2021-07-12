@@ -24,7 +24,7 @@
 #include "storage/record.h"
 
 DECLARE_int32(gc_safe_offset);
-DECLARE_uint32(time_serise_pool_block_size);
+DECLARE_uint32(time_series_pool_block_size);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(gc_deleted_pk_version_delta);
 
@@ -40,7 +40,7 @@ Segment::Segment()
       pk_cnt_(0),
       ts_cnt_(1),
       gc_version_(0),
-      pool_(FLAGS_time_serise_pool_block_size),
+      pool_(FLAGS_time_series_pool_block_size),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
@@ -56,7 +56,7 @@ Segment::Segment(uint8_t height)
       key_entry_max_height_(height),
       ts_cnt_(1),
       gc_version_(0),
-      pool_(FLAGS_time_serise_pool_block_size),
+      pool_(FLAGS_time_series_pool_block_size),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
@@ -71,7 +71,7 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
       key_entry_max_height_(height),
       ts_cnt_(ts_idx_vec.size()),
       gc_version_(0),
-      pool_(FLAGS_time_serise_pool_block_size),
+      pool_(FLAGS_time_series_pool_block_size),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);

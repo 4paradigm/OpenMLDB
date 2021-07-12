@@ -23,7 +23,7 @@
 #include <atomic>
 
 #include "base/random.h"
-#include "base/time_serise_pool.h"
+#include "base/time_series_pool.h"
 
 namespace openmldb {
 namespace base {
@@ -137,7 +137,7 @@ class Skiplist {
 
     // Insert need external synchronized
     // use iif skiplist is using a pool
-    uint8_t Insert(const K& key, V& value, uint64_t time, TimeSerisePool& pool) {  // NOLINT
+    uint8_t Insert(const K& key, V& value, uint64_t time, TimeSeriesPool& pool) {  // NOLINT
         uint8_t height = RandomHeight();
         Node<K, V>* pre[MaxHeight];
         FindLessOrEqual(key, pre);
@@ -321,7 +321,7 @@ class Skiplist {
 
     // Need external synchronized
     // use iif skiplist is using a pool
-    bool AddToFirst(const K& key, V& value, uint64_t time, TimeSerisePool& pool) {  // NOLINT
+    bool AddToFirst(const K& key, V& value, uint64_t time, TimeSeriesPool& pool) {  // NOLINT
         {
             Node<K, V>* node = head_->GetNext(0);
             if (node != NULL && compare_(key, node->GetKey()) > 0) {
@@ -419,7 +419,7 @@ class Skiplist {
     Iterator* NewIterator() { return new Iterator(this); }
 
  private:
-    Node<K, V>* NewNode(const K& key, V& value, uint8_t height, uint64_t time, TimeSerisePool& pool) {  // NOLINT
+    Node<K, V>* NewNode(const K& key, V& value, uint8_t height, uint64_t time, TimeSeriesPool& pool) {  // NOLINT
         auto arrmemvptr = pool.Alloc(sizeof(std::atomic<Node<K, V>*>) * height, time);
         auto arrmem = reinterpret_cast<std::atomic<Node<K, V>*>*>(arrmemvptr);
         auto nodemem = pool.Alloc(sizeof(Node<K, V>), time);
