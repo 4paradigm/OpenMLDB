@@ -23,6 +23,8 @@
 #include <mutex>  // NOLINT
 #include <vector>
 
+#include "boost/pool/pool.hpp"
+
 #include "base/skiplist.h"
 #include "base/slice.h"
 #include "base/time_series_pool.h"
@@ -260,6 +262,7 @@ class Segment {
     std::map<uint32_t, uint32_t> ts_idx_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
     ::openmldb::base::TimeSeriesPool pool_;
+    boost::pool<> boost_pool_;
     uint64_t ttl_offset_;
 };
 
