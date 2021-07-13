@@ -2,9 +2,9 @@
 --endpoint=127.0.0.1:6527
 --role=nameserver
 --zk_cluster=127.0.0.1:7181
---zk_root_path=/fedb_cluster
+--zk_root_path=/openmldb_cluster
 
---fedb_log_dir=./logs
+--openmldb_log_dir=./logs
 --log_file_count=24
 --log_file_size=1024
 --log_level=info

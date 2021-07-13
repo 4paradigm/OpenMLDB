@@ -130,7 +130,7 @@ class SQLSDKBatchRequestQueryTest : public SQLSDKQueryTest {
 void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                           std::shared_ptr<SQLRouter> router) {
     if (sql_case.db().empty()) {
-        sql_case.db_ = hybridse::sqlcase::SqlCase::GenRand("auto_db") + std::to_string((long)time(NULL));
+        sql_case.db_ = hybridse::sqlcase::SqlCase::GenRand("auto_db") + std::to_string((int64_t)time(NULL));
     }
     DLOG(INFO) << "Create DB " << sql_case.db_ << " BEGIN";
     hybridse::sdk::Status status;
@@ -152,7 +152,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
     // create and insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)),
+            sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((int64_t)time(NULL)),
                                     i);
         }
         // create table
@@ -195,17 +195,18 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     DLOG(INFO) << "Create Procedure BEGIN";
     hybridse::sdk::Status status;
     if (sql_case.inputs()[0].name_.empty()) {
-        sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)), 0);
+        sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((int64_t)time(NULL)), 0);
     }
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)));
+    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+            std::to_string((int64_t)time(NULL)));
     boost::trim(sql);
     LOG(INFO) << sql;
-    sql_case.sp_name_ = hybridse::sqlcase::SqlCase::GenRand("auto_sp") + std::to_string((long)time(NULL));
+    sql_case.sp_name_ = hybridse::sqlcase::SqlCase::GenRand("auto_sp") + std::to_string((int64_t)time(NULL));
     std::string create_sp;
     if (is_batch) {
         ASSERT_TRUE(
@@ -376,7 +377,8 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
     DLOG(INFO) << "format sql 1";
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)));
+    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+            std::to_string((int64_t)time(NULL)));
     if (tbEndpoints.size() > 0) {
         boost::replace_all(sql, "{tb_endpoint_0}", tbEndpoints.at(0));
     }
@@ -446,7 +448,8 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)));
+    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+            std::to_string((int64_t)time(NULL)));
     LOG(INFO) << sql;
     std::string lower_sql = sql;
     boost::to_lower(lower_sql);
@@ -595,7 +598,8 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((long)time(NULL)));
+    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+            std::to_string((int64_t)time(NULL)));
     LOG(INFO) << sql;
     std::string lower_sql = sql;
     boost::to_lower(lower_sql);

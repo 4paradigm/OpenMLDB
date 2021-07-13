@@ -19,4 +19,4 @@ COMPONENT=$1
 
 ulimit -c unlimited
 ulimit -n 655360
-./bin/fedb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true
+./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true

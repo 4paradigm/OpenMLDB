@@ -483,7 +483,7 @@ static inline void Decode(const std::string* str, std::vector<std::pair<uint64_t
 }
 
 static inline void DecodeFull(const std::string* str,
-                              std::map<std::string, std::vector<std::pair<uint64_t, std::string*>>>& value_map) {
+                         std::map<std::string, std::vector<std::pair<uint64_t, std::string*>>>& value_map) { // NOLINT
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     DEBUGLOG("total size %u %s", total_size, ::openmldb::base::DebugString(*str).c_str());
