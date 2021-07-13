@@ -136,7 +136,7 @@ class Skiplist {
     }
 
     // Insert need external synchronized
-    // use iif skiplist is using a pool
+    // use if skiplist is using a pool
     uint8_t Insert(const K& key, V& value, uint64_t time, TimeSeriesPool& pool) {  // NOLINT
         uint8_t height = RandomHeight();
         Node<K, V>* pre[MaxHeight];
@@ -296,7 +296,7 @@ class Skiplist {
     }
 
     // Need external synchronized
-    // called iif skiplist is using tcalloc
+    // called if skiplist is using tcalloc
     uint64_t Clear() {
         uint64_t cnt = 0;
         Node<K, V>* node = head_->GetNext(0);
@@ -320,7 +320,7 @@ class Skiplist {
     }
 
     // Need external synchronized
-    // use iif skiplist is using a pool
+    // use if skiplist is using a pool
     bool AddToFirst(const K& key, V& value, uint64_t time, TimeSeriesPool& pool) {  // NOLINT
         {
             Node<K, V>* node = head_->GetNext(0);
