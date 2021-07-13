@@ -24,7 +24,7 @@
 #include "brpc/server.h"
 
 namespace openmldb {
-namespace http {
+namespace apiserver {
 
 APIServerImpl::~APIServerImpl() = default;
 
@@ -54,6 +54,14 @@ bool APIServerImpl::Init(::openmldb::sdk::ClusterSDK* cluster) {
     RegisterGetDB();
     RegisterGetTable();
     return true;
+}
+
+void APIServerImpl::Refresh(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
+                            google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (sql_router_) {
+        sql_router_->RefreshCatalog();
+    }
 }
 
 void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
@@ -428,7 +436,19 @@ void APIServerImpl::RegisterGetTable() {
                           writer << err.Set("Invalid path");
                           return;
                       }
+                      std::vector<std::string> dbs;
+                      hybridse::sdk::Status status;
+                      auto ok = sql_router_->ShowDB(&dbs, &status);
+                      if (!ok) {
+                          writer << err.Set(status.msg);
+                          return;
+                      }
                       auto db = db_it->second;
+                      bool db_ok = std::find(dbs.begin(), dbs.end(), db) != dbs.end();
+                      if (!db_ok) {
+                          writer << err.Set("DB not found");
+                          return;
+                      }
                       auto tables = cluster_sdk_->GetTables(db);
                       writer.StartObject();
                       writer.Member("code") & 0;
@@ -451,23 +471,42 @@ void APIServerImpl::RegisterGetTable() {
                           writer << err.Set("Invalid path");
                           return;
                       }
+                      std::vector<std::string> dbs;
+                      hybridse::sdk::Status status;
+                      auto ok = sql_router_->ShowDB(&dbs, &status);
+                      if (!ok) {
+                          writer << err.Set(status.msg);
+                          return;
+                      }
                       auto db = db_it->second;
+                      bool db_ok = std::find(dbs.begin(), dbs.end(), db) != dbs.end();
+                      if (!db_ok) {
+                          writer << err.Set("DB not found");
+                          return;
+                      }
                       auto table = table_it->second;
                       auto table_info = cluster_sdk_->GetTableInfo(db, table);
-                      writer.StartObject();
-                      writer.Member("code") & 0;
                       // if there is no such db or such table, table_info will be nullptr
                       if (table_info == nullptr) {
-                          writer.Member("msg") & std::string("Table not found");
-                          writer.Member("table");
-                          writer.StartObject();
-                          writer.EndObject();
+                          writer << err.Set("Table not found");
+                          return;
                       } else {
+                          writer.StartObject();
+                          writer.Member("code") & 0;
                           writer.Member("msg") & std::string("ok");
                           writer.Member("table") & table_info;
+                          writer.EndObject();
                       }
-                      writer.EndObject();
                   });
+}
+
+std::string APIServerImpl::InnerTypeTransform(const std::string& s) {
+    std::string out = s;
+    if (out.size() > 0 && out.at(0) == 'k') {
+        out.erase(out.begin());
+    }
+    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return std::tolower(c); });
+    return out;
 }
 
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
@@ -695,7 +734,22 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
             auto& ttl = key.ttl();
             ar.StartObject();
             if (ttl.has_ttl_type()) {
-                ar.Member("ttl_type") & ::openmldb::type::TTLType_Name(ttl.ttl_type());
+                switch (ttl.ttl_type()) {
+                    case ::openmldb::type::TTLType::kAbsoluteTime:
+                        ar.Member("ttl_type") & std::string("absolute");
+                        break;
+                    case ::openmldb::type::TTLType::kLatestTime:
+                        ar.Member("ttl_type") & std::string("latest");
+                        break;
+                    case ::openmldb::type::TTLType::kAbsAndLat:
+                        ar.Member("ttl_type") & std::string("absandlat");
+                        break;
+                    case ::openmldb::type::TTLType::kAbsOrLat:
+                        ar.Member("ttl_type") & std::string("absorlat");
+                        break;
+                    default:
+                        break;
+                }
             }
             if (ttl.has_abs_ttl()) {
                 ar.Member("abs_ttl") & ttl.abs_ttl();
@@ -745,7 +799,8 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::Ta
         ar.Member("replica_num") & info->replica_num();
     }
     if (info->has_compress_type()) {
-        ar.Member("compress_type") & ::openmldb::type::CompressType_Name(info->compress_type());
+        ar.Member("compress_type") &
+            APIServerImpl::InnerTypeTransform(::openmldb::type::CompressType_Name(info->compress_type()));
     }
     if (info->has_key_entry_max_height()) {
         ar.Member("key_entry_max_height") & info->key_entry_max_height();
@@ -775,5 +830,5 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::Ta
     return ar.EndObject();
 }
 
-}  // namespace http
+}  // namespace apiserver
 }  // namespace openmldb

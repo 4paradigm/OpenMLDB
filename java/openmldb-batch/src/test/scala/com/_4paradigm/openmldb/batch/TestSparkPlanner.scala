@@ -95,7 +95,7 @@ class TestSparkPlanner extends SparkTestSuite {
        | WINDOW w AS (
        |    PARTITION BY id
        |    ORDER BY `time`
-       |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);"
+       |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);
      """.stripMargin
 
     val config = new OpenmldbBatchConfig

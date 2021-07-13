@@ -181,7 +181,6 @@ class TabletClient {
 
     bool UpdateTTL(uint32_t tid, uint32_t pid, const ::openmldb::type::TTLType& type, uint64_t abs_ttl,
                    uint64_t lat_ttl, const std::string& index_name);
-    bool SetMaxConcurrency(const std::string& key, int32_t max_concurrency);
 
     bool DeleteBinlog(uint32_t tid, uint32_t pid);
 
@@ -262,6 +261,8 @@ class TabletClient {
                                       uint64_t timeout_ms);
 
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
+
+    bool Refresh(uint32_t tid);
 
     bool SubQuery(const ::openmldb::api::QueryRequest& request,
                   openmldb::RpcCallback<openmldb::api::QueryResponse>* callback);

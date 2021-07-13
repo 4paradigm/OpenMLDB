@@ -1,4 +1,3 @@
-db: bank
 cases:
   - desc: bank test
     mode: rtidb-batch-unsupport

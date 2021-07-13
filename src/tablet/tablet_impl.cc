@@ -441,6 +441,12 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
     return 1;
 }
 
+void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::RefreshRequest* request,
+        ::openmldb::api::GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    RefreshSingleTable(request->tid());
+}
+
 void TabletImpl::Get(RpcController* controller, const ::openmldb::api::GetRequest* request,
                      ::openmldb::api::GetResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -3517,32 +3523,6 @@ void TabletImpl::DisConnectZK(RpcController* controller, const ::openmldb::api::
     return;
 }
 
-void TabletImpl::SetConcurrency(RpcController* ctrl, const ::openmldb::api::SetConcurrencyRequest* request,
-                                ::openmldb::api::SetConcurrencyResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    if (server_ == NULL) {
-        response->set_code(-1);
-        response->set_msg("server is NULL");
-        return;
-    }
-
-    if (request->max_concurrency() < 0) {
-        response->set_code(::openmldb::base::ReturnCode::kInvalidConcurrency);
-        response->set_msg("invalid concurrency " + request->max_concurrency());
-        return;
-    }
-
-    if (SERVER_CONCURRENCY_KEY.compare(request->key()) == 0) {
-        PDLOG(INFO, "update server max concurrency to %d", request->max_concurrency());
-        server_->ResetMaxConcurrency(request->max_concurrency());
-    } else {
-        PDLOG(INFO, "update server api %s max concurrency to %d", request->key().c_str(), request->max_concurrency());
-        server_->MaxConcurrencyOf(this, request->key()) = request->max_concurrency();
-    }
-    response->set_code(::openmldb::base::ReturnCode::kOk);
-    response->set_msg("ok");
-}
-
 void TabletImpl::SetTaskStatus(std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,
                                ::openmldb::api::TaskStatus status) {
     if (!task_ptr) {
@@ -3733,6 +3713,21 @@ void TabletImpl::CheckZkClient() {
         }
     }
     keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
+}
+
+bool TabletImpl::RefreshSingleTable(uint32_t tid) {
+    std::string value;
+    std::string node = zk_path_ + "/table/db_table_data/" + std::to_string(tid);
+    if (!zk_client_->GetNodeValue(node, value)) {
+        LOG(WARNING) << "fail to get table data. node: " << node;
+        return false;
+    }
+    ::openmldb::nameserver::TableInfo table_info;
+    if (!table_info.ParseFromString(value)) {
+        LOG(WARNING) << "fail to parse table proto. tid: " << tid << " value: " << value;
+        return false;
+    }
+    return catalog_->UpdateTableInfo(table_info);
 }
 
 void TabletImpl::RefreshTableInfo() {
