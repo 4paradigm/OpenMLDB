@@ -28,7 +28,7 @@ The OpenMLDB project originated from several enterprise AI data products(RTiDB, 
 
 * **High Availability**
 
-    OpenMLDB supports distributed massive-parallel processing and database storage. It supports failover to avoid the single point of failure.
+    OpenMLDB supports distributed massive-parallel processing and database storage. It supports automatic failover to avoid the single point of failure.
 
 * **ANSI SQL Support**
 
