@@ -76,9 +76,8 @@ int GetManifest(const std::string file, ::openmldb::api::Manifest* manifest) {
     return 0;
 }
 
-bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path, uint32_t& binlog_index,
-                  uint64_t offset,  // NOLINT
-                  bool append_end = true) {
+bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path, uint32_t& binlog_index,  // NOLINT
+                  uint64_t offset, bool append_end = true) {
     if (*wh != NULL) {
         if (append_end) {
             (*wh)->EndLog();
