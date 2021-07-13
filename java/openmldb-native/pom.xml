@@ -3,16 +3,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <parent>
-        <artifactId>fedb-sdk</artifactId>
-        <groupId>com.4paradigm.hybridsql</groupId>
-        <version>2.2.2</version>
+        <artifactId>openmldb-parent</artifactId>
+        <groupId>com.4paradigm.openmldb</groupId>
+        <version>${projectVersionFromProfile}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>fedb-jdbc</artifactId>
+    <artifactId>openmldb-native</artifactId>
     <packaging>jar</packaging>
-    <name>fedb-jdbc</name>
-    <version>${versionFromProfile}</version>
+    <name>openmldb-native</name>
+    <version>${projectVersionFromProfile}</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -49,20 +49,10 @@
             <version>1.7.21</version>
         </dependency>
         <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.7</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
             <version>2.8.1</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.4paradigm.hybridsql</groupId>
-            <artifactId>fedb-native</artifactId>
-            <version>${project.parent.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
@@ -70,14 +60,6 @@
             <version>2.13.2</version>
             <scope>test</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.testng/testng -->
-        <dependency>
-            <groupId>org.testng</groupId>
-            <artifactId>testng</artifactId>
-            <version>6.14.3</version>
-            <scope>test</scope>
-        </dependency>
-
     </dependencies>
 
     <build>
