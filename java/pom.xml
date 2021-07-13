@@ -88,7 +88,7 @@
         <profile>
             <id>run_shade</id>
             <build>
-                <plugins>
+                <!-- <plugins> -->
                     <!--                    <plugin>-->
                     <!--                        <groupId>org.apache.maven.plugins</groupId>-->
                     <!--                        <artifactId>maven-shade-plugin</artifactId>-->
@@ -207,7 +207,7 @@
                     <!--                            </execution>-->
                     <!--                        </executions>-->
                     <!--                    </plugin>-->
-                </plugins>
+                <!-- </plugins> -->
             </build>
         </profile>
     </profiles>
@@ -402,6 +402,29 @@
                 <artifactId>maven-site-plugin</artifactId>
                 <version>3.9.1</version>
             </plugin>
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.6.7</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>sonatype-nexus-staging</serverId>
+                    <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+            </plugin>
 
         </plugins>
 
@@ -516,31 +539,6 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.7</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>sonatype-nexus-staging</serverId>
-                    <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-            </plugin>
-        </plugins>
     </build>
 
     <reporting>
