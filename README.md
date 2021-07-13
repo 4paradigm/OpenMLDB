@@ -20,27 +20,27 @@ The OpenMLDB project originated from several enterprise AI data products(RTiDB, 
 
 * **Consistency**
 
-    OpenMLDB ensures the consistency for online and offline. Data scientists can use OpenMLDB for feature extration which will avoid crossing data. The online and offline computation are consistent because of using the same LLVM IR for complication. To encure the consistency of storage, OpenMLDB will synchronize data for offline and online. Users do not need to manage multiple data sources for online and offline, which may avoid the inconsistency from features or data.
+    OpenMLDB ensures the consistency for online and offline. Data scientists can use OpenMLDB for feature extration which will avoid crossing data. The online and offline computation are consistent because of the use of the same LLVM IR for complication. To ensure the consistency of storage, OpenMLDB will synchronize data for offline and online. Users do not need to manage multiple data sources for online and offline, which may avoid the inconsistency from features or data.
     
 * **High Performance**
 
-    OpenMLDB implements the native SQL compiler with C++ and LLVM. It contains tens of optimization passes for physical plans and expressions. It can generate optmized binary code for different hardware and optmize the memory layout for feature storage. The storage and cost for features can be 9x times lower than the similar databases. The performance of real-time execution can be 9x times better and the performance of batch processing can be 6x times better.
+    OpenMLDB implements the native SQL compiler with C++ and LLVM. It contains tens of optimization passes for physical plans and expressions. It can generate optimized binary code for different hardware and optimize the memory layout for feature storage. The storage and cost for features can be 9x lower than the similar databases. The performance of real-time execution can be 9x better and the performance of batch processing can be 6x better.
 
 * **High Availability**
 
-    OpenMLDB supports distributed massive-parallel processing and database storage. It supports automatical failover to avoid the single point of failure.
+    OpenMLDB supports distributed massive-parallel processing and database storage. It supports automatic failover to avoid the single point of failure.
 
 * **ANSI SQL Support**
 
-    OpenMLDB supports user-friendly SQL interface which is compatible with most ANSI SQL and extends syntax for AI secenarios. Take the time serial features as example, OpenMLDB not only supports the syntax of Over Window but also supports the new syntax for sliding window with instance table and real-time window aggregation with current row data.
+    OpenMLDB supports user-friendly SQL interface which is compatible with most ANSI SQL and extends syntax for AI scenarios. Take the time serial features as example, OpenMLDB not only supports the syntax of Over Window but also supports the new syntax for sliding window with instance table and real-time window aggregation with current row data.
 
 * **AI Optimization**
 
-    OpenMLDB is designed for optimizing AI scenarios. For storage we design the efficient data struct to storage features which gets better the utilization of space and performance than the similar products. For computation we provide the usual methods for table join and the UDF/UDAF for most machine learning scenarios.
+    OpenMLDB is designed for optimizing AI scenarios. For storage we design the efficient data structure to storage features which gets better the utilization of space and performance than the similar products. For computation, we provide the usual methods for table join and the UDF/UDAF for most machine learning scenarios.
 
 * **Easy To Use**
 
-    OpenMLDB is easy to use just like other standalone database. Not only data scientists but also application developers can use SQL to develop the machine learning applications which includes massive-parallel processing and real-time feature extraction. With this database it is easy for AI landing with lowest cost.
+    OpenMLDB is easy to use just like any other standalone database. Not only data scientists but also application developers can use SQL to develop the machine learning applications which includes massive-parallel processing and real-time feature extraction. With this database it is easy for AI landing with lowest cost.
 
 ## Performance
 
