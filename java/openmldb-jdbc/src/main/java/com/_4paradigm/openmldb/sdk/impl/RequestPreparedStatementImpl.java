@@ -16,8 +16,8 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.hybridsql.fedb.SQLRouter;
-import com._4paradigm.hybridsql.fedb.Status;
+import com._4paradigm.openmldb.SQLRouter;
+import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.jdbc.RequestPreparedStatement;
 
 import java.sql.SQLException;

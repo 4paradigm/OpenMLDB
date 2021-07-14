@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.hybridsql.fedb.*;
+import com._4paradigm.openmldb.*;
 
 import com._4paradigm.openmldb.jdbc.SQLInsertMetaData;
 import org.slf4j.Logger;

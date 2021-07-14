@@ -16,8 +16,8 @@
 
 package com._4paradigm.openmldb.jdbc;
 
-import com._4paradigm.hybridsql.fedb.SQLRouter;
-import com._4paradigm.hybridsql.fedb.Status;
+import com._4paradigm.openmldb.SQLRouter;
+import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.sdk.QueryFuture;
 
 import java.sql.SQLException;
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 public class CallablePreparedStatement extends RequestPreparedStatement {
     protected String spName;
-    private com._4paradigm.hybridsql.fedb.ProcedureInfo procedureInfo;
+    private com._4paradigm.openmldb.ProcedureInfo procedureInfo;
 
     public CallablePreparedStatement(String db, String spName, SQLRouter router) throws SQLException {
         if (db == null) throw new SQLException("db is null");

@@ -16,8 +16,8 @@
 
 package com._4paradigm.openmldb.jdbc;
 
-import com._4paradigm.hybridsql.fedb.DataType;
-import com._4paradigm.hybridsql.fedb.Schema;
+import com._4paradigm.openmldb.DataType;
+import com._4paradigm.openmldb.Schema;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;

@@ -16,10 +16,10 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.hybridsql.fedb.ColumnIndicesSet;
-import com._4paradigm.hybridsql.fedb.SQLRequestRowBatch;
-import com._4paradigm.hybridsql.fedb.SQLRouter;
-import com._4paradigm.hybridsql.fedb.Status;
+import com._4paradigm.openmldb.ColumnIndicesSet;
+import com._4paradigm.openmldb.SQLRequestRowBatch;
+import com._4paradigm.openmldb.SQLRouter;
+import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +51,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
     public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         Status status = new Status();
-        com._4paradigm.hybridsql.fedb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
+        com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
         if (resultSet == null || status.getCode() != 0) {
             String msg = status.getMsg();

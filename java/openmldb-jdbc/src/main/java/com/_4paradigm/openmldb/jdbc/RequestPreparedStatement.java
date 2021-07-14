@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.jdbc;
 
-import com._4paradigm.hybridsql.fedb.*;
+import com._4paradigm.openmldb.*;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -96,7 +96,7 @@ public class RequestPreparedStatement implements PreparedStatement {
         checkClosed();
         dataBuild();
         Status status = new Status();
-        com._4paradigm.hybridsql.fedb.ResultSet resultSet = router.ExecuteSQL(db, currentSql, currentRow, status);
+        com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQL(db, currentSql, currentRow, status);
         if (resultSet == null || status.getCode() != 0) {
             String msg = status.getMsg();
             status.delete();

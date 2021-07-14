@@ -16,8 +16,7 @@
 
 package com._4paradigm.openmldb.sdk;
 
-import com._4paradigm.hybridsql.fedb.DataType;
-import com._4paradigm.hybridsql.fedb.Schema;
+import com._4paradigm.openmldb.DataType;
 
 import java.sql.SQLException;
 import java.sql.Types;
@@ -49,7 +48,7 @@ public class Common {
         }
     }
 
-    public static Schema convertSchema(Schema schema) throws SQLException {
+    public static com._4paradigm.openmldb.sdk.Schema convertSchema(com._4paradigm.openmldb.Schema schema) throws SQLException {
         if (schema == null || schema.GetColumnCnt() == 0) {
             throw new SQLException("schema is null or empty");
         }
@@ -62,6 +61,6 @@ public class Common {
             column.setConstant(schema.IsConstant(i));
             columnList.add(column);
         }
-        return new Schema(columnList);
+        return new com._4paradigm.openmldb.sdk.Schema(columnList);
     }
 }

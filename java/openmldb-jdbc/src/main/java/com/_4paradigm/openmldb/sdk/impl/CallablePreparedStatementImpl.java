@@ -16,9 +16,8 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.hybridsql.fedb.QueryFuture;
-import com._4paradigm.hybridsql.fedb.SQLRouter;
-import com._4paradigm.hybridsql.fedb.Status;
+import com._4paradigm.openmldb.SQLRouter;
+import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.QueryFuture;
@@ -37,7 +36,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         checkClosed();
         dataBuild();
         Status status = new Status();
-        com._4paradigm.hybridsql.fedb.ResultSet resultSet = router.CallProcedure(db, spName, currentRow, status);
+        com._4paradigm.openmldb.ResultSet resultSet = router.CallProcedure(db, spName, currentRow, status);
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.getMsg();
             status.delete();
@@ -59,7 +58,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         checkClosed();
         dataBuild();
         Status status = new Status();
-        QueryFuture queryFuture = router.CallProcedure(db, spName, unit.toMillis(timeOut), currentRow, status);
+        com._4paradigm.openmldb.QueryFuture queryFuture = router.CallProcedure(db, spName, unit.toMillis(timeOut), currentRow, status);
         if (status.getCode() != 0 || queryFuture == null) {
             String msg = status.getMsg();
             status.delete();

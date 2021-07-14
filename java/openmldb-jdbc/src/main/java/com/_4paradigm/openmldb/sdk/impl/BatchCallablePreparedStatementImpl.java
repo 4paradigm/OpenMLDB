@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.hybridsql.fedb.*;
+import com._4paradigm.openmldb.*;
 
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
@@ -44,7 +44,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         Status status = new Status();
-        com._4paradigm.hybridsql.fedb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
+        com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.getMsg();
@@ -66,7 +66,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     public QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
         checkClosed();
         Status status = new Status();
-        QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
+        com._4paradigm.openmldb.QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
         if (status.getCode() != 0 || queryFuture == null) {
             String msg = status.getMsg();
             status.delete();

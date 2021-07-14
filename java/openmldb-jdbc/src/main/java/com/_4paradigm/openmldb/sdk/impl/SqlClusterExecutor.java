@@ -16,9 +16,9 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.hybridsql.fedb.*;
+import com._4paradigm.openmldb.*;
 import com._4paradigm.openmldb.common.LibraryLoader;
-import com._4paradigm.hybridsql.fedb.sdk.*;
+import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.*;
@@ -206,7 +206,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         status.delete();
         status = null;
         List<Column> columnList = new ArrayList<>();
-        com._4paradigm.hybridsql.fedb.Schema schema = explain.GetInputSchema();
+        com._4paradigm.openmldb.Schema schema = explain.GetInputSchema();
         for (int i = 0; i < schema.GetColumnCnt(); i++) {
             Column column = new Column();
             column.setColumnName(schema.GetColumnName(i));
@@ -221,9 +221,9 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public ProcedureInfo showProcedure(String dbName, String proName) throws SQLException {
+    public com._4paradigm.openmldb.sdk.ProcedureInfo showProcedure(String dbName, String proName) throws SQLException {
         Status status = new Status();
-        com._4paradigm.hybridsql.fedb.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, proName, status);
+        com._4paradigm.openmldb.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, proName, status);
         if (procedureInfo == null || status.getCode() != 0) {
             String msg = status.getMsg();
             status.delete();
@@ -235,7 +235,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
         status.delete();
         status = null;
-        ProcedureInfo spInfo = new ProcedureInfo();
+        com._4paradigm.openmldb.sdk.ProcedureInfo spInfo = new com._4paradigm.openmldb.sdk.ProcedureInfo();
         spInfo.setDbName(procedureInfo.GetDbName());
         spInfo.setProName(procedureInfo.GetSpName());
         spInfo.setSql(procedureInfo.GetSql());
