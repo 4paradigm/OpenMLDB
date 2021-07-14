@@ -184,7 +184,7 @@ PhysicalOpNode* GetTestSqlPlan(SqlCase& sql_case,  // NOLINT
         .physical_plan;
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ResolveNameTest, SchemasContextResolveTest,
     testing::ValuesIn(
         sqlcase::InitCases("/cases/schemas_context/resolve_column_name.yaml")));

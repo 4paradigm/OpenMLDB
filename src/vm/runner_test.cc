@@ -50,22 +50,22 @@ Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type);
 
 
 class RunnerTest : public ::testing::TestWithParam<SqlCase> {};
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlSimpleQueryParse, RunnerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlWindowQueryParse, RunnerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlWherePlan, RunnerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlGroupPlan, RunnerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlJoinPlan, RunnerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 

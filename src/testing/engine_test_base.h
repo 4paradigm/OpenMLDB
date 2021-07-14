@@ -67,7 +67,6 @@ namespace hybridse {
 namespace vm {
 using hybridse::base::Status;
 using hybridse::codec::Row;
-using hybridse::codec::RowView;
 using hybridse::common::kSqlError;
 using hybridse::sqlcase::SqlCase;
 enum EngineRunMode { RUNBATCH, RUNONE };

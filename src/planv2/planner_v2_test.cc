@@ -40,49 +40,49 @@ class PlannerV2Test : public ::testing::TestWithParam<SqlCase> {
     NodeManager *manager_;
 };
 
-INSTANTIATE_TEST_CASE_P(SqlSimpleQueryParse, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SqlSimpleQueryParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlRenameQueryParse, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SqlRenameQueryParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/rename_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlWindowQueryParse, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SqlWindowQueryParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlDistinctParse, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SqlDistinctParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/distinct_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlWhereParse, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SqlWhereParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlGroupParse, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SqlGroupParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlHavingParse, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SqlHavingParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlOrderParse, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SqlOrderParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/order_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlJoinParse, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SqlJoinParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
-// INSTANTIATE_TEST_CASE_P(SqlUnionParse, PlannerV2Test,
+// INSTANTIATE_TEST_SUITE_P(SqlUnionParse, PlannerV2Test,
 //                        testing::ValuesIn(sqlcase::InitCases("cases/plan/union_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlSubQueryParse, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SqlSubQueryParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/sub_query.yaml", FILTERS)));
 
-// INSTANTIATE_TEST_CASE_P(UdfParse, PlannerV2Test,
+// INSTANTIATE_TEST_SUITE_P(UdfParse, PlannerV2Test,
 //                        testing::ValuesIn(sqlcase::InitCases("cases/plan/udf.yaml", FILTERS)));
 //
-INSTANTIATE_TEST_CASE_P(SQLCreate, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SQLCreate, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SQLInsert, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SQLInsert, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SQLCmdParserTest, PlannerV2Test,
+INSTANTIATE_TEST_SUITE_P(SQLCmdParserTest, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
 TEST_P(PlannerV2Test, PlannerSucessTest) {
     std::string sqlstr = GetParam().sql_str();
@@ -1596,12 +1596,12 @@ class PlannerV2ErrorTest : public ::testing::TestWithParam<SqlCase> {
  protected:
     NodeManager *manager_;
 };
-INSTANTIATE_TEST_CASE_P(SqlErrorQuery, PlannerV2ErrorTest,
+INSTANTIATE_TEST_SUITE_P(SqlErrorQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_query.yaml", FILTERS)));
-INSTANTIATE_TEST_CASE_P(SqlUnsupporQuery, PlannerV2ErrorTest,
+INSTANTIATE_TEST_SUITE_P(SqlUnsupporQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_unsupport_sql.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlErrorRequestQuery, PlannerV2ErrorTest,
+INSTANTIATE_TEST_SUITE_P(SqlErrorRequestQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_request_query.yaml", FILTERS)));
 
 TEST_P(PlannerV2ErrorTest, RequestModePlanErrorTest) {

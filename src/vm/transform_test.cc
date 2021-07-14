@@ -68,41 +68,41 @@ class TransformTest : public ::testing::TestWithParam<SqlCase> {
     ~TransformTest() {}
     node::NodeManager manager;
 };
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlSimpleQueryParse, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlReanmeQueryParse, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/rename_query.yaml", FILTERS)));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlWindowQueryParse, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlWherePlan, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlGroupPlan, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlHavingPlan, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlOrderPlan, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/order_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlJoinPlan, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlDistinctPlan, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/distinct_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlSubQueryPlan, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/sub_query.yaml", FILTERS)));
 
@@ -539,7 +539,7 @@ class KeyGenTest : public ::testing::TestWithParam<std::string> {
     ~KeyGenTest() {}
     node::NodeManager nm;
 };
-INSTANTIATE_TEST_CASE_P(KeyGen, KeyGenTest,
+INSTANTIATE_TEST_SUITE_P(KeyGen, KeyGenTest,
                         testing::Values("select col1 from t1;",
                                         "select col1, col2 from t1;"));
 
@@ -594,7 +594,7 @@ class FilterGenTest : public ::testing::TestWithParam<std::string> {
     ~FilterGenTest() {}
     node::NodeManager nm;
 };
-INSTANTIATE_TEST_CASE_P(FilterGen, FilterGenTest,
+INSTANTIATE_TEST_SUITE_P(FilterGen, FilterGenTest,
                         testing::Values("select t1.col1=t2.col1 from t1,t2;",
                                         "select t1.col1!=t2.col2 from t1,t2;",
                                         "select t1.col1>t2.col2 from t1,t2;",
@@ -651,7 +651,7 @@ class TransformPassOptimizedTest
     ~TransformPassOptimizedTest() {}
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     GroupOptimized, TransformPassOptimizedTest,
     testing::Values(
         std::make_pair(
@@ -681,7 +681,7 @@ INSTANTIATE_TEST_CASE_P(
             "      DATA_PROVIDER(type=Partition, table=tc, "
             "index=index12_tc)")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SortOptimized, TransformPassOptimizedTest,
     testing::Values(
         std::make_pair(
@@ -724,7 +724,7 @@ INSTANTIATE_TEST_CASE_P(
                        "-3, 0))\n"
                        "    DATA_PROVIDER(table=t1)")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     JoinFilterOptimized, TransformPassOptimizedTest,
     testing::Values(
         // 0
@@ -864,7 +864,7 @@ INSTANTIATE_TEST_CASE_P(
             "        DATA_PROVIDER(table=t2)\n"
             "      DATA_PROVIDER(type=Partition, table=t3, index=index2_t3)")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     WindowUnionOptimized, TransformPassOptimizedTest,
     testing::Values(
         // 0
@@ -896,7 +896,7 @@ INSTANTIATE_TEST_CASE_P(
             "        DATA_PROVIDER(type=Partition, table=t3, index=index2_t3)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SimpleProjectOptimized, TransformPassOptimizedTest,
     testing::Values(
         // SIMPLE SELECT COLUMNS
@@ -1045,7 +1045,7 @@ class SimpleCataLogTransformPassOptimizedTest
 };
 
 // LeftJoinPass dosen't work in simple catalog
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     JoinFilterOptimized, SimpleCataLogTransformPassOptimizedTest,
     testing::Values(
         // 0

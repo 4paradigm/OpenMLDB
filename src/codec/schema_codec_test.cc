@@ -170,7 +170,7 @@ TEST_P(SchemaCodecTest, test_normal) {
     CompareSchema(pair.first, schema);
 }
 
-INSTANTIATE_TEST_CASE_P(SchemaCodecTestPrefix, SchemaCodecTest,
+INSTANTIATE_TEST_SUITE_P(SchemaCodecTestPrefix, SchemaCodecTest,
                         testing::ValuesIn(GenTestInput()));
 
 }  // namespace codec

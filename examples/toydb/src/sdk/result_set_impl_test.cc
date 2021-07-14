@@ -242,7 +242,7 @@ TEST_P(ResultSetImplTest, test_normal) {
     }
     delete args;
 }
-INSTANTIATE_TEST_CASE_P(ResultSetImplTestPrefix, ResultSetImplTest,
+INSTANTIATE_TEST_SUITE_P(ResultSetImplTestPrefix, ResultSetImplTest,
                         testing::ValuesIn(GetTestCase()));
 
 }  // namespace sdk

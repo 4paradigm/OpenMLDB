@@ -23,7 +23,6 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 namespace hybridse {
 namespace vm {
-using hybridse::sqlcase::CaseDataMock;
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     EngineOptions options;

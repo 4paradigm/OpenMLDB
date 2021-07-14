@@ -30,7 +30,7 @@ class LogicalGraphTest : public ::testing::TestWithParam<std::pair<std::string, 
     ~LogicalGraphTest() {}
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlSubQueryTransform, LogicalGraphTest,
     testing::Values(std::make_pair("SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from "
                                    "t1) limit 10;",

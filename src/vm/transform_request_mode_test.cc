@@ -94,32 +94,32 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     LOG(INFO) << "schema:\n" << ss.str() << std::endl;
     ASSERT_EQ(oss.str(), exp);
 }
-INSTANTIATE_TEST_CASE_P(SqlSimpleQueryParse, TransformRequestModeTest,
+INSTANTIATE_TEST_SUITE_P(SqlSimpleQueryParse, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
-INSTANTIATE_TEST_CASE_P(SqlWindowQueryParse, TransformRequestModeTest,
+INSTANTIATE_TEST_SUITE_P(SqlWindowQueryParse, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
-// INSTANTIATE_TEST_CASE_P(
+// INSTANTIATE_TEST_SUITE_P(
 //    SqlWherePlan, TransformRequestModeTest,
 //    testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 
-// INSTANTIATE_TEST_CASE_P(
+// INSTANTIATE_TEST_SUITE_P(
 //   SqlGroupPlan, TransformRequestModeTest,
 //    testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlHavingPlan, TransformRequestModeTest,
+INSTANTIATE_TEST_SUITE_P(SqlHavingPlan, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlOrderPlan, TransformRequestModeTest,
+INSTANTIATE_TEST_SUITE_P(SqlOrderPlan, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/order_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlJoinPlan, TransformRequestModeTest,
+INSTANTIATE_TEST_SUITE_P(SqlJoinPlan, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlDistinctPlan, TransformRequestModeTest,
+INSTANTIATE_TEST_SUITE_P(SqlDistinctPlan, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/distinct_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(SqlSubQueryPlan, TransformRequestModeTest,
+INSTANTIATE_TEST_SUITE_P(SqlSubQueryPlan, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/sub_query.yaml", FILTERS)));
 
 void CheckTransformPhysicalPlan(const SqlCase& sql_case, bool is_cluster_optimized, node::NodeManager* nm) {
@@ -214,7 +214,7 @@ class TransformRequestModePassOptimizedTest : public ::testing::TestWithParam<st
     ~TransformRequestModePassOptimizedTest() {}
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SortOptimized, TransformRequestModePassOptimizedTest,
     testing::Values(std::make_pair("SELECT "
                                    "col1, "
@@ -255,7 +255,7 @@ INSTANTIATE_TEST_CASE_P(
                                    "range=(col5, -3, 0), index_keys=)\n"
                                    "      DATA_PROVIDER(request=t1)\n"
                                    "      DATA_PROVIDER(table=t1)")));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     GroupOptimized, TransformRequestModePassOptimizedTest,
     testing::Values(std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col1;",
                                    "PROJECT(type=Aggregation)\n"
@@ -281,7 +281,7 @@ INSTANTIATE_TEST_CASE_P(
                                    "    DATA_PROVIDER(request=t1)\n"
                                    "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     JoinFilterOptimized, TransformRequestModePassOptimizedTest,
     testing::Values(std::make_pair("SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
                                    "t2 order by t2.col5 on "
@@ -357,7 +357,7 @@ INSTANTIATE_TEST_CASE_P(
                                    "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
                                    "      DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)")));
 
-INSTANTIATE_TEST_CASE_P(RequestWindowUnionOptimized, TransformRequestModePassOptimizedTest,
+INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOptimizedTest,
                         testing::Values(
                             // 0
                             std::make_pair("SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"

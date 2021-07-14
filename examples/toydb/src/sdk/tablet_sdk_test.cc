@@ -85,7 +85,7 @@ class TabletSdkTest : public ::testing::TestWithParam<EngineRunMode> {
     dbms::DBMSServerImpl* dbms_;
 };
 
-INSTANTIATE_TEST_CASE_P(TabletRUNAndBatchMode, TabletSdkTest,
+INSTANTIATE_TEST_SUITE_P(TabletRUNAndBatchMode, TabletSdkTest,
                         testing::Values(RUNBATCH));
 
 TEST_P(TabletSdkTest, test_normal) {

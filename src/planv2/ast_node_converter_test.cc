@@ -953,11 +953,11 @@ TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
 }
 const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport", "zetasql-unsupport"});
 
-INSTANTIATE_TEST_CASE_P(ASTCreateStatementTest, ASTNodeConverterTest,
+INSTANTIATE_TEST_SUITE_P(ASTCreateStatementTest, ASTNodeConverterTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
-INSTANTIATE_TEST_CASE_P(ASTInsertStatementTest, ASTNodeConverterTest,
+INSTANTIATE_TEST_SUITE_P(ASTInsertStatementTest, ASTNodeConverterTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml", FILTERS)));
-INSTANTIATE_TEST_CASE_P(ASTCmdStatementTest, ASTNodeConverterTest,
+INSTANTIATE_TEST_SUITE_P(ASTCmdStatementTest, ASTNodeConverterTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
 
 }  // namespace plan

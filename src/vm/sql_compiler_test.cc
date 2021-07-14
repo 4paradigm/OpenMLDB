@@ -50,22 +50,22 @@ const std::vector<std::string> FILTERS({"physical-plan-unsupport",  "zetasql-uns
                                         "plan-unsupport", "parser-unsupport"});
 
 class SqlCompilerTest : public ::testing::TestWithParam<SqlCase> {};
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlSimpleQueryParse, SqlCompilerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlWindowQueryParse, SqlCompilerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlWherePlan, SqlCompilerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlGroupPlan, SqlCompilerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlJoinPlan, SqlCompilerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
