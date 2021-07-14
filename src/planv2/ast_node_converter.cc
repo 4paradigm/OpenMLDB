@@ -580,6 +580,13 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = create_index_node;
             break;
         }
+        case zetasql::AST_USE_STATEMENT: {
+            const auto use_stmt = statement->GetAsOrNull<zetasql::ASTUseStatement>();
+            CHECK_TRUE(nullptr != use_stmt, common::kSqlError, "not an ASTUseStatement");
+            const std::string db_name = use_stmt->db_name()->GetAsString();
+            *output = node_manager->MakeCmdNode(node::CmdType::kCmdUseDatabase, db_name);
+            break;
+        }
         default: {
             FAIL_STATUS(common::kSqlError, "Un-support statement type: ", statement->GetNodeKindString());
         }

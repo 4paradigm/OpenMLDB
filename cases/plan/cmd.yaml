@@ -124,3 +124,12 @@ cases:
         +-node[CMD]
           +-cmd_type: drop index
           +-args: [t1, index1]
+  - id: 16
+    desc: USE DATABASE
+    sql: USE db1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: use database
+          +-args: [db1]
+

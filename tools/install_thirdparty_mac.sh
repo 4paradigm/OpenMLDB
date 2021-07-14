@@ -35,7 +35,7 @@ pushd "${THIRDSRC_PATH}"
 curl -SLO https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.3.1/thirdparty-2021-05-27-drawin-x86_64.tar.gz
 tar xzf thirdparty-2021-05-27-drawin-x86_64.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
 # download and install libzetasql
-curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0-beta17/libzetasql-0.2.0-beta17-darwin-x86_64.tar.gz
+curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-darwin-x86_64.tar.gz
 tar xzf libzetasql.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
 echo "list files under ${THIRDPARTY_PATH}"
 
