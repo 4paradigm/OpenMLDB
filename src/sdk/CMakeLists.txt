@@ -210,11 +210,11 @@ if(SQL_JAVASDK_ENABLE)
     message(STATUS "Found JNI: ${JNI_FOUND}")
     # Find maven
     find_program(MAVEN_EXECUTABLE mvn)
-    set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -package com._4paradigm.hybridsql.fedb)
+    set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -package com._4paradigm.openmldb)
     swig_add_library(sql_jsdk
             TYPE SHARED
             LANGUAGE java
-            OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/openmldb-native/src/main/java/com/_4paradigm/hybridsql/fedb/
+            OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/openmldb-native/src/main/java/com/_4paradigm/openmldb/
             SOURCES sql_router_sdk.i)
     target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
     target_compile_options(sql_jsdk PRIVATE -w)
