@@ -17,12 +17,12 @@
 #ifndef SRC_BASE_GLOG_WAPPER_H_
 #define SRC_BASE_GLOG_WAPPER_H_
 
-#include <boost/format.hpp>
 #include <cstdarg>
 #include <iostream>
 #include <string>
 
 #include "glog/logging.h"
+#include <boost/format.hpp>
 
 using google::ERROR;
 using google::FATAL;

@@ -72,14 +72,15 @@ DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
-DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client | apiserver", "Set the fedb role for start");
+DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client | apiserver",
+        "Set the openmldb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
-DECLARE_string(fedb_log_dir);
+DECLARE_string(openmldb_log_dir);
 DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
 DEFINE_int32(log_file_count, 24, "Config the log count");
-DEFINE_string(log_level, "debug", "Set the fedb log level, eg: debug or info");
+DEFINE_string(log_level, "debug", "Set the log level, eg: debug or info");
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(skiplist_max_height);
@@ -90,9 +91,10 @@ DECLARE_bool(version);
 DECLARE_bool(use_name);
 DECLARE_string(data_dir);
 
-const std::string FEDB_VERSION = std::to_string(FEDB_VERSION_MAJOR) + "." +  // NOLINT
-                                 std::to_string(FEDB_VERSION_MINOR) + "." + std::to_string(FEDB_VERSION_BUG) + "." +
-                                 FEDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
+const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
+                                 std::to_string(OPENMLDB_VERSION_MINOR) + "." +
+                                 std::to_string(OPENMLDB_VERSION_BUG) + "." +
+                                 OPENMLDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -108,9 +110,9 @@ void SetupLog() {
     } else {
         ::openmldb::base::SetLogLevel(INFO);
     }
-    if (!FLAGS_fedb_log_dir.empty()) {
-        ::openmldb::base::Mkdir(FLAGS_fedb_log_dir);
-        std::string file = FLAGS_fedb_log_dir + "/" + FLAGS_role;
+    if (!FLAGS_openmldb_log_dir.empty()) {
+        ::openmldb::base::Mkdir(FLAGS_openmldb_log_dir);
+        std::string file = FLAGS_openmldb_log_dir + "/" + FLAGS_role;
         openmldb::base::SetLogFile(file);
     }
 }
@@ -171,8 +173,8 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start nameserver on endpoint %s with version %s", real_endpoint.c_str(), FEDB_VERSION.c_str());
-    server.set_version(FEDB_VERSION.c_str());
+    PDLOG(INFO, "start nameserver on endpoint %s with version %s", real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
+    server.set_version(OPENMLDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 
@@ -232,7 +234,7 @@ void StartTablet() {
     if (THPIsEnabled()) {
         PDLOG(WARNING,
               "THP is enabled in your kernel. This will create latency and "
-              "memory usage issues with FEDB."
+              "memory usage issues with OPENMLDB."
               "To fix this issue run the command 'echo never > "
               "/sys/kernel/mm/transparent_hugepage/enabled' and "
               "'echo never > /sys/kernel/mm/transparent_hugepage/defrag' as "
@@ -241,7 +243,7 @@ void StartTablet() {
     if (SwapIsEnabled()) {
         PDLOG(WARNING,
               "Swap is enabled in your kernel. This will create latency and "
-              "memory usage issues with FEDB."
+              "memory usage issues with OPENMLDB."
               "To fix this issue run the command 'swapoff -a' as root");
     }
     SetupLog();
@@ -273,15 +275,16 @@ void StartTablet() {
         exit(1);
     }
 #ifdef PZFPGA_ENABLE
-    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga", real_endpoint.c_str(), FEDB_VERSION.c_str());
+    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga",
+            real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
 #else
-    PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), FEDB_VERSION.c_str());
+    PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
 #endif
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
-    server.set_version(FEDB_VERSION.c_str());
+    server.set_version(OPENMLDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 #endif
@@ -2737,7 +2740,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
             printf("desc: add remote replica cluster\n");
             printf("usage: addrepcluster zk_endpoints zk_path cluster_alias\n");
             printf(
-                "ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /fedb_cluster "
+                "ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /openmldb_cluster "
                 "prod_dc01\n");
         } else if (parts[1] == "showrepcluster") {
             printf("desc: show remote replica cluster\n");
@@ -4525,7 +4528,7 @@ void StartClient() {
         return;
     }
     if (FLAGS_interactive) {
-        std::cout << "Welcome to fedb with version " << FEDB_VERSION << std::endl;
+        std::cout << "Welcome to openmldb with version " << OPENMLDB_VERSION << std::endl;
     }
     ::openmldb::client::TabletClient client(FLAGS_endpoint, "");
     client.Init();
@@ -4635,7 +4638,7 @@ void StartNsClient() {
     std::string endpoint;
     std::string real_endpoint;
     if (FLAGS_interactive) {
-        std::cout << "Welcome to fedb with version " << FEDB_VERSION << std::endl;
+        std::cout << "Welcome to openmldb with version " << OPENMLDB_VERSION << std::endl;
     }
     std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
@@ -4878,13 +4881,13 @@ void StartAPIServer() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start apiserver on endpoint %s with version %s", real_endpoint.c_str(), FEDB_VERSION.c_str());
-    server.set_version(FEDB_VERSION.c_str());
+    PDLOG(INFO, "start apiserver on endpoint %s with version %s", real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
+    server.set_version(OPENMLDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 
 int main(int argc, char* argv[]) {
-    ::google::SetVersionString(FEDB_VERSION.c_str());
+    ::google::SetVersionString(OPENMLDB_VERSION.c_str());
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "ns_client") {
         StartNsClient();

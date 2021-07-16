@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+package com._4paradigm.openmldb.sdk;
 
-#ifndef OPENMLDB_CONFIG_H
-#define OPENMLDB_CONFIG_H
-
-#cmakedefine TCMALLOC_ENABLE
-
-#endif /* !CONFIG_H */
+public class SqlException extends Exception {
+    public SqlException(String message) {
+        super(message);
+    }
+}

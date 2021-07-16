@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
+package com._4paradigm.openmldb.jdbc;
 
-#ifndef OPENMLDB_CONFIG_H
-#define OPENMLDB_CONFIG_H
+public class TestConfig {
+    public static String ZK_CLUSTER="127.0.0.1:6181";
+    public static String ZK_PATH="/onebox";
 
-#cmakedefine TCMALLOC_ENABLE
 
-#endif /* !CONFIG_H */
+}

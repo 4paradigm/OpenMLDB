@@ -17,7 +17,6 @@
 #ifndef SRC_CODEC_SCHEMA_CODEC_H_
 #define SRC_CODEC_SCHEMA_CODEC_H_
 
-#include <boost/algorithm/string.hpp>
 #include <cstring>
 #include <iostream>
 #include <map>
@@ -32,6 +31,7 @@
 #include "codec/fe_row_codec.h"
 #include "codec/field_codec.h"
 #include "proto/name_server.pb.h"
+#include <boost/algorithm/string.hpp>
 
 namespace openmldb {
 namespace codec {

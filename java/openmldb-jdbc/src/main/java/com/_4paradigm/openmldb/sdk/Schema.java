@@ -14,10 +14,24 @@
  * limitations under the License.
  */
 
+package com._4paradigm.openmldb.sdk;
 
-#ifndef OPENMLDB_CONFIG_H
-#define OPENMLDB_CONFIG_H
+import java.util.ArrayList;
+import java.util.List;
 
-#cmakedefine TCMALLOC_ENABLE
+public class Schema {
+    private List<Column> columnList = new ArrayList<>();
 
-#endif /* !CONFIG_H */
+    public Schema(List<Column> columnList) {
+        this.columnList = columnList;
+    }
+
+    public List<Column> getColumnList() {
+        return columnList;
+    }
+
+    public void setColumnList(List<Column> columnList) {
+        this.columnList = columnList;
+    }
+}
+

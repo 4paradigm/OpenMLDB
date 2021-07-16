@@ -6,7 +6,7 @@
 
 # if tablet run as cluster mode zk_cluster and zk_root_path should be set
 #--zk_cluster=127.0.0.1:7181
-#--zk_root_path=/fedb_cluster
+#--zk_root_path=/openmldb_cluster
 
 # thread_pool_size建议和cpu核数一致
 --thread_pool_size=24
@@ -16,7 +16,7 @@
 #--zk_keep_alive_check_interval=15000
 
 # log conf
---fedb_log_dir=./logs
+--openmldb_log_dir=./logs
 --log_file_count=24
 --log_file_size=1024
 --log_level=info

@@ -248,22 +248,22 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_part
     LOG(INFO) << "Finish sql_sdk_distribute_batch_request_single_partition_test: ID: " << sql_case.id()
               << ", DESC: " << sql_case.desc();
 }
-//
-//TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
-//    auto sql_case = GetParam();
-//    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-//    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-//        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-//        boost::contains(sql_case.mode(), "request-unsupport") ||
-//        boost::contains(sql_case.mode(), "cluster-unsupport")) {
-//        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
-//        return;
-//    }
-//    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router with multi partitions";
-//    DistributeRunRequestModeSDK(sql_case, router_, 1);
-//    LOG(INFO) << "Finish sql_sdk_distribute_request_single_partition_test: ID: " << sql_case.id()
-//              << ", DESC: " << sql_case.desc();
-//}
+
+/* TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
+    auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router with multi partitions";
+    DistributeRunRequestModeSDK(sql_case, router_, 1);
+    LOG(INFO) << "Finish sql_sdk_distribute_request_single_partition_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
+} */
 
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_test) {
     auto sql_case = GetParam();
