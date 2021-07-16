@@ -40,7 +40,7 @@ TEST_F(LambdafyProjectsTest, Test) {
         "    sum(col_0), "
         "    count_where(col_1, col_2 > 2), "
         "    count(col_0) + log(sum(col_1 + 1 + abs(max(col_2)))) + 1,"
-        "    avg(col_0 - lead(col_0, 3)) "
+        "    avg(col_0 - lag(col_0, 3)) "
         "from t1;";
     node::PlanNodeList trees;
     ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(udf1, trees, &nm, status)) << status;
