@@ -58,7 +58,7 @@ const std::string LOGO =  // NOLINT
 
 const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
                             std::to_string(OPENMLDB_VERSION_MINOR) + "." + std::to_string(OPENMLDB_VERSION_BUG) + "." +
-                            OPENMLDB_COMMIT_ID + "." + HYBRIDSE_COMMIT_ID;
+                            OPENMLDB_COMMIT_ID;
 
 std::string db = "";  // NOLINT
 ::openmldb::sdk::ClusterSDK *cs = NULL;

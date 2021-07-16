@@ -29,7 +29,6 @@ set(OPENMLDB_VERSION_MAJOR 0)
 set(OPENMLDB_VERSION_MINOR 1)
 set(OPENMLDB_VERSION_BUG 5)
 set(OPENMLDB_COMMIT_ID 0)
-set(HYBRIDSE_COMMIT_ID 0)
 
 function(get_commitid CODE_DIR COMMIT_ID)
     find_package(Git REQUIRED)
@@ -45,8 +44,6 @@ function(get_commitid CODE_DIR COMMIT_ID)
 endfunction()
 
 get_commitid(${PROJECT_SOURCE_DIR} OPENMLDB_COMMIT_ID)
-get_commitid(${PROJECT_SOURCE_DIR}/hybridse HYBRIDSE_COMMIT_ID)
-message(STATUS "COMMIT_ID : ${OPENMLDB_COMMIT_ID}.${HYBRIDSE_COMMIT_ID}")
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"
