@@ -5,14 +5,14 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.1.5-pre-5</version>
+        <version>0.2.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>openmldb-jdbc</artifactId>
     <packaging>jar</packaging>
     <name>openmldb-jdbc</name>
-    <version>0.1.5-pre-5</version>
+    <version>0.2.0</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-native</artifactId>
-            <version>0.1.5-pre-5</version>
+            <version>0.2.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
