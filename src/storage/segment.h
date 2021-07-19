@@ -23,11 +23,10 @@
 #include <mutex>  // NOLINT
 #include <vector>
 
-#include "boost/pool/pool.hpp"
-
 #include "base/skiplist.h"
 #include "base/slice.h"
 #include "base/time_series_pool.h"
+#include "boost/pool/pool.hpp"
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
 #include "storage/schema.h"

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BASE_TIME_Series_POOL_H_
-#define SRC_BASE_TIME_Series_POOL_H_
+#ifndef SRC_BASE_TIME_SERIES_POOL_H_
+#define SRC_BASE_TIME_SERIES_POOL_H_
 
 #include <malloc.h>
 
@@ -102,4 +102,4 @@ class TimeSeriesPool {
 }  // namespace base
 }  // namespace openmldb
 
-#endif  // SRC_BASE_TIME_Series_POOL_H_
+#endif  // SRC_BASE_TIME_SERIES_POOL_H_

@@ -183,7 +183,7 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
         memcpy(pk, key.data(), key.size());
         // need to delete memory when free node
         Slice skey(pk, key.size());
-        entry = new (boost_pool_.malloc())KeyEntry(key_entry_max_height_);
+        entry = new (boost_pool_.malloc()) KeyEntry(key_entry_max_height_);
         // Key entry do not use pool
         uint8_t height = entries_->Insert(skey, entry);
         byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
@@ -232,7 +232,7 @@ void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock*
                 Slice skey(pk, key.size());
                 KeyEntry** entry_arr_tmp = new KeyEntry*[ts_cnt_];
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    entry_arr_tmp[i] = new (boost_pool_.malloc())KeyEntry(key_entry_max_height_);
+                    entry_arr_tmp[i] = new (boost_pool_.malloc()) KeyEntry(key_entry_max_height_);
                 }
                 entry_arr = (void*)entry_arr_tmp;  // NOLINT
                 // key entry do not use pool
