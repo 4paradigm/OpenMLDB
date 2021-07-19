@@ -19,22 +19,27 @@
 
 WORKDIR=`pwd`
 set -e
-package=openmldb-$1-linux
+VERSION=${1:-snapshot}
+OS=${2:-linux}
+package=openmldb-${VERSION}-${OS}
+echo "package name: ${package}"
+
 rm -rf ${package} || :
 mkdir ${package} || :
 cp -r release/conf ${package}/conf
 cp -r release/bin ${package}/bin
 IP=127.0.0.1
-sed -i "s/--endpoint=.*/--endpoint=${IP}:6527/g" ${package}/conf/nameserver.flags
-sed -i "s/--zk_cluster=.*/--zk_cluster=${IP}:2181/g" ${package}/conf/nameserver.flags
-sed -i "s/--zk_root_path=.*/--zk_root_path=\/openmldb/g" ${package}/conf/nameserver.flags
 
-sed -i "s/--endpoint=.*/--endpoint=${IP}:9527/g" ${package}/conf/tablet.flags
-sed -i "s/#--zk_cluster=.*/--zk_cluster=${IP}:2181/g" ${package}/conf/tablet.flags
-sed -i "s/#--zk_root_path=.*/--zk_root_path=\/openmldb/g" ${package}/conf/tablet.flags
+sed -i"" -e "s/--endpoint=.*/--endpoint=${IP}:6527/g" ${package}/conf/nameserver.flags
+sed -i"" -e "s/--zk_cluster=.*/--zk_cluster=${IP}:2181/g" ${package}/conf/nameserver.flags
+sed -i"" -e "s/--zk_root_path=.*/--zk_root_path=\/openmldb/g" ${package}/conf/nameserver.flags
 
-sed -i "s/#--zk_cluster=.*/--zk_cluster=${IP}:2181/g" ${package}/conf/apiserver.flags
-sed -i "s/#--zk_root_path=.*/--zk_root_path=\/openmldb/g" ${package}/conf/apiserver.flags
+sed -i"" -e "s/--endpoint=.*/--endpoint=${IP}:9527/g" ${package}/conf/tablet.flags
+sed -i"" -e "s/#--zk_cluster=.*/--zk_cluster=${IP}:2181/g" ${package}/conf/tablet.flags
+sed -i"" -e "s/#--zk_root_path=.*/--zk_root_path=\/openmldb/g" ${package}/conf/tablet.flags
+
+sed -i"" -e "s/#--zk_cluster=.*/--zk_cluster=${IP}:2181/g" ${package}/conf/apiserver.flags
+sed -i"" -e "s/#--zk_root_path=.*/--zk_root_path=\/openmldb/g" ${package}/conf/apiserver.flags
 
 cp -r tools ${package}/tools
 ls -l build/bin/
@@ -44,4 +49,3 @@ cd ${package}/bin
 cd ../..
 tar -cvzf ${package}.tar.gz ${package}
 echo "package at ./${package}"
-

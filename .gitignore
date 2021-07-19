@@ -43,12 +43,13 @@ src/proto/*.h
 # ignore some build directory
 build
 build_mac
-thirdparty
+thirdparty*/
 thirdsrc
 .vscode/
 onebox/*.log
 onebox/*binlogs*
 onebox/*bin*
+onebox/logs
 test-output
 reports
 rtidb-auto-test-java
@@ -62,17 +63,19 @@ test-common/integrationtest/xmlrunner*
 # ignore make generate code
 src/version.h
 src/config.h
-src/sdk/java/sql-native/src/main/resources
-src/sdk/java/sql-native/src/main/java
-src/sdk/java/sql-native/target/
-src/sdk/java/sql-jdbc/target/
-src/sdk/java/sql-jmh/target/
-src/sdk/java/fesql-auto-test-java/allure-results/
-src/sdk/java/fesql-auto-test-java/logs/
-src/sdk/java/fesql-auto-test-java/target/
-src/sdk/python/fesql-auto-test-python/logs
-src/sdk/python/fesql-auto-test-python/report
-src/sdk/python/logs
+java/openmldb-native/src/main/resources
+java/openmldb-native/src/main/java
+java/openmldb-native/target/
+java/openmldb-jdbc/target/
+java/fesql-auto-test-java/allure-results/
+java/fesql-auto-test-java/logs/
+java/fesql-auto-test-java/target/
+python/fesql-auto-test-python/logs
+python/fesql-auto-test-python/report
+python/logs
+
 .vscode/settings.json
 rsync_src.sh
 install_hybridse_cj.sh
+
+openmldb-*
