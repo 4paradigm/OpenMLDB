@@ -522,7 +522,7 @@ TEST_F(PlannerV2Test, LastJoinPlanTest) {
         "1d",
         join->condition_->GetExprString());
 
-    ASSERT_EQ("(t2.col5) ASC", join->orders_->GetExprString());
+    ASSERT_EQ("(t2.col5 ASC)", join->orders_->GetExprString());
     auto left = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeTable, left->GetType());
     {
@@ -1110,7 +1110,9 @@ TEST_F(PlannerV2Test, MergeWindowsTest) {
     auto partitions = manager_->MakeExprList(manager_->MakeColumnRefNode("col1", "t1"));
 
     auto orders = dynamic_cast<node::OrderByNode *>(
-        manager_->MakeOrderByNode(manager_->MakeExprList(manager_->MakeColumnRefNode("ts", "t1")), false));
+        manager_->MakeOrderByNode(manager_->MakeExprList(
+                                      manager_->MakeOrderExpression(
+                manager_->MakeColumnRefNode("ts", "t1"), false))));
     auto frame_1day = manager_->MakeFrameNode(
         node::kFrameRowsRange,
         manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(1, node::kDay)),
@@ -1260,7 +1262,9 @@ TEST_F(PlannerV2Test, MergeWindowsWithMaxSizeTest) {
     auto partitions = manager_->MakeExprList(manager_->MakeColumnRefNode("col1", "t1"));
 
     auto orders = dynamic_cast<node::OrderByNode *>(
-        manager_->MakeOrderByNode(manager_->MakeExprList(manager_->MakeColumnRefNode("ts", "t1")), false));
+        manager_->MakeOrderByNode(manager_->MakeExprList(
+                                      manager_->MakeOrderExpression(
+                                       manager_->MakeColumnRefNode("ts", "t1"), false))));
     auto frame_1day = manager_->MakeFrameNode(
         node::kFrameRowsRange,
         manager_->MakeFrameExtent(manager_->MakeFrameBound(node::kPreceding, manager_->MakeConstNode(1, node::kDay)),
@@ -1478,7 +1482,7 @@ TEST_F(PlannerV2Test, WindowMergeOptTest) {
     auto project_list = dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[0]);
     auto w = project_list->GetW();
     ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
-    ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
+    ASSERT_EQ("(col5 ASC)", node::ExprString(w->GetOrders()));
     ASSERT_EQ("range[-172800000,0],rows[-1000,0]", w->frame_node()->GetExprString());
 }
 TEST_F(PlannerV2Test, RowsWindowExpandTest) {
@@ -1509,7 +1513,7 @@ TEST_F(PlannerV2Test, RowsWindowExpandTest) {
         auto project_list = dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[0]);
         auto w = project_list->GetW();
         ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
-        ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
+        ASSERT_EQ("(col5 ASC)", node::ExprString(w->GetOrders()));
         ASSERT_EQ("rows[-1000,0]", w->frame_node()->GetExprString());
     }
 
@@ -1518,7 +1522,7 @@ TEST_F(PlannerV2Test, RowsWindowExpandTest) {
         auto project_list = dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_[1]);
         auto w = project_list->GetW();
         ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
-        ASSERT_EQ("(col5) ASC", node::ExprString(w->GetOrders()));
+        ASSERT_EQ("(col5 ASC)", node::ExprString(w->GetOrders()));
         ASSERT_EQ("range[-172800000,-21600000]", w->frame_node()->GetExprString());
     }
 }

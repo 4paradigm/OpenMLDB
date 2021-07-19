@@ -224,7 +224,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
                                    "LIMIT(limit=10, optimized)\n"
                                    "  PROJECT(type=Aggregation, limit=10)\n"
-                                   "    REQUEST_UNION(partition_keys=(), orders=() ASC, "
+                                   "    REQUEST_UNION(partition_keys=(), orders=(ASC), "
                                    "range=(col5, -3, 0), index_keys=(col1))\n"
                                    "      DATA_PROVIDER(request=t1)\n"
                                    "      DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
@@ -237,7 +237,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
                                    "LIMIT(limit=10, optimized)\n"
                                    "  PROJECT(type=Aggregation, limit=10)\n"
-                                   "    REQUEST_UNION(partition_keys=(), orders=() ASC, "
+                                   "    REQUEST_UNION(partition_keys=(), orders=(ASC), "
                                    "range=(col5, -3, 0), index_keys=(col2,col1))\n"
                                    "      DATA_PROVIDER(request=t1)\n"
                                    "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
@@ -251,7 +251,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    "PRECEDING AND CURRENT ROW) limit 10;",
                                    "LIMIT(limit=10, optimized)\n"
                                    "  PROJECT(type=Aggregation, limit=10)\n"
-                                   "    REQUEST_UNION(partition_keys=(col3), orders=(col5) ASC, "
+                                   "    REQUEST_UNION(partition_keys=(col3), orders=(col5 ASC), "
                                    "range=(col5, -3, 0), index_keys=)\n"
                                    "      DATA_PROVIDER(request=t1)\n"
                                    "      DATA_PROVIDER(table=t1)")));
@@ -287,7 +287,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    "t2 order by t2.col5 on "
                                    " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
                                    "SIMPLE_PROJECT(sources=(t1.col1 -> t1_col1, t2.col2 -> t2_col2))\n"
-                                   "  REQUEST_JOIN(type=LastJoin, right_sort=(t2.col5) ASC, "
+                                   "  REQUEST_JOIN(type=LastJoin, right_sort=(t2.col5 ASC), "
                                    "condition=t2.col5 >= t1.col5, "
                                    "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
                                    "    DATA_PROVIDER(request=t1)\n"
@@ -296,7 +296,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    "t2 order by t2.col5 on "
                                    " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
                                    "SIMPLE_PROJECT(sources=(t1.col1 -> t1_col1, t2.col2 -> t2_col2))\n"
-                                   "  REQUEST_JOIN(type=LastJoin, right_sort=() ASC, "
+                                   "  REQUEST_JOIN(type=LastJoin, right_sort=(ASC), "
                                    "condition=t2.col5 >= t1.col5, "
                                    "left_keys=(), right_keys=(), index_keys=(t1.col1))\n"
                                    "    DATA_PROVIDER(request=t1)\n"
@@ -311,10 +311,10 @@ INSTANTIATE_TEST_SUITE_P(
                                    "PRECEDING AND CURRENT ROW) limit 10;",
                                    "LIMIT(limit=10, optimized)\n"
                                    "  PROJECT(type=Aggregation, limit=10)\n"
-                                   "    JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+                                   "    JOIN(type=LastJoin, right_sort=(ASC), condition=, "
                                    "left_keys=(), "
                                    "right_keys=(), index_keys=(t1.col1))\n"
-                                   "      REQUEST_UNION(partition_keys=(), orders=() ASC, "
+                                   "      REQUEST_UNION(partition_keys=(), orders=(ASC), "
                                    "range=(t1.col5, -3, 0), index_keys=(t1.col1))\n"
                                    "        DATA_PROVIDER(request=t1)\n"
                                    "        DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
@@ -330,10 +330,10 @@ INSTANTIATE_TEST_SUITE_P(
                                    "PRECEDING AND CURRENT ROW) limit 10;",
                                    "LIMIT(limit=10, optimized)\n"
                                    "  PROJECT(type=Aggregation, limit=10)\n"
-                                   "    JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, "
+                                   "    JOIN(type=LastJoin, right_sort=(t2.col5 ASC), condition=, "
                                    "left_keys=(t1.col2), "
                                    "right_keys=(t2.col2), index_keys=)\n"
-                                   "      REQUEST_UNION(partition_keys=(), orders=() ASC, "
+                                   "      REQUEST_UNION(partition_keys=(), orders=(ASC), "
                                    "range=(t1.col5, -3, 0), index_keys=(t1.col1,t1.col2))\n"
                                    "        DATA_PROVIDER(request=t1)\n"
                                    "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
@@ -348,10 +348,10 @@ INSTANTIATE_TEST_SUITE_P(
                                    "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
                                    "LIMIT(limit=10, optimized)\n"
                                    "  PROJECT(type=Aggregation, limit=10)\n"
-                                   "    JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+                                   "    JOIN(type=LastJoin, right_sort=(ASC), condition=, "
                                    "left_keys=(), "
                                    "right_keys=(), index_keys=(t1.col1))\n"
-                                   "      REQUEST_UNION(partition_keys=(), orders=() ASC, "
+                                   "      REQUEST_UNION(partition_keys=(), orders=(ASC), "
                                    "range=(t1.col5, -3, 0), index_keys=(t1.col1,t1.col2))\n"
                                    "        DATA_PROVIDER(request=t1)\n"
                                    "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
@@ -366,9 +366,9 @@ INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOp
                                            "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
                                            "LIMIT(limit=10, optimized)\n"
                                            "  PROJECT(type=Aggregation, limit=10)\n"
-                                           "    REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, "
+                                           "    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, "
                                            "-3, 0), index_keys=(col1))\n"
-                                           "      +-UNION(partition_keys=(col1), orders=(col5) ASC, "
+                                           "      +-UNION(partition_keys=(col1), orders=(col5 ASC), "
                                            "range=(col5, -3, 0), index_keys=)\n"
                                            "          DATA_PROVIDER(table=t3)\n"
                                            "      DATA_PROVIDER(request=t1)\n"
@@ -379,9 +379,9 @@ INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOp
                                            "ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
                                            "LIMIT(limit=10, optimized)\n"
                                            "  PROJECT(type=Aggregation, limit=10)\n"
-                                           "    REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, "
+                                           "    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, "
                                            "-3, 0), index_keys=(col1,col2))\n"
-                                           "      +-UNION(partition_keys=(col1), orders=() ASC, range=(col5, "
+                                           "      +-UNION(partition_keys=(col1), orders=(ASC), range=(col5, "
                                            "-3, 0), index_keys=(col2))\n"
                                            "          DATA_PROVIDER(type=Partition, table=t3, "
                                            "index=index2_t3)\n"
@@ -392,9 +392,9 @@ INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOp
                                            "ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
                                            "LIMIT(limit=10, optimized)\n"
                                            "  PROJECT(type=Aggregation, limit=10)\n"
-                                           "    REQUEST_UNION(partition_keys=(), orders=() ASC, "
+                                           "    REQUEST_UNION(partition_keys=(), orders=(ASC), "
                                            "range=(col5, -3, 0), index_keys=(col1))\n"
-                                           "      +-UNION(partition_keys=(col1), orders=(col5) ASC, "
+                                           "      +-UNION(partition_keys=(col1), orders=(col5 ASC), "
                                            "range=(col5, -3, 0), index_keys=)\n"
                                            "          DATA_PROVIDER(table=t3)\n"
                                            "      DATA_PROVIDER(request=t1)\n"

@@ -71,7 +71,6 @@ class PhysicalPlanContext {
     Status InitFnDef(const node::ExprListNode* projects,
                      const SchemasContext* schemas_ctx, bool is_row_project,
                      FnComponent* fn_component);
-
     template <typename Op, typename... Args>
     Status CreateOp(Op** result_op, Args&&... args) {
         Op* op = new Op(std::forward<Args>(args)...);

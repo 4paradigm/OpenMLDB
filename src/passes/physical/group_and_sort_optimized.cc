@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 4paradigm
+ * Copyright 021 4paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -231,6 +231,8 @@ bool GroupAndSortOptimized::KeysOptimized(
 
             size_t key_num = right_partition->GetChildNum();
             std::vector<bool> bitmap(key_num, false);
+            node::ExprListNode order_values;
+
             if (!TransformKeysAndOrderExpr(
                     root_schemas_ctx, right_partition,
                     nullptr == sort ? nullptr : sort->orders_,
@@ -266,10 +268,12 @@ bool GroupAndSortOptimized::KeysOptimized(
             index_key->set_keys(new_index_keys);
             left_key->set_keys(new_left_keys);
             // Clear order expr list if we optimized orders
-            if (nullptr != sort && nullptr != sort->orders_) {
+            if (nullptr != sort && nullptr != sort->orders_ && nullptr != sort->orders_->GetOrderExpression(0)) {
+                auto first_order_expression = sort->orders_->GetOrderExpression(0);
                 sort->set_orders(dynamic_cast<node::OrderByNode*>(
-                    node_manager_->MakeOrderByNode(nullptr,
-                                                   sort->orders_->is_asc())));
+                    node_manager_->MakeOrderByNode(
+                        node_manager_->MakeExprList(
+                        node_manager_->MakeOrderExpression(nullptr, first_order_expression->is_asc())))));
             }
             *new_in = partition_op;
             return true;
@@ -442,10 +446,10 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
     }
 
     if (nullptr != order) {
-        for (size_t i = 0; i < order->order_by()->GetChildNum(); ++i) {
-            auto expr = order->order_by()->GetChild(i);
-            if (expr->GetExprType() == node::kExprColumnRef) {
-                auto column = dynamic_cast<node::ColumnRefNode*>(expr);
+        for (size_t i = 0; i < order->order_expressions()->GetChildNum(); ++i) {
+            auto expr = order->GetOrderExpressionExpr(i);
+            if (nullptr != expr && expr->GetExprType() == node::kExprColumnRef) {
+                auto column = dynamic_cast<const node::ColumnRefNode*>(expr);
                 std::string source_column_name;
                 if (!ResolveColumnToSourceColumnName(column, root_schemas_ctx,
                                                      &source_column_name)) {
@@ -583,10 +587,10 @@ bool GroupAndSortOptimized::TransformOrderExpr(
     auto& ts_column = schema.Get(index_st.ts_pos);
     *output = order;
     int succ_match = -1;
-    for (size_t i = 0; i < order->order_by()->GetChildNum(); ++i) {
-        auto expr = order->order_by()->GetChild(i);
-        if (expr->GetExprType() == node::kExprColumnRef) {
-            auto column = dynamic_cast<node::ColumnRefNode*>(expr);
+    for (size_t i = 0; i < order->order_expressions()->GetChildNum(); ++i) {
+        auto expr = order->GetOrderExpressionExpr(i);
+        if (nullptr != expr && expr->GetExprType() == node::kExprColumnRef) {
+            auto column = dynamic_cast<const node::ColumnRefNode*>(expr);
             std::string source_column_name;
             if (ResolveColumnToSourceColumnName(column, schemas_ctx,
                                                 &source_column_name)) {
@@ -599,13 +603,13 @@ bool GroupAndSortOptimized::TransformOrderExpr(
     }
     if (succ_match >= 0) {
         node::ExprListNode* expr_list = node_manager_->MakeExprList();
-        for (size_t i = 0; i < order->order_by()->GetChildNum(); ++i) {
+        for (size_t i = 0; i < order->order_expressions()->GetChildNum(); ++i) {
             if (static_cast<size_t>(succ_match) != i) {
-                expr_list->AddChild(order->order_by()->GetChild(i));
+                expr_list->AddChild(order->order_expressions()->GetChild(i));
             }
         }
         *output = dynamic_cast<node::OrderByNode*>(
-            node_manager_->MakeOrderByNode(expr_list, order->is_asc()));
+            node_manager_->MakeOrderByNode(expr_list));
         return true;
     } else {
         return false;

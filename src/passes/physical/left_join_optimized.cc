@@ -70,11 +70,11 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
         case vm::kPhysicalOpSortBy: {
             auto sort_op = dynamic_cast<vm::PhysicalSortNode*>(in);
             if (nullptr == sort_op->sort_.orders_ ||
-                node::ExprListNullOrEmpty(sort_op->sort_.orders_->order_by_)) {
+                node::ExprListNullOrEmpty(sort_op->sort_.orders_->order_expressions_)) {
                 DLOG(WARNING) << "Join optimized skip: order is null or empty";
             }
             if (!CheckExprListFromSchema(
-                    sort_op->sort_.orders_->order_by_,
+                    sort_op->sort_.orders_->order_expressions_,
                     join_op->GetProducers()[0]->GetOutputSchema())) {
                 return false;
             }
@@ -113,7 +113,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     window_agg_op->window_.partition_.keys_) &&
                 (nullptr == window_agg_op->window_.sort_.orders_ ||
                  node::ExprListNullOrEmpty(
-                     window_agg_op->window_.sort_.orders_->order_by_))) {
+                     window_agg_op->window_.sort_.orders_->order_expressions_))) {
                 DLOG(WARNING)
                     << "Window Join optimized skip: both partition and"
                        "order are empty ";
@@ -128,7 +128,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 return false;
             }
             if (!CheckExprDependOnChildOnly(
-                     window_agg_op->window_.sort_.orders_->order_by_,
+                     window_agg_op->window_.sort_.orders_->order_expressions_,
                      left_schemas_ctx)
                      .isOK()) {
                 DLOG(WARNING) << "Window Join optimized skip: order keys are "

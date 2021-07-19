@@ -164,10 +164,10 @@ class CrossProductPlanNode : public BinaryPlanNode {
 class SortPlanNode : public UnaryPlanNode {
  public:
     SortPlanNode(PlanNode *node, const OrderByNode *order_list)
-        : UnaryPlanNode(node, kPlanTypeSort), order_list_(order_list) {}
+        : UnaryPlanNode(node, kPlanTypeSort), order_by_(order_list) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const PlanNode *that) const;
-    const OrderByNode *order_list_;
+    const OrderByNode *order_by_;
 };
 
 class GroupPlanNode : public UnaryPlanNode {

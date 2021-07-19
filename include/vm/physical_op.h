@@ -182,7 +182,7 @@ class FnComponent {
  protected:
     FnInfo fn_info_;
 };
-
+// Sort Component can only handle single order expressions
 class Sort : public FnComponent {
  public:
     explicit Sort(const node::OrderByNode *orders) : orders_(orders) {}
@@ -190,7 +190,9 @@ class Sort : public FnComponent {
     const node::OrderByNode *orders() const { return orders_; }
     void set_orders(const node::OrderByNode *orders) { orders_ = orders; }
     const bool is_asc() const {
-        return nullptr == orders_ ? true : orders_->is_asc();
+        const node::OrderExpression *first_order_expression =
+            nullptr == orders_ ? nullptr : orders_->GetOrderExpression(0);
+        return nullptr == first_order_expression ? true : first_order_expression->is_asc();
     }
     const bool ValidSort() const { return nullptr != orders_; }
     const std::string ToString() const {
@@ -204,7 +206,15 @@ class Sort : public FnComponent {
 
     void ResolvedRelatedColumns(
         std::vector<const node::ExprNode *> *columns) const {
-        node::ColumnOfExpression(orders_, columns);
+        if (nullptr == orders_) {
+            return;
+        }
+        auto expr = orders_->GetOrderExpressionExpr(0);
+        if (nullptr != expr) {
+            node::ExprListNode exprs;
+            exprs.AddChild(const_cast<node::ExprNode*>(expr));
+            node::ColumnOfExpression(orders_->order_expressions_, columns);
+        }
         return;
     }
 
@@ -221,9 +231,9 @@ class Range : public FnComponent {
         : range_key_(nullptr), frame_(frame) {
         range_key_ = nullptr == order
                          ? nullptr
-                         : node::ExprListNullOrEmpty(order->order_by_)
+                         : node::ExprListNullOrEmpty(order->order_expressions_)
                                ? nullptr
-                               : order->order_by_->children_[0];
+                               : dynamic_cast<const node::OrderExpression*>(order->order_expressions_->children_[0])->expr();
     }
     virtual ~Range() {}
     const bool Valid() const { return nullptr != range_key_; }

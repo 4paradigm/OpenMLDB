@@ -118,6 +118,7 @@ enum ExprType {
     kExprStruct,
     kExprQuery,
     kExprOrder,
+    kExprOrderExpression,
     kExprGetField,
     kExprCond,
     kExprUnknow = 9999

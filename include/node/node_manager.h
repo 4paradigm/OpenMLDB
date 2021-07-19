@@ -122,8 +122,8 @@ class NodeManager {
                                bool instance_not_in_window);
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
-    OrderByNode *MakeOrderByNode(const ExprListNode *node_ptr, const bool is_asc);
-    OrderByNode *MakeOrderByNode(const ExprListNode *order, const std::vector<bool> &is_asc_list);
+    OrderExpression* MakeOrderExpression(const ExprNode* expr, const bool is_asc);
+    OrderByNode *MakeOrderByNode(const ExprListNode *order_expressions);
     SqlNode *MakeFrameExtent(SqlNode *start, SqlNode *end);
     SqlNode *MakeFrameBound(BoundType bound_type);
     SqlNode *MakeFrameBound(BoundType bound_type, ExprNode *offset);

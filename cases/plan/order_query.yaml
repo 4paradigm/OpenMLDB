@@ -18,18 +18,17 @@ cases:
     sql: SELECT COL1 FROM t1 order by COL1;
   - id: 2
     desc: 两列排序DESC
+    mode: physical-plan-unsupport
     sql: SELECT COL1, COL2, COL3 FROM t1 order by COL1, COL2 DESC;
   - id: 3
     desc: 多列排序
+    mode: physical-plan-unsupport
     sql: SELECT * FROM t1 order by COL1, COL2, COL3;
   - id: 4
-    desc: 按聚合结果排序
-    sql: SELECT SUM(COL2) as sum_col2, col1 FROM t1 Group By col1 order by sum_col2 DESC;
+    desc: 排序表达式是二元表达式
+    mode: physical-plan-unsupport
+    sql: SELECT col1 FROM t1 Order By col1+col2 DESC;
   - id: 5
     desc: 按聚合结果排序
     mode: physical-plan-unsupport
     sql: SELECT SUM(COL2) as sum_col2, t1.* FROM t1 Group By col1 order by sum_col2 DESC;
-  - id: 6
-    desc: 多列排序投影列不包含排序列
-    mode: physical-plan-unsupport
-    sql: SELECT COL1 FROM t1 order by COL1, COL2, COL3;

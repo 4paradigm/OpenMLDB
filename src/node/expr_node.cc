@@ -655,9 +655,11 @@ ExprListNode* ExprListNode::ShadowCopy(NodeManager* nm) const {
 }
 
 OrderByNode* OrderByNode::ShadowCopy(NodeManager* nm) const {
-    return nm->MakeOrderByNode(order_by(), is_asc());
+    return nm->MakeOrderByNode(order_expressions_);
 }
-
+OrderExpression *OrderExpression::ShadowCopy(NodeManager *nm) const {
+    return nm->MakeOrderExpression(expr_, is_asc_);
+}
 ExprIdNode* ExprIdNode::ShadowCopy(NodeManager* nm) const {
     auto expr_id = nm->MakeUnresolvedExprId(GetName());
     expr_id->SetId(GetId());

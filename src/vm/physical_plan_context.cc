@@ -29,19 +29,16 @@ Status OptimizeFunctionLet(const ColumnProjects& projects,
                            node::ExprAnalysisContext* ctx,
                            node::LambdaNode* func);
 
-Status PhysicalPlanContext::InitFnDef(const node::ExprListNode* exprs,
-                                      const SchemasContext* schemas_ctx,
-                                      bool is_row_project,
-                                      FnComponent* fn_component) {
+Status PhysicalPlanContext::InitFnDef(const node::ExprListNode* exprs, const SchemasContext* schemas_ctx,
+                                      bool is_row_project, FnComponent* fn_component) {
     ColumnProjects projects;
     for (size_t i = 0; i < exprs->GetChildNum(); ++i) {
         const node::ExprNode* expr = exprs->GetChild(i);
-        CHECK_TRUE(expr != nullptr, kPlanError);
+        CHECK_TRUE(expr != nullptr, kPlanError, "Can not init fn def with null expression");
         projects.Add(expr->GetExprString(), expr, nullptr);
     }
     return InitFnDef(projects, schemas_ctx, is_row_project, fn_component);
 }
-
 Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects,
                                       const SchemasContext* schemas_ctx,
                                       bool is_row_project,

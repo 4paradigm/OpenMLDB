@@ -530,8 +530,8 @@ void SortPlanNode::Print(std::ostream &output,
     output << "\n";
     std::string tab = org_tab + INDENT;
     PrintValue(output, tab,
-               nullptr == order_list_ ? "()" : order_list_->GetExprString(),
-               "order_by", true);
+               nullptr == order_by_ ? "()" : order_by_->GetExprString(),
+               "order_expressions", true);
     output << "\n";
     PrintChildren(output, org_tab);
 }
@@ -548,7 +548,7 @@ bool SortPlanNode::Equals(const PlanNode *node) const {
         return false;
     }
     const SortPlanNode *that = dynamic_cast<const SortPlanNode *>(node);
-    return node::ExprEquals(this->order_list_, that->order_list_) &&
+    return node::ExprEquals(this->order_by_, that->order_by_) &&
            UnaryPlanNode::Equals(that);
 }
 void GroupPlanNode::Print(std::ostream &output,

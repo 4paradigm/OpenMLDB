@@ -211,7 +211,7 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     ExprNode *ptr1 = node_manager_->MakeColumnRefNode("keycol", "");
     partitions->PushBack(ptr1);
 
-    ExprNode *ptr2 = node_manager_->MakeColumnRefNode("col1", "");
+    ExprNode *ptr2 = node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col1", ""), true);
     ExprListNode *orders = node_manager_->MakeExprList();
     orders->PushBack(ptr2);
 
@@ -222,13 +222,11 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
                                                                     node_manager_->MakeFrameBound(kPreceding, val)),
                                      maxsize);
     WindowDefNode *node_ptr = dynamic_cast<WindowDefNode *>(
-        node_manager_->MakeWindowDefNode(partitions, node_manager_->MakeOrderByNode(orders, true), frame));
+        node_manager_->MakeWindowDefNode(partitions, node_manager_->MakeOrderByNode(orders), frame));
     DLOG(INFO) << *node_ptr << std::endl;
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
-    //
-
     ASSERT_EQ("(keycol)", ExprString(node_ptr->GetPartitions()));
-    ASSERT_EQ(("(col1) ASC"), ExprString(node_ptr->GetOrders()));
+    ASSERT_EQ("(col1 ASC)", ExprString(node_ptr->GetOrders()));
     ASSERT_EQ(frame, node_ptr->GetFrame());
     ASSERT_EQ("", node_ptr->GetName());
 }
@@ -535,12 +533,12 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
     pk1->AddChild(node_manager_->MakeColumnRefNode("col1", "t2"));
 
     ExprListNode *orders1_exprs = node_manager_->MakeExprList();
-    orders1_exprs->AddChild(node_manager_->MakeColumnRefNode("ts1", "t1"));
-    ExprNode *orders1 = node_manager_->MakeOrderByNode(orders1_exprs, false);
+    orders1_exprs->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("ts1", "t1"), false));
+    ExprNode *orders1 = node_manager_->MakeOrderByNode(orders1_exprs);
 
     ExprListNode *orders2_exprs = node_manager_->MakeExprList();
-    orders2_exprs->AddChild(node_manager_->MakeColumnRefNode("ts2", "t1"));
-    ExprNode *orders2 = node_manager_->MakeOrderByNode(orders2_exprs, false);
+    orders2_exprs->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("ts2", "t1"), false));
+    ExprNode *orders2 = node_manager_->MakeOrderByNode(orders2_exprs);
 
     node::SqlNodeList unions1;
     unions1.PushBack(node_manager_->MakeTableNode("ta", ""));
@@ -837,7 +835,6 @@ TEST_F(SqlNodeTest, FnNodeTest) {
         "                                    +-var: %-1(y)",
         oss.str());
 }
-
 TEST_F(SqlNodeTest, ExprIsConstTest) {
     ASSERT_TRUE(node::ExprIsConst(node_manager_->MakeConstNode(1)));
 
@@ -858,8 +855,8 @@ TEST_F(SqlNodeTest, ExprIsConstTest) {
         args->AddChild(node_manager_->MakeColumnRefNode("col1", ""));
         node::SqlNode *over = node_manager_->MakeWindowDefNode(
             node_manager_->MakeExprList(node_manager_->MakeColumnRefNode("key1", "")),
-            node_manager_->MakeOrderByNode(node_manager_->MakeExprList(node_manager_->MakeColumnRefNode("std_ts", "")),
-                                           true),
+            node_manager_->MakeOrderByNode(node_manager_->MakeExprList(
+                node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("std_ts", ""), true))),
             node_manager_->MakeFrameNode(node::FrameType::kFrameRows,
                                          node_manager_->MakeFrameExtent(node_manager_->MakeFrameBound(kPreceding, 100),
                                                                         node_manager_->MakeFrameBound(kCurrent))));
@@ -921,6 +918,45 @@ TEST_F(SqlNodeTest, QueryTypeNameTest) {
     ASSERT_EQ("kQuerySelect", node::QueryTypeName(node::kQuerySelect));
     ASSERT_EQ("kQueryUnion", node::QueryTypeName(node::kQueryUnion));
     ASSERT_EQ("kQuerySub", node::QueryTypeName(node::kQuerySub));
+}
+
+TEST_F(SqlNodeTest, OrderByNodeTest) {
+    // expr list
+    ExprListNode *expr_list1 = node_manager_->MakeExprList();
+    expr_list1->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col1", ""),
+                                                            true));
+    expr_list1->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col2", ""), true));
+
+    ExprListNode *expr_list2 = node_manager_->MakeExprList();
+    expr_list2->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col1", ""), true));
+    expr_list2->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col2", ""), true));
+
+    ExprListNode *expr_list3 = node_manager_->MakeExprList();
+    expr_list3->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("c1", ""), true));
+    expr_list3->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col2", ""), true));
+
+    ExprListNode *expr_list4 = node_manager_->MakeExprList();
+    expr_list4->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col1", ""), true));
+    expr_list4->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col2", ""), false));
+    ASSERT_TRUE(expr_list1->Equals(expr_list1));
+    ASSERT_TRUE(expr_list1->Equals(expr_list2));
+    ASSERT_FALSE(expr_list1->Equals(expr_list3));
+    ASSERT_FALSE(expr_list1->Equals(expr_list4));
+
+    // order
+    ExprNode *order1 = node_manager_->MakeOrderByNode(expr_list1);
+    ExprNode *order2 = node_manager_->MakeOrderByNode(expr_list1);
+    ExprNode *order3 = node_manager_->MakeOrderByNode(expr_list3);
+    ExprNode *order4 = node_manager_->MakeOrderByNode(expr_list4);
+
+    ASSERT_TRUE(order1->Equals(order1));
+    ASSERT_TRUE(order1->Equals(order2));
+    ASSERT_FALSE(order1->Equals(order3));
+    ASSERT_FALSE(order1->Equals(order4));
+    ASSERT_EQ("(col1 ASC, col2 ASC)", order1->GetExprString());
+    ASSERT_EQ("(col1 ASC, col2 ASC)", order2->GetExprString());
+    ASSERT_EQ("(c1 ASC, col2 ASC)", order3->GetExprString());
+    ASSERT_EQ("(col1 ASC, col2 DESC)", order4->GetExprString());
 }
 }  // namespace node
 }  // namespace hybridse

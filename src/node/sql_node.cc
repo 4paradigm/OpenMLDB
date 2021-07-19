@@ -430,21 +430,48 @@ bool GetFieldExpr::Equals(const ExprNode *node) const {
     return this->GetRow()->Equals(that->GetRow()) && this->column_id_ == that->column_id_ &&
            this->column_name_ == that->column_name_ && ExprNode::Equals(node);
 }
+void OrderExpression::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, GetExprString(), "order_expression", false);
+}
+const std::string OrderExpression::GetExprString() const {
+    if (nullptr == expr_) {
+        return is_asc() ? "ASC" : "DESC";
+    }
+    std::string str = "";
+    str.append(expr()->GetExprString());
+    str.append(is_asc() ? " ASC" : " DESC");
+    return str;
+}
+bool OrderExpression::Equals(const ExprNode *node) const {
+    if (!ExprNode::Equals(node)) {
+        return false;
+    }
+    const OrderExpression *that = dynamic_cast<const OrderExpression *>(node);
+    return is_asc_ == that->is_asc_ && ExprEquals(expr_, that->expr_);
+}
 
 void OrderByNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
-
     output << "\n";
-    PrintValue(output, tab, is_asc() ? "ASC" : "DESC", "sort_type", false);
-
-    output << "\n";
-    PrintSqlNode(output, tab, order_by_, "order_by", true);
+    PrintValue(output, tab, GetExprString(), "order_expressions", false);
 }
 const std::string OrderByNode::GetExprString() const {
+    if (nullptr == order_expressions_) {
+        return "()";
+    }
     std::string str = "";
-    str.append(nullptr == order_by_ ? "()" : order_by_->GetExprString());
-    str.append(is_asc() ? " ASC" : " DESC");
+    str.append("(");
+    for (size_t i = 0; i < order_expressions_->children_.size(); ++i) {
+        str.append(order_expressions_->children_[i]->GetExprString());
+        if (i < order_expressions_->children_.size() - 1) {
+            str.append(", ");
+        }
+    }
+    str.append(")");
     return str;
 }
 bool OrderByNode::Equals(const ExprNode *node) const {
@@ -452,7 +479,7 @@ bool OrderByNode::Equals(const ExprNode *node) const {
         return false;
     }
     const OrderByNode *that = dynamic_cast<const OrderByNode *>(node);
-    return is_asc_list() == that->is_asc_list() && ExprEquals(order_by_, that->order_by_);
+    return ExprEquals(order_expressions_, that->order_expressions_);
 }
 
 void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1023,6 +1050,10 @@ void ColumnOfExpression(const ExprNode *node_ptr, std::vector<const node::ExprNo
         case kExprPrimary: {
             return;
         }
+        case kExprOrderExpression: {
+            ColumnOfExpression(dynamic_cast<const node::OrderExpression*>(node_ptr)->expr(), columns);
+            return;
+        }
         case kExprColumnRef: {
             columns->push_back(dynamic_cast<const node::ColumnRefNode *>(node_ptr));
             return;
@@ -1549,7 +1580,7 @@ void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSqlNode(output, tab, right_, "right", true);
     output << "\n";
-    PrintSqlNode(output, tab, orders_, "order_by", true);
+    PrintSqlNode(output, tab, orders_, "order_expressions", true);
     output << "\n";
     PrintSqlNode(output, tab, condition_, "on", true);
 }

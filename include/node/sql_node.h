@@ -514,24 +514,51 @@ class FnNodeList : public FnNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     std::vector<FnNode *> children;
 };
+class OrderExpression : public ExprNode {
+ public:
+    OrderExpression(const ExprNode *expr, const bool is_asc)
+        : ExprNode(kExprOrderExpression), expr_(expr), is_asc_(is_asc) {}
+    ~OrderExpression() {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+    OrderExpression *ShadowCopy(NodeManager *) const override;
+    const ExprNode *expr() const { return expr_; }
+    const bool is_asc() const { return is_asc_; }
 
+ private:
+    const ExprNode *expr_;
+    const bool is_asc_;
+};
 class OrderByNode : public ExprNode {
  public:
-    OrderByNode(const ExprListNode *order, const std::vector<bool> &is_asc_list, const bool is_asc)
-        : ExprNode(kExprOrder), is_asc_list_(is_asc_list), is_asc_(is_asc), order_by_(order) {}
+    explicit OrderByNode(const ExprListNode *order_expressions)
+        : ExprNode(kExprOrder), order_expressions_(order_expressions) {}
     ~OrderByNode() {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
     OrderByNode *ShadowCopy(NodeManager *) const override;
-    const ExprListNode *order_by() const { return order_by_; }
-    const std::vector<bool> &is_asc_list() const { return is_asc_list_; }
-    bool is_asc() const { return is_asc_; }
-
-    const std::vector<bool> is_asc_list_;
-    const bool is_asc_;
-    const ExprListNode *order_by_;
+    const ExprListNode *order_expressions() const { return order_expressions_; }
+    const OrderExpression *GetOrderExpression(int idx) const {
+        if (nullptr == order_expressions_) {
+            return nullptr;
+        }
+        if (idx < 0 || idx >= order_expressions_->GetChildNum()) {
+            return nullptr;
+        }
+        return dynamic_cast<const OrderExpression *>(order_expressions_->GetChild(idx));
+    }
+    const ExprNode *GetOrderExpressionExpr(int idx) const {
+        auto order_expression = GetOrderExpression(idx);
+        if (nullptr == order_expression) {
+            return nullptr;
+        }
+        return order_expression->expr();
+    }
+    bool is_asc() const { return false; }
+    const ExprListNode *order_expressions_;
 };
 class TableRefNode : public SqlNode {
  public:

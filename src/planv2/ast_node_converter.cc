@@ -605,11 +605,10 @@ base::Status ConvertOrderBy(const zetasql::ASTOrderBy* order_by, node::NodeManag
     for (auto ordering_expression : order_by->ordering_expressions()) {
         node::ExprNode* expr = nullptr;
         CHECK_STATUS(ConvertExprNode(ordering_expression->expression(), node_manager, &expr))
-        ordering_expressions->AddChild(expr);
-        is_asc_list.push_back(!ordering_expression->descending());
+        ordering_expressions->AddChild(node_manager->MakeOrderExpression(expr, !ordering_expression->descending()));
     }
 
-    *output = node_manager->MakeOrderByNode(ordering_expressions, is_asc_list);
+    *output = node_manager->MakeOrderByNode(ordering_expressions);
     return base::Status::OK();
 }
 base::Status ConvertDotStart(const zetasql::ASTDotStar* dot_start_expression, node::NodeManager* node_manager,

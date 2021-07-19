@@ -566,14 +566,14 @@ Status Sort::ReplaceExpr(const passes::ExprReplacer& replacer,
         return Status::OK();
     }
     auto new_order = orders_->ShadowCopy(nm);
-    if (new_order->order_by_ == nullptr) {
+    if (new_order->order_expressions_ == nullptr) {
         out->orders_ = new_order;
         return Status::OK();
     }
-    auto origin_key = orders_->order_by_->ShadowCopy(nm);
+    auto origin_key = orders_->order_expressions_->ShadowCopy(nm);
     node::ExprNode* new_key = nullptr;
     CHECK_STATUS(replacer.Replace(origin_key, &new_key));
-    new_order->order_by_ = dynamic_cast<node::ExprListNode*>(new_key);
+    new_order->order_expressions_ = dynamic_cast<node::ExprListNode*>(new_key);
     out->orders_ = new_order;
     return Status::OK();
 }

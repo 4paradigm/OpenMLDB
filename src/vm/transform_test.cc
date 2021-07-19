@@ -184,8 +184,8 @@ TEST_P(TransformTest, transform_physical_plan) {
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(
-        transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
+    base::Status status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
+    ASSERT_TRUE(status.isOK()) << status;
     std::ostringstream oss;
 
     physical_plan->Print(oss, "");
@@ -694,7 +694,7 @@ INSTANTIATE_TEST_SUITE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(), orders=() ASC, range=(col5, -3, "
+            "    +-WINDOW(partition_keys=(), orders=(ASC), range=(col5, -3, "
             "0))\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
         std::make_pair(
@@ -707,7 +707,7 @@ INSTANTIATE_TEST_SUITE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(), orders=() ASC, "
+            "    +-WINDOW(partition_keys=(), orders=(ASC), "
             "range=(col5, -3, 0))\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair("SELECT "
@@ -719,7 +719,7 @@ INSTANTIATE_TEST_SUITE_P(
                        "PRECEDING AND CURRENT ROW) limit 10;",
                        "LIMIT(limit=10, optimized)\n"
                        "  PROJECT(type=WindowAggregation, limit=10)\n"
-                       "    +-WINDOW(partition_keys=(col3), orders=(col5) ASC, "
+                       "    +-WINDOW(partition_keys=(col3), orders=(col5 ASC), "
                        "range=(col5, "
                        "-3, 0))\n"
                        "    DATA_PROVIDER(table=t1)")));
@@ -733,7 +733,7 @@ INSTANTIATE_TEST_SUITE_P(
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
             "SIMPLE_PROJECT(sources=(t1.col1 -> t1_col1, t2.col2 -> t2_col2))\n"
-            "  JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=t2.col5 "
+            "  JOIN(type=LastJoin, right_sort=(t2.col5 ASC), condition=t2.col5 "
             ">= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"
@@ -744,7 +744,7 @@ INSTANTIATE_TEST_SUITE_P(
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
             "SIMPLE_PROJECT(sources=(t1.col1 -> t1_col1, t2.col2 -> t2_col2))\n"
-            "  JOIN(type=LastJoin, right_sort=() ASC, condition=t2.col5 >= "
+            "  JOIN(type=LastJoin, right_sort=(ASC), condition=t2.col5 >= "
             "t1.col5, left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
             "    DATA_PROVIDER(table=t1)\n"
@@ -761,9 +761,9 @@ INSTANTIATE_TEST_SUITE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(t1.col0), orders=(t1.col5) ASC, "
+            "    +-WINDOW(partition_keys=(t1.col0), orders=(t1.col5 ASC), "
             "range=(t1.col5, -3, 0))\n"
-            "    +-JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+            "    +-JOIN(type=LastJoin, right_sort=(ASC), condition=, "
             "left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
             "        DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)\n"
@@ -780,9 +780,9 @@ INSTANTIATE_TEST_SUITE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(), orders=() ASC, range=(t1.col5, "
+            "    +-WINDOW(partition_keys=(), orders=(ASC), range=(t1.col5, "
             "-3, 0))\n"
-            "    +-JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+            "    +-JOIN(type=LastJoin, right_sort=(ASC), condition=, "
             "left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
             "        DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)\n"
@@ -801,13 +801,13 @@ INSTANTIATE_TEST_SUITE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(), orders=() ASC, range=(t1.col5, "
+            "    +-WINDOW(partition_keys=(), orders=(ASC), range=(t1.col5, "
             "-3, 0))\n"
-            "    +-JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, "
+            "    +-JOIN(type=LastJoin, right_sort=(t2.col5 ASC), condition=, "
             "left_keys=(t1.col0), "
             "right_keys=(t2.col0), index_keys=)\n"
             "        DATA_PROVIDER(table=t2)\n"
-            "    +-JOIN(type=LastJoin, right_sort=(t3.col5) ASC, condition=, "
+            "    +-JOIN(type=LastJoin, right_sort=(t3.col5 ASC), condition=, "
             "left_keys=(t2.col0), "
             "right_keys=(t3.col0), index_keys=)\n"
             "        DATA_PROVIDER(table=t3)\n"
@@ -826,13 +826,13 @@ INSTANTIATE_TEST_SUITE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(t1.col0), orders=(t1.col5) ASC, "
+            "    +-WINDOW(partition_keys=(t1.col0), orders=(t1.col5 ASC), "
             "range=(t1.col5, -3, 0))\n"
-            "    +-JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, "
+            "    +-JOIN(type=LastJoin, right_sort=(t2.col5 ASC), condition=, "
             "left_keys=(t1.col2), "
             "right_keys=(t2.col2), index_keys=)\n"
             "        DATA_PROVIDER(table=t2)\n"
-            "    +-JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+            "    +-JOIN(type=LastJoin, right_sort=(ASC), condition=, "
             "left_keys=(), "
             "right_keys=(), index_keys=(t2.col2))\n"
             "        DATA_PROVIDER(type=Partition, table=t3, index=index2_t3)\n"
@@ -852,12 +852,12 @@ INSTANTIATE_TEST_SUITE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(t3.col0), orders=(t1.col5) ASC, "
+            "    +-WINDOW(partition_keys=(t3.col0), orders=(t1.col5 ASC), "
             "range=(t1.col5, -3, 0))\n"
-            "    JOIN(type=LastJoin, right_sort=() ASC, condition=, "
+            "    JOIN(type=LastJoin, right_sort=(ASC), condition=, "
             "left_keys=(), right_keys=(), "
             "index_keys=(t2.col2))\n"
-            "      JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, "
+            "      JOIN(type=LastJoin, right_sort=(t2.col5 ASC), condition=, "
             "left_keys=(t1.col2), "
             "right_keys=(t2.col2), index_keys=)\n"
             "        DATA_PROVIDER(table=t1)\n"
@@ -875,9 +875,9 @@ INSTANTIATE_TEST_SUITE_P(
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(), orders=() ASC, range=(col5, -3, "
+            "    +-WINDOW(partition_keys=(), orders=(ASC), range=(col5, -3, "
             "0))\n"
-            "    +-UNION(partition_keys=(col1), orders=(col5) ASC, "
+            "    +-UNION(partition_keys=(col1), orders=(col5 ASC), "
             "range=(col5, -3, 0))\n"
             "        DATA_PROVIDER(table=t3)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
@@ -889,9 +889,9 @@ INSTANTIATE_TEST_SUITE_P(
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(), orders=() ASC, range=(col5, -3, "
+            "    +-WINDOW(partition_keys=(), orders=(ASC), range=(col5, -3, "
             "0))\n"
-            "    +-UNION(partition_keys=(col1), orders=() ASC, range=(col5, "
+            "    +-UNION(partition_keys=(col1), orders=(ASC), range=(col5, "
             "-3, 0))\n"
             "        DATA_PROVIDER(type=Partition, table=t3, index=index2_t3)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
@@ -942,9 +942,9 @@ INSTANTIATE_TEST_SUITE_P(
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(), orders=() ASC, range=(col5, -3, "
+            "    +-WINDOW(partition_keys=(), orders=(ASC), range=(col5, -3, "
             "0))\n"
-            "    +-UNION(partition_keys=(col1,col2), orders=(col5) ASC, "
+            "    +-UNION(partition_keys=(col1,col2), orders=(col5 ASC), "
             "range=(col5, -3, 0))\n"
             "        SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> "
             "col2, 0.000000 -> col3, 0.000000 -> col4, c5 -> col5, c6 -> "
@@ -961,9 +961,9 @@ INSTANTIATE_TEST_SUITE_P(
             "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(), orders=() ASC, range=(col5, -3, "
+            "    +-WINDOW(partition_keys=(), orders=(ASC), range=(col5, -3, "
             "0))\n"
-            "    +-UNION(partition_keys=(), orders=() ASC, range=(col5, -3, "
+            "    +-UNION(partition_keys=(), orders=(ASC), range=(col5, -3, "
             "0))\n"
             "        SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> "
             "col2, 0.000000 -> col3, 0.000000 -> col4, c5 -> col5, c6 -> "
@@ -1054,7 +1054,7 @@ INSTANTIATE_TEST_SUITE_P(
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
             "SIMPLE_PROJECT(sources=(t1.col1 -> t1_col1, t2.col2 -> t2_col2))\n"
-            "  JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=t2.col5 "
+            "  JOIN(type=LastJoin, right_sort=(t2.col5 ASC), condition=t2.col5 "
             ">= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"
@@ -1065,7 +1065,7 @@ INSTANTIATE_TEST_SUITE_P(
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
             "SIMPLE_PROJECT(sources=(t1.col1 -> t1_col1, t2.col2 -> t2_col2))\n"
-            "  JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=t2.col5 "
+            "  JOIN(type=LastJoin, right_sort=(t2.col5 ASC), condition=t2.col5 "
             ">= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col1), index_keys=)\n"
             "    DATA_PROVIDER(table=t1)\n"
@@ -1082,9 +1082,9 @@ INSTANTIATE_TEST_SUITE_P(
             "PRECEDING AND CURRENT ROW) limit 10;",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=WindowAggregation, limit=10)\n"
-            "    +-WINDOW(partition_keys=(t1.col0), orders=(t1.col5) ASC, "
+            "    +-WINDOW(partition_keys=(t1.col0), orders=(t1.col5 ASC), "
             "range=(t1.col5, -3, 0))\n"
-            "    JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=, "
+            "    JOIN(type=LastJoin, right_sort=(t2.col5 ASC), condition=, "
             "left_keys=(t1.col1), "
             "right_keys=(t2.col1), index_keys=)\n"
             "      DATA_PROVIDER(table=t1)\n"

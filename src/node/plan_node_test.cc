@@ -72,26 +72,32 @@ TEST_F(PlanNodeTest, PlanNodeEqualsTest) {
     ASSERT_FALSE(filter1->Equals(filter4));
 
     // expr list
-    ExprListNode *expr_list1 = manager_->MakeExprList();
-    expr_list1->AddChild(manager_->MakeColumnRefNode("col1", ""));
-    expr_list1->AddChild(manager_->MakeColumnRefNode("col2", ""));
+    ExprListNode *order_expressions1 = manager_->MakeExprList();
+    order_expressions1->AddChild(manager_->MakeOrderExpression(manager_->MakeColumnRefNode("col1", ""), true));
+    order_expressions1->AddChild(manager_->MakeOrderExpression(manager_->MakeColumnRefNode("col2", ""), true));
 
-    ExprListNode *expr_list2 = manager_->MakeExprList();
-    expr_list2->AddChild(manager_->MakeColumnRefNode("col1", ""));
-    expr_list2->AddChild(manager_->MakeColumnRefNode("col2", ""));
+    ExprListNode *order_expressions2 = manager_->MakeExprList();
+    order_expressions2->AddChild(manager_->MakeOrderExpression(manager_->MakeColumnRefNode("col1", ""), true));
+    order_expressions2->AddChild(manager_->MakeOrderExpression(manager_->MakeColumnRefNode("col2", ""), true));
 
-    ExprListNode *expr_list3 = manager_->MakeExprList();
-    expr_list3->AddChild(manager_->MakeColumnRefNode("c1", ""));
-    expr_list3->AddChild(manager_->MakeColumnRefNode("col2", ""));
-    ASSERT_TRUE(expr_list1->Equals(expr_list1));
-    ASSERT_TRUE(expr_list1->Equals(expr_list2));
-    ASSERT_FALSE(expr_list1->Equals(expr_list3));
+    ExprListNode *order_expressions3 = manager_->MakeExprList();
+    order_expressions3->AddChild(manager_->MakeOrderExpression(manager_->MakeColumnRefNode("c1", ""), true));
+    order_expressions3->AddChild(manager_->MakeOrderExpression(manager_->MakeColumnRefNode("col2", ""), true));
+
+    ExprListNode *order_expressions4 = manager_->MakeExprList();
+    order_expressions3->AddChild(manager_->MakeOrderExpression(manager_->MakeColumnRefNode("col1", ""), true));
+    order_expressions3->AddChild(manager_->MakeOrderExpression(manager_->MakeColumnRefNode("col2", ""), false));
+
+    ASSERT_TRUE(order_expressions1->Equals(order_expressions1));
+    ASSERT_TRUE(order_expressions1->Equals(order_expressions2));
+    ASSERT_FALSE(order_expressions1->Equals(order_expressions3));
+    ASSERT_FALSE(order_expressions1->Equals(order_expressions4));
 
     // order
-    ExprNode *order1 = manager_->MakeOrderByNode(expr_list1, true);
-    ExprNode *order2 = manager_->MakeOrderByNode(expr_list2, true);
-    ExprNode *order3 = manager_->MakeOrderByNode(expr_list3, true);
-    ExprNode *order4 = manager_->MakeOrderByNode(expr_list2, false);
+    ExprNode *order1 = manager_->MakeOrderByNode(order_expressions1);
+    ExprNode *order2 = manager_->MakeOrderByNode(order_expressions2);
+    ExprNode *order3 = manager_->MakeOrderByNode(order_expressions3);
+    ExprNode *order4 = manager_->MakeOrderByNode(order_expressions4);
 
     ASSERT_TRUE(order1->Equals(order1));
     ASSERT_TRUE(order1->Equals(order2));
@@ -107,6 +113,22 @@ TEST_F(PlanNodeTest, PlanNodeEqualsTest) {
     ASSERT_TRUE(sort1->Equals(sort2));
     ASSERT_FALSE(sort1->Equals(sort3));
     ASSERT_FALSE(sort1->Equals(sort4));
+
+    // expr list
+    ExprListNode *expr_list1 = manager_->MakeExprList();
+    expr_list1->AddChild(manager_->MakeColumnRefNode("col1", ""));
+    expr_list1->AddChild(manager_->MakeColumnRefNode("col2", ""));
+
+    ExprListNode *expr_list2 = manager_->MakeExprList();
+    expr_list2->AddChild(manager_->MakeColumnRefNode("col1", ""));
+    expr_list2->AddChild(manager_->MakeColumnRefNode("col2", ""));
+
+    ExprListNode *expr_list3 = manager_->MakeExprList();
+    expr_list3->AddChild(manager_->MakeColumnRefNode("c1", ""));
+    expr_list3->AddChild(manager_->MakeColumnRefNode("col2", ""));
+    ASSERT_TRUE(expr_list1->Equals(expr_list1));
+    ASSERT_TRUE(expr_list1->Equals(expr_list2));
+    ASSERT_FALSE(expr_list1->Equals(expr_list3));
 
     // group
     PlanNode *group1 = manager_->MakeGroupPlanNode(filter1, expr_list1);

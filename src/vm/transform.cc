@@ -651,9 +651,9 @@ Status BatchModeTransformer::TransformWindowOp(
                                      "expression should belong to left table");
                     }
                     if (nullptr != orders &&
-                        !node::ExprListNullOrEmpty(orders->order_by_)) {
+                        !node::ExprListNullOrEmpty(orders->order_expressions_)) {
                         CHECK_STATUS(CheckExprDependOnChildOnly(
-                                         orders->order_by_, child_schemas_ctx),
+                                         orders->order_expressions_, child_schemas_ctx),
                                      "Fail to handle window: group "
                                      "expression should belong to left table");
                     }
@@ -832,9 +832,14 @@ Status BatchModeTransformer::TransformSortOp(const node::SortPlanNode* node,
                "Input node or output node is null");
     PhysicalOpNode* left = nullptr;
     CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &left));
-
+    if (nullptr == node->order_by_ || node::ExprListNullOrEmpty(node->order_by_->order_expressions_)) {
+        LOG(WARNING) << "Skip transform sort op when order is null or empty";
+        *output = left;
+        return Status::OK();
+    }
+    CHECK_STATUS(CheckTimeOrIntegerOrderColumn(node->order_by_, left->schemas_ctx()))
     PhysicalSortNode* sort_op = nullptr;
-    CHECK_STATUS(CreateOp<PhysicalSortNode>(&sort_op, left, node->order_list_));
+    CHECK_STATUS(CreateOp<PhysicalSortNode>(&sort_op, left, node->order_by_));
     *output = sort_op;
     return Status::OK();
 }
@@ -939,7 +944,7 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
 }
 
 Status BatchModeTransformer::InstantiateLLVMFunction(const FnInfo& fn_info) {
-    CHECK_TRUE(fn_info.IsValid(), kCodegenError);
+    CHECK_TRUE(fn_info.IsValid(), kCodegenError, "Fail to install llvm function, function info is invalid");
     codegen::CodeGenContext codegen_ctx(module_, fn_info.schemas_ctx(),
                                         node_manager_);
     codegen::RowFnLetIRBuilder builder(&codegen_ctx);
@@ -1295,7 +1300,8 @@ Status BatchModeTransformer::ValidateJoinIndexOptimization(
     if (node::kJoinTypeLast == join.join_type_) {
         CHECK_TRUE(
             nullptr == join.right_sort_.orders() ||
-                node::ExprListNullOrEmpty(join.right_sort_.orders()->order_by_),
+                node::ExprListNullOrEmpty(join.right_sort_.orders()->order_expressions_)
+                || nullptr == join.right_sort().orders()->GetOrderExpressionExpr(0),
             kPlanError, "Last Join node order by hasn't been optimized")
     }
     if (kSchemaTypeRow == right->GetOutputType()) {
@@ -1315,7 +1321,8 @@ Status BatchModeTransformer::ValidateWindowIndexOptimization(
                  "Window node hasn't been optimized");
     // check if window's order expression has been optimized
     CHECK_TRUE(!window.sort().ValidSort() ||
-                   node::ExprListNullOrEmpty(window.sort().orders()->order_by_),
+                   node::ExprListNullOrEmpty(window.sort().orders()->order_expressions_)
+                   || nullptr == window.sort().orders()->GetOrderExpressionExpr(0),
                kPlanError, "Window node hasn't been optimzied")
     return Status::OK();
 }
@@ -1332,7 +1339,7 @@ Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
 // Validate plan in request mode
 // Request mode should validate primary path and primary source
 Status RequestModeTransformer::ValidatePlan(PhysicalOpNode* node) {
-    CHECK_STATUS(BatchModeTransformer::ValidatePlan(node), "Invalid plan");
+    CHECK_STATUS(BatchModeTransformer::ValidatePlan(node))
     PhysicalOpNode* primary_source = nullptr;
     CHECK_STATUS(ValidatePrimaryPath(node, &primary_source),
                  "Fail to validate physical plan")
@@ -1454,8 +1461,7 @@ Status BatchModeTransformer::TransformPhysicalPlan(
 
                 DLOG(INFO) << "After optimization: \n"
                            << optimized_physical_plan->GetTreeString();
-                CHECK_STATUS(ValidatePlan(optimized_physical_plan),
-                             "Fail to generate physical plan, invalid plan");
+                CHECK_STATUS(ValidatePlan(optimized_physical_plan));
                 std::set<PhysicalOpNode*> node_visited_dict;
                 CHECK_STATUS(
                     InitFnInfo(optimized_physical_plan, &node_visited_dict),
@@ -1533,7 +1539,7 @@ Status BatchModeTransformer::GenConditionFilter(
     if (nullptr != filter->condition_) {
         node::ExprListNode expr_list;
         expr_list.AddChild(const_cast<node::ExprNode*>(filter->condition_));
-        return plan_ctx_.InitFnDef(&expr_list, schemas_ctx, true, filter);
+        CHECK_STATUS(plan_ctx_.InitFnDef(&expr_list, schemas_ctx, true, filter))
     }
     return Status::OK();
 }
@@ -1561,12 +1567,18 @@ Status BatchModeTransformer::GenRequestWindow(RequestWindowOp* window,
     return Status::OK();
 }
 
-Status BatchModeTransformer::GenSort(Sort* sort,
-                                     const SchemasContext* schemas_ctx) {
-    if (nullptr != sort->orders_ &&
-        !node::ExprListNullOrEmpty(sort->orders()->order_by())) {
-        return plan_ctx_.InitFnDef(sort->orders()->order_by(), schemas_ctx,
-                                   true, sort);
+Status BatchModeTransformer::GenSort(Sort* sort, const SchemasContext* schemas_ctx) {
+    if (nullptr != sort->orders_ && !node::ExprListNullOrEmpty(sort->orders()->order_expressions())) {
+        node::ExprListNode exprs;
+        for (int i = 0; i < sort->orders_->order_expressions_->GetChildNum(); i++) {
+            auto expr = sort->orders_->GetOrderExpressionExpr(i);
+            if (nullptr != expr) {
+                exprs.AddChild(const_cast<node::ExprNode*>(expr));
+            }
+        }
+        if (!node::ExprListNullOrEmpty(&exprs)) {
+            CHECK_STATUS(plan_ctx_.InitFnDef(&exprs, schemas_ctx, true, sort))
+        }
     }
     return Status::OK();
 }
@@ -1576,7 +1588,7 @@ Status BatchModeTransformer::GenRange(Range* range,
     if (nullptr != range->range_key_) {
         node::ExprListNode expr_list;
         expr_list.AddChild(const_cast<node::ExprNode*>(range->range_key_));
-        return plan_ctx_.InitFnDef(&expr_list, schemas_ctx, true, range);
+        CHECK_STATUS(plan_ctx_.InitFnDef(&expr_list, schemas_ctx, true, range))
     }
     return Status::OK();
 }
@@ -1666,25 +1678,19 @@ bool BatchModeTransformer::IsSimpleProject(const ColumnProjects& projects) {
     return true;
 }
 
-Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(
-    const node::OrderByNode* orders, const vm::SchemasContext* schemas_ctx) {
-    if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_by_)) {
-        if (1u != orders->order_by_->children_.size()) {
-            return base::Status(
-                common::kPlanError,
-                "Invalid Order Column: can't support multi order");
-        }
+Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(const node::OrderByNode* orders,
+                                                           const vm::SchemasContext* schemas_ctx) {
+    if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_expressions_)) {
+        CHECK_TRUE(1u == orders->order_expressions_->children_.size(), kPlanError,
+                   "Un-support order by multiple expressions currently")
+        auto order = dynamic_cast<const node::OrderExpression*>(orders->order_expressions_->children_[0]);
+        CHECK_TRUE(nullptr != order && node::kExprColumnRef == order->expr()->expr_type_, common::kPlanError,
+                   "Un-support order expression type, expect column expression")
 
-        auto order = orders->order_by_->children_[0];
-        if (node::kExprColumnRef != order->expr_type_) {
-            return base::Status(
-                common::kPlanError,
-                "Invalid Order Column: can't support expression order");
-        }
         size_t schema_idx;
         size_t col_idx;
         CHECK_STATUS(schemas_ctx->ResolveColumnRefIndex(
-            dynamic_cast<node::ColumnRefNode*>(order), &schema_idx, &col_idx));
+            dynamic_cast<const node::ColumnRefNode*>(order->expr()), &schema_idx, &col_idx));
 
         auto col_type = schemas_ctx->GetSchema(schema_idx)->Get(col_idx).type();
         switch (col_type) {
@@ -1710,7 +1716,7 @@ Status BatchModeTransformer::CheckWindow(
     CHECK_TRUE(!node::ExprListNullOrEmpty(w_ptr->GetKeys()), common::kPlanError,
                "Invalid Window: Do not support window on non-partition");
     CHECK_TRUE(nullptr != w_ptr->GetOrders() &&
-                   !node::ExprListNullOrEmpty(w_ptr->GetOrders()->order_by_),
+                   !node::ExprListNullOrEmpty(w_ptr->GetOrders()->order_expressions_),
                common::kPlanError,
                "Invalid Window: Do not support window on non-order");
     CHECK_STATUS(CheckHistoryWindowFrame(w_ptr));
