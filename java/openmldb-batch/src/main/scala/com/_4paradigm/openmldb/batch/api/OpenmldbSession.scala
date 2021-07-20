@@ -52,7 +52,7 @@ class OpenmldbSession {
     this()
     this.sparkSession = sparkSession
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
-    this.sparkSession.conf.set("spark.sql.session.timeZone", config.timeZone)
+    this.setDefaultSparkConfig()
   }
 
   /**
@@ -74,16 +74,30 @@ class OpenmldbSession {
         val builder = SparkSession.builder()
 
         // TODO: Need to set for official Spark 2.3.0 jars
-        logger.debug("Set spark.hadoop.yarn.timeline-service.enabled as false")
-        builder.config("spark.hadoop.yarn.timeline-service.enabled", value = false)
+        //logger.debug("Set spark.hadoop.yarn.timeline-service.enabled as false")
+        //builder.config("spark.hadoop.yarn.timeline-service.enabled", value = false)
+        builder.config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
 
         this.sparkSession = builder.appName("App")
           .master(sparkMaster)
           .getOrCreate()
+
+        this.setDefaultSparkConfig()
       }
 
       this.sparkSession
     }
+  }
+
+  def setDefaultSparkConfig() = {
+    val sparkConf = this.sparkSession.conf
+    // Set timezone
+    sparkConf.set("spark.sql.session.timeZone", config.timeZone)
+
+    // Set Iceberg catalog
+    sparkConf.set("spark.sql.catalog.%s".format(config.icebergCatalogName), "org.apache.iceberg.spark.SparkCatalog")
+    sparkConf.set("spark.sql.catalog.%s.type".format(config.icebergCatalogName), "hadoop")
+    sparkConf.set("spark.sql.catalog.%s.warehouse".format(config.icebergCatalogName), this.config.hadoopWarehousePath)
   }
 
   /**
