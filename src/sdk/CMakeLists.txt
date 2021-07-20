@@ -43,7 +43,7 @@ if(TESTING_ENABLE)
     target_link_libraries(mini_cluster_bm_request mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 endif()
 
-set(SDK_LIBS fedb_sdk fedb_catalog client zk_client fedb_flags fedb_codec fedb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
+set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
 
 if(SQL_PYSDK_ENABLE)
     find_package(Python3 COMPONENTS Interpreter Development)
@@ -57,7 +57,7 @@ if(SQL_PYSDK_ENABLE)
     swig_add_library(sql_router_sdk
             TYPE SHARED
             LANGUAGE python
-            OUTPUT_DIR ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
+            OUTPUT_DIR ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb
             SOURCES sql_router_sdk.i)
     target_include_directories(sql_router_sdk PRIVATE ${Python3_INCLUDE_DIRS})
     target_link_libraries(sql_router_sdk ${SDK_LIBS})
@@ -84,7 +84,7 @@ if(SQL_PYSDK_ENABLE)
         COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  name='fedb'," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  name='openmldb'," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  version='${RTIDB_VERSION_MAJOR}.${RTIDB_VERSION_MEDIUM}.${RTIDB_VERSION_MINOR}.${RTIDB_VERSION_BUG}'," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
@@ -92,7 +92,7 @@ if(SQL_PYSDK_ENABLE)
         COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  'openmldb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
@@ -122,7 +122,7 @@ if(SQL_PYSDK_ENABLE)
         COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  name='fedb'," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  name='openmldb'," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  version='${RTIDB_VERSION_MAJOR}.${RTIDB_VERSION_MEDIUM}.${RTIDB_VERSION_MINOR}.${RTIDB_VERSION_BUG}'," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
@@ -130,7 +130,7 @@ if(SQL_PYSDK_ENABLE)
         COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  'openmldb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
         COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
@@ -170,34 +170,34 @@ if(SQL_PYSDK_ENABLE)
     add_custom_target(sql_pysdk_package ALL
         DEPENDS setup.py
         COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/__init__.py fedb/__init__.py
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/driver.py fedb/driver.py
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/sql_pysdk/fedb
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/__init__.py openmldb/__init__.py
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py openmldb/driver.py
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb
         COMMAND ${Python3_EXECUTABLE} setup.py bdist_wheel
         BYPRODUCTS
-          python/fedb
+          python/openmldb
           python/build
           python/dist
-          python/fedb.egg-info
+          python/openmldb.egg-info
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
     )
 
-    add_custom_target(sqlalchemy_fedb DEPENDS sql_router_sdk
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/__init__.py
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/safedb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/safedb.py
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/fedbapi/_fedbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi/_fedbapi.py
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/fedbapi/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi/__init__.py
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi/driver.py
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi
-        COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/fedb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/setup.py ${CMAKE_BINARY_DIR}/python/
+    add_custom_target(sqlalchemy_openmldb DEPENDS sql_router_sdk
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/__init__.py
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/saopenmldb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/saopenmldb.py
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/__init__.py
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/driver.py
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
+        COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
         COMMAND ${CMAKE_COMMAND} -E remove_directory dist
         COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel
         BYPRODUCTS
-          python/sqlalchemy-fedb
+          python/sqlalchemy-openmldb
           python/build
           python/dist
-          python/sqlalchemy-fedb.egg-info
+          python/sqlalchemy-openmldb.egg-info
     )
 endif()
 

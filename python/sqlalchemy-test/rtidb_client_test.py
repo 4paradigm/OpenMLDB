@@ -25,7 +25,7 @@ ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string,
 class TestRtidbClient(unittest.TestCase):
   
   def test_basic(self):
-    engine = db.create_engine('fedb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
+    engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
     connection = engine.connect()
     try:
       connection.execute("create database db_test;")
