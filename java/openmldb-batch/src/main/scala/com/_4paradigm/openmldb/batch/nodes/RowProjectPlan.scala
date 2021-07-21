@@ -60,7 +60,12 @@ object RowProjectPlan {
     }
 
     // Get Spark DataFrame and limit the number of rows
-    val inputDf = if (node.GetLimitCnt > 0) inputTable.getDfConsideringIndex(ctx, node.GetNodeId()).limit(node.GetLimitCnt()) else inputTable.getDfConsideringIndex(ctx, node.GetNodeId())
+    val inputDf = if (node.GetLimitCnt > 0) {
+      inputTable.getDfConsideringIndex(ctx, node.GetNodeId())
+        .limit(node.GetLimitCnt())
+    } else {
+      inputTable.getDfConsideringIndex(ctx, node.GetNodeId())
+    }
 
     val hybridseJsdkLibraryPath = ctx.getConf.hybridseJsdkLibraryPath
 
@@ -99,7 +104,7 @@ object RowProjectPlan {
 
       })
 
-      SparkUtil.RddInternalRowToDf(ctx.getSparkSession, outputInternalRowRdd, outputSchema)
+      SparkUtil.rddInternalRowToDf(ctx.getSparkSession, outputInternalRowRdd, outputSchema)
 
     } else { // enableUnsafeRowOptimization is false
       val ouputRdd = inputDf.rdd.mapPartitions(partitionIter => {
@@ -118,7 +123,11 @@ object RowProjectPlan {
         val fn = jit.FindFunction(projectConfig.functionName)
         val encoder = new SparkRowCodec(projectConfig.inputSchemaSlices)
         val decoder = new SparkRowCodec(projectConfig.outputSchemaSlices)
-        val outputFields = if (projectConfig.keepIndexColumn) projectConfig.outputSchemaSlices.map(_.size).sum + 1 else projectConfig.outputSchemaSlices.map(_.size).sum
+        val outputFields = if (projectConfig.keepIndexColumn) {
+          projectConfig.outputSchemaSlices.map(_.size).sum + 1
+        } else {
+          projectConfig.outputSchemaSlices.map(_.size).sum
+        }
         val outputArr = Array.fill[Any](outputFields)(null)
 
         val resultIter = partitionIter.map(row => {

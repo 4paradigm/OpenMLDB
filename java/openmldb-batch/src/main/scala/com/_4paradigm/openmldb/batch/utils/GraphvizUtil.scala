@@ -17,9 +17,9 @@
 package com._4paradigm.openmldb.batch.utils
 
 import java.io.File
-
 import com._4paradigm.hybridse.node.JoinType
-import com._4paradigm.hybridse.vm._
+import com._4paradigm.hybridse.vm.{PhysicalDataProviderNode, PhysicalJoinNode, PhysicalOpNode,
+  PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalWindowAggrerationNode, ProjectType}
 import guru.nidi.graphviz.engine.{Format, Graphviz}
 import guru.nidi.graphviz.model.Factory.{mutGraph, mutNode}
 import guru.nidi.graphviz.model.MutableNode

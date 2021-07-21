@@ -96,4 +96,4 @@ object ConfigReflections {
   }
 }
 
-class ConfigOption(name: String, doc: String = "") extends StaticAnnotation {}
+class ConfigOption(name: String, doc: String = "") extends StaticAnnotation

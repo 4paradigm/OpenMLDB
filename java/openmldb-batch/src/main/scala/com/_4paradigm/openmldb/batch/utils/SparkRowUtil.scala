@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.batch.utils
 
 import com._4paradigm.hybridse.sdk.HybridSeException
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{DataType, DateType, IntegerType, LongType, ShortType, TimestampType}
 
 
 object SparkRowUtil {

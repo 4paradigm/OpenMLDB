@@ -106,8 +106,12 @@ object GroupByAggregationPlan {
         val inputHybridseSchema = HybridseUtil.getHybridseSchema(projectConfig.inputSchema)
 
         val outputFields =
-          if (projectConfig.keepIndexColumn) projectConfig.outputSchemaSlices.map(_.size).sum + 1
-          else projectConfig.outputSchemaSlices.map(_.size).sum
+          if (projectConfig.keepIndexColumn) {
+            projectConfig.outputSchemaSlices.map(_.size).sum + 1
+          }
+          else {
+            projectConfig.outputSchemaSlices.map(_.size).sum
+          }
 
         // Init first groupby interface
         var groupbyInterface = new GroupbyInterface(inputHybridseSchema)

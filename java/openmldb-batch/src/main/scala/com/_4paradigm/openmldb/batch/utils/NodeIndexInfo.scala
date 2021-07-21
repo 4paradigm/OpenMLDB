@@ -23,9 +23,9 @@ object NodeIndexType extends Enumeration {
   val InternalComputeNode = Value(3)
   val DestNode = Value(4)
 
-  def checkExists(nodeIndexType: Int) = this.values.exists(_ == nodeIndexType)
+  def checkExists(nodeIndexType: Int): Boolean = this.values.exists(_ == nodeIndexType)
 
-  def showAll = this.values.foreach(println)
+  def showAll: Unit = this.values.foreach(println)
 }
 
 // Record the index info for physical node

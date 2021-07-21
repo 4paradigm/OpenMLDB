@@ -22,10 +22,10 @@ import com._4paradigm.hybridse.vm.PhysicalConstProjectNode
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.batch.utils.HybridseUtil
 import org.apache.spark.sql.Column
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.functions.{lit, to_date, to_timestamp, typedLit, when}
+import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, TimestampType}
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.asScalaBufferConverter
 
 
 object ConstProjectPlan {
