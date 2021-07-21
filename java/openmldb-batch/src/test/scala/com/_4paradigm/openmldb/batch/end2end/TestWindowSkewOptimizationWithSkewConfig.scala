@@ -66,7 +66,14 @@ class TestWindowSkewOptimizationWithSkewConfig extends FunSuite {
     distributionDf.write.mode(SaveMode.Overwrite).parquet("file:///tmp/window_skew_opt_config/")
 
     // Run window skew optimization with skew config
-    val sqlText = "SELECT sum(trans_amount) OVER w AS w_sum_amount FROM t1 WINDOW w AS (PARTITION BY user ORDER BY trans_time ROWS BETWEEN 10 PRECEDING AND CURRENT ROW)"
+    val sqlText ="""
+                   | SELECT sum(trans_amount) OVER w AS w_sum_amount FROM t1
+                   | WINDOW w AS (
+                   |    PARTITION BY user
+                   |    ORDER BY trans_time
+                   |    ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+     """.stripMargin
+
     val outputDf = sess.sql(sqlText)
 
     // Test with SparkSQL
