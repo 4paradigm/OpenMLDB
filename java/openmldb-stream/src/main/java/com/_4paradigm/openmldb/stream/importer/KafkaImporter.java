@@ -12,6 +12,14 @@ public class KafkaImporter {
         int checkpointInterval = 10000;
         String jobName = "KafkaImporter";
         String tableSchema = "id STRING, vendor_id INT";
+        String kafkaTopic = "taxi_tour6";
+        String kafkaServers = "localhost:9092";
+        String kafkaGroupId = "testGroup";
+        String icebergCatalogName = "hadoop_catalog";
+        String icebergWarehousePath = "hdfs://172.27.128.215/user/tobe/iceberg_demo5/";
+        String icebergDatabaseName = "taxi_tour";
+        String icebergTableName = "two_columns";
+
 
         StreamExecutionEnvironment sEnv = StreamExecutionEnvironment.getExecutionEnvironment();
         EnvironmentSettings bsSettings = EnvironmentSettings.newInstance().useBlinkPlanner().inStreamingMode().build();
@@ -21,30 +29,29 @@ public class KafkaImporter {
 
         StreamTableEnvironment tEnv = StreamTableEnvironment.create(sEnv, bsSettings);
 
-        
 
         String sourceSql = "CREATE TABLE kafkaTable (\n" +
-                " %s\n" +
+                String.format(" %s\n", tableSchema) +
                 ") WITH (\n" +
                 " 'connector' = 'kafka',\n" +
-                " 'topic' = 'taxi_tour6',\n" +
-                " 'properties.bootstrap.servers' = 'localhost:9092',\n" +
-                " 'properties.group.id' = 'testGroup',\n" +
+                String.format(" 'topic' = '%s',\n", kafkaTopic) +
+                String.format(" 'properties.bootstrap.servers' = '%s',\n", kafkaServers) +
+                String.format(" 'properties.group.id' = '%s',\n", kafkaGroupId) +
                 " 'format' = 'json',\n" +
                 " 'scan.startup.mode' = 'earliest-offset'\n" +
                 ")";
-        String.format(sourceSql, tableSchema);
         tEnv.sqlUpdate(sourceSql);
 
-        String createCatalogSql = "CREATE CATALOG hadoop_catalog WITH (\n" +
+        String createCatalogSql = String.format("CREATE CATALOG %s WITH (\n", icebergCatalogName) +
                 "  'type'='iceberg',\n" +
                 "  'catalog-type'='hadoop',\n" +
-                "  'warehouse'='hdfs://172.27.128.215/user/tobe/iceberg_demo5/',\n" +
+                String.format("  'warehouse'='%s',\n", icebergWarehousePath) +
                 "  'property-version'='1'\n" +
                 ")";
         tEnv.sqlUpdate(createCatalogSql);
 
-        String insertSql = "INSERT INTO hadoop_catalog.taxi_tour.two_columns SELECT id, vendor_id FROM kafkaTable";
+        String insertSql = String.format("INSERT INTO %s.%s.%s SELECT * FROM kafkaTable", icebergCatalogName,
+                icebergDatabaseName, icebergTableName);
         tEnv.sqlUpdate(insertSql);
 
         tEnv.execute(jobName);
