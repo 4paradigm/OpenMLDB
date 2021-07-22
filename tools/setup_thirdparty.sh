@@ -35,30 +35,11 @@ if [[ "$OSTYPE" = "darwin"* ]]; then
     pushd "${THIRDSRC_PATH}"
 
     # download thirdparty-mac
-    curl -SLO https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.3.1/thirdparty-2021-05-27-drawin-x86_64.tar.gz
-    tar xzf thirdparty-2021-05-27-drawin-x86_64.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
+    curl -SLo thirdparty-mac.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0-pre1/thirdparty-2021-07-22-mac.tar.gz
+    tar xzf thirdparty-mac.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
     # download and install libzetasql
     curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-darwin-x86_64.tar.gz
     tar xzf libzetasql.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
-    echo "list files under ${THIRDPARTY_PATH}"
-
-    # TODO: use new mac thirdparty assert from https://github.com/jingchen2222/hybridsql-asserts/pull/7
-    # v0.3.1 thirdparty assert have dylib for glog and gflags only
-    rm -vf "$THIRDPARTY_PATH/lib/"libgflags*.dylib
-    rm -vf "$THIRDPARTY_PATH/lib/"libglog*.dylib
-
-    curl -SLo gflags-2.2.2.tar.gz https://github.com/gflags/gflags/archive/refs/tags/v2.2.2.tar.gz
-    tar zxf gflags-2.2.2.tar.gz
-
-    cmake -Hgflags-2.2.2 -Bb2 -DCMAKE_INSTALL_PREFIX="${THIRDPARTY_PATH}" -DCMAKE_CXX_FLAGS=-fPIC -DBUILD_STATIC_LIBS=ON
-    cmake --build b2 --target install
-
-    curl -SLo glog-0.4.0.tar.gz https://github.com/google/glog/archive/refs/tags/v0.4.0.tar.gz
-    tar zxf glog-0.4.0.tar.gz
-    pushd glog-0.4.0
-    ./autogen.sh && CXXFLAGS=-fPIC ./configure --prefix="$THIRDPARTY_PATH" --enable-shared=no
-    make install
-    popd
 
     popd
 elif [[ "$OSTYPE" = "linux-gnu"* ]]; then

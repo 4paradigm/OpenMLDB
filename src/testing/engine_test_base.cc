@@ -479,10 +479,10 @@ void EngineTestRunner::RunBenchmark(size_t iters) {
 }
 
 // suppress GoogleTestVerification since there is no test parttern for EngineTest and BatchRequestEngineTest
-#ifdef __APPLE__
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(EngineTest);
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BatchRequestEngineTest);
-#endif
+//#ifdef __APPLE__
+//GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(EngineTest);
+//GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BatchRequestEngineTest);
+//#endif
 
 INSTANTIATE_TEST_SUITE_P(EngineFailQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/fail_query.yaml")));
