@@ -59,7 +59,8 @@ OpenMLDB是一个面向机器学习应用提供正确、高效数据供给的开
 
 ```bash
 # 启动docker镜像
-docker run -it mirror.baidubce.com/4pdosc/openmldb:0.1.0 bash
+# 如果下载慢，可以使用国内代理镜像 (mirror.baidubce.com/4pdosc/openmldb:0.1.0)
+docker run -it 4pdosc/openmldb:0.1.0 bash
 
 # 初始化环境
 sh init.sh
