@@ -22,7 +22,7 @@ set -eE
 cd "$(dirname "$0")/.."
 HYRBIDSE_DIR=$(pwd)
 
-./tools/init_env.profile.sh
+./tools/setup_thirdparty.sh
 
 
 if uname -a | grep -q Darwin; then

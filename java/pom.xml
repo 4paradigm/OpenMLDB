@@ -75,20 +75,24 @@
                     <configuration>
                         <reuseForks>false</reuseForks>
                         <forkCount>1</forkCount>
-                        <argLine>-Xmx4G</argLine>
+                        <argLine>@{argLine} -Xmx4G</argLine>
                     </configuration>
                 </plugin>
                 <plugin>
-                    <groupId>org.scoverage</groupId>
-                    <artifactId>scoverage-maven-plugin</artifactId>
-                    <version>1.4.0-M5</version>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>0.8.7</version>
                     <executions>
                         <execution>
-                            <id>scoverage-report</id>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>report</id>
                             <phase>prepare-package</phase>
                             <goals>
                                 <goal>report</goal>
-                                <!-- or integration-check -->
                             </goals>
                         </execution>
                     </executions>
@@ -222,6 +226,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

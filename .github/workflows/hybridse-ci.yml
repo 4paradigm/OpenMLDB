@@ -137,8 +137,7 @@ jobs:
 
       - name: Install thirdparty
         run: |
-          brew install yaml-cpp coreutils swig automake
-          sh tools/install_thirdparty_mac.sh
+          brew install coreutils swig automake
 
       - name: Build Core
         run: |
@@ -345,13 +344,7 @@ jobs:
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v1
         with:
-          files: build/coverage.info
+          files: build/coverage.info,./java/hybridse-sdk/target/site/jacoco/jacoco.xml
           name: coverage
           fail_ci_if_error: true
           verbose: true
-
-      # - name: benchmark
-      #   run: |
-      # cost too much time
-      # bash tools/micro_bench.sh | tee micro_bench_report.txt
-      # bash tools/gen_micro_bench_compare.sh

@@ -21,7 +21,7 @@ cd "$(dirname "$0")/.."
 
 HYRBIDSE_DIR=$(pwd)
 
-./tools/init_env.profile.sh
+./tools/setup_thirdparty.sh
 
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
@@ -29,7 +29,19 @@ if uname -a | grep -q Darwin; then
 fi
 
 rm -rf build
-mkdir -p build && cd build
+mkdir -p build
+pushd build
+
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON -DEXAMPLES_ENABLE=ON -DEXAMPLES_TESTING_ENABLE=ON
 make -j"$(nproc)"
 make -j"$(nproc)" coverage SQL_CASE_BASE_DIR="$HYRBIDSE_DIR" YAML_CASE_BASE_DIR="$HYRBIDSE_DIR"
+
+popd
+
+pushd java
+if [[ "$OSTYPE" = "darwin"* ]]; then
+    mvn prepare-package -P macos
+elif [[ "$OSTYPE" = "linux-gnu" ]]; then
+    mvn prepare-package
+fi
+popd
