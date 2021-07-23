@@ -90,7 +90,7 @@ object HDFSUtil {
   }
 
   def getFilesSize(uris: String*): String = {
-    var fileSize: Long = 0l
+    var fileSize: Long = 0L
     uris.map(
       uri => {
         val fs = getFileSystem(uri)
@@ -211,17 +211,19 @@ object HDFSUtil {
       val rawPaths = path.split(",").filter(_.size > 0)
       // remove abandunt paths
       val repPaths = scala.collection.mutable.ArrayBuffer.empty[String]
-      for (uri <- rawPaths)
+      for (uri <- rawPaths) {
         if (!rawPaths.exists(ele => Paths.get(uri).startsWith(Paths.get(ele))
-          && 0 != Paths.get(ele).compareTo(Paths.get(uri))))
+          && 0 != Paths.get(ele).compareTo(Paths.get(uri)))) {
           repPaths += uri
+        }
+      }
       repPaths.toArray
     }
     val commonDir = {
       var rawPrefix = FindCommonDirectoryPath(paths.toList)
-      if (!path.startsWith("/") && !path.startsWith("hdfs://"))
+      if (!path.startsWith("/") && !path.startsWith("hdfs://")) {
         rawPrefix
-      else {
+      } else {
         while (rawPrefix.endsWith("/"))
           rawPrefix = rawPrefix.stripSuffix("/")
         rawPrefix
@@ -229,17 +231,21 @@ object HDFSUtil {
     }
     val remaining = {
       var rawSuffix = paths.map(_.stripPrefix(commonDir))
-      while (rawSuffix.exists(_.startsWith("/")))
+      while (rawSuffix.exists(_.startsWith("/"))) {
         rawSuffix = rawSuffix.map(_.stripPrefix("/"))
+      }
       rawSuffix
     }
     val suffixes = remaining.filter(_.length > 0)
     if (suffixes.length > 0) {
-      if (commonDir.length > 0 || path.startsWith("/"))
+      if (commonDir.length > 0 || path.startsWith("/")) {
         commonDir.concat("/").concat("{").concat(suffixes.mkString(",")).concat("}")
-      else
+      } else {
         "{".concat(suffixes.mkString(",")).concat("}")
-    } else commonDir
+      }
+    } else {
+      commonDir
+    }
   }
 
   object FindCommonDirectoryPath {
@@ -254,8 +260,11 @@ object HDFSUtil {
         case (a :: as, b :: bs) if a equals b => a :: common(as, bs)
         case _ => Nil
       }
-      if (paths.length < 2) paths.headOption.getOrElse("")
-      else paths.map(_.split("/").toList).reduceLeft(common).mkString("/")
+      if (paths.length < 2) {
+        paths.headOption.getOrElse("")
+      } else {
+        paths.map(_.split("/").toList).reduceLeft(common).mkString("/")
+      }
     }
   }
   def getFileSize2(uri:String):Long ={

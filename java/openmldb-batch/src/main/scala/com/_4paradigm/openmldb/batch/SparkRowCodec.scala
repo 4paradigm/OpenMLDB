@@ -17,13 +17,13 @@
 package com._4paradigm.openmldb.batch
 
 import java.sql.{Date, Timestamp}
-
 import com._4paradigm.hybridse.codec.{RowBuilder, RowView, Row => NativeRow}
 import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.hybridse.vm.CoreAPI
 import com._4paradigm.openmldb.batch.utils.HybridseUtil
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType,
+  IntegerType, LongType, ShortType, StringType, StructType, TimestampType}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -49,7 +49,6 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
 
   def encode(row: Row): NativeRow = {
     var result: NativeRow = null
-    
     // collect slice size and string raw bytes
     val sliceSizes = Array.fill(sliceNum)(0)
     val sliceStrings = Array.fill(sliceNum)(mutable.ArrayBuffer[Array[Byte]]())
@@ -194,7 +193,8 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
       fieldOffset += 1
     }
   }
-  
+
+
   private def inferStringFields(): Array[Array[Int]] = {
     var fieldOffset = 0
     sliceSchemas.map(schema => {

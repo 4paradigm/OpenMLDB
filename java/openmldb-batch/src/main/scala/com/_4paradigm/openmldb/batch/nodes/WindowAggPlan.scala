@@ -17,20 +17,19 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import java.util
-
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
-import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SkewUtils, SparkUtil}
+import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil,
+  PhysicalNodeUtil, SkewUtils, SparkUtil}
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
-import com._4paradigm.openmldb.batch.{PlanContext, OpenmldbBatchConfig, SparkInstance}
+import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{IntegerType, LongType, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConverters._
-
+import scala.collection.JavaConverters.{bufferAsJavaListConverter, asScalaBufferConverter}
 
 /** The planner which implements window agg physical node.
  *
@@ -68,7 +67,11 @@ object WindowAggPlan {
     val dfWithIndex = inputTable.getDfConsideringIndex(ctx, physicalNode.GetNodeId())
 
     // Do union if physical node has union flag
-    val unionTable = if (isWindowWithUnion) WindowAggPlanUtil.windowUnionTables(ctx, physicalNode, dfWithIndex) else dfWithIndex
+    val unionTable = if (isWindowWithUnion) {
+      WindowAggPlanUtil.windowUnionTables(ctx, physicalNode, dfWithIndex)
+    } else {
+      dfWithIndex
+    }
 
     // Do groupby and sort with window skew optimization or not
     val repartitionDf = if (isWindowSkewOptimization) {
@@ -99,7 +102,7 @@ object WindowAggPlan {
           val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
           unsafeWindowAggIter(computer, iter, sparkFeConfig, windowAggConfig, outputSchema)
       }
-      SparkUtil.RddInternalRowToDf(ctx.getSparkSession, outputInternalRowRdd, outputSchema)
+      SparkUtil.rddInternalRowToDf(ctx.getSparkSession, outputInternalRowRdd, outputSchema)
 
     } else { // isUnsafeRowOptimization is false
       val outputRdd = if (isWindowWithUnion) {
@@ -170,7 +173,8 @@ object WindowAggPlan {
       val distributionTableName = "_DISTRIBUTION_TABLE_" + uniqueNamePostfix
       val countColumnName = "_COUNT_" + uniqueNamePostfix
 
-      val distributionSqlText = SkewUtils.genPercentileSql(inputTableName, quantile.intValue(), repartitionColNames, orderbyColName, countColumnName)
+      val distributionSqlText = SkewUtils
+        .genPercentileSql(inputTableName, quantile.intValue(), repartitionColNames, orderbyColName, countColumnName)
       logger.info(s"Generate distribution sql: $distributionSqlText")
       val distributionDf = ctx.sparksql(distributionSqlText)
       distributionDf.createOrReplaceTempView(distributionTableName)
@@ -179,7 +183,8 @@ object WindowAggPlan {
       val keysMap = new util.HashMap[String, String]()
       keyScala.foreach(e => keysMap.put(e, e))
 
-      val addColumnsSqlText = SkewUtils.genPercentileTagSql(inputTableName, distributionTableName, quantile.intValue(), schemas, keysMap, orderbyColName,
+      val addColumnsSqlText = SkewUtils.genPercentileTagSql(inputTableName, distributionTableName,
+        quantile.intValue(), schemas, keysMap, orderbyColName,
         partColumnName, expandColumnName, countColumnName, ctx.getConf.skewCnt.longValue())
       logger.info(s"Generate add columns sql: $addColumnsSqlText")
       ctx.sparksql(addColumnsSqlText)
@@ -189,14 +194,16 @@ object WindowAggPlan {
 
       val distributionMap = Map(distributionCollect.map(p => (p.get(0), p.get(1))):_*)
 
-      val outputSchema = inputDf.schema.add("_PART_", IntegerType, false).add("_EXPAND_", IntegerType, false)
+      val outputSchema = inputDf.schema.add("_PART_", IntegerType, false)
+        .add("_EXPAND_", IntegerType, false)
 
       val outputRdd = inputDf.rdd.map(row => {
         // Combine the repartition keys to one string which is equal to the first column of skew config
         val combineString = repartitionColIndexes.map(index => row.get(index)).mkString("_")
         // TODO: Support for more datatype of orderby columns
         val condition = if (orderbyColType.equals(TimestampType)) {
-          row.get(orderbyColIndex).asInstanceOf[java.sql.Timestamp].compareTo(distributionMap(combineString).asInstanceOf[java.sql.Timestamp])
+          row.get(orderbyColIndex).asInstanceOf[java.sql.Timestamp].compareTo(distributionMap(combineString)
+            .asInstanceOf[java.sql.Timestamp])
         } else if (orderbyColType.equals(LongType)) {
           row.get(orderbyColIndex).asInstanceOf[Long].compareTo(distributionMap(combineString).asInstanceOf[Long])
         } else {

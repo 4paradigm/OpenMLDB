@@ -21,6 +21,9 @@ import com._4paradigm.openmldb.batch.utils.{DDLEngine, HDFSUtil, HybridseUtil, S
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
+import scala.collection.JavaConverters.{asScalaBufferConverter, mapAsScalaMapConverter}
+
+
 
 object OpenmldbBatchMain {
 
@@ -38,7 +41,6 @@ object OpenmldbBatchMain {
       sessionBuilder.appName(appName)
     }
 
-    import scala.collection.JavaConverters._
     for (e <- config.getSparkConfig.asScala) {
       val arg: Array[String]  = e.split("=")
       val k = arg(0)
