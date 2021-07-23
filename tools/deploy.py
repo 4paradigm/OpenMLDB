@@ -183,12 +183,12 @@ def DeployNameserver(zk_cluster, zk_root_path, ns_conf, teardown):
             real_path = ns_conf["path"]
         host = item["address"].split(":")[0]
         (prefix, suffix, is_local) = GetPrefixAndSuffix(host)
-        work_path = real_path + "/fedb-nameserver-" + version 
+        work_path = real_path + "/openmldb-nameserver-" + version
         cmd_arr = []
         if teardown:
             print("teardown nameserver on {}. path: {}".format(host, real_path))
             cmd_arr.append("{} cd {}; sh bin/start_ns.sh stop {}".format(prefix, work_path, suffix))
-            cmd_arr.append("{} cd {}; rm {}; rm -rf {} {}".format(prefix, real_path, file_name, "fedb-nameserver-*", suffix))
+            cmd_arr.append("{} cd {}; rm {}; rm -rf {} {}".format(prefix, real_path, file_name, "openmldb-nameserver-*", suffix))
         else:    
             print("start nameserver on {}. path: {}".format(host, real_path))
             cmd_arr.append("{} mkdir -p {} {}".format(prefix, real_path, suffix))
@@ -196,7 +196,7 @@ def DeployNameserver(zk_cluster, zk_root_path, ns_conf, teardown):
                 cmd_arr.append("cp {} {}".format(source_file, real_path))
             else:    
                 cmd_arr.append("scp {} {}:{}".format(source_file, host, real_path))
-            cmd_arr.append("{} cd {}; tar -zxvf {}; mv {} fedb-nameserver-{} {}".format(prefix, real_path, file_name, file_name[:-7], version, suffix))
+            cmd_arr.append("{} cd {}; tar -zxvf {}; mv {} openmldb-nameserver-{} {}".format(prefix, real_path, file_name, file_name[:-7], version, suffix))
             cmd_arr.append("{} cd {}; sed -i 's/--endpoint=.*/--endpoint={}/g' conf/nameserver.flags;"
                                             "sed -i 's/--zk_cluster=.*/--zk_cluster={}/g' conf/nameserver.flags;"
                                             "sed -i 's/--zk_root_path=.*/--zk_root_path={}/g' conf/nameserver.flags {}".format(
@@ -221,12 +221,12 @@ def DeployTablet(zk_cluster, zk_root_path, tablet_conf, teardown):
             real_path = tablet_conf["path"]
         host = item["address"].split(":")[0]
         (prefix, suffix, is_local) = GetPrefixAndSuffix(host)
-        work_path = real_path + "/fedb-tablet-" + version 
+        work_path = real_path + "/openmldb-tablet-" + version
         cmd_arr = []
         if teardown:
             print("teardown tablet on {}. path: {}".format(host, real_path))
             cmd_arr.append("{} cd {}; sh bin/start.sh stop {}".format(prefix, work_path, suffix))
-            cmd_arr.append("{} cd {}; rm {}; rm -rf {} {}".format(prefix, real_path, file_name, "fedb-tablet-*", suffix))
+            cmd_arr.append("{} cd {}; rm {}; rm -rf {} {}".format(prefix, real_path, file_name, "openmldb-tablet-*", suffix))
         else:
             print("start tablet on {}. path: {}".format(host, real_path))
             cmd_arr.append("{} mkdir -p {} {}".format(prefix, real_path, suffix))
@@ -234,7 +234,7 @@ def DeployTablet(zk_cluster, zk_root_path, tablet_conf, teardown):
                 cmd_arr.append("cp {} {}".format(source_file, real_path))
             else:    
                 cmd_arr.append("scp {} {}:{}".format(source_file, host, real_path))
-            cmd_arr.append("{} cd {}; tar -zxvf {}; mv {} fedb-tablet-{} {}".format(prefix, real_path, file_name, file_name[:-7], version, suffix))
+            cmd_arr.append("{} cd {}; tar -zxvf {}; mv {} openmldb-tablet-{} {}".format(prefix, real_path, file_name, file_name[:-7], version, suffix))
             cmd_arr.append("{} cd {}; sed -i 's/--endpoint=.*/--endpoint={}/g' conf/tablet.flags {}".format(prefix, work_path, item["address"], suffix))
             if zk_cluster != "":
                 cmd_arr.append("{} cd {}; sed -i 's/#--zk_cluster=.*/--zk_cluster={}/g' conf/tablet.flags;"
