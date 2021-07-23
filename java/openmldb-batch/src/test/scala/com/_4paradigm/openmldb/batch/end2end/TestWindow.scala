@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.batch.end2end
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
+import com._4paradigm.openmldb.batch.utils.SparkUtil
 import org.apache.spark.sql.{Row, SparkSession}
 import org.scalatest.FunSuite
 
@@ -61,11 +62,9 @@ class TestWindow extends FunSuite {
 
     val outputDf = sess.sql(sqlText)
 
-    sess.version()
-
-    //val sparksqlOutputDf = sess.sparksql(sqlText)
+    val sparksqlOutputDf = sess.sparksql(sqlText)
     // Notice that the sum column type is different for SparkSQL and SparkFE
-    //assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
+    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
 }

@@ -18,6 +18,11 @@ package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
+import org.apache.hadoop.conf.Configuration
+import org.apache.iceberg.PartitionSpec
+import org.apache.iceberg.catalog.TableIdentifier
+import org.apache.iceberg.hadoop.HadoopCatalog
+import org.apache.iceberg.spark.SparkSchemaUtil
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -52,7 +57,7 @@ class OpenmldbSession {
     this()
     this.sparkSession = sparkSession
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
-    this.sparkSession.conf.set("spark.sql.session.timeZone", config.timeZone)
+    this.setDefaultSparkConfig()
   }
 
   /**
@@ -74,16 +79,30 @@ class OpenmldbSession {
         val builder = SparkSession.builder()
 
         // TODO: Need to set for official Spark 2.3.0 jars
-        logger.debug("Set spark.hadoop.yarn.timeline-service.enabled as false")
-        builder.config("spark.hadoop.yarn.timeline-service.enabled", value = false)
+        //logger.debug("Set spark.hadoop.yarn.timeline-service.enabled as false")
+        //builder.config("spark.hadoop.yarn.timeline-service.enabled", value = false)
+        builder.config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
 
         this.sparkSession = builder.appName("App")
           .master(sparkMaster)
           .getOrCreate()
+
+        this.setDefaultSparkConfig()
       }
 
       this.sparkSession
     }
+  }
+
+  def setDefaultSparkConfig(): Unit = {
+    val sparkConf = this.sparkSession.conf
+    // Set timezone
+    sparkConf.set("spark.sql.session.timeZone", config.timeZone)
+
+    // Set Iceberg catalog
+    sparkConf.set("spark.sql.catalog.%s".format(config.icebergCatalogName), "org.apache.iceberg.spark.SparkCatalog")
+    sparkConf.set("spark.sql.catalog.%s.type".format(config.icebergCatalogName), "hadoop")
+    sparkConf.set("spark.sql.catalog.%s.warehouse".format(config.icebergCatalogName), this.config.hadoopWarehousePath)
   }
 
   /**
@@ -206,6 +225,46 @@ class OpenmldbSession {
    */
   def stop(): Unit = {
     sparkSession.stop()
+  }
+
+  /**
+   * Create table and import data from DataFrame to offline storage.
+   */
+  def importToOfflineStorage(databaseName: String, tableName: String, df: DataFrame): Unit = {
+    createOfflineTable(databaseName, tableName, df)
+    appendOfflineTable(databaseName, tableName, df)
+  }
+
+  /**
+   * Create table in offline storage.
+   */
+  def createOfflineTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
+    // TODO: Check if table exists
+
+    logger.info("Register the table %s to create table in offline storage".format(tableName))
+    df.createOrReplaceTempView(tableName)
+
+    val hadoopConfiguration = new Configuration()
+    val hadoopCatalog = new HadoopCatalog(hadoopConfiguration, config.hadoopWarehousePath)
+    val icebergSchema = SparkSchemaUtil.schemaForTable(this.getSparkSession, tableName)
+    val partitionSpec = PartitionSpec.builderFor(icebergSchema).build()
+    val tableIdentifier = TableIdentifier.of(databaseName, tableName)
+
+    // Create Iceberg table
+    hadoopCatalog.createTable(tableIdentifier, icebergSchema, partitionSpec)
+  }
+
+  /**
+   * Append data from DataFrame to offline storage.
+   */
+  def appendOfflineTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
+    logger.info("Register the table %s to append data in offline storage".format(tableName))
+    df.createOrReplaceTempView(tableName)
+
+    val icebergTableName = "%s.%s.%s".format(config.icebergCatalogName, databaseName, tableName)
+
+    // Insert parquet to Iceberg table
+    this.getSparkSession.table(tableName).writeTo(icebergTableName).append()
   }
 
 }
