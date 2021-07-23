@@ -66,11 +66,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-if(UNIX AND NOT APPLE AND NOT DEFINED SWIG_DIR)
-    # TODO: swig 4.0.1 compiled is not portable, check 'swig -swiglib'
-    set(SWIG_DIR ${CMAKE_SOURCE_DIR}/thirdparty/share/swig/4.0.1)
-endif()
-
+set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
 # llvm dependency
 if (NOT DEFINED LLVM_DIR)
     set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
@@ -90,7 +86,7 @@ endif ()
 
 find_package(Threads)
 
-
+set(Boost_NO_BOOST_CMAKE ON)
 set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")

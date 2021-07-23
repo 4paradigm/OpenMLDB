@@ -137,7 +137,7 @@ jobs:
 
       - name: Install thirdparty
         run: |
-          brew install coreutils swig automake
+          brew install coreutils
 
       - name: Build Core
         run: |
