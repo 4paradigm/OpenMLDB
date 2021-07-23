@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.batch
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 import org.apache.spark.sql.{Row, SparkSession}
 
 
@@ -47,7 +47,13 @@ class TestUnsafeRowWindowProject extends SparkTestSuite {
     val df = spark.createDataFrame(sc.makeRDD(data), schema)
     sess.registerTable("t1", df)
 
-    val sql = "SELECT min(id) OVER w1 as min_age FROM t1 WINDOW w1 as (PARTITION BY age ORDER by age ROWS BETWEEN 10 PRECEDING AND CURRENT ROW)"
+    val sql ="""
+               | SELECT min(id) OVER w1 as min_age FROM t1
+               | WINDOW w1 as (
+               |    PARTITION BY age
+               |    ORDER by age
+               |    ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+     """.stripMargin
 
     val outputDf = sess.sql(sql)
     outputDf.show()

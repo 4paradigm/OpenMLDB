@@ -256,7 +256,8 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def parseSchema(columns: java.util.List[String]): StructType = {
 
-    val parts = columns.toArray.map(_.toString()).map(_.trim).filter(_ != "").map(_.reverse.replaceFirst(" ", ":").reverse.split(":"))
+    val parts = columns.toArray.map(_.toString()).map(_.trim).filter(_ != "")
+    .map(_.reverse.replaceFirst(" ", ":").reverse.split(":"))
     parseSchema(parts)
   }
 

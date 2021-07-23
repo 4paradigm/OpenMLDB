@@ -17,10 +17,10 @@
 package com._4paradigm.openmldb.batch
 
 import java.sql.{Date, Timestamp}
-
 import com._4paradigm.hybridse.HybridSeLibrary
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType,
+  LongType, ShortType, StringType, StructField, StructType, TimestampType}
 import org.scalatest.FunSuite
 
 import scala.util.Random

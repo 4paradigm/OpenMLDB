@@ -192,7 +192,7 @@ class Cursor(object):
 
     @connected
     def getdesc(self):
-        return "fedb cursor"
+        return "openmldb cursor"
 
     def checkCmd(cmd: str) -> bool:
         if cmd.find("select cast") == 0:
@@ -376,7 +376,7 @@ class Connection(object):
         sdk = driver.Driver(options)
         ok = sdk.init()
         if not ok:
-            raise Exception("init fedb sdk erred")
+            raise Exception("init openmldb sdk erred")
         self._sdk = sdk
 
     def connected(func):
@@ -412,7 +412,7 @@ class Connection(object):
 
     def commit(self):
         """
-        fedb doesn't suppport transactions
+        openmldb doesn't suppport transactions
         
         So just do nothing to support this method
         """

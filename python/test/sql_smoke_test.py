@@ -16,7 +16,7 @@
 
 import sys,os
 sys.path.append("/rtidb/build/sql_pysdk")
-from fedb import driver
+from openmldb import driver
 import case_conf
 import time
 

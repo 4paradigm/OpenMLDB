@@ -17,12 +17,12 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='fedb',
+    name='openmldb',
     version='2.2.0',
-    author='fedb Team',
+    author='OpenMLDB Team',
     author_email=' ',
-    url='https://github.com/4paradigm/fedb',
-    description='fedb python sdk',
+    url='https://github.com/4paradigm/OpenMLDB',
+    description='openmldb python sdk',
     license="copyright 4paradigm.com",
     classifiers=[
         'Programming Language :: Python :: 3',
@@ -35,7 +35,7 @@ setup(
     packages=find_packages(),
     entry_points={
         'sqlalchemy.dialects': [
-            'fedb = sqlalchemy_fedb.safedb:FeDBDialect',
+            'openmldb = sqlalchemy_openmldb.saopenmldb:OpenMLDBDialect',
         ],
     },
 )

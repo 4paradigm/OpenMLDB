@@ -60,7 +60,9 @@
             <parameter name="maxParameters"><![CDATA[8]]></parameter>
         </parameters>
     </check>
-    <check level="warning" class="org.scalastyle.scalariform.MagicNumberChecker" enabled="true">
+    <!-- Update by 4paradigm -->
+    <!-- init:<check level="warning" class="org.scalastyle.scalariform.MagicNumberChecker" enabled="true"> -->
+    <check level="warning" class="org.scalastyle.scalariform.MagicNumberChecker" enabled="false">
         <parameters>
             <parameter name="ignore"><![CDATA[-1,0,1,2,3]]></parameter>
         </parameters>
@@ -73,7 +75,7 @@
     <check level="warning" class="org.scalastyle.scalariform.NoFinalizeChecker" enabled="true"/>
     <check level="warning" class="org.scalastyle.scalariform.CovariantEqualsChecker" enabled="true"/>
     <check level="warning" class="org.scalastyle.scalariform.StructuralTypeChecker" enabled="true"/>
-    <check level="warning" class="org.scalastyle.file.RegexChecker" enabled="true">
+    <check level="warning" class="org.scalastyle.file.RegexChecker" enabled="false">
         <parameters>
             <parameter name="regex"><![CDATA[println]]></parameter>
         </parameters>
@@ -118,6 +120,8 @@
     <check level="warning" class="org.scalastyle.scalariform.VarFieldChecker" enabled="false"/>
     <check level="warning" class="org.scalastyle.scalariform.VarLocalChecker" enabled="false"/>
     <check level="warning" class="org.scalastyle.scalariform.RedundantIfChecker" enabled="false"/>
+    <!-- Update by 4paradigm -->
+    <!-- init:<check level="warning" class="org.scalastyle.scalariform.TokenChecker" enabled="true"> -->
     <check level="warning" class="org.scalastyle.scalariform.TokenChecker" enabled="false">
         <parameters>
             <parameter name="regex"><![CDATA[println]]></parameter>
@@ -134,7 +138,9 @@
     <check level="warning" class="org.scalastyle.scalariform.LowercasePatternMatchChecker" enabled="true"/>
     <check level="warning" class="org.scalastyle.scalariform.MultipleStringLiteralsChecker" enabled="true">
         <parameters>
-            <parameter name="allowed"><![CDATA[2]]></parameter>
+            <!-- Update by 4paradigm -->
+            <!-- init:<parameter name="allowed"><![CDATA[2]]></parameter> -->
+            <parameter name="allowed"><![CDATA[10]]></parameter>
             <parameter name="ignoreRegex"><![CDATA[^""$]]></parameter>
         </parameters>
     </check>

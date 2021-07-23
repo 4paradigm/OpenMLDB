@@ -18,8 +18,8 @@ package com._4paradigm.openmldb.batch.end2end
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.utils.SparkUtil
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{Row, SparkSession}
-import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
 
 
@@ -53,7 +53,14 @@ class TestWindowSkewOptimization extends FunSuite {
     sess.registerTable("t1", df)
     df.createOrReplaceTempView("t1")
 
-    val sqlText = "SELECT sum(trans_amount) OVER w AS w_sum_amount FROM t1 WINDOW w AS (PARTITION BY user ORDER BY trans_time ROWS BETWEEN 10 PRECEDING AND CURRENT ROW)"
+    val sqlText ="""
+                   | SELECT sum(trans_amount) OVER w AS w_sum_amount FROM t1
+                   | WINDOW w AS (
+                   |    PARTITION BY user
+                   |    ORDER BY trans_time
+                   |    ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+     """.stripMargin
+
     val outputDf = sess.sql(sqlText)
 
     val sparksqlOutputDf = sess.sparksql(sqlText)

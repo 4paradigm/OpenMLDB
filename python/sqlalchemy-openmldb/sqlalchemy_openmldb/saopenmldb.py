@@ -24,7 +24,7 @@ except ImportError:
     from sqlalchemy.sql.compiler import DefaultCompiler as SQLCompiler
 RESERVED_WORDS = set("select")
 
-class FeDBCompiler(compiler.SQLCompiler):
+class OpenMLDBCompiler(compiler.SQLCompiler):
 
     def default_from(self):
         pass
@@ -39,7 +39,7 @@ class FeDBCompiler(compiler.SQLCompiler):
     def visit_tablesample(self, tablesample, asfrom=False, **kw):
         pass
 
-class FeDbIdentifierPreparer(compiler.IdentifierPreparer):
+class OpenMLDBIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = compiler.RESERVED_WORDS.copy()
     reserved_words.update(
         [
@@ -81,14 +81,14 @@ class FeDbIdentifierPreparer(compiler.IdentifierPreparer):
     )
 
     def __init__(self, dialect):
-        super(FeDBIdentifierPreparer, self).__init__(dialect, initial_quote='`', final_quote='`')
+        super(OpenMLDBIdentifierPreparer, self).__init__(dialect, initial_quote='`', final_quote='`')
 
     def format_drill_table(self, schema, isFile=True):
         pass
 
-class FeDBDialect(default.DefaultDialect):
+class OpenMLDBDialect(default.DefaultDialect):
     
-    name = "fedbapi"
+    name = "openmldbapi"
     driver = 'rest'
     dbapi = ""
     poolclass = pool.SingletonThreadPool
@@ -100,7 +100,7 @@ class FeDBDialect(default.DefaultDialect):
 
     @classmethod
     def dbapi(cls):
-        from sqlalchemy_fedb import fedbapi as module
+        from sqlalchemy_openmldb import openmldbapi as module
         return module
 
     def create_connect_args(self, url, **kwargs):
