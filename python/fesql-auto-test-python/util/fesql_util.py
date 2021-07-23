@@ -17,7 +17,7 @@
 
 from entity.fesql_result import FesqlResult
 from nb_log import LogManager
-from sqlalchemy_fedb.fedbapi import Type as feType
+from sqlalchemy_openmldb.openmldbapi import Type as feType
 import re
 import random
 import string

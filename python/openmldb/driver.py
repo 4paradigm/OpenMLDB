@@ -17,7 +17,7 @@
 
 import logging
 from . import sql_router_sdk
-logger = logging.getLogger("fedb_driver")
+logger = logging.getLogger("openmldb_driver")
 class DriverOptions(object):
     def __init__(self, zk_cluster, zk_path, session_timeout = 3000):
         self.zk_cluster = zk_cluster
@@ -35,9 +35,9 @@ class Driver(object):
         options.zk_path = self.options.zk_path
         self.sdk = sql_router_sdk.NewClusterSQLRouter(options)
         if not self.sdk:
-            logger.error("fail to init fedb driver with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+            logger.error("fail to init openmldb driver with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
             return False
-        logger.info("init fedb driver done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+        logger.info("init openmldb driver done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
         return True
 
     def createDB(self, db):

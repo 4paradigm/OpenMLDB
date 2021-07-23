@@ -64,7 +64,7 @@ def getCases(yamlPath: str, casePrefix='') -> list:
         return testCases
 
 def getEngine():
-    engine = db.create_engine('fedb://@/test_zw?zk={}&zkPath={}'.format(config.zk_cluster, config.zk_root_path))
+    engine = db.create_engine('openmldb://@/test_zw?zk={}&zkPath={}'.format(config.zk_cluster, config.zk_root_path))
     return engine
 
 

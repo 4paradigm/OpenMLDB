@@ -32,11 +32,11 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
     endforeach()
     set(FILE_STR_LIST "${FILE_STR_LIST} ${DEPEND_FILE_LIST}")
     string(REPLACE " " ";" FILE_LIST ${FILE_STR_LIST})
-    add_library(${LIB_NAME} STATIC ${FILE_LIST} $<TARGET_OBJECTS:fedb_proto>)
+    add_library(${LIB_NAME} STATIC ${FILE_LIST} $<TARGET_OBJECTS:openmldb_proto>)
 endfunction(compile_lib)
 
 function(compile_test DIR)
-    set(TEST_LIBS apiserver nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
+    set(TEST_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${ZETASQL_LIBS}
@@ -48,7 +48,7 @@ function(compile_test DIR)
             file(RELATIVE_PATH RELATIVE_TEST_PATH ${TEST_CPP_SOURCE_DIR} ${SRC_FILE})
             get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
             get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
-            add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:fedb_proto>)
+            add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:openmldb_proto>)
             if (${TEST_TARGET_NAME} STREQUAL "tablet_impl_mem_test")
                 target_link_libraries(${TEST_TARGET_NAME} tcmalloc ${TEST_LIBS} gtest)
             else()
@@ -66,8 +66,8 @@ compile_proto(name_server ${PROJECT_SOURCE_DIR})
 compile_proto(sql_procedure ${PROJECT_SOURCE_DIR})
 compile_proto(api_server ${PROJECT_SOURCE_DIR})
 
-compile_lib(fedb_codec codec "")
-compile_lib(fedb_catalog catalog "")
+compile_lib(openmldb_codec codec "")
+compile_lib(openmldb_catalog catalog "")
 compile_lib(client client "")
 compile_lib(base base "")
 compile_lib(zk_client zk "")
@@ -76,14 +76,14 @@ compile_lib(nameserver nameserver "")
 compile_lib(storage storage "")
 compile_lib(replica replica "")
 compile_lib(log log "flags.cc")
-compile_lib(fedb_sdk sdk "")
+compile_lib(openmldb_sdk sdk "")
 compile_lib(apiserver apiserver "")
 
-add_library(fedb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/api_server.pb.cc)
+add_library(openmldb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/api_server.pb.cc)
 
-add_library(fedb_flags flags.cc)
+add_library(openmldb_flags flags.cc)
 
-set(BIN_LIBS apiserver nameserver tablet fedb_sdk fedb_catalog client zk_client replica base storage fedb_codec fedb_proto log common zookeeper_mt tcmalloc_minimal
+set(BIN_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${ZETASQL_LIBS}
@@ -102,8 +102,8 @@ if(TESTING_ENABLE)
     compile_test(apiserver)
 endif()
 
-add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:fedb_proto>)
-target_link_libraries(parse_log log fedb_proto base protobuf glog gflags unwind ssl crypto z snappy dl pthread)
+add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
+target_link_libraries(parse_log log openmldb_proto base protobuf glog gflags unwind ssl crypto z snappy dl pthread)
 
 add_executable(openmldb cmd/openmldb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 target_link_libraries(openmldb ${BIN_LIBS})
