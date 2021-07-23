@@ -108,8 +108,7 @@ object GroupByAggregationPlan {
         val outputFields =
           if (projectConfig.keepIndexColumn) {
             projectConfig.outputSchemaSlices.map(_.size).sum + 1
-          }
-          else {
+          } else {
             projectConfig.outputSchemaSlices.map(_.size).sum
           }
 
