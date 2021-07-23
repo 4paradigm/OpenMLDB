@@ -193,7 +193,7 @@ class OpenmldbSession {
    * Get the version from git commit message.
    */
   def version(): Unit = {
-    val stream = this.getClass.getClassLoader.getResourceAsStream("openmldb-batch_git.properties")
+    val stream = this.getClass.getClassLoader.getResourceAsStream("openmldb_git.properties")
     if (stream == null) {
       logger.warn("Project version is missing")
     } else {
