@@ -443,13 +443,15 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::name
         if (!column_map.empty()) {
             i = column_map.at(idx);
         }
-        if (hybridse::node::kExprPrimary != row->children_.at(i)->GetExprType()) {
-            LOG(WARNING) << "insert value isn't const value";
+        if (hybridse::node::kExprParameter != row->children_.at(i)->GetExprType() &&
+            hybridse::node::kExprPrimary != row->children_.at(i)->GetExprType()) {
+            LOG(WARNING) << "insert value isn't const value or placeholder";
             return DefaultValueMap();
         }
-        ::hybridse::node::ConstNode* primary =
-            dynamic_cast<::hybridse::node::ConstNode*>(row->children_.at(i));
-        if (!primary->IsPlaceholder()) {
+
+        if (hybridse::node::kExprPrimary == row->children_.at(i)->GetExprType()) {
+            ::hybridse::node::ConstNode* primary =
+                dynamic_cast<::hybridse::node::ConstNode*>(row->children_.at(i));
             std::shared_ptr<::hybridse::node::ConstNode> val;
             if (primary->IsNull()) {
                 if (column.not_null()) {
