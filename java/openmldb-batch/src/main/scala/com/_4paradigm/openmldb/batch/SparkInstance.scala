@@ -91,8 +91,8 @@ class SparkInstance {
       nodeIndexType match {
         case NodeIndexType.SourceConcatJoinNode => getDfWithIndex
         case NodeIndexType.InternalConcatJoinNode => getDfWithIndex
-        case NodeIndexType.`internalComputeNode` => getDfWithIndex
-        case NodeIndexType.`destNode` => getDf()
+        case NodeIndexType.InternalComputeNode => getDfWithIndex
+        case NodeIndexType.DestNode => getDf()
         case _ => throw new HybridSeException("Handle unsupported node index type: %s".format(nodeIndexType))
       }
     } else {
@@ -126,8 +126,8 @@ object SparkInstance {
       nodeIndexType match {
         case NodeIndexType.SourceConcatJoinNode => SparkInstance.fromDataFrame(sparkDf)
         case NodeIndexType.InternalConcatJoinNode => SparkInstance.fromDfWithIndex(sparkDf)
-        case NodeIndexType.`internalComputeNode` => SparkInstance.fromDfWithIndex(sparkDf)
-        case NodeIndexType.`destNode` => {
+        case NodeIndexType.InternalComputeNode => SparkInstance.fromDfWithIndex(sparkDf)
+        case NodeIndexType.DestNode => {
           val outputDfWithIndex = SparkUtil.addIndexColumn(ctx.getSparkSession,
             sparkDf, ctx.getIndexInfo(nodeId).indexColumnName, ctx.getConf.addIndexColumnMethod)
           SparkInstance.fromDfAndIndexedDf(sparkDf, outputDfWithIndex)
@@ -147,9 +147,9 @@ object SparkInstance {
       nodeIndexType match {
         case NodeIndexType.SourceConcatJoinNode => false
         case NodeIndexType.InternalConcatJoinNode => true
-        case NodeIndexType.`internalComputeNode` => true
+        case NodeIndexType.InternalComputeNode => true
         // Notice that the dest node will not accept df with index and only append index column after computing
-        case NodeIndexType.`destNode` => false
+        case NodeIndexType.DestNode => false
         case _ => throw new HybridSeException("Handle unsupported node index type: %s".format(nodeIndexType))
       }
     } else {

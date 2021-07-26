@@ -168,7 +168,7 @@ object HDFSUtil {
     }
   }
 
-  def deleteIfExist(uri: String): AnyVal = {
+  def deleteIfExist(uri: String): Unit = {
     if (null != uri && notSkip(uri) && isExist(uri)) {
       logger.warn(s"File exists $uri which will be deleted first.")
       delete(uri)
@@ -189,7 +189,7 @@ object HDFSUtil {
 
   def notSkip(uri: String): Boolean = !uri.equals(INVALID_PATH)
 
-  def delete(uri: String): AnyVal = {
+  def delete(uri: String): Unit = {
     if (notSkip(uri)) {
       val fs = getFileSystem(uri)
       fs.delete(new Path(uri), true)

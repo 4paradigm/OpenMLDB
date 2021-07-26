@@ -160,7 +160,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
     }
 
     if (node.GetNodeId() == destNodeId) {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.destNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.DestNode))
       // Return if handle the dest node
       return
     }
@@ -171,7 +171,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
       ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalConcatJoinNode))
       processedConcatJoinNodeIds.add(node.GetNodeId())
     } else {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.internalComputeNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalComputeNode))
       processedConcatJoinNodeIds.add(node.GetNodeId())
     }
 
