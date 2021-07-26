@@ -64,11 +64,11 @@ object ConcatJoinPlan {
 
     // Drop the index column, this will drop two columns with the same index name
     val outputDf = nodeIndexType match {
-      case NodeIndexType.SourceConcatJoinNode => {
+      case NodeIndexType.`sourceConcatJoinNode` => {
         logger.info("Drop all the index column %s for source concat join node".format(indexName))
         resultDf.drop(indexName)
       }
-      case NodeIndexType.InternalConcatJoinNode => {
+      case NodeIndexType.`internalConcatJoinNode` => {
         logger.info("Drop the index column %s for internal concat join node from left dataframe".format(indexName))
         resultDf.drop(leftDf(indexName))
       }

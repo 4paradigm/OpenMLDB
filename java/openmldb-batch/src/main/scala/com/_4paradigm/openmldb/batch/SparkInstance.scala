@@ -89,10 +89,10 @@ class SparkInstance {
       val nodeIndexType = ctx.getIndexInfo(parentNodeId).nodeIndexType
 
       nodeIndexType match {
-        case NodeIndexType.SourceConcatJoinNode => getDfWithIndex
-        case NodeIndexType.InternalConcatJoinNode => getDfWithIndex
-        case NodeIndexType.InternalComputeNode => getDfWithIndex
-        case NodeIndexType.DestNode => getDf()
+        case NodeIndexType.`sourceConcatJoinNode` => getDfWithIndex
+        case NodeIndexType.`internalConcatJoinNode` => getDfWithIndex
+        case NodeIndexType.`internalComputeNode` => getDfWithIndex
+        case NodeIndexType.`destNode` => getDf()
         case _ => throw new HybridSeException("Handle unsupported node index type: %s".format(nodeIndexType))
       }
     } else {
@@ -124,10 +124,10 @@ object SparkInstance {
     if (ctx.hasIndexInfo(nodeId)) {
       val nodeIndexType = ctx.getIndexInfo(nodeId).nodeIndexType
       nodeIndexType match {
-        case NodeIndexType.SourceConcatJoinNode => SparkInstance.fromDataFrame(sparkDf)
-        case NodeIndexType.InternalConcatJoinNode => SparkInstance.fromDfWithIndex(sparkDf)
-        case NodeIndexType.InternalComputeNode => SparkInstance.fromDfWithIndex(sparkDf)
-        case NodeIndexType.DestNode => {
+        case NodeIndexType.`sourceConcatJoinNode` => SparkInstance.fromDataFrame(sparkDf)
+        case NodeIndexType.`internalConcatJoinNode` => SparkInstance.fromDfWithIndex(sparkDf)
+        case NodeIndexType.`internalComputeNode` => SparkInstance.fromDfWithIndex(sparkDf)
+        case NodeIndexType.`destNode` => {
           val outputDfWithIndex = SparkUtil.addIndexColumn(ctx.getSparkSession,
             sparkDf, ctx.getIndexInfo(nodeId).indexColumnName, ctx.getConf.addIndexColumnMethod)
           SparkInstance.fromDfAndIndexedDf(sparkDf, outputDfWithIndex)
@@ -145,11 +145,11 @@ object SparkInstance {
       val nodeIndexType = ctx.getIndexInfo(nodeId).nodeIndexType
 
       nodeIndexType match {
-        case NodeIndexType.SourceConcatJoinNode => false
-        case NodeIndexType.InternalConcatJoinNode => true
-        case NodeIndexType.InternalComputeNode => true
+        case NodeIndexType.`sourceConcatJoinNode` => false
+        case NodeIndexType.`internalConcatJoinNode` => true
+        case NodeIndexType.`internalComputeNode` => true
         // Notice that the dest node will not accept df with index and only append index column after computing
-        case NodeIndexType.DestNode => false
+        case NodeIndexType.`destNode` => false
         case _ => throw new HybridSeException("Handle unsupported node index type: %s".format(nodeIndexType))
       }
     } else {
