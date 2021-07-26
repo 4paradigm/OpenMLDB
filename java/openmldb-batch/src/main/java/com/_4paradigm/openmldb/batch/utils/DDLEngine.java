@@ -236,16 +236,16 @@ public class DDLEngine {
         logger.info("begin to pares window op");
         PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
         long start = 0;
-        long end = 0;
+        //long end = 0;
         long cntStart = 0;
-        long cntEnd = 0;
+        //long cntEnd = 0;
         if (castNode.window().range().frame().frame_range() != null) {
             start = Math.abs(Long.valueOf(castNode.window().range().frame().frame_range().start().GetExprString()));
-            end = Math.abs(Long.valueOf(castNode.window().range().frame().frame_range().end().GetExprString()));
+            //end = Math.abs(Long.valueOf(castNode.window().range().frame().frame_range().end().GetExprString()));
         }
         if (castNode.window().range().frame().frame_rows() != null) {
             cntStart = Math.abs(Long.valueOf(castNode.window().range().frame().frame_rows().start().GetExprString()));
-            cntEnd = Math.abs(Long.valueOf(castNode.window().range().frame().frame_rows().end().GetExprString()));
+            //cntEnd = Math.abs(Long.valueOf(castNode.window().range().frame().frame_rows().end().GetExprString()));
         }
         List<PhysicalOpNode> nodes = new ArrayList<>();
         for (int i = 0; i < castNode.GetProducerCnt(); i++) {
@@ -300,12 +300,12 @@ public class DDLEngine {
         logger.info("begin to pares lastjoin op");
         PhysicalRequestJoinNode join = PhysicalRequestJoinNode.CastFrom(node);
         PhysicalDataProviderNode dataNode = findDataProviderNode(join.GetProducer(0));
-        String leftName = "";
+        //String leftName = "";
         String rightName = "";
         if (dataNode != null) {
             // PhysicalDataProviderNode dataNode = PhysicalDataProviderNode.CastFrom(join.GetProducer(0));
             logger.info(dataNode.GetName());
-            leftName = dataNode.GetName();
+            //leftName = dataNode.GetName();
         }
         dataNode = findDataProviderNode(join.GetProducer(1));
         if (dataNode != null) {
@@ -513,7 +513,7 @@ public class DDLEngine {
 
     public static List<TypeOuterClass.TableDef> getTableDefs(String jsonObject) {
         List<TypeOuterClass.TableDef> tableDefs = new ArrayList<>();
-//        Gson gson = new Gson();
+//      Gson gson = new Gson();
         JsonParser jsonParser = new JsonParser();
         JsonElement tableJson = jsonParser.parse(jsonObject);
         for (Map.Entry<String, JsonElement> e : tableJson.getAsJsonObject().get("tableInfo").getAsJsonObject().entrySet()) {
