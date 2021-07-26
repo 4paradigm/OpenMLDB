@@ -18,7 +18,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='openmldb',
-    version='2.2.0',
+    version='0.2.0',
     author='OpenMLDB Team',
     author_email=' ',
     url='https://github.com/4paradigm/OpenMLDB',
