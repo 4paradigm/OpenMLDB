@@ -56,7 +56,7 @@ public class DDLEngine {
 
     private static final Logger logger = LoggerFactory.getLogger(DDLEngine.class);
 
-    public static String SQLTableName = "sql_table";
+    public static final String SQLTableName = "sql_table";
 
     public static int resolveColumnIndex(ExprNode expr, PhysicalOpNode planNode) throws HybridSeException {
         if (expr.getExpr_type_() == ExprType.kExprColumnRef) {
