@@ -26,7 +26,7 @@ import org.apache.spark.sql.catalyst.expressions.codegen.UnsafeRowWriter
 
 object UnsafeRowUtil {
 
-  val HYBRIDSEROWHEADERSIZE = 6
+  val HybridseRowHeaderSize = 6
 
   /** Convert Spark InternalRow to HybridSE row byte arrays.
    *
@@ -40,8 +40,8 @@ object UnsafeRowUtil {
     val inputRowSize = inputRowBytes.size
 
     // Add the header and memcpy bytes for input row, no need to set version and size in header
-    val hybridseRowHeaderBytes = ByteBuffer.allocate(HYBRIDSEROWHEADERSIZE)
-    ByteBuffer.allocate(HYBRIDSEROWHEADERSIZE + inputRowSize).put(hybridseRowHeaderBytes).put(inputRowBytes).array()
+    val hybridseRowHeaderBytes = ByteBuffer.allocate(HybridseRowHeaderSize)
+    ByteBuffer.allocate(HybridseRowHeaderSize + inputRowSize).put(hybridseRowHeaderBytes).put(inputRowBytes).array()
   }
 
 
@@ -50,7 +50,7 @@ object UnsafeRowUtil {
    * The HybridSE row is compatible with UnsafeRow bytes but has 6 bytes as header.
    */
   def hybridseRowToInternalRow(hybridseRow: Row, columnNum: Int): InternalRow = {
-    val hybridseRowWithoutHeaderSize = hybridseRow.size - UnsafeRowUtil.HYBRIDSEROWHEADERSIZE
+    val hybridseRowWithoutHeaderSize = hybridseRow.size - UnsafeRowUtil.HybridseRowHeaderSize
     val unsafeRowWriter = new UnsafeRowWriter(columnNum, hybridseRowWithoutHeaderSize)
     unsafeRowWriter.reset()
     unsafeRowWriter.zeroOutNullBytes()
