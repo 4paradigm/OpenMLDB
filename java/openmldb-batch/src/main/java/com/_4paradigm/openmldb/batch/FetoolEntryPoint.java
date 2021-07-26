@@ -16,17 +16,15 @@
 
 package com._4paradigm.openmldb.batch;
 
-import com._4paradigm.openmldb.batch.utils.DDLEngine;
 import py4j.GatewayServer;
 import java.io.File;
 import java.util.Map;
-
 import org.apache.commons.io.FileUtils;
-import com._4paradigm.openmldb.batch.utils.DDLEngine;
 
 
 public class FetoolEntryPoint {
 
+    /*
     public String genFedbDdlWithSchemaAndSqlFiles(String schemaPath, String sqlPath, int replicaNumber, int partitionNumber) {
         File file = new File(schemaPath);
         File sql = new File(sqlPath);
@@ -50,6 +48,7 @@ public class FetoolEntryPoint {
         }
         return ddl;
     }
+    */
 
     public static void main(String[] args) {
         GatewayServer gatewayServer = new GatewayServer(new FetoolEntryPoint());
