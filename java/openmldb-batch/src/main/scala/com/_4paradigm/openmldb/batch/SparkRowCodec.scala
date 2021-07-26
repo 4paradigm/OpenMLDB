@@ -22,10 +22,10 @@ import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.hybridse.vm.CoreAPI
 import com._4paradigm.openmldb.batch.utils.HybridseUtil
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType,
-  IntegerType, LongType, ShortType, StringType, StructType, TimestampType}
+import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructType, TimestampType}
 import org.slf4j.LoggerFactory
 
+import java.util.Calendar
 import scala.collection.mutable
 
 
@@ -131,7 +131,9 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
             appendOK = rowBuilder.AppendTimestamp(row.getTimestamp(fieldOffset).getTime)
           case DateType =>
             val date = row.getDate(fieldOffset)
-            if (!rowBuilder.AppendDate(date.getYear + 1900, date.getMonth + 1, date.getDate)) {
+            val cal = Calendar.getInstance
+            cal.setTime(date)
+            if (!rowBuilder.AppendDate(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))) {
               logger.warn(s"Encode date $date failed, encode as null")
               rowBuilder.AppendNULL()
             }
