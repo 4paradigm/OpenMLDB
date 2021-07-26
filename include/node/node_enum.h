@@ -111,6 +111,7 @@ enum ExprType {
     kExprColumnRef,
     kExprColumnId,
     kExprPrimary,
+    kExprParameter,
     kExprList,
     kExprForIn,
     kExprRange,

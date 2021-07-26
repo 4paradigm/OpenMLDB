@@ -188,6 +188,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
     switch (type) {
         case kExprPrimary:
             return "primary";
+        case kExprParameter:
+            return "parameter";
         case kExprId:
             return "id";
         case kExprBinary:
@@ -688,6 +690,20 @@ class UnionQueryNode : public QueryNode {
     const bool is_all_;
 };
 
+class ParameterExpr : public ExprNode {
+ public:
+    ParameterExpr(int position): ExprNode(kExprParameter), position_(position) {}
+    ~ParameterExpr() {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+    virtual bool Equals(const ExprNode *node) const;
+    ParameterExpr *ShadowCopy(NodeManager *) const override;
+    const std::string GetExprString() const;
+    const int position() const  { return position_; }
+ private:
+    int position_;
+
+};
 class ConstNode : public ExprNode {
     struct FeDate {
         int32_t year = -1;

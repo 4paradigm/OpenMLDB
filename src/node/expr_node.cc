@@ -708,6 +708,9 @@ CallExprNode* CallExprNode::DeepCopy(NodeManager* nm) const {
     return nm->MakeFuncNode(new_fn, new_args, GetOver());
 }
 
+ParameterExpr *ParameterExpr::ShadowCopy(NodeManager *nm) const {
+    return nm->MakeParameterExpr(position());
+}
 ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
     switch (this->GetDataType()) {
         case node::kBool:

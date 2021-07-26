@@ -301,7 +301,7 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ExprNode *value1 = node_manager_->MakeConstNode(1);
     ExprNode *value2 = node_manager_->MakeConstNode(2.3f);
     ExprNode *value3 = node_manager_->MakeConstNode(2.3);
-    ExprNode *value4 = node_manager_->MakeConstNodePlaceHolder();
+    ExprNode *value4 = node_manager_->MakeParameterExpr(1);
     value_expr_list->PushBack(value1);
     value_expr_list->PushBack(value2);
     value_expr_list->PushBack(value3);
@@ -319,7 +319,7 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[0])->GetInt(), 1);
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[1])->GetFloat(), 2.3f);
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[2])->GetDouble(), 2.3);
-    ASSERT_EQ(dynamic_cast<ConstNode *>(value[3])->GetDataType(), hybridse::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<ParameterExpr *>(value[3])->position(), 1);
 }
 TEST_F(SqlNodeTest, AllNodeTest) {
     {

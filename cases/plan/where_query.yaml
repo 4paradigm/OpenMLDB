@@ -57,3 +57,15 @@ cases:
     mode: physical-plan-unsupport
     desc: SELECT 过滤条件NOT IN证书元组
     sql: SELECT COL1 FROM t1 where COL1 not in (1,2,3,4,5);
+  - id: 12
+    desc: SELECT简单过滤, id=?
+    mode: physical-plan-unsupport
+    sql: SELECT COL1 FROM t1 where COL1 = ?;
+  - id: 13
+    desc: SELECT过滤条件是逻辑关系表达式, 两个占位参数
+    mode: physical-plan-unsupport
+    sql: SELECT COL1 FROM t1 where COL1 = ? and COL2 > ? ;
+  - id: 14
+    desc: SELECT 过滤后分组聚合条数, 两个占位参数
+    mode: physical-plan-unsupport
+    sql: SELECT col1, COUNT(COL1) FROM t1 where COL1 = ? and COL2 > ? group by col1;

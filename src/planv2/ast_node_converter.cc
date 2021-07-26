@@ -342,7 +342,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
 
             CHECK_TRUE(nullptr == parameter_expr->name(), common::kSqlError, "Un-support Named Parameter Expression ",
                        parameter_expr->name()->GetAsString());
-            *output = node_manager->MakeConstNodePlaceHolder();
+            *output = node_manager->MakeParameterExpr(parameter_expr->position());
             return base::Status::OK();
         }
         case zetasql::AST_INT_LITERAL: {
@@ -1594,8 +1594,9 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
         node::ExprListNode* row_values;
         CHECK_STATUS(ConvertExprNodeList(row->values(), node_manager, &row_values))
         for (auto expr : row_values->children_) {
-            CHECK_TRUE(nullptr != expr && node::kExprPrimary == expr->GetExprType(), common::kSqlError,
-                       "Un-support insert statement with un-const value")
+            CHECK_TRUE(nullptr != expr &&
+                           (node::kExprPrimary == expr->GetExprType() || node::kExprParameter == expr->GetExprType()),
+                       common::kSqlError, "Un-support insert statement with un-const value")
         }
         rows->AddChild(row_values);
     }
@@ -1666,8 +1667,7 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
     for (const auto ordering_expression : root->index_item_list()->ordering_expressions()) {
         CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == ordering_expression->expression()->node_kind(), common::kSqlError,
                    "Un-support index key type ", ordering_expression->expression()->GetNodeKindString())
-        CHECK_TRUE(!ordering_expression->descending(), common::kSqlError,
-                   "Un-support descending index key")
+        CHECK_TRUE(!ordering_expression->descending(), common::kSqlError, "Un-support descending index key")
         std::vector<std::string> path;
         CHECK_STATUS(AstPathExpressionToStringList(
             ordering_expression->expression()->GetAsOrNull<zetasql::ASTPathExpression>(), path));
