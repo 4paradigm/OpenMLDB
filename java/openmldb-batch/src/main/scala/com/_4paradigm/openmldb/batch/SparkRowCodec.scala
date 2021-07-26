@@ -22,7 +22,7 @@ import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.hybridse.vm.CoreAPI
 import com._4paradigm.openmldb.batch.utils.HybridseUtil
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructType, TimestampType}
+import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
 
 import java.util.Calendar
