@@ -18,10 +18,10 @@ package com._4paradigm.openmldb.batch.utils
 
 object NodeIndexType extends Enumeration {
   type NodeIndexType = Value
-  val sourceConcatJoinNode = Value(1)
-  val internalConcatJoinNode = Value(2)
-  val internalComputeNode = Value(3)
-  val destNode = Value(4)
+  val SourceConcatJoinNode = Value(1)
+  val InternalConcatJoinNode = Value(2)
+  val InternalComputeNode = Value(3)
+  val DestNode = Value(4)
 
   def checkExists(nodeIndexType: Int): Boolean = this.values.exists(_ == nodeIndexType)
 

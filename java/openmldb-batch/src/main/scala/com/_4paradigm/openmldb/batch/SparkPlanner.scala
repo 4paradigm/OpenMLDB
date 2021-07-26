@@ -125,7 +125,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
 
     visitAndBindNodeIndexInfo(ctx, concatJoinNode, destNodeId, indexColumnName, processedConcatJoinNodeIds)
     // Reset the fist concat join node to source concat join node
-    ctx.getIndexInfo(concatJoinNodeId).nodeIndexType = NodeIndexType.sourceConcatJoinNode
+    ctx.getIndexInfo(concatJoinNodeId).nodeIndexType = NodeIndexType.SourceConcatJoinNode
   }
 
   def findLowestCommonAncestorNode(root: PhysicalOpNode, visitedNodeSet: mutable.HashSet[Long]): Long = {
@@ -168,7 +168,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
     // Check if it is concat join node
     if (node.GetOpType() == PhysicalOpType.kPhysicalOpJoin
       && PhysicalJoinNode.CastFrom(node).join().join_type() == JoinType.kJoinTypeConcat) {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.internalConcatJoinNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalConcatJoinNode))
       processedConcatJoinNodeIds.add(node.GetNodeId())
     } else {
       ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.internalComputeNode))
