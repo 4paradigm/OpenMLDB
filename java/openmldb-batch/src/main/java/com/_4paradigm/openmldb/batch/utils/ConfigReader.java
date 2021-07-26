@@ -28,7 +28,7 @@ public class ConfigReader {
             InputStreamReader isr = new InputStreamReader(is, "utf-8");
             reader = new BufferedReader(isr);
         }else {
-            reader = new BufferedReader(new FileReader(new File(path)));
+            reader = new BufferedReader(new FileReader(path));
         }
         StringBuilder builder = new StringBuilder();
         String line = reader.readLine();
