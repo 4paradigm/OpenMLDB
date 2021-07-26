@@ -32,7 +32,7 @@ namespace zk {
 
 static bool call_invoked = false;
 static uint32_t endpoint_size = 2;
-static uint32_t session_timeout = 10000;
+static uint32_t session_timeout = 30000;
 class ZkClientTest : public ::testing::Test {
  public:
     ZkClientTest() {}

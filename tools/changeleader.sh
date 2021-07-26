@@ -14,4 +14,4 @@
 # limitations under the License.
 
 source ./env.sh
-python fedb_migrate.py --fedb_bin_path=$FEDB_BIN_PATH --zk_cluster=$ZK_CLUSTER --zk_root_path=$ZK_ROOT_PATH --endpoint=$1 --cmd=changeleader
+python openmldb_migrate.py --openmldb_bin_path=$OPENMLDB_BIN_PATH --zk_cluster=$ZK_CLUSTER --zk_root_path=$ZK_ROOT_PATH --endpoint=$1 --cmd=changeleader

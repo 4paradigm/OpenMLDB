@@ -14,5 +14,5 @@
 
 ZK_CLUSTER=127.0.0.1:6181
 ZK_ROOT_PATH=/onebox
-FEDB_BIN_PATH=../build/bin/fedb
+OPENMLDB_BIN_PATH=../build/bin/openmldb
 SHOWTABLE_PATH=../table.txt
