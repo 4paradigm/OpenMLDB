@@ -77,6 +77,7 @@ class SqlCase {
     const bool debug() const { return debug_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
+    const TableInfo& parameters() const { return parameters_; }
     const TableInfo& batch_request() const { return batch_request_; }
     const ExpectInfo& expect() const { return expect_; }
     void set_expect(const ExpectInfo& data) { expect_ = data; }
@@ -99,6 +100,8 @@ class SqlCase {
     bool BuildInsertSqlListFromInput(int32_t input_idx,
                                      std::vector<std::string>* sql_list) const;
     bool ExtractOutputSchema(type::TableDef& table) const;          // NOLINT
+    bool ExtractParameterTypes(std::vector<type::Type>& parameter_types) const;  // NOLINT
+
     bool ExtractInputData(std::vector<hybridse::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0) const;
     bool ExtractInputData(
@@ -303,6 +306,7 @@ class SqlCase {
     std::string cluster_request_plan_;
     std::vector<TableInfo> inputs_;
     TableInfo batch_request_;
+    TableInfo parameters_;
     ExpectInfo expect_;
     YAML::Node raw_node_;
     std::string sp_name_;

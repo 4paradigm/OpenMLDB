@@ -882,6 +882,19 @@ bool SqlCase::ExtractOutputSchema(type::TableDef& table) const {
         return false;
     }
 }
+bool SqlCase::ExtractParameterTypes(std::vector<type::Type>& parameter_types) const {
+    type::TableDef parameter_schema;
+    if (!ExtractInputTableDef(parameters(), parameter_schema)) {
+        return false;
+    }
+    if (parameter_schema.columns_size() == 0) {
+        return false;
+    }
+    for(int i = 0; i < parameter_schema.columns_size(); i++) {
+        parameter_types.push_back(parameter_schema.columns(i).type());
+    }
+    return true;
+}
 std::ostream& operator<<(std::ostream& output, const SqlCase& thiz) {
     output << "Case ID: " << thiz.id() << ", Desc:" << thiz.desc();
     return output;
@@ -1289,6 +1302,13 @@ static bool ParseSqlCaseNode(const YAML::Node& sql_case_node,
     if (sql_case_node["batch_request"]) {
         if (!SqlCase::CreateTableInfoFromYamlNode(
                 sql_case_node["batch_request"], &sql_case.batch_request_)) {
+            return false;
+        }
+    }
+
+    if (sql_case_node["parameters"]) {
+        if (!SqlCase::CreateTableInfoFromYamlNode(
+            sql_case_node["parameters"], &sql_case.parameters_)) {
             return false;
         }
     }
