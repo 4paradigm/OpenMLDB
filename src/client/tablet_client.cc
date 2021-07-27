@@ -496,20 +496,6 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader, const std
     return false;
 }
 
-bool TabletClient::SetMaxConcurrency(const std::string& key, int32_t max_concurrency) {
-    ::openmldb::api::SetConcurrencyRequest request;
-    request.set_key(key);
-    request.set_max_concurrency(max_concurrency);
-    ::openmldb::api::SetConcurrencyResponse response;
-    bool ret = client_.SendRequest(&::openmldb::api::TabletServer_Stub::SetConcurrency, &request, &response,
-                                   FLAGS_request_timeout_ms, 1);
-    if (!ret || response.code() != 0) {
-        std::cout << response.msg() << std::endl;
-        return false;
-    }
-    return true;
-}
-
 bool TabletClient::GetTaskStatus(::openmldb::api::TaskStatusResponse& response) {
     ::openmldb::api::TaskStatusRequest request;
     bool ret = client_.SendRequest(&::openmldb::api::TabletServer_Stub::GetTaskStatus, &request, &response,
@@ -539,6 +525,18 @@ bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid, const ::openmldb::type:
         return true;
     }
     return false;
+}
+
+bool TabletClient::Refresh(uint32_t tid) {
+    ::openmldb::api::RefreshRequest request;
+    request.set_tid(tid);
+    ::openmldb::api::GeneralResponse response;
+    bool ret = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Refresh, &request, &response,
+                                   FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    return true;
 }
 
 bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {

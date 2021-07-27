@@ -69,7 +69,7 @@ TEST_F(SQLClusterTest, cluster_insert) {
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 bigint,"
-                      "index(key=col1, ts=col2)) partitionnum=8;";
+                      "index(key=col1, ts=col2)) options(partitionnum=8);";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -109,7 +109,8 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         "                col1 bigint,\n"
         "                col2 string,\n"
         "                col3 bigint,\n"
-        "                index(key=col2, ts=col3)) partitionnum=2;";
+        "                index(key=col2, ts=col3)) "
+        "options(partitionnum=2);";
     SQLRouterOptions sql_opt;
     sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
@@ -248,7 +249,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_part
               << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
+/* TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
@@ -262,7 +263,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
     DistributeRunRequestModeSDK(sql_case, router_, 1);
     LOG(INFO) << "Finish sql_sdk_distribute_request_single_partition_test: ID: " << sql_case.id()
               << ", DESC: " << sql_case.desc();
-}
+} */
 
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_test) {
     auto sql_case = GetParam();
@@ -350,7 +351,8 @@ TEST_F(SQLClusterTest, create_table) {
         std::string ddl = "create table " + name +
                           "("
                           "col1 string, col2 bigint,"
-                          "index(key=col1, ts=col2)) partitionnum=3;";
+                          "index(key=col1, ts=col2)) "
+                          "options(partitionnum=3);";
         ok = router->ExecuteDDL(db, ddl, &status);
         ASSERT_TRUE(ok);
     }

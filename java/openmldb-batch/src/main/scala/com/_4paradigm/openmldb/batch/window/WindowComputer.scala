@@ -205,7 +205,7 @@ class WindowComputer(sqlConfig: OpenmldbBatchConfig,
     if (!config.windowName.equals(windowName) || window.size() <= 0) {
       return
     }
-    windowData.add("window "+ config.windowName  + " data, window size = " + window.size())
+    windowData.add("window " + config.windowName + " data, window size = " + window.size())
     windowData.add(config.inputSchema.toDDL + "\n")
     val indexs = new java.util.ArrayList[Int]()
     for (col <- cols) {
@@ -229,7 +229,6 @@ class WindowComputer(sqlConfig: OpenmldbBatchConfig,
     }
   }
 
-  import org.apache.spark.sql.types._
   def resetGroupKeyComparator(keyIdxs: Array[Int], schema: StructType): Unit = {
     groupKeyComparator = HybridseUtil.createGroupKeyComparator(keyIdxs, schema)
   }

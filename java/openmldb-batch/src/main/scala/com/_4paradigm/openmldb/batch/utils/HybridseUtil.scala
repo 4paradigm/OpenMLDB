@@ -17,14 +17,15 @@
 package com._4paradigm.openmldb.batch.utils
 
 import java.util
-
 import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, TableDef, Type}
 import com._4paradigm.hybridse.vm.PhysicalOpNode
 import com._4paradigm.hybridse.node.{DataType => InnerDataType}
-import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{DataFrame, Row}
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.asScalaBufferConverter
+
+
 
 
 object HybridseUtil {

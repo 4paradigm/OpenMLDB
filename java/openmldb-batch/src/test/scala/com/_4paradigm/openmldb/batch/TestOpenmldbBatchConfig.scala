@@ -50,7 +50,7 @@ class TestOpenmldbBatchConfig extends FunSuite {
       "openmldb.disable" -> true
     )
     val config = OpenmldbBatchConfig.fromDict(dict)
-    assert(config.disableOpenmldb == true)
+    assert(config.disableOpenmldb)
 
     val spark = SparkSession.builder()
       .master("local")

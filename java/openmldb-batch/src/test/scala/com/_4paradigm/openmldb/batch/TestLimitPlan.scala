@@ -17,9 +17,9 @@
 package com._4paradigm.openmldb.batch
 
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{DoubleType, IntegerType, LongType, StructField, StructType}
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.seqAsJavaListConverter
 
 
 class TestLimitPlan extends SparkTestSuite {

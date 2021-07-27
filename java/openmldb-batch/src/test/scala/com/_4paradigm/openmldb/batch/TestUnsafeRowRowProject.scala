@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.batch
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 import org.apache.spark.sql.{Row, SparkSession}
 
 

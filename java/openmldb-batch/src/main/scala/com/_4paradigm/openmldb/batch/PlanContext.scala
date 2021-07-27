@@ -17,9 +17,8 @@
 package com._4paradigm.openmldb.batch
 
 import java.nio.ByteBuffer
-
 import com._4paradigm.hybridse.sdk.SerializableByteBuffer
-import com._4paradigm.hybridse.vm._
+import com._4paradigm.hybridse.vm.PhysicalOpNode
 import com._4paradigm.openmldb.batch.utils.NodeIndexInfo
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan

@@ -24,7 +24,7 @@ import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import org.apache.spark.sql.{Column, DataFrame}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
 
 

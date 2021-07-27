@@ -149,13 +149,14 @@ object SparkUtil {
    * @param schema
    * @return
    */
-  def RddInternalRowToDf(spark: SparkSession, internalRowRdd: RDD[InternalRow], schema: StructType): DataFrame = {
+  def rddInternalRowToDf(spark: SparkSession, internalRowRdd: RDD[InternalRow], schema: StructType): DataFrame = {
     val sparkSessionClass = Class.forName("org.apache.spark.sql.SparkSession")
     val internalCreateDataFrameMethod = sparkSessionClass
       .getDeclaredMethod(s"internalCreateDataFrame",
         classOf[RDD[InternalRow]],
         classOf[StructType], classOf[Boolean])
-    internalCreateDataFrameMethod.invoke(spark, internalRowRdd, schema, false: java.lang.Boolean).asInstanceOf[DataFrame]
+    internalCreateDataFrameMethod.invoke(spark, internalRowRdd, schema, false: java.lang.Boolean)
+      .asInstanceOf[DataFrame]
   }
 
 }

@@ -20,6 +20,4 @@ trait ConfigImplicits[T] {
   def parse(value: Any): T
 }
 
-object ConfigImplicits {
-
-}
+object ConfigImplicits

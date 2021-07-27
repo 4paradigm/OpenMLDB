@@ -123,6 +123,12 @@ class OpenmldbBatchConfig extends Serializable {
   //@ConfigOption(name="openmldb.hybridse.jsdk.path", doc="The path of HybridSE jsdk core file path")
   var hybridseJsdkLibraryPath = ""
 
+  @ConfigOption(name="openmldb.hadoop.warehouse.path", doc="The path of Hadoop warehouse")
+  var hadoopWarehousePath = ""
+
+  @ConfigOption(name="openmldb.iceberg.catalog.name", doc="The name of Iceberg catalog")
+  val icebergCatalogName = "iceberg_catalog"
+
 }
 
 

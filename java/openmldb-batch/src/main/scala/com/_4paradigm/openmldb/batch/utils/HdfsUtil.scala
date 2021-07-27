@@ -39,12 +39,12 @@ object HDFSUtil {
 
   val conf = new Configuration()
 
-  def isAllExist(uris: String, sep: String) = {
+  def isAllExist(uris: String, sep: String): Boolean = {
     val paths = StringUtils.split(uris, sep)
     paths.forall(path => isExist(path))
   }
 
-  def getFileInfo(uri: String) = {
+  def getFileInfo(uri: String): DirectoryInfo = {
     val fs = getFileSystem(uri)
     val status = fs.listStatus(new Path(uri))
     var totalSize = 0L
@@ -90,7 +90,7 @@ object HDFSUtil {
   }
 
   def getFilesSize(uris: String*): String = {
-    var fileSize: Long = 0l
+    var fileSize: Long = 0L
     uris.map(
       uri => {
         val fs = getFileSystem(uri)
@@ -149,7 +149,7 @@ object HDFSUtil {
    *            如果uri是相对路径,key为"default",对应默认产生的fs;
    * @return
    */
-  def getFileSystem(uri: String) = {
+  def getFileSystem(uri: String): FileSystem = {
     logger.info("Going to get file system from uri:{}", uri)
     val u = new URI(uri)
     val key = u.getScheme match {
@@ -168,7 +168,7 @@ object HDFSUtil {
     }
   }
 
-  def deleteIfExist(uri: String) = {
+  def deleteIfExist(uri: String): Unit = {
     if (null != uri && notSkip(uri) && isExist(uri)) {
       logger.warn(s"File exists $uri which will be deleted first.")
       delete(uri)
@@ -187,16 +187,16 @@ object HDFSUtil {
     true // 如果是一个非法路径,默认是存在的
   }
 
-  def notSkip(uri: String) = !uri.equals(INVALID_PATH)
+  def notSkip(uri: String): Boolean = !uri.equals(INVALID_PATH)
 
-  def delete(uri: String) = {
+  def delete(uri: String): Unit = {
     if (notSkip(uri)) {
       val fs = getFileSystem(uri)
       fs.delete(new Path(uri), true)
     }
   }
 
-  def dumpTextWithoutSc(data: String, uri: String) = {
+  def dumpTextWithoutSc(data: String, uri: String): Unit = {
     val fs = getFileSystem(uri)
     // Force to write
     val os = fs.create(new Path(uri), true)
@@ -204,24 +204,26 @@ object HDFSUtil {
     os.close()
   }
 
-  def braceWrap(path: String) = {
+  def braceWrap(path: String): String = {
     // todo "hdfs:///a, hdfs:///b"
     val paths = {
       // remove empty path
       val rawPaths = path.split(",").filter(_.size > 0)
       // remove abandunt paths
       val repPaths = scala.collection.mutable.ArrayBuffer.empty[String]
-      for (uri <- rawPaths)
+      for (uri <- rawPaths) {
         if (!rawPaths.exists(ele => Paths.get(uri).startsWith(Paths.get(ele))
-          && 0 != Paths.get(ele).compareTo(Paths.get(uri))))
+          && 0 != Paths.get(ele).compareTo(Paths.get(uri)))) {
           repPaths += uri
+        }
+      }
       repPaths.toArray
     }
     val commonDir = {
       var rawPrefix = FindCommonDirectoryPath(paths.toList)
-      if (!path.startsWith("/") && !path.startsWith("hdfs://"))
+      if (!path.startsWith("/") && !path.startsWith("hdfs://")) {
         rawPrefix
-      else {
+      } else {
         while (rawPrefix.endsWith("/"))
           rawPrefix = rawPrefix.stripSuffix("/")
         rawPrefix
@@ -229,17 +231,21 @@ object HDFSUtil {
     }
     val remaining = {
       var rawSuffix = paths.map(_.stripPrefix(commonDir))
-      while (rawSuffix.exists(_.startsWith("/")))
+      while (rawSuffix.exists(_.startsWith("/"))) {
         rawSuffix = rawSuffix.map(_.stripPrefix("/"))
+      }
       rawSuffix
     }
     val suffixes = remaining.filter(_.length > 0)
     if (suffixes.length > 0) {
-      if (commonDir.length > 0 || path.startsWith("/"))
+      if (commonDir.length > 0 || path.startsWith("/")) {
         commonDir.concat("/").concat("{").concat(suffixes.mkString(",")).concat("}")
-      else
+      } else {
         "{".concat(suffixes.mkString(",")).concat("}")
-    } else commonDir
+      }
+    } else {
+      commonDir
+    }
   }
 
   object FindCommonDirectoryPath {
@@ -254,8 +260,11 @@ object HDFSUtil {
         case (a :: as, b :: bs) if a equals b => a :: common(as, bs)
         case _ => Nil
       }
-      if (paths.length < 2) paths.headOption.getOrElse("")
-      else paths.map(_.split("/").toList).reduceLeft(common).mkString("/")
+      if (paths.length < 2) {
+        paths.headOption.getOrElse("")
+      } else {
+        paths.map(_.split("/").toList).reduceLeft(common).mkString("/")
+      }
     }
   }
   def getFileSize2(uri:String):Long ={
