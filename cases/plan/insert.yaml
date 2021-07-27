@@ -105,15 +105,12 @@ cases:
           |    +-expr[primary]
           |      +-value: 1
           |      +-type: int32
-          |    +-expr[primary]
-          |      +-value: placeholder
-          |      +-type: placeholder
-          |    +-expr[primary]
-          |      +-value: placeholder
-          |      +-type: placeholder
-          |    +-expr[primary]
-          |      +-value: placeholder
-          |      +-type: placeholder
+          |    +-expr[parameter]
+          |      +-position: 1
+          |    +-expr[parameter]
+          |      +-position: 2
+          |    +-expr[parameter]
+          |      +-position: 3
 
   - id: 8
     desc: INSERT with placeholder 2
@@ -128,12 +125,9 @@ cases:
           |    +-expr[primary]
           |      +-value: 1
           |      +-type: int32
-          |    +-expr[primary]
-          |      +-value: placeholder
-          |      +-type: placeholder
-          |    +-expr[primary]
-          |      +-value: placeholder
-          |      +-type: placeholder
-          |    +-expr[primary]
-          |      +-value: placeholder
-          |      +-type: placeholder
+          |    +-expr[parameter]
+          |      +-position: 1
+          |    +-expr[parameter]
+          |      +-position: 2
+          |    +-expr[parameter]
+          |      +-position: 3

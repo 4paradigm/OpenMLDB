@@ -152,8 +152,7 @@ void SelectQueryNode::PrintSqlNodeList(std::ostream &output, const std::string &
 
 void PrintValue(std::ostream &output, const std::string &org_tab, const std::string &value,
                 const std::string &item_name, bool last_child) {
-    output << org_tab << SPACE_ST << item_name << ": " <<
-        (value.empty() ? "<nil>" : value);
+    output << org_tab << SPACE_ST << item_name << ": " << (value.empty() ? "<nil>" : value);
 }
 
 void PrintValue(std::ostream &output, const std::string &org_tab, const std::vector<std::string> &vec,
@@ -237,7 +236,25 @@ bool AllNode::Equals(const ExprNode *node) const {
     const AllNode *that = dynamic_cast<const AllNode *>(node);
     return this->relation_name_ == that->relation_name_ && ExprNode::Equals(node);
 }
-
+void ParameterExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    output << "\n";
+    auto tab = org_tab + INDENT;
+    PrintValue(output, tab, std::to_string(position()), "position", false);
+}
+bool ParameterExpr::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const ParameterExpr *that = dynamic_cast<const ParameterExpr *>(node);
+    return this->position_ == that->position_;
+}
+const std::string ParameterExpr::GetExprString() const {
+    return "(?" + std::to_string(position_) + ")";
+}
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     output << "\n";
@@ -279,7 +296,7 @@ const std::string ConstNode::GetExprString() const {
         case hybridse::node::kVoid:
             return "void";
         case hybridse::node::kPlaceholder:
-            return "placeholder";
+            return "?";
         default:
             return "unknow";
     }
@@ -1051,7 +1068,7 @@ void ColumnOfExpression(const ExprNode *node_ptr, std::vector<const node::ExprNo
             return;
         }
         case kExprOrderExpression: {
-            ColumnOfExpression(dynamic_cast<const node::OrderExpression*>(node_ptr)->expr(), columns);
+            ColumnOfExpression(dynamic_cast<const node::OrderExpression *>(node_ptr)->expr(), columns);
             return;
         }
         case kExprColumnRef: {
@@ -2093,7 +2110,7 @@ void InputParameterNode::Print(std::ostream &output, const std::string &org_tab)
     PrintValue(output, tab, std::to_string(is_constant_), "is_constant", true);
 }
 
-Status StringToDataType(const std::string identifier, DataType* type) {
+Status StringToDataType(const std::string identifier, DataType *type) {
     CHECK_TRUE(nullptr != type, common::kNullPointer, "Can't convert type string, output datatype is nullptr")
     const auto lower_identifier = boost::to_lower_copy(identifier);
     auto it = type_map.find(lower_identifier);

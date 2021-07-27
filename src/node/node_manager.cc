@@ -295,8 +295,8 @@ SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, FrameExtent *frame_ran
     FrameNode *node_ptr = new FrameNode(frame_type, frame_range, frame_rows, maxsize);
     return RegisterNode(node_ptr);
 }
-OrderExpression* NodeManager::MakeOrderExpression(const ExprNode* expr, const bool is_asc) {
-    OrderExpression* node_ptr = new OrderExpression(expr, is_asc);
+OrderExpression *NodeManager::MakeOrderExpression(const ExprNode *expr, const bool is_asc) {
+    OrderExpression *node_ptr = new OrderExpression(expr, is_asc);
     return RegisterNode(node_ptr);
 }
 OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order_expressions) {
@@ -413,7 +413,10 @@ ConstNode *NodeManager::MakeConstNode(const std::string &value) { return Registe
 ConstNode *NodeManager::MakeConstNode() { return RegisterNode(new ConstNode()); }
 
 ConstNode *NodeManager::MakeConstNode(DataType type) { return RegisterNode(new ConstNode(type)); }
-ConstNode *NodeManager::MakeConstNodePlaceHolder() { return MakeConstNode(hybridse::node::kPlaceholder); }
+ParameterExpr *NodeManager::MakeParameterExpr(int position) {
+    ParameterExpr *node_ptr = new ParameterExpr(position);
+    return RegisterNode(node_ptr);
+}
 ExprIdNode *NodeManager::MakeExprIdNode(const std::string &name) {
     return RegisterNode(new ::hybridse::node::ExprIdNode(name, exprid_idx_counter_++));
 }
@@ -877,7 +880,7 @@ FuncDefPlanNode *NodeManager::MakeFuncPlanNode(FnNodeFnDef *node) {
     RegisterNode(node_ptr);
     return node_ptr;
 }
-CreateIndexPlanNode* NodeManager::MakeCreateCreateIndexPlanNode(const CreateIndexNode* node) {
+CreateIndexPlanNode *NodeManager::MakeCreateCreateIndexPlanNode(const CreateIndexNode *node) {
     node::CreateIndexPlanNode *node_ptr = new CreateIndexPlanNode(node);
     RegisterNode(node_ptr);
     return node_ptr;
@@ -991,12 +994,10 @@ SqlNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name, SqlNod
     return RegisterNode(node_ptr);
 }
 
-SqlNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name,
-                                              SqlNodeList *input_parameter_list,
+SqlNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name, SqlNodeList *input_parameter_list,
                                               SqlNodeList *inner_node_list) {
     CreateSpStmt *node_ptr = new CreateSpStmt(sp_name);
-    FillSqlNodeList2NodeVector(input_parameter_list,
-                               node_ptr->GetInputParameterList());
+    FillSqlNodeList2NodeVector(input_parameter_list, node_ptr->GetInputParameterList());
     FillSqlNodeList2NodeVector(inner_node_list, node_ptr->GetInnerNodeList());
     return RegisterNode(node_ptr);
 }
