@@ -61,11 +61,148 @@ cases:
     desc: SELECT简单过滤, id=?
     mode: physical-plan-unsupport
     sql: SELECT COL1 FROM t1 where COL1 = ?;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[binary]
+          |    +-=[list]:
+          |      +-0:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: COL1
+          |      +-1:
+          |        +-expr[parameter]
+          |          +-position: 1
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: COL1
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
+
   - id: 13
     desc: SELECT过滤条件是逻辑关系表达式, 两个占位参数
     mode: physical-plan-unsupport
     sql: SELECT COL1 FROM t1 where COL1 = ? and COL2 > ? ;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[binary]
+          |    +-AND[list]:
+          |      +-0:
+          |      |  +-expr[binary]
+          |      |    +-=[list]:
+          |      |      +-0:
+          |      |      |  +-expr[column ref]
+          |      |      |    +-relation_name: <nil>
+          |      |      |    +-column_name: COL1
+          |      |      +-1:
+          |      |        +-expr[parameter]
+          |      |          +-position: 1
+          |      +-1:
+          |        +-expr[binary]
+          |          +->[list]:
+          |            +-0:
+          |            |  +-expr[column ref]
+          |            |    +-relation_name: <nil>
+          |            |    +-column_name: COL2
+          |            +-1:
+          |              +-expr[parameter]
+          |                +-position: 2
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: COL1
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
   - id: 14
     desc: SELECT 过滤后分组聚合条数, 两个占位参数
     mode: physical-plan-unsupport
     sql: SELECT col1, COUNT(COL1) FROM t1 where COL1 = ? and COL2 > ? group by col1;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[binary]
+          |    +-AND[list]:
+          |      +-0:
+          |      |  +-expr[binary]
+          |      |    +-=[list]:
+          |      |      +-0:
+          |      |      |  +-expr[column ref]
+          |      |      |    +-relation_name: <nil>
+          |      |      |    +-column_name: COL1
+          |      |      +-1:
+          |      |        +-expr[parameter]
+          |      |          +-position: 1
+          |      +-1:
+          |        +-expr[binary]
+          |          +->[list]:
+          |            +-0:
+          |            |  +-expr[column ref]
+          |            |    +-relation_name: <nil>
+          |            |    +-column_name: COL2
+          |            +-1:
+          |              +-expr[parameter]
+          |                +-position: 2
+          +-group_expr_list:
+          |  +-expr[column ref]
+          |    +-relation_name: <nil>
+          |    +-column_name: col1
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: <nil>
+          |  |    |    +-column_name: col1
+          |  |    +-name: <nil>
+          |  +-1:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](count)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL1
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
