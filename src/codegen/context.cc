@@ -189,7 +189,9 @@ void CodeGenContext::SetCurrentBlock(::llvm::BasicBlock* block) {
 const vm::SchemasContext* CodeGenContext::schemas_context() const {
     return schemas_context_;
 }
-
+const std::vector<type::Type>* CodeGenContext::parameter_types() const {
+    return parameter_types_;
+}
 node::NodeManager* CodeGenContext::node_manager() const {
     return node_manager_;
 }

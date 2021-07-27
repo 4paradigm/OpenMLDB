@@ -153,6 +153,7 @@ class CodeGenContext {
     ::llvm::BasicBlock* AppendNewBlock(const std::string& name = "");
 
     const vm::SchemasContext* schemas_context() const;
+    const std::vector<type::Type>* parameter_types() const;
     node::NodeManager* node_manager() const;
 
  private:

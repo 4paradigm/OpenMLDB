@@ -463,6 +463,34 @@ AND " "3 " "FOLLOWING) limit 10;";
     free(ptr);
 } */
 
+TEST_F(FnLetIRBuilderTest, test_simple_project_with_placeholder) {
+    std::string sql = "SELECT col1, ? FROM t1 limit 10;";
+    int8_t* ptr = NULL;
+    uint32_t size = 0;
+    type::TableDef table1;
+    ASSERT_TRUE(BuildT1Buf(table1, &ptr, &size));
+    Row row(base::RefCountedSlice::Create(ptr, size));
+
+    int8_t * ptr2 = NULL;
+    uint32_t size2 = 0;
+    type::TableDef parameter_schema;
+    ASSERT_TRUE(BuildParameter1Buf(parameter_schema, &ptr2, &size2));
+    Row parameter_row(base::RefCountedSlice::Create(ptr2, size2));
+
+
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
+    int8_t* output = NULL;
+    int8_t* window_ptr = nullptr;
+    int8_t *parameter_row_ptr = reinterpret_cast<int8_t*>(&parameter_row);
+    vm::Schema schema;
+    CheckFnLetBuilderWithParameterRow(&manager, table1, parameter_schema, "", sql, row_ptr, window_ptr, parameter_row_ptr,
+                                      &schema, &output);
+    ASSERT_EQ(2, schema.size());
+    ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(100u, *reinterpret_cast<uint32_t*>(output + 7+4));
+    free(ptr);
+}
 }  // namespace codegen
 }  // namespace hybridse
 

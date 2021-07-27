@@ -47,6 +47,7 @@ Status RowFnLetIRBuilder::Build(
     args_llvm_type.push_back(::llvm::Type::getInt64Ty(module->getContext()));
     args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext()));
     args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext()));
+    args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext()));
     args_llvm_type.push_back(
         ::llvm::Type::getInt8PtrTy(module->getContext())->getPointerTo());
 
@@ -54,6 +55,7 @@ Status RowFnLetIRBuilder::Build(
     args.push_back("@row_key");
     args.push_back("@row_ptr");
     args.push_back("@window");
+    args.push_back("@parameter");
     args.push_back(output_ptr_name);
 
     Status status;

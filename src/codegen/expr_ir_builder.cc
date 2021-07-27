@@ -110,6 +110,11 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
             CHECK_STATUS(BuildCallFn(fn, output));
             break;
         }
+        case ::hybridse::node::kExprParameter: {
+            auto parameter_expr = dynamic_cast<const ::hybridse::node::ParameterExpr*>(node);
+            CHECK_STATUS(BuildParameterExpr(parameter_expr, output));
+            break;
+        }
         case ::hybridse::node::kExprPrimary: {
             auto const_node =
                 dynamic_cast<const ::hybridse::node::ConstNode*>(node);
@@ -435,14 +440,11 @@ Status ExprIRBuilder::BuildStructExpr(const ::hybridse::node::StructExpr* node,
 Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     NativeValue window_ptr_value;
-    const std::string frame_str =
-        nullptr == frame_ ? "" : frame_->GetExprString();
+    const std::string frame_str = nullptr == frame_ ? "" : frame_->GetExprString();
     // Load Inner Window If Exist
-    VariableIRBuilder variable_ir_builder(ctx_->GetCurrentBlock(),
-                                          ctx_->GetCurrentScope()->sv());
+    VariableIRBuilder variable_ir_builder(ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
     Status status;
-    bool ok =
-        variable_ir_builder.LoadWindow(frame_str, &window_ptr_value, status);
+    bool ok = variable_ir_builder.LoadWindow(frame_str, &window_ptr_value, status);
     ::llvm::Value* window_ptr = nullptr;
     if (!window_ptr_value.IsConstNull()) {
         window_ptr = window_ptr_value.GetValue(&builder);
@@ -455,18 +457,16 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
 
     // Load Big Window, throw error if big window not exist
     ok = variable_ir_builder.LoadWindow("", &window_ptr_value, status);
-    CHECK_TRUE(ok && nullptr != window_ptr_value.GetValue(&builder),
-               kCodegenError, "Fail to find window " + status.str());
+    CHECK_TRUE(ok && nullptr != window_ptr_value.GetValue(&builder), kCodegenError,
+               "Fail to find window " + status.str());
 
     // Build Inner Window based on Big Window and frame info
     // ListRef* { int8_t* } -> int8_t**
     ::llvm::Value* list_ref_ptr = window_ptr_value.GetValue(&builder);
-    list_ref_ptr = builder.CreatePointerCast(
-        list_ref_ptr, builder.getInt8PtrTy()->getPointerTo());
+    list_ref_ptr = builder.CreatePointerCast(list_ref_ptr, builder.getInt8PtrTy()->getPointerTo());
     ::llvm::Value* list_ptr = builder.CreateLoad(list_ref_ptr);
 
-    MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(),
-                                                  ctx_->GetCurrentBlock());
+    MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(), ctx_->GetCurrentBlock());
     if (frame_->frame_range() != nullptr) {
         NativeValue row_key_value;
         ok = variable_ir_builder.LoadRowKey(&row_key_value, status);
@@ -474,36 +474,52 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
         if (!row_key_value.IsConstNull()) {
             row_key = row_key_value.GetValue(&builder);
         }
-        CHECK_TRUE(ok && nullptr != row_key, kCodegenError,
-                   "Fail to build inner range window: row key is null");
-        ok = window_ir_builder.BuildInnerRangeList(
-            list_ptr, row_key, frame_->GetHistoryRangeEnd(),
-            frame_->GetHistoryRangeStart(), &window_ptr);
+        CHECK_TRUE(ok && nullptr != row_key, kCodegenError, "Fail to build inner range window: row key is null");
+        ok = window_ir_builder.BuildInnerRangeList(list_ptr, row_key, frame_->GetHistoryRangeEnd(),
+                                                   frame_->GetHistoryRangeStart(), &window_ptr);
     } else if (frame_->frame_rows() != nullptr) {
-        ok = window_ir_builder.BuildInnerRowsList(
-            list_ptr, -1 * frame_->GetHistoryRowsEnd(),
-            -1 * frame_->GetHistoryRowsStart(), &window_ptr);
+        ok = window_ir_builder.BuildInnerRowsList(list_ptr, -1 * frame_->GetHistoryRowsEnd(),
+                                                  -1 * frame_->GetHistoryRowsStart(), &window_ptr);
     }
 
     // int8_t** -> ListRef* { int8_t* }
-    ::llvm::Value* inner_list_ref_ptr = CreateAllocaAtHead(
-        &builder, window_ptr->getType(), "sub_window_alloca");
+    ::llvm::Value* inner_list_ref_ptr = CreateAllocaAtHead(&builder, window_ptr->getType(), "sub_window_alloca");
     builder.CreateStore(window_ptr, inner_list_ref_ptr);
-    window_ptr =
-        builder.CreatePointerCast(inner_list_ref_ptr, window_ptr->getType());
+    window_ptr = builder.CreatePointerCast(inner_list_ref_ptr, window_ptr->getType());
 
-    CHECK_TRUE(ok && nullptr != window_ptr, kCodegenError,
-               "Fail to build inner window " + frame_str);
+    CHECK_TRUE(ok && nullptr != window_ptr, kCodegenError, "Fail to build inner window " + frame_str);
 
-    CHECK_TRUE(variable_ir_builder.StoreWindow(frame_str, window_ptr, status),
-               kCodegenError, "Fail to store window ", frame_str, ": ",
-               status.msg);
+    CHECK_TRUE(variable_ir_builder.StoreWindow(frame_str, window_ptr, status), kCodegenError, "Fail to store window ",
+               frame_str, ": ", status.msg);
     DLOG(INFO) << "store window " << frame_str;
 
     *output = NativeValue::Create(window_ptr);
     return Status::OK();
 }
 
+// Get paramter item from parameter row
+// param parameter
+// param output
+// return
+Status ExprIRBuilder::BuildParameterExpr(const ::hybridse::node::ParameterExpr* parameter, NativeValue* output){
+    CHECK_TRUE(nullptr != ctx_->parameter_types() && !ctx_->parameter_types()->empty(), kCodegenError,
+               "Fail to build parameter expression when parameter types is null or empty")
+    CHECK_TRUE(parameter->position() > 0 && parameter->position() <= ctx_->parameter_types()->size(), kCodegenError,
+                   "Fail to build paramater expression when parameter position ", parameter->position(), " out of range")
+    // Load Inner Window If Exist
+    VariableIRBuilder variable_ir_builder(ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
+    base::Status status;
+    NativeValue parameter_row;
+    CHECK_TRUE(variable_ir_builder.LoadParameter(&parameter_row, status), kCodegenError, status.msg);
+    BufNativeIRBuilder buf_builder(
+        schema_idx, schemas_context->GetRowFormat(schema_idx),
+        ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
+    CHECK_TRUE(
+        buf_builder.BuildGetField(parameter->position()-1, parameter_row.GetValue(ctx_),  output),
+        kCodegenError);
+
+
+}
 // Get col with given col name, set list struct pointer into output
 // param col
 // param output
