@@ -39,21 +39,17 @@ Status PhysicalPlanContext::InitFnDef(const node::ExprListNode* exprs, const Sch
     }
     return InitFnDef(projects, schemas_ctx, is_row_project, fn_component);
 }
-Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects,
-                                      const SchemasContext* schemas_ctx,
-                                      bool is_row_project,
-                                      FnComponent* fn_component) {
+Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects, const SchemasContext* schemas_ctx,
+                                      bool is_row_project, FnComponent* fn_component) {
     // lambdafy project expressions
     std::vector<const node::ExprNode*> exprs;
     for (size_t i = 0; i < projects.size(); ++i) {
         exprs.push_back(projects.GetExpr(i));
     }
 
-    node::ExprAnalysisContext expr_pass_ctx(node_manager(), library(),
-                                            schemas_ctx);
+    node::ExprAnalysisContext expr_pass_ctx(node_manager(), library(), schemas_ctx, parameter_types_);
     const bool enable_legacy_agg_opt = true;
-    passes::LambdafyProjects lambdafy_pass(&expr_pass_ctx,
-                                           enable_legacy_agg_opt);
+    passes::LambdafyProjects lambdafy_pass(&expr_pass_ctx, enable_legacy_agg_opt);
     node::LambdaNode* lambdafy_func = nullptr;
     std::vector<int> require_agg;
     CHECK_STATUS(lambdafy_pass.Transform(exprs, &lambdafy_func, &require_agg));

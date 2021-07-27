@@ -692,17 +692,18 @@ class UnionQueryNode : public QueryNode {
 
 class ParameterExpr : public ExprNode {
  public:
-    ParameterExpr(int position): ExprNode(kExprParameter), position_(position) {}
+    explicit ParameterExpr(int position) : ExprNode(kExprParameter), position_(position) {}
     ~ParameterExpr() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     virtual bool Equals(const ExprNode *node) const;
     ParameterExpr *ShadowCopy(NodeManager *) const override;
     const std::string GetExprString() const;
-    const int position() const  { return position_; }
+    const int position() const { return position_; }
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
  private:
     int position_;
-
 };
 class ConstNode : public ExprNode {
     struct FeDate {

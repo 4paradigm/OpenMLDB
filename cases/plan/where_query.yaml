@@ -59,8 +59,9 @@ cases:
     sql: SELECT COL1 FROM t1 where COL1 not in (1,2,3,4,5);
   - id: 12
     desc: SELECT简单过滤, id=?
-    mode: physical-plan-unsupport
     sql: SELECT COL1 FROM t1 where COL1 = ?;
+    parameters:
+      columns : ["1 int"]
     expect:
       node_tree_str: |
         +-node[kQuery]: kQuerySelect

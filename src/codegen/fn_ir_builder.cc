@@ -54,7 +54,7 @@ bool FnIRBuilder::Build(::hybridse::node::FnNodeFnDef *root,
 
     node::NodeManager nm;
     vm::SchemasContext empty_schema;
-    CodeGenContext ctx(module_, &empty_schema, &nm);
+    CodeGenContext ctx(module_, &empty_schema, nullptr, &nm);
 
     ::llvm::Function *fn = NULL;
     const ::hybridse::node::FnNodeFnHeander *fn_def = root->header_;

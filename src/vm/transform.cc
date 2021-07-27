@@ -92,10 +92,10 @@ bool TransformLogicalTreeToLogicalGraph(
     return true;
 }
 
-BatchModeTransformer::BatchModeTransformer(
-    node::NodeManager* node_manager, const std::string& db,
-    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    const udf::UdfLibrary* library)
+BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
+                                           const std::shared_ptr<Catalog>& catalog,
+                                           const std::vector<type::Type>* parameter_types, ::llvm::Module* module,
+                                           const udf::UdfLibrary* library)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
@@ -105,14 +105,14 @@ BatchModeTransformer::BatchModeTransformer(
       cluster_optimized_mode_(false),
       enable_batch_window_parallelization_(false),
       library_(library),
-      plan_ctx_(node_manager, library, db, catalog, false) {}
+      plan_ctx_(node_manager, library, db, catalog, parameter_types, false) {}
 
-BatchModeTransformer::BatchModeTransformer(
-    node::NodeManager* node_manager, const std::string& db,
-    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    const udf::UdfLibrary* library, bool performance_sensitive,
-    bool cluster_optimized_mode, bool enable_expr_opt,
-    bool enable_window_parallelization)
+BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
+                                           const std::shared_ptr<Catalog>& catalog,
+                                           const std::vector<type::Type>* parameter_types, ::llvm::Module* module,
+                                           const udf::UdfLibrary* library, bool performance_sensitive,
+                                           bool cluster_optimized_mode, bool enable_expr_opt,
+                                           bool enable_window_parallelization)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
@@ -122,14 +122,12 @@ BatchModeTransformer::BatchModeTransformer(
       cluster_optimized_mode_(cluster_optimized_mode),
       enable_batch_window_parallelization_(enable_window_parallelization),
       library_(library),
-      plan_ctx_(node_manager, library, db, catalog, enable_expr_opt) {}
+      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt) {}
 
 BatchModeTransformer::~BatchModeTransformer() {}
 
-Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node,
-                                             PhysicalOpNode** output) {
-    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
-               "Input node or output node is null");
+Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, PhysicalOpNode** output) {
+    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
 
     LogicalOp logical_op = LogicalOp(node);
     auto map_iter = op_map_.find(logical_op);
@@ -945,11 +943,9 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
 
 Status BatchModeTransformer::InstantiateLLVMFunction(const FnInfo& fn_info) {
     CHECK_TRUE(fn_info.IsValid(), kCodegenError, "Fail to install llvm function, function info is invalid");
-    codegen::CodeGenContext codegen_ctx(module_, fn_info.schemas_ctx(),
-                                        node_manager_);
+    codegen::CodeGenContext codegen_ctx(module_, fn_info.schemas_ctx(), plan_ctx_.parameter_types(), node_manager_);
     codegen::RowFnLetIRBuilder builder(&codegen_ctx);
-    return builder.Build(fn_info.fn_name(), fn_info.fn_def(),
-                         fn_info.GetPrimaryFrame(), fn_info.GetFrames(),
+    return builder.Build(fn_info.fn_name(), fn_info.fn_def(), fn_info.GetPrimaryFrame(), fn_info.GetFrames(),
                          *fn_info.fn_schema());
 }
 
@@ -1741,15 +1737,14 @@ Status BatchModeTransformer::CheckHistoryWindowFrame(
     return Status::OK();
 }
 
-RequestModeTransformer::RequestModeTransformer(
-    node::NodeManager* node_manager, const std::string& db,
-    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    udf::UdfLibrary* library, const std::set<size_t>& common_column_indices,
-    const bool performance_sensitive, const bool cluster_optimized,
-    const bool enable_batch_request_opt, bool enable_expr_opt)
-    : BatchModeTransformer(node_manager, db, catalog, module, library,
-                           performance_sensitive, cluster_optimized,
-                           enable_expr_opt, true),
+RequestModeTransformer::RequestModeTransformer(node::NodeManager* node_manager, const std::string& db,
+                                               const std::shared_ptr<Catalog>& catalog,
+                                               const std::vector<type::Type>* parameter_types, ::llvm::Module* module,
+                                               udf::UdfLibrary* library, const std::set<size_t>& common_column_indices,
+                                               const bool performance_sensitive, const bool cluster_optimized,
+                                               const bool enable_batch_request_opt, bool enable_expr_opt)
+    : BatchModeTransformer(node_manager, db, catalog, parameter_types, module, library, performance_sensitive,
+                           cluster_optimized, enable_expr_opt, true),
       enable_batch_request_opt_(enable_batch_request_opt) {
     batch_request_info_.common_column_indices = common_column_indices;
 }

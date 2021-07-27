@@ -772,7 +772,7 @@ Status ExprIRBuilder::BuildAsUdf(const node::ExprNode* expr,
 
     node::ExprNode* target_expr = nullptr;
     node::ExprAnalysisContext analysis_ctx(ctx_->node_manager(), library,
-                                           ctx_->schemas_context());
+                                           ctx_->schemas_context(), nullptr);
     passes::ResolveFnAndAttrs resolver(&analysis_ctx);
     CHECK_STATUS(resolver.VisitExpr(transformed, &target_expr));
 

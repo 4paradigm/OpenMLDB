@@ -166,6 +166,11 @@ Status LambdafyProjects::VisitLeafExpr(node::ExprNode* expr,
     auto nm = ctx_->node_manager();
     auto schemas_ctx = ctx_->schemas_context();
     switch (expr->GetExprType()) {
+        case node::kExprParameter: {
+            // ?1 -> row => ?1
+            *out = expr;
+            break;
+        }
         case node::kExprPrimary: {
             // 1 -> row => 1
             *out = expr;

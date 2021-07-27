@@ -113,6 +113,7 @@ class FunctionScopeGuard {
 class CodeGenContext {
  public:
     CodeGenContext(::llvm::Module*, const vm::SchemasContext* schemas_context,
+                   const std::vector<type::Type>* parameter_types,
                    node::NodeManager* node_manager);
 
     ::llvm::Function* GetCurrentFunction() const;
@@ -168,6 +169,7 @@ class CodeGenContext {
     ::llvm::BasicBlock* current_llvm_block_ = nullptr;
 
     const vm::SchemasContext* schemas_context_;
+    const std::vector<type::Type>* parameter_types_;
 
     std::unordered_map<std::string, CodeScope> function_scopes_;
 

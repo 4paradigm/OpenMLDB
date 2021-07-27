@@ -994,9 +994,10 @@ TEST_F(SqlNodeTest, LimitNodeTest) {
     ASSERT_FALSE(node::SqlEquals(node1, node3));
     std::ostringstream oss;
     node1->Print(oss, "");
-    ASSERT_EQ("+-node[kLimit]\n"
-        "  +-limit_cnt: 100", oss.str());
-
+    ASSERT_EQ(
+        "+-node[kLimit]\n"
+        "  +-limit_cnt: 100",
+        oss.str());
 }
 }  // namespace node
 }  // namespace hybridse

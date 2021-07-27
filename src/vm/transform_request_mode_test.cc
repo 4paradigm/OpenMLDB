@@ -80,7 +80,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    RequestModeTransformer transform(&manager, "db", catalog, m.get(), lib, {}, false, false, false, false);
+    RequestModeTransformer transform(&manager, "db", catalog, nullptr, m.get(), lib, {}, false, false, false, false);
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
@@ -191,7 +191,9 @@ void CheckTransformPhysicalPlan(const SqlCase& sql_case, bool is_cluster_optimiz
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    RequestModeTransformer transform(nm, "db", catalog, m.get(), lib, {}, false, false, false, false);
+
+    std::vector<type::Type> parameter_types = sql_case.ExtractParameterTypes();
+    RequestModeTransformer transform(nm, "db", catalog, &parameter_types, m.get(), lib, {}, false, false, false, false);
     PhysicalOpNode* physical_plan = nullptr;
     Status status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
     ASSERT_TRUE(status.isOK()) << "physical plan transform fail: " << status;

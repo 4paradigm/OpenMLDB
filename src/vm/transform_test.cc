@@ -107,7 +107,8 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(sqlcase::InitCases("cases/plan/sub_query.yaml", FILTERS)));
 
 TEST_P(TransformTest, transform_physical_plan) {
-    std::string sqlstr = GetParam().sql_str();
+    auto sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
     std::cout << sqlstr << std::endl;
 
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
@@ -180,7 +181,8 @@ TEST_P(TransformTest, transform_physical_plan) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib);
+    auto parameter_types = sql_case.ExtractParameterTypes();
+    BatchModeTransformer transform(&manager, "db", catalog, &parameter_types, m.get(), lib);
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
@@ -194,7 +196,8 @@ TEST_P(TransformTest, transform_physical_plan) {
 }
 
 TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
-    std::string sqlstr = GetParam().sql_str();
+    auto& sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
     std::cout << sqlstr << std::endl;
 
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
@@ -267,13 +270,12 @@ TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib, false,
-                                   false, false, true);
+    const std::vector<type::Type> parameter_types = sql_case.ExtractParameterTypes();
+    BatchModeTransformer transform(&manager, "db", catalog, &parameter_types, m.get(), lib, false, false, false, true);
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(
-        transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
+    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
     std::ostringstream oss;
 
     physical_plan->Print(oss, "");
@@ -304,7 +306,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     auto m = make_unique<Module>("test_op_generator", *ctx);
     base::Status status;
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib);
+    BatchModeTransformer transform(&manager, "db", catalog, nullptr, m.get(), lib);
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
@@ -445,7 +447,8 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
 }
 
 TEST_P(TransformTest, window_merge_opt_test) {
-    std::string sqlstr = GetParam().sql_str();
+    auto& sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
     std::cout << sqlstr << std::endl;
 
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
@@ -521,11 +524,12 @@ TEST_P(TransformTest, window_merge_opt_test) {
     auto m = make_unique<Module>("test_op_generator", *ctx);
     base::Status status;
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib);
+    const std::vector<type::Type> parameter_types = sql_case.ExtractParameterTypes();
+    BatchModeTransformer transform(&manager, "db", catalog, &parameter_types, m.get(), lib);
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(
-        transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
+    status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
+    ASSERT_TRUE(status.isOK()) << status;
     std::ostringstream oss;
 
     physical_plan->Print(oss, "");
@@ -571,19 +575,18 @@ TEST_P(KeyGenTest, GenTest) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    BatchModeTransformer transformer(&nm, "db", catalog, m.get(), lib);
+    std::vector<type::Type> parameter_types;
+    BatchModeTransformer transformer(&nm, "db", catalog, &parameter_types, m.get(), lib);
 
     auto groups = nm.MakeExprList();
     ExtractExprListFromSimpleSql(&nm, GetParam(), groups);
 
     PhysicalTableProviderNode* table_provider;
-    transformer.GetPlanContext()->CreateOp<PhysicalTableProviderNode>(
-        &table_provider, catalog->GetTable("db", "t1"));
+    transformer.GetPlanContext()->CreateOp<PhysicalTableProviderNode>(&table_provider, catalog->GetTable("db", "t1"));
 
     Key group(groups);
 
-    ASSERT_TRUE(
-        transformer.GenKey(&group, table_provider->schemas_ctx()).isOK());
+    ASSERT_TRUE(transformer.GenKey(&group, table_provider->schemas_ctx()).isOK());
     m->print(::llvm::errs(), NULL);
     ASSERT_FALSE(group.fn_info().fn_name().empty());
 }
@@ -621,7 +624,8 @@ TEST_P(FilterGenTest, GenFilter) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    BatchModeTransformer transformer(&nm, "db", catalog, m.get(), lib);
+    std::vector<type::Type> parameter_types;
+    BatchModeTransformer transformer(&nm, "db", catalog, &parameter_types, m.get(), lib);
 
     auto plan_ctx = transformer.GetPlanContext();
     PhysicalTableProviderNode* table_provider1;

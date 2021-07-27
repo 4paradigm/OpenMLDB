@@ -100,15 +100,12 @@ typedef hybridse::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
 class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
-                         const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module,
-                         const udf::UdfLibrary* library);
+                         const std::shared_ptr<Catalog>& catalog, const std::vector<type::Type>* parameter_types,
+                         ::llvm::Module* module, const udf::UdfLibrary* library);
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
-                         const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module, const udf::UdfLibrary* library,
-                         bool performance_sensitive,
-                         bool cluster_optimized_mode, bool enable_expr_opt,
-                         bool enable_window_parallelization);
+                         const std::shared_ptr<Catalog>& catalog, const std::vector<type::Type>* parameter_types,
+                         ::llvm::Module* module, const udf::UdfLibrary* library, bool performance_sensitive,
+                         bool cluster_optimized_mode, bool enable_expr_opt, bool enable_window_parallelization);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     virtual Status TransformPhysicalPlan(
@@ -252,12 +249,11 @@ class BatchModeTransformer {
 
 class RequestModeTransformer : public BatchModeTransformer {
  public:
-    RequestModeTransformer(
-        node::NodeManager* node_manager, const std::string& db,
-        const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-        udf::UdfLibrary* library, const std::set<size_t>& common_column_indices,
-        const bool performance_sensitive, const bool cluster_optimized,
-        const bool enable_batch_request_opt, bool enable_expr_opt);
+    RequestModeTransformer(node::NodeManager* node_manager, const std::string& db,
+                           const std::shared_ptr<Catalog>& catalog, const std::vector<type::Type>* parameter_types,
+                           ::llvm::Module* module, udf::UdfLibrary* library,
+                           const std::set<size_t>& common_column_indices, const bool performance_sensitive,
+                           const bool cluster_optimized, const bool enable_batch_request_opt, bool enable_expr_opt);
     virtual ~RequestModeTransformer();
 
     const Schema& request_schema() const { return request_schema_; }

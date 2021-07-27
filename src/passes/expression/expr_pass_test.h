@@ -72,7 +72,7 @@ class ExprPassTestBase : public ::testing::Test {
  public:
     ExprPassTestBase()
         : lib_(udf::DefaultUdfLibrary::get()),
-          ctx_(&nm_, lib_, &schemas_ctx_) {}
+          ctx_(&nm_, lib_, &schemas_ctx_, nullptr) {}
     virtual ~ExprPassTestBase() {}
     node::ExprAnalysisContext* pass_ctx() { return &ctx_; }
     node::NodeManager* node_manager() { return &nm_; }

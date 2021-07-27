@@ -100,7 +100,7 @@ class SqlCase {
     bool BuildInsertSqlListFromInput(int32_t input_idx,
                                      std::vector<std::string>* sql_list) const;
     bool ExtractOutputSchema(type::TableDef& table) const;          // NOLINT
-    bool ExtractParameterTypes(std::vector<type::Type>& parameter_types) const;  // NOLINT
+    const std::vector<type::Type> ExtractParameterTypes() const;
 
     bool ExtractInputData(std::vector<hybridse::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0) const;
