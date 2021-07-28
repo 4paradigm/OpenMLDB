@@ -5,8 +5,8 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.4paradigm.openmldb</groupId>
 	<artifactId>openmldb-batch</artifactId>
-	<!-- Notice that the version is set from different profile -->
-	<version>${projectVersionFromProfile}</version>
+	<!-- Notice that the version is set from different profile, use "revision" to ignore maven warning -->
+	<version>${revision}</version>
 	<packaging>jar</packaging>
 
 	<name>openmldb-batch</name>
@@ -60,21 +60,21 @@
 				<activeByDefault>true</activeByDefault>
 			</activation>
 			<properties>
-				<projectVersionFromProfile>${default.project.version}-SNAPSHOT</projectVersionFromProfile>
+				<revision>${default.project.version}-SNAPSHOT</revision>
 				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>macos</id>
 			<properties>
-				<projectVersionFromProfile>${default.project.version}-macos-SNAPSHOT</projectVersionFromProfile>
+				<revision>${default.project.version}-macos-SNAPSHOT</revision>
 				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-macos</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>allinone</id>
 			<properties>
-				<projectVersionFromProfile>${default.project.version}-allinone-SNAPSHOT</projectVersionFromProfile>
+				<revision>${default.project.version}-allinone-SNAPSHOT</revision>
 				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-allinone</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
@@ -399,20 +399,6 @@
 					<execution>
 						<id>scala-compile-first</id>
 						<phase>process-resources</phase>
-						<goals>
-							<goal>add-source</goal>
-							<goal>compile</goal>
-							<goal>testCompile</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>scala-test-compile</id>
-						<phase>process-test-resources</phase>
-						<goals>
-							<goal>testCompile</goal>
-						</goals>
-					</execution>
-					<execution>
 						<goals>
 							<goal>add-source</goal>
 							<goal>compile</goal>
