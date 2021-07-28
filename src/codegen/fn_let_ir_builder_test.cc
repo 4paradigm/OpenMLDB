@@ -483,8 +483,8 @@ TEST_F(FnLetIRBuilderTest, test_simple_project_with_placeholder) {
     int8_t* window_ptr = nullptr;
     int8_t *parameter_row_ptr = reinterpret_cast<int8_t*>(&parameter_row);
     vm::Schema schema;
-    CheckFnLetBuilderWithParameterRow(&manager, table1, parameter_schema, "", sql, row_ptr, window_ptr, parameter_row_ptr,
-                                      &schema, &output);
+    CheckFnLetBuilderWithParameterRow(&manager, table1, parameter_schema, "", sql, row_ptr, window_ptr,
+                                      parameter_row_ptr, &schema, &output);
     ASSERT_EQ(2, schema.size());
     ASSERT_EQ(15u, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));

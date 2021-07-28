@@ -151,9 +151,9 @@ void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
     ASSERT_EQ(0, ret2);
 }
 void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
-                                       type::TableDef& table,
+                                       type::TableDef& table, // NOLINT
                                        const type::TableDef& parameter_schema,
-                                       std::string udf_str,  // NOLINT
+                                       std::string udf_str,
                                        std::string sql, int8_t* row_ptr, int8_t* window_ptr,
                                        int8_t * parameter_row_ptr,
                                        vm::Schema* output_schema, int8_t** output) {
@@ -165,14 +165,13 @@ void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
         source->SetColumnID(i, i);
     }
     schemas_ctx.Build();
-    CheckFnLetBuilderWithParameterRow(manager, &schemas_ctx, &parameter_schema.columns(), udf_str, sql, row_ptr, window_ptr,
-                                      parameter_row_ptr, output_schema, output);
+    CheckFnLetBuilderWithParameterRow(manager, &schemas_ctx, &parameter_schema.columns(), udf_str, sql, row_ptr,
+                                      window_ptr, parameter_row_ptr, output_schema, output);
 }
 
-void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
-                       vm::SchemasContext* schemas_ctx,std::string udf_str,
-                       std::string sql, int8_t* row_ptr, int8_t* window_ptr,
-                       vm::Schema* output_schema, int8_t** output) {
+void CheckFnLetBuilder(::hybridse::node::NodeManager* manager, vm::SchemasContext* schemas_ctx, std::string udf_str,
+                       std::string sql, int8_t* row_ptr, int8_t* window_ptr, vm::Schema* output_schema,
+                       int8_t** output) {
     CheckFnLetBuilderWithParameterRow(manager, schemas_ctx, nullptr, udf_str, sql, row_ptr, window_ptr, nullptr,
                                       output_schema, output);
 }

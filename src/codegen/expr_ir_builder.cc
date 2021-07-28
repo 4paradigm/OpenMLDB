@@ -501,11 +501,11 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
 // param parameter
 // param output
 // return
-Status ExprIRBuilder::BuildParameterExpr(const ::hybridse::node::ParameterExpr* parameter, NativeValue* output){
+Status ExprIRBuilder::BuildParameterExpr(const ::hybridse::node::ParameterExpr* parameter, NativeValue* output) {
     CHECK_TRUE(nullptr != ctx_->parameter_types() && !ctx_->parameter_types()->empty(), kCodegenError,
                "Fail to build parameter expression when parameter types is null or empty")
     CHECK_TRUE(parameter->position() > 0 && parameter->position() <= ctx_->parameter_types()->size(), kCodegenError,
-                   "Fail to build paramater expression when parameter position ", parameter->position(), " out of range")
+               "Fail to build paramater expression when parameter position ", parameter->position(), " out of range")
     // Load Inner Window If Exist
     VariableIRBuilder variable_ir_builder(ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
     base::Status status;
