@@ -69,7 +69,7 @@ Status ParameterExpr::InferAttr(ExprAnalysisContext *ctx) {
                "Fail to get parameter type with NULL parameter types")
     CHECK_TRUE(position() > 0 &&  position() <= ctx->parameter_types()->size(), common::kTypeError,
                "Fail to get parameter type with position ", position())
-    type::Type parameter_type = ctx->parameter_types()->at(position()-1);
+    type::Type parameter_type = ctx->parameter_types()->Get(position()-1).type();
     node::DataType dtype;
     CHECK_TRUE(vm::SchemaType2DataType(parameter_type, &dtype), kTypeError,
                "Fail to convert type: ", parameter_type);

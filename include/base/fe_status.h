@@ -27,7 +27,10 @@ namespace base {
 template <typename STREAM, typename... Args>
 static inline std::initializer_list<int> __output_literal_args(STREAM& stream,  // NOLINT
                                                                Args... args) {  // NOLINT
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-stack-address"
     return std::initializer_list<int>{(stream << args, 0)...};
+#pragma GCC diagnostic pop
 }
 
 #define MAX_STATUS_TRACE_SIZE 4096

@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "base/fe_status.h"
+#include "codec/fe_row_codec.h"
 
 // fwd
 namespace hybridse::vm {
@@ -29,6 +30,7 @@ class SchemasContext;
 namespace hybridse::udf {
 class UdfLibrary;
 }
+
 
 namespace hybridse {
 namespace node {
@@ -60,7 +62,7 @@ class ExprAttrNode {
 class ExprAnalysisContext {
  public:
     ExprAnalysisContext(node::NodeManager* nm, const udf::UdfLibrary* library,
-                        const vm::SchemasContext* schemas_context, const std::vector<type::Type>* parameter_types)
+                        const vm::SchemasContext* schemas_context, const codec::Schema* parameter_types)
         : nm_(nm), library_(library), schemas_context_(schemas_context), parameter_types_(parameter_types) {}
 
     node::NodeManager* node_manager() { return nm_; }
@@ -68,14 +70,14 @@ class ExprAnalysisContext {
     const udf::UdfLibrary* library() const { return library_; }
 
     const vm::SchemasContext* schemas_context() const { return schemas_context_; }
-    const std::vector<type::Type>* parameter_types() const { return parameter_types_; }
+    const codec::Schema* parameter_types() const { return parameter_types_; }
     Status InferAsUdf(node::ExprNode* expr, const std::string& name);
 
  private:
     node::NodeManager* nm_;
     const udf::UdfLibrary* library_;
     const vm::SchemasContext* schemas_context_;
-    const std::vector<type::Type>* parameter_types_;
+    const codec::Schema* parameter_types_;
 };
 
 }  // namespace node

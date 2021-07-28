@@ -70,7 +70,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
 void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
-                   const std::vector<type::Type>& paramter_types, const EngineMode engine_mode,
+                   const Schema& paramter_types, const EngineMode engine_mode,
                    const bool enable_batch_window_paralled) {
     SqlCompiler sql_compiler(catalog, false, true, false);
     SqlContext sql_context;
@@ -93,11 +93,11 @@ void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     std::cout << "schema:\n" << oss_schema.str();
 }
 void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
-                   const std::vector<type::Type>& paramter_types, EngineMode engine_mode) {
+                   const Schema& paramter_types, EngineMode engine_mode) {
     CompilerCheck(catalog, sql, paramter_types, engine_mode, false);
 }
 void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
-                        const std::vector<type::Type>& paramter_types, const type::TableDef& exp_table_def) {
+                        const vm::Schema& paramter_types, const type::TableDef& exp_table_def) {
     SqlCompiler sql_compiler(catalog);
     SqlContext sql_context;
     sql_context.sql = sql;
@@ -188,6 +188,7 @@ TEST_P(SqlCompilerTest, compile_request_mode_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
+
     CompilerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kRequestMode);
     RequestSchemaCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), table_def);
 }
