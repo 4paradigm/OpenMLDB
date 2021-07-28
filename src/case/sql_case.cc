@@ -882,19 +882,13 @@ bool SqlCase::ExtractOutputSchema(type::TableDef& table) const {
         return false;
     }
 }
-const std::vector<type::Type> SqlCase::ExtractParameterTypes() const {
-    std::vector<type::Type> parameter_types;
+const vm::Schema SqlCase::ExtractParameterTypes() const {
+    vm::Schema emtpy_schema;
     type::TableDef parameter_schema;
     if (!ExtractInputTableDef(parameters(), parameter_schema)) {
-        return parameter_types;
+        return emtpy_schema;
     }
-    if (parameter_schema.columns_size() == 0) {
-        return parameter_types;
-    }
-    for (int i = 0; i < parameter_schema.columns_size(); i++) {
-        parameter_types.push_back(parameter_schema.columns(i).type());
-    }
-    return parameter_types;
+    return parameter_schema.columns();
 }
 std::ostream& operator<<(std::ostream& output, const SqlCase& thiz) {
     output << "Case ID: " << thiz.id() << ", Desc:" << thiz.desc();

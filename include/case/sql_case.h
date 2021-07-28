@@ -100,7 +100,7 @@ class SqlCase {
     bool BuildInsertSqlListFromInput(int32_t input_idx,
                                      std::vector<std::string>* sql_list) const;
     bool ExtractOutputSchema(type::TableDef& table) const;          // NOLINT
-    const std::vector<type::Type> ExtractParameterTypes() const;
+    const codec::Schema ExtractParameterTypes() const;
 
     bool ExtractInputData(std::vector<hybridse::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0) const;
@@ -137,11 +137,11 @@ class SqlCase {
     static bool ExtractTableDef(const std::string& schema_str,
                                 const std::string& index_str,
                                 type::TableDef& table);  // NOLINT
-    static bool ExtractRows(const vm::Schema& schema,
+    static bool ExtractRows(const codec::Schema& schema,
                             const std::string& data_str,
                             std::vector<hybridse::codec::Row>& rows);  // NOLINT
     static bool ExtractRows(
-        const vm::Schema& schema,
+        const codec::Schema& schema,
         const std::vector<std::vector<std::string>>& row_vec,
         std::vector<hybridse::codec::Row>& rows);  // NOLINT
     static bool BuildInsertSqlFromData(const type::TableDef& table,
@@ -154,9 +154,9 @@ class SqlCase {
         const type::TableDef& table,
         const std::vector<std::vector<std::string>>& rows,
         std::string* insert_sql);
-    static bool ExtractRow(const vm::Schema& schema, const std::string& row_str,
+    static bool ExtractRow(const codec::Schema& schema, const std::string& row_str,
                            int8_t** out_ptr, int32_t* out_size);
-    static bool ExtractRow(const vm::Schema& schema,
+    static bool ExtractRow(const codec::Schema& schema,
                            const std::vector<std::string>& item_vec,
                            int8_t** out_ptr, int32_t* out_size);
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,

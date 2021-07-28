@@ -78,7 +78,7 @@ TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
     codec::ListRef<Row> window_ref;
     window_ref.list = ptr;
     int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
-    vm::Schema schema;
+    codec::Schema schema;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &output);
 

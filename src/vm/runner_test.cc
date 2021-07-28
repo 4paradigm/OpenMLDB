@@ -70,7 +70,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
 void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
-                 const std::vector<type::Type>& parameter_types,
+                 const vm::Schema& parameter_types,
                  EngineMode engine_mode) {
     SqlCompiler sql_compiler(catalog);
     SqlContext sql_context;
@@ -254,7 +254,8 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     db.set_name("db");
     AddTable(db, table_def);
     auto catalog = BuildSimpleCatalog(db);
-    RunnerCheck(catalog, sqlstr, {}, kBatchMode);
+    codec::Schema empty_schema;
+    RunnerCheck(catalog, sqlstr, empty_schema, kBatchMode);
 
     SqlCompiler sql_compiler(catalog);
     SqlContext sql_context;

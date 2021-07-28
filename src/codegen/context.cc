@@ -155,7 +155,7 @@ FunctionScopeGuard::~FunctionScopeGuard() {
 
 CodeGenContext::CodeGenContext(::llvm::Module* module,
                                const vm::SchemasContext* schemas_context,
-                               const std::vector<type::Type>* parameter_types,
+                               const codec::Schema* parameter_types,
                                node::NodeManager* node_manager)
     : llvm_ctx_(&module->getContext()),
       llvm_module_(module),
@@ -189,7 +189,7 @@ void CodeGenContext::SetCurrentBlock(::llvm::BasicBlock* block) {
 const vm::SchemasContext* CodeGenContext::schemas_context() const {
     return schemas_context_;
 }
-const std::vector<type::Type>* CodeGenContext::parameter_types() const {
+const codec::Schema* CodeGenContext::parameter_types() const {
     return parameter_types_;
 }
 node::NodeManager* CodeGenContext::node_manager() const {
