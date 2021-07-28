@@ -187,11 +187,11 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
           case DateType =>
             val days = rowView.GetDateUnsafe(i)
             val calendar = Calendar.getInstance()
-              calendar.set(Calendar.YEAR, rowView.GetYearUnsafe(days))
-              calendar.set(Calendar.MONTH, rowView.GetMonthUnsafe(days))
-                calendar.set(Calendar.DAY_OF_MONTH, rowView.GetDayUnsafe(days))
-            output(fieldOffset) = calendar.getTime
-
+            calendar.set(Calendar.YEAR, rowView.GetYearUnsafe(days))
+            calendar.set(Calendar.MONTH, rowView.GetMonthUnsafe(days))
+            calendar.set(Calendar.DAY_OF_MONTH, rowView.GetDayUnsafe(days))
+            val javaSqlDate = new Date(calendar.getTimeInMillis)
+            output(fieldOffset) = javaSqlDate
           case _ => throw new IllegalArgumentException(
             s"Spark type ${field.dataType} not supported")
         }
