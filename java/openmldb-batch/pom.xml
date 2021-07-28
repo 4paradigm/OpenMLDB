@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.4paradigm.openmldb</groupId>
 	<artifactId>openmldb-batch</artifactId>
-	<!-- Use the version from different profile -->
+	<!-- Notice that the version is set from different profile -->
 	<version>${projectVersionFromProfile}</version>
 	<packaging>jar</packaging>
 
@@ -375,7 +375,8 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.20.1</version>
+				<!-- Refer to issue in https://issues.apache.org/jira/browse/SUREFIRE-1443 -->
+				<version>2.21.0</version>
 			</plugin>
 			<plugin>
 				<groupId>net.alchim31.maven</groupId>
@@ -420,7 +421,6 @@
 					</execution>
 				</executions>
 			</plugin>
-
 			<plugin>
 				<groupId>org.scalatest</groupId>
 				<artifactId>scalatest-maven-plugin</artifactId>
@@ -435,7 +435,6 @@
 					</execution>
 				</executions>
 			</plugin>
-
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
@@ -648,6 +647,26 @@
 				</configuration>
 			</plugin>
 
+			<!-- Generate report for spotbugs -->
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<version>4.2.2</version>
+				<configuration>
+					<excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+					<failOnError>true</failOnError>
+					<threshold>High</threshold>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
 		</plugins>
 
 		<pluginManagement>
@@ -670,12 +689,7 @@
 
 	<reporting>
 		<plugins>
-			<!-- Generate report for spotbugs -->
-			<plugin>
-				<groupId>com.github.spotbugs</groupId>
-				<artifactId>spotbugs-maven-plugin</artifactId>
-				<version>4.2.2</version>
-			</plugin>
+
 
 			<!-- Generate report for jacoco -->
 			<plugin>
