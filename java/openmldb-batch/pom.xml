@@ -447,6 +447,8 @@
 										<exclude>META-INF/*.SF</exclude>
 										<exclude>META-INF/*.DSA</exclude>
 										<exclude>META-INF/*.RSA</exclude>
+										<!-- Ignore the warning of module-info.class -->
+										<exclude>module-info.class</exclude>
 									</excludes>
 								</filter>
 							</filters>
