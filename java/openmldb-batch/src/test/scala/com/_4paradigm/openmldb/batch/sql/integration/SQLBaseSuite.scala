@@ -16,6 +16,7 @@
 
 package com._4paradigm.hybridsql.openmldb.sql
 
+/*
 import java.io.{File, FileInputStream}
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
@@ -36,6 +37,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
+*/
 
 /* TODO: Do not use sqlcase
 class SQLBaseSuite extends SparkTestSuite {
