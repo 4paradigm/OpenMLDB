@@ -511,14 +511,18 @@ Status ExprIRBuilder::BuildParameterExpr(const ::hybridse::node::ParameterExpr* 
     base::Status status;
     NativeValue parameter_row;
     CHECK_TRUE(variable_ir_builder.LoadParameter(&parameter_row, status), kCodegenError, status.msg);
+    ::llvm::Value* slice_ptr = nullptr;
+    ::llvm::Value* slice_size = nullptr;
+    // Since parameter row has only one slice, the schema idx should be 0
+    size_t schema_idx = 0;
+    CHECK_STATUS(ExtractSliceFromRow(parameter_row, schema_idx, &slice_ptr, &slice_size))
     BufNativeIRBuilder buf_builder(
-        schema_idx, schemas_context->GetRowFormat(schema_idx),
+        schema_idx, &ctx_->parameter_row_format(),
         ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
     CHECK_TRUE(
-        buf_builder.BuildGetField(parameter->position()-1, parameter_row.GetValue(ctx_),  output),
-        kCodegenError);
-
-
+        buf_builder.BuildGetField(parameter->position()-1, slice_ptr, slice_size, output),
+        kCodegenError, "Fail to get ", parameter->position(), "th parameter value")
+    return base::Status::OK();
 }
 // Get col with given col name, set list struct pointer into output
 // param col
@@ -846,23 +850,9 @@ Status ExprIRBuilder::BuildGetFieldExpr(
                          node->GetColumnID(), &schema_idx, &col_idx),
                      "Fail to resolve column ", node->GetExprString(), " from ",
                      row_type->GetName());
-        auto row_ptr = input_value.GetValue(ctx_);
-
-        ::llvm::Module* module = ctx_->GetModule();
-        ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-        auto slice_idx_value = builder.getInt64(schema_idx);
-        auto get_slice_func = module->getOrInsertFunction(
-            "hybridse_storage_get_row_slice",
-            ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));
-        auto get_slice_size_func = module->getOrInsertFunction(
-            "hybridse_storage_get_row_slice_size",
-            ::llvm::FunctionType::get(int64_ty, {ptr_ty, int64_ty}, false));
-        ::llvm::Value* slice_ptr =
-            builder.CreateCall(get_slice_func, {row_ptr, slice_idx_value});
-        ::llvm::Value* slice_size = builder.CreateIntCast(
-            builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx_value}),
-            int32_ty, false);
-
+        ::llvm::Value* slice_ptr = nullptr;
+        ::llvm::Value* slice_size = nullptr;
+        CHECK_STATUS(ExtractSliceFromRow(input_value, schema_idx, &slice_ptr, &slice_size))
         BufNativeIRBuilder buf_builder(
             schema_idx, schemas_context->GetRowFormat(schema_idx),
             ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
@@ -914,5 +904,30 @@ Status ExprIRBuilder::BuildCondExpr(const ::hybridse::node::CondExpr* node,
                                       left_value, right_value, output);
 }
 
+Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const int schema_idx, llvm::Value** slice_ptr,
+                                          llvm::Value** slice_size) {
+    auto& llvm_ctx = ctx_->GetLLVMContext();
+    auto ptr_ty = llvm::Type::getInt8Ty(llvm_ctx)->getPointerTo();
+    auto int64_ty = llvm::Type::getInt64Ty(llvm_ctx);
+    auto int32_ty = llvm::Type::getInt32Ty(llvm_ctx);
+
+    auto row_ptr = input_value.GetValue(ctx_);
+
+    ::llvm::Module* module = ctx_->GetModule();
+    ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
+    auto slice_idx_value = builder.getInt64(schema_idx);
+    auto get_slice_func = module->getOrInsertFunction(
+        "hybridse_storage_get_row_slice",
+        ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));
+    auto get_slice_size_func = module->getOrInsertFunction(
+        "hybridse_storage_get_row_slice_size",
+        ::llvm::FunctionType::get(int64_ty, {ptr_ty, int64_ty}, false));
+    *slice_ptr =
+        builder.CreateCall(get_slice_func, {row_ptr, slice_idx_value});
+    *slice_size = builder.CreateIntCast(
+        builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx_value}),
+        int32_ty, false);
+    return Status::OK();
+}
 }  // namespace codegen
 }  // namespace hybridse

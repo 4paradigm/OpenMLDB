@@ -88,7 +88,7 @@ node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
 
 void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
                        vm::SchemasContext* schemas_ctx,
-                                       const std::vector<type::Type>* parameter_types,
+                                       const codec::Schema* parameter_types,
                                        std::string udf_str,
                        std::string sql, int8_t* row_ptr, int8_t* window_ptr,
                                     int8_t * parameter_row_ptr,
@@ -165,11 +165,7 @@ void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
         source->SetColumnID(i, i);
     }
     schemas_ctx.Build();
-    std::vector<type::Type> parameter_types;
-    for (int i = 0; i < parameter_schema.columns_size(); i++) {
-        parameter_types.push_back(parameter_schema.columns(i).type());
-    }
-    CheckFnLetBuilderWithParameterRow(manager, &schemas_ctx, &parameter_types, udf_str, sql, row_ptr, window_ptr,
+    CheckFnLetBuilderWithParameterRow(manager, &schemas_ctx, &parameter_schema.columns(), udf_str, sql, row_ptr, window_ptr,
                                       parameter_row_ptr, output_schema, output);
 }
 
@@ -183,8 +179,8 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
 void CheckFnLetBuilder(::hybridse::node::NodeManager* manager, type::TableDef& table, std::string udf_str,  // NOLINT
                        std::string sql, int8_t* row_ptr, int8_t* window_ptr, vm::Schema* output_schema,
                        int8_t** output) {
-    type::TableDef empty_paramter_schema;
-    CheckFnLetBuilderWithParameterRow(manager, table, empty_paramter_schema, udf_str, sql, row_ptr, window_ptr, nullptr,
+    type::TableDef empty_schema;
+    CheckFnLetBuilderWithParameterRow(manager, table, empty_schema, udf_str, sql, row_ptr, window_ptr, nullptr,
                                       output_schema, output);
 }
 

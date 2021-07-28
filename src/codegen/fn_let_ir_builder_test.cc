@@ -486,7 +486,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project_with_placeholder) {
     CheckFnLetBuilderWithParameterRow(&manager, table1, parameter_schema, "", sql, row_ptr, window_ptr, parameter_row_ptr,
                                       &schema, &output);
     ASSERT_EQ(2, schema.size());
-    ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(15u, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(100u, *reinterpret_cast<uint32_t*>(output + 7+4));
     free(ptr);

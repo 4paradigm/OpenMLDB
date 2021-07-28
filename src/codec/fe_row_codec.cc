@@ -879,6 +879,9 @@ int32_t RowView::GetString(uint32_t idx, const char** val, uint32_t* length) {
 
 RowFormat::RowFormat(const hybridse::codec::Schema* schema)
     : schema_(schema), infos_(), next_str_pos_(), str_field_start_offset_(0) {
+    if (nullptr == schema) {
+        return;
+    }
     uint32_t offset = codec::GetStartOffset(schema_->size());
     uint32_t string_field_cnt = 0;
     for (int32_t i = 0; i < schema_->size(); i++) {
