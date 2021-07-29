@@ -100,7 +100,8 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
                     return Status::OK();
                 }
             } else if (library->IsUdaf(fn->function_name(), child_num)) {
-                return VisitAggExpr(call, row_arg, window_arg, out, has_agg);
+                CHECK_STATUS(VisitAggExpr(call, row_arg, window_arg, out, has_agg));
+                return base::Status::OK();
             }
         }
     }
@@ -114,7 +115,8 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
 
     // determine whether a leaf
     if (child_num == 0) {
-        return VisitLeafExpr(expr, row_arg, out);
+        CHECK_STATUS(VisitLeafExpr(expr, row_arg, out));
+        return Status::OK();
     }
 
     // recursive visit children
@@ -197,9 +199,7 @@ Status LambdafyProjects::VisitLeafExpr(node::ExprNode* expr,
             break;
         }
         default:
-            return Status(
-                common::kCodegenError,
-                "Unknown leaf expr type: " + ExprTypeName(expr->GetExprType()));
+            FAIL_STATUS(common::kCodegenError, "Unknown leaf expr type: " + ExprTypeName(expr->GetExprType()))
     }
     return Status::OK();
 }
@@ -211,7 +211,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
                                       bool* is_window_agg) {
     auto nm = ctx_->node_manager();
     auto fn = dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
-    CHECK_TRUE(fn != nullptr, kCodegenError);
+    CHECK_TRUE(fn != nullptr, kCodegenError, "Fail to visit agg expression with null function definition node");
 
     // represent row argument in window iteration
     node::ExprIdNode* iter_row = nullptr;

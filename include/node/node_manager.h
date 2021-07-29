@@ -208,7 +208,7 @@ class NodeManager {
     ConstNode *MakeConstNode(const char *value);
     ConstNode *MakeConstNode();
     ConstNode *MakeConstNode(DataType type);
-    ConstNode *MakeConstNodePlaceHolder();
+    ParameterExpr *MakeParameterExpr(int position);
 
     AllNode *MakeAllNode(const std::string &relation_name);
     AllNode *MakeAllNode(const std::string &relation_name,

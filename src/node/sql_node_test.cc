@@ -301,7 +301,7 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ExprNode *value1 = node_manager_->MakeConstNode(1);
     ExprNode *value2 = node_manager_->MakeConstNode(2.3f);
     ExprNode *value3 = node_manager_->MakeConstNode(2.3);
-    ExprNode *value4 = node_manager_->MakeConstNodePlaceHolder();
+    ExprNode *value4 = node_manager_->MakeParameterExpr(1);
     value_expr_list->PushBack(value1);
     value_expr_list->PushBack(value2);
     value_expr_list->PushBack(value3);
@@ -319,7 +319,7 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[0])->GetInt(), 1);
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[1])->GetFloat(), 2.3f);
     ASSERT_EQ(dynamic_cast<ConstNode *>(value[2])->GetDouble(), 2.3);
-    ASSERT_EQ(dynamic_cast<ConstNode *>(value[3])->GetDataType(), hybridse::node::kPlaceholder);
+    ASSERT_EQ(dynamic_cast<ParameterExpr *>(value[3])->position(), 1);
 }
 TEST_F(SqlNodeTest, AllNodeTest) {
     {
@@ -923,8 +923,9 @@ TEST_F(SqlNodeTest, QueryTypeNameTest) {
 TEST_F(SqlNodeTest, OrderByNodeTest) {
     // expr list
     ExprListNode *expr_list1 = node_manager_->MakeExprList();
-    expr_list1->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col1", ""),
-                                                            true));
+    OrderExpression* order_expression = node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col1", ""),
+                                                                           true);
+    expr_list1->AddChild(order_expression);
     expr_list1->AddChild(node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col2", ""), true));
 
     ExprListNode *expr_list2 = node_manager_->MakeExprList();
@@ -957,6 +958,45 @@ TEST_F(SqlNodeTest, OrderByNodeTest) {
     ASSERT_EQ("(col1 ASC, col2 ASC)", order2->GetExprString());
     ASSERT_EQ("(c1 ASC, col2 ASC)", order3->GetExprString());
     ASSERT_EQ("(col1 ASC, col2 DESC)", order4->GetExprString());
+
+    {
+        std::ostringstream oss;
+        order1->Print(oss, "");
+        ASSERT_EQ(
+            "+-node[kExpr]\n"
+            "  +-order_expressions: (col1 ASC, col2 ASC)",
+            oss.str());
+    }
+    {
+        std::ostringstream oss;
+        order_expression->Print(oss, "");
+        ASSERT_EQ("col1 ASC", order_expression->GetExprString());
+        ASSERT_EQ("+-node[kExpr]\n"
+            "  +-order_expression: col1 ASC", oss.str());
+    }
+}
+TEST_F(SqlNodeTest, ParameterExprTest) {
+    ParameterExpr* parameter_expr1 = node_manager_->MakeParameterExpr(1);
+    ParameterExpr* parameter_expr2 = node_manager_->MakeParameterExpr(1);
+    ParameterExpr* parameter_expr3 = node_manager_->MakeParameterExpr(2);
+    ASSERT_TRUE(node::ExprEquals(parameter_expr1, parameter_expr1));
+    ASSERT_TRUE(node::ExprEquals(parameter_expr1, parameter_expr2));
+    ASSERT_FALSE(node::ExprEquals(parameter_expr1, parameter_expr3));
+
+    ASSERT_EQ("(?1)", parameter_expr1->GetExprString());
+}
+TEST_F(SqlNodeTest, LimitNodeTest) {
+    SqlNode *node1 = node_manager_->MakeLimitNode(100);
+    SqlNode *node2 = node_manager_->MakeLimitNode(100);
+    SqlNode *node3 = node_manager_->MakeLimitNode(200);
+    ASSERT_TRUE(node::SqlEquals(node1, node1));
+    ASSERT_TRUE(node::SqlEquals(node1, node2));
+    ASSERT_FALSE(node::SqlEquals(node1, node3));
+    std::ostringstream oss;
+    node1->Print(oss, "");
+    ASSERT_EQ("+-node[kLimit]\n"
+        "  +-limit_cnt: 100", oss.str());
+
 }
 }  // namespace node
 }  // namespace hybridse
