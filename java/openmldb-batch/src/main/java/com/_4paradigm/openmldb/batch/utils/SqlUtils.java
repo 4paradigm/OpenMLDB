@@ -16,7 +16,10 @@
 
 package com._4paradigm.openmldb.batch.utils;
 
-import com.google.gson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -41,7 +44,6 @@ public class SqlUtils {
 
     public static SparkConfig parseFeconfigJson(String json) {
         logger.info("fesql config: {}", json);
-        Gson gson = new Gson();
         JsonParser parser = new JsonParser();
         JsonObject jsonElement = parser.parse(json).getAsJsonObject();
         SparkConfig config = new SparkConfig();

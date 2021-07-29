@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.batch.tools
 
-import java.io.{File, FileWriter}
+import java.io.{File, FileOutputStream, FileWriter, OutputStreamWriter}
 
 import com._4paradigm.openmldb.batch.OpenmldbBatchConfig
 import com._4paradigm.openmldb.batch.utils.{ArgumentParser, JmhHelper}
@@ -67,6 +67,7 @@ class BenchmarkWindowSampleImpl {
       case "--samplePath" => samplePath = parser.parseValue()
       case "--sampleIdx" => sampleIdx = parser.parseInt()
       case "--resetWindow" => resetWindow = true
+      case _ =>
     }
     if (samplePath.isEmpty) {
       throw new IllegalArgumentException("sample path is empty")
@@ -74,9 +75,16 @@ class BenchmarkWindowSampleImpl {
   }
 
   def saveArgs(args: Array[String]): Unit = {
-    val writer = new FileWriter(new File("./window_sample_bm_args.log"))
-    writer.write(args.mkString("\n"))
-    writer.close()
+    var writer: OutputStreamWriter = null
+    try {
+      val filePath = "./window_sample_bm_args.log"
+      writer = new OutputStreamWriter(new FileOutputStream(filePath), "UTF-8")
+      writer.write(args.mkString("\n"))
+    } finally {
+      if (writer != null) {
+        writer.close()
+      }
+    }
   }
 
   def loadArgs(): Array[String] = {
