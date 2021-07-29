@@ -77,6 +77,7 @@ class SqlCase {
     const bool debug() const { return debug_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
+    const TableInfo& parameters() const { return parameters_; }
     const TableInfo& batch_request() const { return batch_request_; }
     const ExpectInfo& expect() const { return expect_; }
     void set_expect(const ExpectInfo& data) { expect_ = data; }
@@ -99,6 +100,8 @@ class SqlCase {
     bool BuildInsertSqlListFromInput(int32_t input_idx,
                                      std::vector<std::string>* sql_list) const;
     bool ExtractOutputSchema(type::TableDef& table) const;          // NOLINT
+    const codec::Schema ExtractParameterTypes() const;
+
     bool ExtractInputData(std::vector<hybridse::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0) const;
     bool ExtractInputData(
@@ -134,11 +137,11 @@ class SqlCase {
     static bool ExtractTableDef(const std::string& schema_str,
                                 const std::string& index_str,
                                 type::TableDef& table);  // NOLINT
-    static bool ExtractRows(const vm::Schema& schema,
+    static bool ExtractRows(const codec::Schema& schema,
                             const std::string& data_str,
                             std::vector<hybridse::codec::Row>& rows);  // NOLINT
     static bool ExtractRows(
-        const vm::Schema& schema,
+        const codec::Schema& schema,
         const std::vector<std::vector<std::string>>& row_vec,
         std::vector<hybridse::codec::Row>& rows);  // NOLINT
     static bool BuildInsertSqlFromData(const type::TableDef& table,
@@ -151,9 +154,9 @@ class SqlCase {
         const type::TableDef& table,
         const std::vector<std::vector<std::string>>& rows,
         std::string* insert_sql);
-    static bool ExtractRow(const vm::Schema& schema, const std::string& row_str,
+    static bool ExtractRow(const codec::Schema& schema, const std::string& row_str,
                            int8_t** out_ptr, int32_t* out_size);
-    static bool ExtractRow(const vm::Schema& schema,
+    static bool ExtractRow(const codec::Schema& schema,
                            const std::vector<std::string>& item_vec,
                            int8_t** out_ptr, int32_t* out_size);
     static bool CreateTableInfoFromYamlNode(const YAML::Node& node,
@@ -303,6 +306,7 @@ class SqlCase {
     std::string cluster_request_plan_;
     std::vector<TableInfo> inputs_;
     TableInfo batch_request_;
+    TableInfo parameters_;
     ExpectInfo expect_;
     YAML::Node raw_node_;
     std::string sp_name_;

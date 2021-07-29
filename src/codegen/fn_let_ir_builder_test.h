@@ -115,14 +115,14 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
 
     bool is_agg = window_ptr != nullptr;
     vm::PhysicalPlanContext plan_ctx(
-        manager, lib, "db", std::make_shared<vm::SimpleCatalog>(), false);
+        manager, lib, "db", std::make_shared<vm::SimpleCatalog>(), nullptr, false);
     status = plan_ctx.InitFnDef(column_projects, schemas_ctx, !is_agg,
                                 &column_projects);
     ASSERT_TRUE(status.isOK()) << status.str();
 
     // Instantiate llvm function
     const auto& fn_info = column_projects.fn_info();
-    codegen::CodeGenContext codegen_ctx(m.get(), fn_info.schemas_ctx(),
+    codegen::CodeGenContext codegen_ctx(m.get(), fn_info.schemas_ctx(), nullptr,
                                         manager);
     codegen::RowFnLetIRBuilder builder(&codegen_ctx);
     status =

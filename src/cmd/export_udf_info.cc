@@ -77,7 +77,7 @@ class UdfTypeExtractor {
             }
             node::ExprNode* resolved = nullptr;
             vm::SchemasContext schemas_ctx;
-            node::ExprAnalysisContext ctx(nm, library, &schemas_ctx);
+            node::ExprAnalysisContext ctx(nm, library, &schemas_ctx, nullptr);
             passes::ResolveFnAndAttrs resolver(&ctx);
             status = resolver.VisitExpr(call, &resolved);
             if (!status.isOK() || resolved == nullptr ||

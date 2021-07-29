@@ -875,7 +875,7 @@ TEST_F(SqlCaseTest, ExtractYamlSqlCase2) {
 
     ASSERT_TRUE(hybridse::sqlcase::SqlCase::CreateSqlCasesFromYaml(
         hybridse_dir, case_path, cases));
-    ASSERT_EQ(3, cases.size());
+    ASSERT_EQ(4, cases.size());
     {
         SqlCase& sql_case = cases[0];
         ASSERT_EQ(sql_case.id(), "0");
@@ -989,6 +989,42 @@ TEST_F(SqlCaseTest, ExtractYamlSqlCase2) {
         ASSERT_TRUE(sql_case.expect().columns_.empty());
         ASSERT_TRUE(sql_case.expect().rows_.empty());
         ASSERT_FALSE(sql_case.expect().success_);
+    }
+    {
+        SqlCase& sql_case = cases[3];
+        ASSERT_EQ(sql_case.id(), "3");
+        ASSERT_EQ("普通select with placeholders", sql_case.desc());
+        ASSERT_EQ(1u, sql_case.inputs().size());
+        ASSERT_EQ(sql_case.db(), "test_zw");
+        {
+            auto input = sql_case.inputs()[0];
+            ASSERT_EQ(input.name_, "");
+            ASSERT_EQ(input.schema_, "");
+            std::vector<std::string> columns = {"c1 string", "c2 int",
+                                                "c3 bigint", "c4 timestamp"};
+            ASSERT_EQ(input.columns_, columns);
+            std::vector<std::string> indexs = {"index1:c1:c4"};
+            ASSERT_EQ(input.index_, "");
+            ASSERT_EQ(input.indexs_, indexs);
+            std::vector<std::vector<std::string>> rows = {
+                {"aa", "null", "3", "1590738989000L"}};
+            ASSERT_EQ(sql_case.inputs()[0].rows_, rows);
+        }
+        std::vector<std::string> expect_paramters_columns = {"1 string", "2 int", "3 double"};
+        std::vector<std::vector<std::string>> expect_parameters_rows = {{"aa", "1", "3.1"}};
+        ASSERT_EQ(sql_case.parameters().columns_, expect_paramters_columns);
+        ASSERT_EQ(sql_case.parameters().rows_, expect_parameters_rows);
+        ASSERT_EQ(sql_case.parameters().schema_, "");
+        ASSERT_EQ(sql_case.parameters().data_, "");
+
+        std::vector<std::string> expect_columns = {"c1 string", "c2 int"};
+        std::vector<std::vector<std::string>> expect_rows = {{"aa", "null"}};
+        ASSERT_EQ(sql_case.expect().schema_, "");
+        ASSERT_EQ(sql_case.expect().data_, "");
+        ASSERT_EQ(sql_case.expect().count_, -1);
+        ASSERT_EQ(sql_case.expect().columns_, expect_columns);
+        ASSERT_EQ(sql_case.expect().rows_, expect_rows);
+        ASSERT_TRUE(sql_case.expect().success_);
     }
 }
 

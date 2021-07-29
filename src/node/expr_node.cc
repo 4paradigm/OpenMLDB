@@ -64,7 +64,18 @@ Status ColumnIdNode::InferAttr(ExprAnalysisContext* ctx) {
     SetOutputType(nm->MakeTypeNode(node::kList, dtype));
     return Status::OK();
 }
-
+Status ParameterExpr::InferAttr(ExprAnalysisContext *ctx) {
+    CHECK_TRUE(nullptr != ctx->parameter_types(), common::kTypeError,
+               "Fail to get parameter type with NULL parameter types")
+    CHECK_TRUE(position() > 0 &&  position() <= ctx->parameter_types()->size(), common::kTypeError,
+               "Fail to get parameter type with position ", position())
+    type::Type parameter_type = ctx->parameter_types()->Get(position()-1).type();
+    node::DataType dtype;
+    CHECK_TRUE(vm::SchemaType2DataType(parameter_type, &dtype), kTypeError,
+               "Fail to convert type: ", parameter_type);
+    SetOutputType(ctx->node_manager()->MakeTypeNode(dtype));
+    return Status::OK();
+}
 Status ConstNode::InferAttr(ExprAnalysisContext* ctx) {
     SetOutputType(ctx->node_manager()->MakeTypeNode(data_type_));
     if (kNull == data_type_) {

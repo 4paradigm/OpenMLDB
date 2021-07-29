@@ -67,7 +67,7 @@ void CheckInfer(
         DoBuildExpr(build_expr, &nm, args, std::index_sequence_for<T...>());
 
     auto library = udf::DefaultUdfLibrary::get();
-    ExprAnalysisContext ctx(&nm, library, nullptr);
+    ExprAnalysisContext ctx(&nm, library, nullptr, nullptr);
     auto status = expr->InferAttr(&ctx);
     if (!status.isOK()) {
         LOG(INFO) << "Infer expr status: " << status;
@@ -118,7 +118,7 @@ void CheckInferError(
         DoBuildExpr(build_expr, &nm, args, std::index_sequence_for<T...>());
 
     auto library = udf::DefaultUdfLibrary::get();
-    ExprAnalysisContext ctx(&nm, library, nullptr);
+    ExprAnalysisContext ctx(&nm, library, nullptr, nullptr);
     auto status = expr->InferAttr(&ctx);
     LOG(INFO) << "Infer expr status: " << status;
     ASSERT_TRUE(!status.isOK());

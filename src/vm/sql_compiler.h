@@ -60,6 +60,7 @@ struct SqlContext {
     Schema schema;
     Schema request_schema;
     std::string request_name;
+    Schema parameter_types;
     uint32_t row_size;
     std::string ir;
     std::string logical_plan_str;

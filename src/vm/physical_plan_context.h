@@ -36,11 +36,13 @@ class PhysicalPlanContext {
     PhysicalPlanContext(node::NodeManager* nm, const udf::UdfLibrary* library,
                         const std::string& db,
                         const std::shared_ptr<Catalog>& catalog,
+                        const codec::Schema* parameter_types,
                         bool enable_expr_opt)
         : nm_(nm),
           library_(library),
           db_(db),
           catalog_(catalog),
+          parameter_types_(parameter_types),
           enable_expr_opt_(enable_expr_opt) {}
     ~PhysicalPlanContext() {}
 
@@ -117,7 +119,7 @@ class PhysicalPlanContext {
     const udf::UdfLibrary* library() const { return library_; }
     const std::string& db() { return db_; }
     std::shared_ptr<Catalog> catalog() { return catalog_; }
-
+    const codec::Schema* parameter_types() const { return parameter_types_; }
     // temp dict for legacy udf
     // TODO(xxx): support udf type infer
     std::map<std::string, type::Type> legacy_udf_dict_;
@@ -142,6 +144,8 @@ class PhysicalPlanContext {
     // source column id -> column info
     std::map<size_t, std::pair<std::string, std::string>> column_id_to_name_;
 
+    // parameters types
+    const codec::Schema* parameter_types_;
     // unique id counter for codegen function name id
     size_t codegen_func_id_counter_ = 0;
 

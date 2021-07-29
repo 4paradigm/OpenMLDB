@@ -229,8 +229,7 @@ class SchemasContext {
     std::map<size_t, std::pair<size_t, size_t>> column_id_map_;
 
     // column name -> [(schema idx, column idx)] mapping
-    std::map<std::string, std::vector<std::pair<size_t, size_t>>>
-        column_name_map_;
+    std::map<std::string, std::vector<std::pair<size_t, size_t>>> column_name_map_;
 
     // child source mapping
     // child idx -> (child column id -> column idx)

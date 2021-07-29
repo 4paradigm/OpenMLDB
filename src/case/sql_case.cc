@@ -882,6 +882,14 @@ bool SqlCase::ExtractOutputSchema(type::TableDef& table) const {
         return false;
     }
 }
+const vm::Schema SqlCase::ExtractParameterTypes() const {
+    vm::Schema emtpy_schema;
+    type::TableDef parameter_schema;
+    if (!ExtractInputTableDef(parameters(), parameter_schema)) {
+        return emtpy_schema;
+    }
+    return parameter_schema.columns();
+}
 std::ostream& operator<<(std::ostream& output, const SqlCase& thiz) {
     output << "Case ID: " << thiz.id() << ", Desc:" << thiz.desc();
     return output;
@@ -1289,6 +1297,13 @@ static bool ParseSqlCaseNode(const YAML::Node& sql_case_node,
     if (sql_case_node["batch_request"]) {
         if (!SqlCase::CreateTableInfoFromYamlNode(
                 sql_case_node["batch_request"], &sql_case.batch_request_)) {
+            return false;
+        }
+    }
+
+    if (sql_case_node["parameters"]) {
+        if (!SqlCase::CreateTableInfoFromYamlNode(
+            sql_case_node["parameters"], &sql_case.parameters_)) {
             return false;
         }
     }

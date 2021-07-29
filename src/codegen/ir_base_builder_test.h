@@ -440,7 +440,7 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
         std::unique_ptr<::llvm::Module>(new ::llvm::Module("Test", *llvm_ctx));
 
     vm::SchemasContext schemas_context;
-    CodeGenContext context(module.get(), &schemas_context, &state->nm);
+    CodeGenContext context(module.get(), &schemas_context, nullptr, &state->nm);
 
     auto arg_types = state->arg_types;
     auto arg_nullable = state->arg_nullable;
@@ -613,7 +613,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
             // type infer
             vm::SchemasContext empty_context;
             node::ExprAnalysisContext expr_pass_ctx(&nm, library,
-                                                    &empty_context);
+                                                    &empty_context, nullptr);
             passes::ResolveFnAndAttrs resolver(&expr_pass_ctx);
             node::ExprNode* resolved_body = nullptr;
             auto status = resolver.VisitExpr(body, &resolved_body);

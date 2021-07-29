@@ -227,13 +227,11 @@ class Sort : public FnComponent {
 class Range : public FnComponent {
  public:
     Range() : range_key_(nullptr), frame_(nullptr) {}
-    Range(const node::OrderByNode *order, const node::FrameNode *frame)
-        : range_key_(nullptr), frame_(frame) {
-        range_key_ = nullptr == order
+    Range(const node::OrderByNode *order, const node::FrameNode *frame) : range_key_(nullptr), frame_(frame) {
+        range_key_ = nullptr == order ? nullptr
+                     : node::ExprListNullOrEmpty(order->order_expressions_)
                          ? nullptr
-                         : node::ExprListNullOrEmpty(order->order_expressions_)
-                               ? nullptr
-                               : dynamic_cast<const node::OrderExpression*>(order->order_expressions_->children_[0])->expr();
+                         : order->GetOrderExpressionExpr(0);
     }
     virtual ~Range() {}
     const bool Valid() const { return nullptr != range_key_; }

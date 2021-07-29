@@ -156,50 +156,41 @@ std::string EngineModeName(EngineMode mode) {
     }
 }
 
-Status SqlCompiler::BuildBatchModePhysicalPlan(
-    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-    ::llvm::Module* llvm_module, udf::UdfLibrary* library,
-    PhysicalOpNode** output) {
-    vm::BatchModeTransformer transformer(
-        &ctx->nm, ctx->db, cl_, llvm_module, library,
-        ctx->is_performance_sensitive, ctx->is_cluster_optimized,
-        ctx->enable_expr_optimize, ctx->enable_batch_window_parallelization);
+Status SqlCompiler::BuildBatchModePhysicalPlan(SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+                                               ::llvm::Module* llvm_module, udf::UdfLibrary* library,
+                                               PhysicalOpNode** output) {
+    vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library,
+                                         ctx->is_performance_sensitive, ctx->is_cluster_optimized,
+                                         ctx->enable_expr_optimize, ctx->enable_batch_window_parallelization);
     transformer.AddDefaultPasses();
-    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
-                 "Fail to generate physical plan (batch mode)");
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output), "Fail to generate physical plan (batch mode)");
     ctx->schema = *(*output)->GetOutputSchema();
     return Status::OK();
 }
 
-Status SqlCompiler::BuildRequestModePhysicalPlan(
-    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-    ::llvm::Module* llvm_module, udf::UdfLibrary* library,
-    PhysicalOpNode** output) {
-    vm::RequestModeTransformer transformer(
-        &ctx->nm, ctx->db, cl_, llvm_module, library, {},
-        ctx->is_performance_sensitive, ctx->is_cluster_optimized, false,
-        ctx->enable_expr_optimize);
+Status SqlCompiler::BuildRequestModePhysicalPlan(SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+                                                 ::llvm::Module* llvm_module, udf::UdfLibrary* library,
+                                                 PhysicalOpNode** output) {
+    vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library, {},
+                                           ctx->is_performance_sensitive, ctx->is_cluster_optimized, false,
+                                           ctx->enable_expr_optimize);
     transformer.AddDefaultPasses();
-    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
-                 "Fail to generate physical plan (request mode)");
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output), "Fail to generate physical plan (request mode)");
     ctx->request_schema = transformer.request_schema();
-    CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
-                                          &ctx->encoded_request_schema),
-               kPlanError, "Fail to encode request schema");
+    CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(), &ctx->encoded_request_schema), kPlanError,
+               "Fail to encode request schema");
     ctx->request_name = transformer.request_name();
     ctx->schema = *(*output)->GetOutputSchema();
     return Status::OK();
 }
 
-Status SqlCompiler::BuildBatchRequestModePhysicalPlan(
-    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-    ::llvm::Module* llvm_module, udf::UdfLibrary* library,
-    PhysicalOpNode** output) {
-    vm::RequestModeTransformer transformer(
-        &ctx->nm, ctx->db, cl_, llvm_module, library,
-        ctx->batch_request_info.common_column_indices,
-        ctx->is_performance_sensitive, ctx->is_cluster_optimized,
-        ctx->is_batch_request_optimized, ctx->enable_expr_optimize);
+Status SqlCompiler::BuildBatchRequestModePhysicalPlan(SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+                                                      ::llvm::Module* llvm_module, udf::UdfLibrary* library,
+                                                      PhysicalOpNode** output) {
+    vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library,
+                                           ctx->batch_request_info.common_column_indices, ctx->is_performance_sensitive,
+                                           ctx->is_cluster_optimized, ctx->is_batch_request_optimized,
+                                           ctx->enable_expr_optimize);
     transformer.AddDefaultPasses();
     PhysicalOpNode* output_plan = nullptr;
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, &output_plan),

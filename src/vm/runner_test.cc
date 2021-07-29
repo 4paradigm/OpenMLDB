@@ -33,8 +33,8 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "plan/plan_api.h"
-#include "vm/sql_compiler.h"
 #include "testing/test_base.h"
+#include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -70,6 +70,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
 void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
+                 const vm::Schema& parameter_types,
                  EngineMode engine_mode) {
     SqlCompiler sql_compiler(catalog);
     SqlContext sql_context;
@@ -78,6 +79,7 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     sql_context.engine_mode = engine_mode;
     sql_context.is_performance_sensitive = false;
     sql_context.is_cluster_optimized = false;
+    sql_context.parameter_types = parameter_types;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
@@ -102,7 +104,8 @@ TEST_P(RunnerTest, request_mode_test) {
         LOG(INFO) << "Skip sql case: request unsupport";
         return;
     }
-    std::string sqlstr = GetParam().sql_str();
+    auto& sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
@@ -154,7 +157,7 @@ TEST_P(RunnerTest, request_mode_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
-    RunnerCheck(catalog, sqlstr, kRequestMode);
+    RunnerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kRequestMode);
 }
 
 TEST_P(RunnerTest, batch_mode_test) {
@@ -162,7 +165,8 @@ TEST_P(RunnerTest, batch_mode_test) {
         LOG(INFO) << "Skip sql case: batch unsupport";
         return;
     }
-    std::string sqlstr = GetParam().sql_str();
+    auto& sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
@@ -213,7 +217,7 @@ TEST_P(RunnerTest, batch_mode_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
-    RunnerCheck(catalog, sqlstr, kBatchMode);
+    RunnerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode);
 }
 
 Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type) {
@@ -234,8 +238,7 @@ Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type) {
     }
 }
 TEST_F(RunnerTest, KeyGeneratorTest) {
-    std::string sqlstr =
-        "select avg(col1), avg(col2) from t1 group by col1, col2 limit 1;";
+    std::string sqlstr = "select avg(col1), avg(col2) from t1 group by col1, col2 limit 1;";
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
@@ -251,7 +254,8 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     db.set_name("db");
     AddTable(db, table_def);
     auto catalog = BuildSimpleCatalog(db);
-    RunnerCheck(catalog, sqlstr, kBatchMode);
+    codec::Schema empty_schema;
+    RunnerCheck(catalog, sqlstr, empty_schema, kBatchMode);
 
     SqlCompiler sql_compiler(catalog);
     SqlContext sql_context;
