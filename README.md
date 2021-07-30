@@ -58,8 +58,8 @@ Take Predict Taxi Tour Duration as example, we can use OpenMLDB to develop and d
 
 ```bash 
 # Start docker image 
-# try a another image (mirror.baidubce.com/4pdosc/openmldb:0.1.0) if you pull the image slowly
-docker run -it 4pdosc/openmldb:0.1.0 bash
+# try a another image (mirror.baidubce.com/4pdosc/openmldb:0.2.0) if you pull the image slowly
+docker run -it 4pdosc/openmldb:0.2.0 bash
 
 # Initilize the environment
 sh init.sh
