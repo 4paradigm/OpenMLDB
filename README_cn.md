@@ -119,6 +119,10 @@ python3 predict.py
     * 支持PMEM等新型存储硬件[2022H1]
     * 存储引擎兼容Flink、Kafka、Spark connector[2022H1]
 
+## 学术论文
+
+* Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. 2021. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
+
 ## 许可证
 
 [Apache License 2.0](./LICENSE)
