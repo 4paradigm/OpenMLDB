@@ -1,7 +1,6 @@
-from centos:8
+FROM centos:8
 
-RUN yum update -y && \
-    yum install -y python38 python38-pip python38-numpy libgomp java-1.8.0-openjdk && \
+RUN yum install -y python38 python38-pip python38-numpy libgomp java-1.8.0-openjdk-headless && \
     yum clean all && \
     pip3 install lightgbm tornado requests pandas openmldb
 
