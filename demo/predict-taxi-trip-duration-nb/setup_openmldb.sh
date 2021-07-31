@@ -40,11 +40,9 @@ tar xzf openmldb.tar.gz -C "$WORKDIR/openmldb" --strip-components 1
 pushd $WORKDIR/openmldb/batch
 tar xzf spark-3.0.0-bin-openmldb.tar.gz
 rm -f spark-3.0.0-bin-openmldb.tar.gz
-pushd spark-3.0.0-bin-openmldb/python
+pushd spark-3.0.0-bin-openmldb/python/
 python3 setup.py install
 popd
-popd
-
 popd
 
 if [[ $OSTYPE = 'linux-gnu' && $(arch) = 'aarch64' ]]; then
