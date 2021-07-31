@@ -1,0 +1,10 @@
+from centos:8
+
+RUN yum install -y python38 python38-pip python38-numpy libgomp java-1.8.0-openjdk && \
+    yum clean all && \
+    pip3 install lightgbm tornado requests pandas openmldb
+
+COPY setup_openmldb.sh /
+RUN /setup_openmldb.sh && rm /setup_openmldb.sh
+
+WORKDIR /work/taxi-trip
