@@ -19,8 +19,8 @@ set -eE
 
 curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
 if [[ $OSTYPE = 'linux-gnu' && $(arch) = 'aarch64' ]]; then
-    curl -SLo openmldb.tar.gz https://github.com/aceforeverd/fedb/releases/download/v0.2.1-beta1/openmldb-0.2.0-linux-aarch64.tar.gz
-    curl -SLo _sql_router_sdk.so https://github.com/aceforeverd/fedb/releases/download/v0.2.1-beta1/_sql_router_sdk_aarch64.so
+    curl -SLo openmldb.tar.gz https://github.com/4paradigm/OpenMLDB/releases/download/v0.2.0/openmldb-0.2.0-210802-linux-gnu-aarch64.tar.gz
+    curl -SLo _sql_router_sdk.so https://github.com/4paradigm/OpenMLDB/releases/download/v0.2.0/_sql_router_sdk_210802_aarch64.so
 else
     echo "WIP"
 fi

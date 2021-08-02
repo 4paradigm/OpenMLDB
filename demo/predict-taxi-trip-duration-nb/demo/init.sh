@@ -2,9 +2,6 @@
 #
 # init.sh
 
-export JAVA_HOME=/work/jdk1.8.0_131
-export PATH=$JAVA_HOME/bin:$PATH
-
 cd /work/zookeeper-3.4.14 && ./bin/zkServer.sh start
 sleep 1
 cd /work/openmldb && ./bin/start.sh start tablet
