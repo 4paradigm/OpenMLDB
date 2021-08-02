@@ -22,7 +22,7 @@ if [[ $OSTYPE = 'linux-gnu' && $(arch) = 'aarch64' ]]; then
     curl -SLo openmldb.tar.gz https://github.com/4paradigm/OpenMLDB/releases/download/v0.2.0/openmldb-0.2.0-210802-linux-gnu-aarch64.tar.gz
     curl -SLo _sql_router_sdk.so https://github.com/4paradigm/OpenMLDB/releases/download/v0.2.0/_sql_router_sdk_210802_aarch64.so
 else
-    echo "WIP"
+    curl -SLo openmldb.tar.gz https://github.com/4paradigm/OpenMLDB/releases/download/v0.2.0/openmldb-0.2.0-linux.tar.gz
 fi
 
 WORKDIR=/work
