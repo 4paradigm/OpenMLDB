@@ -57,9 +57,12 @@ Comparing with the popular Spark computation framework, using OpenMLDB for batch
 Take Predict Taxi Tour Duration as example, we can use OpenMLDB to develop and deploy ML applications easily.
 
 ```bash 
-# Start docker image 
-# try a another image (mirror.baidubce.com/4pdosc/openmldb:0.2.0) if you pull the image slowly
-docker run -it 4pdosc/openmldb:0.2.0 bash
+# Start docker image (support linux/amd64 & linux/arm64 image)
+# try one of the mirror image from 
+#  - mirror.baidubce.com/4pdosc/openmldb:0.2.1
+#  - ghcr.io/4paradigm/openmldb:0.2.1
+# if you pull the image slowly
+docker run -it 4pdosc/openmldb:0.2.1 bash
 
 # Initilize the environment
 sh init.sh
