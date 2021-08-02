@@ -1,0 +1,184 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 0
+    desc: LAST JOIN 右表未命中索引
+    mode: rtidb-unsupport
+    sql: |
+      %%sql
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
+      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index2:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - name: t2
+        schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:int64
+        index: index1:col2:col5
+        data: |
+          2, EEEEE, 5.5, 55.5, 550, 5, 3
+          1, DDDD, 4.4, 44.4, 550, 4, 2
+          1, CCC, 3.3, 33.3, 550, 3, 1
+          0, BB, 2.2, 22.2, 50, 2, 2
+          0, A, 1.1, 11.1, 50, 1, 1
+    expect:
+      schema: id:int32, t1_col0:string, test_col1:int32, t1_col2:int16, str1:string
+      order: id
+      data: |
+        1, 0, 3, 5, A
+        2, 0, 5, 5, BB
+        3, 1, 7, 55, CCC
+        4, 1, 9, 55, DDDD
+        5, 2, 11, 55, EEEEE
+  - id: 1
+    desc: LAST JOIN 右表成功命中索引
+    db: db1
+    sql: |
+      %%sql
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
+      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5;
+
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index2:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - name: t2
+        schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:int64
+        index: index1:col1:col5
+        data: |
+          2, EEEEE, 5.5, 55.5, 550, 5, 3
+          1, DDDD, 4.4, 44.4, 550, 4, 2
+          1, CCC, 3.3, 33.3, 550, 3, 1
+          0, BB, 2.2, 22.2, 50, 2, 2
+          0, A, 1.1, 11.1, 50, 1, 1
+    expect:
+      schema: id:int32, t1_col0:string, test_col1:int32, t1_col2:int16, str1:string
+      order: id
+      data: |
+        1, 0, 3, 5, A
+        2, 0, 5, 5, BB
+        3, 1, 7, 55, CCC
+        4, 1, 9, 55, DDDD
+        5, 2, 11, 55, EEEEE
+
+  - id: 2
+    desc: LAST JOIN 右表成功命中一个索引
+    db: db1
+    sql: |
+      %%sql
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
+      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 >= t2.col5;
+
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index2:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - name: t2
+        schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:int64
+        index: index1:col1:col5
+        data: |
+          2, EEEEE, 5.5, 55.5, 550, 5, 3
+          1, DDDD, 4.4, 44.4, 550, 4, 2
+          1, CCC, 3.3, 33.3, 550, 3, 1
+          0, BB, 2.2, 22.2, 50, 2, 2
+          0, A, 1.1, 11.1, 50, 1, 1
+    expect:
+      schema: id:int32, t1_col0:string, test_col1:int32, t1_col2:int16, str1:string
+      order: id
+      data: |
+        1, 0, 3, 5, A
+        2, 0, 5, 5, BB
+        3, 1, 7, 55, CCC
+        4, 1, 9, 55, DDDD
+        5, 2, 11, 55, EEEEE
+  - id: 7
+    desc: LAST JOIN 命中多个Key取Last Order，使用asc order
+    db: db1
+    sql: |
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t2.std_ts as t2_std_ts FROM t1
+      last join t2 order by t2.std_ts asc on t1.col0=t2.col1;
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+      - name: t2
+
+        schema: str0:string, str1:string, col1:string, std_ts:timestamp
+        index: index1:col1:std_ts
+        data: |
+          2, GGGGGGG, 0, 1590115428000
+          2, FFFFFF, 2, 1590115423900
+          2, EEEEEE, 2, 1590115427000
+          1, DDDD, 4, 1590115423000
+          1, CCC, 3, 1590115422000
+          0, BB, 5, 1590115421000
+          0, A, 1, 1590115420000
+    expect:
+      schema: id:int32, t1_col0:string, t2_std_ts:timestamp
+      order: id
+      data: |
+        1, 0, 1590115428000
+        2, 0, 1590115428000
+        3, 1, 1590115420000
+        4, 1, 1590115420000
+        5, 2, 1590115427000
+  - id: 9
+    desc: LAST JOIN 命中多个Key取Last Order，使用desc order
+    db: db1
+    sql: |
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t2.std_ts as t2_std_ts FROM t1
+      last join t2 order by t2.std_ts desc on t1.col0=t2.col1;
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+      - name: t2
+        schema: str0:string, str1:string, col1:string, std_ts:timestamp
+        index: index1:col1:std_ts
+        data: |
+          2, GGGGGGG, 0, 1590115428000
+          2, FFFFFF, 2, 1590115423900
+          2, EEEEEE, 2, 1590115427000
+          1, DDDD, 4, 1590115423000
+          1, CCC, 3, 1590115422000
+          0, BB, 5, 1590115421000
+          0, A, 1, 1590115420000
+    expect:
+      schema: id:int32, t1_col0:string, t2_std_ts:timestamp
+      order: id
+      data: |
+        1, 0, 1590115428000
+        2, 0, 1590115428000
+        3, 1, 1590115420000
+        4, 1, 1590115420000
+        5, 2, 1590115423900
+
+
