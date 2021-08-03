@@ -58,8 +58,8 @@ Take Predict Taxi Tour Duration as example, we can use OpenMLDB to develop and d
 
 ```bash 
 # Start docker image 
-# try a another image (mirror.baidubce.com/4pdosc/openmldb:0.1.0) if you pull the image slowly
-docker run -it 4pdosc/openmldb:0.1.0 bash
+# try a another image (mirror.baidubce.com/4pdosc/openmldb:0.2.0) if you pull the image slowly
+docker run -it 4pdosc/openmldb:0.2.0 bash
 
 # Initilize the environment
 sh init.sh
@@ -118,6 +118,10 @@ python3 predict.py
     * Support popular programing languages，including C++, Java, Python, Go, Rust etc[2021H2]
     * Support PMEM-based storage engine[2022H1]
     * Support Flink/Kafka/Spark connector[2022H1]
+
+## Publication
+
+* Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
 
 ## License
 

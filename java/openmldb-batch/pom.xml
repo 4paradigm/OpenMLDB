@@ -5,8 +5,8 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.4paradigm.openmldb</groupId>
 	<artifactId>openmldb-batch</artifactId>
-	<!-- Use the version from different profile -->
-	<version>${projectVersionFromProfile}</version>
+	<!-- Notice that the version is set from different profile, use "revision" to ignore maven warning -->
+	<version>${revision}</version>
 	<packaging>jar</packaging>
 
 	<name>openmldb-batch</name>
@@ -60,21 +60,21 @@
 				<activeByDefault>true</activeByDefault>
 			</activation>
 			<properties>
-				<projectVersionFromProfile>${default.project.version}-SNAPSHOT</projectVersionFromProfile>
+				<revision>${default.project.version}-SNAPSHOT</revision>
 				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>macos</id>
 			<properties>
-				<projectVersionFromProfile>${default.project.version}-macos-SNAPSHOT</projectVersionFromProfile>
+				<revision>${default.project.version}-macos-SNAPSHOT</revision>
 				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-macos</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>allinone</id>
 			<properties>
-				<projectVersionFromProfile>${default.project.version}-allinone-SNAPSHOT</projectVersionFromProfile>
+				<revision>${default.project.version}-allinone-SNAPSHOT</revision>
 				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-allinone</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
@@ -375,10 +375,8 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.20.1</version>
-				<configuration>
-					<skipTests>true</skipTests>
-				</configuration>
+				<!-- Refer to issue in https://issues.apache.org/jira/browse/SUREFIRE-1443 -->
+				<version>2.21.0</version>
 			</plugin>
 			<plugin>
 				<groupId>net.alchim31.maven</groupId>
@@ -407,23 +405,8 @@
 							<goal>testCompile</goal>
 						</goals>
 					</execution>
-					<execution>
-						<id>scala-test-compile</id>
-						<phase>process-test-resources</phase>
-						<goals>
-							<goal>testCompile</goal>
-						</goals>
-					</execution>
-					<execution>
-						<goals>
-							<goal>add-source</goal>
-							<goal>compile</goal>
-							<goal>testCompile</goal>
-						</goals>
-					</execution>
 				</executions>
 			</plugin>
-
 			<plugin>
 				<groupId>org.scalatest</groupId>
 				<artifactId>scalatest-maven-plugin</artifactId>
@@ -438,11 +421,10 @@
 					</execution>
 				</executions>
 			</plugin>
-
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
-				<version>2.4.1</version>
+				<version>3.2.1</version>
 				<executions>
 					<execution>
 						<phase>package</phase>
@@ -465,6 +447,8 @@
 										<exclude>META-INF/*.SF</exclude>
 										<exclude>META-INF/*.DSA</exclude>
 										<exclude>META-INF/*.RSA</exclude>
+										<!-- Ignore the warning of module-info.class -->
+										<exclude>module-info.class</exclude>
 									</excludes>
 								</filter>
 							</filters>
@@ -631,6 +615,46 @@
 				</executions>
 			</plugin>
 
+			<!-- Generate properties file with git info -->
+			<plugin>
+				<groupId>pl.project13.maven</groupId>
+				<artifactId>git-commit-id-plugin</artifactId>
+				<version>2.2.4</version>
+				<executions>
+					<execution>
+						<id>get-the-git-infos</id>
+						<goals>
+							<goal>revision</goal>
+						</goals>
+						<phase>initialize</phase>
+					</execution>
+				</executions>
+				<configuration>
+					<generateGitPropertiesFile>true</generateGitPropertiesFile>
+					<generateGitPropertiesFilename>${project.build.outputDirectory}/openmldb_git.properties</generateGitPropertiesFilename>
+				</configuration>
+			</plugin>
+
+			<!-- Generate report for spotbugs -->
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<version>4.2.2</version>
+				<configuration>
+					<excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+					<failOnError>true</failOnError>
+					<threshold>High</threshold>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
 		</plugins>
 
 		<pluginManagement>
@@ -653,12 +677,7 @@
 
 	<reporting>
 		<plugins>
-			<!-- Generate report for spotbugs -->
-			<plugin>
-				<groupId>com.github.spotbugs</groupId>
-				<artifactId>spotbugs-maven-plugin</artifactId>
-				<version>4.2.2</version>
-			</plugin>
+
 
 			<!-- Generate report for jacoco -->
 			<plugin>

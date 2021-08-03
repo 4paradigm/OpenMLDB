@@ -17,10 +17,12 @@
 package com._4paradigm.openmldb.batch.utils
 
 import java.util
+
 import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, TableDef, Type}
 import com._4paradigm.hybridse.vm.PhysicalOpNode
 import com._4paradigm.hybridse.node.{DataType => InnerDataType}
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
+  ShortType, StringType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, Row}
 
 import scala.collection.JavaConverters.asScalaBufferConverter

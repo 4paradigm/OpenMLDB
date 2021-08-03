@@ -52,7 +52,9 @@
     <check level="warning" class="org.scalastyle.scalariform.EqualsHashCodeChecker" enabled="true"/>
     <check level="warning" class="org.scalastyle.scalariform.IllegalImportsChecker" enabled="true">
         <parameters>
-            <parameter name="illegalImports"><![CDATA[sun._,java.awt._]]></parameter>
+            <!-- Change by 4paradigm -->
+            <!-- <parameter name="illegalImports"><![CDATA[sun._,java.awt._]]></parameter> -->
+            <parameter name="illegalImports"><![CDATA[java.awt._]]></parameter>
         </parameters>
     </check>
     <check level="warning" class="org.scalastyle.scalariform.ParameterNumberChecker" enabled="true">
@@ -69,12 +71,16 @@
     </check>
     <check level="warning" class="org.scalastyle.scalariform.NoWhitespaceBeforeLeftBracketChecker" enabled="true"/>
     <check level="warning" class="org.scalastyle.scalariform.NoWhitespaceAfterLeftBracketChecker" enabled="true"/>
-    <check level="warning" class="org.scalastyle.scalariform.ReturnChecker" enabled="true"/>
-    <check level="warning" class="org.scalastyle.scalariform.NullChecker" enabled="true"/>
+    <!-- Update by 4paradigm -->
+    <check level="warning" class="org.scalastyle.scalariform.ReturnChecker" enabled="false"/>
+    <!-- Update by 4paradigm -->
+    <check level="warning" class="org.scalastyle.scalariform.NullChecker" enabled="false"/>
     <check level="warning" class="org.scalastyle.scalariform.NoCloneChecker" enabled="true"/>
     <check level="warning" class="org.scalastyle.scalariform.NoFinalizeChecker" enabled="true"/>
     <check level="warning" class="org.scalastyle.scalariform.CovariantEqualsChecker" enabled="true"/>
     <check level="warning" class="org.scalastyle.scalariform.StructuralTypeChecker" enabled="true"/>
+    <!-- Update by 4paradigm -->
+    <!-- init:<check level="warning" class="org.scalastyle.file.RegexChecker" enabled="true"> -->
     <check level="warning" class="org.scalastyle.file.RegexChecker" enabled="false">
         <parameters>
             <parameter name="regex"><![CDATA[println]]></parameter>
@@ -85,7 +91,8 @@
             <parameter name="maxTypes"><![CDATA[30]]></parameter>
         </parameters>
     </check>
-    <check level="warning" class="org.scalastyle.scalariform.CyclomaticComplexityChecker" enabled="true">
+    <!-- Update by 4paradigm -->
+    <check level="warning" class="org.scalastyle.scalariform.CyclomaticComplexityChecker" enabled="false">
         <parameters>
             <parameter name="maximum"><![CDATA[10]]></parameter>
         </parameters>
@@ -98,7 +105,8 @@
             <parameter name="doubleLineAllowed"><![CDATA[false]]></parameter>
         </parameters>
     </check>
-    <check level="warning" class="org.scalastyle.scalariform.MethodLengthChecker" enabled="true">
+    <!-- Update by 4pardigm -->
+    <check level="warning" class="org.scalastyle.scalariform.MethodLengthChecker" enabled="false">
         <parameters>
             <parameter name="maxLength"><![CDATA[50]]></parameter>
         </parameters>

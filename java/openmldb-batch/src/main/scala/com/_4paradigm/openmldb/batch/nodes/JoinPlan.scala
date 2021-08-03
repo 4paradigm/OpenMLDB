@@ -152,8 +152,10 @@ object JoinPlan {
 
         val isAsc = node.join.right_sort.is_asc
 
+        // Disable scalastyle for importing Spark implicits
+        // scalastyle:off
         import spark.implicits._
-
+        // scalastyle:on
         val distinct = joined
           .groupByKey {
             row => row.getLong(indexColIdx)

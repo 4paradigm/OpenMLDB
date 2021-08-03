@@ -16,8 +16,7 @@
 
 package com._4paradigm.openmldb.batch.window
 
-import java.io._
-
+import java.io.{IOException, ObjectInputStream, ObjectOutputStream, OutputStream, PrintStream}
 import com._4paradigm.hybridse.codec.{Row => NativeRow}
 import com._4paradigm.hybridse.sdk.JitManager
 import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper}
@@ -26,7 +25,8 @@ import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
+  ShortType, StringType, TimestampType}
 import org.slf4j.LoggerFactory
 
 

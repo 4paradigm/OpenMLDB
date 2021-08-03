@@ -60,17 +60,17 @@ class NativeBufferPool {
     managed
   }
 
-
   def freeAll(): Unit = {
     allocated.values.foreach(buf => buf.free())
     allocated.clear()
   }
 
-  case class IndexedBuffer(id: Long, buffer: ByteBuffer) {
-    def getSize: Int = buffer.capacity()
+}
 
-    def free(): Unit = {
-      buffer.asInstanceOf[DirectBuffer].cleaner().clean()
-    }
+case class IndexedBuffer(id: Long, buffer: ByteBuffer) {
+  def getSize: Int = buffer.capacity()
+
+  def free(): Unit = {
+    buffer.asInstanceOf[DirectBuffer].cleaner().clean()
   }
 }

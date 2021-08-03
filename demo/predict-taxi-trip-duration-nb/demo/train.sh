@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ZK_CLUSTER=127.0.0.1:6181
-ZK_ROOT_PATH=/onebox
-OPENMLDB_BIN_PATH=../build/bin/openmldb
-SHOWTABLE_PATH=../table.txt
+export JAVA_HOME=/work/jdk1.8.0_131
+export SPARK_HOME=/work/spark-3.0.0-bin-sparkfe/
+export PATH=$JAVA_HOME/bin:$PATH
+export PATH=$SPARK_HOME/bin:$PATH
+python3 train_sql.py

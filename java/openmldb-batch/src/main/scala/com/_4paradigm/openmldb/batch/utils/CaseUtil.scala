@@ -16,7 +16,8 @@
 
 package com._4paradigm.openmldb.batch.utils
 
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
+  ShortType, StringType, StructType, TimestampType}
 
 
 object CaseUtil {
