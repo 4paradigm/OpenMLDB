@@ -148,9 +148,9 @@ public class SQLRouterSmokeTest {
         ok = router.executeDDL(dbname, ddl);
         Assert.assertTrue(ok);
         java.sql.Date d1 = new java.sql.Date(2019, 1, 1);
-        java.sql.Date d2 = new java.sql.Date(2019, 2, 2);
+        java.sql.Date d2 = new java.sql.Date(2019, 2, 20);
         java.sql.Date d3 = new java.sql.Date(2019, 3, 3);
-        java.sql.Date d4 = new java.sql.Date(2019, 4, 4);
+        java.sql.Date d4 = new java.sql.Date(2019, 4, 24);
         java.sql.Date d5 = new java.sql.Date(2019, 5, 5);
         String date1 = String.format("%s-%02d-%02d", d1.getYear() + 1900, d1.getMonth(), d1.getDate());
         String fullInsert = String.format("insert into tsql1010 values(1000, '%s', 'guangdong', '广州', 1);", date1);
@@ -195,12 +195,12 @@ public class SQLRouterSmokeTest {
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
             // insert normal
-            java.sql.Date d1 = new java.sql.Date(2019, 1, 1);
-            java.sql.Date d2 = new java.sql.Date(2019, 2, 2);
-            java.sql.Date d3 = new java.sql.Date(2019, 3, 3);
-            java.sql.Date d4 = new java.sql.Date(2019, 4, 4);
-            java.sql.Date d5 = new java.sql.Date(2019, 5, 5);
-            String date1 = String.format("%s-%02d-%02d", d1.getYear() + 1900, d1.getMonth(), d1.getDate());
+            java.sql.Date d1 = new java.sql.Date(2019 - 1900, 1 - 1, 1);
+            java.sql.Date d2 = new java.sql.Date(2019 - 1900, 2 - 1, 2);
+            java.sql.Date d3 = new java.sql.Date(2019 - 1900, 3 - 1, 3);
+            java.sql.Date d4 = new java.sql.Date(2019 - 1900, 4 - 1, 4);
+            java.sql.Date d5 = new java.sql.Date(2019 - 1900, 5 - 1, 5);
+            String date1 = String.format("%s-%02d-%02d", d1.getYear() + 1900, d1.getMonth()  + 1, d1.getDate());
             String fullInsert = String.format("insert into tsql1010 values(1000, '%s', 'guangdong', '广州', 1);", date1);
             ok = router.executeInsert(dbname, fullInsert);
             Assert.assertTrue(ok);
@@ -212,7 +212,7 @@ public class SQLRouterSmokeTest {
                     {1004l, d5, "henan", "zhenzhou", 5},
             };
             // insert placeholder
-            String date2 = String.format("%s-%s-%s", d2.getYear() + 1900, d2.getMonth(), d2.getDate());
+            String date2 = String.format("%s-%s-%s", d2.getYear() + 1900, d2.getMonth() + 1, d2.getDate());
             String insert = String.format("insert into tsql1010 values(?, '%s', 'jiangsu', 'nanjing', 2);", date2);
             PreparedStatement impl = router.getInsertPreparedStmt(dbname, insert);
             impl.setLong(1, 1001);
@@ -283,7 +283,7 @@ public class SQLRouterSmokeTest {
                 java.sql.Date tmpDate = (java.sql.Date)datas[suffix][1];
                 java.sql.Date getData = rs1.getDate(2);
                 Assert.assertEquals(tmpDate.getYear(), getData.getYear());
-                Assert.assertEquals(tmpDate.getDay(), getData.getDay());
+                Assert.assertEquals(tmpDate.getDate(), getData.getDate());
                 Assert.assertEquals(tmpDate.getMonth(), getData.getMonth());
             }
             rs1.close();
