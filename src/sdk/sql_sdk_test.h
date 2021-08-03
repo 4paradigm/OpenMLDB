@@ -82,11 +82,8 @@ class SQLSDKTest : public openmldb::test::SQLCaseTest {
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreate, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_create.yaml")));
-
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreateIndex, SQLSDKTest,
-                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_create_index.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestOptions, SQLSDKTest,
-                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_options.yam")));
+                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_options.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestTTL, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_ttl.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestTest, SQLSDKTest,
@@ -423,10 +420,10 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     } else if (boost::algorithm::starts_with(lower_sql, "create")) {
         bool ok = router->ExecuteDDL(sql_case.db(), sql, &status);
         router->RefreshCatalog();
-        ASSERT_EQ(sql_case.expect().success_, ok);
+        ASSERT_EQ(sql_case.expect().success_, ok) << status.msg;
     } else if (boost::algorithm::starts_with(lower_sql, "insert")) {
         bool ok = router->ExecuteInsert(sql_case.db(), sql, &status);
-        ASSERT_EQ(sql_case.expect().success_, ok);
+        ASSERT_EQ(sql_case.expect().success_, ok) << status.msg;
     } else {
         FAIL() << "sql not support in request mode";
     }
