@@ -81,10 +81,16 @@ class SQLSDKTest : public openmldb::test::SQLCaseTest {
 };
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreate, SQLSDKTest,
-                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/integration/v1/test_create.yaml")));
+                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_create.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestInsert, SQLSDKTest,
-                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/integration/v1/test_insert.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreateIndex, SQLSDKTest,
+                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_create_index.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestOptions, SQLSDKTest,
+                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_options.yam")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestTTL, SQLSDKTest,
+                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_ttl.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestTest, SQLSDKTest,
+                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/dml/test_insert.yaml")));
 
 class SQLSDKQueryTest : public SQLSDKTest {
  public:
@@ -808,102 +814,116 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKTestConstsSelect, SQLSDKQueryTest,
 INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinWindowQuery, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/last_join_window_query.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestSelectSample, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/select/test_select_sample.yaml")));
 
+// Test Cluster
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKClusterCaseWindowRow, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/cluster/test_window_row.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKClusterCaseWindowRowRange, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/cluster/test_window_row_range.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKClusterCaseWindowAndLastJoin, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/cluster/window_and_lastjoin.yaml")));
+
+// Test Expression
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestArithmetic, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/expression/test_arithmetic.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/expression/test_arithmetic.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestCompare, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/expression/test_compare.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/expression/test_compare.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestCondition, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/expression/test_condition.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/expression/test_condition.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestLogic, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/expression/test_logic.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/expression/test_logic.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestType, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/expression/test_type.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/expression/test_type.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestWindowRow, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_window_row.yaml")));
-
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestWindowRowRange, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_window_row_range.yaml")));
-
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestWindowMaxSize, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_maxsize.yaml")));
-
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestWindowUnion, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/test_window_union.yaml")));
-
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestLast_Join, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/join/test_last_join.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestLastJoin, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/join/test_lastjoin.yaml")));
-
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestSubSelect, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/select/test_sub_select.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestUDAFFunction, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/function/test_udaf_function.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestUDFFunction, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/function/test_udf_function.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestStringFunction, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/function/test_string.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestDateFunction, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/function/test_date.yaml")));
+// Test Function
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestCalulateFunction, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/function/test_calculate.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/function/test_calculate.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestDateFunction, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/function/test_date.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestStringFunction, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/function/test_string.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestUDAFFunction, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/function/test_udaf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestUDFFunction, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/function/test_udf_function.yaml")));
 
+// Test Fz DDL
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzBank, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/fz_ddl/test_bank.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzMyhug, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/fz_ddl/test_myhug.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzLuoji, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/fz_ddl/test_luoji.yaml")));
+
+// Test Join
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestLastJoinComplex, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/join/test_lastjoin_complex.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestLastJoinSimple, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/join/test_lastjoin_simple.yaml")));
+
+// Test Select
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestSelectSample, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/select/test_select_sample.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestSubSelect, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/select/test_sub_select.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestWhere, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/select/test_where.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/select/test_where.yaml")));
+
+
+// Test Window
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestErrorWindow, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/error_window.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestWindowMaxSize, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_maxsize.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestWindow, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestWindowExcludeCurrentTime, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_exclude_current_time.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestWindowRow, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_row.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestWindowRowRange, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_row_range.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestWindowUnion, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_union.yaml")));
+
+
+
+
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestFZFunction, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/test_feature_zero_function.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestBatchRequest, SQLSDKBatchRequestQueryTest,
-    testing::ValuesIn(SQLSDKBatchRequestQueryTest::InitCases("/cases/integration/v1/test_batch_request.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKClusterCaseWindowAndLastJoin, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKClusterCaseWindowRow, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKClusterCaseWindowRowRange, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
-INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestErrorWindow, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/window/error_window.yaml")));
+    testing::ValuesIn(SQLSDKBatchRequestQueryTest::InitCases("/cases/function/test_batch_request.yaml")));
+
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestIndexOptimized, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_index_optimized.yaml")));
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestDebugIssues, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/issues_case.yaml")));
-
-// myhug 场景正确性验证
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzMyhug, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_myhug.yaml")));
-
-// luoji 场景正确性验证
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzLuoji, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/fz_ddl/test_luoji.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/test_index_optimized.yaml")));
 
 }  // namespace sdk
 }  // namespace openmldb
