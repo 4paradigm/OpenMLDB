@@ -82,8 +82,6 @@ class SQLSDKTest : public openmldb::test::SQLCaseTest {
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreate, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_create.yaml")));
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestOptions, SQLSDKTest,
-                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_options.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestTest, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/dml/test_insert.yaml")));
 
@@ -210,8 +208,10 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     sql_case.sp_name_ = hybridse::sqlcase::SqlCase::GenRand("auto_sp") + std::to_string((int64_t)time(NULL));
     std::string create_sp;
     if (is_batch) {
+        hybridse::type::TableDef batch_request_schema;
+        ASSERT_TRUE(sql_case.ExtractTableDef(sql_case.batch_request().columns_, sql_case.batch_request().indexs_, batch_request_schema));
         ASSERT_TRUE(
-            sql_case.BuildCreateSpSqlFromInput(0, sql, sql_case.batch_request().common_column_indices_, &create_sp));
+            sql_case.BuildCreateSpSqlFromSchema(batch_request_schema, sql, sql_case.batch_request().common_column_indices_, &create_sp));
     } else {
         std::set<size_t> common_idx;
         ASSERT_TRUE(sql_case.BuildCreateSpSqlFromInput(0, sql, common_idx, &create_sp));
@@ -228,9 +228,10 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     }
     DLOG(INFO) << "Create Procedure DONE";
     if (!sql_case.expect().success_) {
+        ASSERT_NE(0 , status.code) << status.msg;
         return;
     }
-    ASSERT_TRUE(0 == status.code) << status.msg;
+    ASSERT_NO_FATAL_FAILURE(ASSERT_TRUE(0 == status.code)) << status.msg;
     auto sp_info = router->ShowProcedure(sql_case.db(), sql_case.sp_name_, &status);
     for (int try_n = 0; try_n < 3; try_n++) {
         if (sp_info && status.code == 0) {
@@ -380,11 +381,8 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     DLOG(INFO) << "format sql 1";
     boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
             std::to_string((int64_t)time(NULL)));
-    if (tbEndpoints.size() > 0) {
-        boost::replace_all(sql, "{tb_endpoint_0}", tbEndpoints.at(0));
-    }
-    if (tbEndpoints.size() > 1) {
-        boost::replace_all(sql, "{tb_endpoint_1}", tbEndpoints.at(1));
+    for(size_t endpoint_id = 0;  endpoint_id < tbEndpoints.size(); endpoint_id++) {
+        boost::replace_all(sql, "{tb_endpoint_"+std::to_string(endpoint_id)+"}", tbEndpoints.at(endpoint_id));
     }
     DLOG(INFO) << "format sql done";
     LOG(INFO) << sql;
