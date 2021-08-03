@@ -147,12 +147,12 @@ public class SQLRouterSmokeTest {
         // create table
         ok = router.executeDDL(dbname, ddl);
         Assert.assertTrue(ok);
-        java.sql.Date d1 = new java.sql.Date(2019, 1, 1);
-        java.sql.Date d2 = new java.sql.Date(2019, 2, 20);
-        java.sql.Date d3 = new java.sql.Date(2019, 3, 3);
-        java.sql.Date d4 = new java.sql.Date(2019, 4, 24);
-        java.sql.Date d5 = new java.sql.Date(2019, 5, 5);
-        String date1 = String.format("%s-%02d-%02d", d1.getYear() + 1900, d1.getMonth(), d1.getDate());
+        java.sql.Date d1 = new java.sql.Date(2019 - 1900, 1 - 1, 1);
+        java.sql.Date d2 = new java.sql.Date(2019 - 1900, 2 - 1, 20);
+        java.sql.Date d3 = new java.sql.Date(2019 - 1900, 3 - 1, 3);
+        java.sql.Date d4 = new java.sql.Date(2019 - 1900, 4 - 1, 24);
+        java.sql.Date d5 = new java.sql.Date(2019 - 1900, 5 - 1, 5);
+        String date1 = String.format("%s-%02d-%02d", d1.getYear() + 1900, d1.getMonth() + 1, d1.getDate());
         String fullInsert = String.format("insert into tsql1010 values(1000, '%s', 'guangdong', '广州', 1);", date1);
         try {
 
