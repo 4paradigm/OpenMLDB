@@ -84,8 +84,6 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreate, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_create.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestOptions, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_options.yaml")));
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestTTL, SQLSDKTest,
-                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_ttl.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestTest, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/dml/test_insert.yaml")));
 
