@@ -22,8 +22,9 @@ class TestCaseUtil extends FunSuite {
 
     val result = getYamlSchemaString(schema1)
 
-    val expectOutput = "\"BooleanType:bool\",\"ShortType:int16\",\"IntegerType:int32\",\"LongType:int64\",\"FloatType:float\"," +
-      "\"DoubleType:double\",\"DateType:date\",\"Timestamp:timestamp\",\"StringType:string\""
+    val expectOutput = "\"BooleanType:bool\",\"ShortType:int16\",\"IntegerType:int32\"," +
+      "\"LongType:int64\",\"FloatType:float\",\"DoubleType:double\",\"DateType:date\"," +
+      "\"Timestamp:timestamp\",\"StringType:string\""
 
     assert(result == expectOutput)
 
