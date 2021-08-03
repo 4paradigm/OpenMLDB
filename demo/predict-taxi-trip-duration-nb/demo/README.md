@@ -24,7 +24,7 @@ w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 
 ## Running the Tour
 
 ```
-docker run -dt ghcr.io/4paradigm/openmldb:0.2.0
+docker run -dt ghcr.io/4paradigm/openmldb:0.2.1
 # find the container id
 CONTAINER_ID=`docker ps | grep openmldb | awk '{print $1}'`
 docker exec -it ${CONTAINER_ID} /bin/bash

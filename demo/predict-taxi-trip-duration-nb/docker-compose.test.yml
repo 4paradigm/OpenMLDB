@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  sut:
+    build:
+      context: .
+    command: >
+      bash -c "
+      sh init.sh && python3 import.py &&
+      python3 train.py ./fe.sql /tmp/model.txt &&
+      sh start_predict_server.sh ./fe.sql 8887 /tmp/model.txt &&
+      python3 predict.py"
+
