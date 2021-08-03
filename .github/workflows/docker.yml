@@ -52,7 +52,7 @@ jobs:
           echo VERSION=$VERSION
 
           GHCR_TAG=$IMAGE_ID:$VERSION
-          DOCKERHUB_TAG=4pdosc/$IMAGE_NAME:$VERSION
+          DOCKERHUB_TAG=${{ secrets.DOCKERHUB_REPO }}/$IMAGE_NAME:$VERSION
           echo "GitHub Docker Registry Tag: $GHCR_TAG"
           echo "DockerHub Tag: "
           echo "COMMIT=${{ github.sha }}"
