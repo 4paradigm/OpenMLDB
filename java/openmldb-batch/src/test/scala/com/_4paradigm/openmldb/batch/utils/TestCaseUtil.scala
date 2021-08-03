@@ -8,7 +8,6 @@ import org.scalatest.FunSuite
 class TestCaseUtil extends FunSuite {
 
   test("Test getYamlSchemaString") {
-
     val schema1 = StructType(Seq(
       StructField("BooleanType", BooleanType),
       StructField("ShortType", ShortType),
