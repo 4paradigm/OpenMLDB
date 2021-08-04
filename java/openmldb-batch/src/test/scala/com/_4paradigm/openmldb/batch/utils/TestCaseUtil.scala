@@ -39,7 +39,6 @@ class TestCaseUtil extends FunSuite {
   }
 
   test("Test getYamlTypeString") {
-
     assert(getYamlTypeString(BooleanType) == "bool")
     assert(getYamlTypeString(ShortType) == "int16")
     assert(getYamlTypeString(IntegerType) == "int32")
@@ -50,6 +49,5 @@ class TestCaseUtil extends FunSuite {
     assert(getYamlTypeString(TimestampType) == "timestamp")
     assert(getYamlTypeString(StringType) == "string")
     assertThrows[IllegalArgumentException]{getYamlTypeString(ByteType)}
-
   }
 }
