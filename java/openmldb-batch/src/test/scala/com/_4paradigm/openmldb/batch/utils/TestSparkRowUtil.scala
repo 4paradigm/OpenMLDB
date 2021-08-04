@@ -10,6 +10,7 @@ import java.sql.{Date, Timestamp}
 
 class TestSparkRowUtil extends FunSuite{
   test("Test createOrderKeyExtractor") {
+
     val shortRow = Row.apply(1.toShort)
     assert(createOrderKeyExtractor(0,ShortType,false).apply(shortRow) == 1L)
     val intRow = Row.apply(1)
@@ -22,5 +23,6 @@ class TestSparkRowUtil extends FunSuite{
     assert(createOrderKeyExtractor(0,DateType,false).apply(dateRow) == 946656000000L)
     val byteRow = Row.apply(1.toByte)
     assertThrows[HybridSeException](createOrderKeyExtractor(0,ByteType,false).apply(byteRow))
+
   }
 }

@@ -1,7 +1,8 @@
 package com._4paradigm.openmldb.batch.utils
 
 import com._4paradigm.openmldb.batch.utils.CaseUtil.{getYamlSchemaString, getYamlTypeString}
-import org.apache.spark.sql.types.{BooleanType, ByteType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{BooleanType, ByteType, DateType, DoubleType, FloatType, IntegerType,
+  LongType, ShortType, StringType, StructField, StructType, TimestampType}
 import org.scalatest.FunSuite
 
 
