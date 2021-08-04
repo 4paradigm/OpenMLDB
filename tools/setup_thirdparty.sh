@@ -19,41 +19,37 @@ set -o nounset
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT"
 
-if [[ "$OSTYPE" = "darwin"* ]]; then
-    echo "Install thirdparty for MacOS"
+ARCH=$(arch)
 
-    # on local machine, one can tweak thirdparty path by passing extra argument
-    THIRDPARTY_PATH=${1:-"$ROOT/thirdparty"}
-    THIRDSRC_PATH="$ROOT/thirdsrc"
+echo "Install thirdparty ... for $(uname -a)"
 
-    echo "CICD_RUNNER_THIRDPARTY_PATH: ${THIRDPARTY_PATH}"
-    echo "CICD_RUNNER_THIRDSRC_PATH: ${THIRDSRC_PATH}"
+# on local machine, one can tweak thirdparty path by passing extra argument
+THIRDPARTY_PATH=${1:-"$ROOT/thirdparty"}
+THIRDSRC_PATH="$ROOT/thirdsrc"
 
-    mkdir -p "$THIRDPARTY_PATH"
-    mkdir -p "$THIRDSRC_PATH"
-
-    pushd "${THIRDSRC_PATH}"
-
-    # download thirdparty-mac
-    curl -SLo thirdparty-mac.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.1.4-pre2/thirdparty-2021-07-22-darwin.tar.gz
-    tar xzf thirdparty-mac.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
-    # download and install libzetasql
-    curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-darwin-x86_64.tar.gz
-    tar xzf libzetasql.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
-
-    popd
-elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
-    # unpack thirdparty first time
-    pushd /depends
-    # TODO: download thirdparty instead
-    if [[ ! -d thirdparty && -r thirdparty.tar.gz ]]; then
-        mkdir -p thirdparty
-        tar xzf thirdparty.tar.gz -C thirdparty --strip-components=1
-        curl -SL -o libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-linux-x86_64.tar.gz
-        tar xzf libzetasql.tar.gz -C thirdparty --strip-components 1
-        rm libzetasql.tar.gz
-    fi
-    popd
-
-    ln -sf /depends/thirdparty thirdparty
+if [ -d "$THIRDPARTY_PATH" ]; then
+    echo "thirdparty path: $THIRDPARTY_PATH already exist, skip download deps"
+    exit 0
 fi
+
+mkdir -p "$THIRDPARTY_PATH"
+mkdir -p "$THIRDSRC_PATH"
+
+pushd "${THIRDSRC_PATH}"
+
+if [[ "$OSTYPE" = "darwin"* ]]; then
+    curl -SLo thirdparty.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz
+    curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-darwin-x86_64.tar.gz
+elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
+    if [[ $ARCH = 'x86_64' ]]; then
+        curl -SLo thirdparty.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz
+        curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-linux-x86_64.tar.gz
+    elif [[ $ARCH = 'aarch64' ]]; then
+        curl -SLo thirdparty.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz
+        curl -SLo libzetasql.tar.gz https://github.com/aceforeverd/zetasql/releases/download/v0.2.1-beta5/libzetasql-0.2.1-beta5-linux-gnu-aarch64.tar.gz
+    fi
+fi
+
+tar xzf thirdparty.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
+tar xzf libzetasql.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
+popd
