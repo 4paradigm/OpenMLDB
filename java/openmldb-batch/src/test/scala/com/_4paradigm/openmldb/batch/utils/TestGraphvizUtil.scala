@@ -97,7 +97,7 @@ class TestGraphvizUtil extends SparkTestSuite {
     if (engine != null) {
       engine.close()
     }
-    
+
     assert(mutablenode.toString=="[77]GroupAgg{}->[45]GroupBy::")
   }
 }
