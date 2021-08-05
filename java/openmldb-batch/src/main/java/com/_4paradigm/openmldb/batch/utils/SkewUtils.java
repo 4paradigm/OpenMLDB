@@ -52,9 +52,6 @@ public class SkewUtils {
         return sql.toString();
     }
 
-    /**
-     *
-     */
     public static String genPercentileTagSql(String table1, String table2, int quantile, List<String> schemas, Map<String, String> keysMap, String ts, String tag1, String tag2, String tag3, long tag4) {
         StringBuffer sql = new StringBuffer();
         sql.append("SELECT \n");
@@ -78,9 +75,6 @@ public class SkewUtils {
         return sql.toString();
     }
 
-    /**
-     *
-     */
     public static String caseWhenTag(String table1, String table2, String ts, int quantile, String output, String con1, long cnt) {
         StringBuffer sql = new StringBuffer();
         sql.append("\nCASE\n");
@@ -98,9 +92,10 @@ public class SkewUtils {
         sql.append("END AS " + output + "\n");
         return sql.toString();
     }
-
-    // watershed 水位线 windowSize 窗口的大小，0表示无限
+    
     public static String explodeDataSql(String table, int quantile, List<String> schemas, String tag1, String tag2, long watershed, long windowSize) {
+        // watershed 水位线 windowSize 窗口的大小，0表示无限
+
         List<String> sqls = new ArrayList<>();
         // 默认需要爬坡
         boolean isClibing = true;

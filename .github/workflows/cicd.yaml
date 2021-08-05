@@ -1,13 +1,24 @@
 name: cicd
-on: [pull_request, workflow_dispatch]
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+  pull_request:
+  workflow_dispatch:
+
 env:
   GIT_SUBMODULE_STRATEGY: recursive
 
 jobs:
-  cpp_ut:
+  build_and_cpp_ut:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:0.3.0
+    env:
+      OS: linux
     steps:
       - uses: actions/checkout@v1
       - name: build
@@ -16,6 +27,24 @@ jobs:
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
           rm -rf /depends/thirdparty/*
+      
+      - name: Pack OpenMLDB
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          VERSION="snapshot"
+          if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            VERSION=$(echo $VERSION | sed -e 's/^v//')
+          fi
+          bash steps/package_openmldb.sh $VERSION ${{ env.OS }}
+
+      - name: Upload Artifacts
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/upload-artifact@v2
+        with:
+          path: openmldb-*.tar.gz
+          name: release-artifacts
+
       - name: run cpp
         run: |
           bash steps/ut.sh
@@ -92,8 +121,8 @@ jobs:
 
   publish-test-results:
     runs-on: ubuntu-latest
-    needs: ["cpp_ut", "sql_sdk_test", "sql_cluster_test"]
-    # the action will only run on 4paradigm/fedb's context, not for fork repo or dependabot
+    needs: ["build_and_cpp_ut", "sql_sdk_test", "sql_cluster_test"]
+    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
     if: >
       always() && github.event_name == 'push' || (
       github.event.pull_request.head.repo.full_name == github.repository &&
@@ -108,3 +137,24 @@ jobs:
           files: linux-ut-result-*/**/*.xml
           check_name: Linux Test Report
           comment_title: Linux Test Report
+
+  release:
+    runs-on: ubuntu-latest
+    # if test failed, shouldn't release
+    needs: ["build_and_cpp_ut", "sql_sdk_test", "sql_cluster_test"]
+    if: >
+      success() && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download Release Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: release-artifacts
+
+      - name: Release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            openmldb-*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

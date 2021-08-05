@@ -67,7 +67,7 @@ std::vector<hybridse::sqlcase::SqlCase> SQLCaseTest::InitCases(const std::string
 void SQLCaseTest::InitCases(const std::string &dir_path, const std::string &yaml_path,
                             std::vector<hybridse::sqlcase::SqlCase> &cases) {  // NOLINT
     if (!hybridse::sqlcase::SqlCase::CreateSqlCasesFromYaml(dir_path, yaml_path, cases)) {
-        FAIL();
+        FAIL() << "load cases from path " <<  yaml_path << " fail!";
     }
 }
 
