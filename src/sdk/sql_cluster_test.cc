@@ -373,7 +373,7 @@ TEST_F(SQLClusterTest, create_table) {
             }
         }
     }
-    ASSERT_EQ(pid_map.size(), 2u);
+    ASSERT_EQ(pid_map.size(), 3u);
     ASSERT_EQ(pid_map.begin()->second, pid_map.rbegin()->second);
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test1;", &status));
@@ -389,7 +389,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
     FLAGS_enable_distsql = true;
-    int ok = ::openmldb::sdk::mc_->SetUp(2);
+    int ok = ::openmldb::sdk::mc_->SetUp(3);
     sleep(1);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));

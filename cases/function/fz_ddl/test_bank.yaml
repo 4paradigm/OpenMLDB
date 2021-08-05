@@ -4,14 +4,14 @@ cases:
     mode: rtidb-batch-unsupport
     id: 0
     inputs:
+      - columns: [ reqId string, eventTime timestamp, main_id string, new_user_id string,
+                 loan_ts bigint, split_id int, time1 string ]
+        indexs: [ "index1:new_user_id:eventTime" ]
+        name: flattenRequest
       - columns: [reqId string, eventTime timestamp, ingestionTime timestamp, actionValue
                                                                                 int]
         indexs: ["index1:reqId:eventTime"]
         name: action
-      - columns: [reqId string, eventTime timestamp, main_id string, new_user_id string,
-                  loan_ts bigint, split_id int, time1 string]
-        indexs: ["index1:new_user_id:eventTime"]
-        name: flattenRequest
       - columns: [ingestionTime timestamp, new_user_id string, trx_ts bigint, trx_typ
                                                                                 string, trx_amt double, is_slry string]
         indexs: ["index1:new_user_id:ingestionTime"]

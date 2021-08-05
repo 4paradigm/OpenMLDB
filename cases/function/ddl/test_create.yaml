@@ -107,12 +107,19 @@ cases:
     expect:
       success: false
   -
-    id: 6
+    id: 6-1
     desc: 表名为保留关键字
+    sqlDialect: ["HybridSQL"]
+    sql: create table order(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 6-2
+    desc: 表名为非保留关键字
     sqlDialect: ["HybridSQL"]
     sql: create table table(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
     expect:
-      success: false
+      success: true
   -
     id: 7
     desc: 列名以数字开头
@@ -133,7 +140,7 @@ cases:
     sqlDialect: ["HybridSQL"]
     sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
     expect:
-      success: false
+      success: true
   -
     id: 10
     desc: 列的类型不存在
