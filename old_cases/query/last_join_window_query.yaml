@@ -18,15 +18,15 @@ cases:
     mode: rtidb-unsupport
     db: db1
     sql: |
-      SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5,
-      sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER w1 as w1_col3_sum,
-      sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER w1 as w1_t2_col2_sum,
-      sum(t1.col5) OVER w1 as w1_col5_sum,
-      str1 as t2_str1 FROM t1
-      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      SELECT {0}.col1 as id, {0}.col2 as t1_col2, {0}.col5 as t1_col5,
+      sum({0}.col1) OVER w1 as w1_col1_sum, sum({0}.col3) OVER w1 as w1_col3_sum,
+      sum({1}.col4) OVER w1 as w1_t2_col4_sum, sum({1}.col2) OVER w1 as w1_t2_col2_sum,
+      sum({0}.col5) OVER w1 as w1_col5_sum,
+      str1 as t2_str1 FROM {0}
+      last join {1} order by {1}.col5 on {0}.col1={1}.col1 and {0}.col5 = {1}.col5
+      WINDOW w1 AS (PARTITION BY {0}.col2 ORDER BY {0}.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
-      - name: t1
+      -
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
         index: index2:col2:col5
         data: |
@@ -35,7 +35,7 @@ cases:
           1, 3, 55, 3.3, 33.3, 1, 333
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      - name: t2
+      -
         schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:int64
         index: index1:col2:col5
         data: |
@@ -57,15 +57,15 @@ cases:
     desc: LAST JOIN Window, Join成功命中索引
     db: db1
     sql: |
-      SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5,
-      sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER w1 as w1_col3_sum,
-      sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER w1 as w1_t2_col2_sum,
-      sum(t1.col5) OVER w1 as w1_col5_sum,
-      str1 as t2_str1 FROM t1
-      last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      SELECT {0}.col1 as id, {0}.col2 as t1_col2, {0}.col5 as t1_col5,
+      sum({0}.col1) OVER w1 as w1_col1_sum, sum({0}.col3) OVER w1 as w1_col3_sum,
+      sum({1}.col4) OVER w1 as w1_t2_col4_sum, sum({1}.col2) OVER w1 as w1_t2_col2_sum,
+      sum({0}.col5) OVER w1 as w1_col5_sum,
+      str1 as t2_str1 FROM {0}
+      last join {1} order by {1}.col5 on {0}.col1={1}.col1 and {0}.col5 = {1}.col5
+      WINDOW w1 AS (PARTITION BY {0}.col2 ORDER BY {0}.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
-      - name: t1
+      -
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
         index: index2:col2:col5
         data: |
@@ -74,7 +74,7 @@ cases:
           1, 3, 55, 3.3, 33.3, 1, 333
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      - name: t2
+      -
         schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:int64
         index: index1:col1:col5
         data: |
@@ -100,7 +100,8 @@ cases:
       FROM {0} last join {1} order by {1}.col5 on {0}.col1={1}.col1 and {0}.col5 = {1}.col5
       WINDOW w1 AS (PARTITION BY {0}.col2 ORDER BY {0}.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
-      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:timestamp, col6:string
+      -
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:timestamp, col6:string
         index: index2:col2:col5
         data: |
           0, 1, 5, 1.1, 11.1, 1, 1
@@ -108,7 +109,8 @@ cases:
           1, 3, 55, 3.3, 33.3, 1, 333
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      - schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:timestamp
+      -
+        schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:timestamp
         index: index1:col1:col5
         data: |
           2, EEEEE, 5.5, 550.5, 550, 5, 3
@@ -129,12 +131,11 @@ cases:
     desc: LAST JOIN Window, Join成功命中索引, join条件匹配多行, 取Last Order
     db: db1
     sql: |
-      SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5, t2.col5 as t2_col5, str1, sum(t1.col1) OVER w1 as w1_col1_sum
-      FROM t1 last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 >= t2.col5
-      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      SELECT {0}.col1 as id, {0}.col2 as t1_col2, {0}.col5 as t1_col5, {1}.col5 as t2_col5, str1, sum({0}.col1) OVER w1 as w1_col1_sum
+      FROM {0} last join {1} order by {1}.col5 on {0}.col1={1}.col1 and {0}.col5 >= {1}.col5
+      WINDOW w1 AS (PARTITION BY {0}.col2 ORDER BY {0}.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
-      - name: t1
-        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:timestamp, col6:string
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:timestamp, col6:string
         index: index2:col2:col5
         data: |
           0, 1, 5, 1.1, 11.1, 1590115420001, 1
@@ -142,8 +143,7 @@ cases:
           1, 3, 55, 3.3, 33.3, 1590115420001, 333
           1, 4, 55, 4.4, 44.4, 1590115420002, 4444
           2, 5, 55, 5.5, 55.5, 1590115420003, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      - name: t2
-        schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:timestamp
+      - schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:timestamp
         index: index1:col1:col5
         data: |
           2, GGGGGGG, 5.5, 550.5, 550, 5, 1590115420004

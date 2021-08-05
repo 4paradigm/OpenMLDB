@@ -1,0 +1,208 @@
+
+debugs: []
+baseCase:
+  module: procedure
+  tags: []
+  level: 0
+  uri: /dbs/{db_name}/procedures/sp_auto_pro2
+  method: GET
+#  headers:
+#    "Content-Type": "application/json;charset=utf-8"
+  beforeAction:
+    tables:
+      - name: "t1"
+        columns: [ "c1 string","c3 int","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+    sqls:
+      - |
+        create procedure sp_auto_pro2(c1 string,c3 int,c7 timestamp)
+        BEGIN
+        SELECT * FROM t1;
+        END;
+  tearDown:
+    sqls: ["drop procedure sp_auto_pro2;"]
+  expect:
+    data:
+      code: 0
+      msg: ok
+      $.data.name: sp_auto_pro2
+      $.data.tables: ["t1"]
+      $.data.input_schema: [{"name":"c1","type":"string"},{"name":"c3","type":"int32"},{"name":"c7","type":"timestamp"}]
+      $.data.output_schema: [{"name":"c1","type":"string"},{"name":"c3","type":"int32"},{"name":"c7","type":"timestamp"}]
+      $.data.input_common_cols: []
+      $.data.output_common_cols: []
+      $.data.procedure: |
+        create procedure sp_auto_pro2(c1 string,c3 int,c7 timestamp)
+        BEGIN
+        SELECT * FROM t1;
+        END;
+cases:
+  - caseId: 0
+    desc: "没有公共列"
+  - caseId: 1
+    desc: "包含公共列"
+    beforeAction:
+      tables:
+        -
+          name: t1
+          columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+          indexs: ["index1:c1:c7"]
+          rows:
+            - [1,"a",1,30,1.0,2.0,1590738990000]
+      sqls:
+        - |
+          create procedure sp_auto_pro2(id int,const c1 string,c3 int,const c4 bigint,c5 float,const c6 double,c7 timestamp)
+          BEGIN
+          SELECT * from t1;
+          END;
+    tearDown:
+      sqls: ["drop procedure sp_auto_pro2;"]
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.data.name: sp_auto_pro2
+        $.data.tables: ["t1"]
+        $.data.input_schema: [{"name":"id","type":"int32"},{"name":"c1","type":"string"},{"name":"c3","type":"int32"},{"name":"c4","type":"int64"},{"name":"c5","type":"float"},{"name":"c6","type":"double"},{"name":"c7","type":"timestamp"}]
+        $.data.output_schema: [{"name":"id","type":"int32"},{"name":"c1","type":"string"},{"name":"c3","type":"int32"},{"name":"c4","type":"int64"},{"name":"c5","type":"float"},{"name":"c6","type":"double"},{"name":"c7","type":"timestamp"}]
+        $.data.input_common_cols: ["c1","c4","c6"]
+        $.data.output_common_cols: ["c1","c4","c6"]
+        $.data.procedure: |
+          create procedure sp_auto_pro2(id int,const c1 string,c3 int,const c4 bigint,c5 float,const c6 double,c7 timestamp)
+          BEGIN
+          SELECT * from t1;
+          END;
+  - caseId: 2
+    desc: "输出结果列名重命名"
+    beforeAction:
+      tables:
+        - name: "t1"
+          columns: [ "c1 string","c3 int","c7 timestamp" ]
+          indexs: [ "index1:c1:c7" ]
+      sqls:
+        - |
+          create procedure sp_auto_pro2(c1 string,c3 int,c7 timestamp)
+          BEGIN
+          SELECT c1,cast(c3 as bigint) as v3,c7 as v7 FROM t1;
+          END;
+    tearDown:
+      sqls: ["drop procedure sp_auto_pro2;"]
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.data.name: sp_auto_pro2
+        $.data.tables: ["t1"]
+        $.data.input_schema: [{"name":"c1","type":"string"},{"name":"c3","type":"int32"},{"name":"c7","type":"timestamp"}]
+        $.data.output_schema: [{"name":"c1","type":"string"},{"name":"v3","type":"int64"},{"name":"v7","type":"timestamp"}]
+        $.data.input_common_cols: []
+        $.data.output_common_cols: []
+        $.data.procedure: |
+          create procedure sp_auto_pro2(c1 string,c3 int,c7 timestamp)
+          BEGIN
+          SELECT c1,cast(c3 as bigint) as v3,c7 as v7 FROM t1;
+          END;
+  - caseId: 3
+    desc: "数据库不存在"
+    uri: /dbs/{db_name}11/procedures/sp_auto_pro2
+    expect:
+      data:
+        code: -1
+        msg: "procedure not found, msg: sp_auto_pro2 does not exist in test_restful11"
+  - caseId: 4
+    desc: "procedure不存在"
+    uri: /dbs/{db_name}/procedures/sp_auto_pro3
+    expect:
+      data:
+        code: -1
+        msg: "procedure not found, msg: sp_auto_pro3 does not exist in test_restful"
+  - caseId: 5
+    desc: "method错误"
+    method: PUT
+    expect:
+      data:
+        code: -1
+        msg: "no match method"
+  - caseId: 6
+    desc: "procedure为空串和null"
+    uri: /dbs/{db_name}/procedures/<procedure_name>
+    uriParameters:
+      procedure_name: ["","null"]
+    uriExpect:
+      - data:
+          code: -1
+          msg: "no match method"
+      - data:
+          code: -1
+          msg: "procedure not found, msg: null does not exist in test_restful"
+  - caseId: 7
+    desc: "包含复杂公共列"
+    uri: /dbs/{db_name}/procedures/sp_auto_khVEnBZP_1621935648577
+    beforeAction:
+      tables:
+        -
+          name: auto_khVEnBZP
+          columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+          indexs: ["index1:c1:c7", "index2:id:c7"]
+          rows:
+            - [1,"a",1,30,1.0,2.0,1590738990000]
+            - [3,"a",3,32,1.2,2.2,1590738992000]
+            - [5,"a",5,34,1.4,2.4,1590738994000]
+            - [6,"a",6,35,1.5,2.5,1590738995000]
+        -
+          name: auto_rsBanxdQ
+          columns : ["id int","timecol timestamp","c8 date","c9 string"]
+          indexs: ["index2:id:timecol"]
+          rows:
+            - [1,1590738990000,"2020-05-01","a"]
+            - [2,1590738991000,"2020-05-02","b"]
+            - [3,1590738992000,"2020-05-03","c"]
+            - [4,1590738993000,"2020-05-04","d"]
+            - [5,1590738994000,"2020-05-05","e"]
+            - [6,1590738995000,"2020-05-06","f"]
+            - [7,1590738996000,"2020-05-07","g"]
+      sqls:
+        - |
+          create procedure sp_auto_khVEnBZP_1621935648577(
+          id int,const c1 string,c3 int,const c4 bigint,c5 float,const c6 double,c7 timestamp)
+          BEGIN
+          SELECT auto_khVEnBZP.id, c1, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4, sum(c5) OVER w1 as m5,
+          sum(c6) OVER w1 as m6, max(c7) OVER w1 as m7, max(c8) OVER w1 as m8, min(c9) OVER w1 as m9
+          FROM auto_khVEnBZP last join auto_rsBanxdQ order by auto_rsBanxdQ.timecol on auto_khVEnBZP.id=auto_rsBanxdQ.id and auto_khVEnBZP.c7=auto_rsBanxdQ.timecol
+          WINDOW w1 AS (PARTITION BY auto_khVEnBZP.c1 ORDER BY auto_khVEnBZP.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+          END;
+    tearDown:
+      sqls: ["drop procedure sp_auto_khVEnBZP_1621935648577;"]
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.data.name: sp_auto_khVEnBZP_1621935648577
+        $.data.tables: ["auto_khVEnBZP","auto_rsBanxdQ"]
+        $.data.input_schema: [{"name":"id","type":"int32"},{"name":"c1","type":"string"},{"name":"c3","type":"int32"},{"name":"c4","type":"int64"},{"name":"c5","type":"float"},{"name":"c6","type":"double"},{"name":"c7","type":"timestamp"}]
+        $.data.output_schema: [{"name":"id","type":"int32"},{"name":"c1","type":"string"},{"name":"m3","type":"int32"},{"name":"m4","type":"int64"},{"name":"m5","type":"float"},{"name":"m6","type":"double"},{"name":"m7","type":"timestamp"},{"name":"m8","type":"date"},{"name":"m9","type":"string"}]
+        $.data.input_common_cols: ["c1","c4","c6"]
+        $.data.output_common_cols: []
+        $.data.procedure: |
+          create procedure sp_auto_khVEnBZP_1621935648577(
+          id int,const c1 string,c3 int,const c4 bigint,c5 float,const c6 double,c7 timestamp)
+          BEGIN
+          SELECT auto_khVEnBZP.id, c1, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4, sum(c5) OVER w1 as m5,
+          sum(c6) OVER w1 as m6, max(c7) OVER w1 as m7, max(c8) OVER w1 as m8, min(c9) OVER w1 as m9
+          FROM auto_khVEnBZP last join auto_rsBanxdQ order by auto_rsBanxdQ.timecol on auto_khVEnBZP.id=auto_rsBanxdQ.id and auto_khVEnBZP.c7=auto_rsBanxdQ.timecol
+          WINDOW w1 AS (PARTITION BY auto_khVEnBZP.c1 ORDER BY auto_khVEnBZP.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+          END;
+  - caseId: 8
+    desc: "db为空串和null"
+    uri: /dbs/<db_name>/procedures/sp_auto_pro2
+    uriParameters:
+      db_name: ["","null"]
+    uriExpect:
+      - data:
+          code: -1
+          msg: "no match method"
+      - data:
+          code: -1
+          msg: "procedure not found, msg: sp_auto_pro2 does not exist in null"
+
+

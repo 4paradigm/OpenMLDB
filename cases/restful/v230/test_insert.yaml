@@ -1,0 +1,433 @@
+
+debugs: []
+baseCase:
+  module: insert
+  tags: []
+  level: 0
+  uri: /dbs/{db_name}/tables/{table_name}
+  method: PUT
+  headers:
+    "Content-Type": "application/json;charset=utf-8"
+  beforeAction:
+    tables:
+      - columns: [ "c1 string","c3 int","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+  body: |
+    {
+        "value": [
+          ["v1",111,1620471840256]
+        ]
+    }
+  expect:
+    data:
+      code: 0
+      msg: ok
+cases:
+  - caseId: 0
+    desc: "冒烟测试"
+    afterAction:
+      sqls: ["select * from {0};"]
+      expect:
+        columns: ["c1 string","c3 int","c7 timestamp"]
+        rows:
+          - ["v1",111,1620471840256]
+  - caseId: 1
+    desc: "插入所有类型的数据"
+    beforeAction:
+      tables:
+        - columns: [ "c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+          indexs: [ "index1:c1:c7" ]
+    body: |
+      {
+          "value": [
+            ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          ]
+      }
+    afterAction:
+      sqls: ["select * from {0};"]
+      expect:
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  - caseId: 2
+    desc: "插入null"
+    beforeAction:
+      tables:
+        - columns: [ "c1 string","c2 string","c3 int","c7 timestamp" ]
+          indexs: [ "index1:c1:c7" ]
+    body: |
+      {
+        "value": [
+          ["aa",null,111,1620471840256]
+        ]
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+    afterAction:
+      sqls: ["select * from {0};"]
+      expect:
+        columns: ["c1 string","c2 string","c3 int","c7 timestamp"]
+        rows:
+          - [aa,null,111,1620471840256]
+  - caseId: 3
+    desc: "key-插入null"
+    body: |
+      {
+        "value": [
+          [null,111,1620471840256]
+        ]
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+    afterAction:
+      sqls: ["select * from {0};"]
+      expect:
+        columns: ["c1 string","c3 int","c7 timestamp"]
+        rows:
+          - [null,111,1620471840256]
+  - caseId: 4
+    desc: "插入空串"
+    beforeAction:
+      tables:
+        - columns: [ "c1 string","c2 string","c3 int","c7 timestamp" ]
+          indexs: [ "index1:c1:c7" ]
+    body: |
+      {
+        "value": [
+          ["aa","",111,1620471840256]
+        ]
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+    afterAction:
+      sqls: ["select * from {0};"]
+      expect:
+        columns: ["c1 string","c2 string","c3 int","c7 timestamp"]
+        rows:
+          - [aa,"",111,1620471840256]
+  - caseId: 5
+    desc: "key-插入空串"
+    body: |
+      {
+        "value": [
+          ["",111,1620471840256]
+        ]
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+    afterAction:
+      sqls: ["select * from {0};"]
+      expect:
+        columns: ["c1 string","c3 int","c7 timestamp"]
+        rows:
+          - ["",111,1620471840256]
+  - caseId: 6
+    desc: "插入null字符串"
+    body: |
+      {
+        "value": [
+          ["null",111,1620471840256]
+        ]
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+    afterAction:
+      sqls: ["select * from {0};"]
+      expect:
+        columns: ["c1 string","c3 int","c7 timestamp"]
+        rows:
+          - ["null",111,1620471840256]
+  - caseId: 7
+    desc: "插入中文"
+    body: |
+      {
+        "value": [
+          ["测试",111,1620471840256]
+        ]
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+    afterAction:
+      sqls: ["select * from {0};"]
+      expect:
+        columns: ["c1 string","c3 int","c7 timestamp"]
+        rows:
+          - ["测试",111,1620471840256]
+  - caseId: 8
+    desc: "插入sql"
+    body: |
+      {
+        "value": [
+          ["drop table test1;",111,1620471840256]
+        ]
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+    afterAction:
+      sqls: ["select * from {0};"]
+      expect:
+        columns: ["c1 string","c3 int","c7 timestamp"]
+        rows:
+          - ["drop table test1;",111,1620471840256]
+  - caseId: 9
+    desc: "插入两条相同的时间戳"
+    body: |
+      {
+        "value": [
+          ["aa",111,1620471840256],
+          ["bb",111,1620471840256]
+        ]
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Invalid value in body, only support to put one row"
+  - caseId: 10
+    desc: "url错误"
+    uri: /db/{db_name}/tables/{table_name}
+    expect:
+      data:
+        code: -1
+        msg: "no match method"
+  - caseId: 11
+    desc: "db不存在"
+    uri: /dbs/{db_name}11/tables/{table_name}
+    expect:
+      data:
+        code: -1
+        msg-contains: "does not exist"
+  - caseId: 12
+    desc: "table不存在"
+    uri: /dbs/{db_name}/tables/{table_name}11
+    expect:
+      data:
+        code: -1
+        msg-contains: "does not exist"
+  - caseId: 13
+    desc: "缺少列"
+    uri: /dbs/{db_name}/tables/{table_name}
+    body: |
+      {
+          "value": [
+            ["v1",1620471840256]
+          ]
+      }
+    expect:
+      data:
+        code: -1
+        msg-contains: "failed"
+  - caseId: 14
+    desc: "多一列"
+    uri: /dbs/{db_name}/tables/{table_name}
+    body: |
+      {
+          "value": [
+            ["v1",111,1620471840256,222]
+          ]
+      }
+    expect:
+      data:
+        code: -1
+        msg: "column size != schema size"
+  - caseId: 15
+    desc: "数据类型不匹配"
+    uri: /dbs/{db_name}/tables/{table_name}
+    body: |
+      {
+          "value": [
+            ["v1",1.2,1620471840256]
+          ]
+      }
+    expect:
+      data:
+        code: -1
+        msg-contains: "Translate to insert row failed"
+  - caseId: 16
+    desc: "body空串"
+    uri: /dbs/{db_name}/tables/{table_name}
+    body: ""
+    expect:
+      data:
+        code: -1
+        msg: "Json parse failed, error code: 1"
+  - caseId: 17
+    desc: "body为null"
+    uri: /dbs/{db_name}/tables/{table_name}
+    body: null
+    expect:
+      data:
+        code: -1
+        msg-contains: "fail to make a put request to table."
+  - caseId: 18
+    desc: "data=[]"
+    uri: /dbs/{db_name}/tables/{table_name}
+    body: []
+    expect:
+      data:
+        code: -1
+        msg: "Json parse failed, error code: 1"
+  - caseId: 19
+    desc: "data=[[]]"
+    uri: /dbs/{db_name}/tables/{table_name}
+    body: |
+      [[]]
+    expect:
+      data:
+        code: -1
+        msg: "Invalid value in body, only support to put one row"
+  - caseId: 20
+    desc: "json格式错误"
+    uri: /dbs/{db_name}/tables/{table_name}
+    body: |
+      {
+          "value": [
+            ["v1",11，1620471840256]
+          ]
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Json parse failed, error code: 7"
+  - caseId: 21
+    desc: "日期格式错误"
+    beforeAction:
+      tables:
+        - columns: [ "c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+          indexs: [ "index1:c1:c7" ]
+    body: |
+      {
+          "value": [
+            ["aa",1,2,3,1.1,2.1,1590738989000,"2020"]
+          ]
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Translate to insert row failed"
+  - caseId: 20
+    desc: "插入一个数据一个[]"
+    uri: /dbs/{db_name}/tables/{table_name}
+    body: |
+      {
+          "value": [
+            ["v1",11,1620471840256],[]
+          ]
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Invalid value in body, only support to put one row"
+  - caseId: 22
+    desc: "NotNull的列插入null"
+    beforeAction:
+      tables:
+        - columns: [ "c1 string","c2 string not null","c3 int","c7 timestamp" ]
+          indexs: [ "index1:c1:c7" ]
+    body: |
+      {
+        "value": [
+          ["aa",null,111,1620471840256]
+        ]
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Translate to insert row failed"
+  - caseId: 23
+    desc: "字符转时间戳"
+    beforeAction:
+      tables:
+        - columns: [ "c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+          indexs: [ "index1:c1:c7" ]
+    body: |
+      {
+          "value": [
+            ["aa",1,2,3,1.1,2.1,"2020-05-01","2020-05-01"]
+          ]
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Translate to insert row failed"
+  - caseId: 24
+    desc: "uri包含特殊字符"
+    uri: /dbs/<db>/tables/{table_name}
+    body: |
+      {
+        "value": [
+          ["测试",111,1620471840256]
+        ]
+      }
+    uriParameters:
+      db: ["@","","$","/","#","&","null"]
+    uriExpect:
+      - data:
+          code: -1
+          msg-contains: "does not exist"
+      - data:
+          code: -1
+          msg: "no match method"
+      - data:
+          code: -1
+          msg-contains: "does not exist"
+      - data:
+          code: -1
+          msg: "no match method"
+      - data:
+          code: -1
+          msg: "no match method"
+      - data:
+          code: -1
+          msg-contains: "does not exist"
+      - data:
+          code: -1
+          msg-contains: "does not exist"
+  - caseId: 25
+    desc: "table为空串和null"
+    uri: /dbs/{db_name}/tables/<table_name>
+    body: |
+      {
+        "value": [
+          ["测试",111,1620471840256]
+        ]
+      }
+    uriParameters:
+      table_name: ["","null"]
+    uriExpect:
+      - data:
+          code: -1
+          msg: "no match method"
+      - data:
+          code: -1
+          msg: "fail to get sql plan with"
+  - caseId: 26
+    desc: "uri最后多一个？"
+    uri: /dbs/{db_name}/tables/{table_name}?
+    afterAction:
+      sqls: ["select * from {0};"]
+      expect:
+        columns: ["c1 string","c3 int","c7 timestamp"]
+        rows:
+          - ["v1",111,1620471840256]
+  - caseId: 27
+    method: POST
+    desc: "method错误"
+    uri: /dbs/{db_name}/tables/{table_name}
+    expect:
+      data:
+        code: -1
+        msg: "no match method"

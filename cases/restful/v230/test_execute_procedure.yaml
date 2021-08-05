@@ -1,0 +1,521 @@
+
+debugs: []
+baseCase:
+  module: procedure
+  tags: []
+  level: 0
+  uri: /dbs/{db_name}/procedures/sp_auto_pro2
+  method: POST
+  headers:
+    "Content-Type": "application/json;charset=utf-8"
+  beforeAction:
+    tables:
+      - name: "t1"
+        columns: [ "c1 string","c3 int","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+    sqls:
+      - |
+        create procedure sp_auto_pro2(c1 string,c3 int,c7 timestamp)
+        BEGIN
+        SELECT * FROM t1;
+        END;
+  body: |
+    {
+        "common_cols":[],
+        "input": [["aa", 11, 1620471840256]],
+        "need_schema": true
+    }
+  tearDown:
+    sqls: ["drop procedure sp_auto_pro2;"]
+  expect:
+    data:
+      code: 0
+      msg: ok
+      $.data.data: [["aa",11,1620471840256]]
+      $.data.schema: [{"name":"c1","type":"string"},{"name":"c3","type":"int32"},{"name":"c7","type":"timestamp"}]
+      $.data.common_cols_data: []
+cases:
+  - caseId: 0
+    desc: "没有公共列"
+  - caseId: 1
+    desc: "包含公共列"
+    uri: /dbs/{db_name}/procedures/sp_auto_khVEnBZP_1621935648577
+    beforeAction:
+      tables:
+        -
+          name: auto_khVEnBZP
+          columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+          indexs: ["index1:c1:c7", "index2:id:c7"]
+          rows:
+            - [1,"a",1,30,1.0,2.0,1590738990000]
+            - [3,"a",3,32,1.2,2.2,1590738992000]
+            - [5,"a",5,34,1.4,2.4,1590738994000]
+            - [6,"a",6,35,1.5,2.5,1590738995000]
+        -
+          name: auto_rsBanxdQ
+          columns : ["id int","timecol timestamp","c8 date","c9 string"]
+          indexs: ["index2:id:timecol"]
+          rows:
+            - [1,1590738990000,"2020-05-01","a"]
+            - [2,1590738991000,"2020-05-02","b"]
+            - [3,1590738992000,"2020-05-03","c"]
+            - [4,1590738993000,"2020-05-04","d"]
+            - [5,1590738994000,"2020-05-05","e"]
+            - [6,1590738995000,"2020-05-06","f"]
+            - [7,1590738996000,"2020-05-07","g"]
+      sqls:
+        - |
+          create procedure sp_auto_khVEnBZP_1621935648577(
+          id int,const c1 string,c3 int,const c4 bigint,c5 float,const c6 double,c7 timestamp)
+          BEGIN
+          SELECT auto_khVEnBZP.id, c1, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4, sum(c5) OVER w1 as m5,
+          sum(c6) OVER w1 as m6, max(c7) OVER w1 as m7, max(c8) OVER w1 as m8, min(c9) OVER w1 as m9
+          FROM auto_khVEnBZP last join auto_rsBanxdQ order by auto_rsBanxdQ.timecol on auto_khVEnBZP.id=auto_rsBanxdQ.id and auto_khVEnBZP.c7=auto_rsBanxdQ.timecol
+          WINDOW w1 AS (PARTITION BY auto_khVEnBZP.c1 ORDER BY auto_khVEnBZP.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+          END;
+    body: |
+      {
+        "common_cols":["a",31,2.1],
+        "input": [
+          [2,2,1.1,1590738991000],
+          [4,3,1.2,1590738993000],
+          [7,4,1.3,1590738996000]
+        ],
+        "need_schema": true
+      }
+    tearDown:
+      sqls: ["drop procedure sp_auto_khVEnBZP_1621935648577;"]
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.data.data: [
+          [2,"a",3,61,2.0999999046325685,4.1,1590738991000,"2020-5-2","a"],
+          [4,"a",7,93,3.4000000953674318,6.300000000000001,1590738993000,"2020-5-4","a"],
+          [7,"a",15,100,4.199999809265137,7.0,1590738996000,"2020-5-7","e"]
+        ]
+        $.data.schema: [{"name":"id","type":"int32"},{"name":"c1","type":"string"},{"name":"m3","type":"int32"},{"name":"m4","type":"int64"},{"name":"m5","type":"float"},{"name":"m6","type":"double"},{"name":"m7","type":"timestamp"},{"name":"m8","type":"date"},{"name":"m9","type":"string"}]
+        $.data.common_cols_data: []
+  - caseId: 2
+    desc: "need_schema为false"
+    body: |
+      {
+      "common_cols":[],
+      "input": [["aa", 11, 1620471840256]],
+      "need_schema": false
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.data.data: [["aa",11,1620471840256]]
+        $.data.common_cols_data: []
+  - caseId: 3
+    desc: "input两条数据"
+    body: |
+      {
+          "common_cols":[],
+          "input": [["aa", 11, 1620471840256],["bb", 22, 1620471840257]],
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.data.data: [["aa",11,1620471840256],["bb", 22, 1620471840257]]
+        $.data.schema: [{"name":"c1","type":"string"},{"name":"c3","type":"int32"},{"name":"c7","type":"timestamp"}]
+        $.data.common_cols_data: []
+  - caseId: 4
+    desc: "不需要公共列，common_cols为null"
+    body: |
+      {
+          "common_cols":null,
+          "input": [["aa", 11, 1620471840256]],
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: -1
+        msg: "common_cols is not array"
+  - caseId: 5
+    desc: "不需要公共列，common_cols不传"
+    body: |
+      {
+          "input": [["aa", 11, 1620471840256]],
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.data.data: [["aa",11,1620471840256]]
+        $.data.schema: [{"name":"c1","type":"string"},{"name":"c3","type":"int32"},{"name":"c7","type":"timestamp"}]
+        $.data.common_cols_data: []
+  - caseId: 6
+    desc: "不需要公共列，common_cols有值"
+    body: |
+      {
+          "common_cols":[111],
+          "input": [["aa", 11, 1620471840256]],
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Invalid common cols size"
+  - caseId: 7
+    desc: "common_cols为空串"
+    body: |
+      {
+          "common_cols":"",
+          "input": [["aa", 11, 1620471840256]],
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: -1
+        msg: "common_cols is not array"
+  - caseId: 8
+    desc: "input个数不匹配"
+    body: |
+      {
+          "common_cols":[],
+          "input": [["aa", 11, 5, 1620471840256]],
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Invalid input data row"
+  - caseId: 9
+    desc: "input为[[]]"
+    body: |
+      {
+          "common_cols":[],
+          "input": [[]],
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Invalid input data row"
+  - caseId: 10
+    desc: "input为[]"
+    body: |
+      {
+          "common_cols":[],
+          "input": [],
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Invalid input"
+  - caseId: 11
+    desc: "input为空串"
+    body: |
+      {
+          "common_cols":[],
+          "input": "",
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Invalid input"
+  - caseId: 12
+    desc: "input为null"
+    body: |
+      {
+          "common_cols":[],
+          "input": null,
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Invalid input"
+  - caseId: 13
+    desc: "input不传"
+    body: |
+      {
+          "common_cols":[],
+          "need_schema": true
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Invalid input"
+  - caseId: 14
+    desc: "need_schema为null"
+    body: |
+      {
+          "common_cols":[],
+          "input": [["aa", 11, 1620471840256]],
+          "need_schema": null
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.data.data: [["aa",11,1620471840256]]
+        $.data.common_cols_data: []
+  - caseId: 15
+    desc: "need_schema不传"
+    body: |
+      {
+          "common_cols":[],
+          "input": [["aa", 11, 1620471840256]]
+      }
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.data.data: [["aa",11,1620471840256]]
+        $.data.common_cols_data: []
+  - caseId: 16
+    desc: "need_schema为空串"
+    body: |
+      {
+          "common_cols":[],
+          "input": [["aa", 11, 1620471840256]],
+          "need_schema": ""
+      }
+    expect:
+      data:
+        code: 0
+        msg: "ok"
+        $.data.data: [["aa",11,1620471840256]]
+        $.data.common_cols_data: []
+  - caseId: 17
+    desc: "db不存在"
+    uri: /dbs/{db_name}11/procedures/sp_auto_pro2
+    expect:
+      data:
+        code: -1
+        msg: "procedure not found, msg: sp_auto_pro2 does not exist in test_restful11"
+  - caseId: 18
+    desc: "procedure不存在"
+    uri: /dbs/{db_name}/procedures/sp_auto_pro22
+    expect:
+      data:
+        code: -1
+        msg: "procedure not found, msg: sp_auto_pro22 does not exist in test_restful"
+  - caseId: 18
+    desc: "method类型错误"
+    method: PUT
+    expect:
+      data:
+        code: -1
+        msg: "no match method"
+  - caseId: 19
+    desc: "需要公共列，common_cols为[]"
+    uri: /dbs/{db_name}/procedures/sp_auto_khVEnBZP_1621935648577
+    beforeAction:
+      tables:
+        -
+          name: auto_khVEnBZP
+          columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+          indexs: ["index1:c1:c7", "index2:id:c7"]
+          rows:
+            - [1,"a",1,30,1.0,2.0,1590738990000]
+        -
+          name: auto_rsBanxdQ
+          columns : ["id int","timecol timestamp","c8 date","c9 string"]
+          indexs: ["index2:id:timecol"]
+          rows:
+            - [1,1590738990000,"2020-05-01","a"]
+      sqls:
+        - |
+          create procedure sp_auto_khVEnBZP_1621935648577(
+          id int,const c1 string,c3 int,const c4 bigint,c5 float,const c6 double,c7 timestamp)
+          BEGIN
+          SELECT auto_khVEnBZP.id, c1, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4, sum(c5) OVER w1 as m5,
+          sum(c6) OVER w1 as m6, max(c7) OVER w1 as m7, max(c8) OVER w1 as m8, min(c9) OVER w1 as m9
+          FROM auto_khVEnBZP last join auto_rsBanxdQ order by auto_rsBanxdQ.timecol on auto_khVEnBZP.id=auto_rsBanxdQ.id and auto_khVEnBZP.c7=auto_rsBanxdQ.timecol
+          WINDOW w1 AS (PARTITION BY auto_khVEnBZP.c1 ORDER BY auto_khVEnBZP.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+          END;
+    body: |
+      {
+        "common_cols":[],
+        "input": [
+          [2,2,1.1,1590738991000]
+        ],
+        "need_schema": true
+      }
+    tearDown:
+      sqls: ["drop procedure sp_auto_khVEnBZP_1621935648577;"]
+    expect:
+      data:
+        code: -1
+        msg: "Invalid common cols size"
+  - caseId: 20
+    desc: "需要公共列，common_cols为null"
+    uri: /dbs/{db_name}/procedures/sp_auto_khVEnBZP_1621935648577
+    beforeAction:
+      tables:
+        -
+          name: auto_khVEnBZP
+          columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+          indexs: ["index1:c1:c7", "index2:id:c7"]
+          rows:
+            - [1,"a",1,30,1.0,2.0,1590738990000]
+        -
+          name: auto_rsBanxdQ
+          columns : ["id int","timecol timestamp","c8 date","c9 string"]
+          indexs: ["index2:id:timecol"]
+          rows:
+            - [1,1590738990000,"2020-05-01","a"]
+      sqls:
+        - |
+          create procedure sp_auto_khVEnBZP_1621935648577(
+          id int,const c1 string,c3 int,const c4 bigint,c5 float,const c6 double,c7 timestamp)
+          BEGIN
+          SELECT auto_khVEnBZP.id, c1, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4, sum(c5) OVER w1 as m5,
+          sum(c6) OVER w1 as m6, max(c7) OVER w1 as m7, max(c8) OVER w1 as m8, min(c9) OVER w1 as m9
+          FROM auto_khVEnBZP last join auto_rsBanxdQ order by auto_rsBanxdQ.timecol on auto_khVEnBZP.id=auto_rsBanxdQ.id and auto_khVEnBZP.c7=auto_rsBanxdQ.timecol
+          WINDOW w1 AS (PARTITION BY auto_khVEnBZP.c1 ORDER BY auto_khVEnBZP.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+          END;
+    body: |
+      {
+        "common_cols":null,
+        "input": [
+          [2,2,1.1,1590738991000]
+        ],
+        "need_schema": true
+      }
+    tearDown:
+      sqls: ["drop procedure sp_auto_khVEnBZP_1621935648577;"]
+    expect:
+      data:
+        code: -1
+        msg: "common_cols is not array"
+  - caseId: 21
+    desc: "需要公共列，common_cols个数不匹配"
+    uri: /dbs/{db_name}/procedures/sp_auto_khVEnBZP_1621935648577
+    beforeAction:
+      tables:
+        -
+          name: auto_khVEnBZP
+          columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+          indexs: ["index1:c1:c7", "index2:id:c7"]
+          rows:
+            - [1,"a",1,30,1.0,2.0,1590738990000]
+        -
+          name: auto_rsBanxdQ
+          columns : ["id int","timecol timestamp","c8 date","c9 string"]
+          indexs: ["index2:id:timecol"]
+          rows:
+            - [1,1590738990000,"2020-05-01","a"]
+      sqls:
+        - |
+          create procedure sp_auto_khVEnBZP_1621935648577(
+          id int,const c1 string,c3 int,const c4 bigint,c5 float,const c6 double,c7 timestamp)
+          BEGIN
+          SELECT auto_khVEnBZP.id, c1, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4, sum(c5) OVER w1 as m5,
+          sum(c6) OVER w1 as m6, max(c7) OVER w1 as m7, max(c8) OVER w1 as m8, min(c9) OVER w1 as m9
+          FROM auto_khVEnBZP last join auto_rsBanxdQ order by auto_rsBanxdQ.timecol on auto_khVEnBZP.id=auto_rsBanxdQ.id and auto_khVEnBZP.c7=auto_rsBanxdQ.timecol
+          WINDOW w1 AS (PARTITION BY auto_khVEnBZP.c1 ORDER BY auto_khVEnBZP.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+          END;
+    body: |
+      {
+        "common_cols":["a",31],
+        "input": [
+          [2,2,1.1,1590738991000]
+        ],
+        "need_schema": true
+      }
+    tearDown:
+      sqls: ["drop procedure sp_auto_khVEnBZP_1621935648577;"]
+    expect:
+      data:
+        code: -1
+        msg: "Invalid common cols size"
+  - caseId: 22
+    desc: "普通公共列"
+    uri: /dbs/{db_name}/procedures/sp_auto_pro2
+    beforeAction:
+      tables:
+        -
+          name: t1
+          columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+          indexs: ["index1:c1:c7"]
+          rows:
+            - [1,"a",1,30,1.0,2.0,1590738990000]
+      sqls:
+        - |
+          create procedure sp_auto_pro2(id int,const c1 string,c3 int,const c4 bigint,c5 float,const c6 double,c7 timestamp)
+          BEGIN
+          SELECT * from t1;
+          END;
+    body: |
+      {
+        "common_cols":["a",31,2.1],
+        "input": [
+          [2,2,1.1,1590738991000],
+          [4,3,1.2,1590738993000],
+          [7,4,1.3,1590738996000]
+        ],
+        "need_schema": true
+      }
+    tearDown:
+      sqls: ["drop procedure sp_auto_pro2;"]
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.data.data: [[2,2,1.100000023841858,1590738991000],[4,3,1.2000000476837159,1590738993000],[7,4,1.2999999523162842,1590738996000]]
+        $.data.schema: [{"name":"id","type":"int32"},{"name":"c1","type":"string"},{"name":"c3","type":"int32"},{"name":"c4","type":"int64"},{"name":"c5","type":"float"},{"name":"c6","type":"double"},{"name":"c7","type":"timestamp"}]
+        $.data.common_cols_data: ["a",31,2.1]
+  - caseId: 0
+    desc: "need_schema为True"
+    body: |
+      {
+          "common_cols":[],
+          "input": [["aa", 11, 1620471840256]],
+          "need_schema": True
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Json parse failed"
+  - caseId: 0
+    desc: "need_schema为TRUE"
+    body: |
+      {
+          "common_cols":[],
+          "input": [["aa", 11, 1620471840256]],
+          "need_schema": TRUE
+      }
+    expect:
+      data:
+        code: -1
+        msg: "Json parse failed"
+  - caseId: 0
+    desc: "db为空串和null"
+    uri: /dbs/<db_name>/procedures/sp_auto_pro2
+    uriParameters:
+      db_name: ["","null"]
+    uriExpect:
+      - data:
+          code: -1
+          msg: "no match method"
+      - data:
+          code: -1
+          msg: "procedure not found, msg: sp_auto_pro2 does not exist in null"
+  - caseId: 0
+    desc: "procedure_name为空串和null"
+    uri: /dbs/{db_name}/procedures/<procedure_name>
+    uriParameters:
+      procedure_name: ["","null"]
+    uriExpect:
+      - data:
+          code: -1
+          msg: "no match method"
+      - data:
+          code: -1
+          msg: "procedure not found, msg: null does not exist in test_restful"
+
+
+
+
