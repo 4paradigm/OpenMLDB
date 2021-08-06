@@ -39,6 +39,7 @@ make -j"$(nproc)" coverage SQL_CASE_BASE_DIR="$HYRBIDSE_DIR" YAML_CASE_BASE_DIR=
 popd
 
 pushd java
+# run java coverage via `jacoco:report`
 if [[ "$OSTYPE" = "darwin"* ]]; then
     mvn prepare-package -P macos
 elif [[ "$OSTYPE" = "linux-gnu" ]]; then

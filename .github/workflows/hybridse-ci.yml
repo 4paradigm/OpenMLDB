@@ -8,6 +8,10 @@ on:
       - v*
   pull_request:
 
+defaults:
+  run:
+    working-directory: hybridse
+
 jobs:
   linux-build:
     runs-on: ubuntu-latest
@@ -82,7 +86,7 @@ jobs:
 
       - name: Publish Java Library
         if: ${{ github.event_name == 'push' }}
-        working-directory: java
+        working-directory: hybridse/java
         run: |
           mvn --batch-mode deploy
         env:
@@ -184,7 +188,7 @@ jobs:
 
       - name: Publish Java Library
         if: ${{ github.event_name == 'push' }}
-        working-directory: java
+        working-directory: hybridse/java
         run: |
           mvn --batch-mode -P macos clean install
           mvn --batch-mode -P macos -pl hybridse-native deploy
@@ -261,7 +265,7 @@ jobs:
           ./java/prepare_release.sh $VERSION
 
       - name: Publish Java Library
-        working-directory: java
+        working-directory: hybridse/java
         run: |
           mvn --batch-mode -P allinone clean install
           mvn --batch-mode -P allinone -pl hybridse-native deploy
@@ -283,19 +287,12 @@ jobs:
         with:
           name: release-artifacts
 
-      - name: Download Lib Artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: lib-artifacts
-
       - name: Release
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         uses: softprops/action-gh-release@v1
         with:
           files: |
             hybridse-*.tar.gz
-            *.so
-            *.dylib
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -332,10 +329,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-
-      - name: Fetch Submodules
-        run: |
-          git submodule update --init --recursive
+        with:
+          submodules: true
 
       - name: Build and Coverage
         run: |

@@ -16,8 +16,9 @@
 set -eE
 set -o nounset
 
-ROOT=$(git rev-parse --show-toplevel)
-cd "$ROOT"
+# TODO: use same thirdparty with OpenMLDB
+ROOT=$(dirname "$0"/..)
+pushd "$ROOT"
 
 ARCH=$(arch)
 
@@ -52,4 +53,6 @@ fi
 
 tar xzf thirdparty.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
 tar xzf libzetasql.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
+popd
+
 popd
