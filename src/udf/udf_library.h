@@ -37,9 +37,7 @@ class HybridSeJitWrapper;
 namespace udf {
 
 using hybridse::base::Status;
-using hybridse::node::ExprListNode;
 using hybridse::node::ExprNode;
-using hybridse::node::SqlNode;
 
 // Forward declarations
 class ExprUdfRegistryHelper;

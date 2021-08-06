@@ -27,10 +27,6 @@ using hybridse::codec::Date;
 using hybridse::codec::ListRef;
 using hybridse::codec::StringRef;
 using hybridse::codec::Timestamp;
-using hybridse::codegen::CodeGenContext;
-using hybridse::codegen::NativeValue;
-using hybridse::common::kCodegenError;
-using hybridse::node::TypeNode;
 
 namespace hybridse {
 namespace udf {

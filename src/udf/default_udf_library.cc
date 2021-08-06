@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/str_cat.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
@@ -35,7 +36,6 @@ using hybridse::codec::Timestamp;
 using hybridse::codegen::CodeGenContext;
 using hybridse::codegen::NativeValue;
 using hybridse::common::kCodegenError;
-using hybridse::node::TypeNode;
 
 namespace hybridse {
 namespace udf {
@@ -1294,6 +1294,33 @@ void DefaultUdfLibrary::InitUtilityUdf() {
             @since 0.1.0)");
 
     RegisterAlias("ifnull", "if_null");
+    RegisterAlias("nvl", "if_null");
+    RegisterExprUdf("nvl2")
+        .args<AnyArg, AnyArg, AnyArg>([](UdfResolveContext* ctx, ExprNode* expr1, ExprNode* expr2, ExprNode* expr3) {
+            if (!node::TypeEquals(expr2->GetOutputType(), expr3->GetOutputType())) {
+                ctx->SetError(absl::StrCat("expr3 should take same type with expr2, expect ",
+                                           expr2->GetOutputType()->GetName(), " but get ",
+                                           expr3->GetOutputType()->GetName()));
+            }
+            auto nm = ctx->node_manager();
+            return nm->MakeCondExpr(nm->MakeUnaryExprNode(expr1, node::kFnOpIsNull), expr3, expr2);
+        })
+        .doc(R"(
+        @brief nvl2(expr1, expr2, expr3) - Returns expr2 if expr1 is not null, or expr3 otherwise.
+
+        Example:
+
+        @code{.sql}
+            SELECT nvl2(NULL, 2, 1);
+            -- output 1
+        @endcode
+
+        @param expr1   Condition expression
+        @param expr2   Return value if expr1 is not null
+        @param expr3   Return value if expr1 is null
+
+        @since 0.3.0
+    )");
 }
 
 void DefaultUdfLibrary::InitTypeUdf() {

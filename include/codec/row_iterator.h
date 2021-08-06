@@ -15,11 +15,16 @@
  */
 #ifndef INCLUDE_CODEC_ROW_ITERATOR_H_
 #define INCLUDE_CODEC_ROW_ITERATOR_H_
+
 #include <memory>
 #include <string>
+
+#include "base/iterator.h"
 #include "codec/row.h"
+
 namespace hybridse {
 namespace codec {
+
 using hybridse::base::ConstIterator;
 
 /// \typedef const iterator of key-value pairs.

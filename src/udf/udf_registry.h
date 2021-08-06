@@ -39,11 +39,8 @@ namespace hybridse {
 namespace udf {
 
 using hybridse::base::Status;
-using hybridse::codec::StringRef;
 using hybridse::node::ExprAttrNode;
-using hybridse::node::ExprListNode;
 using hybridse::node::ExprNode;
-using hybridse::node::SqlNode;
 
 /**
  * Overall information to resolve a sql function call.
