@@ -235,6 +235,25 @@ cases:
         - [1, "aa"]
         - [2, "abc"]
         - [3, ""]
+  - id: 7-1
+    desc: NVL is synonyms to ifnull
+    tags: ['rm-me', '@jingchen']
+    inputs:
+      - columns: ["col1 int","col2 string", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, "aa",1590738989000]
+          - [2, null,1590738989000]
+          - [3, "",1590738989000]
+    sql: |
+      select col1,nvl(col2,"abc") as e1 from {0};
+    expect:
+      columns: ["col1 int", "e1 string"]
+      order: col1
+      rows:
+        - [1, "aa"]
+        - [2, "abc"]
+        - [3, ""]
   - id: 8
     desc: IFNULL-不同类型
     inputs:
@@ -279,6 +298,20 @@ cases:
       select col1,ifnull(col2 /0 ,100) as e3 from {0};
     expect:
       success: false
+  - id: 10-1
+    desc: NVL-表达式-/0
+    tags: ['rm-me', '@jingchen']
+    inputs:
+      - columns: ["col1 int","col2 int", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, 0,1590738989000]
+          - [2, null,1590738989000]
+          - [3, 1,1590738989000]
+    sql: |
+      select col1,nvl(col2 /0 ,100) as e3 from {0};
+    expect:
+      success: false
   - id: 11
     desc: IFNULL-兼容类型
     inputs:
@@ -305,3 +338,58 @@ cases:
       select col1,ifnull(col2,1.1) as e2 from {0};
     expect:
       success: false
+
+  - id: NVL2-1
+    desc: NVL2
+    tags: ['rm-me', '@jingchen']
+    inputs:
+      - columns: ["col1 int","col2 int", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, 0,1590738989000]
+          - [2, null,1590738989000]
+          - [3, 1,1590738989000]
+    sql: |
+      select col1,nvl2(col2, "abc", "def") as e1 from {0};
+    expect:
+      columns: ["col1 int", "e1 string"]
+      order: col1
+      rows:
+        - [1, "abc"]
+        - [2, "def"]
+        - [3, "abc"]
+
+  - id: NVL2-2
+    desc: NVL2, type not match
+    tags: ['rm-me', '@jingchen']
+    inputs:
+      - columns: ["col1 int","col2 int", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, 0,1590738989000]
+          - [2, null,1590738989000]
+          - [3, 1,1590738989000]
+    sql: |
+      select col1,nvl2(col2, "abc", col1 + 1) as e1 from {0};
+    expect:
+      success: false
+
+  - id: NVL2-3
+    desc: NVL2, sub expression
+    tags: ['rm-me', '@jingchen']
+    inputs:
+      - columns: ["col1 int","col2 int", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, 0,1590738989000]
+          - [2, null,1590738989000]
+          - [3, 1,1590738989000]
+    sql: |
+      select col1, nvl2(col2, col1 * col1, col1 + 1) as e1 from {0};
+    expect:
+      columns: ["col1 int", "e1 int"]
+      order: col1
+      rows:
+        - [1, 1]
+        - [2, 3]
+        - [3, 9]

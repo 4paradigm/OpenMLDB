@@ -700,6 +700,15 @@ TEST_F(UdfIRBuilderTest, null_process_test) {
         "if_null", nullptr, nullptr, nullptr);
     CheckUdf<double, Nullable<double>, Nullable<double>>("if_null", 2.0,
                                                          nullptr, 2.0);
+    // nvl is synonym to is_null
+    CheckUdf<double, Nullable<double>, Nullable<double>>("nvl", 2.0, nullptr, 2.0);
+    CheckUdf<double, Nullable<double>, Nullable<double>>("nvl", 1.0, 1.0, 2.0);
+
+    // nvl2
+    CheckUdf<double, Nullable<double>, double, double>("nvl2", 2.0, nullptr, 1.0, 2.0);
+    CheckUdf<double, Nullable<double>, double, double>("nvl2", 1.0, 12.0, 1.0, 2.0);
+    CheckUdf<StringRef, Nullable<int>, StringRef, StringRef>("nvl2", StringRef("abc"), 12, StringRef("abc"),
+                                                             StringRef("def"));
 }
 
 TEST_F(UdfIRBuilderTest, date_to_timestamp_test_0) {

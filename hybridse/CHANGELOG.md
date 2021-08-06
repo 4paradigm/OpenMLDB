@@ -1,9 +1,10 @@
 # Changelog
 
 ## [Unreleased]
-### Features
+### SQL Syntax
+- Support parameterized query [#170](https://github.com/4paradigm/HybridSE/issues/170)
+- `nvl` & `nvl2`: [#190](https://github.com/4paradigm/HybridSE/pull/190)
 
-+ Support parameterized query [#170](https://github.com/4paradigm/HybridSE/issues/170)
 ## [0.2.0] - 2021-07-16
 ### SQL Syntax
 
