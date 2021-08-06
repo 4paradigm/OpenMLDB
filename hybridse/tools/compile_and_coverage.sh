@@ -17,7 +17,7 @@
 set -eE
 
 # goto toplevel directory
-cd "$(dirname "$0")/.."
+pushd "$(dirname "$0")/.."
 
 HYRBIDSE_DIR=$(pwd)
 
@@ -45,4 +45,6 @@ if [[ "$OSTYPE" = "darwin"* ]]; then
 elif [[ "$OSTYPE" = "linux-gnu" ]]; then
     mvn prepare-package
 fi
+popd
+
 popd
