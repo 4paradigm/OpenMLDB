@@ -12,7 +12,7 @@ jobs:
   linux-build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.3.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
       OS: linux
       ARCH: x86_64
@@ -215,7 +215,7 @@ jobs:
   java-allinone-deploy:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.3.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
     needs: ["macos-build"]
     if: >
       success() && github.event_name == 'push'
@@ -328,7 +328,7 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.3.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
 
     steps:
       - uses: actions/checkout@v2
