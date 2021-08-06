@@ -6,8 +6,7 @@
 + Add `VARCHAR` Type [#196](https://github.com/4paradigm/HybridSE/issues/196)
 
 ### Bug Fix
-- Fix invalid back qoute identifier name [#192](https://github.com/4paradigm/HybridSE/issues/192)
-
+- Fix invalid back qoute identifier name [#192](https://github.com/4paradigm/HybridSE/issues/192). Note: option key can't write as multiple path style (e.g a.b) now
 ## [0.2.0] - 2021-07-16
 ### SQL Syntax
 
