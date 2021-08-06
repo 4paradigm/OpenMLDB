@@ -34,6 +34,8 @@ class VariableIRBuilder {
                         base::Status& status);  // NOLINT
     bool LoadRetStruct(NativeValue* output,
                        base::Status& status);  // NOLINT
+    bool LoadParameter(NativeValue* output,
+                    base::Status& status);             // NOLINT
     bool LoadRowKey(NativeValue* output,
                     base::Status& status);             // NOLINT
     base::Status LoadMemoryPool(NativeValue* output);  // NOLINT

@@ -870,7 +870,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
     JitRuntime::get()->InitRunStep();
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t key, const int8_t*,
-                                            const int8_t*, int8_t**)>(
+                                            const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
     int8_t* out_buf = nullptr;
 
@@ -879,7 +879,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
 
-    uint32_t ret = udf(row_key, row_ptr, window_ptr, &out_buf);
+    uint32_t ret = udf(row_key, row_ptr, window_ptr, nullptr, &out_buf);
 
     // Release current run step resources
     JitRuntime::get()->ReleaseRunStep();
@@ -3164,7 +3164,7 @@ Row Runner::GroupbyProject(const int8_t* fn, TableHandler* table) {
     auto& row = iter->GetValue();
     auto& row_key = iter->GetKey();
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
-                                            const int8_t*, int8_t**)>(
+                                            const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
     int8_t* buf = nullptr;
 
@@ -3174,7 +3174,7 @@ Row Runner::GroupbyProject(const int8_t* fn, TableHandler* table) {
     window_ref.list = reinterpret_cast<int8_t*>(table);
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
 
-    uint32_t ret = udf(row_key, row_ptr, window_ptr, &buf);
+    uint32_t ret = udf(row_key, row_ptr, window_ptr, nullptr, &buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();

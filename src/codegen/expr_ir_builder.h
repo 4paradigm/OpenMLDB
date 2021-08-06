@@ -63,9 +63,11 @@ class ExprIRBuilder {
  private:
     Status BuildConstExpr(const ::hybridse::node::ConstNode* node,
                           NativeValue* output);
-
+    Status BuildParameterExpr(const ::hybridse::node::ParameterExpr* node,
+                              NativeValue* output);
     Status BuildColumnRef(const ::hybridse::node::ColumnRefNode* node,
                           NativeValue* output);
+
 
     Status BuildCallFn(const ::hybridse::node::CallExprNode* fn,
                        NativeValue* output);
@@ -95,6 +97,8 @@ class ExprIRBuilder {
     Status BuildCondExpr(const ::hybridse::node::CondExpr* node,
                          NativeValue* output);
 
+    Status ExtractSliceFromRow(const NativeValue& input_value, const int schema_idx, ::llvm::Value** slice_ptr,
+                               ::llvm::Value** slice_size);
     ::llvm::Function* GetFuncion(
         const std::string& col,
         const std::vector<const node::TypeNode*>& generic_types,

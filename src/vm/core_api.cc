@@ -191,10 +191,10 @@ hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
     JitRuntime::get()->InitRunStep();
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
-                                            const int8_t*, int8_t**)>(
+                                            const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
     int8_t* buf = nullptr;
-    uint32_t ret = udf(0, nullptr, nullptr, &buf);
+    uint32_t ret = udf(0, nullptr, nullptr, nullptr, &buf);
 
     // Release current run step resources
     JitRuntime::get()->ReleaseRunStep();
@@ -217,12 +217,12 @@ hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
     JitRuntime::get()->InitRunStep();
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
-                                            const int8_t*, int8_t**)>(
+                                            const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
 
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
     int8_t* buf = nullptr;
-    uint32_t ret = udf(0, row_ptr, nullptr, &buf);
+    uint32_t ret = udf(0, row_ptr, nullptr, nullptr, &buf);
 
     // Release current run step resources
     JitRuntime::get()->ReleaseRunStep();
@@ -248,11 +248,11 @@ hybridse::codec::Row CoreAPI::UnsafeRowProject(
     JitRuntime::get()->InitRunStep();
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
-                                            const int8_t*, int8_t**)>(
+                                            const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
 
     int8_t* buf = nullptr;
-    uint32_t ret = udf(0, row_ptr, nullptr, &buf);
+    uint32_t ret = udf(0, row_ptr, nullptr, nullptr, &buf);
 
     // Release current run step resources
     JitRuntime::get()->ReleaseRunStep();
@@ -283,7 +283,7 @@ hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
     JitRuntime::get()->InitRunStep();
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
-                                            const int8_t*, int8_t**)>(
+                                            const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
     int8_t* out_buf = nullptr;
 
@@ -293,7 +293,7 @@ hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
 
     uint32_t ret =
-        udf(static_cast<int64_t>(row_key), row_ptr, window_ptr, &out_buf);
+        udf(static_cast<int64_t>(row_key), row_ptr, window_ptr, nullptr, &out_buf);
 
     // Release current run step resources
     JitRuntime::get()->ReleaseRunStep();

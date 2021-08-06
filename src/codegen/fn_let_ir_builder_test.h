@@ -85,9 +85,13 @@ node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
 }
 
 
-void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
-                       vm::SchemasContext* schemas_ctx, std::string udf_str,
+
+void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
+                       vm::SchemasContext* schemas_ctx,
+                                       const codec::Schema* parameter_types,
+                                       std::string udf_str,
                        std::string sql, int8_t* row_ptr, int8_t* window_ptr,
+                                    int8_t * parameter_row_ptr,
                        vm::Schema* output_schema, int8_t** output) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -115,14 +119,14 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
 
     bool is_agg = window_ptr != nullptr;
     vm::PhysicalPlanContext plan_ctx(
-        manager, lib, "db", std::make_shared<vm::SimpleCatalog>(), nullptr, false);
+        manager, lib, "db", std::make_shared<vm::SimpleCatalog>(), parameter_types, false);
     status = plan_ctx.InitFnDef(column_projects, schemas_ctx, !is_agg,
                                 &column_projects);
     ASSERT_TRUE(status.isOK()) << status.str();
 
     // Instantiate llvm function
     const auto& fn_info = column_projects.fn_info();
-    codegen::CodeGenContext codegen_ctx(m.get(), fn_info.schemas_ctx(), nullptr,
+    codegen::CodeGenContext codegen_ctx(m.get(), fn_info.schemas_ctx(), parameter_types,
                                         manager);
     codegen::RowFnLetIRBuilder builder(&codegen_ctx);
     status =
@@ -141,16 +145,18 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto address = jit->FindFunction("test_at_fn");
 
-    int32_t (*decode)(int64_t, int8_t*, int8_t*, int8_t**) =
-        (int32_t(*)(int64_t, int8_t*, int8_t*, int8_t**))address;
-    int32_t ret2 = decode(0, row_ptr, window_ptr, output);
+    int32_t (*decode)(int64_t, int8_t*, int8_t*, int8_t*, int8_t**) =
+        (int32_t(*)(int64_t, int8_t*, int8_t*, int8_t*, int8_t**))address;
+    int32_t ret2 = decode(0, row_ptr, window_ptr, parameter_row_ptr, output);
     ASSERT_EQ(0, ret2);
 }
-
-void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
-                       type::TableDef& table, std::string udf_str,  // NOLINT
-                       std::string sql, int8_t* row_ptr, int8_t* window_ptr,
-                       vm::Schema* output_schema, int8_t** output) {
+void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
+                                       type::TableDef& table, // NOLINT
+                                       const type::TableDef& parameter_schema,
+                                       std::string udf_str,
+                                       std::string sql, int8_t* row_ptr, int8_t* window_ptr,
+                                       int8_t * parameter_row_ptr,
+                                       vm::Schema* output_schema, int8_t** output) {
     vm::SchemasContext schemas_ctx;
     auto source = schemas_ctx.AddSource();
     source->SetSourceName(table.name());
@@ -159,8 +165,22 @@ void CheckFnLetBuilder(::hybridse::node::NodeManager* manager,
         source->SetColumnID(i, i);
     }
     schemas_ctx.Build();
-    CheckFnLetBuilder(manager, &schemas_ctx, udf_str, sql, row_ptr, window_ptr,
-                      output_schema, output);
+    CheckFnLetBuilderWithParameterRow(manager, &schemas_ctx, &parameter_schema.columns(), udf_str, sql, row_ptr,
+                                      window_ptr, parameter_row_ptr, output_schema, output);
+}
+
+void CheckFnLetBuilder(::hybridse::node::NodeManager* manager, vm::SchemasContext* schemas_ctx, std::string udf_str,
+                       std::string sql, int8_t* row_ptr, int8_t* window_ptr, vm::Schema* output_schema,
+                       int8_t** output) {
+    CheckFnLetBuilderWithParameterRow(manager, schemas_ctx, nullptr, udf_str, sql, row_ptr, window_ptr, nullptr,
+                                      output_schema, output);
+}
+void CheckFnLetBuilder(::hybridse::node::NodeManager* manager, type::TableDef& table, std::string udf_str,  // NOLINT
+                       std::string sql, int8_t* row_ptr, int8_t* window_ptr, vm::Schema* output_schema,
+                       int8_t** output) {
+    type::TableDef empty_schema;
+    CheckFnLetBuilderWithParameterRow(manager, table, empty_schema, udf_str, sql, row_ptr, window_ptr, nullptr,
+                                      output_schema, output);
 }
 
 }  // namespace codegen

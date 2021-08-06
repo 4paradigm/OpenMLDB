@@ -150,6 +150,9 @@ bool VariableIRBuilder::LoadRetStruct(NativeValue* output,
 bool VariableIRBuilder::LoadRowKey(NativeValue* output, base::Status& status) {
     return LoadValue("@row_key", output, status);
 }
+bool VariableIRBuilder::LoadParameter(NativeValue* output, base::Status& status) {
+    return LoadValue("@parameter", output, status);
+}
 base::Status VariableIRBuilder::LoadMemoryPool(NativeValue* output) {
     base::Status status;
     CHECK_TRUE(LoadValue("@mem_pool", output, status), kCodegenError,

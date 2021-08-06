@@ -65,6 +65,18 @@ bool BuildWindow2(::hybridse::type::TableDef& table_def,  // NOLINT
     *buf = reinterpret_cast<int8_t*>(w);
     return true;
 }
+bool BuildParameter1Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
+                uint32_t* size) {
+    std::vector<Row> rows;
+    if (!SqlCase::LoadSchemaAndRowsFromYaml(
+        hybridse::sqlcase::FindSqlCaseBaseDirPath(),
+        "cases/resource/codegen_parameter_one_row_one_col.yaml", table_def, rows)) {
+        return false;
+    }
+    *buf = rows[0].buf();
+    *size = rows[0].size();
+    return true;
+}
 bool BuildT1Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
                 uint32_t* size) {
     std::vector<Row> rows;

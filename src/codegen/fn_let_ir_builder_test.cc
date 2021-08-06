@@ -63,7 +63,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     int8_t* buf = NULL;
     uint32_t size = 0;
     hybridse::type::TableDef table1;
-    BuildT1Buf(table1, &buf, &size);
+    ASSERT_TRUE(BuildT1Buf(table1, &buf, &size));
     Row row(base::RefCountedSlice::Create(buf, size));
 
     int8_t* output = NULL;
@@ -85,46 +85,44 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     ASSERT_EQ("hello", str2);
     free(buf);
 }
-// TODO(chenjing): cast expression
-// TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
-//    // Create an LLJIT instance.
-//    std::string sql =
-//        "SELECT cast(col1 as bigint), col6, 1.0, date(\"2020-10-01\"), "
-//        "bigint(timestamp(\"2020-05-22 10:43:40\"))  FROM t1 limit "
-//        "10;";
-//
-//    int8_t* buf = NULL;
-//    uint32_t size = 0;
-//    hybridse::type::TableDef table1;
-//    BuildT1Buf(table1, &buf, &size);
-//    Row row(base::RefCountedSlice::Create(buf, size));
-//
-//    int8_t* output = NULL;
-//    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
-//    int8_t* window_ptr = nullptr;
-//    vm::Schema schema;
-//    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
-//                      &output);
-//    hybridse::codec::RowView row_view(schema);
-//    row_view.Reset(output);
-//    ASSERT_EQ(5, schema.size());
-//
-//    ASSERT_EQ(type::kInt64, schema.Get(0).type());
-//    ASSERT_EQ(32L, row_view.GetInt64Unsafe(0));
-//
-//    ASSERT_EQ(type::kVarchar, schema.Get(1).type());
-//    ASSERT_EQ("1", row_view.GetStringUnsafe(1));
-//
-//    ASSERT_EQ(type::kDouble, schema.Get(2).type());
-//    ASSERT_EQ(1.0, row_view.GetDoubleUnsafe(2));
-//
-//    ASSERT_EQ(type::kDate, schema.Get(3).type());
-//    ASSERT_EQ(codec::Date(2020, 10, 01).date_, row_view.GetDateUnsafe(3));
-//
-//    ASSERT_EQ(type::kInt64, schema.Get(4).type());
-//    ASSERT_EQ(1590115420000L, row_view.GetInt64Unsafe(4));
-//    free(buf);
-//}
+TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
+    // Create an LLJIT instance.
+    std::string sql =
+        "SELECT cast(col1 as bigint), col6, 1.0, date(\"2020-10-01\"), "
+        "bigint(timestamp(\"2020-05-22 10:43:40\"))  FROM t1 limit "
+        "10;";
+
+    int8_t* buf = NULL;
+    uint32_t size = 0;
+    hybridse::type::TableDef table1;
+    ASSERT_TRUE(BuildT1Buf(table1, &buf, &size));
+    Row row(base::RefCountedSlice::Create(buf, size));
+
+    int8_t* output = NULL;
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
+    int8_t* window_ptr = nullptr;
+    vm::Schema schema;
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema, &output);
+    hybridse::codec::RowView row_view(schema);
+    row_view.Reset(output);
+    ASSERT_EQ(5, schema.size());
+
+    ASSERT_EQ(type::kInt64, schema.Get(0).type());
+    ASSERT_EQ(32L, row_view.GetInt64Unsafe(0));
+
+    ASSERT_EQ(type::kVarchar, schema.Get(1).type());
+    ASSERT_EQ("1", row_view.GetStringUnsafe(1));
+
+    ASSERT_EQ(type::kDouble, schema.Get(2).type());
+    ASSERT_EQ(1.0, row_view.GetDoubleUnsafe(2));
+
+    ASSERT_EQ(type::kDate, schema.Get(3).type());
+    ASSERT_EQ(codec::Date(2020, 10, 01).date_, row_view.GetDateUnsafe(3));
+
+    ASSERT_EQ(type::kInt64, schema.Get(4).type());
+    ASSERT_EQ(1590115420000L, row_view.GetInt64Unsafe(4));
+    free(buf);
+}
 
 TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     // Create an LLJIT instance.
@@ -142,8 +140,8 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     int8_t* buf2 = NULL;
     uint32_t size = 0;
     uint32_t size2 = 0;
-    BuildT1Buf(table1, &buf, &size);
-    BuildT2Buf(table2, &buf2, &size2);
+    ASSERT_TRUE(BuildT1Buf(table1, &buf, &size));
+    ASSERT_TRUE(BuildT2Buf(table2, &buf2, &size2));
     int8_t* output = NULL;
 
     Row row(1, Row(base::RefCountedSlice::Create(buf, size)), 1, Row(base::RefCountedSlice::Create(buf2, size2)));
@@ -191,7 +189,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     int8_t* ptr = NULL;
     uint32_t size = 0;
     type::TableDef table1;
-    BuildT1Buf(table1, &ptr, &size);
+    ASSERT_TRUE(BuildT1Buf(table1, &ptr, &size));
     Row row(base::RefCountedSlice::Create(ptr, size));
     int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
     int8_t* output = NULL;
@@ -209,7 +207,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     int8_t* ptr = NULL;
     uint32_t size = 0;
     type::TableDef table1;
-    BuildT1Buf(table1, &ptr, &size);
+    ASSERT_TRUE(BuildT1Buf(table1, &ptr, &size));
     Row row(base::RefCountedSlice::Create(ptr, size));
     int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
     int8_t* output = NULL;
@@ -465,6 +463,34 @@ AND " "3 " "FOLLOWING) limit 10;";
     free(ptr);
 } */
 
+TEST_F(FnLetIRBuilderTest, test_simple_project_with_placeholder) {
+    std::string sql = "SELECT col1, ? FROM t1 limit 10;";
+    int8_t* ptr = NULL;
+    uint32_t size = 0;
+    type::TableDef table1;
+    ASSERT_TRUE(BuildT1Buf(table1, &ptr, &size));
+    Row row(base::RefCountedSlice::Create(ptr, size));
+
+    int8_t * ptr2 = NULL;
+    uint32_t size2 = 0;
+    type::TableDef parameter_schema;
+    ASSERT_TRUE(BuildParameter1Buf(parameter_schema, &ptr2, &size2));
+    Row parameter_row(base::RefCountedSlice::Create(ptr2, size2));
+
+
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
+    int8_t* output = NULL;
+    int8_t* window_ptr = nullptr;
+    int8_t *parameter_row_ptr = reinterpret_cast<int8_t*>(&parameter_row);
+    vm::Schema schema;
+    CheckFnLetBuilderWithParameterRow(&manager, table1, parameter_schema, "", sql, row_ptr, window_ptr,
+                                      parameter_row_ptr, &schema, &output);
+    ASSERT_EQ(2, schema.size());
+    ASSERT_EQ(15u, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(100u, *reinterpret_cast<uint32_t*>(output + 7+4));
+    free(ptr);
+}
 }  // namespace codegen
 }  // namespace hybridse
 
