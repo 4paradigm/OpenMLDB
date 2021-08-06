@@ -34,10 +34,10 @@ using base::Status;
 using common::kTypeError;
 
 static const std::unordered_map<std::string, DataType const> type_map = {
-    {"bool", kBool},     {"in1", kBool},       {"i16", kInt16},           {"int16", kInt16},   {"smallint", kInt16},
-    {"i32", kInt32},     {"int32", kInt32},    {"int", kInt32},           {"integer", kInt32}, {"i64", kInt64},
-    {"int64", kInt64},   {"bigint", kInt64},   {"string", kVarchar},      {"float32", kFloat}, {"float", kFloat},
-    {"double", kDouble}, {"float64", kDouble}, {"timestamp", kTimestamp}, {"date", kDate},
+    {"bool", kBool},   {"in1", kBool},      {"i16", kInt16},      {"int16", kInt16},         {"smallint", kInt16},
+    {"i32", kInt32},   {"int32", kInt32},   {"int", kInt32},      {"integer", kInt32},       {"i64", kInt64},
+    {"int64", kInt64}, {"bigint", kInt64},  {"string", kVarchar}, {"varchar", kVarchar},   {"float32", kFloat},
+    {"float", kFloat}, {"double", kDouble}, {"float64", kDouble}, {"timestamp", kTimestamp}, {"date", kDate},
 };
 
 bool SqlEquals(const SqlNode *left, const SqlNode *right) {

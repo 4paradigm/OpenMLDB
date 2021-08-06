@@ -334,7 +334,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             node::ExprNode* expr_node;
             CHECK_STATUS(ConvertExprNode(cast_expression->expr(), node_manager, &expr_node))
             node::DataType data_type = node::DataType::kNull;
-            ConvertASTType(cast_expression->type(), node_manager, &data_type);
+            CHECK_STATUS(ConvertASTType(cast_expression->type(), node_manager, &data_type))
             *output = node_manager->MakeCastNode(data_type, expr_node);
             return base::Status::OK();
         }
