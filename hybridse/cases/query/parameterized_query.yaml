@@ -1,0 +1,325 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 0
+    desc: 带参数的Where条件命中索引
+    mode: request-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=?;
+    parameters:
+      columns: [ "p1 int"]
+      rows:
+        - [5]
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(col0, col1, col2, col3, col4, col5, col6))
+        FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(?1))
+          DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+    expect:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        0, 1, 5, 1.1, 11.1, 1, 1
+        0, 2, 5, 2.2, 22.2, 2, 22
+  - id: 1
+    desc: 带参数的Where条件部分命中索引
+    mode: request-unsupport, offline-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=? and col1 > ?;
+    parameters:
+      columns: [ "p1 int" , "p2 int" ]
+      rows:
+        - [ 55, 3 ]
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(col0, col1, col2, col3, col4, col5, col6))
+        FILTER_BY(condition=col1 > ?2, left_keys=(), right_keys=(), index_keys=(?1))
+          DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+    expect:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        1, 4, 55, 4.4, 44.4, 2, 4444
+        2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - id: 2-1
+    desc: 带参数的Where条件未命中索引
+    mode: request-unsupport, offline-unsupport
+    tags: ["在线不支持，离线可以支持，暂时不跑离线测试"]
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=? and col1 > ?;
+    parameters:
+      columns: [ "p1 int" , "p2 int" ]
+      rows:
+        - [ 55, 1 ]
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col6:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      success: false
+  - id: 2-2
+    desc: 带参数的Where条件未命中索引-离线支持
+    tags: ["TODO", "离线暂时不支持带参数查询"]
+    mode: rtidb-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=? and col1 < ?;
+    parameters:
+      columns: [ "p1 int" , "p2 int"]
+      rows:
+        - [ 5, 2 ]
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col6:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        0, 1, 5, 1.1, 11.1, 1, 1
+  - id: 3-1
+    desc: 带参数Where条件未命中索引示例2
+    mode: request-unsupport, offline-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=col3 and col1 < ?;
+    parameters:
+      columns: [ "p1 int" ]
+      rows:
+        - [ 2 ]
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      success: false
+  - id: 3-2
+    desc: 带参数Where条件未命中索引示例2
+    mode: rtidb-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col1=col5 and col1 > ?;
+    parameters:
+      columns: [ "p1 int" ]
+      rows:
+        - [ 1 ]
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        0, 2, 5, 2.2, 22.2, 2, 22
+  - id: 4
+    desc: 带参数Where条件命中索引,索引穿透简单子查询
+    mode: request-unsupport
+    db: db1
+    sql: |
+      SELECT c0, c1, c2, c3, c4, c5, c6, c1+c4 as c14 FROM
+      (select col0 as c0, col1 as c1, col2 as c2, 0.0f as c3, col4 as c4, col5 as c5, "empty_str" as c6 from {0}) as t1 where t1.c2=?;
+    parameters:
+      columns: [ "p1 int" ]
+      rows:
+        - [ 5 ]
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    batch_plan: |
+      PROJECT(type=TableProject)
+        FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(?1))
+          RENAME(name=t1)
+            SIMPLE_PROJECT(sources=(col0 -> c0, col1 -> c1, col2 -> c2, 0.000000 -> c3, col4 -> c4, col5 -> c5, empty_str -> c6))
+              DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+    expect:
+      schema: c0:string, c1:int32, c2:int16, c3:float, c4:double, c5:int64, c6:string, c14:double
+      order: c1
+      data: |
+        0, 1, 5, 0.0, 11.1, 1, empty_str, 12.1
+        0, 2, 5, 0.0, 22.2, 2, empty_str, 24.2
+  - id: 5
+    desc: lastjoin+带参数Where,包含重复列名
+    mode: request-unsupport, rtidb-unsupport
+    db: db1
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp", "c5 int"]
+        indexs: ["index1:c5:c4"]
+        rows:
+          - ["aa",2,3,1590738989000, 100]
+          - ["bb",21,31,1590738990000, 200]
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c3:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+    parameters:
+      columns: [ "p1 int" ]
+      rows:
+        - [ 100 ]
+    sql: select {0}.c1,{1}.c1,{0}.c2,{1}.c3,{1}.c4,{0}.c5 from {0} last join {1} on {0}.c3={1}.c3 where c5 = ?;
+    expect:
+      columns: ["c1 string","c1 string", "c2 int","c3 bigint", "c4 timestamp", "c5 int"]
+      rows:
+        - ["aa","aa",2,3,1590738989000, 100]
+  - id: 6-1
+    desc: 带参数的Where条件后全表聚合
+    tags: ["TODO", "@chenjing 全表聚合"]
+    mode: request-unsupport, offline-unsupport
+    db: db1
+    sql: |
+      SELECT col1 FROM {0} where col2=?;
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    batch_plan: |
+      SIMPLE_PROJECT(sources=([0]<-[0:0], [1]<-[0:1], [2]<-[0:2], [3]<-[0:3], [4]<-[0:4], [5]<-[0:5], [6]<-[0:6])
+        FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(?1))
+          DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+    parameters:
+      columns : ["p1 int"]
+      rows:
+        - [5]
+    expect:
+      schema: sum_col1:int32
+      order: sum_col1
+      data: |
+        3
+  - id: 7
+    desc: select const number with placeholder
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select ? as id, ? as col1, ? as col2;
+    parameters:
+      columns: ["?1 int", "?2 int", "?3 double"]
+      rows:
+        - [1, 2, 3.3]
+    expect:
+      schema: id:int32, col1:int, col2:double
+      order: id
+      rows:
+        - [1, 2, 3.3]
+  - id: 8
+    desc: select const str placeholder
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, ? as col1, ? as col2;
+    parameters:
+      columns: [ "?1 int", "?2 string" ]
+      rows:
+        - [ 2, "hello_world" ]
+    expect:
+      schema: id:int32, col1:int32, col2:string
+      order: id
+      rows:
+        - [1, 2, "hello_world"]
+  - id: 9
+    desc: const substr pos len with placeholder
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, substring(?, 3, 6) as col1;
+    parameters:
+      columns: ["?1 string" ]
+      rows:
+        - [ "hello_world" ]
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "llo_wo"]
+  - id: 10
+    desc: const concat with placeholder
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, concat("hello", ?, ?) as col1;
+    parameters:
+      columns: [ "?1 string", "?2 string"]
+      rows:
+        - [ "world", "abc" ]
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "helloworldabc"]
+  - id: 11
+    desc: 不依赖输入表cast常量
+    mode: request-unsupport
+    tags: ["TODO", "@chenjing, support const project node"]
+    sql: |
+      select int(?) as c1, bigint(?) as c2;
+    parameters:
+      columns: [ "?1 double", "?2 double" ]
+      rows:
+        - [ 10.5, 20.5 ]
+    expect:
+      columns: ["c1 int", "c2 bigint"]
+      rows:
+        - [10, 20]
+

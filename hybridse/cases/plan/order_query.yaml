@@ -1,0 +1,34 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 1
+    desc: 简单排序
+    sql: SELECT COL1 FROM t1 order by COL1;
+  - id: 2
+    desc: 两列排序DESC
+    mode: physical-plan-unsupport
+    sql: SELECT COL1, COL2, COL3 FROM t1 order by COL1, COL2 DESC;
+  - id: 3
+    desc: 多列排序
+    mode: physical-plan-unsupport
+    sql: SELECT * FROM t1 order by COL1, COL2, COL3;
+  - id: 4
+    desc: 排序表达式是二元表达式
+    mode: physical-plan-unsupport
+    sql: SELECT col1 FROM t1 Order By col1+col2 DESC;
+  - id: 5
+    desc: 按聚合结果排序
+    mode: physical-plan-unsupport
+    sql: SELECT SUM(COL2) as sum_col2, t1.* FROM t1 Group By col1 order by sum_col2 DESC;

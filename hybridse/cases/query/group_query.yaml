@@ -1,0 +1,169 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 1
+    desc: Group By Int16, Group未命中索引
+    mode: rtidb-unsupport
+    db: db1
+    sql: |
+      SELECT col2, sum(col1) as col1_sum, sum(col3) as col3_sum,
+      sum(col4) as col4_sum, sum(col2) as col2_sum,
+      sum(col5) as col5_sum FROM t1 Group By t1.col2;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col1:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: col2:int16, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
+
+      data: |
+        55, 12, 13.2, 133.2, 165, 6
+        5, 3, 3.3, 33.3, 10, 3
+  - id: 2-1
+    desc: Group By Int16, Group命中索引
+    mode: request-unsupport
+    tags: ["TODO", "udf脚本语义化不完善"]
+    db: db1
+    sql: |
+      %%fun
+      def test_sum(col:list<int>):int
+          result = 0
+          for x in col
+              result += x
+          return result
+      end
+      %%sql
+      SELECT col2, test_sum(col1) as col1_sum, sum(col3) as col3_sum,
+      sum(col4) as col4_sum, sum(col2) as col2_sum,
+      sum(col5) as col5_sum FROM t1 Group By t1.col2;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index2:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: col2:int16, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
+
+      data: |
+        55, 12, 13.2, 133.2, 165, 6
+        5, 3, 3.3, 33.3, 10, 3
+  - id: 2-2
+    desc: Group By Int16, Group命中索引
+    mode: request-unsupport
+    db: db1
+    sql: |
+      SELECT col2, sum(col1) as col1_sum, sum(col3) as col3_sum,
+      sum(col4) as col4_sum, sum(col2) as col2_sum,
+      sum(col5) as col5_sum FROM t1 Group By t1.col2;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index2:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: col2:int16, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
+
+      data: |
+        55, 12, 13.2, 133.2, 165, 6
+        5, 3, 3.3, 33.3, 10, 3
+  - id: 3
+    desc: Group By 字符串, Group未命中索引
+    mode: rtidb-unsupport
+    db: db1
+    sql: |
+      SELECT col0, sum(col1) as col1_sum, sum(col3) as col3_sum,
+      sum(col4) as col4_sum, sum(col2) as col2_sum,
+      sum(col5) as col5_sum FROM t1 Group By col0;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col1:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: col0:string, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
+
+      data: |
+        2, 5, 5.5, 55.5, 55, 3
+        1, 7, 7.7, 77.7, 110, 3
+        0, 3, 3.3, 33.3, 10, 3
+  - id: 4
+    desc: Group By 字符串, Group命中索引
+    mode: request-unsupport
+    db: db1
+    sql: |
+      SELECT col0, sum(col1) as col1_sum, sum(col3) as col3_sum,
+      sum(col4) as col4_sum, sum(col2) as col2_sum,
+      sum(col5) as col5_sum FROM t1 Group By col0;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index0:col0:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: col0:string, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
+
+      data: |
+        0, 3, 3.3, 33.3, 10, 3
+        1, 7, 7.7, 77.7, 110, 3
+        2, 5, 5.5, 55.5, 55, 3
+  - id: 5
+    desc: Group By 字符串 Limit
+    mode: request-unsupport, offline-unsupport
+    db: db1
+    sql: |
+      SELECT col0, sum(col1) as col1_sum, sum(col3) as col3_sum,
+      sum(col4) as col4_sum, sum(col2) as col2_sum,
+      sum(col5) as col5_sum FROM t1 Group By col0 limit 2;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index0:col0:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: col0:string, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
+      data: |
+        0, 3, 3.3, 33.3, 10, 3
+        1, 7, 7.7, 77.7, 110, 3
