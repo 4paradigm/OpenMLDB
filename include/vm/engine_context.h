@@ -53,6 +53,7 @@ class CompileInfo {
     virtual const ComileType GetCompileType() const = 0;
     virtual const std::string& GetEncodedSchema() const = 0;
     virtual const Schema& GetRequestSchema() const = 0;
+    virtual const Schema& GetParameterSchema() const = 0;
     virtual const std::string& GetRequestName() const = 0;
     virtual const hybridse::vm::BatchRequestInfo& GetBatchRequestInfo()
         const = 0;

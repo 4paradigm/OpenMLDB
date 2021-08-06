@@ -25,7 +25,7 @@ std::shared_ptr<TableHandler> PartitionProjectWrapper::GetSegment(
         return std::shared_ptr<TableHandler>();
     } else {
         return std::shared_ptr<TableHandler>(
-            new TableProjectWrapper(segment, fun_));
+            new TableProjectWrapper(segment, parameter_, fun_));
     }
 }
 base::ConstIterator<uint64_t, Row>* PartitionProjectWrapper::GetRawIterator() {
@@ -33,7 +33,7 @@ base::ConstIterator<uint64_t, Row>* PartitionProjectWrapper::GetRawIterator() {
     if (!iter) {
         return nullptr;
     } else {
-        return new IteratorProjectWrapper(std::move(iter), fun_);
+        return new IteratorProjectWrapper(std::move(iter), parameter_, fun_);
     }
 }
 
@@ -44,7 +44,7 @@ std::shared_ptr<TableHandler> PartitionFilterWrapper::GetSegment(
         return std::shared_ptr<TableHandler>();
     } else {
         return std::shared_ptr<TableHandler>(
-            new TableFilterWrapper(segment, fun_));
+            new TableFilterWrapper(segment, parameter_, fun_));
     }
 }
 base::ConstIterator<uint64_t, Row>* PartitionFilterWrapper::GetRawIterator() {
@@ -52,7 +52,7 @@ base::ConstIterator<uint64_t, Row>* PartitionFilterWrapper::GetRawIterator() {
     if (!iter) {
         return nullptr;
     } else {
-        return new IteratorFilterWrapper(std::move(iter), fun_);
+        return new IteratorFilterWrapper(std::move(iter), parameter_, fun_);
     }
 }
 std::shared_ptr<PartitionHandler> TableProjectWrapper::GetPartition(
@@ -62,7 +62,7 @@ std::shared_ptr<PartitionHandler> TableProjectWrapper::GetPartition(
         return std::shared_ptr<PartitionHandler>();
     } else {
         return std::shared_ptr<PartitionHandler>(
-            new PartitionProjectWrapper(partition, fun_));
+            new PartitionProjectWrapper(partition, parameter_, fun_));
     }
 }
 std::shared_ptr<PartitionHandler> TableFilterWrapper::GetPartition(
@@ -72,7 +72,7 @@ std::shared_ptr<PartitionHandler> TableFilterWrapper::GetPartition(
         return std::shared_ptr<PartitionHandler>();
     } else {
         return std::shared_ptr<PartitionHandler>(
-            new PartitionFilterWrapper(partition, fun_));
+            new PartitionFilterWrapper(partition, parameter_, fun_));
     }
 }
 }  // namespace vm

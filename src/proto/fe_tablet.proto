@@ -29,6 +29,8 @@ message QueryRequest {
     optional bytes row = 4;
     optional bool is_debug = 5 [default = true];
     optional uint32 task_id = 6 [default = 0];
+    repeated type.ColumnDef parameter_schema = 7;
+    optional bytes parameter_row = 8;
 }
 
 message QueryResponse {
@@ -61,6 +63,7 @@ message InsertRequest {
 message ExplainRequest {
     optional string db = 1;
     optional string sql = 2;
+    repeated type.ColumnDef parameter_schema = 3;
 };
 
 message ExplainResponse {

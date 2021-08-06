@@ -128,6 +128,7 @@ class EngineTestRunner {
                                   const std::vector<Row>& rows) = 0;
     virtual bool AddRowIntoTable(const std::string table_name,
                                  const Row& rows) = 0;
+    virtual Status PrepareParameter();
     virtual Status PrepareData() = 0;
     virtual Status Compute(std::vector<codec::Row>*) = 0;
     int return_code() const { return return_code_; }
@@ -141,6 +142,8 @@ class EngineTestRunner {
     EngineOptions options_;
     std::shared_ptr<Engine> engine_ = nullptr;
     std::shared_ptr<RunSession> session_ = nullptr;
+    codec::Schema parameter_schema_;
+    std::vector<Row> parameter_rows_;
     int return_code_ = ENGINE_TEST_RET_INVALID_CASE;
 };
 
@@ -181,7 +184,8 @@ class BatchEngineTestRunner : public EngineTestRunner {
         auto batch_session =
             std::dynamic_pointer_cast<BatchRunSession>(session_);
         CHECK_TRUE(batch_session != nullptr, common::kSqlError);
-        int run_ret = batch_session->Run(*outputs);
+        Row parameter = parameter_rows_.empty() ? Row() : parameter_rows_[0];
+        int run_ret = batch_session->Run(parameter, *outputs);
         if (run_ret != 0) {
             return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
         }
@@ -258,9 +262,10 @@ class RequestEngineTestRunner : public EngineTestRunner {
         auto request_session =
             std::dynamic_pointer_cast<RequestRunSession>(session_);
         std::string request_name = request_session->GetRequestName();
+        Row parameter = parameter_rows_.empty() ? Row() : parameter_rows_[0];
         for (auto in_row : request_rows_) {
             Row out_row;
-            int run_ret = request_session->Run(in_row, &out_row);
+            int run_ret = request_session->Run(in_row, parameter, &out_row);
             if (run_ret != 0) {
                 return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
                 return Status(kSqlError, "Run request session failed");
@@ -412,8 +417,8 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
         auto request_session =
             std::dynamic_pointer_cast<BatchRequestRunSession>(session_);
         CHECK_TRUE(request_session != nullptr, common::kSqlError);
-
-        int run_ret = request_session->Run(request_rows_, *outputs);
+        Row parameter = parameter_rows_.empty() ? Row() : parameter_rows_[0];
+        int run_ret = request_session->Run(request_rows_, parameter, *outputs);
         if (run_ret != 0) {
             return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
             return Status(kSqlError, "Run batch request session failed");

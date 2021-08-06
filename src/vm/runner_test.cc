@@ -274,12 +274,13 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     auto group_runner = dynamic_cast<GroupRunner*>(root);
     std::vector<Row> rows;
     hybridse::type::TableDef temp_table;
+    Row empty_parameter;
     BuildRows(temp_table, rows);
-    ASSERT_EQ("1|5", group_runner->partition_gen_.GetKey(rows[0]));
-    ASSERT_EQ("2|5", group_runner->partition_gen_.GetKey(rows[1]));
-    ASSERT_EQ("3|55", group_runner->partition_gen_.GetKey(rows[2]));
-    ASSERT_EQ("4|55", group_runner->partition_gen_.GetKey(rows[3]));
-    ASSERT_EQ("5|55", group_runner->partition_gen_.GetKey(rows[4]));
+    ASSERT_EQ("1|5", group_runner->partition_gen_.GetKey(rows[0], empty_parameter));
+    ASSERT_EQ("2|5", group_runner->partition_gen_.GetKey(rows[1], empty_parameter));
+    ASSERT_EQ("3|55", group_runner->partition_gen_.GetKey(rows[2], empty_parameter));
+    ASSERT_EQ("4|55", group_runner->partition_gen_.GetKey(rows[3], empty_parameter));
+    ASSERT_EQ("5|55", group_runner->partition_gen_.GetKey(rows[4], empty_parameter));
 }
 
 TEST_F(RunnerTest, RunnerPrintDataTest) {

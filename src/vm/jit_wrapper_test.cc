@@ -86,8 +86,9 @@ void simple_test(const EngineOptions &options) {
     row_builder.AppendDouble(3.14);
     row_builder.AppendInt64(42);
 
+    hybridse::codec::Row empty_parameter;
     hybridse::codec::Row row(base::RefCountedSlice::Create(buf, 1024));
-    hybridse::codec::Row output = CoreAPI::RowProject(fn, row);
+    hybridse::codec::Row output = CoreAPI::RowProject(fn, row, empty_parameter);
     codec::RowView row_view(*schema, output.buf(), output.size());
     double c1;
     int64_t c2;

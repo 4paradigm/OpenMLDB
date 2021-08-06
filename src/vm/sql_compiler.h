@@ -105,6 +105,9 @@ class SqlCompileInfo : public CompileInfo {
     virtual const Schema& GetRequestSchema() const {
         return sql_ctx.request_schema;
     }
+    virtual const Schema& GetParameterSchema() const {
+        return sql_ctx.parameter_types;
+    }
     virtual const std::string& GetRequestName() const {
         return sql_ctx.request_name;
     }

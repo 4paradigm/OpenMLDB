@@ -155,6 +155,11 @@ class RunSession {
         return compile_info_->GetSchema();
     }
 
+    /// Return query parameter schema.
+    virtual const Schema& GetParameterSchema() const {
+        return compile_info_->GetParameterSchema();
+    }
+
     /// Return query schema string.
     virtual const std::string& GetEncodedSchema() const {
         return compile_info_->GetEncodedSchema();
@@ -178,12 +183,15 @@ class RunSession {
 
     /// Bind this run session with specific procedure
     void SetSpName(const std::string& sp_name) { sp_name_ = sp_name; }
+    /// Bing the run session with specific parameter schema
+    void SetParameterSchema(const codec::Schema& schema) { parameter_schema_ = schema; }
     /// Return the engine mode of this run session
     EngineMode engine_mode() const { return engine_mode_; }
 
  protected:
     std::shared_ptr<hybridse::vm::CompileInfo> compile_info_;
     hybridse::vm::EngineMode engine_mode_;
+    codec::Schema parameter_schema_;
     bool is_debug_;
     std::string sp_name_;
     friend Engine;
@@ -195,13 +203,13 @@ class BatchRunSession : public RunSession {
     explicit BatchRunSession(bool mini_batch = false)
         : RunSession(kBatchMode), mini_batch_(mini_batch) {}
     ~BatchRunSession() {}
-    /// \brief Query sql in batch mode.
+    /// \brief Query sql with parameter row in batch mode.
     /// Query results will be returned as std::vector<Row> in output
-    int32_t Run(std::vector<Row>& output,  // NOLINT
+    int32_t Run(const Row& parameter_row, std::vector<Row>& output,  // NOLINT
                 uint64_t limit = 0);
     /// \brief Query sql in batch mode.
     /// Return query result as TableHandler pointer.
-    std::shared_ptr<TableHandler> Run();
+    std::shared_ptr<TableHandler> Run(const Row& parameter_row);
 
  private:
     const bool mini_batch_;
@@ -218,7 +226,8 @@ class RequestRunSession : public RunSession {
     /// \param in_row request row
     /// \param output query result will be returned as Row in output
     /// \return `0` if run successfully else negative integer
-    int32_t Run(const Row& in_row, Row* output);                    // NOLINT
+    int32_t Run(const Row& in_row, const Row& parameter_row,
+                Row* output);  // NOLINT
 
     /// \brief Run a task specified by task_id in request mode.
     ///
@@ -226,8 +235,8 @@ class RequestRunSession : public RunSession {
     /// \param in_row: request row
     /// \param[out] output: result is written to this variable
     /// \return `0` if run successfully else negative integer
-    int32_t Run(uint32_t task_id, const Row& in_row, Row* output);  // NOLINT
-
+    int32_t Run(uint32_t task_id, const Row& in_row, const Row& parameter_row,
+                Row* output);  // NOLINT
 
     /// \brief Return the schema of request row
     virtual const Schema& GetRequestSchema() const {
@@ -260,7 +269,7 @@ class BatchRequestRunSession : public RunSession {
     /// \param request_batch: a batch of request rows
     /// \param output: query results will be returned as std::vector<Row> in output
     /// \return 0 if runs successfully else negative integer
-    int32_t Run(const std::vector<Row>& request_batch,
+    int32_t Run(const std::vector<Row>& request_batch, const Row& parameter_row,
                 std::vector<Row>& output);  // NOLINT
 
     /// \brief Run a task specified by task_id in request mode.
@@ -268,7 +277,7 @@ class BatchRequestRunSession : public RunSession {
     /// \param request_batch: a batch of request rows
     /// \param output: query results will be returned as std::vector<Row> in output
     /// \return 0 if runs successfully else negative integer
-    int32_t Run(const uint32_t id, const std::vector<Row>& request_batch,
+    int32_t Run(const uint32_t id, const std::vector<Row>& request_batch, const Row& parameter_row,
                 std::vector<Row>& output);  // NOLINT
 
     /// \brief Add common column idx
@@ -344,14 +353,15 @@ class Engine {
     /// The success or fail status message is returned as Status in status.
     /// TODO: base::Status* status -> base::Status& status
     bool Explain(const std::string& sql, const std::string& db,
-                 EngineMode engine_mode, ExplainOutput* explain_output,
+                 EngineMode engine_mode, const codec::Schema& parameter_schema,
+                 ExplainOutput* explain_output,
                  base::Status* status);
 
     /// \brief Same as above, but allowing compiling with configuring common column indices.
     ///
     /// The common column indices are used for common column optimization under EngineMode::kBatchRequestMode
     bool Explain(const std::string& sql, const std::string& db,
-                 EngineMode engine_mode,
+                 EngineMode engine_mode, const codec::Schema& parameter_schema,
                  const std::set<size_t>& common_column_indices,
                  ExplainOutput* explain_output, base::Status* status);
 

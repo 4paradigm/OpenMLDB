@@ -139,7 +139,7 @@ class SimpleWrapperFun : public ProjectFun {
  public:
     SimpleWrapperFun() : ProjectFun() {}
     ~SimpleWrapperFun() {}
-    Row operator()(const Row& row) const override { return project(row); }
+    Row operator()(const Row& row, const Row& parameter) const override { return project(row); }
 };
 
 TEST_F(MemCataLogTest, table_hander_wrapper_test) {
@@ -154,7 +154,8 @@ TEST_F(MemCataLogTest, table_hander_wrapper_test) {
     }
 
     SimpleWrapperFun fn;
-    vm::TableProjectWrapper wrapper(table_handler, &fn);
+    Row parameter;
+    vm::TableProjectWrapper wrapper(table_handler, parameter, &fn);
 
     type::TableDef table2;
     {
@@ -198,7 +199,8 @@ TEST_F(MemCataLogTest, partition_hander_wrapper_test) {
     partition_handler->Sort(false);
 
     SimpleWrapperFun fn;
-    vm::PartitionProjectWrapper wrapper(partition_handler, &fn);
+    Row parameter;
+    vm::PartitionProjectWrapper wrapper(partition_handler, parameter, &fn);
 
     type::TableDef table2;
     {

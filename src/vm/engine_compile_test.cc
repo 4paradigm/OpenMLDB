@@ -275,9 +275,10 @@ TEST_F(EngineCompileTest, RouterTest) {
         options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         ExplainOutput explain_output;
+        codec::Schema empty_parameter_schema;
         base::Status status;
         ASSERT_TRUE(engine.Explain(sql, "simple_db", kBatchRequestMode,
-                                   &explain_output, &status));
+                                   empty_parameter_schema, &explain_output, &status));
         ASSERT_EQ(explain_output.router.GetMainTable(), "t1");
         ASSERT_EQ(explain_output.router.GetRouterCol(), "col2");
     }
@@ -308,6 +309,7 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
     AddTable(db, table_def);
     catalog->AddDatabase(db);
 
+    codec::Schema empty_parameter_schema;
     std::set<size_t> common_column_indices({2, 3, 5});
     std::string sql =
         "select col0, col1, col2, sum(col1) over w1, \n"
@@ -321,6 +323,7 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
     ExplainOutput explain_output;
     base::Status status;
     ASSERT_TRUE(engine.Explain(sql, "simple_db", kBatchRequestMode,
+                               empty_parameter_schema,
                                common_column_indices, &explain_output,
                                &status));
     ASSERT_TRUE(status.isOK()) << status;

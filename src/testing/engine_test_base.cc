@@ -339,7 +339,19 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(const std::string& cre
     LOG(INFO) << oss.str();
     return Status::OK();
 }
-
+Status EngineTestRunner::PrepareParameter() {
+    if (!sql_case_.parameters().columns_.empty()) {
+        CHECK_TRUE(sql_case_.parameters().rows_.size() <= 1, common::kUnSupport,
+                   "Multiple parameter-rows aren't supported currently");
+        this->parameter_schema_ = sql_case_.ExtractParameterTypes();
+        CHECK_TRUE(parameter_schema_.size() > 0, common::kUnSupport, "Invalid parameter schema!")
+        CHECK_TRUE(sql_case_.ExtractRows(parameter_schema_, sql_case_.parameters().rows_, this->parameter_rows_),
+                   kSqlError, "Extract case parameters rows failed");
+        CHECK_TRUE(this->parameter_rows_.size() <= 1, common::kUnSupport,
+                   "Multiple parameter-rows aren't supported currently");
+    }
+    return base::Status::OK();
+}
 void EngineTestRunner::InitSqlCase() {
     for (size_t idx = 0; idx < sql_case_.inputs_.size(); idx++) {
         if (!sql_case_.inputs_[idx].create_.empty()) {
@@ -356,6 +368,7 @@ void EngineTestRunner::InitSqlCase() {
 
 Status EngineTestRunner::Compile() {
     CHECK_TRUE(engine_ != nullptr, common::kSqlError, "Engine is not init");
+    CHECK_STATUS(PrepareParameter())
     std::string sql_str = sql_case_.sql_str();
     for (int j = 0; j < sql_case_.CountInputs(); ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
@@ -366,6 +379,7 @@ Status EngineTestRunner::Compile() {
     if (hybridse::sqlcase::SqlCase::IsDebug() || sql_case_.debug()) {
         session_->EnableDebug();
     }
+    session_->SetParameterSchema(parameter_schema_);
     struct timeval st;
     struct timeval et;
     gettimeofday(&st, nullptr);
@@ -499,6 +513,8 @@ INSTANTIATE_TEST_SUITE_P(EngineUdfQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/udf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineOperatorQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/operator_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineParameterizedQuery, EngineTest,
+                         testing::ValuesIn(sqlcase::InitCases("/cases/query/parameterized_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineUdafQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/udaf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineExtreamQuery, EngineTest,

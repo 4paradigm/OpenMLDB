@@ -253,7 +253,7 @@ bool ParameterExpr::Equals(const ExprNode *node) const {
     return this->position_ == that->position_;
 }
 const std::string ParameterExpr::GetExprString() const {
-    return "(?" + std::to_string(position_) + ")";
+    return "?" + std::to_string(position_);
 }
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);

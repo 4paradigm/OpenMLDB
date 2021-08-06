@@ -1,7 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+### Features
 
++ Support parameterized query [#170](https://github.com/4paradigm/HybridSE/issues/170)
 ## [0.2.0] - 2021-07-16
 ### SQL Syntax
 

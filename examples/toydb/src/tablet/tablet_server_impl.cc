@@ -156,6 +156,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
     butil::IOBuf& buf = cntl->response_attachment();
     if (request->is_batch()) {
         vm::BatchRunSession session;
+        session.SetParameterSchema(request->parameter_schema());
         {
             base::Status base_status;
             bool ok = engine_->Get(request->sql(), request->db(), session,
@@ -171,8 +172,8 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         if (request->is_debug()) {
             session.EnableDebug();
         }
-
-        auto table = session.Run();
+        codec::Row parameter(request->parameter_row());
+        auto table = session.Run(parameter);
 
         if (!table) {
             LOG(WARNING) << "fail to run sql " << request->sql();
@@ -202,6 +203,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             return;
         }
         vm::RequestRunSession session;
+        session.SetParameterSchema(request->parameter_schema());
         {
             base::Status base_status;
             bool ok = engine_->Get(request->sql(), request->db(), session,
@@ -216,9 +218,10 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         if (request->is_debug()) {
             session.EnableDebug();
         }
+        codec::Row parameter(request->parameter_row());
         codec::Row row(request->row());
         codec::Row output;
-        int32_t ret = session.Run(request->task_id(), row, &output);
+        int32_t ret = session.Run(request->task_id(), row, parameter, &output);
         if (ret != 0) {
             LOG(WARNING) << "fail to run sql " << request->sql();
             status->set_code(common::kSqlError);
@@ -241,6 +244,7 @@ void TabletServerImpl::Explain(RpcController* ctrl,
     vm::ExplainOutput output;
     base::Status base_status;
     bool ok = engine_->Explain(request->sql(), request->db(), vm::kRequestMode,
+                               request->parameter_schema(),
                                &output, &base_status);
     if (!ok || base_status.code != 0) {
         status->set_msg(base_status.str());

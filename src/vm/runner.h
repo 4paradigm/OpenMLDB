@@ -68,8 +68,8 @@ class RowProjectFun : public ProjectFun {
  public:
     explicit RowProjectFun(const int8_t* fn) : ProjectFun(), fn_(fn) {}
     ~RowProjectFun() {}
-    Row operator()(const Row& row) const override {
-        return CoreAPI::RowProject(fn_, row, false);
+    Row operator()(const Row& row, const Row& parameter) const override {
+        return CoreAPI::RowProject(fn_, row, parameter, false);
     }
     const int8_t* fn_;
 };
@@ -79,7 +79,7 @@ class ProjectGenerator : public FnGenerator {
     explicit ProjectGenerator(const FnInfo& info)
         : FnGenerator(info), fun_(info.fn_ptr()) {}
     virtual ~ProjectGenerator() {}
-    const Row Gen(const Row& row);
+    const Row Gen(const Row& row, const Row& parameter);
     RowProjectFun fun_;
 };
 
@@ -88,28 +88,28 @@ class ConstProjectGenerator : public FnGenerator {
     explicit ConstProjectGenerator(const FnInfo& info)
         : FnGenerator(info), fun_(info.fn_ptr()) {}
     virtual ~ConstProjectGenerator() {}
-    const Row Gen();
+    const Row Gen(const Row& parameter);
     RowProjectFun fun_;
 };
 class AggGenerator : public FnGenerator {
  public:
     explicit AggGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~AggGenerator() {}
-    const Row Gen(std::shared_ptr<TableHandler> table);
+    const Row Gen(const codec::Row& parameter_row, std::shared_ptr<TableHandler> table);
 };
 class WindowProjectGenerator : public FnGenerator {
  public:
     explicit WindowProjectGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~WindowProjectGenerator() {}
-    const Row Gen(const uint64_t key, const Row row, const bool is_instance,
+    const Row Gen(const uint64_t key, const Row row, const codec::Row& parameter_row, const bool is_instance,
                   size_t append_slices, Window* window);
 };
 class KeyGenerator : public FnGenerator {
  public:
     explicit KeyGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~KeyGenerator() {}
-    const std::string Gen(const Row& row);
-    const std::string GenConst();
+    const std::string Gen(const Row& row, const Row& parameter);
+    const std::string GenConst(const Row& parameter);
 };
 class OrderGenerator : public FnGenerator {
  public:
@@ -121,7 +121,7 @@ class ConditionGenerator : public FnGenerator {
  public:
     explicit ConditionGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~ConditionGenerator() {}
-    const bool Gen(const Row& row) const;
+    const bool Gen(const Row& row, const Row& parameter) const;
 };
 class RangeGenerator {
  public:
@@ -165,7 +165,7 @@ class FilterKeyGenerator {
         : filter_key_(filter_key.fn_info()) {}
     virtual ~FilterKeyGenerator() {}
     const bool Valid() const { return filter_key_.Valid(); }
-    std::shared_ptr<TableHandler> Filter(std::shared_ptr<TableHandler> table,
+    std::shared_ptr<TableHandler> Filter(const Row& parameter, std::shared_ptr<TableHandler> table,
                                          const std::string& request_keys) {
         if (!filter_key_.Valid()) {
             return table;
@@ -177,7 +177,7 @@ class FilterKeyGenerator {
         if (iter) {
             iter->SeekToFirst();
             while (iter->Valid()) {
-                std::string keys = filter_key_.Gen(iter->GetValue());
+                std::string keys = filter_key_.Gen(iter->GetValue(), parameter);
                 if (request_keys == keys) {
                     mem_table->AddRow(iter->GetKey(), iter->GetValue());
                 }
@@ -186,8 +186,8 @@ class FilterKeyGenerator {
         }
         return mem_table;
     }
-    const std::string GetKey(const Row& row) {
-        return filter_key_.Valid() ? filter_key_.Gen(row) : "";
+    const std::string GetKey(const Row& row, const Row& parameter) {
+        return filter_key_.Valid() ? filter_key_.Gen(row, parameter) : "";
     }
     KeyGenerator filter_key_;
 };
@@ -200,12 +200,12 @@ class PartitionGenerator {
 
     const bool Valid() const { return key_gen_.Valid(); }
     std::shared_ptr<PartitionHandler> Partition(
-        std::shared_ptr<DataHandler> input);
+        std::shared_ptr<DataHandler> input, const Row& parameter);
     std::shared_ptr<PartitionHandler> Partition(
-        std::shared_ptr<PartitionHandler> table);
+        std::shared_ptr<PartitionHandler> table, const Row& parameter);
     std::shared_ptr<PartitionHandler> Partition(
-        std::shared_ptr<TableHandler> table);
-    const std::string GetKey(const Row& row) { return key_gen_.Gen(row); }
+        std::shared_ptr<TableHandler> table, const Row& parameter);
+    const std::string GetKey(const Row& row, const Row& parameter) { return key_gen_.Gen(row, parameter); }
 
  private:
     KeyGenerator key_gen_;
@@ -241,9 +241,10 @@ class IndexSeekGenerator {
         : index_key_gen_(key.fn_info()) {}
     virtual ~IndexSeekGenerator() {}
     std::shared_ptr<TableHandler> SegmnetOfConstKey(
+        const Row& parameter,
         std::shared_ptr<DataHandler> input);
     std::shared_ptr<TableHandler> SegmentOfKey(
-        const Row& row, std::shared_ptr<DataHandler> input);
+        const Row& row, const Row& parameter, std::shared_ptr<DataHandler> input);
     const bool Valid() const { return index_key_gen_.Valid(); }
 
  private:
@@ -259,14 +260,15 @@ class FilterGenerator : public PredicateFun {
     const bool Valid() const {
         return index_seek_gen_.Valid() || condition_gen_.Valid();
     }
-    std::shared_ptr<TableHandler> Filter(std::shared_ptr<TableHandler> table);
+    std::shared_ptr<TableHandler> Filter(std::shared_ptr<TableHandler> table,
+                                         const Row& parameter);
     std::shared_ptr<TableHandler> Filter(
-        std::shared_ptr<PartitionHandler> table);
-    bool operator()(const Row& row) const override {
+        std::shared_ptr<PartitionHandler> table, const Row& parameter);
+    bool operator()(const Row& row, const Row& parameter) const override {
         if (!Valid()) {
             return true;
         }
-        return condition_gen_.Gen(row);
+        return condition_gen_.Gen(row, parameter);
     }
 
  private:
@@ -300,12 +302,12 @@ class RequestWindowGenertor {
           index_seek_gen_(window.index_key_) {}
     virtual ~RequestWindowGenertor() {}
     std::shared_ptr<TableHandler> GetRequestWindow(
-        const Row& row, std::shared_ptr<DataHandler> input) {
-        auto segment = index_seek_gen_.SegmentOfKey(row, input);
+        const Row& row, const Row& parameter, std::shared_ptr<DataHandler> input) {
+        auto segment = index_seek_gen_.SegmentOfKey(row, parameter, input);
 
         if (filter_gen_.Valid()) {
-            auto filter_key = filter_gen_.GetKey(row);
-            segment = filter_gen_.Filter(segment, filter_key);
+            auto filter_key = filter_gen_.GetKey(row, parameter);
+            segment = filter_gen_.Filter(parameter, segment, filter_key);
         }
         if (sort_gen_.Valid()) {
             segment = sort_gen_.Sort(segment, true);
@@ -485,13 +487,19 @@ class Runner : public node::NodeBase<Runner> {
                                   int pos, type::Type type);
     static bool GetColumnBool(const int8_t* buf, const RowView* view, int idx,
                               type::Type type);
+    static Row RowConstProject(
+        const int8_t* fn, const bool need_free = false);
+    static Row RowProject(const int8_t* fn, const hybridse::codec::Row& row, const hybridse::codec::Row& parameter,
+                          const bool need_free);
     static Row WindowProject(const int8_t* fn, const uint64_t key,
-                             const Row row, const bool is_instance,
+                             const Row row, const Row& parameter,
+                             const bool is_instance,
                              size_t append_slices, Window* window);
-    static Row GroupbyProject(const int8_t* fn, TableHandler* table);
+    static Row GroupbyProject(const int8_t* fn, const Row& parameter, TableHandler* table);
     static const Row RowLastJoinTable(size_t left_slices, const Row& left_row,
                                       size_t right_slices,
                                       std::shared_ptr<TableHandler> right_table,
+                                      const hybridse::codec::Row& parameter,
                                       SortGenerator& right_sort,    // NOLINT
                                       ConditionGenerator& filter);  // NOLINT
     static std::shared_ptr<TableHandler> TableReverse(
@@ -578,7 +586,8 @@ class WindowUnionGenerator : public InputsGenerator {
     WindowUnionGenerator() : InputsGenerator() {}
     virtual ~WindowUnionGenerator() {}
     std::vector<std::shared_ptr<PartitionHandler>> PartitionEach(
-        std::vector<std::shared_ptr<DataHandler>> union_inputs);
+        std::vector<std::shared_ptr<DataHandler>> union_inputs,
+        const Row& parameter);
     void AddWindowUnion(const WindowOp& window_op, Runner* runner) {
         windows_gen_.push_back(WindowGenerator(window_op));
         AddInput(runner);
@@ -598,13 +607,13 @@ class RequestWindowUnionGenerator : public InputsGenerator {
         AddInput(runner);
     }
     std::vector<std::shared_ptr<TableHandler>> GetRequestWindows(
-        const Row& row,
+        const Row& row, const Row& parameter,
         std::vector<std::shared_ptr<DataHandler>> union_inputs) {
         std::vector<std::shared_ptr<TableHandler>> union_segments(inputs_cnt_);
         if (!windows_gen_.empty()) {
             for (size_t i = 0; i < inputs_cnt_; i++) {
                 union_segments[i] =
-                    windows_gen_[i].GetRequestWindow(row, union_inputs[i]);
+                    windows_gen_[i].GetRequestWindow(row, parameter, union_inputs[i]);
             }
         }
         return union_segments;
@@ -623,22 +632,23 @@ class JoinGenerator {
           left_slices_(left_slices),
           right_slices_(right_slices) {}
     virtual ~JoinGenerator() {}
-    bool TableJoin(std::shared_ptr<TableHandler> left,
-                   std::shared_ptr<TableHandler> right,
+    bool TableJoin(std::shared_ptr<TableHandler> left, std::shared_ptr<TableHandler> right,
+                   const Row& parameter,
                    std::shared_ptr<MemTimeTableHandler> output);  // NOLINT
-    bool TableJoin(std::shared_ptr<TableHandler> left,
-                   std::shared_ptr<PartitionHandler> right,
+    bool TableJoin(std::shared_ptr<TableHandler> left, std::shared_ptr<PartitionHandler> right,
+                   const Row& parameter,
                    std::shared_ptr<MemTimeTableHandler> output);  // NOLINT
     bool PartitionJoin(std::shared_ptr<PartitionHandler> left,
                        std::shared_ptr<TableHandler> right,
+                       const Row& parameter,
                        std::shared_ptr<MemPartitionHandler> output);  // NOLINT
     bool PartitionJoin(std::shared_ptr<PartitionHandler> left,
                        std::shared_ptr<PartitionHandler> right,
+                       const Row& parameter,
                        std::shared_ptr<MemPartitionHandler>);  // NOLINT
 
-    Row RowLastJoin(const Row& left_row, std::shared_ptr<DataHandler> right);
-    Row RowLastJoinDropLeftSlices(const Row& left_row,
-                                  std::shared_ptr<DataHandler> right);
+    Row RowLastJoin(const Row& left_row, std::shared_ptr<DataHandler> right, const Row& parameter);
+    Row RowLastJoinDropLeftSlices(const Row& left_row, std::shared_ptr<DataHandler> right, const Row& parameter);
     ConditionGenerator condition_gen_;
     KeyGenerator left_key_gen_;
     PartitionGenerator right_group_gen_;
@@ -648,9 +658,11 @@ class JoinGenerator {
  private:
     Row RowLastJoinPartition(
         const Row& left_row,
-        std::shared_ptr<PartitionHandler> partition);  // NOLINT
+        std::shared_ptr<PartitionHandler> partition,
+        const Row& parameter);
     Row RowLastJoinTable(const Row& left_row,
-                         std::shared_ptr<TableHandler> table);  // NOLINT
+                         std::shared_ptr<TableHandler> table,
+                         const Row& parameter);
 
     size_t left_slices_;
     size_t right_slices_;
@@ -668,7 +680,8 @@ class WindowJoinGenerator : public InputsGenerator {
         RunnerContext& ctx);  // NOLINT
     Row Join(
         const Row& left_row,
-        const std::vector<std::shared_ptr<DataHandler>>& join_right_tables);
+        const std::vector<std::shared_ptr<DataHandler>>& join_right_tables,
+        const Row& parameter);
     std::vector<JoinGenerator> joins_gen_;
 };
 
@@ -819,7 +832,7 @@ class SelectSliceRunner : public Runner {
  private:
     struct GetSliceFn : public ProjectFun {
         explicit GetSliceFn(size_t slice) : slice_(slice) {}
-        Row operator()(const Row& row) const override;
+        Row operator()(const Row& row, const Row& parameter) const override;
         size_t slice_;
     } get_slice_fn_;
 };
@@ -880,6 +893,7 @@ class WindowAggRunner : public Runner {
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
         override;  // NOLINT
     void RunWindowAggOnKey(
+        const Row& parameter,
         std::shared_ptr<PartitionHandler> instance_partition,
         std::vector<std::shared_ptr<PartitionHandler>> union_partitions,
         std::vector<std::shared_ptr<DataHandler>> joins, const std::string& key,
@@ -1415,31 +1429,37 @@ class RunnerBuilder {
 class RunnerContext {
  public:
     explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
+                           const hybridse::codec::Row& parameter,
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
           sp_name_(""),
           request_(),
           requests_(),
+          parameter_(parameter),
           is_debug_(is_debug),
           batch_cache_() {}
     explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
                            const hybridse::codec::Row& request,
+                           const hybridse::codec::Row& parameter,
                            const std::string& sp_name = "",
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
           sp_name_(sp_name),
           request_(request),
           requests_(),
+          parameter_(parameter),
           is_debug_(is_debug),
           batch_cache_() {}
     explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
                            const std::vector<Row>& request_batch,
+                           const hybridse::codec::Row& parameter,
                            const std::string& sp_name = "",
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
           sp_name_(sp_name),
           request_(),
           requests_(request_batch),
+          parameter_(parameter),
           is_debug_(is_debug),
           batch_cache_() {}
 
@@ -1448,6 +1468,7 @@ class RunnerContext {
     const hybridse::codec::Row& GetRequest(size_t idx) const {
         return requests_[idx];
     }
+    const hybridse::codec::Row& GetParameterRow() const { return parameter_; }
     hybridse::vm::ClusterJob* cluster_job() { return cluster_job_; }
     void SetRequest(const hybridse::codec::Row& request);
     void SetRequests(const std::vector<hybridse::codec::Row>& requests);
@@ -1465,6 +1486,7 @@ class RunnerContext {
     const std::string sp_name_;
     hybridse::codec::Row request_;
     std::vector<hybridse::codec::Row> requests_;
+    hybridse::codec::Row parameter_;
     size_t idx_;
     const bool is_debug_;
     // TODO(chenjing): optimize

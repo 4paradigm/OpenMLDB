@@ -983,7 +983,7 @@ TEST_F(SqlNodeTest, ParameterExprTest) {
     ASSERT_TRUE(node::ExprEquals(parameter_expr1, parameter_expr2));
     ASSERT_FALSE(node::ExprEquals(parameter_expr1, parameter_expr3));
 
-    ASSERT_EQ("(?1)", parameter_expr1->GetExprString());
+    ASSERT_EQ("?1", parameter_expr1->GetExprString());
 }
 TEST_F(SqlNodeTest, LimitNodeTest) {
     SqlNode *node1 = node_manager_->MakeLimitNode(100);

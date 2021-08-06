@@ -186,6 +186,7 @@ hybridse::vm::TableHandler* GroupbyInterface::GetTableHandler() {
 }
 
 hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
+                                              const Row parameter,
                                               const bool need_free) {
     // Init current run step runtime
     JitRuntime::get()->InitRunStep();
@@ -194,7 +195,8 @@ hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
                                             const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
     int8_t* buf = nullptr;
-    uint32_t ret = udf(0, nullptr, nullptr, nullptr, &buf);
+    auto parameter_ptr = reinterpret_cast<const int8_t*>(&parameter);
+    uint32_t ret = udf(0, nullptr, nullptr, parameter_ptr, &buf);
 
     // Release current run step resources
     JitRuntime::get()->ReleaseRunStep();
@@ -209,6 +211,7 @@ hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
 
 hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
                                          const hybridse::codec::Row row,
+                                         const hybridse::codec::Row parameter,
                                          const bool need_free) {
     if (row.empty()) {
         return hybridse::codec::Row();
@@ -221,8 +224,9 @@ hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         const_cast<int8_t*>(fn));
 
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
+    auto parameter_ptr = reinterpret_cast<const int8_t*>(&parameter);
     int8_t* buf = nullptr;
-    uint32_t ret = udf(0, row_ptr, nullptr, nullptr, &buf);
+    uint32_t ret = udf(0, row_ptr, nullptr, parameter_ptr, &buf);
 
     // Release current run step resources
     JitRuntime::get()->ReleaseRunStep();
@@ -311,7 +315,7 @@ hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                             const bool is_instance,
                                             size_t append_slices,
                                             WindowInterface* window) {
-    return Runner::WindowProject(fn, key, row, is_instance, append_slices,
+    return Runner::WindowProject(fn, key, row, Row(), is_instance, append_slices,
                                  window->GetWindow());
 }
 
@@ -324,20 +328,21 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProject(
     // Create Row from input UnsafeRow bytes
     auto row = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
                                                  inputRowSizeInBytes));
-    return Runner::WindowProject(fn, key, row, is_instance, append_slices,
+    return Runner::WindowProject(fn, key, row, Row(), is_instance, append_slices,
                                  window->GetWindow());
 }
 
 hybridse::codec::Row CoreAPI::GroupbyProject(
     const RawPtrHandle fn, hybridse::vm::GroupbyInterface* groupby_interface) {
-    return Runner::GroupbyProject(fn, groupby_interface->GetTableHandler());
+    return Runner::GroupbyProject(fn, Row(), groupby_interface->GetTableHandler());
 }
 
 bool CoreAPI::ComputeCondition(const hybridse::vm::RawPtrHandle fn,
                                const Row& row,
+                               const Row& parameter,
                                const hybridse::codec::RowView* row_view,
                                size_t out_idx) {
-    Row cond_row = CoreAPI::RowProject(fn, row, true);
+    Row cond_row = CoreAPI::RowProject(fn, row, parameter, true);
     return Runner::GetColumnBool(cond_row.buf(), row_view, out_idx,
                                  row_view->GetSchema()->Get(out_idx).type());
 }

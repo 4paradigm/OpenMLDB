@@ -127,9 +127,11 @@ class CoreAPI {
 
     static hybridse::codec::Row RowProject(const hybridse::vm::RawPtrHandle fn,
                                            const hybridse::codec::Row row,
+                                           const hybridse::codec::Row parameter,
                                            const bool need_free = false);
     static hybridse::codec::Row RowConstProject(
-        const hybridse::vm::RawPtrHandle fn, const bool need_free = false);
+        const hybridse::vm::RawPtrHandle fn, const hybridse::codec::Row parameter,
+        const bool need_free = false);
 
     // Row project API with Spark UnsafeRow optimization
     static hybridse::codec::Row UnsafeRowProject(
@@ -162,6 +164,7 @@ class CoreAPI {
 
     static bool ComputeCondition(const hybridse::vm::RawPtrHandle fn,
                                  const Row& row,
+                                 const Row& parameter,
                                  const hybridse::codec::RowView* row_view,
                                  size_t out_idx);
 
