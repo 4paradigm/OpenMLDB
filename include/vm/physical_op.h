@@ -231,9 +231,9 @@ class Range : public FnComponent {
         : range_key_(nullptr), frame_(frame) {
         range_key_ = nullptr == order
                          ? nullptr
-                         : node::ExprListNullOrEmpty(order->order_expressions_)
-                               ? nullptr
-                               : dynamic_cast<const node::OrderExpression*>(order->order_expressions_->children_[0])->expr();
+                     : node::ExprListNullOrEmpty(order->order_expressions_)
+                         ? nullptr
+                         : dynamic_cast<const node::OrderExpression *>(order->order_expressions_->children_[0])->expr();
     }
     virtual ~Range() {}
     const bool Valid() const { return nullptr != range_key_; }

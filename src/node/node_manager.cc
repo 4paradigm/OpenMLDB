@@ -434,7 +434,8 @@ UnaryExpr *NodeManager::MakeUnaryExprNode(ExprNode *left, FnOperator op) {
     return RegisterNode(uexpr);
 }
 
-SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::string &table_name,
+SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::string &db_name,
+                                          const std::string &table_name,
                                           SqlNodeList *column_desc_list, SqlNodeList *table_option_list) {
     int replica_num = 1;
     int partition_num = 1;
@@ -474,7 +475,7 @@ SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::strin
             }
         }
     }
-    CreateStmt *node_ptr = new CreateStmt(table_name, op_if_not_exist, replica_num, partition_num);
+    CreateStmt *node_ptr = new CreateStmt(db_name, table_name, op_if_not_exist, replica_num, partition_num);
     FillSqlNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
     FillSqlNodeList2NodeVector(&partition_meta_list, node_ptr->GetDistributionList());
     return RegisterNode(node_ptr);
