@@ -15,10 +15,12 @@
  */
 
 #include "planv2/ast_node_converter.h"
+
 #include <ctime>
 #include <memory>
 #include <random>
 #include <vector>
+
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "zetasql/base/testing//status_matchers.h"
@@ -955,11 +957,13 @@ TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
 const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport", "zetasql-unsupport"});
 
 INSTANTIATE_TEST_SUITE_P(ASTCreateStatementTest, ASTNodeConverterTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTInsertStatementTest, ASTNodeConverterTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml", FILTERS)));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTCmdStatementTest, ASTNodeConverterTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTBackQuoteIDTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/back_quote_identifier.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTFilterStatementTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 

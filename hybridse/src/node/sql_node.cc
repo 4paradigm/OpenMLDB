@@ -1210,7 +1210,7 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, table_name_, "table", false);
+    PrintValue(output, tab, db_name_.empty() ? table_name_ : db_name_ + "." + table_name_, "table", false);
     output << "\n";
     PrintValue(output, tab, std::to_string(op_if_not_exist_), "IF NOT EXIST", false);
     output << "\n";

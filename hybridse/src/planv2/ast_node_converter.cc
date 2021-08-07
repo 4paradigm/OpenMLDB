@@ -26,7 +26,8 @@ base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager*
         case zetasql::AST_SIMPLE_TYPE: {
             const zetasql::ASTSimpleType* simple_type = ast_type->GetAsOrDie<zetasql::ASTSimpleType>();
             CHECK_TRUE(nullptr != simple_type, common::kSqlError, "Un-support nullptr simple type");
-            const std::string& type_name = simple_type->type_name()->ToIdentifierPathString();
+            std::string type_name;
+            CHECK_STATUS(AstPathExpressionToString(simple_type->type_name(), &type_name));
             CHECK_STATUS(node::StringToDataType(type_name, output))
             return base::Status::OK();
         }
@@ -292,7 +293,8 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             auto* function_call = ast_expression->GetAsOrDie<zetasql::ASTFunctionCall>();
             CHECK_TRUE(false == function_call->HasModifiers(), common::kSqlError,
                        "Un-support Modifiers for function call")
-            auto function_name = function_call->function()->ToIdentifierPathString();
+            std::string function_name = "";
+            CHECK_STATUS(AstPathExpressionToString(function_call->function(), &function_name))
             boost::to_lower(function_name);
             // Convert function call TYPE(value) to cast expression CAST(value as TYPE)
             node::DataType data_type;
@@ -1095,9 +1097,14 @@ base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_
     CHECK_TRUE(ast_create_stmt != nullptr, common::kOk, "ASTCreateTableStatement is null");
 
     bool if_not_exist = ast_create_stmt->is_if_not_exists();
-    std::string table_name;
-    CHECK_STATUS(AstPathExpressionToString(ast_create_stmt->name(), &table_name));
-
+    std::string table_name = "";
+    std::string db_name = "";
+    std::vector<std::string> names;
+    CHECK_STATUS(AstPathExpressionToStringList(ast_create_stmt->name(), names));
+    table_name = names.back();
+    if (names.size() == 2) {
+        db_name = names[0];
+    }
     auto column_list = ast_create_stmt->table_element_list();
     node::SqlNodeList* column_desc_list = nullptr;
 
@@ -1126,7 +1133,7 @@ base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_
     }
 
     *output = static_cast<node::CreateStmt*>(
-        node_manager->MakeCreateTableNode(if_not_exist, table_name, column_desc_list, option_list));
+        node_manager->MakeCreateTableNode(if_not_exist, db_name, table_name, column_desc_list, option_list));
 
     return base::Status::OK();
 }
@@ -1181,7 +1188,8 @@ base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::
                     auto simple_column_schema = column_def->schema()->GetAsOrNull<zetasql::ASTSimpleColumnSchema>();
                     CHECK_TRUE(simple_column_schema != nullptr, common::kSqlError, "not and ASTSimpleColumnSchema");
 
-                    const auto type_name = simple_column_schema->type_name()->ToIdentifierPathString();
+                    std::string type_name = "";
+                    CHECK_STATUS(AstPathExpressionToString(simple_column_schema->type_name(), &type_name))
                     node::DataType type;
                     CHECK_STATUS(node::StringToDataType(type_name, &type));
 
@@ -1490,10 +1498,12 @@ base::Status AstStringLiteralToString(const zetasql::ASTExpression* ast_expr, st
     return base::Status::OK();
 }
 
-// transform zetasql::ASTPathExpression into string
+// transform zetasql::ASTPathExpression into single string
+// fail if path with multiple paths
 base::Status AstPathExpressionToString(const zetasql::ASTPathExpression* path_expr, std::string* str) {
     CHECK_TRUE(path_expr != nullptr, common::kSqlError, "not an ASTPathExpression");
-    *str = path_expr->ToIdentifierPathString();
+    CHECK_TRUE(path_expr->num_names() <= 1, common::kSqlError, "fail to convert multiple paths into a single string")
+    *str = path_expr->num_names() == 0 ? "" : path_expr->name(0)->GetAsString();
     return base::Status::OK();
 }
 // transform zetasql::ASTPathExpression into string
@@ -1601,8 +1611,9 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
         rows->AddChild(row_values);
     }
 
-    *output = dynamic_cast<node::InsertStmt*>(node_manager->MakeInsertTableNode(
-        root->GetTargetPathForNonNested().value()->ToIdentifierPathString(), column_list, rows));
+    std::string table_name = "";
+    CHECK_STATUS(AstPathExpressionToString(root->GetTargetPathForNonNested().value(), &table_name));
+    *output = dynamic_cast<node::InsertStmt*>(node_manager->MakeInsertTableNode(table_name, column_list, rows));
     return base::Status::OK();
 }
 base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::NodeManager* node_manager,
