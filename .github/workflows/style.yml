@@ -18,12 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      # TODO: tweak HybridSE source & rm '-build/header_guard' filter
       - uses: reviewdog/action-cpplint@master
         with:
           github_token: ${{ secrets.github_token }}
           level: info
           reporter: github-pr-review
           flags: --linelength=120
+          filter: -build/header_guard
 
   detect-secrets:
     runs-on: ubuntu-latest
