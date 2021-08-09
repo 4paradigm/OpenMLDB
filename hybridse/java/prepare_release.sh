@@ -27,5 +27,9 @@ cd "$(dirname "$0")"
 
 VERSION=$1
 mvn versions:set -DnewVersion="$VERSION"
-mvn versions:set-property -Dproperty="project.version.base" -DnewVersion="$VERSION"
-mvn versions:set-property -Dproperty="project.version.suffix" -DnewVersion=""
+
+# rm '-SNAPSHOT' suffix in version.base
+BASE_VERSION=${VERSION%-SNAPSHOT}
+SUFFIX_VERSION=${VERSION#$BASE_VERSION}
+mvn versions:set-property -Dproperty="project.version.base" -DnewVersion="$BASE_VERSION"
+mvn versions:set-property -Dproperty="project.version.suffix" -DnewVersion="$SUFFIX_VERSION"

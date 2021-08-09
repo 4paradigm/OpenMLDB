@@ -49,7 +49,7 @@ option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
 option(COVERAGE_ENABLE "Enable Coverage" OFF)
 option(PYSDK_ENABLE "Enable pysdk" ON)
 option(JAVASDK_ENABLE "Enable javasdk" ON)
-option(EXAMPLES_ENABLE "Enable examples" ON)
+option(EXAMPLES_ENABLE "Enable examples" OFF)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
@@ -226,6 +226,9 @@ if (COVERAGE_ENABLE)
     endif ()
 endif ()
 
+if (CMAKE_INSTALL_PREFIX STREQUAL "")
+    set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
+endif ()
 install(TARGETS hybridse_core hybridse_sdk hybridse_flags
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

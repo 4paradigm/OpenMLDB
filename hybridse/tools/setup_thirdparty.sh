@@ -16,6 +16,7 @@
 set -eE
 set -o nounset
 
+# TODO: use same thirdparty with OpenMLDB
 pushd "$(dirname "$0")/.."
 ROOT=$(pwd)
 
