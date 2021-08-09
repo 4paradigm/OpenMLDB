@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<FindBugsFilter>
-<Match>
-  <!-- Ignore checking for the generate classes-->
-  <Package name="com._4paradigm.openmldb.batch.tools.generated.*" />
-</Match>
-</FindBugsFilter>
