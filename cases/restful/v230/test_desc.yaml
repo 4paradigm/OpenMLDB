@@ -1,0 +1,73 @@
+debugs: []
+baseCase:
+  module: show
+  tags: []
+  level: 0
+  uri: /dbs/{db_name}/tables/{table_name}
+  method: GET
+  beforeAction:
+    tables:
+      - name: "t1"
+        columns: [ "c1 string not null","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool" ]
+        indexs: [ "index1:c1:c7:(10h,10):absandlat" ]
+  expect:
+    data:
+      code: 0
+      msg: ok
+      $.table.name: t1
+      $.table.table_partition_size: 1
+      $.table.partition_num: 1
+      $.table.replica_num: 1
+      $.table.column_desc: [{"name":"c1","type":"varchar","not_null":true},{"name":"c2","type":"smallint","not_null":false},{"name":"c3","type":"int","not_null":false},{"name":"c4","type":"bigint","not_null":false},{"name":"c5","type":"float","not_null":false},{"name":"c6","type":"double","not_null":false},{"name":"c7","type":"timestamp","not_null":false},{"name":"c8","type":"date","not_null":false},{"name":"c9","type":"bool","not_null":false}]
+      $.table.added_column_desc: []
+      $.table.column_key[0].col_name: ["c1"]
+      $.table.column_key[0].ts_name: c7
+      $.table.column_key[0].ttl: {"ttl_type":"absandlat","abs_ttl":600,"lat_ttl":10}
+      $.table.format_version: 1
+      $.table.partition_key: []
+      $.table.schema_versions: []
+cases:
+  - caseId: 0
+    desc: "正常查询"
+  - caseId: 1
+    desc: "url错误"
+    uri: /db/{db_name}/tables/{table_name}
+    expect:
+      data:
+        code: -1
+        msg: "no match method"
+  - caseId: 2
+    method: POST
+    desc: "method错误"
+    expect:
+      data:
+        code: -1
+        msg: "no match method"
+  - caseId: 3
+    desc: "db为空串和null"
+    uri: /dbs/<db_name>/tables/{table_name}
+    uriParameters:
+      db_name: ["","null"]
+    uriExpect:
+      - data:
+          code: -1
+          msg: "no match method"
+      - data:
+          code: -1
+          msg: "DB not found"
+  - caseId: 4
+    desc: "table为空串和null"
+    uri: /dbs/{db_name}/tables/<table_name>
+    uriParameters:
+      table_name: ["null"]
+    uriExpect:
+      - data:
+          code: -1
+          msg: "Table not found"
+  - caseId: 5
+    desc: "db不存在"
+    uri: /dbs/{db_name}11/tables/{table_name}
+    expect:
+      data:
+        code: -1
+        msg: "DB not found"

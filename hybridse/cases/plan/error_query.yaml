@@ -1,0 +1,52 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 0
+    desc: 表达式依赖多个窗口
+    sql: |
+        select (sum(c1) over w1 + sum(c1) over w2) as f1 from t1 window
+        w1 as (partition by key1 order by ts1 rows between 10 preceding and current row),
+        w2 as (partition by key2 order by ts2 rows between 10 preceding and current row);
+  - id: 1
+    desc: 函数表达式依赖多个窗口
+    sql: |
+      select testudf(sum(c1) over w1 + sum(c1) over w2) as f1 from t1 window
+      w1 as (partition by key1 order by ts1 rows between 10 preceding and current row),
+      w2 as (partition by key2 order by ts2 rows between 10 preceding and current row);
+  - id: 2
+    desc: 窗口重名
+    sql: |
+      select sum(c1) over w1 as f1 from t1 window
+      w1 as (partition by key1 order by ts1 rows between 10 preceding and current row),
+      w1 as (partition by key2 order by ts2 rows between 10 preceding and current row);
+  - id: 3
+    desc: 函数窗口不存在
+    sql: |
+      select sum(c1) over w2 as f1 from t1 window
+      w1 as (partition by key1 order by ts1 rows between 10 preceding and current row);
+
+  - id: 4
+    desc: ROWS窗口不支持配置MAXSIZE
+    sql: |
+      SELECT
+      sum(col2) OVER w1 as w1_col2_sum
+      FROM t1
+      WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 PRECEDING AND CURRENT ROW MAXSIZE 20) limit 10;
+  - id: 5
+    desc: 匿名ROWS窗口不支持配置MAXSIZE
+    sql: |
+      SELECT
+      sum(col2) OVER (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 PRECEDING AND CURRENT ROW MAXSIZE 20) as w1_col2_sum
+      FROM t1;

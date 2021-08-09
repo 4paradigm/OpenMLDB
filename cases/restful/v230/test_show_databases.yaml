@@ -1,0 +1,59 @@
+debugs: []
+baseCase:
+  module: show
+  tags: []
+  level: 0
+  uri: /dbs
+  method: GET
+  beforeAction:
+    sqls:
+      - drop database {db_name};
+      - create database test1;
+  expect:
+    data:
+      code: 0
+      msg: ok
+      $.dbs: ["test1"]
+  tearDown:
+    sqls: ["create database {db_name};","drop database test1;"]
+cases:
+  - caseId: 0
+    desc: "只有一个database"
+  - caseId: 1
+    desc: "没有db时"
+    beforeAction:
+      sqls:
+        - drop database {db_name};
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.dbs: []
+  - caseId: 2
+    desc: "两个database"
+    beforeAction:
+      sqls:
+        - drop database {db_name};
+        - create database test1;
+        - create database test2;
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.dbs: ["test1","test2"]
+    tearDown:
+      sqls: ["create database {db_name};","drop database test1;","drop database test2;"]
+  - caseId: 3
+    desc: "url错误"
+    uri: /db
+    expect:
+      data:
+        code: -1
+        msg: "no match method"
+  - caseId: 4
+    method: PUT
+    desc: "method错误"
+    expect:
+      data:
+        code: -1
+        msg: "no match method"

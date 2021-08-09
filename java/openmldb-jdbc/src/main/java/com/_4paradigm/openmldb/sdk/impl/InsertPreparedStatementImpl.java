@@ -306,7 +306,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                     ok = currentRow.AppendBool((boolean) data);
                 } else if (DataType.kTypeDate.equals(curType)) {
                     java.sql.Date date = (java.sql.Date)data;
-                    ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth(), date.getDate());
+                    ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
                 } else if (DataType.kTypeDouble.equals(curType)) {
                     ok = currentRow.AppendDouble((double) data);
                 } else if (DataType.kTypeFloat.equals(curType)) {

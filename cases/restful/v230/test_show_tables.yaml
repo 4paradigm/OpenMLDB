@@ -1,0 +1,109 @@
+debugs: []
+baseCase:
+  module: show
+  tags: []
+  level: 0
+  uri: /dbs/{db_name}/tables
+  method: GET
+  expect:
+    data:
+      code: 0
+      msg: ok
+      $.tables: []
+cases:
+  - caseId: 0
+    desc: "没有表时"
+  - caseId: 1
+    desc: "只有一个表"
+    beforeAction:
+      tables:
+        - name: "t1"
+          columns: [ "c1 string not null","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool" ]
+          indexs: [ "index1:c1:c7:(10h,10):absandlat" ]
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.tables[0].name: t1
+        $.tables[0].table_partition_size: 1
+        $.tables[0].partition_num: 1
+        $.tables[0].replica_num: 1
+        $.tables[0].column_desc: [{"name":"c1","type":"varchar","not_null":true},{"name":"c2","type":"smallint","not_null":false},{"name":"c3","type":"int","not_null":false},{"name":"c4","type":"bigint","not_null":false},{"name":"c5","type":"float","not_null":false},{"name":"c6","type":"double","not_null":false},{"name":"c7","type":"timestamp","not_null":false},{"name":"c8","type":"date","not_null":false},{"name":"c9","type":"bool","not_null":false}]
+        $.tables[0].added_column_desc: []
+        $.tables[0].column_key[0].col_name: ["c1"]
+        $.tables[0].column_key[0].ts_name: c7
+        $.tables[0].column_key[0].ttl: {"ttl_type":"absandlat","abs_ttl":600,"lat_ttl":10}
+        $.tables[0].format_version: 1
+        $.tables[0].partition_key: []
+        $.tables[0].schema_versions: []
+  - caseId: 2
+    desc: "有两个表"
+    beforeAction:
+      tables:
+        - name: "t1"
+          columns: [ "c1 string","c3 int","c7 timestamp" ]
+          indexs: [ "index1:c1:c7" ]
+        - name: "t2"
+          columns: [ "c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+          indexs: [ "index1:c1:c7:1000:latest" ]
+    expect:
+      data:
+        code: 0
+        msg: ok
+        $.tables[0].name: t1
+        $.tables[0].table_partition_size: 1
+        $.tables[0].partition_num: 1
+        $.tables[0].replica_num: 1
+        $.tables[0].column_desc: [{"name":"c1","type":"varchar","not_null":false},{"name":"c3","type":"int","not_null":false},{"name":"c7","type":"timestamp","not_null":false}]
+        $.tables[0].added_column_desc: []
+        $.tables[0].column_key[0].col_name: ["c1"]
+        $.tables[0].column_key[0].ts_name: c7
+        $.tables[0].column_key[0].ttl: {"ttl_type":"absolute","abs_ttl":0}
+        $.tables[0].format_version: 1
+        $.tables[0].partition_key: []
+        $.tables[0].schema_versions: []
+        $.tables[1].name: t2
+        $.tables[1].table_partition_size: 1
+        $.tables[1].partition_num: 1
+        $.tables[1].replica_num: 1
+        $.tables[1].column_desc: [{"name":"c1","type":"varchar","not_null":false},{"name":"c2","type":"smallint","not_null":false},{"name":"c3","type":"int","not_null":false},{"name":"c4","type":"bigint","not_null":false},{"name":"c5","type":"float","not_null":false},{"name":"c6","type":"double","not_null":false},{"name":"c7","type":"timestamp","not_null":false},{"name":"c8","type":"date","not_null":false}]
+        $.tables[1].added_column_desc: []
+        $.tables[1].column_key[0].col_name: ["c1"]
+        $.tables[1].column_key[0].ts_name: c7
+        $.tables[1].column_key[0].ttl: {"ttl_type":"latest","lat_ttl":1000}
+        $.tables[1].format_version: 1
+        $.tables[1].partition_key: []
+        $.tables[1].schema_versions: []
+  - caseId: 3
+    desc: "url错误"
+    uri: /dbs/{db_name}/table
+    expect:
+      data:
+        code: -1
+        msg: "no match method"
+  - caseId: 4
+    method: PUT
+    desc: "method错误"
+    expect:
+      data:
+        code: -1
+        msg: "no match method"
+  - caseId: 5
+    desc: "db为空串和null"
+    uri: /dbs/<db_name>/tables
+    uriParameters:
+      db_name: ["","null"]
+    uriExpect:
+      - data:
+          code: -1
+          msg: "no match method"
+      - data:
+          code: -1
+          msg: "DB not found"
+  - caseId: 6
+    desc: "db不存在"
+    uri: /dbs/{db_name}11/tables
+    expect:
+      data:
+        code: -1
+        msg: "DB not found"

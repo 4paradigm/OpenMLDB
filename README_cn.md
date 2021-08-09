@@ -58,9 +58,10 @@ OpenMLDB是一个面向机器学习应用提供正确、高效数据供给的开
 使用OpenMLDB快速开发和上线ML应用，以Kaggle比赛Predict Taxi Tour Duration项目为例。
 
 ```bash
-# 启动docker镜像
-# 如果下载慢，可以使用国内代理镜像 (mirror.baidubce.com/4pdosc/openmldb:0.2.0)
-docker run -it 4pdosc/openmldb:0.2.0 bash
+# 启动docker镜像 (目前提供了 linux/amd64, linux/arm64 架构的镜像)
+ # 如果下载慢，可以使用国内代理镜像: mirror.baidubce.com/4pdosc/openmldb:0.2.1
+# 也可以使用 GitHub 的镜像: ghcr.io/4paradigm/openmldb:0.2.1
+docker run -it 4pdosc/openmldb:0.2.1 bash
 
 # 初始化环境
 sh init.sh

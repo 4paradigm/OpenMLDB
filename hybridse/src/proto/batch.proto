@@ -1,0 +1,66 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+syntax = "proto2";
+import "fe_type.proto";
+import "fe_common.proto";
+import "plan.proto";
+
+package hybridse.batch;
+option java_package = "com._4paradigm.hybridse.batch";
+option cc_generic_services = true;
+
+message DataSet {
+    optional string name = 1; 
+    optional type.TableDef schema = 2;
+}
+
+message JobDesc {
+    optional string sql = 1;
+    optional string db = 2;
+    // the endpoint of worker
+    repeated string workers = 3;
+}
+
+message TaskDesc {
+    optional GraphDesc graph = 1;
+}
+
+message StartRequest {
+    optional JobDesc job = 1;
+}
+
+message StartResponse {
+    optional common.Status status = 1;
+}
+
+message RunTaskRequest {
+    // a human readable id
+    optional string id = 1;
+    optional string sql = 2;
+    optional TaskDesc task = 3;
+}
+
+message RunTaskResponse {
+    optional common.Status status = 1;
+}
+
+service BatchLet {
+    // start the driver container
+    rpc StartDriver(StartRequest) returns(StartRequest);
+
+    // run a task on worker
+    rpc RunTask(RunTaskRequest) returns(RunTaskResponse);
+}
