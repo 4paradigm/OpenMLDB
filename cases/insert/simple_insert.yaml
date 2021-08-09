@@ -1,0 +1,174 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 0
+    desc: 简单INSERT
+    db: db_1
+    inputs:
+      -
+        create: |
+          create table t1 (
+          col0 string not null,
+          col1 int not null,
+          col2 smallint not null,
+          col3 float not null,
+          col4 double not null,
+          col5 bigint not null,
+          col6 string not null,
+          col7 timestamp not null,
+          col8 date not null,
+          index(key=(col2), ts=col5)
+          );
+        insert: insert into t1 values("hello", 1, 2, 3.3f, 4.4, 5L, "world", 12345678L, "2020-05-21");
+    sql: select * from t1;
+    output:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, col7:timestamp, col8:date
+      order: col1
+      data: |
+        hello, 1, 2, 3.3, 4.4, 5, world, 12345678, 2020-05-21
+  - id: 1
+    desc: 简单INSERT 多行
+    db: db_1
+    inputs:
+      -
+        name: t1
+        create: |
+            create table t1 (
+            col0 string not null,
+            col1 int not null,
+            col2 smallint not null,
+            col3 float not null,
+            col4 double not null,
+            col5 bigint not null,
+            col6 string not null,
+            index(key=(col2), ts=col5)
+            );
+        insert: |
+            insert into t1 values
+            ("hello", 1, 2, 3.3, 4.4, 5, "world"),
+            ("hello", 11, 22, 33.3, 44.4, 55, "fesql");
+
+    sql: select * from t1;
+    output:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        hello, 1, 2, 3.3, 4.4, 5, world
+        hello, 11, 22, 33.3, 44.4, 55, fesql
+
+  - id: 2
+    desc: 简单INSERT timestamp
+    db: db_1
+    inputs:
+      - name: t1
+        create: |
+          create table t1 (
+          col1 int not null,
+          col5 bigint not null,
+          std_ts timestamp not null,
+          index(key=(col1), ts=col5)
+          );
+        insert: |
+            insert into t1 values
+            (1, 10000L, 1590738987000L),
+            (2, 20000L, 1590738988000L);
+    sql: select * from t1;
+    output:
+      schema: col1:int, col5:bigint, std_ts:timestamp
+      order: col1
+      data: |
+        1, 10000, 1590738987000
+        2, 20000, 1590738988000
+
+  - id: 3
+    desc: insert 指定列,其他列默认为NULL
+    db: db_1
+    inputs:
+      -
+        create: |
+          create table {0} (
+          col1 int not null,
+          col2 smallint,
+          col3 float,
+          col4 double,
+          col5 bigint not null,
+          std_ts timestamp not null,
+          str string,
+          index(key=(col1), ts=col5)
+          );
+        insert: |
+            insert into {0} (col1, col5, std_ts) values
+            (1, 10000L, 1590738987000L),
+            (2, 20000L, 1590738988000L);
+    sql: select * from {0};
+    output:
+      schema: col1:int, col2:int16, col3:float, col4:double, col5:bigint, std_ts:timestamp, str:string
+      order: col1
+      data: |
+        1, NULL, NULL, NULL, 10000, 1590738987000, NULL
+        2, NULL, NULL, NULL, 20000, 1590738988000, NULL
+  - id: 4
+    desc: Insert date
+    db: db_1
+    inputs:
+      - name: t1
+        create: |
+          create table t1 (
+          col1 int not null,
+          col2 smallint,
+          col3 float,
+          col4 double,
+          col5 bigint not null,
+          std_date date not null,
+          str string,
+          index(key=(col1), ts=col5)
+          );
+        insert: |
+            insert into t1(col1, col5, std_date) values
+            (1, 10000L, '2020-05-27'),
+            (2, 20000L, '2020-05-28');
+
+    sql: select * from t1;
+    output:
+      schema: col1:int, col2:int16, col3:float, col4:double, col5:bigint, std_ts:date, str:string
+      order: col1
+      data: |
+        1, NULL, NULL, NULL, 10000, 2020-05-27, NULL
+        2, NULL, NULL, NULL, 20000, 2020-05-28, NULL
+  - id: 5
+    desc: 简单INSERT NULL value
+    db: db_1
+    inputs:
+      -
+        name: t1
+        create: |
+          create table t1 (
+          col0 string not null,
+          col1 int not null,
+          col2 smallint,
+          col3 float not null,
+          col4 double not null,
+          col5 bigint not null,
+          col6 string not null,
+          index(key=(col2), ts=col5)
+          );
+        insert: |
+          insert into t1 values("hello", 1, NULL, 3.3f, 4.4, 5L, "world");
+    sql: select * from t1;
+    output:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        hello, 1, NULL, 3.3, 4.4, 5, world

@@ -1,0 +1,135 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 1
+    desc: CREATE DATABASE db1
+    sql: CREATE DATABASE db1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: create database
+          +-args: [db1]
+  - id: 2
+    desc: CREATE TABLE
+    sql: CREATE TABLE schema.sql;
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: schema.sql
+          +-IF NOT EXIST: 0
+          +-column_desc_list: []
+          +-replica_num: 1
+          +-partition_num: 1
+          +-distribution_list: []
+  - id: 3
+    desc: CREATE GROUP
+    mode: zetasql-unsupport
+    sql: CREATE GROUP group1;
+  - id: 4
+    desc: DESC table
+    sql: DESC t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: desc table
+          +-args: [t1]
+  - id: 5
+    desc: SHOW TABLE
+    sql: SHOW TABLES;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show tables
+          +-args: []
+  - id: 6
+    desc: SHOW DATABASES
+    sql: SHOW DATABASES;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show databases
+          +-args: []
+  - id: 7
+    desc: explain
+    sql: explain SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;
+  - id: 8
+    desc: explain logical
+    tags: ["TODO"]
+    sql: explain logical SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;
+  - id: 9
+    desc: SHOW PROCEDUERS
+    sql: SHOW PROCEDURES;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show procedures
+          +-args: []
+  - id: 10
+    desc: SHOW PROCEDUERS
+    sql: SHOW PROCEDURE STATUS;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show procedures
+          +-args: []
+  - id: 11
+    desc: SHOW CREATE PROCEDUER
+    sql: SHOW CREATE PROCEDURE sp_name;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show create procedure
+          +-args: [sp_name]
+  - id: 12
+    desc: SHOW CREATE PROCEDUER
+    sql: SHOW CREATE PROCEDURE db.sp_name;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show create procedure
+          +-args: [db, sp_name]
+  - id: 13
+    desc: DROP PROCEDUER
+    sql: DROP PROCEDURE sp1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop procedure
+          +-args: [sp1]
+  - id: 14
+    desc: DROP TABLE
+    sql: DROP TABLE t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop table
+          +-args: [t1]
+  - id: 15
+    desc: DROP INDEX
+    sql: DROP INDEX t1.index1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop index
+          +-args: [t1, index1]
+  - id: 16
+    desc: USE DATABASE
+    sql: USE db1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: use database
+          +-args: [db1]
+
