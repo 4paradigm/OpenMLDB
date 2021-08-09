@@ -142,6 +142,7 @@ class NodeManager {
                                  const ExprListNode *column_names,
                                  const ExprListNode *values);
     SqlNode *MakeCreateTableNode(bool op_if_not_exist,
+                                 const std::string &db_name,
                                  const std::string &table_name,
                                  SqlNodeList *column_desc_list,
                                  SqlNodeList *partition_meta_list);

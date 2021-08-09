@@ -636,3 +636,64 @@ cases:
               +-node[kPartitionMeta]
                 +-endpoint: fo2
                 +-role_type: follower
+  - id: 25
+    desc: 简单CREATE with VARCHAR
+    tags: ["v0.2.1", "support varchar", "@chenjing"]
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 smallint NOT NULL,
+          column5 VARCHAR NOT NULL,
+          column6 VARCHAR(64) NOT NULL,
+          std_ts timestamp NOT NULL,
+          std_date date NOT NULL,
+          index(key=(column2), ts=std_ts)
+      );
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: test
+          +-IF NOT EXIST: 0
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column1
+          |  |    +-column_type: int32
+          |  |    +-NOT NULL: 1
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column2
+          |  |    +-column_type: int16
+          |  |    +-NOT NULL: 1
+          |  +-2:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column5
+          |  |    +-column_type: string
+          |  |    +-NOT NULL: 1
+          |  +-3:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column6
+          |  |    +-column_type: string
+          |  |    +-NOT NULL: 1
+          |  +-4:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: std_ts
+          |  |    +-column_type: timestamp
+          |  |    +-NOT NULL: 1
+          |  +-5:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: std_date
+          |  |    +-column_type: date
+          |  |    +-NOT NULL: 1
+          |  +-6:
+          |    +-node[kColumnIndex]
+          |      +-keys: [column2]
+          |      +-ts_col: std_ts
+          |      +-abs_ttl: -2
+          |      +-lat_ttl: -2
+          |      +-ttl_type: <nil>
+          |      +-version_column: <nil>
+          |      +-version_count: 0
+          +-replica_num: 1
+          +-partition_num: 1
+          +-distribution_list: []
