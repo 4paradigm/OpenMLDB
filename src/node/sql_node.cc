@@ -34,10 +34,10 @@ using base::Status;
 using common::kTypeError;
 
 static const std::unordered_map<std::string, DataType const> type_map = {
-    {"bool", kBool},     {"in1", kBool},       {"i16", kInt16},           {"int16", kInt16},   {"smallint", kInt16},
-    {"i32", kInt32},     {"int32", kInt32},    {"int", kInt32},           {"integer", kInt32}, {"i64", kInt64},
-    {"int64", kInt64},   {"bigint", kInt64},   {"string", kVarchar},      {"float32", kFloat}, {"float", kFloat},
-    {"double", kDouble}, {"float64", kDouble}, {"timestamp", kTimestamp}, {"date", kDate},
+    {"bool", kBool},   {"in1", kBool},      {"i16", kInt16},      {"int16", kInt16},         {"smallint", kInt16},
+    {"i32", kInt32},   {"int32", kInt32},   {"int", kInt32},      {"integer", kInt32},       {"i64", kInt64},
+    {"int64", kInt64}, {"bigint", kInt64},  {"string", kVarchar}, {"varchar", kVarchar},   {"float32", kFloat},
+    {"float", kFloat}, {"double", kDouble}, {"float64", kDouble}, {"timestamp", kTimestamp}, {"date", kDate},
 };
 
 bool SqlEquals(const SqlNode *left, const SqlNode *right) {
@@ -1210,7 +1210,7 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, table_name_, "table", false);
+    PrintValue(output, tab, db_name_.empty() ? table_name_ : db_name_ + "." + table_name_, "table", false);
     output << "\n";
     PrintValue(output, tab, std::to_string(op_if_not_exist_), "IF NOT EXIST", false);
     output << "\n";
