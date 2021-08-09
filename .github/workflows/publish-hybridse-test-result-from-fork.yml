@@ -1,4 +1,4 @@
-name: publish-test-result-from-fork
+name: publish-hybridse-test-result-from-fork
 
 on:
   # the action will only run on dependabot/fork pull request

@@ -1,4 +1,4 @@
-name: Docker
+name: OpenMLDB Docker
 
 on:
   push:
@@ -10,6 +10,7 @@ on:
     paths:
       - .github/workflows/openmldb-docker.yml
       - demo/predict-taxi-trip-duration-nb/**/*
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: openmldb
