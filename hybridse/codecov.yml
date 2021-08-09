@@ -1,0 +1,3 @@
+codecov:
+  notify:
+    wait_for_ci: no

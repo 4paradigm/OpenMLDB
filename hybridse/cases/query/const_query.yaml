@@ -1,0 +1,86 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+debugs:
+cases:
+  - id: 0
+    desc: select const number
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, 2 as col1, 3.3 as col2;
+    expect:
+      schema: id:int32, col1:int, col2:double
+      order: id
+      rows:
+        - [1, 2, 3.3]
+  - id: 1
+    desc: select str
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, "hello_world" as col1;
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "hello_world"]
+  - id: 2
+    desc: const substr pos len
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, substring("hello_world", 3, 6) as col1;
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "llo_wo"]
+  - id: 3
+    desc: const substr pos
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, substring("hello world", 3) as col1;
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "llo world"]
+  - id: 4
+    desc: const concat 1
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, concat("hello", "world", "abc") as col1;
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "helloworldabc"]
+  - id: 5
+    desc: 不依赖输入表cast常量
+    mode: request-unsupport
+    tags: ["TODO", "@chenjing, support const project node"]
+    inputs:
+      - columns: ["c1 int", "c2 string", "c5 bigint"]
+        indexs: ["index1:c1:c5"]
+        rows:
+          - [1, "2020-05-22 10:43:40", 1]
+    sql: |
+      select int(10) as c1, bigint(20) as c2;
+    expect:
+      columns: ["c1 int", "c2 bigint"]
+      rows:
+        - [10, 20]

@@ -1,0 +1,62 @@
+{% if exists("publicTypes") %}## Public Types
+
+{% for child in publicTypes %}### {{child.kind}} {{child.name}}
+
+{{ render("member_details", child) }}
+{% endfor %}{% endif -%}
+
+{% if exists("protectedTypes") %}## Protected Types
+
+{% for child in protectedTypes %}### {{child.name}} {{child.kind}}
+
+{{ render("member_details", child) }}
+{% endfor %}{% endif -%}
+
+{% if exists("publicFunctions") %}## Public Functions
+
+{% for child in publicFunctions %}#### {{child.kind}} {{child.name}}
+
+{{ render("member_details", child) }}
+{% endfor %}{% endif -%}
+
+{% if exists("protectedFunctions") %}## Protected Functions
+
+{% for child in protectedFunctions %}### {{child.kind}} {{child.name}}
+
+{{ render("member_details", child) }}
+{% endfor %}{% endif -%}
+
+{% if exists("publicProperties") %}## Public Property
+
+{% for child in publicProperties %}### {{child.kind}} {{child.name}}
+
+{{ render("member_details", child) }}
+{% endfor %}{% endif -%}
+
+{% if exists("protectedProperties") %}## Protected Property
+
+{% for child in protectedProperties %}### {{child.kind}} {{child.name}}
+
+{{ render("member_details", child) }}
+{% endfor %}{% endif -%}
+
+{% if exists("publicAttributes") %}## Public Attributes
+
+{% for child in publicAttributes %}### {{child.kind}} {{child.name}}
+
+{{ render("member_details", child) }}
+{% endfor %}{% endif -%}
+
+{% if exists("protectedAttributes") %}## Protected Attributes
+
+{% for child in protectedAttributes %}### {{child.kind}} {{child.name}}
+
+{{ render("member_details", child) }}
+{% endfor %}{% endif -%}
+
+{% if exists("friends") %}## Friends
+
+{% for child in friends %}### {{child.kind}} {{child.name}}
+
+{{ render("member_details", child) }}
+{% endfor %}{% endif -%}
