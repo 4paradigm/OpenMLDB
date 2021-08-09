@@ -49,7 +49,7 @@ option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
 option(COVERAGE_ENABLE "Enable Coverage" OFF)
 option(PYSDK_ENABLE "Enable pysdk" ON)
 option(JAVASDK_ENABLE "Enable javasdk" ON)
-option(EXAMPLES_ENABLE "Enable examples" OFF)
+option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
