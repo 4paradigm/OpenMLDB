@@ -61,13 +61,13 @@ jobs:
         with:
           commit: ${{ github.event.workflow_run.head_sha }}
           files: artifacts/linux-ut-result-*/**/*.xml
-          check_name: Linux Test Report
-          comment_title: Linux Test Report
+          check_name: HybridSE Linux Test Report
+          comment_title: HybridSE Linux Test Report
 
       - name: Publish Mac UT Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           commit: ${{ github.event.workflow_run.head_sha }}
           files: artifacts/macos-ut-result-*/**/*.xml
-          check_name: Mac Test Report
-          comment_title: Mac Test Report
+          check_name: HybridSE Mac Test Report
+          comment_title: HybridSE Mac Test Report

@@ -8,6 +8,9 @@ on:
       - v*
   pull_request:
 
+env:
+  HYBRIDSE_PATH: hybridse
+
 jobs:
   linux-build:
     runs-on: ubuntu-latest
@@ -51,7 +54,7 @@ jobs:
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
-            build/*.xml
+            ${{ env.HYBRIDSE_PATH }}/build/*.xml
 
       - name: Java SDK Test
         run: |
@@ -64,13 +67,13 @@ jobs:
         with:
           name: linux-ut-result-java-${{ github.sha }}
           path: |
-            java/hybridse-sdk/target/**/TEST-*.xml
+            ${{ env.HYBRIDSE_PATH }}/java/hybridse-sdk/target/**/TEST-*.xml
 
       - name: Upload jsdk
         if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v2
         with:
-          path: build/src/sdk/libhybridse*.so
+          path: ${{ env.HYBRIDSE_PATH }}/build/src/sdk/libhybridse*.so
           name: lib-artifacts
 
       - name: Prepare Maven Release Deploy
@@ -82,7 +85,7 @@ jobs:
 
       - name: Publish Java Library
         if: ${{ github.event_name == 'push' }}
-        working-directory: java
+        working-directory: ${{ env.HYBRIDSE_PATH }}/java
         run: |
           mvn --batch-mode deploy
         env:
@@ -106,7 +109,7 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v2
         with:
-          path: hybridse-*-${{ env.OS }}-${{ env.ARCH }}.tar.gz
+          path: ${{ env.HYBRIDSE_PATH }}/hybridse-*-${{ env.OS }}-${{ env.ARCH }}.tar.gz
           name: release-artifacts
 
   macos-build:
@@ -153,7 +156,7 @@ jobs:
         with:
           name: macos-ut-result-cpp-${{ github.sha }}
           path: |
-            build/*.xml
+            ${{ env.HYBRIDSE_PATH }}/build/*.xml
 
       - name: Java SDK Test
         run: |
@@ -166,13 +169,13 @@ jobs:
         with:
           name: macos-ut-result-java-${{ github.sha }}
           path: |
-            java/hybridse-sdk/target/**/TEST-*.xml
+            ${{ env.HYBRIDSE_PATH }}/java/hybridse-sdk/target/**/TEST-*.xml
 
       - name: Upload jsdk
         if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v2
         with:
-          path: build/src/sdk/libhybridse*.dylib
+          path: ${{ env.HYBRIDSE_PATH }}/build/src/sdk/libhybridse*.dylib
           name: lib-artifacts
 
       - name: Prepare Maven Release Deploy
@@ -184,7 +187,7 @@ jobs:
 
       - name: Publish Java Library
         if: ${{ github.event_name == 'push' }}
-        working-directory: java
+        working-directory: ${{ env.HYBRIDSE_PATH }}/java
         run: |
           mvn --batch-mode -P macos clean install
           mvn --batch-mode -P macos -pl hybridse-native deploy
@@ -209,7 +212,7 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v2
         with:
-          path: hybridse-*-${{ env.OS }}-${{ env.ARCH }}.tar.gz
+          path: ${{ env.HYBRIDSE_PATH }}/hybridse-*-${{ env.OS }}-${{ env.ARCH }}.tar.gz
           name: release-artifacts
 
   java-allinone-deploy:
@@ -261,7 +264,7 @@ jobs:
           ./java/prepare_release.sh $VERSION
 
       - name: Publish Java Library
-        working-directory: java
+        working-directory: ${{ env.HYBRIDSE_PATH }}/java
         run: |
           mvn --batch-mode -P allinone clean install
           mvn --batch-mode -P allinone -pl hybridse-native deploy
@@ -315,15 +318,15 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: linux-ut-result-*/**/*.xml
-          check_name: Linux Test Report
-          comment_title: Linux Test Report
+          check_name: HybridSE Linux Test Report
+          comment_title: HybridSE Linux Test Report
 
       - name: Publish Mac UT Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: macos-ut-result-*/**/*.xml
-          check_name: Mac Test Report
-          comment_title: Mac Test Report
+          check_name: HybridSE Mac Test Report
+          comment_title: HybridSE Mac Test Report
 
   coverage:
     runs-on: ubuntu-latest
@@ -344,7 +347,7 @@ jobs:
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v1
         with:
-          files: build/coverage.info,./java/hybridse-sdk/target/site/jacoco/jacoco.xml
+          files: ${{ env.HYBRIDSE_PATH }}/build/coverage.info,${{ env.HYBRIDSE_PATH }}/java/hybridse-sdk/target/site/jacoco/jacoco.xml
           name: coverage
           fail_ci_if_error: true
           verbose: true

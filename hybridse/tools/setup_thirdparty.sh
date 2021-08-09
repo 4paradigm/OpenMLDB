@@ -16,8 +16,8 @@
 set -eE
 set -o nounset
 
-ROOT=$(git rev-parse --show-toplevel)
-cd "$ROOT"
+pushd "$(dirname "$0")/.."
+ROOT=$(pwd)
 
 ARCH=$(arch)
 
@@ -52,4 +52,6 @@ fi
 
 tar xzf thirdparty.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
 tar xzf libzetasql.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
+popd
+
 popd

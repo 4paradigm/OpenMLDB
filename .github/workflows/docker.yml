@@ -8,6 +8,7 @@ on:
       - v*
   pull_request:
     paths:
+      - .github/workflows/openmldb-docker.yml
       - demo/predict-taxi-trip-duration-nb/**/*
 
 env:

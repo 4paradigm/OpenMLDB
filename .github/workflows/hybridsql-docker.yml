@@ -11,6 +11,7 @@ on:
   # Run tests for any PRs.
   pull_request:
     paths:
+      - .github/workflows/hybridsql-docker.yml
       - docker/Dockerfile
       - docker/**/*.sh
   workflow_dispatch:
