@@ -1,0 +1,3 @@
+[submodule "cmake-modules"]
+	path = cmake-modules
+	url = https://github.com/bilke/cmake-modules.git

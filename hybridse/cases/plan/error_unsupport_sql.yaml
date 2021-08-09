@@ -1,0 +1,63 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 1
+    desc: 不支持PIVOT
+    sql: |
+      SELECT * FROM t PIVOT(a FOR b IN (x));
+  - id: 2
+    desc: 不支持UNPIVOT
+    sql: |
+      SELECT * FROM t UNPIVOT(a FOR b IN (x));
+  - id: 3
+    desc: 不支持FOR SYSTEM_TIME
+    sql: |
+      SELECT
+        *
+      FROM
+        t FOR SYSTEM_TIME AS OF TIMESTAMP('2011-01-01 12:20:20');
+  - id: 4
+    desc: 不支持WITH OFFSET
+    sql: |
+      SELECT
+        *
+      FROM
+        t1 WITH OFFSET AS offset,
+        t2 WITH OFFSET AS offset;
+  - id: 5
+    desc: 不支持TABLESAMPLE
+    sql: |
+      select uId from Users TABLESAMPLE RESERVOIR (100 ROWS) REPEATABLE(10)
+  - id: 6
+    desc: 不支持Hex
+    sql: |
+      select uId, 0xFF from t;
+  - id: 7
+    desc: 列路径层级超过边界
+    sql: |
+      select db.t1.col1.level4 from t;
+  - id: 8-1
+    desc: 表路径层级超过边界1
+    sql: |
+      select col1 from db.t.level3;
+  - id: 8-2
+    desc: 表路径层级超过边界2
+    sql: |
+      select db.t1.level3.* from t;
+  - id: 9
+    desc: Insert 非常量
+    mode: request-unsupport
+    sql: |
+      insert into t1 values(1, 2, aaa);
