@@ -15,10 +15,12 @@
  */
 
 #include "planv2/ast_node_converter.h"
+
 #include <ctime>
 #include <memory>
 #include <random>
 #include <vector>
+
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "zetasql/base/testing//status_matchers.h"
@@ -934,7 +936,24 @@ TEST_F(ASTNodeConverterTest, ASTIntervalLiteralToNumberTest) {
         ASSERT_EQ(common::kTypeError, status.code);
     }
 }
+TEST_F(ASTNodeConverterTest, ConvertTypeFailTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string& sql, const int code, const std::string& msg) {
+      std::unique_ptr<zetasql::ParserOutput> parser_output;
+      ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+      const auto* statement = parser_output->statement();
 
+      node::SqlNode* stmt;
+      auto s = ConvertStatement(statement, &node_manager, &stmt);
+      EXPECT_EQ(code, s.code);
+      EXPECT_STREQ(msg.c_str(), s.msg.c_str()) << s.msg << s.trace;
+    };
+
+    expect_converted(R"sql(
+        SELECT cast(col1 as TYPE_UNKNOW);
+    )sql",
+                     common::kTypeError, "Unknow DataType identifier: TYPE_UNKNOW");
+}
 // expect tree string equal for converted CreateStmt
 TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
     auto& sql = GetParam().sql_str();
@@ -955,11 +974,13 @@ TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
 const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport", "zetasql-unsupport"});
 
 INSTANTIATE_TEST_SUITE_P(ASTCreateStatementTest, ASTNodeConverterTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTInsertStatementTest, ASTNodeConverterTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml", FILTERS)));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/insert.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTCmdStatementTest, ASTNodeConverterTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTBackQuoteIDTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/back_quote_identifier.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTFilterStatementTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 

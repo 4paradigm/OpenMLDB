@@ -1,11 +1,3 @@
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/4paradigm/hybridse/HybridSE%20CI?style=flat-square)](https://github.com/4paradigm/HybridSE/actions/workflows/hybridse-ci.yml?query=branch%3Amain++)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/4paradigm/HybridSE?style=flat-square)](https://github.com/4paradigm/HybridSE/releases/latest)
-[![GitHub milestones](https://img.shields.io/github/milestones/open/4paradigm/hybridse?style=flat-square)](https://github.com/4paradigm/HybridSE/milestones)
-[![GitHub](https://img.shields.io/github/license/4paradigm/HybridSE?style=flat-square)](https://github.com/4paradigm/HybridSE/blob/main/LICENSE)
-[![codecov](https://codecov.io/gh/4paradigm/HybridSE/branch/main/graph/badge.svg?token=J7WQPMM9IY)](https://codecov.io/gh/4paradigm/HybridSE)
-
-- [**Slack Channel**](https://join.slack.com/t/hybridsql-ws/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
-- [**Discussions**](https://github.com/4paradigm/HybridSE/discussions)
 - [中文文档](README-zh.md)
 
 # Introduction

@@ -1,0 +1,239 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+cases:
+  - id: 1
+    desc: CREATE DATABASE back quote name
+    sql: CREATE DATABASE `aa-bb`;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: create database
+          +-args: [aa-bb]
+  - id: 2
+    desc: CREATE TABLE
+    sql: CREATE TABLE `aa-bb`.`xx-yy`;
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: aa-bb.xx-yy
+          +-IF NOT EXIST: 0
+          +-column_desc_list: []
+          +-replica_num: 1
+          +-partition_num: 1
+          +-distribution_list: []
+  - id: 4
+    desc: DESC table aa-bb
+    sql: DESC `aa-bb`;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: desc table
+          +-args: [aa-bb]
+  - id: 11
+    desc: SHOW CREATE PROCEDUER with back quote name
+    sql: SHOW CREATE PROCEDURE `aa-bb`;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show create procedure
+          +-args: [aa-bb]
+  - id: 13
+    desc: DROP PROCEDUER with back quote name
+    sql: DROP PROCEDURE `aa-bb`;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop procedure
+          +-args: [aa-bb]
+  - id: 14
+    desc: DROP TABLE with back quote name
+    sql: DROP TABLE `aa-bb`;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop table
+          +-args: [aa-bb]
+  - id: 15
+    desc: DROP INDEX with back quote name
+    sql: DROP INDEX `aa-bb`.`xx-yy`
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop index
+          +-args: [aa-bb, xx-yy]
+  - id: 16
+    desc: USE DATABASE with back quote name
+    sql: USE `aa-bb`
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: use database
+          +-args: [aa-bb]
+
+  - id: 5
+    desc: INSERT back quote table name
+    sql: insert into `aa-bb` values(1, 2L);
+    expect:
+      node_tree_str: |
+        +-node[kInsertStmt]
+          +-table_name: aa-bb
+          +-columns: all
+          +-values[list]:
+          |  +-0:
+          |    +-expr[primary]
+          |      +-value: 1
+          |      +-type: int32
+          |    +-expr[primary]
+          |      +-value: 2
+          |      +-type: int64
+
+  - id: 6
+    desc: INSERT with back quote column
+    sql: insert into t1 (`aa-bb`, col2) values(1, 2L);
+    expect:
+      node_tree_str: |
+        +-node[kInsertStmt]
+          +-table_name: t1
+          +-columns: [aa-bb, col2]
+          +-values[list]:
+          |  +-0:
+          |    +-expr[primary]
+          |      +-value: 1
+          |      +-type: int32
+          |    +-expr[primary]
+          |      +-value: 2
+          |      +-type: int64
+  - id: 13
+    desc: Create table statement with back quote name
+    sql: |
+      create table `t-1` (`a-1` `int`, `b-1` `string`, index(key=(`a-1`, `b-1`), dump='12', `ts`=`column-2`, `ttl`=1d, `ttl_type`=absolute, `version`=(`column-5`, 3)))
+      options (`replicanum` = 3, `partitionnum` = 3, `ignored_option` = 'abc',
+          distribution = [ ('leader1', ['fo1', 'fo2']) ]
+      );
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t-1
+          +-IF NOT EXIST: 0
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: a-1
+          |  |    +-column_type: int32
+          |  |    +-NOT NULL: 0
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: b-1
+          |  |    +-column_type: string
+          |  |    +-NOT NULL: 0
+          |  +-2:
+          |    +-node[kColumnIndex]
+          |      +-keys: [a-1, b-1]
+          |      +-ts_col: column-2
+          |      +-abs_ttl: 86400000
+          |      +-lat_ttl: -2
+          |      +-ttl_type: absolute
+          |      +-version_column: column-5
+          |      +-version_count: 3
+          +-replica_num: 3
+          +-partition_num: 3
+          +-distribution_list[list]:
+            +-0:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: leader1
+            |    +-role_type: leader
+            +-1:
+            |  +-node[kPartitionMeta]
+            |    +-endpoint: fo1
+            |    +-role_type: follower
+            +-2:
+              +-node[kPartitionMeta]
+                +-endpoint: fo2
+                +-role_type: follower
+  - id: 23
+    desc: create index with back quote item name
+    sql: |
+      CREATE INDEX `index-1` ON `t-1` (`col-1`, col2) OPTIONS (`ts`=`col-3`, `ttl`=100, `ttl_type`=latest);
+    expect:
+      node_tree_str: |
+        +-node[kCreateIndexStmt]
+          +-index_name: index-1
+          +-table_name: t-1
+          +-index:
+            +-node[kColumnIndex]
+              +-keys: [col-1, col2]
+              +-ts_col: col-3
+              +-abs_ttl: -2
+              +-lat_ttl: 100
+              +-ttl_type: latest
+              +-version_column: <nil>
+              +-version_count: 0
+  - id: 21_create_procedure
+    desc: create procedure, parameters and union distinct query
+    sql: |
+      CREATE PROCEDURE `sp-1`(
+          `param-a` i64,
+          param_b timestamp
+      )
+      BEGIN
+        SELECT `COL-1`, COL2 from `t-1`;
+      END;
+    expect:
+      node_tree_str: |
+        +-node[kCreateSpStmt]
+          +-sp_name: sp-1
+          +-input_parameter_list[list]:
+          |  +-0:
+          |  |  +-node[kInputParameter]
+          |  |    +-column_name: param-a
+          |  |    +-column_type: int64
+          |  |    +-is_constant: 0
+          |  +-1:
+          |    +-node[kInputParameter]
+          |      +-column_name: param_b
+          |      +-column_type: timestamp
+          |      +-is_constant: 0
+          +-inner_node_list[list]:
+            +-0:
+              +-node[kQuery]: kQuerySelect
+                +-distinct_opt: false
+                +-where_expr: null
+                +-group_expr_list: null
+                +-having_expr: null
+                +-order_expr_list: null
+                +-limit: null
+                +-select_list[list]:
+                |  +-0:
+                |  |  +-node[kResTarget]
+                |  |    +-val:
+                |  |    |  +-expr[column ref]
+                |  |    |    +-relation_name: <nil>
+                |  |    |    +-column_name: COL-1
+                |  |    +-name: <nil>
+                |  +-1:
+                |    +-node[kResTarget]
+                |      +-val:
+                |      |  +-expr[column ref]
+                |      |    +-relation_name: <nil>
+                |      |    +-column_name: COL2
+                |      +-name: <nil>
+                +-tableref_list[list]:
+                |  +-0:
+                |    +-node[kTableRef]: kTable
+                |      +-table: t-1
+                |      +-alias: <nil>
+                +-window_list: []
+
