@@ -604,7 +604,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
-    int ok = ::openmldb::sdk::mc_->SetUp(3);
+    int ok = ::openmldb::sdk::mc_->SetUp(2);
     sleep(1);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
