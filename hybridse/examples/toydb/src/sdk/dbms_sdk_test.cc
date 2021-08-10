@@ -663,10 +663,10 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
 }
 INSTANTIATE_TEST_SUITE_P(
     SdkSimpleInsert, DBMSSdkTest,
-    testing::ValuesIn(sqlcase::InitCases("/cases/insert/simple_insert.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/function/dml/multi_insert.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SdkInsert, DBMSSdkTest,
-    testing::ValuesIn(sqlcase::InitCases("/cases/integration/v1/test_insert.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/function/dml/test_insert.yaml")));
 
 TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     auto sql_case = GetParam();
