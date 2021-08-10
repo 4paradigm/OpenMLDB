@@ -1664,8 +1664,10 @@ class CreateStmt : public SqlNode {
     CreateStmt()
         : SqlNode(kCreateStmt, 0, 0), table_name_(""), op_if_not_exist_(false), replica_num_(1), partition_num_(1) {}
 
-    CreateStmt(const std::string &table_name, bool op_if_not_exist, int replica_num, int partition_num)
+    CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist, int replica_num,
+               int partition_num)
         : SqlNode(kCreateStmt, 0, 0),
+          db_name_(db_name),
           table_name_(table_name),
           op_if_not_exist_(op_if_not_exist),
           replica_num_(replica_num),
@@ -1677,6 +1679,7 @@ class CreateStmt : public SqlNode {
     const NodePointVector &GetColumnDefList() const { return column_desc_list_; }
 
     std::string GetTableName() const { return table_name_; }
+    std::string GetDbName() const { return db_name_; }
 
     bool GetOpIfNotExist() const { return op_if_not_exist_; }
 
@@ -1690,6 +1693,7 @@ class CreateStmt : public SqlNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
+    std::string db_name_;
     std::string table_name_;
     bool op_if_not_exist_;
     NodePointVector column_desc_list_;
