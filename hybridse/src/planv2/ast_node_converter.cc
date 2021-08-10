@@ -203,15 +203,15 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     break;
                 }
                 case zetasql::ASTBinaryExpression::Op::BITWISE_AND: {
-                    op = node::FnOperator::kFnOpBitWiseAnd;
+                    op = node::FnOperator::kFnOpBitwiseAnd;
                     break;
                 }
                 case zetasql::ASTBinaryExpression::Op::BITWISE_OR: {
-                    op = node::FnOperator::kFnOpBitWiseOr;
+                    op = node::FnOperator::kFnOpBitwiseOr;
                     break;
                 }
                 case zetasql::ASTBinaryExpression::Op::BITWISE_XOR: {
-                    op = node::FnOperator::kFnOpBitWiseXor;
+                    op = node::FnOperator::kFnOpBitwiseXor;
                     break;
                 }
                 default: {
@@ -249,7 +249,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     return base::Status::OK();
                 }
                 case zetasql::ASTUnaryExpression::Op::BITWISE_NOT: {
-                    op = node::FnOperator::kFnOpBitWiseNot;
+                    op = node::FnOperator::kFnOpBitwiseNot;
                     break;
                 }
                 default: {

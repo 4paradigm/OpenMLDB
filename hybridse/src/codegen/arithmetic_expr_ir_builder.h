@@ -21,9 +21,10 @@
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
-using hybridse::base::Status;
+
 namespace hybridse {
 namespace codegen {
+
 class ArithmeticIRBuilder {
  public:
     explicit ArithmeticIRBuilder(::llvm::BasicBlock* block);
@@ -56,6 +57,12 @@ class ArithmeticIRBuilder {
                          NativeValue* output);  // NOLINT
     Status BuildModExpr(const NativeValue& left, const NativeValue& right,
                         NativeValue* output);  // NOLINT
+
+    Status BuildBitwiseAndExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
+
+    Status BuildBitwiseOrExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
+
+    Status BuildBitwiseXorExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
 
     static bool BuildAddExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                              ::llvm::Value* right, ::llvm::Value** output,

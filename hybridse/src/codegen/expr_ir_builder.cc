@@ -38,6 +38,8 @@
 namespace hybridse {
 namespace codegen {
 
+using ::hybridse::node::FnOperator;
+
 ExprIRBuilder::ExprIRBuilder(CodeGenContext* ctx) : ctx_(ctx) {}
 
 ExprIRBuilder::~ExprIRBuilder() {}
@@ -122,8 +124,8 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
             break;
         }
         case ::hybridse::node::kExprId: {
-            ::hybridse::node::ExprIdNode* id_node =
-                (::hybridse::node::ExprIdNode*)node;
+            auto id_node =
+                static_cast<const ::hybridse::node::ExprIdNode*>(node);
             DLOG(INFO) << "id node spec " << id_node->GetExprString();
             CHECK_TRUE(id_node->IsResolved(), kCodegenError,
                        "Detect unresolved expr id: " + id_node->GetName());
@@ -602,6 +604,9 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::hybridse::node::UnaryExpr* node,
             }
             break;
         }
+        case FnOperator::kFnOpBitwiseNot: {
+            break;
+        }
         case ::hybridse::node::kFnOpBracket: {
             *output = left;
             break;
@@ -704,6 +709,21 @@ Status ExprIRBuilder::BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,
         case ::hybridse::node::kFnOpMod: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildModExpr(left, right, output));
+            break;
+        }
+        case FnOperator::kFnOpBitwiseAnd: {
+            CHECK_STATUS(
+                arithmetic_ir_builder.BuildBitwiseAndExpr(left, right, output));
+            break;
+        }
+        case FnOperator::kFnOpBitwiseOr: {
+            CHECK_STATUS(
+                arithmetic_ir_builder.BuildBitwiseOrExpr(left, right, output));
+            break;
+        }
+        case FnOperator::kFnOpBitwiseXor: {
+            CHECK_STATUS(
+                arithmetic_ir_builder.BuildBitwiseXorExpr(left, right, output));
             break;
         }
         case ::hybridse::node::kFnOpAnd: {

@@ -227,7 +227,7 @@ template <typename T>
 struct AvgUdafDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T>()
-            .const_init(MakeTuple((int64_t)0, 0.0))
+            .const_init(MakeTuple(static_cast<int64_t>(0), 0.0))
             .update(
                 [](UdfResolveContext* ctx, ExprNode* state, ExprNode* input) {
                     auto nm = ctx->node_manager();
@@ -337,7 +337,7 @@ template <typename T>
 struct AvgWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T, bool>()
-            .const_init(MakeTuple((int64_t)0, 0.0))
+            .const_init(MakeTuple(static_cast<int64_t>(0), 0.0))
             .update([](UdfResolveContext* ctx, ExprNode* state, ExprNode* elem,
                        ExprNode* cond) {
                 auto nm = ctx->node_manager();

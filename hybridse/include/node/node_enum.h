@@ -187,10 +187,10 @@ enum FnOperator {
     kFnOpIsNull,      // "is_null"
     kFnOpNonNull,     // ""
     kFnOpNone,        // "NONE"
-    kFnOpBitWiseAnd,  // "&"
-    kFnOpBitWiseOr,   // "|"
-    kFnOpBitWiseXor,  // "^"
-    kFnOpBitWiseNot,  // "~"
+    kFnOpBitwiseAnd,  // "&"
+    kFnOpBitwiseOr,   // "|"
+    kFnOpBitwiseXor,  // "^"
+    kFnOpBitwiseNot,  // "~"
 };
 
 enum FrameType {

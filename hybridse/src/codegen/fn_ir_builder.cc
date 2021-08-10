@@ -162,7 +162,7 @@ bool FnIRBuilder::FillArgs(const ::hybridse::node::FnNodeList *node,
     uint32_t index = 0;
     for (; it != fn->arg_end() && index < node->children.size(); ++it) {
         ::hybridse::node::FnParaNode *pnode =
-            (::hybridse::node::FnParaNode *)node->children[index];
+            static_cast<::hybridse::node::FnParaNode *>(node->children[index]);
         ::llvm::Argument *argu = &*it;
 
         bool ok = sv->AddVar(pnode->GetExprId()->GetExprString(),
@@ -200,7 +200,7 @@ bool FnIRBuilder::BuildParas(const ::hybridse::node::FnNodeList *node,
 
     for (uint32_t i = 0; i < node->children.size(); i++) {
         ::hybridse::node::FnParaNode *pnode =
-            (::hybridse::node::FnParaNode *)node->children[i];
+            static_cast<::hybridse::node::FnParaNode *>(node->children[i]);
         ::llvm::Type *type = NULL;
         bool ok = GetLlvmType(module_, pnode->GetParaType(), &type);
         if (!ok) {

@@ -442,6 +442,20 @@ Status ArithmeticIRBuilder::BuildModExpr(const NativeValue& left,
     return Status::OK();
 }
 
+Status ArithmeticIRBuilder::BuildBitwiseAndExpr(const NativeValue& left, const NativeValue& right,
+                                                NativeValue* output) {
+    return Status::OK();
+}
+
+Status ArithmeticIRBuilder::BuildBitwiseOrExpr(const NativeValue& left, const NativeValue& right, NativeValue* output) {
+    return Status::OK();
+}
+
+Status ArithmeticIRBuilder::BuildBitwiseXorExpr(const NativeValue& left, const NativeValue& right,
+                                                NativeValue* output) {
+    return Status::OK();
+}
+
 bool ArithmeticIRBuilder::BuildSubExpr(
     ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value** output,

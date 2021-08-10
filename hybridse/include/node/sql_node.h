@@ -156,13 +156,13 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "NONE";
         case kFnOpNonNull:
             return "NONNULL";
-        case kFnOpBitWiseAnd:
+        case kFnOpBitwiseAnd:
             return "&";
-        case kFnOpBitWiseOr:
+        case kFnOpBitwiseOr:
             return "|";
-        case kFnOpBitWiseXor:
+        case kFnOpBitwiseXor:
             return "^";
-        case kFnOpBitWiseNot:
+        case kFnOpBitwiseNot:
             return "~";
         default:
             return "UNKNOWN";
