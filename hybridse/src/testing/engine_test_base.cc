@@ -583,7 +583,7 @@ INSTANTIATE_TEST_SUITE_P(EngineTestWhere, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/function/select/test_where.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestFzFunction, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/test_feature_zero_function.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("/cases/function/test_feature_zero_function.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestFzSQLFunction, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/function/test_fz_sql.yaml")));
