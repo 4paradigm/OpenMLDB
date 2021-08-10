@@ -17,9 +17,13 @@
 set -eE
 
 # goto toplevel directory
+# goto toplevel directory
+pushd "$(dirname "$0")/../.."
+OPENMLDB_DIR=$(pwd)
+popd
+# goto hybridse directory
 pushd "$(dirname "$0")/.."
 
-HYRBIDSE_DIR=$(pwd)
 
 ./tools/setup_thirdparty.sh
 
@@ -34,7 +38,7 @@ pushd build
 
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON -DEXAMPLES_ENABLE=ON -DEXAMPLES_TESTING_ENABLE=ON
 make -j"$(nproc)"
-make -j"$(nproc)" coverage SQL_CASE_BASE_DIR="$HYRBIDSE_DIR" YAML_CASE_BASE_DIR="$HYRBIDSE_DIR"
+make -j"$(nproc)" coverage SQL_CASE_BASE_DIR="${OPENMLDB_DIR}" YAML_CASE_BASE_DIR="${OPENMLDB_DIR}"
 
 popd
 
