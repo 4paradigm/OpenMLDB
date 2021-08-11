@@ -133,7 +133,7 @@ class OpenmldbBatchConfig extends Serializable {
   var hadoopWarehousePath = ""
 
   @ConfigOption(name="openmldb.iceberg.catalog.name", doc="The name of Iceberg catalog")
-  val icebergCatalogName = "iceberg_catalog"
+  val icebergHadoopCatalogName = "iceberg_catalog"
 
 }
 
