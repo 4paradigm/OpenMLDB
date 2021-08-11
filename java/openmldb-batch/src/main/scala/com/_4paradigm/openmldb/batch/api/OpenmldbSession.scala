@@ -58,6 +58,12 @@ class OpenmldbSession {
     this.sparkSession = sparkSession
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
     this.setDefaultSparkConfig()
+
+    // TODO: Register table if using other constructors
+    val catalogTables = this.sparkSession.catalog.listTables(config.defaultHiveDatabase).collect()
+    for (table <- catalogTables) {
+      registerTable(table.name, this.sparkSession.table(table.name))
+    }
   }
 
   /**
@@ -81,11 +87,15 @@ class OpenmldbSession {
         // TODO: Need to set for official Spark 2.3.0 jars
         //logger.debug("Set spark.hadoop.yarn.timeline-service.enabled as false")
         //builder.config("spark.hadoop.yarn.timeline-service.enabled", value = false)
-        builder.config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
 
-        this.sparkSession = builder.appName("App")
-          .master(sparkMaster)
-          .getOrCreate()
+        builder.config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+        builder.appName("App").master(sparkMaster)
+
+        if (config.enableHiveMetaStore) {
+          builder.enableHiveSupport()
+        }
+
+        this.sparkSession = builder.getOrCreate()
 
         this.setDefaultSparkConfig()
       }
@@ -100,9 +110,18 @@ class OpenmldbSession {
     sparkConf.set("spark.sql.session.timeZone", config.timeZone)
 
     // Set Iceberg catalog
-    sparkConf.set("spark.sql.catalog.%s".format(config.icebergCatalogName), "org.apache.iceberg.spark.SparkCatalog")
-    sparkConf.set("spark.sql.catalog.%s.type".format(config.icebergCatalogName), "hadoop")
-    sparkConf.set("spark.sql.catalog.%s.warehouse".format(config.icebergCatalogName), this.config.hadoopWarehousePath)
+    if (!config.hadoopWarehousePath.isEmpty) {
+      sparkConf.set("spark.sql.catalog.%s".format(config.icebergCatalogName), "org.apache.iceberg.spark.SparkCatalog")
+      sparkConf.set("spark.sql.catalog.%s.type".format(config.icebergCatalogName), "hadoop")
+      sparkConf.set("spark.sql.catalog.%s.warehouse".format(config.icebergCatalogName), this.config.hadoopWarehousePath)
+    }
+
+    if (config.enableHiveMetaStore) {
+      sparkConf.set("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkSessionCatalog")
+      sparkConf.set("spark.sql.catalog.spark_catalog.type", "hive")
+      // TODO: Check if "hive.metastore.uris" is set or not
+    }
+
   }
 
   /**
