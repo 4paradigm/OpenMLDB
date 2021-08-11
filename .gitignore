@@ -52,12 +52,11 @@ onebox/*bin*
 onebox/logs
 test-output
 reports
-rtidb-auto-test-java
 test-common/integrationtest/ns*
 test-common/integrationtest/tablet*
 test-common/integrationtest/logs*
 test-common/integrationtest/env.conf
-test-common/integrationtest/rtidb
+test-common/integrationtest/openmldb
 test-common/integrationtest/xmlrunner*
 
 # ignore make generate code
@@ -67,15 +66,9 @@ java/openmldb-native/src/main/resources
 java/openmldb-native/src/main/java
 java/openmldb-native/target/
 java/openmldb-jdbc/target/
-java/fesql-auto-test-java/allure-results/
-java/fesql-auto-test-java/logs/
-java/fesql-auto-test-java/target/
 python/fesql-auto-test-python/logs
 python/fesql-auto-test-python/report
 python/logs
 
 .vscode/settings.json
-rsync_src.sh
-install_hybridse_cj.sh
-
 openmldb-*

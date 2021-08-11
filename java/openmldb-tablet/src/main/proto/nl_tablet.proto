@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package openmldb;
+option java_package = "com._4paradigm.openmldb.server";
+option java_outer_classname = "NLTablet";
+option cc_generic_services = true;
+
+
+message CreateTableRequest {
+    string name = 1;
+};
+message CreateTableResponse {
+    int32 code = 1;
+    string msg = 2;
+};
+
+service NLTabletServer {
+    rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+};
