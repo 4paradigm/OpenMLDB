@@ -13,6 +13,65 @@
 # limitations under the License.
 
 cases:
+  - id: 0
+    desc: Distinct Count
+    db: db1
+    sql: |
+      SELECT col1 as id, col2, std_ts,
+      count(col2) OVER w1 as w1_col2_cnt,
+      distinct_count(col2) OVER w1 as w1_col2_dis_cnt,
+      distinct_count(col0) OVER w1 as w1_col0_dis_cnt
+      FROM t1
+      WINDOW w1 as (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col6:string, std_ts:timestamp
+        index: index2:col2:std_ts
+        data: |
+          0, 1, 5, 1, 1590115420000
+          0, 2, 5, 22, 1590115421000
+          1, 3, 55, 333, 1590115422000
+          1, 4, 55, 4444, 1590115423000
+          2, 5, 55, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 1590115424000
+    expect:
+      schema: id:int32, col2:int16, std_ts:timestamp, w1_col2_cnt:int64, w1_col2_dis_cnt:int64, w1_col0_dis_cnt:int64
+      order: id
+      data: |
+        1, 5, 1590115420000, 1, 1, 1
+        2, 5, 1590115421000, 2, 1, 1
+        3, 55, 1590115422000, 1, 1, 1
+        4, 55, 1590115423000, 2, 1, 1
+        5, 55, 1590115424000, 3, 1, 2
+
+  - id: 1
+    desc: Count of string types
+    db: db1
+    sql: |
+      SELECT col1 as id,
+             count(col2) over w1 as col2_cnt,
+             count(col6) over w1 as col6_cnt,
+             count(std_ts) over w1 as std_ts_cnt
+      FROM t1
+      WINDOW w1 as (PARTITION BY t1.col2 ORDER BY t1.std_ts ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW) limit 10;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col6:string, std_ts:timestamp
+        index: index2:col2:std_ts
+        data: |
+          0, 1, 5, 1, 1590115420000
+          0, 2, 5, 22, 1590115421000
+          1, 3, 55, 333, 1590115422000
+          1, 4, 55, 4444, 1590115423000
+          2, 5, 55, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 1590115424000
+    expect:
+      schema: id:int32, col2_cnt:int64, col6_cnt:int64, std_ts_cnt:int64
+      order: id
+      data: |
+        1, 1, 1, 1
+        2, 2, 2, 2
+        3, 1, 1, 1
+        4, 2, 2, 2
+        5, 3, 3, 3
   - id: 2
     desc: udf and udaf in same window project
     db: db1

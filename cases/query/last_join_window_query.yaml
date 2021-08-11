@@ -96,11 +96,12 @@ cases:
     desc: LAST JOIN Window, Join成功命中索引, 索引为timestamp
     db: db1
     sql: |
-      SELECT {0}.col1 as id, {0}.col2 as t1_col2, {0}.col5 as t1_col5, sum({0}.col5) OVER w1 as w1_col5_sum
-      FROM {0} last join {1} order by {1}.col5 on {0}.col1={1}.col1 and {0}.col5 = {1}.col5
-      WINDOW w1 AS (PARTITION BY {0}.col2 ORDER BY {0}.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+      SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5, sum(t1.col5) OVER w1 as w1_col5_sum
+      FROM t1 last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
     inputs:
-      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:timestamp, col6:string
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:timestamp, col6:string
         index: index2:col2:col5
         data: |
           0, 1, 5, 1.1, 11.1, 1, 1
@@ -108,7 +109,8 @@ cases:
           1, 3, 55, 3.3, 33.3, 1, 333
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      - schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:timestamp
+      - name: t2
+        schema: str0:string, str1:string, col3:float, col4:double, col2:int16, col1:int32, col5:timestamp
         index: index1:col1:col5
         data: |
           2, EEEEE, 5.5, 550.5, 550, 5, 3

@@ -631,3 +631,44 @@ cases:
 
       rows:
         - [ 1, NULL, NULL, NULL, NULL, NULL, NULL]
+  - id: 33
+    desc: SQL标准Cast语法-VARCHAR(expr)
+    inputs:
+      - columns: ["c1 int", "c2 float", "c5 bigint"]
+        indexs: ["index1:c1:c5"]
+        rows:
+          - [1, 1.0, 1590115420000]
+    sql: |
+      select int(c1) as f1, timestamp(c5) as f2,
+      VARCHAR(c1) as f3 from {0};
+    expect:
+      columns: ["f1 int", "f2 timestamp", "f3 string"]
+      rows:
+        - [1, 1590115420000, "1"]
+  - id: 34
+    desc: SQL标准Cast语法-Cast(expr as VARCHAR)
+    inputs:
+      - columns: ["c1 int", "c2 float", "c5 bigint"]
+        indexs: ["index1:c1:c5"]
+        rows:
+          - [1, 1.0, 1590115420000]
+    sql: |
+      select CAST(c1 as int) as f1, CAST(c5 as timestamp) as f2,
+      CAST(c1 as VARCHAR) as f3, CAST(c1 as VARCHAR(60)) as f4 from {0};
+    expect:
+      columns: ["f1 int", "f2 timestamp", "f3 string", "f4 string"]
+      rows:
+        - [1, 1590115420000, "1", "1"]
+  - id: 35
+    desc: SQL标准Cast语法-Cast(NULL表达式 as VARCHAR)
+    inputs:
+      - columns: ["c0 string", "std_ts bigint", "c1 int", "c2 float", "c5 bigint"]
+        indexs: ["index1:c0:std_ts"]
+        rows:
+          - ["pk", 1, NULL, NULL, NULL]
+    sql: |
+      select cast(c2 as int) as f1, cast(c1 as VARCHAR) as f2, cast(c1 as VARCHAR(60)) as f3  from {0};
+    expect:
+      columns: ["f1 int", "f2 string", "f3 string"]
+      rows:
+        - [NULL, NULL, NULL]
