@@ -7,6 +7,11 @@ on:
     tags:
       - v*
   pull_request:
+    paths:
+      - .github/workflows/hybridse-ci.yml
+      - cases/**/*
+      - hybridse/**/*
+  workflow_dispatch:
 
 defaults:
   run:
