@@ -18,11 +18,13 @@
 #define INCLUDE_NODE_SQL_NODE_H_
 
 #include <glog/logging.h>
+
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/filesystem/operations.hpp"
@@ -492,6 +494,9 @@ class ExprNode : public SqlNode {
     static Status CompareTypeAccept(node::NodeManager *nm, const TypeNode *left_type, const TypeNode *right_type,
                                     const TypeNode **output_type);
     static Status LogicalOpTypeAccept(node::NodeManager *nm, const TypeNode *left_type, const TypeNode *right_type,
+                                      const TypeNode **output_type);
+
+    static Status BitwiseLogicalTypeAccept(node::NodeManager *nm, const TypeNode *lhs, const TypeNode *rhs,
                                       const TypeNode **output_type);
 
  private:

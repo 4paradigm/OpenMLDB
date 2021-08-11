@@ -23,8 +23,6 @@
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
 
-using hybridse::base::Status;
-
 namespace hybridse {
 namespace codegen {
 

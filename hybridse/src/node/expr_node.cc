@@ -213,6 +213,14 @@ Status ExprNode::IsCastAccept(node::NodeManager* nm, const TypeNode* src,
     return Status::OK();
 }
 
+/**
+* support rules:
+*  case target_type
+*   bool         -> from_type is bool
+*   int*         -> from_type is bool or from_type is equal/smaller integral type
+*   float|double -> from_type is bool or equal/smaller float type
+*   timestamp    -> from_type is timestamp or integral type
+*/
 bool ExprNode::IsSafeCast(const TypeNode* from_type,
                           const TypeNode* target_type) {
     if (from_type == nullptr || target_type == nullptr) {
@@ -471,6 +479,24 @@ Status ExprNode::LogicalOpTypeAccept(node::NodeManager* nm, const TypeNode* lhs,
     return Status::OK();
 }
 
+/**
+ * Bitwise Logical Operators, which is
+ *   - bitwise NOT: `~ rhs`
+ *   - bitwise AND: `lhs & rhs`
+ *   - bitwise OR:  `lhs & rhs`
+ *   - bitwise XOR: `lhs ^ rhs`
+ * `lhs` and `rhs` must have both integral type. usual arithmetic conversions
+ *  are performed on both operands and determine the type of the result.
+ */
+Status ExprNode::BitwiseLogicalTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
+                                          const TypeNode** output_type) {
+    CHECK_TRUE(lhs != nullptr && rhs != nullptr, kTypeError, "lhs and rhs must not null");
+    CHECK_TRUE(lhs->IsInteger() && rhs->IsInteger(), kTypeError, "Invalid Bitwise Op type: lhs ", lhs->GetName(),
+               ", rhs ", rhs->GetName());
+    CHECK_STATUS(InferNumberCastTypes(nm, lhs, rhs, output_type));
+    return Status::OK();
+}
+
 Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2, kTypeError);
     auto left_type = GetChild(0)->GetOutputType();
@@ -546,6 +572,15 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             const TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
             CHECK_STATUS(LogicalOpTypeAccept(ctx->node_manager(), left_type,
                                              right_type, &top_type))
+            SetOutputType(top_type);
+            SetNullable(nullable);
+            break;
+        }
+        case kFnOpBitwiseAnd:
+        case kFnOpBitwiseOr:
+        case kFnOpBitwiseXor: {
+            const TypeNode* top_type = nullptr;
+            CHECK_STATUS(BitwiseLogicalTypeAccept(ctx->node_manager(), left_type, right_type, &top_type));
             SetOutputType(top_type);
             SetNullable(nullable);
             break;

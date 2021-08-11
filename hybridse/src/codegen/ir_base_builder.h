@@ -25,8 +25,6 @@
 #include "node/type_node.h"
 #include "proto/fe_type.pb.h"
 
-using ::hybridse::common::kCodegenError;
-
 namespace hybridse {
 namespace codegen {
 

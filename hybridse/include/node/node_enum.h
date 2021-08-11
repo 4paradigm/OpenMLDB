@@ -169,10 +169,10 @@ enum FnOperator {
     kFnOpDiv,         // "/"
     kFnOpFDiv,        // "div", float division
     kFnOpMod,         // "%"
-    kFnOpAnd,         // "AND"
-    kFnOpOr,          // "OR"
-    kFnOpXor,         // "XOR"
-    kFnOpNot,         // "NOT"
+    kFnOpAnd,         // "AND", logical
+    kFnOpOr,          // "OR" , logical
+    kFnOpXor,         // "XOR", logical
+    kFnOpNot,         // "NOT", logical
     kFnOpEq,          // "="
     kFnOpNeq,         // "!="
     kFnOpLt,          // "<"

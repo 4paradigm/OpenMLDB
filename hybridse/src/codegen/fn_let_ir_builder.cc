@@ -24,6 +24,7 @@
 #include "vm/transform.h"
 
 using ::hybridse::base::Status;
+using ::hybridse::common::kCodegenError;
 
 namespace hybridse {
 namespace codegen {

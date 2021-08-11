@@ -39,10 +39,13 @@
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 ExitOnError ExitOnErr;
+
 namespace hybridse {
 namespace codegen {
+
 using hybridse::codec::Timestamp;
 using hybridse::udf::Nullable;
+
 class ArithmeticIRBuilderTest : public ::testing::Test {
  public:
     ArithmeticIRBuilderTest() { manager_ = new node::NodeManager(); }
@@ -1060,6 +1063,23 @@ TEST_F(ArithmeticIRBuilderTest, test_mod_double_x_expr) {
         ::hybridse::node::kDouble, 12.0, 5.1, fmod(12.0, 5.1),
         ::hybridse::node::kFnOpMod);
 }
+
+TEST_F(ArithmeticIRBuilderTest, BitwiseAnd) {
+    // 0x0011 & 0x0110 = 0x0010
+    BinaryArithmeticExprCheck<int32_t, int32_t, int32_t>(
+        ::hybridse::node::kInt32, ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        3, 6, 2, ::hybridse::node::kFnOpBitwiseAnd);
+    BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
+        ::hybridse::node::kInt32, ::hybridse::node::kInt16, ::hybridse::node::kInt32,
+        3, 6, 2, ::hybridse::node::kFnOpBitwiseAnd);
+    BinaryArithmeticExprCheck<int16_t, int32_t, int32_t>(
+        ::hybridse::node::kInt16, ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        3, 6, 2, ::hybridse::node::kFnOpBitwiseAnd);
+    BinaryArithmeticExprCheck<int16_t, int64_t, int64_t>(
+        ::hybridse::node::kInt16, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+        3, 6L, 2L, ::hybridse::node::kFnOpBitwiseAnd);
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 int main(int argc, char **argv) {

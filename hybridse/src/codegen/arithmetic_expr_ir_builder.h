@@ -16,6 +16,7 @@
 
 #ifndef SRC_CODEGEN_ARITHMETIC_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_ARITHMETIC_EXPR_IR_BUILDER_H_
+
 #include "base/fe_status.h"
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/scope_var.h"
@@ -30,33 +31,21 @@ class ArithmeticIRBuilder {
     explicit ArithmeticIRBuilder(::llvm::BasicBlock* block);
     ~ArithmeticIRBuilder();
 
-    static bool BuildAnd(::llvm::BasicBlock* block, ::llvm::Value* left,
-                         ::llvm::Value* right, ::llvm::Value** output,
-                         base::Status& status);  // NOLINT
-    static bool BuildLShiftLeft(::llvm::BasicBlock* block, ::llvm::Value* left,
-                                ::llvm::Value* right, ::llvm::Value** output,
-                                base::Status& status);  // NOLINT
-    static bool BuildLShiftRight(::llvm::BasicBlock* block, ::llvm::Value* left,
-                                 ::llvm::Value* right, ::llvm::Value** output,
-                                 base::Status& status);  // NOLINT
-    Status BuildAnd(const NativeValue& left, const NativeValue& right,
-                    NativeValue* output);  // NOLINT
-    Status BuildLShiftLeft(const NativeValue& left, const NativeValue& right,
-                           NativeValue* output);  // NOLINT
-    Status BuildLShiftRight(const NativeValue& left, const NativeValue& right,
-                            NativeValue* output);  // NOLINT
-    Status BuildAddExpr(const NativeValue& left, const NativeValue& right,
-                        NativeValue* output);  // NOLINT
-    Status BuildSubExpr(const NativeValue& left, const NativeValue& right,
-                        NativeValue* output);  // NOLINT
-    Status BuildMultiExpr(const NativeValue& left, const NativeValue& right,
-                          NativeValue* output);  // NOLINT
-    Status BuildFDivExpr(const NativeValue& left, const NativeValue& right,
-                         NativeValue* output);  // NOLINT
-    Status BuildSDivExpr(const NativeValue& left, const NativeValue& right,
-                         NativeValue* output);  // NOLINT
-    Status BuildModExpr(const NativeValue& left, const NativeValue& right,
-                        NativeValue* output);  // NOLINT
+    Status BuildLShiftLeft(const NativeValue& left, const NativeValue& right, NativeValue* output);
+
+    Status BuildLShiftRight(const NativeValue& left, const NativeValue& right, NativeValue* output);
+
+    Status BuildAddExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
+
+    Status BuildSubExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
+
+    Status BuildMultiExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
+
+    Status BuildFDivExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
+
+    Status BuildSDivExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
+
+    Status BuildModExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
 
     Status BuildBitwiseAndExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
 
@@ -64,42 +53,59 @@ class ArithmeticIRBuilder {
 
     Status BuildBitwiseXorExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
 
-    static bool BuildAddExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
-                             ::llvm::Value* right, ::llvm::Value** output,
+    static bool BuildLShiftLeft(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+                                ::llvm::Value** output,
+                                base::Status& status);  // NOLINT
+
+    static bool BuildLShiftRight(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+                                 ::llvm::Value** output,
+                                 base::Status& status);  // NOLINT
+
+    static bool BuildAddExpr(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+                             ::llvm::Value** output,
                              ::hybridse::base::Status& status);  // NOLINT
-    static bool BuildSubExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
-                             ::llvm::Value* right, ::llvm::Value** output,
+
+    static bool BuildSubExpr(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+                             ::llvm::Value** output,
                              base::Status& status);  // NOLINT
-    static bool BuildMultiExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
-                               ::llvm::Value* right, ::llvm::Value** output,
+
+    static bool BuildMultiExpr(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+                               ::llvm::Value** output,
                                base::Status& status);  // NOLINT
-    static bool BuildFDivExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
-                              ::llvm::Value* right, ::llvm::Value** output,
-                              base::Status& status);  // NOLINT
-    static bool BuildSDivExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
-                              ::llvm::Value* right, ::llvm::Value** output,
+
+    static bool BuildFDivExpr(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+                              ::llvm::Value** output,
                               base::Status& status);  // NOLINT
 
-    static bool BuildModExpr(::llvm::BasicBlock* block, llvm::Value* left,
-                             llvm::Value* right, llvm::Value** output,
+    static bool BuildSDivExpr(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+                              ::llvm::Value** output,
+                              base::Status& status);  // NOLINT
+
+    static bool BuildModExpr(::llvm::BasicBlock* block, llvm::Value* left, llvm::Value* right, llvm::Value** output,
                              base::Status status);
 
- private:
-    static Status AndTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
-    static Status OrTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
-    static bool InferAndCastedNumberTypes(
-        ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
-        ::llvm::Value** casted_left, ::llvm::Value** casted_right,
-        ::hybridse::base::Status& status);  // NOLINT
+    static bool BuildAnd(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right, ::llvm::Value** output,
+                         base::Status& status); // NOLINT
 
-    static bool InferAndCastIntegerTypes(
-        ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
-        ::llvm::Value** casted_left, ::llvm::Value** casted_right,
-        ::hybridse::base::Status& status);  // NOLINT
-    static bool InferAndCastDoubleTypes(
-        ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
-        ::llvm::Value** casted_left, ::llvm::Value** casted_right,
-        ::hybridse::base::Status& status);  // NOLINT
+    static bool BuildOr(::llvm::BasicBlock* block, llvm::Value* left, llvm::Value* right,
+                                   llvm::Value** output, base::Status* status);
+
+    static bool BuildXor(::llvm::BasicBlock* block, llvm::Value* left, llvm::Value* right,
+                                    llvm::Value** output, base::Status* status);
+
+ private:
+    static bool InferAndCastedNumberTypes(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+                                          ::llvm::Value** casted_left, ::llvm::Value** casted_right,
+                                          ::hybridse::base::Status& status);  // NOLINT
+
+    static bool InferAndCastIntegerTypes(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+                                         ::llvm::Value** casted_left, ::llvm::Value** casted_right,
+                                         ::hybridse::base::Status& status);  // NOLINT
+
+    static bool InferAndCastDoubleTypes(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+                                        ::llvm::Value** casted_left, ::llvm::Value** casted_right,
+                                        ::hybridse::base::Status& status);  // NOLINT
+
     ::llvm::BasicBlock* block_;
     CastExprIRBuilder cast_expr_ir_builder_;
 };
