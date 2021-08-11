@@ -606,6 +606,131 @@ TEST_F(SQLSDKTest, create_table) {
     ASSERT_TRUE(router->DropDB(db, &status));
 }
 
+TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
+    std::string ddl =
+        "create table trans(c_sk_seq string,\n"
+        "                   cust_no string,\n"
+        "                   pay_cust_name string,\n"
+        "                   pay_card_no string,\n"
+        "                   payee_card_no string,\n"
+        "                   card_type string,\n"
+        "                   merch_id string,\n"
+        "                   txn_datetime string,\n"
+        "                   txn_amt double,\n"
+        "                   txn_curr string,\n"
+        "                   card_balance double,\n"
+        "                   day_openbuy double,\n"
+        "                   credit double,\n"
+        "                   remainning_credit double,\n"
+        "                   indi_openbuy double,\n"
+        "                   lgn_ip string,\n"
+        "                   IEMI string,\n"
+        "                   client_mac string,\n"
+        "                   chnl_type int32,\n"
+        "                   cust_idt int32,\n"
+        "                   cust_idt_no string,\n"
+        "                   province string,\n"
+        "                   city string,\n"
+        "                   latitudeandlongitude string,\n"
+        "                   txn_time int64,\n"
+        "                   index(key=pay_card_no, ts=txn_time),\n"
+        "                   index(key=merch_id, ts=txn_time));";
+    SQLRouterOptions sql_opt;
+    sql_opt.session_timeout = 30000;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) {
+        FAIL() << "Fail new cluster sql router";
+    }
+    std::string db = "sql_where_test";
+    hybridse::sdk::Status status;
+    ASSERT_TRUE(router->CreateDB(db, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+    ASSERT_TRUE(router->RefreshCatalog());
+    int64_t ts = 1594800959827;
+    {
+        char buffer[4096];
+        sprintf(buffer,  // NOLINT
+                "insert into trans "
+                "values('c_sk_seq0','cust_no0','pay_cust_name0','card_%d','"
+                "payee_card_no0','card_type0','mc_%d','2020-"
+                "10-20 "
+                "10:23:50',1.0,'txn_curr',2.0,3.0,4.0,5.0,6.0,'lgn_ip0','iemi0'"
+                ",'client_mac0',10,20,'cust_idt_no0','"
+                "province0',"
+                "'city0', 'longitude', %s);",
+                0, 0, std::to_string(ts++).c_str());  // NOLINT
+        std::string insert_sql = std::string(buffer, strlen(buffer));
+        ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
+    }
+    {
+        char buffer[4096];
+        sprintf(buffer,  // NOLINT
+                "insert into trans "
+                "values('c_sk_seq0','cust_no0','pay_cust_name0','card_%d','"
+                "payee_card_no0','card_type0','mc_%d','2020-"
+                "10-20 "
+                "10:23:50',1.0,'txn_curr',2.0,3.0,4.0,5.0,6.0,'lgn_ip0','iemi0'"
+                ",'client_mac0',10,20,'cust_idt_no0','"
+                "province0',"
+                "'city0', 'longitude', %s);",
+                0, 0, std::to_string(ts++).c_str());  // NOLINT
+        std::string insert_sql = std::string(buffer, strlen(buffer));
+        ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
+    }
+    {
+        char buffer[4096];
+        sprintf(buffer,  // NOLINT
+                "insert into trans "
+                "values('c_sk_seq0','cust_no0','pay_cust_name0','card_%d','"
+                "payee_card_no0','card_type0','mc_%d','2020-"
+                "10-20 "
+                "10:23:50',1.0,'txn_curr',2.0,3.0,4.0,5.0,6.0,'lgn_ip0','iemi0'"
+                ",'client_mac0',10,20,'cust_idt_no0','"
+                "province0',"
+                "'city0', 'longitude', %s);",
+                0, 0, std::to_string(ts++).c_str());  // NOLINT
+        std::string insert_sql = std::string(buffer, strlen(buffer));
+        ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
+    }
+
+    {
+        std::string where_exist = "select * from trans where merch_id='mc_0' and txn_time < 1594800959830;";
+        auto rs = router->ExecuteSQL(db, where_exist, &status);
+        if (!rs) {
+            FAIL() << "fail to execute sql";
+        }
+        ASSERT_EQ(rs->Size(), 3);
+    }
+    {
+        std::string where_not_exist = "select * from trans where merch_id='mc_0' and txn_time < 1594800959828;";
+        auto rs = router->ExecuteSQL(db, where_not_exist, &status);
+        if (!rs) {
+            FAIL() << "fail to execute sql";
+        }
+        ASSERT_EQ(rs->Size(), 1);
+    }
+    {
+        std::string where_not_exist = "select * from trans where merch_id='mc_0' and txn_time < 1594800959827;";
+        auto rs = router->ExecuteSQL(db, where_not_exist, &status);
+        if (!rs) {
+            FAIL() << "fail to execute sql";
+        }
+        ASSERT_EQ(rs->Size(), 0);
+    }
+    {
+        std::string where_not_exist = "select * from trans where merch_id='mc_1' and txn_time < 1594800959830;";
+        auto rs = router->ExecuteSQL(db, where_not_exist, &status);
+        if (!rs) {
+            FAIL() << "fail to execute sql";
+        }
+        ASSERT_EQ(rs->Size(), 0);
+    }
+
+
+}
 }  // namespace sdk
 }  // namespace openmldb
 
