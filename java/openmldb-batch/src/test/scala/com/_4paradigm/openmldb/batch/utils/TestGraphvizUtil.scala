@@ -4,7 +4,8 @@ import com._4paradigm.hybridse.HybridSeLibrary
 import com._4paradigm.hybridse.sdk.SqlEngine
 import com._4paradigm.hybridse.vm.{Engine, EngineOptions}
 import com._4paradigm.openmldb.batch.SparkTestSuite
-import com._4paradigm.openmldb.batch.utils.GraphvizUtil.{drawPhysicalPlan, getGraphNode}
+import com._4paradigm.openmldb.batch.utils.GraphvizUtil.{drawPhysicalPlan, getGraphNode, visitPhysicalOp}
+import guru.nidi.graphviz.model.MutableNode
 import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType, StructField, StructType, TimestampType}
 import org.scalatest.{BeforeAndAfter, FunSuite}
@@ -12,6 +13,7 @@ import org.scalatest.{BeforeAndAfter, FunSuite}
 import java.io.File
 import scala.collection.JavaConverters.seqAsJavaListConverter
 import java.sql.Timestamp
+import scala.collection.mutable
 
 class TestGraphvizUtil extends SparkTestSuite {
 
@@ -99,5 +101,46 @@ class TestGraphvizUtil extends SparkTestSuite {
     }
 
     assert(mutablenode.toString=="[77]GroupAgg{}->[45]GroupBy::")
+  }
+
+  test("Test visitPhysicalOp") {
+    val engineOptions: EngineOptions = SqlEngine.createDefaultEngineOptions()
+    val sess = getSparkSession
+
+    val sql ="""
+               | SELECT id, `time`, amt, sum(amt) OVER w AS w_amt_sum FROM t
+               | GROUP BY id
+               | WINDOW w AS (
+               |    PARTITION BY id
+               |    ORDER BY `time`
+               |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);
+     """.stripMargin
+
+    val schema = StructType(Seq(
+      StructField("id", IntegerType),
+      StructField("time", TimestampType),
+      StructField("amt", DoubleType)
+    ))
+
+    val data = Seq(
+      (1, Timestamp.valueOf("2001-01-01 0:0:0"), 1.0),
+      (1, Timestamp.valueOf("2009-04-01 0:0:0"), 1.0),
+      (1, Timestamp.valueOf("2900-01-01 0:0:0"), 1.0),
+      (0, Timestamp.valueOf("2009-01-01 0:0:0"), 1.0),
+      (0, Timestamp.valueOf("2000-08-01 0:0:0"), 1.0),
+      (0, Timestamp.valueOf("2019-09-11 0:0:0"), 1.0)
+    )
+
+    val table = sess.createDataFrame(data.map(Row.fromTuple(_)).asJava, schema)
+
+    val engine = new SqlEngine(sql, HybridseUtil.getDatabase("spark_db", Map("t" -> table)), engineOptions)
+    val root = engine.getPlan
+    val children = mutable.ArrayBuffer[MutableNode]()
+    val mutablenode = visitPhysicalOp(root,children.toArray)
+
+    if (engine != null) {
+      engine.close()
+    }
+    assert(mutablenode.toString=="[77]GroupAgg{}->")
   }
 }
