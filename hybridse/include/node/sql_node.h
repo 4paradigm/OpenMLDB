@@ -543,7 +543,7 @@ class OrderByNode : public ExprNode {
     virtual bool Equals(const ExprNode *that) const;
     OrderByNode *ShadowCopy(NodeManager *) const override;
     const ExprListNode *order_expressions() const { return order_expressions_; }
-    const OrderExpression *GetOrderExpression(int idx) const {
+    const OrderExpression *GetOrderExpression(size_t idx) const {
         if (nullptr == order_expressions_) {
             return nullptr;
         }
