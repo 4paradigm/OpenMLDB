@@ -210,8 +210,8 @@ bool ArithmeticIRBuilder::BuildAnd(::llvm::BasicBlock* block,
         LOG(WARNING) << status;
         return false;
     }
-    ::llvm::Value* casted_left = NULL;
-    ::llvm::Value* casted_right = NULL;
+    ::llvm::Value* casted_left = nullptr;
+    ::llvm::Value* casted_right = nullptr;
     if (!InferAndCastIntegerTypes(block, left, right, &casted_left,
                                    &casted_right, status)) {
         return false;
@@ -230,8 +230,14 @@ bool ArithmeticIRBuilder::BuildOr(::llvm::BasicBlock* block, llvm::Value* left,
         LOG(WARNING) << *status;
         return false;
     }
+    ::llvm::Value* casted_left = nullptr;
+    ::llvm::Value* casted_right = nullptr;
+    if (!InferAndCastIntegerTypes(block, left, right, &casted_left,
+                                   &casted_right, *status)) {
+        return false;
+    }
     ::llvm::IRBuilder<> builder(block);
-    *output = builder.CreateOr(left, right);
+    *output = builder.CreateOr(casted_left, casted_right);
     return true;
 }
 
@@ -245,8 +251,14 @@ bool ArithmeticIRBuilder::BuildXor(::llvm::BasicBlock* block, llvm::Value* left,
         LOG(WARNING) << *status;
         return false;
     }
+    ::llvm::Value* casted_left = nullptr;
+    ::llvm::Value* casted_right = nullptr;
+    if (!InferAndCastIntegerTypes(block, left, right, &casted_left,
+                                   &casted_right, *status)) {
+        return false;
+    }
     ::llvm::IRBuilder<> builder(block);
-    *output = builder.CreateXor(left, right);
+    *output = builder.CreateXor(casted_left, casted_right);
     return true;
 }
 

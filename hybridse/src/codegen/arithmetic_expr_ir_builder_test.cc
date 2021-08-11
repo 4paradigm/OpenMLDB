@@ -1065,19 +1065,81 @@ TEST_F(ArithmeticIRBuilderTest, test_mod_double_x_expr) {
 }
 
 TEST_F(ArithmeticIRBuilderTest, BitwiseAnd) {
+    auto op = ::hybridse::node::kFnOpBitwiseAnd;
     // 0x0011 & 0x0110 = 0x0010
+    BinaryArithmeticExprCheck<int16_t, int16_t, int16_t>(
+        ::hybridse::node::kInt16, ::hybridse::node::kInt16, ::hybridse::node::kInt16,
+        3, 6, 2, op);
     BinaryArithmeticExprCheck<int32_t, int32_t, int32_t>(
         ::hybridse::node::kInt32, ::hybridse::node::kInt32, ::hybridse::node::kInt32,
-        3, 6, 2, ::hybridse::node::kFnOpBitwiseAnd);
+        3, 6, 2, op);
     BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
         ::hybridse::node::kInt32, ::hybridse::node::kInt16, ::hybridse::node::kInt32,
-        3, 6, 2, ::hybridse::node::kFnOpBitwiseAnd);
+        3, 6, 2, op);
     BinaryArithmeticExprCheck<int16_t, int32_t, int32_t>(
         ::hybridse::node::kInt16, ::hybridse::node::kInt32, ::hybridse::node::kInt32,
-        3, 6, 2, ::hybridse::node::kFnOpBitwiseAnd);
+        3, 6, 2, op);
     BinaryArithmeticExprCheck<int16_t, int64_t, int64_t>(
         ::hybridse::node::kInt16, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
-        3, 6L, 2L, ::hybridse::node::kFnOpBitwiseAnd);
+        3, 6L, 2L, op);
+    BinaryArithmeticExprCheck<int64_t, int32_t, int64_t>(
+        ::hybridse::node::kInt64, ::hybridse::node::kInt32, ::hybridse::node::kInt64,
+        3L, 6, 2L, op);
+    BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
+        ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+        3L, 6L, 2L, op);
+}
+
+TEST_F(ArithmeticIRBuilderTest, BitwiseOr) {
+    auto op = ::hybridse::node::kFnOpBitwiseOr;
+    // 0x0011 | 0x0110 = 0x0111
+    BinaryArithmeticExprCheck<int16_t, int16_t, int16_t>(
+        ::hybridse::node::kInt16, ::hybridse::node::kInt16, ::hybridse::node::kInt16,
+        3, 6, 7, op);
+    BinaryArithmeticExprCheck<int32_t, int32_t, int32_t>(
+        ::hybridse::node::kInt32, ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        3, 6, 7, op);
+    BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
+        ::hybridse::node::kInt32, ::hybridse::node::kInt16, ::hybridse::node::kInt32,
+        3, 6, 7, op);
+    BinaryArithmeticExprCheck<int16_t, int32_t, int32_t>(
+        ::hybridse::node::kInt16, ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        3, 6, 7, op);
+    BinaryArithmeticExprCheck<int16_t, int64_t, int64_t>(
+        ::hybridse::node::kInt16, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+        3, 6L, 7L, op);
+    BinaryArithmeticExprCheck<int64_t, int32_t, int64_t>(
+        ::hybridse::node::kInt64, ::hybridse::node::kInt32, ::hybridse::node::kInt64,
+        3L, 6, 7L, op);
+    BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
+        ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+        3L, 6L, 7L, op);
+}
+
+TEST_F(ArithmeticIRBuilderTest, BitwiseXor) {
+    auto op = ::hybridse::node::kFnOpBitwiseXor;
+    // 0x0011 ^ 0x0110 = 0x0101
+    BinaryArithmeticExprCheck<int16_t, int16_t, int16_t>(
+        ::hybridse::node::kInt16, ::hybridse::node::kInt16, ::hybridse::node::kInt16,
+        3, 6, 5, op);
+    BinaryArithmeticExprCheck<int32_t, int32_t, int32_t>(
+        ::hybridse::node::kInt32, ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        3, 6, 5, op);
+    BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
+        ::hybridse::node::kInt32, ::hybridse::node::kInt16, ::hybridse::node::kInt32,
+        3, 6, 5, op);
+    BinaryArithmeticExprCheck<int16_t, int32_t, int32_t>(
+        ::hybridse::node::kInt16, ::hybridse::node::kInt32, ::hybridse::node::kInt32,
+        3, 6, 5, op);
+    BinaryArithmeticExprCheck<int16_t, int64_t, int64_t>(
+        ::hybridse::node::kInt16, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+        3, 6L, 5L, op);
+    BinaryArithmeticExprCheck<int64_t, int32_t, int64_t>(
+        ::hybridse::node::kInt64, ::hybridse::node::kInt32, ::hybridse::node::kInt64,
+        3L, 6, 5L, op);
+    BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
+        ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+        3L, 6L, 5L, op);
 }
 
 }  // namespace codegen
