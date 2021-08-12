@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef SRC_TABLET_BULK_LOAD_MGR_H
-#define SRC_TABLET_BULK_LOAD_MGR_H
+#ifndef SRC_TABLET_BULK_LOAD_MGR_H_
+#define SRC_TABLET_BULK_LOAD_MGR_H_
 
-#include "data_receiver.h"
+#include <map>
+#include <memory>
+#include <mutex>
+
 #include "replica/log_replicator.h"
 #include "storage/mem_table.h"
+#include "tablet/data_receiver.h"
 
 namespace openmldb::tablet {
 class BulkLoadMgr {
@@ -45,4 +49,4 @@ class BulkLoadMgr {
     // TODO(hw): support time measurement
 };
 }  // namespace openmldb::tablet
-#endif  // SRC_TABLET_BULK_LOAD_MGR_H
+#endif  // SRC_TABLET_BULK_LOAD_MGR_H_

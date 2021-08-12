@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-#include "bulk_load_mgr.h"
+#include "tablet/bulk_load_mgr.h"
+
+#include <memory>
+#include <vector>
 
 #include "gtest/gtest.h"
 
@@ -50,15 +53,14 @@ TEST_F(BulkLoadMgrTest, create_data_receivers) {
         std::vector<std::thread> workers;
         for (int i = 0; i < 5; i++) {
             workers.push_back(std::thread([this, i]() {
-              ASSERT_EQ(mgr.GetDataReceiverPub(123, i, false), nullptr);
-              ASSERT_NE(mgr.GetDataReceiverPub(123, i, true), nullptr);
-              ASSERT_NE(mgr.GetDataReceiverPub(123, i, false), nullptr);
+                ASSERT_EQ(mgr.GetDataReceiverPub(123, i, false), nullptr);
+                ASSERT_NE(mgr.GetDataReceiverPub(123, i, true), nullptr);
+                ASSERT_NE(mgr.GetDataReceiverPub(123, i, false), nullptr);
             }));
         }
 
         std::for_each(workers.begin(), workers.end(), [](std::thread& t) { t.join(); });
     }
-
 }
 }  // namespace openmldb::tablet
 

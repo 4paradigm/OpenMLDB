@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-#include "bulk_load_mgr.h"
+#include "tablet/bulk_load_mgr.h"
+
+#include <memory>
 
 namespace openmldb::tablet {
 

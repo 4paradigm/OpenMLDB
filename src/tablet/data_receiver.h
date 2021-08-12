@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef SRC_TABLET_DATA_RECEIVER_H
-#define SRC_TABLET_DATA_RECEIVER_H
+#ifndef SRC_TABLET_DATA_RECEIVER_H_
+#define SRC_TABLET_DATA_RECEIVER_H_
+
+#include <memory>
+#include <mutex>
+#include <vector>
 
 #include "replica/log_replicator.h"
 #include "storage/mem_table.h"
@@ -47,4 +51,4 @@ class DataReceiver {
 };
 
 }  // namespace openmldb::tablet
-#endif  // SRC_TABLET_DATA_RECEIVER_H
+#endif  // SRC_TABLET_DATA_RECEIVER_H_

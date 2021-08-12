@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "data_receiver.h"
+#include "tablet/data_receiver.h"
 
 #include "storage/segment.h"
 

@@ -30,7 +30,6 @@
 
 #include "base/set.h"
 #include "base/spinlock.h"
-#include "bulk_load_mgr.h"
 #include "catalog/schema_adapter.h"
 #include "catalog/tablet_catalog.h"
 #include "common/thread_pool.h"
@@ -38,6 +37,7 @@
 #include "replica/log_replicator.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
+#include "tablet/bulk_load_mgr.h"
 #include "tablet/combine_iterator.h"
 #include "tablet/file_receiver.h"
 #include "vm/engine.h"
