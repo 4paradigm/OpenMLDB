@@ -2,6 +2,7 @@ package com._4paradigm.dataimporter;
 
 import junit.framework.TestCase;
 
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,10 +21,6 @@ public class DataImporterTest extends TestCase {
 //        I0715 21:37:10.869401 13732 tablet_impl_test.cc:5643] hash(4) = 1
 //        I0715 21:37:10.869412 13732 tablet_impl_test.cc:5643] hash(6) = 4
 //        I0715 21:37:10.869423 13732 tablet_impl_test.cc:5643] hash(1) = 6
-    }
-
-    public void testArgs() {
-
     }
 
     // TODO(hw): run this test instead of running main class, just for simplifying.

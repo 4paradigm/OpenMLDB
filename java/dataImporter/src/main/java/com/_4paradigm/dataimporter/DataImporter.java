@@ -22,6 +22,10 @@ import picocli.CommandLine;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -102,20 +106,22 @@ public class DataImporter {
 
     public boolean checkTable() {
         Preconditions.checkNotNull(router);
-        if (forceRecreateTable) {
-            router.executeDDL(dbName, "drop table " + tableName + ";");
-        } else if (router.executeDDL(dbName, "desc table " + tableName + ";")) {
-            return true;
-        }
 
-        // try create table
-        if (createDDL == null) {
-            return false;
+        if (forceRecreateTable && createDDL != null) {
+            router.executeDDL(dbName, "drop table " + tableName + ";");
         }
-        // if db is not existed, create it
+        //  try create table, if db is not existed, create it
         router.createDB(dbName);
         // create table
-        return router.executeDDL(dbName, createDDL);
+        router.executeDDL(dbName, createDDL);
+
+        try {
+            logger.info("table should be empty");
+            return !router.executeSQL(dbName, "select * from " + tableName + " limit 1;").next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     public void Load() {
@@ -261,13 +267,20 @@ public class DataImporter {
         router.close();
     }
 
-    // TODO(hw): load from properties.file, cmd可以覆盖配置，这样好一点？cmd不适合太长
     public static void main(String[] args) {
         DataImporter dataImporter = new DataImporter();
         CommandLine cmd = new CommandLine(dataImporter).setCaseInsensitiveEnumValuesAllowed(true);
-        // TODO(hw): file path
-        File defaultsFile = new File("src/main/resources/importer.properties");
-        cmd.setDefaultValueProvider(new CommandLine.PropertiesDefaultProvider(defaultsFile));
+        try {
+            URL prop = dataImporter.getClass().getClassLoader().getResource("importer.properties");
+            Preconditions.checkNotNull(prop);
+            logger.info("load properties file {}", prop.getFile());
+            File defaultsFile = new File(prop.getFile());
+            cmd.setDefaultValueProvider(new CommandLine.PropertiesDefaultProvider(defaultsFile));
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.warn("can't load properties file");
+        }
+        // properties can be overwritten by command line
         cmd.parseArgs(args);
 
         logger.info("Start...");
@@ -281,7 +294,7 @@ public class DataImporter {
             return;
         }
         if (!dataImporter.checkTable()) {
-            logger.error("check table failed, try to create, failed too(no create ddl sql or create table failed)");
+            logger.error("check table failed");
             return;
         }
 
