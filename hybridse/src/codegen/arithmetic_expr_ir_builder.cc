@@ -517,6 +517,16 @@ Status ArithmeticIRBuilder::BuildBitwiseXorExpr(const NativeValue& left, const N
     return Status::OK();
 }
 
+Status ArithmeticIRBuilder::BuildBitwiseNotExpr(const NativeValue& rhs, NativeValue* output) {
+    CHECK_STATUS(TypeIRBuilder::UnaryOpTypeInfer(node::ExprNode::BitwiseNotTypeAccept, rhs.GetType()));
+
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Value* raw = rhs.GetValue(&builder);
+
+    *output = NativeValue::Create(builder.CreateNot(raw));
+    return Status::OK();
+}
+
 bool ArithmeticIRBuilder::BuildSubExpr(
     ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value** output,

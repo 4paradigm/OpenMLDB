@@ -497,6 +497,13 @@ Status ExprNode::BitwiseLogicalTypeAccept(node::NodeManager* nm, const TypeNode*
     return Status::OK();
 }
 
+Status ExprNode::BitwiseNotTypeAccept(node::NodeManager* nm, const TypeNode* rhs, const TypeNode** output_type) {
+    CHECK_TRUE(rhs != nullptr, kTypeError, "value for bitwise NOT must not null");
+    CHECK_TRUE(rhs->IsInteger(), kTypeError, "value for bitwise NOT must be interger, but get", rhs->GetName());
+    *output_type = rhs;
+    return Status::OK();
+}
+
 Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2, kTypeError);
     auto left_type = GetChild(0)->GetOutputType();
@@ -628,6 +635,11 @@ Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             break;
         }
         case kFnOpNonNull: {
+            SetOutputType(dtype);
+            SetNullable(false);
+            break;
+        }
+        case kFnOpBitwiseNot: {
             SetOutputType(dtype);
             SetNullable(false);
             break;

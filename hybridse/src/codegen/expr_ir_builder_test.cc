@@ -36,6 +36,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "node/node_manager.h"
+
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 

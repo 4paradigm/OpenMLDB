@@ -499,6 +499,8 @@ class ExprNode : public SqlNode {
     static Status BitwiseLogicalTypeAccept(node::NodeManager *nm, const TypeNode *lhs, const TypeNode *rhs,
                                       const TypeNode **output_type);
 
+    static Status BitwiseNotTypeAccept(node::NodeManager* nm, const TypeNode* rhs, const TypeNode** output_type);
+
  private:
     const TypeNode *output_type_ = nullptr;
     bool nullable_ = true;

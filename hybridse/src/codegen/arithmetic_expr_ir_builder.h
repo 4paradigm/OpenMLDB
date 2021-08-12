@@ -53,6 +53,8 @@ class ArithmeticIRBuilder {
 
     Status BuildBitwiseXorExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
 
+    Status BuildBitwiseNotExpr(const NativeValue& input, NativeValue* output);
+
     static bool BuildLShiftLeft(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
                                 ::llvm::Value** output,
                                 base::Status& status);  // NOLINT

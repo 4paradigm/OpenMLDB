@@ -606,9 +606,7 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::hybridse::node::UnaryExpr* node,
             break;
         }
         case FnOperator::kFnOpBitwiseNot: {
-            if (node->GetOutputType()->base() == node::kBool) {
-            } else {
-            }
+            CHECK_STATUS(arithmetic_ir_builder.BuildBitwiseNotExpr(left, output));
             break;
         }
         case ::hybridse::node::kFnOpBracket: {

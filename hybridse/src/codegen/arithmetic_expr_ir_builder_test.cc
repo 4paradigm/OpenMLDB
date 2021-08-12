@@ -16,7 +16,9 @@
 
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include <memory>
+#include <random>
 #include <utility>
+
 #include "case/sql_case.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/ir_base_builder_test.h"
@@ -54,6 +56,19 @@ class ArithmeticIRBuilderTest : public ::testing::Test {
  protected:
     node::NodeManager *manager_;
 };
+
+template <typename RHS, typename Ret>
+void UnaryArithmeticExprCheck(RHS rhs, Ret expect, ::hybridse::node::FnOperator op) {
+    auto compiled_func = BuildExprFunction<Ret, RHS>([op](node::NodeManager* nm, node::ExprNode* input) {
+        return nm->MakeUnaryExprNode(input, op);
+    });
+    ASSERT_TRUE(compiled_func.valid())
+        << "UnaryArithmeticExprCheck failed: " << DataTypeTrait<RHS>::to_string()
+        << " " << DataTypeTrait<Ret>::to_string()
+        << " " << node::ExprOpTypeName(op);
+    auto result = compiled_func(rhs);
+    EXPECT_EQ(expect, result);
+}
 
 template <typename LHS, typename RHS, typename Ret>
 void BinaryArithmeticErrorCheck(hybridse::node::FnOperator op) {
@@ -1088,6 +1103,17 @@ TEST_F(ArithmeticIRBuilderTest, BitwiseAnd) {
     BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
         ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
         3L, 6L, 2L, op);
+
+    // randomize check
+    std::mt19937 rng;
+    std::uniform_int_distribution<int64_t> gen(INT64_MIN, INT64_MAX);
+    for (int i = 0; i < 10; ++i) {
+        auto left = gen(rng);
+        auto right = gen(rng);
+        BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
+            ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+            left, right, left & right, op);
+    }
 }
 
 TEST_F(ArithmeticIRBuilderTest, BitwiseOr) {
@@ -1114,6 +1140,17 @@ TEST_F(ArithmeticIRBuilderTest, BitwiseOr) {
     BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
         ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
         3L, 6L, 7L, op);
+
+    // randomize check
+    std::mt19937 rng;
+    std::uniform_int_distribution<int64_t> gen(INT64_MIN, INT64_MAX);
+    for (int i = 0; i < 10; ++i) {
+        auto left = gen(rng);
+        auto right = gen(rng);
+        BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
+            ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+            left, right, left | right, op);
+    }
 }
 
 TEST_F(ArithmeticIRBuilderTest, BitwiseXor) {
@@ -1140,6 +1177,31 @@ TEST_F(ArithmeticIRBuilderTest, BitwiseXor) {
     BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
         ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
         3L, 6L, 5L, op);
+
+    // randomize check
+    std::mt19937 rng;
+    std::uniform_int_distribution<int64_t> gen(INT64_MIN, INT64_MAX);
+    for (int i = 0; i < 10; ++i) {
+        auto left = gen(rng);
+        auto right = gen(rng);
+        BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
+            ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
+            left, right, left ^ right, op);
+    }
+}
+
+TEST_F(ArithmeticIRBuilderTest, BitwiseNot) {
+    auto op = ::hybridse::node::kFnOpBitwiseNot;
+    UnaryArithmeticExprCheck<int16_t, int16_t>(0, -1, op);
+    UnaryArithmeticExprCheck<int32_t, int32_t>(0, -1, op);
+    UnaryArithmeticExprCheck<int64_t, int64_t>(0, -1, op);
+    // randomize check
+    std::mt19937 rng;
+    std::uniform_int_distribution<int64_t> gen(INT64_MIN, INT64_MAX);
+    for (int i = 0; i < 10; ++i) {
+        auto input = gen(rng);
+        UnaryArithmeticExprCheck<int64_t, int64_t>(input, -1 - input, op);
+    }
 }
 
 }  // namespace codegen
