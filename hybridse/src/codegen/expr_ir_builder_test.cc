@@ -94,7 +94,7 @@ void GenAddExpr(node::NodeManager *manager, ::hybridse::node::ExprNode **expr) {
     *expr = bexpr;
 }
 
-TEST_F(ExprIRBuilderTest, test_add_int32) {
+TEST_F(ExprIRBuilderTest, TestAddInt32) {
     ExprCheck(
         [](node::NodeManager *nm, node::ExprNode *input) {
             return nm->MakeBinaryExprNode(input, nm->MakeConstNode(1),
@@ -113,7 +113,7 @@ void BinaryExprCheck(V1 v1, V2 v2, R r, ::hybridse::node::FnOperator op) {
         r, v1, v2);
 }
 
-TEST_F(ExprIRBuilderTest, test_add_int16_x_expr) {
+TEST_F(ExprIRBuilderTest, TestAddInt16XExpr) {
     BinaryExprCheck<int16_t, int16_t, int16_t>(1, 1, 2,
                                                ::hybridse::node::kFnOpAdd);
 
@@ -129,7 +129,7 @@ TEST_F(ExprIRBuilderTest, test_add_int16_x_expr) {
                                              ::hybridse::node::kFnOpAdd);
 }
 
-TEST_F(ExprIRBuilderTest, test_add_int32_x_expr) {
+TEST_F(ExprIRBuilderTest, TestAddInt32XExpr) {
     BinaryExprCheck<int32_t, int16_t, int32_t>(1, 1, 2,
                                                ::hybridse::node::kFnOpAdd);
 
@@ -145,7 +145,7 @@ TEST_F(ExprIRBuilderTest, test_add_int32_x_expr) {
                                              ::hybridse::node::kFnOpAdd);
 }
 
-TEST_F(ExprIRBuilderTest, test_add_int64_x_expr) {
+TEST_F(ExprIRBuilderTest, TestAddInt64XExpr) {
     BinaryExprCheck<int64_t, int16_t, int64_t>(8000000000L, 1, 8000000001L,
                                                ::hybridse::node::kFnOpAdd);
 
@@ -161,7 +161,7 @@ TEST_F(ExprIRBuilderTest, test_add_int64_x_expr) {
                                              ::hybridse::node::kFnOpAdd);
 }
 
-TEST_F(ExprIRBuilderTest, test_add_float_x_expr) {
+TEST_F(ExprIRBuilderTest, TestAddFloatXExpr) {
     BinaryExprCheck<float, int16_t, float>(1.0f, 1, 2.0f,
                                            ::hybridse::node::kFnOpAdd);
 
@@ -177,7 +177,7 @@ TEST_F(ExprIRBuilderTest, test_add_float_x_expr) {
                                            ::hybridse::node::kFnOpAdd);
 }
 
-TEST_F(ExprIRBuilderTest, test_add_double_x_expr) {
+TEST_F(ExprIRBuilderTest, TestAddDoubleXExpr) {
     BinaryExprCheck<double, int16_t, double>(1.0, 1, 2.0,
                                              ::hybridse::node::kFnOpAdd);
 
@@ -194,7 +194,7 @@ TEST_F(ExprIRBuilderTest, test_add_double_x_expr) {
                                             ::hybridse::node::kFnOpAdd);
 }
 
-TEST_F(ExprIRBuilderTest, test_sub_int16_x_expr) {
+TEST_F(ExprIRBuilderTest, TestSubInt16XExpr) {
     BinaryExprCheck<int16_t, int16_t, int16_t>(2, 1, 1,
                                                ::hybridse::node::kFnOpMinus);
 
@@ -210,7 +210,7 @@ TEST_F(ExprIRBuilderTest, test_sub_int16_x_expr) {
                                              ::hybridse::node::kFnOpMinus);
 }
 
-TEST_F(ExprIRBuilderTest, test_sub_int32_x_expr) {
+TEST_F(ExprIRBuilderTest, TestSubInt32XExpr) {
     BinaryExprCheck<int32_t, int16_t, int32_t>(2, 1, 1,
                                                ::hybridse::node::kFnOpMinus);
 
@@ -226,7 +226,7 @@ TEST_F(ExprIRBuilderTest, test_sub_int32_x_expr) {
                                              ::hybridse::node::kFnOpMinus);
 }
 
-TEST_F(ExprIRBuilderTest, test_sub_int64_x_expr) {
+TEST_F(ExprIRBuilderTest, TestSubInt64XExpr) {
     BinaryExprCheck<int64_t, int16_t, int64_t>(8000000000L, 1, 8000000000L - 1L,
                                                ::hybridse::node::kFnOpMinus);
 
@@ -242,7 +242,7 @@ TEST_F(ExprIRBuilderTest, test_sub_int64_x_expr) {
                                              ::hybridse::node::kFnOpMinus);
 }
 
-TEST_F(ExprIRBuilderTest, test_sub_float_x_expr) {
+TEST_F(ExprIRBuilderTest, TestSubFloatXExpr) {
     BinaryExprCheck<float, int16_t, float>(2.0f, 1, 1.0f,
                                            ::hybridse::node::kFnOpMinus);
 
@@ -258,7 +258,7 @@ TEST_F(ExprIRBuilderTest, test_sub_float_x_expr) {
                                            ::hybridse::node::kFnOpMinus);
 }
 
-TEST_F(ExprIRBuilderTest, test_sub_double_x_expr) {
+TEST_F(ExprIRBuilderTest, TestSubDoubleXExpr) {
     BinaryExprCheck<double, int16_t, double>(2.0, 1, 1.0,
                                              ::hybridse::node::kFnOpMinus);
 
@@ -275,7 +275,7 @@ TEST_F(ExprIRBuilderTest, test_sub_double_x_expr) {
                                             ::hybridse::node::kFnOpMinus);
 }
 
-TEST_F(ExprIRBuilderTest, test_mul_int16_x_expr) {
+TEST_F(ExprIRBuilderTest, TestMulInt16XExpr) {
     BinaryExprCheck<int16_t, int16_t, int16_t>(2, 3, 2 * 3,
                                                ::hybridse::node::kFnOpMulti);
 
@@ -290,7 +290,7 @@ TEST_F(ExprIRBuilderTest, test_mul_int16_x_expr) {
     BinaryExprCheck<int16_t, double, double>(2, 12345678.5, 2.0 * 12345678.5,
                                              ::hybridse::node::kFnOpMulti);
 }
-TEST_F(ExprIRBuilderTest, test_multi_int32_x_expr) {
+TEST_F(ExprIRBuilderTest, TestMultiInt32XExpr) {
     BinaryExprCheck<int32_t, int16_t, int32_t>(2, 3, 2 * 3,
                                                ::hybridse::node::kFnOpMulti);
 
@@ -305,7 +305,7 @@ TEST_F(ExprIRBuilderTest, test_multi_int32_x_expr) {
     BinaryExprCheck<int32_t, double, double>(2, 12345678.5, 2.0 * 12345678.5,
                                              ::hybridse::node::kFnOpMulti);
 }
-TEST_F(ExprIRBuilderTest, test_multi_int64_x_expr) {
+TEST_F(ExprIRBuilderTest, TestMultiInt64XExpr) {
     BinaryExprCheck<int64_t, int16_t, int64_t>(
         8000000000L, 2L, 8000000000L * 2L, ::hybridse::node::kFnOpMulti);
 
@@ -321,7 +321,7 @@ TEST_F(ExprIRBuilderTest, test_multi_int64_x_expr) {
                                              ::hybridse::node::kFnOpMulti);
 }
 
-TEST_F(ExprIRBuilderTest, test_multi_float_x_expr) {
+TEST_F(ExprIRBuilderTest, TestMultiFloatXExpr) {
     BinaryExprCheck<float, int16_t, float>(2.0f, 3.0f, 2.0f * 3.0f,
                                            ::hybridse::node::kFnOpMulti);
 
@@ -336,7 +336,7 @@ TEST_F(ExprIRBuilderTest, test_multi_float_x_expr) {
     BinaryExprCheck<float, double, double>(2.0f, 12345678.5, 2.0 * 12345678.5,
                                            ::hybridse::node::kFnOpMulti);
 }
-TEST_F(ExprIRBuilderTest, test_multi_double_x_expr) {
+TEST_F(ExprIRBuilderTest, TestMultiDoubleXExpr) {
     BinaryExprCheck<double, int16_t, double>(2.0, 3, 2.0 * 3.0,
                                              ::hybridse::node::kFnOpMulti);
 
@@ -353,7 +353,7 @@ TEST_F(ExprIRBuilderTest, test_multi_double_x_expr) {
                                             ::hybridse::node::kFnOpMulti);
 }
 
-TEST_F(ExprIRBuilderTest, test_fdiv_int32_x_expr) {
+TEST_F(ExprIRBuilderTest, TestFdivInt32XExpr) {
     BinaryExprCheck<int32_t, int16_t, double>(2, 3, 2.0 / 3.0,
                                               ::hybridse::node::kFnOpFDiv);
 
@@ -369,7 +369,7 @@ TEST_F(ExprIRBuilderTest, test_fdiv_int32_x_expr) {
                                              ::hybridse::node::kFnOpFDiv);
 }
 
-TEST_F(ExprIRBuilderTest, test_mod_int32_x_expr) {
+TEST_F(ExprIRBuilderTest, TestModInt32XExpr) {
     BinaryExprCheck<int32_t, int16_t, int32_t>(12, 5, 2,
                                                ::hybridse::node::kFnOpMod);
 
@@ -385,7 +385,7 @@ TEST_F(ExprIRBuilderTest, test_mod_int32_x_expr) {
                                              ::hybridse::node::kFnOpMod);
 }
 
-TEST_F(ExprIRBuilderTest, test_mod_float_x_expr) {
+TEST_F(ExprIRBuilderTest, TestModFloatXExpr) {
     BinaryExprCheck<int16_t, float, float>(12, 5.1f, fmod(12.0f, 5.1f),
                                            ::hybridse::node::kFnOpMod);
 
@@ -399,7 +399,7 @@ TEST_F(ExprIRBuilderTest, test_mod_float_x_expr) {
                                          ::hybridse::node::kFnOpMod);
 }
 
-TEST_F(ExprIRBuilderTest, test_mod_double_x_expr) {
+TEST_F(ExprIRBuilderTest, TestModDoubleXExpr) {
     BinaryExprCheck<int16_t, double, double>(12, 5.1, fmod(12.0, 5.1),
                                              ::hybridse::node::kFnOpMod);
 
@@ -415,7 +415,7 @@ TEST_F(ExprIRBuilderTest, test_mod_double_x_expr) {
                                             ::hybridse::node::kFnOpMod);
 }
 
-TEST_F(ExprIRBuilderTest, test_eq_expr_true) {
+TEST_F(ExprIRBuilderTest, TestEqExprTrue) {
     BinaryExprCheck<int16_t, int16_t, bool>(1, 1, true,
                                             ::hybridse::node::kFnOpEq);
 
@@ -438,7 +438,7 @@ TEST_F(ExprIRBuilderTest, test_eq_expr_true) {
                                            ::hybridse::node::kFnOpEq);
 }
 
-TEST_F(ExprIRBuilderTest, test_eq_expr_false) {
+TEST_F(ExprIRBuilderTest, TestEqExprFalse) {
     BinaryExprCheck<int16_t, int16_t, bool>(1, 2, false,
                                             ::hybridse::node::kFnOpEq);
 
@@ -455,7 +455,7 @@ TEST_F(ExprIRBuilderTest, test_eq_expr_false) {
                                           ::hybridse::node::kFnOpEq);
 }
 
-TEST_F(ExprIRBuilderTest, test_neq_expr_true) {
+TEST_F(ExprIRBuilderTest, TestNeqExprTrue) {
     BinaryExprCheck<int16_t, int16_t, bool>(1, 2, true,
                                             ::hybridse::node::kFnOpNeq);
 
@@ -472,7 +472,7 @@ TEST_F(ExprIRBuilderTest, test_neq_expr_true) {
                                           ::hybridse::node::kFnOpNeq);
 }
 
-TEST_F(ExprIRBuilderTest, test_neq_expr_false) {
+TEST_F(ExprIRBuilderTest, TestNeqExprFalse) {
     BinaryExprCheck<int16_t, int16_t, bool>(1, 1, false,
                                             ::hybridse::node::kFnOpNeq);
 
@@ -495,7 +495,7 @@ TEST_F(ExprIRBuilderTest, test_neq_expr_false) {
                                            ::hybridse::node::kFnOpNeq);
 }
 
-TEST_F(ExprIRBuilderTest, test_gt_expr_true) {
+TEST_F(ExprIRBuilderTest, TestGtExprTrue) {
     BinaryExprCheck<int16_t, int16_t, bool>(2, 1, true,
                                             ::hybridse::node::kFnOpGt);
 
@@ -518,7 +518,7 @@ TEST_F(ExprIRBuilderTest, test_gt_expr_true) {
                                            ::hybridse::node::kFnOpGt);
 }
 
-TEST_F(ExprIRBuilderTest, test_gt_expr_false) {
+TEST_F(ExprIRBuilderTest, TestGtExprFalse) {
     BinaryExprCheck<int16_t, int16_t, bool>(2, 2, false,
                                             ::hybridse::node::kFnOpGt);
     BinaryExprCheck<int16_t, int16_t, bool>(2, 3, false,
@@ -546,7 +546,7 @@ TEST_F(ExprIRBuilderTest, test_gt_expr_false) {
     BinaryExprCheck<int32_t, double, bool>(2, 2.1, false,
                                            ::hybridse::node::kFnOpGt);
 }
-TEST_F(ExprIRBuilderTest, test_ge_expr_true) {
+TEST_F(ExprIRBuilderTest, TestGeExprTrue) {
     BinaryExprCheck<int16_t, int16_t, bool>(2, 1, true,
                                             ::hybridse::node::kFnOpGe);
     BinaryExprCheck<int16_t, int16_t, bool>(2, 2, true,
@@ -583,7 +583,7 @@ TEST_F(ExprIRBuilderTest, test_ge_expr_true) {
                                            ::hybridse::node::kFnOpGe);
 }
 
-TEST_F(ExprIRBuilderTest, test_ge_expr_false) {
+TEST_F(ExprIRBuilderTest, TestGeExprFalse) {
     BinaryExprCheck<int16_t, int16_t, bool>(2, 3, false,
                                             ::hybridse::node::kFnOpGe);
 
@@ -603,7 +603,7 @@ TEST_F(ExprIRBuilderTest, test_ge_expr_false) {
                                           ::hybridse::node::kFnOpGe);
 }
 
-TEST_F(ExprIRBuilderTest, test_lt_expr_true) {
+TEST_F(ExprIRBuilderTest, TestLtExprTrue) {
     BinaryExprCheck<int16_t, int16_t, bool>(2, 3, true,
                                             ::hybridse::node::kFnOpLt);
 
@@ -623,7 +623,7 @@ TEST_F(ExprIRBuilderTest, test_lt_expr_true) {
                                           ::hybridse::node::kFnOpLt);
 }
 
-TEST_F(ExprIRBuilderTest, test_lt_expr_false) {
+TEST_F(ExprIRBuilderTest, TestLtExprFalse) {
     BinaryExprCheck<int16_t, int16_t, bool>(2, 1, false,
                                             ::hybridse::node::kFnOpLt);
     BinaryExprCheck<int16_t, int16_t, bool>(2, 2, false,
@@ -660,12 +660,12 @@ TEST_F(ExprIRBuilderTest, test_lt_expr_false) {
                                            ::hybridse::node::kFnOpLt);
 }
 
-TEST_F(ExprIRBuilderTest, test_and_expr_true) {
+TEST_F(ExprIRBuilderTest, TestAndExprTrue) {
     BinaryExprCheck<bool, bool, bool>(true, true, true,
                                       ::hybridse::node::kFnOpAnd);
 }
 
-TEST_F(ExprIRBuilderTest, test_and_expr_false) {
+TEST_F(ExprIRBuilderTest, TestAndExprFalse) {
     BinaryExprCheck<bool, bool, bool>(false, true, false,
                                       ::hybridse::node::kFnOpAnd);
     BinaryExprCheck<bool, bool, bool>(false, false, false,
@@ -674,7 +674,7 @@ TEST_F(ExprIRBuilderTest, test_and_expr_false) {
                                       ::hybridse::node::kFnOpAnd);
 }
 
-TEST_F(ExprIRBuilderTest, test_or_expr_true) {
+TEST_F(ExprIRBuilderTest, TestOrExprTrue) {
     BinaryExprCheck<bool, bool, bool>(true, true, true,
                                       ::hybridse::node::kFnOpOr);
     BinaryExprCheck<bool, bool, bool>(true, false, true,
@@ -683,12 +683,12 @@ TEST_F(ExprIRBuilderTest, test_or_expr_true) {
                                       ::hybridse::node::kFnOpOr);
 }
 
-TEST_F(ExprIRBuilderTest, test_or_expr_false) {
+TEST_F(ExprIRBuilderTest, TestOrExprFalse) {
     BinaryExprCheck<bool, bool, bool>(false, false, false,
                                       ::hybridse::node::kFnOpOr);
 }
 
-TEST_F(ExprIRBuilderTest, test_get_field) {
+TEST_F(ExprIRBuilderTest, TestGetField) {
     auto schema = udf::MakeLiteralSchema<int16_t, int32_t, int64_t, float,
                                          double, codec::Timestamp, codec::Date,
                                          codec::StringRef>();
@@ -722,13 +722,13 @@ TEST_F(ExprIRBuilderTest, test_get_field) {
 
     ExprCheck([&](node::NodeManager *nm,
                   ExprNode *input) { return make_get_field(nm, input, 0); },
-              (int16_t)16, typed_row);
+              static_cast<int16_t>(16), typed_row);
     ExprCheck([&](node::NodeManager *nm,
                   ExprNode *input) { return make_get_field(nm, input, 1); },
               32, typed_row);
     ExprCheck([&](node::NodeManager *nm,
                   ExprNode *input) { return make_get_field(nm, input, 2); },
-              (int64_t)64L, typed_row);
+              64L, typed_row);
     ExprCheck([&](node::NodeManager *nm,
                   ExprNode *input) { return make_get_field(nm, input, 3); },
               3.14f, typed_row);
@@ -746,7 +746,7 @@ TEST_F(ExprIRBuilderTest, test_get_field) {
               codec::StringRef(5, "hello"), typed_row);
 }
 
-TEST_F(ExprIRBuilderTest, test_build_lambda) {
+TEST_F(ExprIRBuilderTest, TestBuildLambda) {
     ExprCheck(
         [](node::NodeManager *nm, ExprNode *x, ExprNode *y) {
             auto arg1 = nm->MakeExprIdNode("x");
@@ -770,7 +770,7 @@ void CondExprCheck(const udf::Nullable<bool> &cond_val,
         result, cond_val, left_val, right_val);
 }
 
-TEST_F(ExprIRBuilderTest, test_cond_expr) {
+TEST_F(ExprIRBuilderTest, TestCondExpr) {
     CondExprCheck(true, codec::StringRef("left"), codec::StringRef("right"),
                   codec::StringRef("left"));
     CondExprCheck(true, codec::StringRef("left"), nullptr,
@@ -806,7 +806,7 @@ void CaseWhenExprCheck(const udf::Nullable<bool> &cond_val,
         result, cond_val, left_val, right_val);
 }
 
-TEST_F(ExprIRBuilderTest, test_case_when_expr) {
+TEST_F(ExprIRBuilderTest, TestCaseWhenExpr) {
     CaseWhenExprCheck(true, codec::StringRef("left"), codec::StringRef("right"),
                       codec::StringRef("left"));
     CaseWhenExprCheck(true, codec::StringRef("left"), nullptr,
@@ -829,7 +829,7 @@ TEST_F(ExprIRBuilderTest, test_case_when_expr) {
     CaseWhenExprCheck(nullptr, nullptr, nullptr, nullptr);
 }
 
-TEST_F(ExprIRBuilderTest, test_is_null_expr) {
+TEST_F(ExprIRBuilderTest, TestIsNullExpr) {
     auto make_if_null = [](node::NodeManager *nm, node::ExprNode *input) {
         return nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
     };
