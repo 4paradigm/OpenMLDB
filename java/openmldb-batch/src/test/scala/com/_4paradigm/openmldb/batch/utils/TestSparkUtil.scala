@@ -1,15 +1,29 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com._4paradigm.openmldb.batch.utils
 
 import com._4paradigm.hybridse.node.JoinType
 import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.SparkTestSuite
-import com._4paradigm.openmldb.batch.utils.SparkUtil.{addColumnByMonotonicallyIncreasingId, addColumnByZipWithIndex, addColumnByZipWithUniqueId, addIndexColumn, checkSchemaIgnoreNullable, rddInternalRowToDf, smallDfEqual, supportNativeLastJoin}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.InternalRow
+import com._4paradigm.openmldb.batch.utils.SparkUtil.{addColumnByMonotonicallyIncreasingId, addColumnByZipWithIndex,
+  addColumnByZipWithUniqueId, addIndexColumn, checkSchemaIgnoreNullable,
+  rddInternalRowToDf, smallDfEqual, supportNativeLastJoin}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.apache.spark.sql.types.{DoubleType, IntegerType, StructField, StructType, TimestampType}
-import org.scalatest.FunSuite
-import org.scalatest.mockito.MockitoSugar.mock
+import org.apache.spark.sql.types.{IntegerType, StructField, StructType, TimestampType}
 
 import java.sql.Timestamp
 import scala.collection.JavaConverters.seqAsJavaListConverter
@@ -96,11 +110,11 @@ class TestSparkUtil extends SparkTestSuite {
     )
     val dataTest2 = Seq(
       (0, Timestamp.valueOf("0001-01-01 0:0:0")),
-      (0, Timestamp.valueOf("1899-04-01 0:0:0")),
+      (0, Timestamp.valueOf("1899-04-01 0:0:0"))
     )
     val dataTest3 = Seq(
       (0, 1, Timestamp.valueOf("0001-01-01 0:0:0")),
-      (0, 1, Timestamp.valueOf("1899-04-01 0:0:0")),
+      (0, 1, Timestamp.valueOf("1899-04-01 0:0:0"))
     )
 
     val Session: SparkSession = getSparkSession
