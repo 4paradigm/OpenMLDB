@@ -667,7 +667,7 @@ TEST_F(ArithmeticIRBuilderTest, TestAddFloatXExpr) {
 
     BinaryArithmeticExprCheck<float, int32_t, float>(
         ::hybridse::node::kFloat, ::hybridse::node::kInt32,
-        ::hybridse::node::kFloat, 8000000000L, 1, 8000000001L,
+        ::hybridse::node::kFloat, 8000000000.0f, 1, 8000000001.0f,
         ::hybridse::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<float, int64_t, float>(
@@ -1194,7 +1194,7 @@ TEST_F(ArithmeticIRBuilderTest, BitwiseNot) {
     auto op = ::hybridse::node::kFnOpBitwiseNot;
     UnaryArithmeticExprCheck<int16_t, int16_t>(0, -1, op);
     UnaryArithmeticExprCheck<int32_t, int32_t>(0, -1, op);
-    UnaryArithmeticExprCheck<int64_t, int64_t>(0, -1, op);
+    UnaryArithmeticExprCheck<int64_t, int64_t>(0L, -1L, op);
     // randomize check
     std::mt19937 rng;
     std::uniform_int_distribution<int64_t> gen(INT64_MIN, INT64_MAX);

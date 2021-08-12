@@ -188,3 +188,132 @@ cases:
       select int(col1) as f1, bigint(col1+col2) as f2, float(col1) as f3,
       double(col1) as f4, bool(col1) as f5, timestamp(col1) as f6,
       string(col1) as f7 from t1;
+  - id: bit_wise_and
+    desc: bit wise and, 0x0011 & 0x0110 = 0x0010 (2)
+    sql: SELECT 3 & 6 from t1;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[binary]
+          |      |    +-&[list]:
+          |      |      +-0:
+          |      |      |  +-expr[primary]
+          |      |      |    +-value: 3
+          |      |      |    +-type: int32
+          |      |      +-1:
+          |      |        +-expr[primary]
+          |      |          +-value: 6
+          |      |          +-type: int32
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
+
+  - id: bit_wise_or
+    desc: bit wise or, 0x0011 | 0x0110 = 0x0111 (7)
+    sql: SELECT 3 | 6 from t1;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[binary]
+          |      |    +-|[list]:
+          |      |      +-0:
+          |      |      |  +-expr[primary]
+          |      |      |    +-value: 3
+          |      |      |    +-type: int32
+          |      |      +-1:
+          |      |        +-expr[primary]
+          |      |          +-value: 6
+          |      |          +-type: int32
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
+  - id: bit_wise_xor
+    desc: bit wise xor, 0x0011 ^ 0x0110 = 0x0101 (5)
+    sql: SELECT 3 ^ 6 from t1;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[binary]
+          |      |    +-^[list]:
+          |      |      +-0:
+          |      |      |  +-expr[primary]
+          |      |      |    +-value: 3
+          |      |      |    +-type: int32
+          |      |      +-1:
+          |      |        +-expr[primary]
+          |      |          +-value: 6
+          |      |          +-type: int32
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
+  - id: bit_wise_not
+    desc: bit wise not, ~0 = -1
+    sql: SELECT ~0 from t1;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[unary]
+          |      |    +-~[list]:
+          |      |      +-0:
+          |      |        +-expr[primary]
+          |      |          +-value: 0
+          |      |          +-type: int32
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []

@@ -165,7 +165,7 @@ TEST_F(ExprIRBuilderTest, TestAddFloatXExpr) {
     BinaryExprCheck<float, int16_t, float>(1.0f, 1, 2.0f,
                                            ::hybridse::node::kFnOpAdd);
 
-    BinaryExprCheck<float, int32_t, float>(8000000000L, 1, 8000000001L,
+    BinaryExprCheck<float, int32_t, float>(8000000000.0f, 1, 8000000001.0f,
                                            ::hybridse::node::kFnOpAdd);
 
     BinaryExprCheck<float, int64_t, float>(1.0f, 200000L, 1.0f + 200000.0f,
@@ -728,7 +728,7 @@ TEST_F(ExprIRBuilderTest, TestGetField) {
               32, typed_row);
     ExprCheck([&](node::NodeManager *nm,
                   ExprNode *input) { return make_get_field(nm, input, 2); },
-              64L, typed_row);
+              static_cast<int64_t>(64L), typed_row);
     ExprCheck([&](node::NodeManager *nm,
                   ExprNode *input) { return make_get_field(nm, input, 3); },
               3.14f, typed_row);
@@ -835,6 +835,43 @@ TEST_F(ExprIRBuilderTest, TestIsNullExpr) {
     };
     ExprCheck<bool, udf::Nullable<int32_t>>(make_if_null, false, 1);
     ExprCheck<bool, udf::Nullable<int32_t>>(make_if_null, true, nullptr);
+}
+
+TEST_F(ExprIRBuilderTest, TestBitwiseAndExpr) {
+    auto op = ::hybridse::node::kFnOpBitwiseAnd;
+    BinaryExprCheck<int16_t, int16_t, int16_t>(3, 6, 2, op);
+    BinaryExprCheck<int16_t, int32_t, int32_t>(3, 6, 2, op);
+    BinaryExprCheck<int32_t, int32_t, int32_t>(3, 6, 2, op);
+    BinaryExprCheck<int64_t, int16_t, int64_t>(3L, 6, 2L, op);
+    BinaryExprCheck<int64_t, int32_t, int64_t>(3L, 6, 2L, op);
+    BinaryExprCheck<int64_t, int64_t, int64_t>(3L, 6L, 2L, op);
+}
+
+TEST_F(ExprIRBuilderTest, TestBitwiseOrExpr) {
+    auto op = ::hybridse::node::kFnOpBitwiseOr;
+    BinaryExprCheck<int16_t, int16_t, int16_t>(3, 6, 7, op);
+    BinaryExprCheck<int16_t, int32_t, int32_t>(3, 6, 7, op);
+    BinaryExprCheck<int32_t, int32_t, int32_t>(3, 6, 7, op);
+    BinaryExprCheck<int64_t, int16_t, int64_t>(3L, 6, 7L, op);
+    BinaryExprCheck<int64_t, int32_t, int64_t>(3L, 6, 7L, op);
+    BinaryExprCheck<int64_t, int64_t, int64_t>(3L, 6L, 7L, op);
+}
+TEST_F(ExprIRBuilderTest, TestBitwiseXorExpr) {
+    auto op = ::hybridse::node::kFnOpBitwiseXor;
+    BinaryExprCheck<int16_t, int16_t, int16_t>(3, 6, 5, op);
+    BinaryExprCheck<int16_t, int32_t, int32_t>(3, 6, 5, op);
+    BinaryExprCheck<int32_t, int32_t, int32_t>(3, 6, 5, op);
+    BinaryExprCheck<int64_t, int16_t, int64_t>(3L, 6, 5L, op);
+    BinaryExprCheck<int64_t, int32_t, int64_t>(3L, 6, 5L, op);
+    BinaryExprCheck<int64_t, int64_t, int64_t>(3L, 6L, 5L, op);
+}
+TEST_F(ExprIRBuilderTest, TestBitwiseNotExpr) {
+    auto not_expr = [](node::NodeManager* nm, node::ExprNode* input) {
+        return nm->MakeUnaryExprNode(input, ::hybridse::node::kFnOpBitwiseNot);
+    };
+    ExprCheck<int16_t, int16_t>(not_expr, 0, -1);
+    ExprCheck<int32_t, int32_t>(not_expr, 0, -1);
+    ExprCheck<int64_t, int64_t>(not_expr, 0L, -1L);
 }
 }  // namespace codegen
 }  // namespace hybridse
