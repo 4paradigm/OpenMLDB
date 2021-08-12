@@ -1,8 +1,10 @@
 package com._4paradigm.openmldb.batch.utils
 
 import com._4paradigm.openmldb.batch.utils.CaseUtil.{getYamlSchemaString, getYamlTypeString}
-import org.apache.spark.sql.types.{BooleanType, ByteType, DateType, DoubleType, FloatType, IntegerType,
-  LongType, ShortType, StringType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{
+  BooleanType, ByteType, DateType, DoubleType, FloatType, IntegerType,
+  LongType, ShortType, StringType, StructField, StructType, TimestampType
+}
 import org.scalatest.FunSuite
 
 
@@ -23,9 +25,9 @@ class TestCaseUtil extends FunSuite {
 
     val result = getYamlSchemaString(schema1)
 
-    val expectOutput = "\"BooleanType:bool\",\"ShortType:int16\",\"IntegerType:int32\"," +
-      "\"LongType:int64\",\"FloatType:float\",\"DoubleType:double\",\"DateType:date\"," +
-      "\"Timestamp:timestamp\",\"StringType:string\""
+    val expectOutput =""""BooleanType:bool","ShortType:int16","IntegerType:int32",""" +
+        """"LongType:int64","FloatType:float","DoubleType:double","DateType:date",""" +
+        """"Timestamp:timestamp","StringType:string""""
 
     assert(result == expectOutput)
 
@@ -33,7 +35,7 @@ class TestCaseUtil extends FunSuite {
       StructField("ByteType", ByteType)
     ))
 
-    assertThrows[IllegalArgumentException]{
+    assertThrows[IllegalArgumentException] {
       getYamlSchemaString(schema2)
     }
   }
@@ -48,6 +50,8 @@ class TestCaseUtil extends FunSuite {
     assert(getYamlTypeString(DateType) == "date")
     assert(getYamlTypeString(TimestampType) == "timestamp")
     assert(getYamlTypeString(StringType) == "string")
-    assertThrows[IllegalArgumentException]{getYamlTypeString(ByteType)}
+    assertThrows[IllegalArgumentException] {
+      getYamlTypeString(ByteType)
+    }
   }
 }

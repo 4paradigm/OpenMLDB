@@ -19,41 +19,40 @@ class TestGraphvizUtil extends SparkTestSuite {
 
   HybridSeLibrary.initCore()
   Engine.InitializeGlobalLLVM()
+  val schema: StructType = StructType(Seq(
+    StructField("id", IntegerType),
+    StructField("time", TimestampType),
+    StructField("amt", DoubleType)
+  ))
+  val data = Seq(
+    (1, Timestamp.valueOf("2001-01-01 0:0:0"), 1.0),
+    (1, Timestamp.valueOf("2009-04-01 0:0:0"), 1.0),
+    (1, Timestamp.valueOf("2900-01-01 0:0:0"), 1.0),
+    (0, Timestamp.valueOf("2009-01-01 0:0:0"), 1.0),
+    (0, Timestamp.valueOf("2000-08-01 0:0:0"), 1.0),
+    (0, Timestamp.valueOf("2019-09-11 0:0:0"), 1.0)
+  )
+  val sql: String =
+    """
+      | SELECT id, `time`, amt, sum(amt) OVER w AS w_amt_sum FROM t
+      | GROUP BY id
+      | WINDOW w AS (
+      |    PARTITION BY id
+      |    ORDER BY `time`
+      |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);
+     """.stripMargin
 
   test("Test drawPhysicalPlan") {
     val engineOptions: EngineOptions = SqlEngine.createDefaultEngineOptions()
     val Session = getSparkSession
-
-    val sql ="""
-               | SELECT id, `time`, amt, sum(amt) OVER w AS w_amt_sum FROM t
-               | WINDOW w AS (
-               |    PARTITION BY id
-               |    ORDER BY `time`
-               |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);
-     """.stripMargin
-
-    val schema = StructType(Seq(
-      StructField("id", IntegerType),
-      StructField("time", TimestampType),
-      StructField("amt", DoubleType)
-    ))
-
-    val data = Seq(
-      (0, Timestamp.valueOf("0001-01-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("1899-04-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("1900-01-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("1969-01-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("2000-08-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("2019-09-11 0:0:0"), 1.0)
-    )
-
+    
     val table = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schema)
 
-    val path = getClass.getResource("").getPath + "/TestGraphvizUtil/drawPhysicalPlan.png"
+    val path = "target/test-classes/TestGraphvizUtil/drawPhysicalPlan.png"
 
     val engine = new SqlEngine(sql, HybridseUtil.getDatabase("spark_db", Map("t" -> table)), engineOptions)
     val root = engine.getPlan
-    drawPhysicalPlan(root,path)
+    drawPhysicalPlan(root, path)
 
     if (engine != null) {
       engine.close()
@@ -66,30 +65,6 @@ class TestGraphvizUtil extends SparkTestSuite {
     val engineOptions: EngineOptions = SqlEngine.createDefaultEngineOptions()
     val sess = getSparkSession
 
-    val sql ="""
-               | SELECT id, `time`, amt, sum(amt) OVER w AS w_amt_sum FROM t
-               | GROUP BY id
-               | WINDOW w AS (
-               |    PARTITION BY id
-               |    ORDER BY `time`
-               |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);
-     """.stripMargin
-
-    val schema = StructType(Seq(
-      StructField("id", IntegerType),
-      StructField("time", TimestampType),
-      StructField("amt", DoubleType)
-    ))
-
-    val data = Seq(
-      (1, Timestamp.valueOf("2001-01-01 0:0:0"), 1.0),
-      (1, Timestamp.valueOf("2009-04-01 0:0:0"), 1.0),
-      (1, Timestamp.valueOf("2900-01-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("2009-01-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("2000-08-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("2019-09-11 0:0:0"), 1.0)
-    )
-
     val table = sess.createDataFrame(data.map(Row.fromTuple(_)).asJava, schema)
 
     val engine = new SqlEngine(sql, HybridseUtil.getDatabase("spark_db", Map("t" -> table)), engineOptions)
@@ -100,47 +75,23 @@ class TestGraphvizUtil extends SparkTestSuite {
       engine.close()
     }
 
-    assert(mutablenode.toString=="[77]GroupAgg{}->[45]GroupBy::")
+    assert(mutablenode.toString == "[77]GroupAgg{}->[45]GroupBy::")
   }
 
   test("Test visitPhysicalOp") {
     val engineOptions: EngineOptions = SqlEngine.createDefaultEngineOptions()
     val sess = getSparkSession
 
-    val sql ="""
-               | SELECT id, `time`, amt, sum(amt) OVER w AS w_amt_sum FROM t
-               | GROUP BY id
-               | WINDOW w AS (
-               |    PARTITION BY id
-               |    ORDER BY `time`
-               |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);
-     """.stripMargin
-
-    val schema = StructType(Seq(
-      StructField("id", IntegerType),
-      StructField("time", TimestampType),
-      StructField("amt", DoubleType)
-    ))
-
-    val data = Seq(
-      (1, Timestamp.valueOf("2001-01-01 0:0:0"), 1.0),
-      (1, Timestamp.valueOf("2009-04-01 0:0:0"), 1.0),
-      (1, Timestamp.valueOf("2900-01-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("2009-01-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("2000-08-01 0:0:0"), 1.0),
-      (0, Timestamp.valueOf("2019-09-11 0:0:0"), 1.0)
-    )
-
     val table = sess.createDataFrame(data.map(Row.fromTuple(_)).asJava, schema)
 
     val engine = new SqlEngine(sql, HybridseUtil.getDatabase("spark_db", Map("t" -> table)), engineOptions)
     val root = engine.getPlan
     val children = mutable.ArrayBuffer[MutableNode]()
-    val mutablenode = visitPhysicalOp(root,children.toArray)
+    val mutablenode = visitPhysicalOp(root, children.toArray)
 
     if (engine != null) {
       engine.close()
     }
-    assert(mutablenode.toString=="[77]GroupAgg{}->")
+    assert(mutablenode.toString == "[77]GroupAgg{}->")
   }
 }
