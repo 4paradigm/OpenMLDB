@@ -17,7 +17,7 @@ include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 function(compile_proto proto_name project_dir)
 add_custom_command(OUTPUT ${project_dir}/src/proto/${proto_name}.pb.cc
         COMMAND ${project_dir}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto
-        --cpp_out=${project_dir}/src/proto/ --java_out=${project_dir}/java/dataImporter/src/main/java ${project_dir}/src/proto/${proto_name}.proto
+        --cpp_out=${project_dir}/src/proto/ --java_out=${project_dir}/java/openmldb-import/src/main/java ${project_dir}/src/proto/${proto_name}.proto
         DEPENDS ${project_dir}/src/proto/${proto_name}.proto
         )
 endfunction(compile_proto)
