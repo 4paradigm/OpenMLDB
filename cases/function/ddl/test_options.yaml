@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: []
+debugs: ["test-case"]
 cases:
   -
     id: 0
@@ -345,7 +345,30 @@ cases:
       options:
         partitionNum: 4
         replicaNum: 1
-
+  -
+    id: 22
+    desc: test-case
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        replicaNum: 3
+        partitionNum: 1
+        distribution:
+          - leader: "{tb_endpoint_1}"
+            followers:  [ "{tb_endpoint_0}","{tb_endpoint_2}" ]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+    sql: select * from {0};
+    expect:
+      name: "{0}"
+      success: true
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      options:
+        partitionNum: 1
+        replicaNum: 3
 
 
 
