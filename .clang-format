@@ -101,13 +101,7 @@ SpacesInParentheses: false
 SpacesInSquareBrackets: false
 Standard:        Auto
 IndentWidth:     4
-TabWidth:        4
+TabWidth:        8
 UseTab:          Never
 BasedOnStyle: Google
----
-Language: Proto
-BasedOnStyle: Google
-IndentWidth:     4
-TabWidth:        4
-ColumnLimit:     120
 ...

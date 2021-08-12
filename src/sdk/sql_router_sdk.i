@@ -21,30 +21,20 @@
 %include stl.i
 %include stdint.i
 %include std_vector.i
-%include std_map.i
-%include std_pair.i
-
 #ifdef SWIGJAVA
 %include various.i
 %apply char *BYTE { char *string_buffer_var_name };
 #endif
 
-//// TODO(hw): if -DSWIGWORDSIZE64, int64_t will be int in java.
-////  But we need SWIGWORDSIZE64, cuz g++ treats int64_t as long int, not long long int.
-//#ifdef SWIGWORDSIZE64
-//%define PRIMITIVE_TYPEMAP(NEW_TYPE, TYPE)
-//%clear NEW_TYPE;
-//%apply TYPE { NEW_TYPE };
-//%enddef // PRIMITIVE_TYPEMAP
-//
-//PRIMITIVE_TYPEMAP(long int, long long);
-////PRIMITIVE_TYPEMAP(unsigned long int, long long);
-//#undef PRIMITIVE_TYPEMAP
-//
-//#endif // SWIGWORDSIZE64
-
 %shared_ptr(hybridse::sdk::ResultSet);
 %shared_ptr(hybridse::sdk::Schema);
+%shared_ptr(fedb::sdk::SQLRouter);
+%shared_ptr(fedb::sdk::SQLRequestRow);
+%shared_ptr(fedb::sdk::SQLRequestRowBatch);
+%shared_ptr(fedb::sdk::ColumnIndicesSet);
+%shared_ptr(fedb::sdk::SQLInsertRow);
+%shared_ptr(fedb::sdk::SQLInsertRows);
+%shared_ptr(fedb::sdk::ExplainInfo);
 %shared_ptr(openmldb::sdk::SQLRouter);
 %shared_ptr(openmldb::sdk::SQLRequestRow);
 %shared_ptr(openmldb::sdk::SQLRequestRowBatch);
@@ -53,17 +43,12 @@
 %shared_ptr(openmldb::sdk::SQLInsertRows);
 %shared_ptr(openmldb::sdk::ExplainInfo);
 %shared_ptr(hybridse::sdk::ProcedureInfo);
+%shared_ptr(fedb::sdk::QueryFuture);
+%shared_ptr(fedb::sdk::TableReader);
 %shared_ptr(openmldb::sdk::QueryFuture);
 %shared_ptr(openmldb::sdk::TableReader);
 %template(VectorUint32) std::vector<uint32_t>;
 %template(VectorString) std::vector<std::string>;
-
-//%template(VectorUint64) std::vector<uint64_t>;
-
-//%template(PairStrInt) std::pair<std::string, uint32_t>;
-//%template(VectorPairStrInt) std::vector<std::pair<std::string, uint32_t>>;
-//// std::uint32_t can't be parsed in map, we need to use unsigned int.
-//%template(DimMap) std::map<unsigned int, std::vector<std::pair<std::string, unsigned int>>>;
 
 %{
 #include "sdk/sql_router.h"
@@ -75,6 +60,14 @@
 
 using hybridse::sdk::Schema;
 using hybridse::sdk::ResultSet;
+using fedb::sdk::SQLRouter;
+using fedb::sdk::SQLRouterOptions;
+using fedb::sdk::SQLRequestRow;
+using fedb::sdk::SQLRequestRowBatch;
+using fedb::sdk::ColumnIndicesSet;
+using fedb::sdk::SQLInsertRow;
+using fedb::sdk::SQLInsertRows;
+using fedb::sdk::ExplainInfo;
 using openmldb::sdk::SQLRouter;
 using openmldb::sdk::SQLRouterOptions;
 using openmldb::sdk::SQLRequestRow;
@@ -84,6 +77,8 @@ using openmldb::sdk::SQLInsertRow;
 using openmldb::sdk::SQLInsertRows;
 using openmldb::sdk::ExplainInfo;
 using hybridse::sdk::ProcedureInfo;
+using fedb::sdk::QueryFuture;
+using fedb::sdk::TableReader;
 using openmldb::sdk::QueryFuture;
 using openmldb::sdk::TableReader;
 %}
