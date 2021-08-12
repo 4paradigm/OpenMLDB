@@ -650,6 +650,7 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
     ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
     ASSERT_TRUE(router->RefreshCatalog());
     int64_t ts = 1594800959827;
+    // Insert 3 rows into table trans
     {
         char buffer[4096];
         sprintf(buffer,  // NOLINT
@@ -696,7 +697,10 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
         ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     }
 
+//    std::string where_exist = "select * from trans where merch_id=? and txn_time < ?;";
+    // parameterized query
     {
+
         std::string where_exist = "select * from trans where merch_id='mc_0' and txn_time < 1594800959830;";
         auto rs = router->ExecuteSQL(db, where_exist, &status);
         if (!rs) {

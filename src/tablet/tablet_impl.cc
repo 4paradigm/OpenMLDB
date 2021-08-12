@@ -1482,6 +1482,7 @@ void TabletImpl::Query(RpcController* ctrl, const openmldb::api::QueryRequest* r
 void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryRequest* request,
                               ::openmldb::api::QueryResponse* response, butil::IOBuf* buf) {
     ::hybridse::base::Status status;
+    ::hybridse::codec::Row parameter_row;
     if (request->is_batch()) {
         ::hybridse::vm::BatchRunSession session;
         if (request->is_debug()) {
@@ -1497,7 +1498,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
             }
         }
 
-        auto table = session.Run();
+        auto table = session.Run(parameter_row);
         if (!table) {
             DLOG(WARNING) << "fail to run sql " << request->sql();
             response->set_code(::openmldb::base::kSQLRunError);
@@ -1690,11 +1691,12 @@ void TabletImpl::ProcessBatchRequestQuery(RpcController* ctrl,
         }
     }
     std::vector<::hybridse::codec::Row> output_rows;
+    ::hybridse::codec::Row parameter_row;
     int32_t run_ret = 0;
     if (request->has_task_id()) {
-        session.Run(request->task_id(), input_rows, output_rows);
+        session.Run(request->task_id(), input_rows, parameter_row, output_rows);
     } else {
-        session.Run(input_rows, output_rows);
+        session.Run(input_rows, parameter_row, output_rows);
     }
     if (run_ret != 0) {
         response->set_msg(status.msg);
@@ -4705,12 +4707,13 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl, const openmldb::api::Query
         response.set_msg("fail to decode input row");
         return;
     }
+    ::hybridse::codec::Row parameter_row;
     ::hybridse::codec::Row output;
     int32_t ret = 0;
     if (request.has_task_id()) {
-        ret = session.Run(request.task_id(), row, &output);
+        ret = session.Run(request.task_id(), row, parameter_row, &output);
     } else {
-        ret = session.Run(row, &output);
+        ret = session.Run(row, parameter_row, &output);
     }
     if (ret != 0) {
         response.set_code(::openmldb::base::kSQLRunError);

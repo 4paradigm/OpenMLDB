@@ -204,7 +204,9 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(const std::string
     }
     ::hybridse::vm::ExplainOutput explain;
     ::hybridse::base::Status vm_status;
-    bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode, &explain, &vm_status);
+    ::hybridse::codec::Schema parameter_schema;
+    bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode,
+                                                 parameter_schema, &explain, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;
@@ -634,7 +636,8 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     if (!cache) {
         ::hybridse::vm::ExplainOutput explain;
         ::hybridse::base::Status vm_status;
-        if (cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kBatchMode, &explain, &vm_status)) {
+        ::hybridse::codec::Schema parameter_schema;
+        if (cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kBatchMode, parameter_schema, &explain, &vm_status)) {
             std::shared_ptr<::hybridse::sdk::SchemaImpl> schema;
             if (explain.input_schema.size() > 0) {
                 schema = std::make_shared<::hybridse::sdk::SchemaImpl>(explain.input_schema);
@@ -976,7 +979,9 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, co
                                                        ::hybridse::sdk::Status* status) {
     ::hybridse::vm::ExplainOutput explain_output;
     ::hybridse::base::Status vm_status;
-    bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode, &explain_output, &vm_status);
+    ::hybridse::codec::Schema parameter_schema;
+    bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode, parameter_schema,
+                                                 &explain_output, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;
@@ -1133,11 +1138,13 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedureP
     }
     bool ok;
     hybridse::vm::ExplainOutput explain_output;
+    hybridse::codec::Schema empty_schema;
     if (input_common_column_indices.empty()) {
-        ok = cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status);
+        ok = cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kRequestMode, empty_schema, &explain_output,
+                                                &sql_status);
     } else {
-        ok = cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kBatchRequestMode, input_common_column_indices,
-                                                &explain_output, &sql_status);
+        ok = cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kBatchRequestMode, empty_schema,
+                                                input_common_column_indices, &explain_output, &sql_status);
     }
     if (!ok) {
         *msg = "fail to explain sql" + sql_status.msg;
