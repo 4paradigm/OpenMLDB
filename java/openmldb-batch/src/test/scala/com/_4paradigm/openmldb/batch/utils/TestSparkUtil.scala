@@ -58,11 +58,11 @@ class TestSparkUtil extends SparkTestSuite {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addIndexColumn(Session,table,"test","zipwithindex")
-      .select("test").distinct().count()==6)
+      .select("test").distinct().count()==data.length)
     assert(addIndexColumn(Session,table,"test","zipwithuniqueid")
-      .select("test").distinct().count()==6)
+      .select("test").distinct().count()==data.length)
     assert(addIndexColumn(Session,table,"test","monotonicallyincreasingid")
-      .select("test").distinct().count()==6)
+      .select("test").distinct().count()==data.length)
     assertThrows[HybridSeException]{
       addIndexColumn(Session,table,"test","Unsupported method")
     }
@@ -71,21 +71,21 @@ class TestSparkUtil extends SparkTestSuite {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addColumnByZipWithIndex(Session,table,"test")
-      .select("test").distinct().count()==6)
+      .select("test").distinct().count()==data.length)
   }
 
   test("Test addColumnByZipWithUniqueId") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addColumnByZipWithUniqueId(Session,table,"test")
-      .select("test").distinct().count()==6)
+      .select("test").distinct().count()==data.length)
   }
 
   test("Test addColumnByMonotonicallyIncreasingId") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addColumnByMonotonicallyIncreasingId(Session,table,"test")
-      .select("test").distinct().count()==6)
+      .select("test").distinct().count()==data.length)
   }
 
   test("test checkSchemaIgnoreNullable") {
