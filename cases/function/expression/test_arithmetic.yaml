@@ -593,3 +593,45 @@ cases:
            NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL]
+  - id: bitwise_operators
+    desc: bitwise and/or/xor
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint", "c6 timestamp"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [3, 6, 12, 1590738989000]
+    dataProvider:
+      - ['&', '|', '^']
+    sql: |
+      select c1 d[0] c1 as r11, c1 d[0] c2 as r12, c1 d[0] c3 as r13, c2 d[0] c2 as r22, c2 d[0] c3 as r23, c3 d[0] c3 as r33 from {0};
+    expect:
+      columns:
+        - r11 int16
+        - r12 int32
+        - r13 bigint
+        - r22 int32
+        - r23 bigint
+        - r33 bigint
+    expectProvider:
+      - rows:
+          - [ 3, 2, 0, 6, 4, 12 ]
+      - rows:
+          - [ 3, 7, 15, 6, 14, 12 ]
+      - rows:
+          - [ 0, 5, 15, 0, 10, 0 ]
+  - id: bitwise_operators_not
+    desc: bitwise not
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint", "c6 timestamp"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [3, 6, 12, 1590738989000]
+    sql: |
+      select ~c1 as r1, ~c2 as r2, ~c3 as r3 from {0}
+    expect:
+      columns:
+        - r1 int16
+        - r2 int32
+        - r3 bigint
+      rows:
+        - [ -4, -7, -13 ]
