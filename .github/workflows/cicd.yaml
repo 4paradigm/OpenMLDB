@@ -11,19 +11,20 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
+  HYBRIDSE_SOURCE: local
 
 jobs:
   build_and_cpp_ut:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.3.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v1
       - name: build
         run: |
-          bash steps/init_env.sh
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
           rm -rf /depends/thirdparty/*
@@ -68,12 +69,12 @@ jobs:
   sql_sdk_test:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.3.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
     steps:
       - uses: actions/checkout@v1
       - name: build
         run: |
-          bash steps/init_env.sh
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_sdk_test && cd ../
       - name: run sql_sdk_test
@@ -95,12 +96,12 @@ jobs:
   sql_cluster_test:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.3.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
     steps:
       - uses: actions/checkout@v1
       - name: build
         run: |
-          bash steps/init_env.sh
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_cluster_test && cd ../
       - name: run sql_sdk_test
