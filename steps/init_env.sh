@@ -28,8 +28,8 @@ fi
 
 rm -rf thirdparty/hybridse
 mkdir -p thirdparty/hybridse
-PACKAGE_NAME=hybridse-0.2.1-linux-x86_64
-curl -LO https://github.com/4paradigm/HybridSE/releases/download/v0.2.1/hybridse-0.2.1-linux-x86_64.tar.gz
+PACKAGE_NAME=hybridse-0.3.0-0813-linux-x86_64
+curl -LO https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.3.0-0813/hybridse-0.3.0-0813-linux-x86_64.tar.gz
 tar zxf ${PACKAGE_NAME}.tar.gz > /dev/null
 mv ${PACKAGE_NAME}/* thirdparty/hybridse
 cd -
