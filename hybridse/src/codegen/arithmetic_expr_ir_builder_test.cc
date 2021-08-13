@@ -70,6 +70,17 @@ void UnaryArithmeticExprCheck(RHS rhs, Ret expect, ::hybridse::node::FnOperator 
     EXPECT_EQ(expect, result);
 }
 
+template <typename RHS, typename Ret>
+void UnaryArithmeticErrorCheck(::hybridse::node::FnOperator op) {
+    auto compiled_func = BuildExprFunction<Ret, RHS>([op](node::NodeManager* nm, node::ExprNode* input) {
+        return nm->MakeUnaryExprNode(input, op);
+    });
+    EXPECT_FALSE(compiled_func.valid())
+        << "UnaryArithmeticExprCheck succeed but expect fail: " << DataTypeTrait<RHS>::to_string()
+        << " " << DataTypeTrait<Ret>::to_string()
+        << " " << node::ExprOpTypeName(op);
+}
+
 template <typename LHS, typename RHS, typename Ret>
 void BinaryArithmeticErrorCheck(hybridse::node::FnOperator op) {
     auto compiled_func = BuildExprFunction<Ret, LHS, RHS>(
@@ -1116,6 +1127,32 @@ TEST_F(ArithmeticIRBuilderTest, BitwiseAnd) {
     }
 }
 
+TEST_F(ArithmeticIRBuilderTest, BitwiseAndFail) {
+    auto op = ::hybridse::node::kFnOpBitwiseAnd;
+    BinaryArithmeticErrorCheck<double, int32_t, int32_t>(op);
+    BinaryArithmeticErrorCheck<bool, int32_t, int32_t>(op);
+    BinaryArithmeticErrorCheck<int64_t, float, int64_t>(op);
+    BinaryArithmeticErrorCheck<int16_t, Nullable<codec::StringRef>, int16_t>(op);
+}
+
+TEST_F(ArithmeticIRBuilderTest, BitwiseAndNull) {
+    auto op = ::hybridse::node::kFnOpBitwiseAnd;
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        nullptr, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        nullptr, 10, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        10, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        10, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int32_t>, Nullable<int64_t>>(
+        10L, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int16_t>, Nullable<int64_t>>(
+        nullptr, 20, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>, Nullable<int64_t>>(
+        nullptr, 20L, nullptr, op);
+}
+
 TEST_F(ArithmeticIRBuilderTest, BitwiseOr) {
     auto op = ::hybridse::node::kFnOpBitwiseOr;
     // 0x0011 | 0x0110 = 0x0111
@@ -1151,6 +1188,32 @@ TEST_F(ArithmeticIRBuilderTest, BitwiseOr) {
             ::hybridse::node::kInt64, ::hybridse::node::kInt64, ::hybridse::node::kInt64,
             left, right, left | right, op);
     }
+}
+
+TEST_F(ArithmeticIRBuilderTest, BitwiseOrFail) {
+    auto op = ::hybridse::node::kFnOpBitwiseOr;
+    BinaryArithmeticErrorCheck<double, int32_t, int32_t>(op);
+    BinaryArithmeticErrorCheck<bool, int32_t, int32_t>(op);
+    BinaryArithmeticErrorCheck<int64_t, float, int64_t>(op);
+    BinaryArithmeticErrorCheck<int16_t, Nullable<codec::StringRef>, int16_t>(op);
+}
+
+TEST_F(ArithmeticIRBuilderTest, BitwiseOrNull) {
+    auto op = ::hybridse::node::kFnOpBitwiseOr;
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        nullptr, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        nullptr, 10, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        10, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        10, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int32_t>, Nullable<int64_t>>(
+        10L, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int16_t>, Nullable<int64_t>>(
+        nullptr, 20, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>, Nullable<int64_t>>(
+        nullptr, 20L, nullptr, op);
 }
 
 TEST_F(ArithmeticIRBuilderTest, BitwiseXor) {
@@ -1190,6 +1253,32 @@ TEST_F(ArithmeticIRBuilderTest, BitwiseXor) {
     }
 }
 
+TEST_F(ArithmeticIRBuilderTest, BitwiseXorFail) {
+    auto op = ::hybridse::node::kFnOpBitwiseXor;
+    BinaryArithmeticErrorCheck<double, int32_t, int32_t>(op);
+    BinaryArithmeticErrorCheck<bool, int32_t, int32_t>(op);
+    BinaryArithmeticErrorCheck<int64_t, float, int64_t>(op);
+    BinaryArithmeticErrorCheck<int16_t, Nullable<codec::StringRef>, int16_t>(op);
+}
+
+TEST_F(ArithmeticIRBuilderTest, BitwiseXorNull) {
+    auto op = ::hybridse::node::kFnOpBitwiseXor;
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        nullptr, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        nullptr, 10, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        10, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        10, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int32_t>, Nullable<int64_t>>(
+        10L, nullptr, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int16_t>, Nullable<int64_t>>(
+        nullptr, 20, nullptr, op);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>, Nullable<int64_t>>(
+        nullptr, 20L, nullptr, op);
+}
+
 TEST_F(ArithmeticIRBuilderTest, BitwiseNot) {
     auto op = ::hybridse::node::kFnOpBitwiseNot;
     UnaryArithmeticExprCheck<int16_t, int16_t>(0, -1, op);
@@ -1202,6 +1291,21 @@ TEST_F(ArithmeticIRBuilderTest, BitwiseNot) {
         auto input = gen(rng);
         UnaryArithmeticExprCheck<int64_t, int64_t>(input, -1 - input, op);
     }
+}
+
+TEST_F(ArithmeticIRBuilderTest, BitwiseNotFail) {
+    auto op = ::hybridse::node::kFnOpBitwiseNot;
+    UnaryArithmeticErrorCheck<bool, bool>(op);
+    UnaryArithmeticErrorCheck<float, float>(op);
+    UnaryArithmeticErrorCheck<double, double>(op);
+    UnaryArithmeticErrorCheck<Nullable<codec::StringRef>, Nullable<codec::StringRef>>(op);
+}
+
+TEST_F(ArithmeticIRBuilderTest, BitwiseNotNull) {
+    auto op = ::hybridse::node::kFnOpBitwiseNot;
+    UnaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>>(nullptr, nullptr, op);
+    UnaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>>(nullptr, nullptr, op);
+    UnaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>>(nullptr, nullptr, op);
 }
 
 }  // namespace codegen
