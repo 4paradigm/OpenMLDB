@@ -30,10 +30,8 @@ fi
 
 mkdir -p build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=ON -DEXAMPLES_ENABLE=ON
 make -j"$(nproc)"
-./src/base/fe_slice_test
-./src/base/hash_test
 SQL_CASE_BASE_DIR=${OPENMLDB_DIR} make -j"$(nproc)" test
 
 popd
