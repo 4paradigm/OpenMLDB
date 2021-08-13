@@ -485,21 +485,22 @@ Status ExprNode::LogicalOpTypeAccept(node::NodeManager* nm, const TypeNode* lhs,
  *   - bitwise AND: `lhs & rhs`
  *   - bitwise OR:  `lhs & rhs`
  *   - bitwise XOR: `lhs ^ rhs`
- * `lhs` and `rhs` must have both integral type. usual arithmetic conversions
- *  are performed on both operands and determine the type of the result.
+ * Rules:
+ *  only accept NULL, int64, int32, int16
  */
 Status ExprNode::BitwiseLogicalTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
                                           const TypeNode** output_type) {
     CHECK_TRUE(lhs != nullptr && rhs != nullptr, kTypeError, "lhs and rhs must not null");
-    CHECK_TRUE(lhs->IsInteger() && rhs->IsInteger(), kTypeError, "Invalid Bitwise Op type: lhs ", lhs->GetName(),
-               ", rhs ", rhs->GetName());
+    CHECK_TRUE((lhs->IsNull() || lhs->IsIntegral()) && (rhs->IsNull() || rhs->IsIntegral()), kTypeError,
+               "Invalid Bitwise Op type, not integral type: lhs ", lhs->GetName(), ", rhs ", rhs->GetName());
     CHECK_STATUS(InferNumberCastTypes(nm, lhs, rhs, output_type));
     return Status::OK();
 }
 
 Status ExprNode::BitwiseNotTypeAccept(node::NodeManager* nm, const TypeNode* rhs, const TypeNode** output_type) {
     CHECK_TRUE(rhs != nullptr, kTypeError, "value for bitwise NOT must not null");
-    CHECK_TRUE(rhs->IsInteger(), kTypeError, "value for bitwise NOT must be interger, but get", rhs->GetName());
+    CHECK_TRUE(rhs->IsNull() || rhs->IsIntegral(), kTypeError,
+               "value for bitwise NOT must be integral type, but get ", rhs->GetName());
     *output_type = rhs;
     return Status::OK();
 }

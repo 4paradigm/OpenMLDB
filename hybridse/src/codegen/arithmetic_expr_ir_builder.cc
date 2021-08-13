@@ -262,6 +262,13 @@ bool ArithmeticIRBuilder::BuildXor(::llvm::BasicBlock* block, llvm::Value* left,
     return true;
 }
 
+bool ArithmeticIRBuilder::BuildNot(::llvm::BasicBlock* block, llvm::Value* input,
+                                   llvm::Value** output, base::Status* status) {
+    ::llvm::IRBuilder<> builder(block);
+    *output = builder.CreateNot(input);
+    return true;
+}
+
 bool ArithmeticIRBuilder::BuildLShiftLeft(::llvm::BasicBlock* block,
                                           ::llvm::Value* left,
                                           ::llvm::Value* right,
@@ -520,10 +527,12 @@ Status ArithmeticIRBuilder::BuildBitwiseXorExpr(const NativeValue& left, const N
 Status ArithmeticIRBuilder::BuildBitwiseNotExpr(const NativeValue& rhs, NativeValue* output) {
     CHECK_STATUS(TypeIRBuilder::UnaryOpTypeInfer(node::ExprNode::BitwiseNotTypeAccept, rhs.GetType()));
 
-    ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Value* raw = rhs.GetValue(&builder);
-
-    *output = NativeValue::Create(builder.CreateNot(raw));
+    CHECK_STATUS(NullIRBuilder::SafeNullUnaryExpr(
+        block_, rhs,
+        [](::llvm::BasicBlock* block, ::llvm::Value* rhs, ::llvm::Value** output, Status& status) {
+            return BuildNot(block, rhs, output, &status);
+        },
+        output));
     return Status::OK();
 }
 

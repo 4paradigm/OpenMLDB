@@ -619,6 +619,20 @@ cases:
           - [ 3, 7, 15, 6, 14, 12 ]
       - rows:
           - [ 0, 5, 15, 0, 10, 0 ]
+  - id: bitwise_operators_fail
+    desc: bitwise and/or/xor, fail on non-integral type
+    inputs:
+      - columns: [ "c0 int", "c1 bool", "c2 float", "c3 double", "c4 string", "c5 date", "c6 timestamp" ]
+        indexs: ["index1:c0:c6"]
+        rows:
+          - [1, true, 1.0, 2.0, "abc", "2012-8-11", 1590738989000]
+    sql: |
+      select d[1] d[0] 10 as r1 from {0}
+    dataProvider:
+      - ['&', '|', '^']
+      - [ '{0}.c1', '{0}.c2', '{0}.c3', '{0}.c4', '{0}.c5', '{0}.c6' ]
+    expect:
+      success: false
   - id: bitwise_operators_not
     desc: bitwise not
     inputs:
@@ -635,3 +649,17 @@ cases:
         - r3 bigint
       rows:
         - [ -4, -7, -13 ]
+  - id: bitwise_not_fail
+    desc: bitwise not, fail on non-integral type
+    inputs:
+      - columns: [ "c0 int", "c1 bool", "c2 float", "c3 double", "c4 string", "c5 date", "c6 timestamp" ]
+        indexs: ["index1:c0:c6"]
+        rows:
+          - [1, true, 1.0, 2.0, "abc", "2012-8-11", 1590738989000]
+    sql: |
+      select d[0] d[1] as r1 from {0}
+    dataProvider:
+      - ['~']
+      - [ '{0}.c1', '{0}.c2', '{0}.c3', '{0}.c4', '{0}.c5', '{0}.c6' ]
+    expect:
+      success: false

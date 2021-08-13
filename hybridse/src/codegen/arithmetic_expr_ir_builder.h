@@ -96,6 +96,8 @@ class ArithmeticIRBuilder {
                                     llvm::Value** output, base::Status* status);
 
  private:
+    static bool BuildNot(::llvm::BasicBlock* block, llvm::Value* input, llvm::Value** output, base::Status* status);
+
     static bool InferAndCastedNumberTypes(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
                                           ::llvm::Value** casted_left, ::llvm::Value** casted_right,
                                           ::hybridse::base::Status& status);  // NOLINT
