@@ -353,6 +353,13 @@
 			<version>0.9.1</version>
 		</dependency>
 
+		<!-- Trino -->
+		<dependency>
+			<groupId>io.trino</groupId>
+			<artifactId>trino-jdbc</artifactId>
+			<version>360</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
