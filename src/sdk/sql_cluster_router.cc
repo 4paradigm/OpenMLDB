@@ -191,7 +191,6 @@ bool SQLClusterRouter::Init() {
 
 std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(const std::string& db, const std::string& sql,
                                                                ::hybridse::sdk::Status* status) {
-
     return GetRequestRow(db, sql, std::shared_ptr<::hybridse::sdk::Schema>(), status);
 }
 std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
@@ -211,9 +210,11 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     ::hybridse::vm::ExplainOutput explain;
     ::hybridse::base::Status vm_status;
 
-    const std::shared_ptr<::hybridse::sdk::SchemaImpl> schema_impl = std::dynamic_pointer_cast<::hybridse::sdk::SchemaImpl> (parameter_schema);
+    const std::shared_ptr<::hybridse::sdk::SchemaImpl> schema_impl =
+        std::dynamic_pointer_cast<::hybridse::sdk::SchemaImpl>(parameter_schema);
     bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode,
-                                                 schema_impl ? schema_impl->GetSchema() : ::hybridse::vm::Schema(), &explain, &vm_status);
+                                                 schema_impl ? schema_impl->GetSchema() : ::hybridse::vm::Schema(),
+                                                 &explain, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;
@@ -635,21 +636,20 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     }
     return true;
 }
-
+std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
+    const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row) {
+    return GetTabletClient(db, sql, row, std::shared_ptr<openmldb::sdk::SQLRequestRow>());
+}
 std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
     const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row,
     const std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {
     ::hybridse::codec::Schema parameter_schema_raw;
     if (parameter) {
         for (int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
-            openmldb::type::DataType openmldb_type;
             auto column = parameter_schema_raw.Add();
-            if (!openmldb::catalog::SchemaAdapter::ConvertType(parameter->GetSchema()->GetColumnType(i), &openmldb_type)) {
-                LOG(WARNING) << "Invalid parameter type ";
-                return std::shared_ptr<::openmldb::client::TabletClient>();
-            }
             hybridse::type::Type hybridse_type;
-            if (!openmldb::catalog::SchemaAdapter::ConvertType(openmldb_type, &hybridse_type)) {
+            if (!openmldb::catalog::SchemaAdapter::ConvertType(parameter->GetSchema()->GetColumnType(i),
+                                                               &hybridse_type)) {
                 LOG(WARNING) << "Invalid parameter type ";
                 return std::shared_ptr<::openmldb::client::TabletClient>();
             }
@@ -665,7 +665,8 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     if (!cache) {
         ::hybridse::vm::ExplainOutput explain;
         ::hybridse::base::Status vm_status;
-        if (cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kBatchMode, parameter_schema_raw, &explain, &vm_status)) {
+        if (cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kBatchMode, parameter_schema_raw, &explain,
+                                               &vm_status)) {
             std::shared_ptr<::hybridse::sdk::SchemaImpl> schema;
             if (explain.input_schema.size() > 0) {
                 schema = std::make_shared<::hybridse::sdk::SchemaImpl>(explain.input_schema);
@@ -766,15 +767,17 @@ void SQLClusterRouter::GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<
         GetTables(node->GetProducer(i), tables);
     }
 }
-std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteRequestSQL(const std::string& db, const std::string& sql,
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteRequestSQL(const std::string& db,
+                                                                              const std::string& sql,
                                                                               std::shared_ptr<SQLRequestRow> row,
                                                                               hybridse::sdk::Status* status) {
     return ExecuteRequestSQL(db, sql, row, std::shared_ptr<SQLRequestRow>(), status);
 }
-std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteRequestSQL(const std::string& db, const std::string& sql,
-                                                                       std::shared_ptr<SQLRequestRow> row,
-                                                                       std::shared_ptr<SQLRequestRow> parameter,
-                                                                       hybridse::sdk::Status* status) {
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteRequestSQL(const std::string& db,
+                                                                              const std::string& sql,
+                                                                              std::shared_ptr<SQLRequestRow> row,
+                                                                              std::shared_ptr<SQLRequestRow> parameter,
+                                                                              hybridse::sdk::Status* status) {
     if (!row || !status) {
         LOG(WARNING) << "input is invalid";
         return std::shared_ptr<::hybridse::sdk::ResultSet>();
@@ -798,8 +801,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteRequestSQL(co
         return std::shared_ptr<::hybridse::sdk::ResultSet>();
     }
 
-    if (!client->Query(db, sql, row->GetRow(), parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
-                       options_.enable_debug)) {
+    if (!client->Query(db, sql, row->GetRow(), parameter_types, parameter ? parameter->GetRow() : "", cntl.get(),
+                       response.get(), options_.enable_debug)) {
         status->msg = "request server error, msg: " + response->msg();
         return std::shared_ptr<::hybridse::sdk::ResultSet>();
     }
@@ -816,9 +819,9 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const s
                                                                          ::hybridse::sdk::Status* status) {
     return ExecuteSQL(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
 }
-std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
-                                                                         std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
-                                                                         ::hybridse::sdk::Status* status) {
+std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
+    const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
+    ::hybridse::sdk::Status* status) {
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
     auto response = std::make_shared<::openmldb::api::QueryResponse>();

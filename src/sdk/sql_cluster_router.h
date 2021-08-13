@@ -76,7 +76,7 @@ struct SQLCache {
             return false;
         }
 
-        for(int i = 0; i < parameter_schema->GetColumnCnt(); i++) {
+        for (int i = 0; i < parameter_schema->GetColumnCnt(); i++) {
             if (parameter_schema->GetColumnType(i) != other_parameter_schema->GetColumnType(i)) {
                 return false;
             }
@@ -177,6 +177,8 @@ class SQLClusterRouter : public SQLRouter {
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status);
 
+    std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(
+        const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row);
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row,
         const std::shared_ptr<SQLRequestRow>& parameter_row);

@@ -209,9 +209,10 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     std::string create_sp;
     if (is_batch) {
         hybridse::type::TableDef batch_request_schema;
-        ASSERT_TRUE(sql_case.ExtractTableDef(sql_case.batch_request().columns_, sql_case.batch_request().indexs_, batch_request_schema));
-        ASSERT_TRUE(
-            sql_case.BuildCreateSpSqlFromSchema(batch_request_schema, sql, sql_case.batch_request().common_column_indices_, &create_sp));
+        ASSERT_TRUE(sql_case.ExtractTableDef(sql_case.batch_request().columns_, sql_case.batch_request().indexs_,
+                                             batch_request_schema));
+        ASSERT_TRUE(sql_case.BuildCreateSpSqlFromSchema(batch_request_schema, sql,
+                                                        sql_case.batch_request().common_column_indices_, &create_sp));
     } else {
         std::set<size_t> common_idx;
         ASSERT_TRUE(sql_case.BuildCreateSpSqlFromInput(0, sql, common_idx, &create_sp));
@@ -378,10 +379,10 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
     DLOG(INFO) << "format sql 1";
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
-            std::to_string((int64_t)time(NULL)));
-    for(size_t endpoint_id = 0;  endpoint_id < tbEndpoints.size(); endpoint_id++) {
-        boost::replace_all(sql, "{tb_endpoint_"+std::to_string(endpoint_id)+"}", tbEndpoints.at(endpoint_id));
+    boost::replace_all(sql, "{auto}",
+                       hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((int64_t)time(NULL)));
+    for (size_t endpoint_id = 0; endpoint_id < tbEndpoints.size(); endpoint_id++) {
+        boost::replace_all(sql, "{tb_endpoint_" + std::to_string(endpoint_id) + "}", tbEndpoints.at(endpoint_id));
     }
     DLOG(INFO) << "format sql done";
     LOG(INFO) << sql;
