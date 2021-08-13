@@ -666,17 +666,34 @@ cases:
   - id: bitwise_null_operands
     desc: bitwise operation return null if any of operands is null
     inputs:
-      - columns: ["c1 int16","c2 int32","c3 bigint", "c4 int", "c6 timestamp"]
+      - columns: ["c1 int16","c2 int32","c3 bigint", "c4 int16", "c6 timestamp"]
         indexs: ["index1:c3:c6"]
         rows:
           - [3, 6, 12, NULL, 1590738989000]
     sql: |
-      select {0}.c1 & NULL as r1, {0}.c2 | NULL as r2, {0}.c3 ^ NULL as r3, ~ {0}.c4 as r4 from {0}
+      select {0}.c1 & {0}.c4 as r1, {0}.c2 | {0}.c4 as r2, {0}.c3 ^ {0}.c4 as r3, ~ {0}.c4 as r4 from {0}
     expect:
       columns:
         - r1 int16
         - r2 int32
         - r3 int64
-        - r4 int32
+        - r4 int16
+      rows:
+        - [ NULL, NULL, NULL, NULL ]
+  - id: bitwise_const_null_operands
+    desc: bitwise operation return null if any of operands is null
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint", "c4 int", "c6 timestamp"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [3, 6, 12, NULL, 1590738989000]
+    sql: |
+      select {0}.c1 & NULL as r1, {0}.c2 | NULL as r2, {0}.c3 ^ NULL as r3, ~ NULL as r4 from {0}
+    expect:
+      columns:
+        - r1 int16
+        - r2 int32
+        - r3 int64
+        - r4 bool
       rows:
         - [ NULL, NULL, NULL, NULL ]
