@@ -113,12 +113,9 @@ class OpenmldbSession {
 
     // Set Iceberg catalog
     if (!config.hadoopWarehousePath.isEmpty) {
-      sparkConf.set("spark.sql.catalog.%s"
-        .format(config.icebergHadoopCatalogName), "org.apache.iceberg.spark.SparkCatalog")
-      sparkConf.set("spark.sql.catalog.%s.type"
-        .format(config.icebergHadoopCatalogName), "hadoop")
-      sparkConf.set("spark.sql.catalog.%s.warehouse"
-        .format(config.icebergHadoopCatalogName), this.config.hadoopWarehousePath)
+      sparkConf.set("spark.sql.catalog.%s".format(config.icebergHadoopCatalogName), "org.apache.iceberg.spark.SparkCatalog")
+      sparkConf.set("spark.sql.catalog.%s.type".format(config.icebergHadoopCatalogName), "hadoop")
+      sparkConf.set("spark.sql.catalog.%s.warehouse".format(config.icebergHadoopCatalogName), this.config.hadoopWarehousePath)
     }
 
     if (config.enableHiveMetaStore) {
