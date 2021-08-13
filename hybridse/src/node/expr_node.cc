@@ -493,7 +493,13 @@ Status ExprNode::BitwiseLogicalTypeAccept(node::NodeManager* nm, const TypeNode*
     CHECK_TRUE(lhs != nullptr && rhs != nullptr, kTypeError, "lhs and rhs must not null");
     CHECK_TRUE((lhs->IsNull() || lhs->IsIntegral()) && (rhs->IsNull() || rhs->IsIntegral()), kTypeError,
                "Invalid Bitwise Op type, not integral type: lhs ", lhs->GetName(), ", rhs ", rhs->GetName());
-    CHECK_STATUS(InferNumberCastTypes(nm, lhs, rhs, output_type));
+    if (lhs->IsNull()) {
+        *output_type = rhs;
+    } else if (rhs->IsNull()) {
+        *output_type = lhs;
+    } else {
+        CHECK_STATUS(InferNumberCastTypes(nm, lhs, rhs, output_type));
+    }
     return Status::OK();
 }
 
