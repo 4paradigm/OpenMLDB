@@ -792,18 +792,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteRequestSQL(co
         return std::shared_ptr<::hybridse::sdk::ResultSet>();
     }
     std::vector<openmldb::type::DataType> parameter_types;
-    for(int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
-        openmldb::type::DataType casted_type;
-        if (!openmldb::catalog::SchemaAdapter::ConvertType(
-                parameter->GetSchema()->GetColumnType(i), &casted_type)) {
-            status->msg =
-                "Invalid parameter type " + hybridse::sdk::DataTypeName(parameter->GetSchema()->GetColumnType(i));
-            status->code = -1;
-            return std::shared_ptr<::hybridse::sdk::ResultSet>();
-        }
-        parameter_types.push_back(casted_type);
+    if (parameter && !ExtractDBTypes(parameter->GetSchema(), parameter_types)) {
+        status->msg = "convert parameter types error";
+        status->code = -1;
+        return std::shared_ptr<::hybridse::sdk::ResultSet>();
     }
-    if (!client->Query(db, sql, row->GetRow(), parameter_types, parameter->GetRow(), cntl.get(), response.get(),
+
+    if (!client->Query(db, sql, row->GetRow(), parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
                        options_.enable_debug)) {
         status->msg = "request server error, msg: " + response->msg();
         return std::shared_ptr<::hybridse::sdk::ResultSet>();
@@ -828,17 +823,10 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const s
     cntl->set_timeout_ms(options_.request_timeout);
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
     std::vector<openmldb::type::DataType> parameter_types;
-    if (parameter) {
-        for (int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
-            openmldb::type::DataType casted_type;
-            if (!openmldb::catalog::SchemaAdapter::ConvertType(parameter->GetSchema()->GetColumnType(i), &casted_type)) {
-                status->msg =
-                    "Invalid parameter type " + hybridse::sdk::DataTypeName(parameter->GetSchema()->GetColumnType(i));
-                status->code = -1;
-                return std::shared_ptr<::hybridse::sdk::ResultSet>();
-            }
-            parameter_types.push_back(casted_type);
-        }
+    if (parameter && !ExtractDBTypes(parameter->GetSchema(), parameter_types)) {
+        status->msg = "convert parameter types error";
+        status->code = -1;
+        return std::shared_ptr<::hybridse::sdk::ResultSet>();
     }
 
     auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>(), parameter);
@@ -1284,7 +1272,20 @@ bool SQLClusterRouter::CheckSQLSyntax(const std::string& sql) {
     }
     return true;
 }
-
+bool SQLClusterRouter::ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema> schema,
+                           std::vector<openmldb::type::DataType>& db_types) {  // NOLINT
+    if (schema) {
+        for (int i = 0; i < schema->GetColumnCnt(); i++) {
+            openmldb::type::DataType casted_type;
+            if (!openmldb::catalog::SchemaAdapter::ConvertType(schema->GetColumnType(i), &casted_type)) {
+                LOG(WARNING) << "Invalid parameter type " << schema->GetColumnType(i);
+                return false;
+            }
+            db_types.push_back(casted_type);
+        }
+    }
+    return true;
+}
 std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> SQLClusterRouter::ShowProcedure(std::string* msg) {
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> vec;
     if (msg == nullptr) {
