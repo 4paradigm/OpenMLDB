@@ -104,7 +104,7 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
                     auto rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
                     openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                 } else {
-                    auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+                    auto rs = router->ExecuteRequestSQL(sql_case.db(), sql, request_row, &status);
                     openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                 }
             }
@@ -131,7 +131,7 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
                     }
                     state.SkipWithError("BENCHMARK DEBUG");
                 } else {
-                    auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+                    auto rs = router->ExecuteRequestSQL(sql_case.db(), sql, request_row, &status);
                     if (!rs) FAIL() << "sql case expect success == true";
                     openmldb::sdk::SQLSDKTest::PrintResultSet(rs);
                     hybridse::type::TableDef output_table;
@@ -158,7 +158,7 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
                 }
             } else {
                 for (auto _ : state) {
-                    benchmark::DoNotOptimize(router->ExecuteSQL(sql_case.db(), sql, request_row, &status));
+                    benchmark::DoNotOptimize(router->ExecuteRequestSQL(sql_case.db(), sql, request_row, &status));
                 }
             }
         }

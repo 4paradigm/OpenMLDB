@@ -827,7 +827,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
                                          " window w as (partition by " + name + ".col1 order by " + name +
                                          ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
-        rs = router->ExecuteSQL(db, sql_window_request, row, &status);
+        rs = router->ExecuteRequestSQL(db, sql_window_request, row, &status);
         ASSERT_TRUE(rs != nullptr);
         ASSERT_EQ(1, rs->Size());
         ASSERT_TRUE(rs->Next());
@@ -846,7 +846,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
                                          " window w as (partition by " + name + ".col1 order by " + name +
                                          ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
-        rs = router->ExecuteSQL(db, sql_window_request, row, &status);
+        rs = router->ExecuteRequestSQL(db, sql_window_request, row, &status);
         ASSERT_TRUE(rs != nullptr);
         ASSERT_EQ(1, rs->Size());
         ASSERT_TRUE(rs->Next());

@@ -52,6 +52,7 @@
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
+#include "catalog/schema_adapter.h"
 
 using google::protobuf::RepeatedPtrField;
 using ::openmldb::base::ReturnCode;
@@ -1482,12 +1483,25 @@ void TabletImpl::Query(RpcController* ctrl, const openmldb::api::QueryRequest* r
 void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryRequest* request,
                               ::openmldb::api::QueryResponse* response, butil::IOBuf* buf) {
     ::hybridse::base::Status status;
-    ::hybridse::codec::Row parameter_row;
+    // convert repeated openmldb:type::DataType into hybridse::codec::Schema
+    hybridse::codec::Schema parameter_schema;
+    for (int i = 0; i < request->parameter_types().size(); i++) {
+        auto column = parameter_schema.Add();
+        hybridse::type::Type hybridse_type;
+
+        if (!openmldb::catalog::SchemaAdapter::ConvertType(request->parameter_types(i), &hybridse_type)) {
+            response->set_msg("Invalid parameter type: " + openmldb::type::DataType_Name(request->parameter_types(i)));
+            response->set_code(::openmldb::base::kSQLCompileError);
+            return;
+        }
+        column->set_type(hybridse_type);
+    }
     if (request->is_batch()) {
         ::hybridse::vm::BatchRunSession session;
         if (request->is_debug()) {
             session.EnableDebug();
         }
+        session.SetParameterSchema(parameter_schema);
         {
             bool ok = engine_->Get(request->sql(), request->db(), session, status);
             if (!ok) {
@@ -1498,26 +1512,26 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
             }
         }
 
-        auto table = session.Run(parameter_row);
-        if (!table) {
-            DLOG(WARNING) << "fail to run sql " << request->sql();
+        ::hybridse::codec::Row parameter_row;
+        auto& request_buf = static_cast<brpc::Controller*>(ctrl)->request_attachment();
+        if (request->parameter_row_size() > 0 &&
+            !codec::DecodeRpcRow(request_buf, 0, request->parameter_row_size(), request->parameter_row_slices(),
+                                 &parameter_row)) {
             response->set_code(::openmldb::base::kSQLRunError);
-            response->set_msg("fail to run sql");
+            response->set_msg("fail to decode parameter row");
             return;
         }
-        auto iter = table->GetIterator();
-        if (!iter) {
-            response->set_schema(session.GetEncodedSchema());
-            response->set_byte_size(0);
-            response->set_count(0);
-            response->set_code(::openmldb::base::kOk);
+        std::vector<::hybridse::codec::Row> output_rows;
+        int32_t run_ret = session.Run(parameter_row, output_rows);
+        if (run_ret != 0) {
+            response->set_msg(status.msg);
+            response->set_code(::openmldb::base::kSQLRunError);
+            DLOG(WARNING) << "fail to run sql: " << request->sql();
             return;
         }
-        iter->SeekToFirst();
         uint32_t byte_size = 0;
         uint32_t count = 0;
-        while (iter->Valid()) {
-            const ::hybridse::codec::Row& row = iter->GetValue();
+        for (auto& output_row : output_rows) {
             if (byte_size > FLAGS_scan_max_bytes_size) {
                 LOG(WARNING) << "reach the max byte size truncate result";
                 response->set_schema(session.GetEncodedSchema());
@@ -1526,9 +1540,8 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
                 response->set_code(::openmldb::base::kOk);
                 return;
             }
-            byte_size += row.size();
-            iter->Next();
-            buf->append(reinterpret_cast<void*>(row.buf()), row.size());
+            byte_size += output_row.size();
+            buf->append(reinterpret_cast<void*>(output_row.buf()), output_row.size());
             count += 1;
         }
         response->set_schema(session.GetEncodedSchema());
@@ -1542,6 +1555,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
         if (request->is_debug()) {
             session.EnableDebug();
         }
+        session.SetParameterSchema(parameter_schema);
         if (request->is_procedure()) {
             const std::string& db_name = request->db();
             const std::string& sp_name = request->sp_name();
@@ -1694,9 +1708,9 @@ void TabletImpl::ProcessBatchRequestQuery(RpcController* ctrl,
     ::hybridse::codec::Row parameter_row;
     int32_t run_ret = 0;
     if (request->has_task_id()) {
-        session.Run(request->task_id(), input_rows, parameter_row, output_rows);
+        run_ret = session.Run(request->task_id(), input_rows, parameter_row, output_rows);
     } else {
-        session.Run(input_rows, parameter_row, output_rows);
+        run_ret = session.Run(input_rows, parameter_row, output_rows);
     }
     if (run_ret != 0) {
         response->set_msg(status.msg);
@@ -4708,6 +4722,13 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl, const openmldb::api::Query
         return;
     }
     ::hybridse::codec::Row parameter_row;
+    if (request.parameter_row_size() > 0 &&
+        !codec::DecodeRpcRow(request_buf, request.row_size(), request.parameter_row_size(),
+                             request.parameter_row_slices(), &row)) {
+        response.set_code(::openmldb::base::kSQLRunError);
+        response.set_msg("fail to decode parameter row");
+        return;
+    }
     ::hybridse::codec::Row output;
     int32_t ret = 0;
     if (request.has_task_id()) {

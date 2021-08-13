@@ -60,7 +60,10 @@ std::string TabletClient::GetEndpoint() { return endpoint_; }
 
 const std::string& TabletClient::GetRealEndpoint() const { return real_endpoint_; }
 
-bool TabletClient::Query(const std::string& db, const std::string& sql, const std::string& row, brpc::Controller* cntl,
+bool TabletClient::Query(const std::string& db, const std::string& sql, const std::string& row,
+                         const std::vector<openmldb::type::DataType>& parameter_types,
+                         const std::string& parameter_row,
+                         brpc::Controller* cntl,
                          openmldb::api::QueryResponse* response, const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
     ::openmldb::api::QueryRequest request;
@@ -70,9 +73,18 @@ bool TabletClient::Query(const std::string& db, const std::string& sql, const st
     request.set_is_debug(is_debug);
     request.set_row_size(row.size());
     request.set_row_slices(1);
+    request.set_parameter_row_size(parameter_row.size());
+    request.set_parameter_row_slices(1);
+    for(auto& type: parameter_types) {
+        request.add_parameter_types(type);
+    }
     auto& io_buf = cntl->request_attachment();
     if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()), row.size(), &io_buf)) {
         LOG(WARNING) << "Encode row buffer failed";
+        return false;
+    }
+    if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(parameter_row.data()), parameter_row.size(), &io_buf)) {
+        LOG(WARNING) << "Encode parameter buffer failed";
         return false;
     }
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Query, cntl, &request, response);
@@ -83,14 +95,27 @@ bool TabletClient::Query(const std::string& db, const std::string& sql, const st
     return true;
 }
 
-bool TabletClient::Query(const std::string& db, const std::string& sql, brpc::Controller* cntl,
-                         ::openmldb::api::QueryResponse* response, const bool is_debug) {
+bool TabletClient::Query(const std::string& db, const std::string& sql,
+                         const std::vector<openmldb::type::DataType>& parameter_types,
+                         const std::string& parameter_row,
+                         brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
     ::openmldb::api::QueryRequest request;
     request.set_sql(sql);
     request.set_db(db);
     request.set_is_batch(true);
     request.set_is_debug(is_debug);
+    request.set_parameter_row_size(parameter_row.size());
+    request.set_parameter_row_slices(1);
+    for(auto& type: parameter_types) {
+        request.add_parameter_types(type);
+    }
+    LOG(INFO) << "Query request: " << request.DebugString();
+    auto& io_buf = cntl->request_attachment();
+    if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(parameter_row.data()), parameter_row.size(), &io_buf)) {
+        LOG(WARNING) << "Encode parameter buffer failed";
+        return false;
+    }
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Query, cntl, &request, response);
 
     if (!ok || response->code() != 0) {

@@ -697,43 +697,67 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
         ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     }
 
-//    std::string where_exist = "select * from trans where merch_id=? and txn_time < ?;";
-    // parameterized query
-    {
 
-        std::string where_exist = "select * from trans where merch_id='mc_0' and txn_time < 1594800959830;";
-        auto rs = router->ExecuteSQL(db, where_exist, &status);
+    hybridse::codec::Schema schema;
+    {
+        auto column = schema.Add();
+        column->set_type(::hybridse::type::kVarchar);
+    }
+    {
+        auto column = schema.Add();
+        column->set_type(::hybridse::type::kInt64);
+    }
+    const std::shared_ptr<::hybridse::sdk::Schema> schema_impl = std::make_shared<hybridse::sdk::SchemaImpl>(schema);
+    std::string where_exist = "select * from trans where merch_id = ? and txn_time < ?;";
+    // parameterized query
+    auto parameter_row = std::make_shared<SQLRequestRow>(schema_impl, std::set<std::string>());
+    {
+        ASSERT_EQ(2, parameter_row->GetSchema()->GetColumnCnt());
+        ASSERT_TRUE(parameter_row->Init(4));
+        ASSERT_TRUE(parameter_row->AppendString("mc_0"));
+        ASSERT_TRUE(parameter_row->AppendInt64(1594800959830));
+        ASSERT_TRUE(parameter_row->Build());
+
+        auto rs = router->ExecuteSQL(db, where_exist, parameter_row, &status);
+
         if (!rs) {
             FAIL() << "fail to execute sql";
         }
         ASSERT_EQ(rs->Size(), 3);
     }
     {
-        std::string where_not_exist = "select * from trans where merch_id='mc_0' and txn_time < 1594800959828;";
-        auto rs = router->ExecuteSQL(db, where_not_exist, &status);
+        ASSERT_TRUE(parameter_row->Init(4));
+        ASSERT_TRUE(parameter_row->AppendString("mc_0"));
+        ASSERT_TRUE(parameter_row->AppendInt64(1594800959828));
+        ASSERT_TRUE(parameter_row->Build());
+        auto rs = router->ExecuteSQL(db, where_exist, parameter_row, &status);
         if (!rs) {
             FAIL() << "fail to execute sql";
         }
         ASSERT_EQ(rs->Size(), 1);
     }
     {
-        std::string where_not_exist = "select * from trans where merch_id='mc_0' and txn_time < 1594800959827;";
-        auto rs = router->ExecuteSQL(db, where_not_exist, &status);
+        parameter_row->Init(4);
+        parameter_row->AppendString("mc_0");
+        parameter_row->AppendInt64(1594800959827);
+        parameter_row->Build();
+        auto rs = router->ExecuteSQL(db, where_exist, parameter_row, &status);
         if (!rs) {
             FAIL() << "fail to execute sql";
         }
         ASSERT_EQ(rs->Size(), 0);
     }
     {
-        std::string where_not_exist = "select * from trans where merch_id='mc_1' and txn_time < 1594800959830;";
-        auto rs = router->ExecuteSQL(db, where_not_exist, &status);
+        parameter_row->Init(4);
+        parameter_row->AppendString("mc_1");
+        parameter_row->AppendInt64(1594800959830);
+        parameter_row->Build();
+        auto rs = router->ExecuteSQL(db, where_exist, parameter_row, &status);
         if (!rs) {
             FAIL() << "fail to execute sql";
         }
         ASSERT_EQ(rs->Size(), 0);
     }
-
-
 }
 }  // namespace sdk
 }  // namespace openmldb
