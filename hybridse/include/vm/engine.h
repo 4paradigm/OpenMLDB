@@ -155,11 +155,6 @@ class RunSession {
         return compile_info_->GetSchema();
     }
 
-    /// Return query parameter schema.
-    virtual const Schema& GetParameterSchema() const {
-        return compile_info_->GetParameterSchema();
-    }
-
     /// Return query schema string.
     virtual const std::string& GetEncodedSchema() const {
         return compile_info_->GetEncodedSchema();
@@ -185,6 +180,8 @@ class RunSession {
     void SetSpName(const std::string& sp_name) { sp_name_ = sp_name; }
     /// Bing the run session with specific parameter schema
     void SetParameterSchema(const codec::Schema& schema) { parameter_schema_ = schema; }
+    /// Return query parameter schema.
+    virtual const Schema& GetParameterSchema() const { return parameter_schema_; }
     /// Return the engine mode of this run session
     EngineMode engine_mode() const { return engine_mode_; }
 

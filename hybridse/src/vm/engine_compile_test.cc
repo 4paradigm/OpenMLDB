@@ -67,21 +67,94 @@ TEST_F(EngineCompileTest, EngineLRUCacheTest) {
     {
         base::Status get_status;
         BatchRunSession bsession1;
-        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession1, get_status))
-            << get_status;
+        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession1, get_status)) << get_status;
         ASSERT_EQ(get_status.code, common::kOk);
         BatchRunSession bsession2;
         ASSERT_TRUE(engine.Get(sql, "simple_db", bsession2, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_EQ(bsession1.GetCompileInfo().get(),
-                  bsession2.GetCompileInfo().get());
+        ASSERT_EQ(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
         BatchRunSession bsession3;
         ASSERT_TRUE(engine.Get(sql2, "simple_db", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_TRUE(engine.Get(sql, "simple_db", bsession2, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_NE(bsession1.GetCompileInfo().get(),
-                  bsession2.GetCompileInfo().get());
+        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
+    }
+}
+
+TEST_F(EngineCompileTest, EngineWithParameterizedLRUCacheTest) {
+    // Build Simple Catalog
+    auto catalog = BuildSimpleCatalog();
+
+    // database simple_db
+    hybridse::type::Database db;
+    db.set_name("simple_db");
+
+    // table t1
+    hybridse::type::TableDef table_def;
+    sqlcase::CaseSchemaMock::BuildTableDef(table_def);
+    table_def.set_name("t1");
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index0");
+    index->add_first_keys("col0");
+    index->set_second_key("col5");
+    AddTable(db, table_def);
+
+    catalog->AddDatabase(db);
+
+    // Simple Engine
+    EngineOptions options;
+    options.set_compile_only(true);
+    options.set_max_sql_cache_size(1);
+    Engine engine(catalog, options);
+
+    hybridse::codec::Schema parameter_schema;
+    {
+        auto column = parameter_schema.Add();
+        column->set_type(hybridse::type::kVarchar);
+    }
+    {
+        auto column = parameter_schema.Add();
+        column->set_type(hybridse::type::kInt64);
+    }
+
+    hybridse::codec::Schema parameter_schema2;
+    {
+        auto column = parameter_schema2.Add();
+        column->set_type(hybridse::type::kInt64);
+    }
+    {
+        auto column = parameter_schema2.Add();
+        column->set_type(hybridse::type::kInt64);
+    }
+    std::string sql = "select col1, col2 from t1 where col0=? and col5<?;";
+    std::string sql2 = "select col1, col2 as cl2 from t1 where col0=? and col5<?;";
+    {
+        base::Status get_status;
+        BatchRunSession bsession1;
+        bsession1.SetParameterSchema(parameter_schema);
+        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession1, get_status)) << get_status;
+        ASSERT_EQ(get_status.code, common::kOk);
+        BatchRunSession bsession2;
+        bsession2.SetParameterSchema(parameter_schema);
+        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_EQ(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
+        BatchRunSession bsession3;
+        bsession3.SetParameterSchema(parameter_schema);
+        ASSERT_TRUE(engine.Get(sql2, "simple_db", bsession3, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
+
+        BatchRunSession bsession4;
+        bsession4.SetParameterSchema(parameter_schema2);
+        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession4, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
     }
 }
 
