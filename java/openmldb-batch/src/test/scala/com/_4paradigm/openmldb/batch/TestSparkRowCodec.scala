@@ -16,13 +16,16 @@
 
 package com._4paradigm.openmldb.batch
 
-import java.sql.{Date, Timestamp}
+import java.sql.Timestamp
 import com._4paradigm.hybridse.HybridSeLibrary
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType,
-  LongType, ShortType, StringType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{
+  BooleanType, DateType, DoubleType, FloatType,
+  IntegerType, LongType, ShortType, StringType, StructField, StructType, TimestampType
+}
 import org.scalatest.FunSuite
 
+import java.util.Calendar
 import scala.util.Random
 
 
@@ -52,8 +55,10 @@ class TestSparkRowCodec extends FunSuite {
 
   test("Test encode and decode with date") {
     val withDateSchema = baseSchema.add("date1", DateType)
+    val cal = Calendar.getInstance()
+    cal.set(2020, 5, 27)
     testRow(
-      Row(1.toShort, 1, 1L, 1.0f, 1.0, true, new Timestamp(1), new Date(2020-1900, 5, 27)),
+      Row(1.toShort, 1, 1L, 1.0f, 1.0, true, new Timestamp(1), cal.getTime),
       withDateSchema)
   }
   test("Test encode and decode with strings") {

@@ -16,19 +16,25 @@ public class ResultSetUtil {
         int[] columnMaxLengths = new int[ColumnCount];
         // Save data in ArrayList
         ArrayList<String[]> results = new ArrayList<>();
-        while (rs.next()) {
-            String[] columnStr = new String[ColumnCount];
+        if (rs.wasNull()) {
             for (int i = 0; i < ColumnCount; i++) {
-                columnStr[i] = rs.getString(i + 1);
-                if (columnStr[i] != null) {
-                    columnMaxLengths[i] = Math.max(columnMaxLengths[i],
-                            Math.max(columnStr[i].length(), resultSetMetaData.getColumnName(i + 1).length()));
-                } else {
-                    columnMaxLengths[i] = Math.max(columnMaxLengths[i],
-                            Math.max(4, resultSetMetaData.getColumnName(i + 1).length()));
-                }
+                columnMaxLengths[i] = resultSetMetaData.getColumnName(i + 1).length();
             }
-            results.add(columnStr);
+        } else {
+            while (rs.next()) {
+                String[] columnStr = new String[ColumnCount];
+                for (int i = 0; i < ColumnCount; i++) {
+                    columnStr[i] = rs.getString(i + 1);
+                    if (columnStr[i] != null) {
+                        columnMaxLengths[i] = Math.max(columnMaxLengths[i],
+                                Math.max(columnStr[i].length(), resultSetMetaData.getColumnName(i + 1).length()));
+                    } else {
+                        columnMaxLengths[i] = Math.max(columnMaxLengths[i],
+                                Math.max(4, resultSetMetaData.getColumnName(i + 1).length()));
+                    }
+                }
+                results.add(columnStr);
+            }
         }
         printSeparator(columnMaxLengths);
         printColumnName(resultSetMetaData, columnMaxLengths);
