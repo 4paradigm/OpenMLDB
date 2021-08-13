@@ -34,8 +34,15 @@ if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
   cd ${OPENMLDB_DIR}/hybridse
   ln -sf /depends/thirdparty thirdparty
   ln -sf /depends/thirdsrc thirdsrc
-  sh tools/hybridse_build.sh
-  mv build/hybridse /depends/thirdparty/hybridse
+  if uname -a | grep -q Darwin; then
+    # in case coreutils not install on mac
+    alias nproc='sysctl -n hw.logicalcpu'
+  fi
+  rm -rf build
+  mkdir -p build && cd build
+  cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCMAKE_INSTALL_PREFIX="hybridse"
+  make -j"$(nproc)" install
+  mv hybridse /depends/thirdparty/hybridse
 else
   cd /depends
   rm -rf thirdparty/hybridse
