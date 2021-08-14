@@ -49,12 +49,12 @@ class TestSparkUtil extends SparkTestSuite {
     (0, Timestamp.valueOf("2019-09-11 0:0:0"))
   )
 
-  test("Test supportNativeLastJoin") {
+  test("test supportNativeLastJoin") {
     assert(!supportNativeLastJoin(JoinType.kJoinTypeFull, hasOrderby = true))
     assert(!supportNativeLastJoin(JoinType.kJoinTypeFull, hasOrderby = false))
     assert(!supportNativeLastJoin(JoinType.kJoinTypeLast, hasOrderby = false))
   }
-  test("Test addIndexColumn") {
+  test("test addIndexColumn") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addIndexColumn(Session,table,"Index","zipwithindex")
@@ -64,24 +64,24 @@ class TestSparkUtil extends SparkTestSuite {
     assert(addIndexColumn(Session,table,"IncreasingId","monotonicallyincreasingid")
       .select("IncreasingId").distinct().count()==data.length)
     assertThrows[HybridSeException]{
-      addIndexColumn(Session,table,"test","Unsupported method")
+      addIndexColumn(Session,table,"Unsupported","Unsupported method")
     }
   }
-  test("Test addColumnByZipWithIndex") {
+  test("test addColumnByZipWithIndex") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addColumnByZipWithIndex(Session,table,"Index")
       .select("Index").distinct().count()==data.length)
   }
 
-  test("Test addColumnByZipWithUniqueId") {
+  test("test addColumnByZipWithUniqueId") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addColumnByZipWithUniqueId(Session,table,"UniqueId")
       .select("UniqueId").distinct().count()==data.length)
   }
 
-  test("Test addColumnByMonotonicallyIncreasingId") {
+  test("test addColumnByMonotonicallyIncreasingId") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addColumnByMonotonicallyIncreasingId(Session,table,"IncreasingId")
@@ -126,7 +126,7 @@ class TestSparkUtil extends SparkTestSuite {
     assert(!smallDfEqual(tableTest1,tableTest3))
   }
 
-  test("rddInternalRowToDf") {
+  test("test rddInternalRowToDf") {
     val dataTest1 = Seq(
       (0, Timestamp.valueOf("1969-01-01 0:0:0")),
       (0, Timestamp.valueOf("2019-09-11 0:0:0"))
