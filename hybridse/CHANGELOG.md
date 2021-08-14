@@ -3,15 +3,18 @@
 ## [Unreleased]
 
 ### SQL Syntax
-- Support parameterized query under BatchMode [#170](https://github.com/4paradigm/HybridSE/issues/170)
-- `nvl` & `nvl2`: [#190](https://github.com/4paradigm/HybridSE/pull/190)
+- Support parameterized query under BatchMode [#262](https://github.com/4paradigm/OpenMLDB/issues/262)
+- `nvl` & `nvl2`:  [#238](https://github.com/4paradigm/OpenMLDB/issues/238)
 
-## [0.2.1] - 2021-08-06w
+## [0.2.1] - 2021-08-06
 ### Feature
-+ Add `VARCHAR` Type [#196](https://github.com/4paradigm/HybridSE/issues/196)
++ Add `VARCHAR` Type [#237](https://github.com/4paradigm/OpenMLDB/issues/237)
 
 ### Bug Fix
-- Fix invalid back qoute identifier name [#192](https://github.com/4paradigm/HybridSE/issues/192). Note: option key can't write as multiple path style (e.g a.b) now
+- Fix invalid back qoute identifier name [#263](https://github.com/4paradigm/OpenMLDB/issues/263). 
+  
+### Note: 
+`OPTIONS` can't write as multiple path style (e.g a.b) now
 
 ## [0.2.0] - 2021-07-16
 ### SQL Syntax
