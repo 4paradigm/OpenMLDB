@@ -173,22 +173,20 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             session.EnableDebug();
         }
         codec::Row parameter(request->parameter_row());
-        auto table = session.Run(parameter);
+        std::vector<hybridse::codec::Row> outputs;
+        int32_t ret = session.Run(parameter, outputs);
 
-        if (!table) {
+        if (0 != ret) {
             LOG(WARNING) << "fail to run sql " << request->sql();
             status->set_code(common::kSqlError);
             status->set_msg("fail to run sql");
             return;
         }
 
-        auto iter = table->GetIterator();
         uint32_t byte_size = 0;
         uint32_t count = 0;
-        while (iter->Valid()) {
-            const codec::Row& row = iter->GetValue();
+        for(auto& row: outputs) {
             byte_size += row.size();
-            iter->Next();
             buf.append(reinterpret_cast<void*>(row.buf()), row.size());
             count += 1;
         }

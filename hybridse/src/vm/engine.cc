@@ -436,36 +436,8 @@ int32_t BatchRequestRunSession::Run(const uint32_t id, const std::vector<Row>& r
     ctx.ClearCache();
     return 0;
 }
-std::shared_ptr<TableHandler> BatchRunSession::Run() {
-    return Run(Row());
-}
-std::shared_ptr<TableHandler> BatchRunSession::Run(const Row& parameter_row) {
-    RunnerContext ctx(&std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job,
-                      parameter_row, is_debug_);
-    auto output = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
-                      ->get_sql_context()
-                      .cluster_job.GetMainTask()
-                      .GetRoot()
-                      ->RunWithCache(ctx);
-    if (!output) {
-        LOG(WARNING) << "run batch plan output is null";
-        return std::shared_ptr<TableHandler>();
-    }
-    switch (output->GetHanlderType()) {
-        case kTableHandler: {
-            return std::dynamic_pointer_cast<TableHandler>(output);
-        }
-        case kRowHandler: {
-            auto table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
-            table->AddRow(std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
-            return table;
-        }
-        case kPartitionHandler: {
-            LOG(WARNING) << "partition output is invalid";
-            return std::shared_ptr<TableHandler>();
-        }
-    }
-    return std::shared_ptr<TableHandler>();
+int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
+    return Run(Row(), rows, limit);
 }
 int32_t BatchRunSession::Run(const Row& parameter_row, std::vector<Row>& rows, uint64_t limit) {
     auto& sql_ctx = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context();

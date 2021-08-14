@@ -199,12 +199,11 @@ class BatchRunSession : public RunSession {
     /// Query results will be returned as std::vector<Row> in output
     int32_t Run(const Row& parameter_row, std::vector<Row>& output,  // NOLINT
                 uint64_t limit = 0);
+
     /// \brief Query sql in batch mode.
-    /// Return query result as TableHandler pointer.
-    std::shared_ptr<TableHandler> Run();
-    /// \brief Parameterized Query sql in batch mode.
-    /// Return query result as TableHandler pointer.
-    std::shared_ptr<TableHandler> Run(const Row& parameter_row);
+    /// Query results will be returned as std::vector<Row> in output
+    int32_t Run(std::vector<Row>& output,  // NOLINT
+                uint64_t limit = 0);
     /// Bing the run session with specific parameter schema
     void SetParameterSchema(const codec::Schema& schema) { parameter_schema_ = schema; }
     /// Return query parameter schema.
