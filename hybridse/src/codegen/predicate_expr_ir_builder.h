@@ -55,22 +55,22 @@ class PredicateIRBuilder {
 
     static bool BuildEqExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                             ::llvm::Value* right, ::llvm::Value** output,
-                            base::Status& status);  // NOLINT
+                            Status& status);  // NOLINT
     static bool BuildNeqExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                              ::llvm::Value* right, ::llvm::Value** output,
-                             base::Status& status);  // NOLINT
+                             Status& status);  // NOLINT
     static bool BuildGtExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                             ::llvm::Value* right, ::llvm::Value** output,
-                            base::Status& status);  // NOLINT
+                            Status& status);  // NOLINT
     static bool BuildGeExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                             ::llvm::Value* right, ::llvm::Value** output,
-                            base::Status& status);  // NOLINT
+                            Status& status);  // NOLINT
     static bool BuildLtExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                             ::llvm::Value* right, ::llvm::Value** output,
-                            base::Status& status);  // NOLINT
+                            Status& status);  // NOLINT
     static bool BuildLeExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                             ::llvm::Value* right, ::llvm::Value** output,
-                            base::Status& status);  // NOLINT
+                            Status& status);  // NOLINT
 
     Status BuildIsNullExpr(::llvm::BasicBlock*, NativeValue input,
                            NativeValue* output);
@@ -81,12 +81,12 @@ class PredicateIRBuilder {
     static bool InferAndCastBoolTypes(
         ::llvm::BasicBlock* block, ::llvm::Value* value,
         ::llvm::Value** casted_value,
-        ::hybridse::base::Status& status);  // NOLINT
+        Status& status);  // NOLINT
     static bool InferAndCastTypes(::llvm::BasicBlock* block,
                                   ::llvm::Value* left, ::llvm::Value* right,
                                   ::llvm::Value** casted_left,
                                   ::llvm::Value** casted_right,
-                                  ::hybridse::base::Status& status);  // NOLINT
+                                  Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;

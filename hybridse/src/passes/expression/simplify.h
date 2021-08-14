@@ -23,12 +23,13 @@
 
 #include "passes/expression/expr_pass.h"
 
-using hybridse::base::Status;
-using hybridse::node::ExprAnalysisContext;
-using hybridse::node::ExprNode;
 
 namespace hybridse {
 namespace passes {
+
+using hybridse::base::Status;
+using hybridse::node::ExprAnalysisContext;
+using hybridse::node::ExprNode;
 
 class ExprInplaceTransformUp : public ExprPass {
  public:

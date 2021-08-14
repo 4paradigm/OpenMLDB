@@ -38,7 +38,6 @@
 namespace hybridse {
 namespace codegen {
 
-using ::hybridse::node::FnOperator;
 using ::hybridse::common::kCodegenError;
 
 ExprIRBuilder::ExprIRBuilder(CodeGenContext* ctx) : ctx_(ctx) {}
@@ -605,7 +604,7 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::hybridse::node::UnaryExpr* node,
             }
             break;
         }
-        case FnOperator::kFnOpBitwiseNot: {
+        case ::hybridse::node::kFnOpBitwiseNot: {
             CHECK_STATUS(arithmetic_ir_builder.BuildBitwiseNotExpr(left, output));
             break;
         }
@@ -713,17 +712,17 @@ Status ExprIRBuilder::BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,
                 arithmetic_ir_builder.BuildModExpr(left, right, output));
             break;
         }
-        case FnOperator::kFnOpBitwiseAnd: {
+        case ::hybridse::node::kFnOpBitwiseAnd: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildBitwiseAndExpr(left, right, output));
             break;
         }
-        case FnOperator::kFnOpBitwiseOr: {
+        case ::hybridse::node::kFnOpBitwiseOr: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildBitwiseOrExpr(left, right, output));
             break;
         }
-        case FnOperator::kFnOpBitwiseXor: {
+        case ::hybridse::node::kFnOpBitwiseXor: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildBitwiseXorExpr(left, right, output));
             break;

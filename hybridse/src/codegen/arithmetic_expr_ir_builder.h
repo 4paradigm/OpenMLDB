@@ -87,13 +87,13 @@ class ArithmeticIRBuilder {
                              base::Status status);
 
     static bool BuildAnd(::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right, ::llvm::Value** output,
-                         base::Status& status); // NOLINT
+                         base::Status& status);  // NOLINT
 
-    static bool BuildOr(::llvm::BasicBlock* block, llvm::Value* left, llvm::Value* right,
-                                   llvm::Value** output, base::Status* status);
+    static bool BuildOr(::llvm::BasicBlock* block, llvm::Value* left, llvm::Value* right, llvm::Value** output,
+                        base::Status* status);
 
-    static bool BuildXor(::llvm::BasicBlock* block, llvm::Value* left, llvm::Value* right,
-                                    llvm::Value** output, base::Status* status);
+    static bool BuildXor(::llvm::BasicBlock* block, llvm::Value* left, llvm::Value* right, llvm::Value** output,
+                         base::Status* status);
 
  private:
     static bool BuildNot(::llvm::BasicBlock* block, llvm::Value* input, llvm::Value** output, base::Status* status);
