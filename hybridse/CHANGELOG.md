@@ -3,10 +3,10 @@
 ## [Unreleased]
 
 ### SQL Syntax
-- Support parameterized query [#170](https://github.com/4paradigm/HybridSE/issues/170)
+- Support parameterized query under BatchMode [#170](https://github.com/4paradigm/HybridSE/issues/170)
 - `nvl` & `nvl2`: [#190](https://github.com/4paradigm/HybridSE/pull/190)
 
-## [0.2.1] - 2021-08-08
+## [0.2.1] - 2021-08-06w
 ### Feature
 + Add `VARCHAR` Type [#196](https://github.com/4paradigm/HybridSE/issues/196)
 

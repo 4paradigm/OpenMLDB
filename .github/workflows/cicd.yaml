@@ -63,7 +63,6 @@ jobs:
       - name: cleanup
         if: always()
         run: |
-          source /etc/profile.d/enable-rh.sh
           git clean -dfx
 
   sql_sdk_test:
@@ -90,7 +89,6 @@ jobs:
       - name: cleanup
         if: always()
         run: |
-          source /etc/profile.d/enable-rh.sh
           git clean -dfx
 
   sql_cluster_test:
@@ -117,7 +115,6 @@ jobs:
       - name: cleanup
         if: always()
         run: |
-          source /etc/profile.d/enable-rh.sh
           git clean -dfx
 
   publish-test-results:

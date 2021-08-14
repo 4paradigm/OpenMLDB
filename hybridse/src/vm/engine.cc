@@ -148,19 +148,22 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
         return false;
     }
     auto& cache_ctx = std::dynamic_pointer_cast<SqlCompileInfo>(info)->get_sql_context();
-    if (cache_ctx.parameter_types.size() != session.parameter_schema_.size()) {
-        status = Status(common::kSqlError, "Inconsistent cache parameter schema size");
-        return false;
-    }
-    for (int i = 0; i < session.parameter_schema_.size(); i++) {
-        if (cache_ctx.parameter_types.Get(i).type() != session.GetParameterSchema().Get(i).type()) {
-            status = Status(common::kSqlError, "Inconsistent cache parameter type, expect " +
-                                                   session.GetParameterSchema().Get(i).DebugString() + " but get " +
-                                                   cache_ctx.parameter_types.Get(i).DebugString());
+
+    if (session.engine_mode() == kBatchMode) {
+        auto batch_sess = dynamic_cast<BatchRunSession*>(&session);
+        if (cache_ctx.parameter_types.size() != batch_sess->GetParameterSchema().size()) {
+            status = Status(common::kSqlError, "Inconsistent cache parameter schema size");
             return false;
         }
-    }
-    if (session.engine_mode() == kBatchRequestMode) {
+        for (int i = 0; i < batch_sess->GetParameterSchema().size(); i++) {
+            if (cache_ctx.parameter_types.Get(i).type() != batch_sess->GetParameterSchema().Get(i).type()) {
+                status = Status(common::kSqlError, "Inconsistent cache parameter type, expect " +
+                                                       batch_sess->GetParameterSchema().Get(i).DebugString() +
+                                                       " but get " + cache_ctx.parameter_types.Get(i).DebugString());
+                return false;
+            }
+        }
+    } else if (session.engine_mode() == kBatchRequestMode) {
         auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
         if (batch_req_sess == nullptr) {
             return false;
@@ -200,10 +203,10 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     sql_context.enable_batch_window_parallelization = options_.is_enable_batch_window_parallelization();
     sql_context.enable_expr_optimize = options_.is_enable_expr_optimize();
     sql_context.jit_options = options_.jit_options();
-    sql_context.parameter_types = session.parameter_schema_;
-
-    auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
-    if (batch_req_sess) {
+    if (session.engine_mode() == kBatchMode) {
+        sql_context.parameter_types = dynamic_cast<BatchRunSession*>(&session)->GetParameterSchema();
+    } else if (session.engine_mode() == kBatchRequestMode) {
+        auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
         sql_context.batch_request_info.common_column_indices = batch_req_sess->common_column_indices();
     }
 
@@ -246,6 +249,10 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     }
     if (!common_column_indices.empty() && engine_mode != kBatchRequestMode) {
         LOG(WARNING) << "common column config can only be valid in batch request mode";
+        return false;
+    }
+    if (!parameter_schema.empty() && engine_mode != kBatchMode) {
+        LOG(WARNING) << "parameterized query can only be valid in batch mode";
         return false;
     }
     SqlContext ctx;
@@ -300,10 +307,21 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     }
     return true;
 }
+bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
+                     ExplainOutput* explain_output, base::Status* status) {
+    const codec::Schema empty_schema;
+    return Explain(sql, db, engine_mode, empty_schema, {}, explain_output, status);
+}
 
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
                      const codec::Schema& parameter_schema, ExplainOutput* explain_output, base::Status* status) {
     return Explain(sql, db, engine_mode, parameter_schema, {}, explain_output, status);
+}
+bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
+             const std::set<size_t>& common_column_indices,
+             ExplainOutput* explain_output, base::Status* status) {
+    const codec::Schema empty_schema;
+    return Explain(sql, db, engine_mode, empty_schema, common_column_indices, explain_output, status);
 }
 
 void Engine::ClearCacheLocked(const std::string& db) {
@@ -363,12 +381,12 @@ bool RunSession::SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info
     return true;
 }
 
-int32_t RequestRunSession::Run(const Row& in_row, const Row& parameter_row, Row* out_row) {
+int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     DLOG(INFO) << "Request Row Run with main task";
     return Run(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job.main_task_id(),
-               in_row, parameter_row, out_row);
+               in_row, out_row);
 }
-int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row, const Row& parameter_row, Row* out_row) {
+int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row, Row* out_row) {
     auto task = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
                     ->get_sql_context()
                     .cluster_job.GetTask(task_id)
@@ -379,7 +397,7 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row, const 
     }
     DLOG(INFO) << "Request Row Run with task_id " << task_id;
     RunnerContext ctx(&std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job, in_row,
-                      parameter_row, sp_name_, is_debug_);
+                      sp_name_, is_debug_);
     auto output = task->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run request plan output is null";
@@ -392,15 +410,14 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row, const 
     return -1;
 }
 
-int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch, const Row& parameter_row,
-                                    std::vector<Row>& output) {
+int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch, std::vector<Row>& output) {
     return Run(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job.main_task_id(),
-               request_batch, parameter_row, output);
+               request_batch, output);
 }
-int32_t BatchRequestRunSession::Run(const uint32_t id, const std::vector<Row>& request_batch, const Row& parameter_row,
+int32_t BatchRequestRunSession::Run(const uint32_t id, const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
     RunnerContext ctx(&std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job,
-                      request_batch, parameter_row, sp_name_, is_debug_);
+                      request_batch, sp_name_, is_debug_);
     auto task =
         std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job.GetTask(id).GetRoot();
     if (nullptr == task) {
@@ -419,7 +436,9 @@ int32_t BatchRequestRunSession::Run(const uint32_t id, const std::vector<Row>& r
     ctx.ClearCache();
     return 0;
 }
-
+std::shared_ptr<TableHandler> BatchRunSession::Run() {
+    return Run(Row());
+}
 std::shared_ptr<TableHandler> BatchRunSession::Run(const Row& parameter_row) {
     RunnerContext ctx(&std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job,
                       parameter_row, is_debug_);

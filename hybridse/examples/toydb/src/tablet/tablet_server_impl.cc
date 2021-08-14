@@ -203,7 +203,6 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             return;
         }
         vm::RequestRunSession session;
-        session.SetParameterSchema(request->parameter_schema());
         {
             base::Status base_status;
             bool ok = engine_->Get(request->sql(), request->db(), session,
@@ -218,10 +217,9 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         if (request->is_debug()) {
             session.EnableDebug();
         }
-        codec::Row parameter(request->parameter_row());
         codec::Row row(request->row());
         codec::Row output;
-        int32_t ret = session.Run(request->task_id(), row, parameter, &output);
+        int32_t ret = session.Run(request->task_id(), row, &output);
         if (ret != 0) {
             LOG(WARNING) << "fail to run sql " << request->sql();
             status->set_code(common::kSqlError);
