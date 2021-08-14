@@ -79,7 +79,7 @@ class SQLSDKTest : public openmldb::test::SQLCaseTest {
     static void DropProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                               std::shared_ptr<SQLRouter> router);
 };
-
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SQLSDKTest);
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreate, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_create.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestTest, SQLSDKTest,
@@ -125,7 +125,8 @@ class SQLSDKBatchRequestQueryTest : public SQLSDKQueryTest {
     static void RunBatchRequestProcedureModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                                 std::shared_ptr<SQLRouter> router, bool is_asyn);
 };
-
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SQLSDKQueryTest);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SQLSDKBatchRequestQueryTest);
 void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                           std::shared_ptr<SQLRouter> router) {
     if (sql_case.db().empty()) {
