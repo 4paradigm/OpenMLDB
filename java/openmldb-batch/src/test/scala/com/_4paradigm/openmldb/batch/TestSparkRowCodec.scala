@@ -25,7 +25,6 @@ import org.apache.spark.sql.types.{
 }
 import org.scalatest.FunSuite
 
-import java.util.Calendar
 import scala.util.Random
 
 
@@ -55,11 +54,10 @@ class TestSparkRowCodec extends FunSuite {
 
   test("Test encode and decode with date") {
     val withDateSchema = baseSchema.add("date1", DateType)
-    val cal = Calendar.getInstance()
-    cal.set(2020, 5, 27)
     testRow(
-      Row(1.toShort, 1, 1L, 1.0f, 1.0, true, new Timestamp(1), cal.getTime),
-      withDateSchema)
+      Row(1.toShort, 1, 1L, 1.0f, 1.0, true, new Timestamp(1),
+        java.sql.Date.valueOf("%d-%d-%d".format(2020, 5, 27))
+      ), withDateSchema)
   }
   test("Test encode and decode with strings") {
     val withStrSchema = baseSchema.add("str1", StringType).add("str2", StringType)

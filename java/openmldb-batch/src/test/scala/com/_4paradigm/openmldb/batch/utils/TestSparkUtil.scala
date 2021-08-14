@@ -57,12 +57,12 @@ class TestSparkUtil extends SparkTestSuite {
   test("Test addIndexColumn") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
-    assert(addIndexColumn(Session,table,"test","zipwithindex")
-      .select("test").distinct().count()==data.length)
-    assert(addIndexColumn(Session,table,"test","zipwithuniqueid")
-      .select("test").distinct().count()==data.length)
-    assert(addIndexColumn(Session,table,"test","monotonicallyincreasingid")
-      .select("test").distinct().count()==data.length)
+    assert(addIndexColumn(Session,table,"Index","zipwithindex")
+      .select("Index").distinct().count()==data.length)
+    assert(addIndexColumn(Session,table,"UniqueId","zipwithuniqueid")
+      .select("UniqueId").distinct().count()==data.length)
+    assert(addIndexColumn(Session,table,"IncreasingId","monotonicallyincreasingid")
+      .select("IncreasingId").distinct().count()==data.length)
     assertThrows[HybridSeException]{
       addIndexColumn(Session,table,"test","Unsupported method")
     }
@@ -70,22 +70,22 @@ class TestSparkUtil extends SparkTestSuite {
   test("Test addColumnByZipWithIndex") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
-    assert(addColumnByZipWithIndex(Session,table,"test")
-      .select("test").distinct().count()==data.length)
+    assert(addColumnByZipWithIndex(Session,table,"Index")
+      .select("Index").distinct().count()==data.length)
   }
 
   test("Test addColumnByZipWithUniqueId") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
-    assert(addColumnByZipWithUniqueId(Session,table,"test")
-      .select("test").distinct().count()==data.length)
+    assert(addColumnByZipWithUniqueId(Session,table,"UniqueId")
+      .select("UniqueId").distinct().count()==data.length)
   }
 
   test("Test addColumnByMonotonicallyIncreasingId") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
-    assert(addColumnByMonotonicallyIncreasingId(Session,table,"test")
-      .select("test").distinct().count()==data.length)
+    assert(addColumnByMonotonicallyIncreasingId(Session,table,"IncreasingId")
+      .select("IncreasingId").distinct().count()==data.length)
   }
 
   test("test checkSchemaIgnoreNullable") {
