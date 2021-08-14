@@ -380,7 +380,9 @@ Status EngineTestRunner::Compile() {
         session_->EnableDebug();
     }
     if (session_->engine_mode() == kBatchMode) {
-        dynamic_pointer_cast<BatchRunSession>(session_)->SetParameterSchema(parameter_schema_);
+        auto batch_session =
+            std::dynamic_pointer_cast<BatchRunSession>(session_);
+        batch_session->SetParameterSchema(parameter_schema_);
     } else {
         CHECK_TRUE(parameter_schema_.empty(), common::kUnSupport,
                    "Request or BatchRequest mode do not support parameterized query currently")
