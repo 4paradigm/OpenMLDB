@@ -44,6 +44,10 @@ bool TypeNode::IsNumber() const { return IsInteger() || IsFloating(); }
 bool TypeNode::IsNull() const { return base_ == node::kNull; }
 bool TypeNode::IsBool() const { return base_ == node::kBool; }
 
+bool TypeNode::IsIntegral() const {
+    return base_ == node::kInt16 || base_ == node::kInt32 || base_ == node::kInt64;
+}
+
 bool TypeNode::IsInteger() const {
     return base_ == node::kBool || base_ == node::kInt16 ||
            base_ == node::kInt32 || base_ == node::kInt64;

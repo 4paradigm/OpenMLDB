@@ -26,6 +26,8 @@
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/IRBuilder.h"
 
+using ::hybridse::common::kCodegenError;
+
 namespace hybridse {
 namespace codegen {
 

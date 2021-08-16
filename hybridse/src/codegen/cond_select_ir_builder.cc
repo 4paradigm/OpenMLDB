@@ -56,7 +56,7 @@ base::Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
     if (left_value.IsTuple()) {
         CHECK_TRUE(right_value.IsTuple() &&
                        left_value.GetFieldNum() == right_value.GetFieldNum(),
-                   kCodegenError);
+                   ::hybridse::common::kCodegenError);
         std::vector<NativeValue> result_tuple;
         for (size_t i = 0; i < left_value.GetFieldNum(); ++i) {
             NativeValue sub_left = left_value.GetField(i);

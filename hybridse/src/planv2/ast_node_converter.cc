@@ -202,8 +202,20 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     op = node::FnOperator::kFnOpXor;
                     break;
                 }
+                case zetasql::ASTBinaryExpression::Op::BITWISE_AND: {
+                    op = node::FnOperator::kFnOpBitwiseAnd;
+                    break;
+                }
+                case zetasql::ASTBinaryExpression::Op::BITWISE_OR: {
+                    op = node::FnOperator::kFnOpBitwiseOr;
+                    break;
+                }
+                case zetasql::ASTBinaryExpression::Op::BITWISE_XOR: {
+                    op = node::FnOperator::kFnOpBitwiseXor;
+                    break;
+                }
                 default: {
-                    status.msg = "Unsupport binary operator: " + binary_expression->GetSQLForOperator();
+                    status.msg = absl::StrCat("Unsupport binary operator: ", binary_expression->GetSQLForOperator());
                     status.code = common::kSqlError;
                     return status;
                 }
@@ -236,8 +248,12 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     *output = operand;
                     return base::Status::OK();
                 }
+                case zetasql::ASTUnaryExpression::Op::BITWISE_NOT: {
+                    op = node::FnOperator::kFnOpBitwiseNot;
+                    break;
+                }
                 default: {
-                    status.msg = "Un-support unary operator: " + unary_expression->GetSQLForOperator();
+                    status.msg = absl::StrCat("Un-support unary operator: ", unary_expression->GetSQLForOperator());
                     status.code = common::kSqlError;
                     return status;
                 }

@@ -22,6 +22,8 @@
 #include "codegen/udf_ir_builder.h"
 #include "glog/logging.h"
 
+using ::hybridse::common::kCodegenError;
+
 namespace hybridse {
 namespace codegen {
 ListIRBuilder::ListIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)

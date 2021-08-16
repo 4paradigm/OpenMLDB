@@ -210,10 +210,65 @@ bool ArithmeticIRBuilder::BuildAnd(::llvm::BasicBlock* block,
         LOG(WARNING) << status;
         return false;
     }
+    ::llvm::Value* casted_left = nullptr;
+    ::llvm::Value* casted_right = nullptr;
+    if (!InferAndCastIntegerTypes(block, left, right, &casted_left,
+                                   &casted_right, status)) {
+        return false;
+    }
     ::llvm::IRBuilder<> builder(block);
-    *output = builder.CreateAnd(left, right);
+    *output = builder.CreateAnd(casted_left, casted_right);
     return true;
 }
+bool ArithmeticIRBuilder::BuildOr(::llvm::BasicBlock* block, llvm::Value* left,
+                  llvm::Value* right, llvm::Value** output,
+                  base::Status* status) {
+    if (!left->getType()->isIntegerTy() || !right->getType()->isIntegerTy()) {
+        status->msg =
+            "fail to codegen arithmetic and expr: value types are invalid";
+        status->code = common::kCodegenError;
+        LOG(WARNING) << *status;
+        return false;
+    }
+    ::llvm::Value* casted_left = nullptr;
+    ::llvm::Value* casted_right = nullptr;
+    if (!InferAndCastIntegerTypes(block, left, right, &casted_left,
+                                   &casted_right, *status)) {
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block);
+    *output = builder.CreateOr(casted_left, casted_right);
+    return true;
+}
+
+bool ArithmeticIRBuilder::BuildXor(::llvm::BasicBlock* block, llvm::Value* left,
+                  llvm::Value* right, llvm::Value** output,
+                  base::Status* status) {
+    if (!left->getType()->isIntegerTy() || !right->getType()->isIntegerTy()) {
+        status->msg =
+            "fail to codegen arithmetic and expr: value types are invalid";
+        status->code = common::kCodegenError;
+        LOG(WARNING) << *status;
+        return false;
+    }
+    ::llvm::Value* casted_left = nullptr;
+    ::llvm::Value* casted_right = nullptr;
+    if (!InferAndCastIntegerTypes(block, left, right, &casted_left,
+                                   &casted_right, *status)) {
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block);
+    *output = builder.CreateXor(casted_left, casted_right);
+    return true;
+}
+
+bool ArithmeticIRBuilder::BuildNot(::llvm::BasicBlock* block, llvm::Value* input,
+                                   llvm::Value** output, base::Status* status) {
+    ::llvm::IRBuilder<> builder(block);
+    *output = builder.CreateNot(input);
+    return true;
+}
+
 bool ArithmeticIRBuilder::BuildLShiftLeft(::llvm::BasicBlock* block,
                                           ::llvm::Value* left,
                                           ::llvm::Value* right,
@@ -312,20 +367,6 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     return true;
 }
 
-Status ArithmeticIRBuilder::BuildAnd(const NativeValue& left,
-                                     const NativeValue& right,
-                                     NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
-        node::ExprNode::AndTypeAccept, left.GetType(), right.GetType()));
-    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
-        block_, left, right,
-        [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
-           ::llvm::Value** output, Status& status) {
-            return BuildAnd(block, lhs, rhs, output, status);
-        },
-        value_output));
-    return Status::OK();
-}
 Status ArithmeticIRBuilder::BuildLShiftLeft(
     const NativeValue& left, const NativeValue& right,
     NativeValue* value_output) {  // NOLINT
@@ -439,6 +480,59 @@ Status ArithmeticIRBuilder::BuildModExpr(const NativeValue& left,
             return BuildModExpr(block, lhs, rhs, output, status);
         },
         value_output));
+    return Status::OK();
+}
+
+Status ArithmeticIRBuilder::BuildBitwiseAndExpr(const NativeValue& left, const NativeValue& right,
+                                                NativeValue* output) {
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
+        node::ExprNode::BitwiseLogicalTypeAccept, left.GetType(), right.GetType()));
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
+        block_, left, right,
+        [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
+           ::llvm::Value** output, Status& status) {
+            return BuildAnd(block, lhs, rhs, output, status);
+        },
+        output));
+    return Status::OK();
+}
+
+Status ArithmeticIRBuilder::BuildBitwiseOrExpr(const NativeValue& left, const NativeValue& right, NativeValue* output) {
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
+        node::ExprNode::BitwiseLogicalTypeAccept, left.GetType(), right.GetType()));
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
+        block_, left, right,
+        [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
+           ::llvm::Value** output, Status& status) {
+            return BuildOr(block, lhs, rhs, output, &status);
+        },
+        output));
+    return Status::OK();
+}
+
+Status ArithmeticIRBuilder::BuildBitwiseXorExpr(const NativeValue& left, const NativeValue& right,
+                                                NativeValue* output) {
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
+        node::ExprNode::BitwiseLogicalTypeAccept, left.GetType(), right.GetType()));
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
+        block_, left, right,
+        [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
+           ::llvm::Value** output, Status& status) {
+            return BuildXor(block, lhs, rhs, output, &status);
+        },
+        output));
+    return Status::OK();
+}
+
+Status ArithmeticIRBuilder::BuildBitwiseNotExpr(const NativeValue& rhs, NativeValue* output) {
+    CHECK_STATUS(TypeIRBuilder::UnaryOpTypeInfer(node::ExprNode::BitwiseNotTypeAccept, rhs.GetType()));
+
+    CHECK_STATUS(NullIRBuilder::SafeNullUnaryExpr(
+        block_, rhs,
+        [](::llvm::BasicBlock* block, ::llvm::Value* rhs, ::llvm::Value** output, Status& status) {
+            return BuildNot(block, rhs, output, &status);
+        },
+        output));
     return Status::OK();
 }
 
@@ -602,6 +696,7 @@ bool ArithmeticIRBuilder::BuildModExpr(::llvm::BasicBlock* block,
     }
     return true;
 }
+
 
 }  // namespace codegen
 }  // namespace hybridse

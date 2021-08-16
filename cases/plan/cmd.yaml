@@ -132,4 +132,12 @@ cases:
         +-node[CMD]
           +-cmd_type: use database
           +-args: [db1]
+  - id: 17
+    desc: DROP DATABASE
+    sql: DROP DATABASE db1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop database
+          +-args: [db1]
 

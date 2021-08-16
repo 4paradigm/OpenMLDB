@@ -56,6 +56,8 @@ ExitOnError ExitOnErr;
 
 using hybridse::base::ConstIterator;
 using hybridse::sqlcase::SqlCase;
+using hybridse::common::kCodegenError;
+
 struct TestString {
     int32_t size;
     char* data = nullptr;
@@ -91,9 +93,9 @@ V IteratorSum(int8_t* input) {
     }
     V result = 0;
     ::hybridse::codec::IteratorRef* iter_ref =
-        (::hybridse::codec::IteratorRef*)(input);
+        reinterpret_cast<::hybridse::codec::IteratorRef*>(input);
     ConstIterator<uint64_t, V>* iter =
-        (ConstIterator<uint64_t, V>*)(iter_ref->iterator);
+        reinterpret_cast<ConstIterator<uint64_t, V>*>(iter_ref->iterator);
     while (iter->Valid()) {
         result += iter->GetValue();
         iter->Next();
@@ -512,7 +514,7 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
     ASSERT_EQ(expected, result);
 }
 
-TEST_F(ListIRBuilderTest, list_int32_iterator_sum_test) {
+TEST_F(ListIRBuilderTest, ListInt32IteratorSumTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -522,7 +524,7 @@ TEST_F(ListIRBuilderTest, list_int32_iterator_sum_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_int16_iterator_sum_test) {
+TEST_F(ListIRBuilderTest, ListInt16IteratorSumTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -532,7 +534,7 @@ TEST_F(ListIRBuilderTest, list_int16_iterator_sum_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_int64_iterator_sum_test) {
+TEST_F(ListIRBuilderTest, ListInt64IteratorSumTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -542,7 +544,7 @@ TEST_F(ListIRBuilderTest, list_int64_iterator_sum_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_float_iterator_sum_test) {
+TEST_F(ListIRBuilderTest, ListFloatIteratorSumTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -552,7 +554,7 @@ TEST_F(ListIRBuilderTest, list_float_iterator_sum_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_double_iterator_sum_test) {
+TEST_F(ListIRBuilderTest, ListDoubleIteratorSumTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -562,7 +564,7 @@ TEST_F(ListIRBuilderTest, list_double_iterator_sum_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_iterator_by_row_double_sum_test) {
+TEST_F(ListIRBuilderTest, ListIteratorByRowDoubleSumTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -572,7 +574,7 @@ TEST_F(ListIRBuilderTest, list_iterator_by_row_double_sum_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_timestamp_iterator_sum_test) {
+TEST_F(ListIRBuilderTest, ListTimestampIteratorSumTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -583,7 +585,7 @@ TEST_F(ListIRBuilderTest, list_timestamp_iterator_sum_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_int32_iterator_next_test) {
+TEST_F(ListIRBuilderTest, ListInt32IteratorNextTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -592,7 +594,7 @@ TEST_F(ListIRBuilderTest, list_int32_iterator_next_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_int16_iterator_next_test) {
+TEST_F(ListIRBuilderTest, ListInt16IteratorNextTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -601,7 +603,7 @@ TEST_F(ListIRBuilderTest, list_int16_iterator_next_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_int64_iterator_next_test) {
+TEST_F(ListIRBuilderTest, ListInt64IteratorNextTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -610,7 +612,7 @@ TEST_F(ListIRBuilderTest, list_int64_iterator_next_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_float_iterator_next_test) {
+TEST_F(ListIRBuilderTest, ListFloatIteratorNextTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -619,7 +621,7 @@ TEST_F(ListIRBuilderTest, list_float_iterator_next_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_double_iterator_next_test) {
+TEST_F(ListIRBuilderTest, ListDoubleIteratorNextTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -628,7 +630,7 @@ TEST_F(ListIRBuilderTest, list_double_iterator_next_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_timestamp_iterator_next_test) {
+TEST_F(ListIRBuilderTest, ListTimestampIteratorNextTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -637,7 +639,7 @@ TEST_F(ListIRBuilderTest, list_timestamp_iterator_next_test) {
     RunListIteratorNextCase(ts, table, "std_ts", window);
     free(window.list);
 }
-TEST_F(ListIRBuilderTest, list_string_iterator_next_test) {
+TEST_F(ListIRBuilderTest, ListStringIteratorNextTest) {
     ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
@@ -647,7 +649,7 @@ TEST_F(ListIRBuilderTest, list_string_iterator_next_test) {
     free(window.list);
 }
 
-TEST_F(ListIRBuilderTest, list_double_inner_range_test) {
+TEST_F(ListIRBuilderTest, ListDoubleInnerRangeTest) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
     type::TableDef table;
@@ -677,7 +679,7 @@ TEST_F(ListIRBuilderTest, list_double_inner_range_test) {
     free(ptr);
 }
 
-TEST_F(ListIRBuilderTest, list_double_inner_rows_test) {
+TEST_F(ListIRBuilderTest, ListDoubleInnerRowsTest) {
     int8_t* ptr = NULL;
     std::vector<Row> rows;
     type::TableDef table;

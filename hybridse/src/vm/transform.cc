@@ -40,6 +40,7 @@
 
 using ::hybridse::base::Status;
 using ::hybridse::common::kPlanError;
+using ::hybridse::common::kCodegenError;
 
 namespace hybridse {
 namespace vm {

@@ -1400,7 +1400,7 @@ static bool ExpandProviderCase(const YAML::Node& sql_case_node,
     std::vector<std::vector<std::string>> provider_contents;
     for (auto provider_iter = providers.begin();
          provider_iter != providers.end(); provider_iter++) {
-        YAML::Node cur = (YAML::Node)(*provider_iter);
+        YAML::Node cur = YAML::Node(*provider_iter);
         std::vector<std::string> choices;
         for (auto choice_iter = cur.begin(); choice_iter != cur.end();
              ++choice_iter) {
@@ -1459,7 +1459,7 @@ bool SqlCase::CreateSqlCasesFromYaml(
     }
     for (auto case_iter = sql_cases_node.begin();
          case_iter != sql_cases_node.end(); case_iter++) {
-        YAML::Node sql_case_node = (YAML::Node)(*case_iter);
+        YAML::Node sql_case_node = YAML::Node(*case_iter);
         if (sql_case_node["dataProvider"]) {
             bool expand_ok =
                 ExpandProviderCase(sql_case_node, global_db, cases_dir, debugs,
