@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["test-case"]
+debugs: []
 cases:
   -
     id: 0
