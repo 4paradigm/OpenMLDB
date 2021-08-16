@@ -20,16 +20,16 @@
 
 namespace openmldb::tablet {
 
-bool BulkLoadMgr::DataAppend(uint32_t tid, uint32_t pid, const ::openmldb::api::BulkLoadRequest* request,
+bool BulkLoadMgr::AppendData(uint32_t tid, uint32_t pid, const ::openmldb::api::BulkLoadRequest* request,
                              const butil::IOBuf& data) {
     if (data.empty() || !request->has_part_id()) {
-        LOG(ERROR) << "DataAppend: data is empty or don't have part id";
+        LOG(ERROR) << "AppendData: data is empty or don't have part id";
         return false;
     }
     auto part_id = request->part_id();
     auto data_receiver = GetDataReceiver(tid, pid, part_id == 0);
     if (!data_receiver) {
-        LOG(ERROR) << "DataAppend: can't get data receiver for " << tid << "-" << pid << ", part id " << part_id;
+        LOG(ERROR) << "AppendData: can't get data receiver for " << tid << "-" << pid << ", part id " << part_id;
         return false;
     }
 

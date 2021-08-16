@@ -18,11 +18,10 @@
 
 WORK_DIR=`pwd`
 
-sh steps/install_hybridse_mac.sh
-ln -sf /opt/depends/thirdparty thirdparty
-ln -sf /opt/depends/thirdsrc thirdsrc
+#ln -sf /opt/depends/thirdparty thirdparty
+#ln -sf /opt/depends/thirdsrc thirdsrc
 mkdir -p $WORK_DIR/build
-cd $WORK_DIR/build && cmake .. && make -j4 fedb sql_pysdk_package sql_jsdk
+cd $WORK_DIR/build && cmake .. && make -j4 openmldb sql_pysdk_package sql_jsdk
 code=$?
 cd $WORK_DIR
 exit $code

@@ -195,22 +195,7 @@ void Segment::BulkLoadPut(int key_entry_id, const Slice& key, uint64_t time, Dat
     std::lock_guard<std::mutex> lock(mu_);  // TODO(hw): need lock?
     int ret = entries_->Get(key, key_entry_or_list);
     if (ts_cnt_ == 1) {
-        if (ret < 0 || key_entry_or_list == nullptr) {
-            char* pk = new char[key.size()];
-            memcpy(pk, key.data(), key.size());
-            // need to delete memory when free node
-            Slice skey(pk, key.size());
-            key_entry_or_list = (void*)new KeyEntry(key_entry_max_height_);  // NOLINT
-            uint8_t height = entries_->Insert(skey, key_entry_or_list);
-            byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
-            pk_cnt_.fetch_add(1, std::memory_order_relaxed);
-        }
-        idx_cnt_.fetch_add(1, std::memory_order_relaxed);
-        uint8_t height = ((KeyEntry*)key_entry_or_list)->entries.Insert(time, row);  // NOLINT
-        ((KeyEntry*)key_entry_or_list)                                               // NOLINT
-            ->count_.fetch_add(1, std::memory_order_relaxed);
-        byte_size += GetRecordTsIdxSize(height);
-        idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+        Put(key, time, row);
     } else {
         if (ret < 0 || key_entry_or_list == nullptr) {
             char* pk = new char[key.size()];

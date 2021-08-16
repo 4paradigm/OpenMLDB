@@ -19,7 +19,6 @@
 
 #include <map>
 #include <memory>
-#include <mutex>
 
 #include "replica/log_replicator.h"
 #include "storage/mem_table.h"
@@ -28,7 +27,7 @@
 namespace openmldb::tablet {
 class BulkLoadMgr {
  public:
-    bool DataAppend(uint32_t tid, uint32_t pid, const ::openmldb::api::BulkLoadRequest* request,
+    bool AppendData(uint32_t tid, uint32_t pid, const ::openmldb::api::BulkLoadRequest* request,
                     const butil::IOBuf& data);
     bool WriteBinlogToReplicator(uint32_t tid, uint32_t pid, std::shared_ptr<replica::LogReplicator> replicator,
                                  const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes);

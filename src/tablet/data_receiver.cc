@@ -20,15 +20,12 @@
 
 namespace openmldb::tablet {
 bool DataReceiver::DataAppend(const ::openmldb::api::BulkLoadRequest* request, const butil::IOBuf& data) {
-    std::unique_lock<std::mutex> ul(mu_);
-
     if (!request->has_part_id() || !PartValidation(request->part_id())) {
         LOG(WARNING) << tid_ << "-" << pid_ << " data receiver received invalid part id, expect " << next_part_id_
-                     << ", actual "
-                     << (request->has_part_id() ? "no id" : std::to_string(request->part_id()));
+                     << ", actual " << (request->has_part_id() ? "no id" : std::to_string(request->part_id()));
         return false;
     }
-
+    std::unique_lock<std::mutex> ul(mu_);
     // We must copy data from IOBuf, cuz the rows have different TTLs, it's not a good idea to keep them together.
     butil::IOBufBytesIterator iter(data);
     auto last_block_size = data_blocks_.size();
@@ -41,11 +38,12 @@ bool DataReceiver::DataAppend(const ::openmldb::api::BulkLoadRequest* request, c
     if (iter.bytes_left() != 0) {
         LOG(ERROR) << tid_ << "-" << pid_ << " data and info mismatch, revert this part";
         // Not only ptr, DataBlock needs delete.
-        for (auto block_iter = data_blocks_.begin() + last_block_size; block_iter != data_blocks_.end();) {
+        for (auto i = last_block_size; i < data_blocks_.size(); ++i) {
             // regardless of dim_cnt_down
-            delete *block_iter;
-            block_iter = data_blocks_.erase(block_iter);
+            delete data_blocks_[i];
         }
+        // range erase
+        data_blocks_.resize(last_block_size);
         return false;
     }
 
@@ -70,8 +68,7 @@ bool DataReceiver::BulkLoad(std::shared_ptr<storage::MemTable> table, const ::op
 
     if (!request->has_part_id() || !PartValidation(request->part_id())) {
         LOG(WARNING) << tid_ << "-" << pid_ << " data receiver received invalid part id, expect " << next_part_id_
-                     << ", actual "
-                     << (request->has_part_id() ? "no id" : std::to_string(request->part_id()));
+                     << ", actual " << (request->has_part_id() ? "no id" : std::to_string(request->part_id()));
         return false;
     }
 

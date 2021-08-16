@@ -79,7 +79,7 @@ public class FileSystemManagerTest {
         // create the directory using the default permission
         Path createPath = new Path(testHdfsHost, "/test_dir");
         boolean result = fs.mkdirs(createPath);
-        Assert.assertEquals(true, result);
+        Assert.assertTrue(result);
 
         logger.info(fs.listStatus(createPath));
 

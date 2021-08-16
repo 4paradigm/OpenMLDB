@@ -18,7 +18,6 @@
 #define SRC_TABLET_DATA_RECEIVER_H_
 
 #include <memory>
-#include <mutex>
 #include <vector>
 
 #include "replica/log_replicator.h"

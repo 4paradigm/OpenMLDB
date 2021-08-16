@@ -16,7 +16,9 @@
 
 package com._4paradigm.openmldb.importer;
 
+import com._4paradigm.openmldb.common.Common;
 import com._4paradigm.openmldb.common.Common.ColumnDesc;
+import com._4paradigm.openmldb.type.Type;
 import com._4paradigm.openmldb.type.Type.DataType;
 
 import java.nio.charset.Charset;
@@ -105,31 +107,5 @@ public class RowCodecCommon {
         }
         return strLength;
     }
-
-//    public static String getPrimaryKey(Map<String, Object> row, List<ColumnKey> columnKeyList, List<ColumnDesc> schema) {
-//        String pkColName = "";
-//        for (int i = 0; i < columnKeyList.size(); i++) {
-//            ColumnKey columnKey = columnKeyList.get(i);
-//            if (columnKey.hasIndexType() &&
-//                    columnKey.getIndexType() == IndexType.valueFrom(IndexType.PrimaryKey)) {
-//                pkColName = columnKey.getIndexName();
-//            }
-//        }
-//        String pk = "";
-//        for (int i = 0; i < schema.size(); i++) {
-//            ColumnDesc columnDesc = schema.get(i);
-//            if (columnDesc.getName().equals(pkColName)) {
-//                if (row.get(columnDesc.getName()) == null) {
-//                    pk = RTIDBClientConfig.NULL_STRING;
-//                } else {
-//                    pk = String.valueOf(row.get(columnDesc.getName()));
-//                }
-//                if (pk.isEmpty()) {
-//                    pk = RTIDBClientConfig.EMPTY_STRING;
-//                }
-//            }
-//        }
-//        return pk;
-//    }
 }
 

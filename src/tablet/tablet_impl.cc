@@ -4837,10 +4837,9 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
     uint64_t start_time = ::baidu::common::timer::get_micros();
     auto tid = request->tid();
     auto pid = request->pid();
-    // TODO(hw): tid-pid use xx-xx, 方便搜索
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table %u-%u is not exist.", request->tid(), request->pid());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
@@ -4851,7 +4850,7 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
         return;
     }
     if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-        PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table %u-%u is loading.", request->tid(), request->pid());
         response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
         response->set_msg("table is loading");
         return;

@@ -82,7 +82,7 @@ public class Importer {
     @CommandLine.Option(names = "--rpc_size_limit")
     private int rpcDataSizeLimit = 32 * 1024 * 1024; // 32MB
 
-    LocalFilesReader reader = null;
+    FilesReader reader = null;
     SqlExecutor router = null;
 
     // src: file paths
@@ -95,13 +95,9 @@ public class Importer {
             return false;
         }
 
-        try {
-            // TODO(hw): check csv header?
-            reader = new LocalFilesReader(files);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
+        // TODO(hw): check csv header?
+        reader = new FilesReader(files);
+
         return true;
     }
 
