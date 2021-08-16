@@ -140,7 +140,7 @@ class SqlCompileInfo : public CompileInfo {
 
 class SqlCompiler {
  public:
-    SqlCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir = false,
+    explicit SqlCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir = false,
                 bool dump_plan = false, bool plan_only = false);
 
     ~SqlCompiler();

@@ -91,6 +91,7 @@ class TypeNode : public SqlNode {
     bool IsDate() const;
     bool IsArithmetic() const;
     bool IsNumber() const;
+    bool IsIntegral() const;
     bool IsInteger() const;
     bool IsNull() const;
     bool IsBool() const;

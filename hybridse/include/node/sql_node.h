@@ -18,11 +18,13 @@
 #define INCLUDE_NODE_SQL_NODE_H_
 
 #include <glog/logging.h>
+
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/filesystem/operations.hpp"
@@ -154,6 +156,16 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "IS_NULL";
         case kFnOpNone:
             return "NONE";
+        case kFnOpNonNull:
+            return "NONNULL";
+        case kFnOpBitwiseAnd:
+            return "&";
+        case kFnOpBitwiseOr:
+            return "|";
+        case kFnOpBitwiseXor:
+            return "^";
+        case kFnOpBitwiseNot:
+            return "~";
         default:
             return "UNKNOWN";
     }
@@ -483,6 +495,11 @@ class ExprNode : public SqlNode {
                                     const TypeNode **output_type);
     static Status LogicalOpTypeAccept(node::NodeManager *nm, const TypeNode *left_type, const TypeNode *right_type,
                                       const TypeNode **output_type);
+
+    static Status BitwiseLogicalTypeAccept(node::NodeManager *nm, const TypeNode *lhs, const TypeNode *rhs,
+                                      const TypeNode **output_type);
+
+    static Status BitwiseNotTypeAccept(node::NodeManager* nm, const TypeNode* rhs, const TypeNode** output_type);
 
  private:
     const TypeNode *output_type_ = nullptr;

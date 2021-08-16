@@ -19,8 +19,10 @@
 #include <vector>
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+
 namespace hybridse {
 namespace codegen {
+
 DateIRBuilder::DateIRBuilder(::llvm::Module* m) : StructTypeIRBuilder(m) {
     InitStructType();
 }

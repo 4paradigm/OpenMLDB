@@ -5,6 +5,7 @@
 ### SQL Syntax
 - Support parameterized query under BatchMode [#262](https://github.com/4paradigm/OpenMLDB/issues/262)
 - `nvl` & `nvl2`:  [#238](https://github.com/4paradigm/OpenMLDB/issues/238)
+- bitwise operators: `&`, `|`, `^`, `~` [#244](https://github.com/4paradigm/OpenMLDB/pull/244)
 
 ## [0.2.1] - 2021-08-06
 ### Feature
