@@ -31,7 +31,7 @@ class AggregateIRBuilderTest : public ::testing::Test {
     node::NodeManager manager;
 };
 
-TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
+TEST_F(AggregateIRBuilderTest, TestMixedMultipleAgg) {
     std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as col1_sum, "

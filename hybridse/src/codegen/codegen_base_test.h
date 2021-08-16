@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "case/sql_case.h"
 #include "codec/list_iterator_codec.h"
 
 namespace hybridse {

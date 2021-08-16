@@ -38,6 +38,8 @@
 namespace hybridse {
 namespace codegen {
 
+using ::hybridse::common::kCodegenError;
+
 ExprIRBuilder::ExprIRBuilder(CodeGenContext* ctx) : ctx_(ctx) {}
 
 ExprIRBuilder::~ExprIRBuilder() {}
@@ -100,13 +102,13 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
     switch (node->GetExprType()) {
         case ::hybridse::node::kExprColumnRef: {
             const ::hybridse::node::ColumnRefNode* n =
-                (const ::hybridse::node::ColumnRefNode*)node;
+                dynamic_cast<const ::hybridse::node::ColumnRefNode*>(node);
             CHECK_STATUS(BuildColumnRef(n, output));
             break;
         }
         case ::hybridse::node::kExprCall: {
             const ::hybridse::node::CallExprNode* fn =
-                (const ::hybridse::node::CallExprNode*)node;
+                dynamic_cast<const ::hybridse::node::CallExprNode*>(node);
             CHECK_STATUS(BuildCallFn(fn, output));
             break;
         }
@@ -122,8 +124,8 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
             break;
         }
         case ::hybridse::node::kExprId: {
-            ::hybridse::node::ExprIdNode* id_node =
-                (::hybridse::node::ExprIdNode*)node;
+            auto id_node =
+                dynamic_cast<const ::hybridse::node::ExprIdNode*>(node);
             DLOG(INFO) << "id node spec " << id_node->GetExprString();
             CHECK_TRUE(id_node->IsResolved(), kCodegenError,
                        "Detect unresolved expr id: " + id_node->GetName());
@@ -432,7 +434,7 @@ Status ExprIRBuilder::BuildStructExpr(const ::hybridse::node::StructExpr* node,
         ::llvm::StructType::create(ctx_->GetLLVMContext(), name);
     ::llvm::ArrayRef<::llvm::Type*> array_ref(members);
     llvm_struct->setBody(array_ref);
-    *output = NativeValue::Create((::llvm::Value*)llvm_struct);
+    *output = NativeValue::Create(reinterpret_cast<::llvm::Value*>(llvm_struct));
     return Status::OK();
 }
 
@@ -602,6 +604,10 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::hybridse::node::UnaryExpr* node,
             }
             break;
         }
+        case ::hybridse::node::kFnOpBitwiseNot: {
+            CHECK_STATUS(arithmetic_ir_builder.BuildBitwiseNotExpr(left, output));
+            break;
+        }
         case ::hybridse::node::kFnOpBracket: {
             *output = left;
             break;
@@ -704,6 +710,21 @@ Status ExprIRBuilder::BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,
         case ::hybridse::node::kFnOpMod: {
             CHECK_STATUS(
                 arithmetic_ir_builder.BuildModExpr(left, right, output));
+            break;
+        }
+        case ::hybridse::node::kFnOpBitwiseAnd: {
+            CHECK_STATUS(
+                arithmetic_ir_builder.BuildBitwiseAndExpr(left, right, output));
+            break;
+        }
+        case ::hybridse::node::kFnOpBitwiseOr: {
+            CHECK_STATUS(
+                arithmetic_ir_builder.BuildBitwiseOrExpr(left, right, output));
+            break;
+        }
+        case ::hybridse::node::kFnOpBitwiseXor: {
+            CHECK_STATUS(
+                arithmetic_ir_builder.BuildBitwiseXorExpr(left, right, output));
             break;
         }
         case ::hybridse::node::kFnOpAnd: {
@@ -835,11 +856,6 @@ Status ExprIRBuilder::BuildGetFieldExpr(
         }
 
     } else if (input_type->base() == node::kRow) {
-        auto& llvm_ctx = ctx_->GetLLVMContext();
-        auto ptr_ty = llvm::Type::getInt8Ty(llvm_ctx)->getPointerTo();
-        auto int64_ty = llvm::Type::getInt64Ty(llvm_ctx);
-        auto int32_ty = llvm::Type::getInt32Ty(llvm_ctx);
-
         auto row_type = dynamic_cast<const node::RowTypeNode*>(
             node->GetRow()->GetOutputType());
         const auto schemas_context = row_type->schemas_ctx();

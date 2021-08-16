@@ -163,30 +163,34 @@ enum TimeUnit {
     kTimeUnitMicroSecond
 };
 enum FnOperator {
-    kFnOpAdd,
-    kFnOpMinus,
-    kFnOpMulti,
-    kFnOpDiv,
-    kFnOpFDiv,
-    kFnOpMod,
-    kFnOpAnd,
-    kFnOpOr,
-    kFnOpXor,
-    kFnOpNot,
-    kFnOpEq,
-    kFnOpNeq,
-    kFnOpLt,
-    kFnOpLe,
-    kFnOpGt,
-    kFnOpGe,
-    kFnOpDot,
-    kFnOpAt,
-    kFnOpLike,
-    kFnOpIn,
-    kFnOpBracket,
-    kFnOpIsNull,
-    kFnOpNonNull,
-    kFnOpNone
+    kFnOpAdd,         // "+"
+    kFnOpMinus,       // "-"
+    kFnOpMulti,       // "*"
+    kFnOpDiv,         // "/"
+    kFnOpFDiv,        // "div", float division
+    kFnOpMod,         // "%"
+    kFnOpAnd,         // "AND", logical
+    kFnOpOr,          // "OR" , logical
+    kFnOpXor,         // "XOR", logical
+    kFnOpNot,         // "NOT", logical
+    kFnOpEq,          // "="
+    kFnOpNeq,         // "!="
+    kFnOpLt,          // "<"
+    kFnOpLe,          // "<="
+    kFnOpGt,          // ">"
+    kFnOpGe,          // ">="
+    kFnOpDot,         // "."
+    kFnOpAt,          // "[]"
+    kFnOpLike,        // "LIKE"
+    kFnOpIn,          // "IN"
+    kFnOpBracket,     // "()"
+    kFnOpIsNull,      // "is_null"
+    kFnOpNonNull,     // ""
+    kFnOpNone,        // "NONE"
+    kFnOpBitwiseAnd,  // "&"
+    kFnOpBitwiseOr,   // "|"
+    kFnOpBitwiseXor,  // "^"
+    kFnOpBitwiseNot,  // "~"
 };
 
 enum FrameType {

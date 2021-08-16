@@ -21,9 +21,12 @@
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
-using hybridse::base::Status;
+
 namespace hybridse {
 namespace codegen {
+
+using ::hybridse::base::Status;
+
 class CastExprIRBuilder {
  public:
     explicit CastExprIRBuilder(::llvm::BasicBlock* block);

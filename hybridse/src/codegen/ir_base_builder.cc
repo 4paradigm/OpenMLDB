@@ -854,31 +854,25 @@ bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
     return false;
 }
 base::Status TypeIRBuilder::UnaryOpTypeInfer(
-    const std::function<base::Status(node::NodeManager*, const node::TypeNode*,
-                                     const node::TypeNode**)>
-        func,
+    const std::function<base::Status(node::NodeManager*, const node::TypeNode*, const node::TypeNode**)> func,
     ::llvm::Type* lhs) {
     node::NodeManager tmp_node_manager;
     const node::TypeNode* left_type = nullptr;
-    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type),
-               common::kTypeError, "invalid op type")
+    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type), common::kTypeError, "invalid op type")
     const node::TypeNode* output_type;
     CHECK_STATUS(func(&tmp_node_manager, left_type, &output_type))
     return Status::OK();
 }
 base::Status TypeIRBuilder::BinaryOpTypeInfer(
-    const std::function<base::Status(node::NodeManager*, const node::TypeNode*,
-                                     const node::TypeNode*,
+    const std::function<base::Status(node::NodeManager*, const node::TypeNode*, const node::TypeNode*,
                                      const node::TypeNode**)>
         func,
     ::llvm::Type* lhs, ::llvm::Type* rhs) {
     const node::TypeNode* left_type = nullptr;
     const node::TypeNode* right_type = nullptr;
     node::NodeManager tmp_node_manager;
-    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type),
-               common::kTypeError, "invalid op type")
-    CHECK_TRUE(GetFullType(&tmp_node_manager, rhs, &right_type),
-               common::kTypeError, "invalid op type")
+    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type), common::kTypeError, "invalid op type")
+    CHECK_TRUE(GetFullType(&tmp_node_manager, rhs, &right_type), common::kTypeError, "invalid op type")
     const node::TypeNode* output_type = nullptr;
     CHECK_STATUS(func(&tmp_node_manager, left_type, right_type, &output_type))
     return Status::OK();

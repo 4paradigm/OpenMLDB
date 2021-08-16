@@ -112,7 +112,7 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         node::ExprNode *project_expr;
         switch (expr->GetType()) {
             case node::kResTarget: {
-                const node::ResTarget *target_ptr = (const node::ResTarget *)expr;
+                const node::ResTarget *target_ptr = static_cast<const node::ResTarget *>(expr);
                 project_name = target_ptr->GetName();
                 if (project_name.empty()) {
                     project_name = target_ptr->GetVal()->GenerateExpressionName();
@@ -205,7 +205,7 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     }
     // limit
     if (nullptr != root->GetLimit()) {
-        const node::LimitNode *limit_ptr = (node::LimitNode *)root->GetLimit();
+        const node::LimitNode *limit_ptr = static_cast<const node::LimitNode *>(root->GetLimit());
         current_node = node_manager_->MakeLimitPlanNode(current_node, limit_ptr->GetLimitCount());
     }
     current_node = node_manager_->MakeSelectPlanNode(current_node);
@@ -280,7 +280,7 @@ base::Status Planner::CreateWindowPlanNode(const node::WindowDefNode *w_ptr, nod
 
 base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create table plan with null node")
-    const node::CreateStmt *create_tree = (const node::CreateStmt *)root;
+    const node::CreateStmt *create_tree = static_cast<const node::CreateStmt *>(root);
     *output = node_manager_->MakeCreateTablePlanNode(create_tree->GetTableName(), create_tree->GetReplicaNum(),
                                                      create_tree->GetPartitionNum(), create_tree->GetColumnDefList(),
                                                      create_tree->GetDistributionList());
@@ -386,7 +386,7 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
             case node::kCreateSpStmt: {
                 PlanNode *create_sp_plan = nullptr;
                 PlanNodeList inner_plan_node_list;
-                const node::CreateSpStmt *create_sp_tree = (const node::CreateSpStmt *)parser_tree;
+                const node::CreateSpStmt *create_sp_tree = static_cast<const node::CreateSpStmt *>(parser_tree);
                 CHECK_STATUS(CreatePlanTree(create_sp_tree->GetInnerNodeList(), inner_plan_node_list))
                 CHECK_STATUS(CreateCreateProcedurePlan(parser_tree, inner_plan_node_list, &create_sp_plan))
                 plan_trees.push_back(create_sp_plan);
@@ -487,7 +487,7 @@ base::Status Planner::CreateCreateProcedurePlan(const node::SqlNode *root, const
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create procedure plan node: query tree node it null")
     CHECK_TRUE(root->GetType() == node::kCreateSpStmt, common::kPlanError,
                "fail to create procedure plan node: query tree node it not kCreateSpStmt")
-    const node::CreateSpStmt *create_sp_tree = (const node::CreateSpStmt *)root;
+    const node::CreateSpStmt *create_sp_tree = static_cast<const node::CreateSpStmt *>(root);
     *output = node_manager_->MakeCreateProcedurePlanNode(create_sp_tree->GetSpName(),
                                                          create_sp_tree->GetInputParameterList(), inner_plan_node_list);
     return base::Status::OK();
@@ -723,7 +723,7 @@ base::Status Planner::TransformTableDef(const std::string &table_name, const Nod
     for (auto column_desc : column_desc_list) {
         switch (column_desc->GetType()) {
             case node::kColumnDesc: {
-                node::ColumnDefNode *column_def = (node::ColumnDefNode *)column_desc;
+                node::ColumnDefNode *column_def = static_cast<node::ColumnDefNode *>(column_desc);
                 type::ColumnDef *column = table->add_columns();
 
                 CHECK_TRUE(column_names.find(column_def->GetColumnName()) == column_names.end(), common::kPlanError,
@@ -771,7 +771,7 @@ base::Status Planner::TransformTableDef(const std::string &table_name, const Nod
             }
 
             case node::kColumnIndex: {
-                node::ColumnIndexNode *column_index = (node::ColumnIndexNode *)column_desc;
+                node::ColumnIndexNode *column_index = static_cast<node::ColumnIndexNode *>(column_desc);
 
                 if (column_index->GetName().empty()) {
                     column_index->SetName(PlanAPI::GenerateName("INDEX", table->indexes_size()));
