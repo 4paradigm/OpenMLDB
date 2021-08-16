@@ -23,8 +23,7 @@ import org.openjdk.jmh.runner.options.{ChainedOptionsBuilder, OptionsBuilder, Ti
 object JmhHelper {
 
   def getJmhOptionFromArgs(className: String, args: Array[String]): ChainedOptionsBuilder = {
-    val options = new OptionsBuilder()
-      .include(className)
+    val options = new OptionsBuilder().include(className)
 
     val parser = new ArgumentParser(args)
     parser.parseArgs {

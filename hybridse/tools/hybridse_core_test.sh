@@ -14,16 +14,18 @@
 # limitations under the License.
 
 set -eE
-
 # goto toplevel directory
+pushd "$(dirname "$0")/../.."
+OPENMLDB_DIR=$(pwd)
+popd
+# goto hybridse directory
 pushd "$(dirname "$0")/.."
-HYRBIDSE_DIR=$(pwd)
 
 ./tools/setup_thirdparty.sh
 
 if uname -a | grep -q Darwin; then
-	# in case coreutils not install on mac
-	alias nproc='sysctl -n hw.logicalcpu'
+  # in case coreutils not install on mac
+  alias nproc='sysctl -n hw.logicalcpu'
 fi
 
 mkdir -p build
@@ -32,6 +34,6 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j"$(nproc)"
 ./src/base/fe_slice_test
 ./src/base/hash_test
-SQL_CASE_BASE_DIR=${HYRBIDSE_DIR} make -j"$(nproc)" test
+SQL_CASE_BASE_DIR=${OPENMLDB_DIR} make -j"$(nproc)" test
 
 popd
