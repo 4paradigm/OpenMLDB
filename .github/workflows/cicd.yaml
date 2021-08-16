@@ -16,7 +16,7 @@ jobs:
   build_and_cpp_ut:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.3.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
       OS: linux
     steps:
@@ -26,8 +26,8 @@ jobs:
           bash steps/init_env.sh
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
-          rm -rf /depends/thirdparty/*
-      
+          rm -rf thirdparty
+
       - name: Pack OpenMLDB
         if: ${{ github.event_name == 'push' }}
         run: |
@@ -59,16 +59,11 @@ jobs:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
             reports/*.xml
-      - name: cleanup
-        if: always()
-        run: |
-          source /etc/profile.d/enable-rh.sh
-          git clean -dfx
 
   sql_sdk_test:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.3.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
     steps:
       - uses: actions/checkout@v1
       - name: build
@@ -86,11 +81,6 @@ jobs:
           name: linux-ut-result-cpp-sdk-${{ github.sha }} # the same name?
           path: |
             reports/*.xml
-      - name: cleanup
-        if: always()
-        run: |
-          source /etc/profile.d/enable-rh.sh
-          git clean -dfx
 
   sql_cluster_test:
     runs-on: ubuntu-latest
@@ -113,11 +103,6 @@ jobs:
           name: linux-ut-result-cpp-cluster-${{ github.sha }}
           path: |
             reports/*.xml
-      - name: cleanup
-        if: always()
-        run: |
-          source /etc/profile.d/enable-rh.sh
-          git clean -dfx
 
   publish-test-results:
     runs-on: ubuntu-latest
