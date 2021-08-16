@@ -56,9 +56,12 @@ elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
     fi
 fi
 
+curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
+
 tar xzf thirdparty.tar.gz -C "$THIRDPARTY_PATH" --strip-components 1
 tar xzf libzetasql.tar.gz -C "$THIRDPARTY_PATH" --strip-components 1
 tar xzf hybridse.tar.gz -C "$THIRDPARTY_PATH/hybridse" --strip-components 1
+tar xzf thirdsrc.tar.gz -C "$THIRDSRC_PATH" --strip-components 1
 
 popd
 
