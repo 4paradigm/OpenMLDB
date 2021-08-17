@@ -20,7 +20,6 @@ set -eE
 pushd "$(dirname "$0")/.."
 
 ROOT=$(pwd)
-
 ARCH=$(arch)
 
 echo "Install thirdparty ... for $(uname -a)"
@@ -56,21 +55,19 @@ elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
     fi
 fi
 
-HYBRIDSE_SOURCE=$1
 curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
 
 tar xzf thirdparty.tar.gz -C "$THIRDPARTY_PATH" --strip-components 1
 tar xzf libzetasql.tar.gz -C "$THIRDPARTY_PATH" --strip-components 1
-tar xzf hybridse.tar.gz -C "$THIRDPARTY_PATH/hybridse" --strip-components 1
 tar xzf thirdsrc.tar.gz -C "$THIRDSRC_PATH" --strip-components 1
 
 popd
 
-popd
+HYBRIDSE_SOURCE=$1
 if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
-  cd ${OPENMLDB_DIR}/hybridse
-  ln -sf /depends/thirdparty thirdparty
-  ln -sf /depends/thirdsrc thirdsrc
+  cd ${ROOT}/hybridse
+  ln -sf $THIRDPARTY_PATH thirdparty
+  ln -sf $THIRDPARTY_PATH thirdsrc
   if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
     alias nproc='sysctl -n hw.logicalcpu'
@@ -79,15 +76,11 @@ if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
   mkdir -p build && cd build
   cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCMAKE_INSTALL_PREFIX="hybridse"
   make -j"$(nproc)" install
-  mv hybridse /depends/thirdparty/hybridse
+  mv hybridse ${THIRDPARTY_PATH}/hybridse
 else
-  cd /depends
-  rm -rf thirdparty/hybridse
-  mkdir -p thirdparty/hybridse
-  PACKAGE_NAME=hybridse-0.3.0-0813-linux-x86_64
-  curl -LO https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.3.0-0813/hybridse-0.3.0-0813-linux-x86_64.tar.gz
-  tar zxf ${PACKAGE_NAME}.tar.gz > /dev/null
-  mv ${PACKAGE_NAME}/* thirdparty/hybridse
+  pushd "${THIRDSRC_PATH}"
+  tar xzf hybridse.tar.gz -C "${THIRDPARTY_PATH}/hybridse" --strip-components 1
+  popd
 fi
-cd ${OPENMLDB_DIR}
+cd ${ROOT}
 
