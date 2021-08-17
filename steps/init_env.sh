@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright 2021 4Paradigm
 #
@@ -15,23 +15,54 @@
 # limitations under the License.
 
 # init_env.sh
+set -eE
 
-cd /depends
-if [[ ! -d thirdparty && -r thirdparty.tar.gz ]]; then
-    mkdir -p thirdparty
-    tar xzf thirdparty.tar.gz -C thirdparty --strip-components=1
-    curl -SL -o libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-linux-x86_64.tar.gz
-    tar xzf libzetasql.tar.gz -C  thirdparty --strip-components 1
-    rm libzetasql.tar.gz
+pushd "$(dirname "$0")/.."
+
+ROOT=$(pwd)
+
+ARCH=$(arch)
+
+echo "Install thirdparty ... for $(uname -a)"
+
+# on local machine, one can tweak thirdparty path by passing extra argument
+THIRDPARTY_PATH=${1:-"$ROOT/thirdparty"}
+THIRDSRC_PATH="$ROOT/thirdsrc"
+
+if [ -d "$THIRDPARTY_PATH" ]; then
+    echo "thirdparty path: $THIRDPARTY_PATH already exist, skip download deps"
+    exit 0
 fi
 
+mkdir -p "$THIRDPARTY_PATH"
+mkdir -p "$THIRDPARTY_PATH/hybridse"
+mkdir -p "$THIRDSRC_PATH"
 
-rm -rf thirdparty/hybridse
-mkdir -p thirdparty/hybridse
-PACKAGE_NAME=hybridse-0.2.1-linux-x86_64
-curl -LO https://github.com/4paradigm/HybridSE/releases/download/v0.2.1/hybridse-0.2.1-linux-x86_64.tar.gz
-tar zxf ${PACKAGE_NAME}.tar.gz > /dev/null
-mv ${PACKAGE_NAME}/* thirdparty/hybridse
-cd -
-ln -sf /depends/thirdparty thirdparty
-ln -sf /depends/thirdsrc thirdsrc
+pushd "${THIRDSRC_PATH}"
+
+if [[ "$OSTYPE" = "darwin"* ]]; then
+    curl -SLo thirdparty.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz
+    curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-darwin-x86_64.tar.gz
+    curl -SLo hybridse.tar.gz https://github.com/4paradigm/HybridSE/releases/download/v0.2.1/hybridse-0.2.1-darwin-x86_64.tar.gz
+elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
+    if [[ $ARCH = 'x86_64' ]]; then
+        curl -SLo thirdparty.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz
+        curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-linux-x86_64.tar.gz
+        curl -SLo hybridse.tar.gz https://github.com/4paradigm/HybridSE/releases/download/v0.2.1/hybridse-0.2.1-linux-x86_64.tar.gz
+    elif [[ $ARCH = 'aarch64' ]]; then
+        curl -SLo thirdparty.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz
+        curl -SLo libzetasql.tar.gz https://github.com/aceforeverd/zetasql/releases/download/v0.2.1-beta5/libzetasql-0.2.1-beta5-linux-gnu-aarch64.tar.gz
+        # NOTE: missing hybridse-aarch64
+    fi
+fi
+
+curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
+
+tar xzf thirdparty.tar.gz -C "$THIRDPARTY_PATH" --strip-components 1
+tar xzf libzetasql.tar.gz -C "$THIRDPARTY_PATH" --strip-components 1
+tar xzf hybridse.tar.gz -C "$THIRDPARTY_PATH/hybridse" --strip-components 1
+tar xzf thirdsrc.tar.gz -C "$THIRDSRC_PATH" --strip-components 1
+
+popd
+
+popd
