@@ -80,6 +80,8 @@ class SQLSDKTest : public openmldb::test::SQLCaseTest {
                               std::shared_ptr<SQLRouter> router);
 };
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SQLSDKTest);
+
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreate, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_create.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestTest, SQLSDKTest,

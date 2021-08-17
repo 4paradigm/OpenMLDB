@@ -1,0 +1,40 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 1
+    desc: 简单Select子查询结果
+    mode: physical-plan-unsupport
+    sql: select * from (select * from t1 where col1>0);
+  - id: 2
+    desc: Select分组聚合子查询结果
+    mode: physical-plan-unsupport
+    sql: SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1 group by col2 ) limit 10;
+  - id: 3
+    desc: 复杂子查询
+    tags: ["TODO", "zetasql-unsupport"]
+    mode: physical-plan-unsupport, request-unsupport
+    sql: |
+      select * from
+          (select * from stu where grade = 7) s
+      left join
+          (select * from sco where subject = "math") t
+      on s.id = t.stu_id
+      union
+      select * from
+          (select * from stu where grade = 7) s
+      right join
+          (select * from sco where subject = "math") t
+      on s.id = t.stu_id;
+
