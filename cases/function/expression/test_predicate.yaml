@@ -367,3 +367,63 @@ cases:
            NULL, NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL, NULL]
+
+  - id: between_predicate_1
+    desc: between predicate, numberic between
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1609545841000, 2021-1-2]
+          - [3, Joey,  B, 1610766254000, 2021-1-16]
+          - [4, Boey,  C, 1612237214000, 2021-2-2]
+          - [5, Bunny, D, 1612875381000, 2021-2-9]
+    sql: |
+      SELECT id, name FROM {0} WHERE id BETWEEN 1 AND 4;
+    expect:
+      columns: ["id bigint", "name string"]
+      rows:
+        - [1, Lucy]
+        - [2, Zoey]
+        - [3, Joey]
+        - [4, Boey]
+  - id: between_predicate_2
+    desc: between predicate, string between
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1609545841000, 2021-1-2]
+          - [3, Joey,  B, 1610766254000, 2021-1-16]
+          - [4, Boey,  C, 1612237214000, 2021-2-2]
+          - [5, Bunny, D, 1612875381000, 2021-2-9]
+    sql: |
+      SELECT id, code FROM {0} WHERE code BETWEEN "A" AND "C";
+    expect:
+      columns: ["id bigint", "code string"]
+      rows:
+        - [1, A]
+        - [2, B]
+        - [3, B]
+        - [4, C]
+  - id: between_predicate_3
+    desc: between predicate, timestamp between
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1609545841000, 2021-1-2]
+          - [3, Joey,  B, 1610766254000, 2021-1-16]
+          - [4, Boey,  C, 1612237214000, 2021-2-2]
+          - [5, Bunny, D, 1612875381000, 2021-2-9]
+    sql: |
+      SELECT id, name, code FROM {0} WHERE ctime BETWEEN timestamp("2021-1-1") AND timestamp("2021-1-30");
+    expect:
+      columns: ["id bigint", "name string", "code string"]
+      rows:
+        - [1, Lucy, A]
+        - [2, Zoey, B]
+        - [3, Joey, B]

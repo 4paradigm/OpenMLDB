@@ -33,7 +33,6 @@ cases:
         1, 4, 55, 4.4, 44.4, 2, 4444, 1590115423000
         2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 1590115424000
 
-
   - id: 1
     desc: SELECT所有列
     mode: request
@@ -53,7 +52,6 @@ cases:
         1, 3, 55, 3.3, 33.3, 1, 333, 1590115422000
         1, 4, 55, 4.4, 44.4, 2, 4444, 1590115423000
         2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 1590115424000
-
 
   - id: 2
     desc: SELECT简单表达式
@@ -234,5 +232,59 @@ cases:
         1, 1, 1, NULL, NULL, 1590115420002, 2020-05-21, y, 3
         2, 2, 2, 2.0, 2.0, 1590115420003, NULL, z, 4
         3, 3, 3, 3.0, 3.0, 1590115420003, 2020-05-22, NULL, 5
-
-
+  - id: between_predicate_1
+    desc: between predicate, return true
+    sql: |
+      select 10 between 0 and 20 as col1;
+    expect:
+      columns: ["col1:bool"]
+      rows:
+        - [true]
+  - id: between_predicate_2
+    desc: between predicate, return false
+    sql: |
+      select 10 between 15 and 20 as col1;
+    expect:
+      columns: ["col1:bool"]
+      rows:
+        - [false]
+  - id: between_predicate_3
+    desc: between (not) predicate, return true
+    sql: |
+      select 10 not between 0 and 9 as col1;
+    expect:
+      columns: ["col1:bool"]
+      rows:
+        - [true]
+  - id: between_predicate_4
+    desc: between (not) predicate, return false
+    sql: |
+      select 10 not between 0 and 20 as col1;
+    expect:
+      columns: ["col1:bool"]
+      rows:
+        - [false]
+  - id: between_predicate_5
+    desc: between predicate where expr1 is NULL, return NULL
+    sql: |
+      select NULL between 0 and 20 as col1;
+    expect:
+      columns: ["col1:bool"]
+      rows:
+        - [NULL]
+  - id: between_predicate_6
+    desc: between predicate where expr2 is NULL, return NULL
+    sql: |
+      select 10 between NULL and 20 as col1;
+    expect:
+      columns: ["col1:bool"]
+      rows:
+        - [NULL]
+  - id: between_predicate_7
+    desc: between (not) predicate where expr3 is NULL, return NULL
+    sql: |
+      select 10 not between 0 and NULL as col1;
+    expect:
+      columns: ["col1:bool"]
+      rows:
+        - [NULL]

@@ -554,7 +554,7 @@ INSTANTIATE_TEST_SUITE_P(EngineTestLastJoinComplex, EngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineTestArithmetic, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/function/expression/test_arithmetic.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestCompare, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/expression/test_compare.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("/cases/function/expression/test_predicate.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestCondition, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/function/expression/test_condition.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestLogic, EngineTest,

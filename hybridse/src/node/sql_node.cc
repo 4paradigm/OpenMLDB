@@ -1700,6 +1700,8 @@ void BetweenExpr::Print(std::ostream &output, const std::string &org_tab) const 
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
+    PrintValue(output, tab, is_not_between_ ? "true" : "false", "is_not_between", false);
+    output << "\n";
     PrintSqlNode(output, tab, expr_, "value", false);
     output << "\n";
     PrintSqlNode(output, tab, left_, "left", false);

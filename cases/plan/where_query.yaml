@@ -207,3 +207,83 @@ cases:
           |      +-table: t1
           |      +-alias: <nil>
           +-window_list: []
+  - id: between_predicate_1
+    desc: X between Y and Z
+    sql: SELECT col1 FROM t1 WHERE COL1 BETWEEN 1 AND 5;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[between]
+          |    +-is_not_between: false
+          |    +-value:
+          |    |  +-expr[column ref]
+          |    |    +-relation_name: <nil>
+          |    |    +-column_name: COL1
+          |    +-left:
+          |    |  +-expr[primary]
+          |    |    +-value: 1
+          |    |    +-type: int32
+          |    +-right:
+          |      +-expr[primary]
+          |        +-value: 5
+          |        +-type: int32
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: col1
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
+  - id: between_predicate_2
+    desc: X NOT BETWEEN Y AND Z
+    sql: SELECT col1 FROM t1 WHERE COL1 NOT BETWEEN 1 AND 5;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[between]
+          |    +-is_not_between: true
+          |    +-value:
+          |    |  +-expr[column ref]
+          |    |    +-relation_name: <nil>
+          |    |    +-column_name: COL1
+          |    +-left:
+          |    |  +-expr[primary]
+          |    |    +-value: 1
+          |    |    +-type: int32
+          |    +-right:
+          |      +-expr[primary]
+          |        +-value: 5
+          |        +-type: int32
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: col1
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
