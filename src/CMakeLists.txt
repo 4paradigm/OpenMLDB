@@ -103,7 +103,12 @@ if(TESTING_ENABLE)
 endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
-target_link_libraries(parse_log log openmldb_proto base protobuf glog gflags unwind ssl crypto z snappy dl pthread)
+
+set(LINK_LIBS log openmldb_proto base protobuf glog gflags ssl crypto z snappy dl pthread)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(APPEND LINK_LIBS unwind)
+endif()
+target_link_libraries(parse_log ${LINK_LIBS})
 
 add_executable(openmldb cmd/openmldb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 target_link_libraries(openmldb ${BIN_LIBS})

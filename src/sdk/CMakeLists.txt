@@ -167,21 +167,6 @@ if(SQL_PYSDK_ENABLE)
     search_python_module(setuptools)
     search_python_module(wheel)
 
-    add_custom_target(sql_pysdk_package ALL
-        DEPENDS setup.py
-        COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/__init__.py openmldb/__init__.py
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py openmldb/driver.py
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb
-        COMMAND ${Python3_EXECUTABLE} setup.py bdist_wheel
-        BYPRODUCTS
-          python/openmldb
-          python/build
-          python/dist
-          python/openmldb.egg-info
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
-    )
-
     add_custom_target(sqlalchemy_openmldb DEPENDS sql_router_sdk
         COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/__init__.py
         COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/saopenmldb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/saopenmldb.py
@@ -190,6 +175,7 @@ if(SQL_PYSDK_ENABLE)
         COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/driver.py
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
         COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
+        COMMAND strip ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_sql_router_sdk.so
         COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
         COMMAND ${CMAKE_COMMAND} -E remove_directory dist
         COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel
