@@ -240,6 +240,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: lib-artifacts
+          path: ${{ env.HYBRIDSE_PATH }}
 
       - uses: actions/setup-java@v2
         with:

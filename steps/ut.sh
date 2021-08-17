@@ -1,3 +1,5 @@
+#! /bin/sh
+
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,49 +14,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#! /bin/sh
 #
 # ut.sh
 #
-WORK_DIR=`pwd`
+WORK_DIR=$(pwd)
+# shellcheck disable=SC2039
 ulimit -c unlimited
 test -d reports && rm -rf reports
 mkdir -p reports
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
-cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh start && cd $WORK_DIR
+cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh start && cd "$WORK_DIR" || exit
 sleep 5
 TMPFILE="code.tmp"
 echo 0 > $TMPFILE
 if [ $# -eq 0 ];
 then
-    ls  build/bin/ | grep test | grep -v "sql_sdk_test\|sql_cluster_test"| grep -v grep | while read line
+    # shellcheck disable=SC2010
+    ls build/bin/ | grep test | grep -v "sql_sdk_test\|sql_cluster_test"| grep -v grep | while read line
     do 
-        ./build/bin/$line --gtest_output=xml:./reports/$line.xml 2>/tmp/${line}.${USER}.log 1>&2
+        ./build/bin/"$line" --gtest_output=xml:./reports/"$line".xml 2>/tmp/"${line}"."${USER}".log 1>&2
         RET=$?
         echo "$line result code is: $RET"
         if [ $RET -ne 0 ];then 
-            cat /tmp/${line}.${USER}.log
+            cat /tmp/"${line}"."${USER}".log
             echo $RET > $TMPFILE
         else
-            rm -f /tmp/${line}.${USER}.log
+            rm -f /tmp/"${line}"."${USER}".log
         fi 
     done
 else    
     CASE_NAME=$1
     CASE_LEVEL=$2
-    ROOT_DIR=`pwd`
+    ROOT_DIR=$(pwd)
     echo "WORK_DIR: ${ROOT_DIR}"
     echo "sql c++ sdk test : case_level ${CASE_LEVEL}, case_file ${CASE_NAME}"
     GLOG_minloglevel=2 HYBRIDSE_LEVEL=${CASE_LEVEL} YMAL_CASE_BASE_DIR=${ROOT_DIR} ./build/bin/${CASE_NAME} --gtest_output=xml:./reports/${CASE_NAME}.xml
     RET=$?
-    echo "$line result code is: $RET"
+    echo "${CASE_NAME} result code is: $RET"
     if [ $RET -ne 0 ];then
         echo $RET > $TMPFILE
     fi
 fi
-code=`cat $TMPFILE`
+code=$(cat $TMPFILE)
 echo "code result: $code"
 rm $TMPFILE
 cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh stop
-cd -
+cd - || exit
 exit $code

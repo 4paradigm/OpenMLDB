@@ -1,3 +1,5 @@
+#! /bin/sh
+
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +14,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#! /bin/sh
-#
-# package.sh
-#
-WORKDIR=`pwd`
-set -e
-sdk_vesion=$1-SNAPSHOT
-mkdir -p src/sdk/java/sql-native/src/main/resources/
-sh steps/install_hybridse.sh
-test -f build/src/sdk/libsql_jsdk.dylib && cp build/src/sdk/libsql_jsdk.dylib  src/sdk/java/sql-native/src/main/resources/
-mkdir -p build && cd build &&  cmake .. && make -j4 sql_jsdk
-cd ${WORKDIR}
-cp build/src/sdk/libsql_jsdk.so  src/sdk/java/sql-native/src/main/resources/
-cd src/sdk/java/ &&  mvn versions:set -DnewVersion=${sdk_vesion} && mvn deploy -Dmaven.test.skip=true
+WORK_DIR=$(pwd)
+
+if [ $# -ne 1 ]; then
+    echo "./ut_zookeeper.sh [start|stop]"
+    exit 1
+fi
+
+OP=$1
+
+case $OP in
+    start)
+        echo "Starting zk ... "
+        cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
+        cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh start && cd "$WORK_DIR" || exit
+        sleep 5
+        echo "start zk succeed"
+        ;;
+    stop)
+        echo "Stopping zk ... "
+        cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh stop
+        ;;
+    *)
+        echo "Only support {start|stop}" >&2
+esac
