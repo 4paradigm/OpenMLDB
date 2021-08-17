@@ -628,6 +628,5 @@ cases:
     expect:
       columns: [ "id int64", "int16_c6 int16", "int32_c6 int32", "int64_c6 int64",
                  "float_c6 float", "double_c6 double", "bool_c6 bool" ]
-
       rows:
         - [ 1, NULL, NULL, NULL, NULL, NULL, NULL]
