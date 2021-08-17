@@ -71,4 +71,4 @@ python/fesql-auto-test-python/report
 python/logs
 
 .vscode/settings.json
-openmldb-*
+./openmldb-*
