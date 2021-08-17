@@ -18,8 +18,10 @@
 
 #include "storage/segment.h"
 
+DECLARE_bool(binlog_notify_on_put);
+
 namespace openmldb::tablet {
-bool DataReceiver::DataAppend(const ::openmldb::api::BulkLoadRequest* request, const butil::IOBuf& data) {
+bool DataReceiver::AppendData(const ::openmldb::api::BulkLoadRequest* request, const butil::IOBuf& data) {
     if (!request->has_part_id() || !PartValidation(request->part_id())) {
         LOG(WARNING) << tid_ << "-" << pid_ << " data receiver received invalid part id, expect " << next_part_id_
                      << ", actual " << (request->has_part_id() ? "no id" : std::to_string(request->part_id()));
@@ -80,40 +82,41 @@ bool DataReceiver::BulkLoad(std::shared_ptr<storage::MemTable> table, const ::op
     return true;
 }
 
-bool DataReceiver::WriteBinlogToReplicator(
-    std::shared_ptr<replica::LogReplicator> replicator,
-    const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes) {
+bool DataReceiver::WriteBinlogToReplicator(const std::shared_ptr<replica::LogReplicator>& replicator,
+                                           const ::openmldb::api::BulkLoadRequest* request) {
     std::unique_lock<std::mutex> ul(mu_);
-
-    for (int i = 0; i < indexes.size(); ++i) {
-        const auto& inner_index = indexes.Get(i);
-        for (int j = 0; j < inner_index.segment_size(); ++j) {
-            const auto& segment_index = inner_index.segment(j);
-            for (int key_idx = 0; key_idx < segment_index.key_entries_size(); ++key_idx) {
-                const auto& key_entries = segment_index.key_entries(key_idx);
-                const auto& pk = key_entries.key();
-                for (int key_entry_idx = 0; key_entry_idx < key_entries.key_entry_size(); ++key_entry_idx) {
-                    const auto& key_entry = key_entries.key_entry(key_entry_idx);
-                    for (int time_idx = 0; time_idx < key_entry.time_entry_size(); ++time_idx) {
-                        const auto& time_entry = key_entry.time_entry(time_idx);
-                        auto* block =
-                            time_entry.block_id() < data_blocks_.size() ? data_blocks_[time_entry.block_id()] : nullptr;
-                        if (block == nullptr) {
-                            // TODO(hw): valid?
-                            continue;
-                        }
-                        ::openmldb::api::LogEntry entry;
-                        entry.set_pk(pk);
-                        entry.set_ts(time_entry.time());
-                        entry.set_value(block->data, block->size);
-                        entry.set_term(replicator->GetLeaderTerm());
-                        replicator->AppendEntry(entry);
-                    }
-                }
-            }
-        }
+    // Do not do PartValidation
+    // TODO(hw): maybe binlog should hava the part id too?
+    if (request->part_id() != next_part_id_ - 1) {
+        LOG(WARNING)
+            << "WriteBinlogToReplicator follows AppendData, the same request, the same part id, but cur part id"
+            << next_part_id_ - 1 << ", request part id " << request->part_id();
+        return false;
     }
-    // TODO(hw): after binlog, release data block ptr cache? or delete it when we destroy the whole data receiver?
+    for (int i = 0; i < request->binlog_info_size(); ++i) {
+        const auto& info = request->binlog_info(i);
+        ::openmldb::api::LogEntry entry;
+        auto* block = info.block_id() < data_blocks_.size() ? data_blocks_[info.block_id()] : nullptr;
+        if (block == nullptr) {
+            LOG(ERROR) << "binlog wants " << info.block_id() << ", but cached block size = " << data_blocks_.size();
+            return false;
+        }
+        entry.set_value(block->data, block->size);
+        entry.set_term(replicator->GetLeaderTerm());
+        if (info.dimensions_size() > 0) {
+            entry.mutable_dimensions()->CopyFrom(info.dimensions());
+        }
+        if (info.ts_dimensions_size() > 0) {
+            entry.mutable_ts_dimensions()->CopyFrom(info.ts_dimensions());
+        }
+        entry.set_ts(info.time());
+        replicator->AppendEntry(entry);
+    }
+    LOG(INFO) << "binlog write num " << request->binlog_info_size();
+    if (FLAGS_binlog_notify_on_put) {
+        replicator->Notify();
+    }
+
     return true;
 }
 }  // namespace openmldb::tablet

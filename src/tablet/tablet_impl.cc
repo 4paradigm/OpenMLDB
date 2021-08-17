@@ -4856,37 +4856,30 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
         return;
     }
 
-    // DataRegion & IndexRegion, when we get IndexRegion rpc, empty DataRegion is available
+    // first DataRegion, then IndexRegion, when we get IndexRegion rpc, empty DataRegion is available
     auto* cntl = dynamic_cast<brpc::Controller*>(controller);
     const auto& data = cntl->request_attachment();
     // Data is a part of MemTable data, DataReceiver of MemTable is in charge of it.
-    // Data part_id & info is in request, checked in DataAppend()
+    // Data part_id & info is in request, checked in AppendData()
     if (!data.empty()) {
-        if (!bulk_load_mgr_.DataAppend(tid, pid, request, data)) {
+        if (!bulk_load_mgr_.AppendData(tid, pid, request, data)) {
             response->set_code(::openmldb::base::ReturnCode::kReceiveDataError);
             response->set_msg("bulk load data region append failed");
             LOG(WARNING) << tid << "-" << pid << " " << response->msg();
             return;
         }
-        DLOG(INFO) << tid << "-" << pid << " has loaded data region part " << request->part_id();
-    }
+        LOG(INFO) << tid << "-" << pid << " has loaded data region part " << request->part_id()
+                  << ". Time:" << ::baidu::common::timer::get_micros() - start_time << " us";
 
-    if (request->index_region_size() > 0) {
-        DLOG(INFO) << tid << "-" << pid << " get index region, do bulk load";
-        // The request may have both data & index region, data has been appended before. BulkLoadData only do bulk load
-        // to table.
-        if (!bulk_load_mgr_.BulkLoad(std::dynamic_pointer_cast<MemTable>(table), request)) {
-            response->set_code(::openmldb::base::ReturnCode::kWriteDataFailed);
-            response->set_msg("bulk load to table failed");
+        // TODO(hw): sync first, maybe use async later, e.g. another rpc request to load binlog.
+        //  we send x data blocks, so there will be x binlog info.
+        if (request->binlog_info_size() != request->block_info_size()) {
+            response->set_code(::openmldb::base::ReturnCode::kReceiveDataError);
+            response->set_msg("bulk load data region and binlog info size mismatch");
             LOG(WARNING) << tid << "-" << pid << " " << response->msg();
             return;
         }
-        // TODO(hw):  how to find the last bulk load? or index rpcs all do {bulk load; write bin log}?
-
-        uint64_t load_time = ::baidu::common::timer::get_micros();
-        PDLOG(INFO, "%u-%u, bulk load only load cost %lu us", request->tid(), request->pid(), load_time - start_time);
-
-        response->set_code(::openmldb::base::ReturnCode::kOk);
+        auto binlog_start = ::baidu::common::timer::get_micros();
         std::shared_ptr<LogReplicator> replicator;
         do {
             replicator = GetReplicator(request->tid(), request->pid());
@@ -4896,19 +4889,34 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
                 break;
             }
 
-            auto ok = bulk_load_mgr_.WriteBinlogToReplicator(tid, pid, replicator, request->index_region());
+            auto ok = bulk_load_mgr_.WriteBinlogToReplicator(tid, pid, replicator, request);
             if (!ok) {
                 DLOG(INFO) << "write binlog failed";
             }
         } while (false);
-        uint64_t end_time = ::baidu::common::timer::get_micros();
-        PDLOG(INFO, "%u-%u, binlog cost %lu us", request->tid(), request->pid(), end_time - load_time);
+        auto binlog_end = ::baidu::common::timer::get_micros();
+        PDLOG(INFO, "%u-%u, binlog cost %lu us", request->tid(), request->pid(), binlog_end - binlog_start);
 
         if (replicator) {
             if (FLAGS_binlog_notify_on_put) {
                 replicator->Notify();
             }
         }
+    }
+
+    if (request->index_region_size() > 0) {
+        LOG(INFO) << tid << "-" << pid << " get index region, do bulk load";
+        // The request may have both data & index region(the first index rpc, contains some rest data), it's ok.
+        // BulkLoad() only load index region to table.
+        if (!bulk_load_mgr_.BulkLoad(std::dynamic_pointer_cast<MemTable>(table), request)) {
+            response->set_code(::openmldb::base::ReturnCode::kWriteDataFailed);
+            response->set_msg("bulk load to table failed");
+            LOG(WARNING) << tid << "-" << pid << " " << response->msg();
+            return;
+        }
+
+        uint64_t load_time = ::baidu::common::timer::get_micros();
+        PDLOG(INFO, "%u-%u, bulk load only load cost %lu us", request->tid(), request->pid(), load_time - start_time);
     }
 
     if (request->eof()) {

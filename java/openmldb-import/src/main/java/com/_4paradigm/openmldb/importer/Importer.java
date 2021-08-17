@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -199,13 +198,13 @@ public class Importer {
         try {
             CSVRecord record;
             while ((record = reader.next()) != null) {
-                Map<Integer, List<Pair<String, Integer>>> dims = buildDimensions(record, keyIndexMap, tableMetaData.getPartitionNum());
+                Map<Integer, List<Tablet.Dimension>> dims = buildDimensions(record, keyIndexMap, tableMetaData.getPartitionNum());
                 if (logger.isDebugEnabled()) {
                     logger.debug(record.toString());
                     logger.debug(dims.entrySet().stream().map(entry -> entry.getKey().toString() + ": " +
-                            entry.getValue().stream().map(pair ->
-                                    "<" + pair.getKey() + ", " + pair.getValue() + ">")
-                                    .collect(Collectors.joining(", ", "(", ")")))
+                                    entry.getValue().stream().map(pair ->
+                                                    "<" + pair.getKey() + ", " + pair.getIdx() + ">")
+                                            .collect(Collectors.joining(", ", "(", ")")))
                             .collect(Collectors.joining("], [", "[", "]")));
                 }
 
@@ -308,7 +307,7 @@ public class Importer {
             return;
         }
 
-        logger.info("do load");
+        logger.info("start bulk load");
 //        int X = 8; // put_concurrency_limit default is 8
 
         // TODO(hw): check arg rpcDataSizeLimit >= minLimitSize
@@ -381,8 +380,8 @@ public class Importer {
 
     // ref SQLInsertRow::GetDimensions()
     // TODO(hw): integer or long?
-    private static Map<Integer, List<Pair<String, Integer>>> buildDimensions(CSVRecord record, Map<Integer, List<Integer>> keyIndexMap, int pidNum) {
-        Map<Integer, List<Pair<String, Integer>>> dims = new HashMap<>();
+    private static Map<Integer, List<Tablet.Dimension>> buildDimensions(CSVRecord record, Map<Integer, List<Integer>> keyIndexMap, int pidNum) {
+        Map<Integer, List<Tablet.Dimension>> dims = new HashMap<>();
         int pid = 0;
         for (Map.Entry<Integer, List<Integer>> entry : keyIndexMap.entrySet()) {
             Integer index = entry.getKey();
@@ -391,8 +390,8 @@ public class Importer {
             if (pidNum > 0) {
                 pid = (int) Math.abs(MurmurHash.hash64(combinedKey) % pidNum);
             }
-            List<Pair<String, Integer>> dim = dims.getOrDefault(pid, new ArrayList<>());
-            dim.add(Pair.of(combinedKey, index));
+            List<Tablet.Dimension> dim = dims.getOrDefault(pid, new ArrayList<>());
+            dim.add(Tablet.Dimension.newBuilder().setKey(combinedKey).setIdx(index).build());
             dims.put(pid, dim);
         }
         return dims;

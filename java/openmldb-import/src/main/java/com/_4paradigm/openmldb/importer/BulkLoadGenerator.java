@@ -23,7 +23,6 @@ import com._4paradigm.openmldb.type.Type;
 import com.baidu.brpc.RpcContext;
 import com.google.common.base.Preconditions;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,11 +46,11 @@ public class BulkLoadGenerator implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(BulkLoadGenerator.class);
 
     public static class FeedItem {
-        public final Map<Integer, List<Pair<String, Integer>>> dims;
+        public final Map<Integer, List<Tablet.Dimension>> dims;
         public final List<Long> tsDims; // TODO(hw): how to use uint64? BigInteger is low-effective
         public final Map<String, String> valueMap;
 
-        public FeedItem(Map<Integer, List<Pair<String, Integer>>> dims, Set<Integer> tsSet, CSVRecord record) {
+        public FeedItem(Map<Integer, List<Tablet.Dimension>> dims, Set<Integer> tsSet, CSVRecord record) {
             this.dims = dims;
             this.valueMap = record.toMap();
             // TODO(hw): can't support no header csv now
@@ -111,7 +110,7 @@ public class BulkLoadGenerator implements Runnable {
                 // build data buffer
                 ByteBuffer dataBuffer = buildData(item.valueMap);
 
-                List<Pair<String, Integer>> dimensions = item.dims.get(this.pid);
+                List<Tablet.Dimension> dimensions = item.dims.get(this.pid);
 
                 // tsDimensions[idx] has 0 or 1 ts, we convert it to Tablet.TSDimensions for simplicity
                 List<Tablet.TSDimension> tsDimensions = new ArrayList<>();
@@ -122,17 +121,17 @@ public class BulkLoadGenerator implements Runnable {
                 long time = System.currentTimeMillis();
 
                 Map<Integer, String> innerIndexKeyMap = new HashMap<>();
-                for (Pair<String, Integer> dim : dimensions) {
+                for (Tablet.Dimension dim : dimensions) {
                     String key = dim.getKey();
-                    long idx = dim.getValue();
+                    long idx = dim.getIdx();
                     // TODO(hw): idx is uint32, but info size is int
                     Preconditions.checkElementIndex((int) idx, indexInfoFromTablet.getInnerIndexCount());
                     innerIndexKeyMap.put(indexInfoFromTablet.getInnerIndexPos((int) idx), key);
                 }
 
-                // TODO(hw): we use ExecuteInsert logic, so won't call
+                // we use ExecuteInsert logic, so won't call
                 //  `table->Put(request->pk(), request->time(), request->value().c_str(), request->value().size());`
-                //  即，不存在dims不存在却有ts dims的情况
+                // dimensions size must > 0
                 Preconditions.checkState(!dimensions.isEmpty());
 
                 // TODO(hw): CheckDimessionPut
@@ -176,9 +175,9 @@ public class BulkLoadGenerator implements Runnable {
                 // Index Region insert, only use id
                 int dataBlockId = dataRegionBuilder.nextId();
                 for (Map.Entry<Integer, String> idx2key : innerIndexKeyMap.entrySet()) {
-                    Integer idx = idx2key.getKey();
+                    Integer innerIdx = idx2key.getKey();
                     String key = idx2key.getValue();
-                    Tablet.BulkLoadInfoResponse.InnerIndexSt innerIndex = indexInfoFromTablet.getInnerIndex(idx);
+                    Tablet.BulkLoadInfoResponse.InnerIndexSt innerIndex = indexInfoFromTablet.getInnerIndex(innerIdx);
                     boolean needPut = innerIndex.getIndexDefList().stream().anyMatch(Tablet.BulkLoadInfoResponse.InnerIndexSt.IndexDef::getIsReady);
                     if (needPut) {
                         long segIdx = 0;
@@ -187,7 +186,7 @@ public class BulkLoadGenerator implements Runnable {
                             segIdx = Integer.toUnsignedLong(MurmurHash.hash32(key.getBytes(), key.length(), 0xe17a1465)) % indexInfoFromTablet.getSegCnt();
                         }
                         // segment[k][segIdx]->Put
-                        IndexRegionBuilder.SegmentIndexRegion segment = indexRegionBuilder.getSegmentIndexRegion(idx, (int) segIdx);
+                        IndexRegionBuilder.SegmentIndexRegion segment = indexRegionBuilder.getSegmentIndexRegion(innerIdx, (int) segIdx);
                         // void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock* row)
                         boolean put = segment.Put(key, tsDimsWrap, dataBlockId);
                         if (!put) {
@@ -199,6 +198,7 @@ public class BulkLoadGenerator implements Runnable {
 
                 // If success, add data & info
                 dataRegionBuilder.addDataBlock(dataBuffer, realRefCnt.get());
+                dataRegionBuilder.addBinlog(dimensions, tsDimensions, time, dataBlockId);
 
                 // If reach limit, set part id, send data block infos & data, no index region.
                 ByteArrayOutputStream attachmentStream = new ByteArrayOutputStream();

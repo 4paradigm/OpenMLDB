@@ -787,7 +787,6 @@ bool MemTable::GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response) 
 bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
                         const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes) {
     // data_block[i] is the block which id == i
-    std::vector<bool> block_id_used(data_blocks.size(), false);
     for (int i = 0; i < indexes.size(); ++i) {
         const auto& inner_index = indexes.Get(i);
         auto real_idx = inner_index.inner_index_id();
@@ -811,24 +810,17 @@ bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
                             return false;
                         }
 
-                        DLOG(INFO) << "do segment(" << real_idx << "-" << seg_idx << ") put, key" << pk.ToString()
+                        VLOG(1) << "do segment(" << real_idx << "-" << seg_idx << ") put, key" << pk.ToString()
                                    << ", time " << time_entry.time() << ", key_entry_id " << key_entry_id
                                    << ", block id " << time_entry.block_id();
 
                         segment->BulkLoadPut(key_entry_id, pk, time_entry.time(), block);
-                        block_id_used.at(time_entry.block_id()) = true;
                     }
                 }
             }
         }
     }
 
-    // TODO(hw): check correctness, should be removed?
-    for (int i = 0; i < block_id_used.size(); ++i) {
-        if (!block_id_used[i]) {
-            DLOG(INFO) << i << " unused";
-        }
-    }
     return true;
 }
 

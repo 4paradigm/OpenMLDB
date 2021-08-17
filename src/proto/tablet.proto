@@ -745,6 +745,13 @@ message DataBlockInfo {
     optional uint32 length = 3;
 }
 
+message BinlogInfo {
+    repeated Dimension dimensions = 1;
+    repeated TSDimension ts_dimensions = 2;
+    optional int64 time = 3;
+    optional uint32 block_id = 4;
+}
+
 message Segment {
     optional uint32 id = 1;
     message KeyEntries {
@@ -772,9 +779,11 @@ message BulkLoadRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional int32 part_id = 3;
+    // Data Region: DataBlockInfo & BinlogInfo
     repeated DataBlockInfo block_info = 4;  // idx is the block id, entries in Index are using the block id
-    repeated BulkLoadIndex index_region = 5;
-    optional bool eof = 6 [default = false];
+    repeated BinlogInfo binlog_info = 5;
+    repeated BulkLoadIndex index_region = 6;
+    optional bool eof = 7 [default = false];
 }
 
 message BulkLoadInfoRequest {

@@ -29,4 +29,8 @@ public interface TabletService {
 
     @BrpcMeta(serviceName = "TabletServer", methodName = "BulkLoad")
     Tablet.GeneralResponse bulkLoad(Tablet.BulkLoadRequest request);
+
+    // TODO(hw):     @BrpcMeta(serviceName = "example.EchoService", methodName = "Echo")
+    //    Future<EchoResponse> echo(EchoRequest request, RpcCallback<EchoResponse> callback);
+    //  or need another interface. Using the same RpcClient is ok.
 }

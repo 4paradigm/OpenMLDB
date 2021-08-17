@@ -17,6 +17,9 @@
 #include "tablet/bulk_load_mgr.h"
 
 #include <memory>
+#include <utility>
+
+#include "memory"
 
 namespace openmldb::tablet {
 
@@ -33,7 +36,7 @@ bool BulkLoadMgr::AppendData(uint32_t tid, uint32_t pid, const ::openmldb::api::
         return false;
     }
 
-    if (!data_receiver->DataAppend(request, data)) {
+    if (!data_receiver->AppendData(request, data)) {
         return false;
     }
     return true;
@@ -51,14 +54,14 @@ bool BulkLoadMgr::BulkLoad(std::shared_ptr<storage::MemTable> table, const ::ope
     return true;
 }
 
-bool BulkLoadMgr::WriteBinlogToReplicator(
-    uint32_t tid, uint32_t pid, std::shared_ptr<replica::LogReplicator> replicator,
-    const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes) {
+bool BulkLoadMgr::WriteBinlogToReplicator(uint32_t tid, uint32_t pid,
+                                          std::shared_ptr<replica::LogReplicator> replicator,
+                                          const ::openmldb::api::BulkLoadRequest* request) {
     auto data_receiver = GetDataReceiver(tid, pid, DO_NOT_CREATE);
     if (!data_receiver) {
         return false;
     }
-    if (!data_receiver->WriteBinlogToReplicator(replicator, indexes)) {
+    if (!data_receiver->WriteBinlogToReplicator(replicator, request)) {
         return false;
     }
 
@@ -75,7 +78,7 @@ std::shared_ptr<DataReceiver> BulkLoadMgr::GetDataReceiver(uint32_t tid, uint32_
                 break;
             }
             // tid-pid-DataReceiver
-            data_receiver.reset(new DataReceiver(tid, pid));
+            data_receiver = std::make_shared<DataReceiver>(tid, pid);
             auto pid_cat = decltype(catalog_)::mapped_type();
             pid_cat[pid] = data_receiver;
             catalog_[tid] = pid_cat;
@@ -88,7 +91,7 @@ std::shared_ptr<DataReceiver> BulkLoadMgr::GetDataReceiver(uint32_t tid, uint32_
                 DLOG(INFO) << "pid" << pid << " not found";
                 break;
             }
-            data_receiver.reset(new DataReceiver(tid, pid));
+            data_receiver = std::make_shared<DataReceiver>(tid, pid);
             pid_cat[pid] = data_receiver;
             break;
         }
@@ -117,6 +120,9 @@ void BulkLoadMgr::RemoveReceiver(uint32_t tid, uint32_t pid) {
         return;
     }
     pid_cat.erase(iter);
+    // TODO(hw): if bulk load is failed, the data blocks(the real data) needs to be deleted manually
+    //  BulkLoad may have used some data blocks, may be we should reset segments in MemTable, then delete all data
+    //  blocks.
     LOG(INFO) << "data receiver for " << tid << "-" << pid << " removed";
 }
 }  // namespace openmldb::tablet

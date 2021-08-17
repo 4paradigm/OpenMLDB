@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.importer;
 
 import com._4paradigm.openmldb.api.Tablet;
 import com.google.common.base.Preconditions;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,7 @@ public class DataRegionBuilder {
     private final int rpcSizeLimit;
 
     private final List<Tablet.DataBlockInfo> dataBlockInfoList = new ArrayList<>(); // TODO(hw): to queue?
+    private List<Tablet.BinlogInfo> binlogInfoList = new ArrayList<>(); // TODO(hw): temp
     private final List<ByteBuffer> dataList = new ArrayList<>(); // TODO(hw): to queue?
     private int absoluteDataLength = 0;
     private int absoluteNextId = 0;
@@ -71,6 +73,12 @@ public class DataRegionBuilder {
         logger.debug("after size {}(exclude header 6)", estimatedTotalSize);
     }
 
+    public void addBinlog(List<Tablet.Dimension> dimensions, List<Tablet.TSDimension> tsDimensions, long time, int dataBlockId) {
+        Tablet.BinlogInfo info = Tablet.BinlogInfo.newBuilder().addAllDimensions(dimensions).
+                addAllTsDimensions(tsDimensions).setTime(time).setBlockId(dataBlockId).build();
+        binlogInfoList.add(info);
+    }
+
     // not force: if data size > limit, send x(x<=limit), remain size-x. If size <= limit, return null, needs to force build.
     // force: only send x(x<=limit) too. data size > limit is available, you may need to force build more than once until returns null.
     public Tablet.BulkLoadRequest buildPartialRequest(boolean force, ByteArrayOutputStream attachmentStream) throws IOException {
@@ -94,8 +102,11 @@ public class DataRegionBuilder {
             if (sentTotalSize + add > rpcSizeLimit) {
                 break;
             }
+
             builder.addBlockInfo(dataBlockInfoList.get(i));
+            builder.addBinlogInfo(binlogInfoList.get(i));
             attachmentStream.write(dataList.get(i).array());
+
             sentTotalSize += add;
             shouldBeSentEnd++;
         }
