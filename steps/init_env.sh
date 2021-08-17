@@ -67,7 +67,7 @@ HYBRIDSE_SOURCE=$1
 if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
   cd ${ROOT}/hybridse
   ln -sf $THIRDPARTY_PATH thirdparty
-  ln -sf $THIRDPARTY_PATH thirdsrc
+  ln -sf $THIRDSRC_PATH thirdsrc
   if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
     alias nproc='sysctl -n hw.logicalcpu'
@@ -78,7 +78,7 @@ if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
   make -j"$(nproc)" install
   mv hybridse ${THIRDPARTY_PATH}/hybridse
 else
-  pushd "${$THIRDPARTY_PATH}"
+  pushd "${THIRDSRC_PATH}"
   tar xzf hybridse.tar.gz -C "${THIRDPARTY_PATH}/hybridse" --strip-components 1
   popd
 fi
