@@ -41,7 +41,7 @@ public interface SqlExecutor {
 
     SQLInsertRows getInsertRows(String db, String sql);
 
-    ResultSet executeSQL(String db, String sql, SQLRequestRow row);
+    ResultSet executeSQLRequest(String db, String sql, SQLRequestRow row);
 
     PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException;
 

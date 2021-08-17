@@ -178,10 +178,10 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public ResultSet executeSQL(String db, String sql, SQLRequestRow row) {
+    public ResultSet executeSQLRequest(String db, String sql, SQLRequestRow row) {
         //TODO(wangtaize) add execption
         Status status = new Status();
-        ResultSet rs = sqlRouter.ExecuteSQL(db, sql, row, status);
+        ResultSet rs = sqlRouter.ExecuteSQLRequest(db, sql, row, status);
         if (status.getCode() != 0) {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }

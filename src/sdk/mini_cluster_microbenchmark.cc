@@ -460,18 +460,18 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     request_row->AppendTimestamp(ts + 1000);
     request_row->Build();
     for (int i = 0; i < 10; i++) {
-        router->ExecuteRequestSQL(db, exe_sql, request_row, &status);
+        router->ExecuteSQLRequest(db, exe_sql, request_row, &status);
     }
     LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
     if (hybridse::sqlcase::SqlCase::IsDebug() || hybridse::sqlcase::SqlCase::IS_PERF()) {
         for (auto _ : state) {
-            router->ExecuteRequestSQL(db, exe_sql, request_row, &status);
+            router->ExecuteSQLRequest(db, exe_sql, request_row, &status);
             state.SkipWithError("benchmark case debug");
             break;
         }
     } else {
         for (auto _ : state) {
-            benchmark::DoNotOptimize(router->ExecuteRequestSQL(db, exe_sql, request_row, &status));
+            benchmark::DoNotOptimize(router->ExecuteSQLRequest(db, exe_sql, request_row, &status));
         }
     }
 }
@@ -551,18 +551,18 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
     request_row->AppendTimestamp(ts + 1000);
     request_row->Build();
     for (int i = 0; i < 10; i++) {
-        router->ExecuteSQL(db, exe_sql, request_row, &status);
+        router->ExecuteSQLParameterized(db, exe_sql, request_row, &status);
     }
     LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
     if (hybridse::sqlcase::SqlCase::IsDebug() || hybridse::sqlcase::SqlCase::IS_PERF()) {
         for (auto _ : state) {
-            router->ExecuteSQL(db, exe_sql, request_row, &status);
+            router->ExecuteSQLParameterized(db, exe_sql, request_row, &status);
             state.SkipWithError("benchmark case debug");
             break;
         }
     } else {
         for (auto _ : state) {
-            benchmark::DoNotOptimize(router->ExecuteSQL(db, exe_sql, request_row, &status));
+            benchmark::DoNotOptimize(router->ExecuteSQLParameterized(db, exe_sql, request_row, &status));
         }
     }
 }

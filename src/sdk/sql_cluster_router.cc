@@ -769,7 +769,7 @@ void SQLClusterRouter::GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<
         GetTables(node->GetProducer(i), tables);
     }
 }
-std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteRequestSQL(const std::string& db,
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLRequest(const std::string& db,
                                                                               const std::string& sql,
                                                                               std::shared_ptr<SQLRequestRow> row,
                                                                               hybridse::sdk::Status* status) {
@@ -804,9 +804,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteRequestSQL(co
 }
 std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
                                                                          ::hybridse::sdk::Status* status) {
-    return ExecuteSQL(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
+    return ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
 }
-std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
+std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParameterized(
     const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
     ::hybridse::sdk::Status* status) {
     auto cntl = std::make_shared<::brpc::Controller>();

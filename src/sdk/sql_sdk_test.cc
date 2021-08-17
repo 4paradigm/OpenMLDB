@@ -718,7 +718,7 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
         ASSERT_TRUE(parameter_row->AppendInt64(1594800959830));
         ASSERT_TRUE(parameter_row->Build());
 
-        auto rs = router->ExecuteSQL(db, where_exist, parameter_row, &status);
+        auto rs = router->ExecuteSQLParameterized(db, where_exist, parameter_row, &status);
 
         if (!rs) {
             FAIL() << "fail to execute sql";
@@ -730,7 +730,7 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
         ASSERT_TRUE(parameter_row->AppendString("mc_0"));
         ASSERT_TRUE(parameter_row->AppendInt64(1594800959828));
         ASSERT_TRUE(parameter_row->Build());
-        auto rs = router->ExecuteSQL(db, where_exist, parameter_row, &status);
+        auto rs = router->ExecuteSQLParameterized(db, where_exist, parameter_row, &status);
         if (!rs) {
             FAIL() << "fail to execute sql";
         }
@@ -741,7 +741,7 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
         parameter_row->AppendString("mc_0");
         parameter_row->AppendInt64(1594800959827);
         parameter_row->Build();
-        auto rs = router->ExecuteSQL(db, where_exist, parameter_row, &status);
+        auto rs = router->ExecuteSQLParameterized(db, where_exist, parameter_row, &status);
         if (!rs) {
             FAIL() << "fail to execute sql";
         }
@@ -752,7 +752,7 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
         parameter_row->AppendString("mc_1");
         parameter_row->AppendInt64(1594800959830);
         parameter_row->Build();
-        auto rs = router->ExecuteSQL(db, where_exist, parameter_row, &status);
+        auto rs = router->ExecuteSQLParameterized(db, where_exist, parameter_row, &status);
         if (!rs) {
             FAIL() << "fail to execute sql";
         }

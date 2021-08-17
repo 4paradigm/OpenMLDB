@@ -406,7 +406,7 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
             }
             row_view.Reset(parameter_rows[0].buf());
             CovertHybridSERowToRequestRow(&row_view, parameter_row);
-            rs = router->ExecuteSQL(sql_case.db(), sql, parameter_row, &status);
+            rs = router->ExecuteSQLParameterized(sql_case.db(), sql, parameter_row, &status);
         } else {
             rs = router->ExecuteSQL(sql_case.db(), sql, &status);
         }
@@ -522,7 +522,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
                     rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
                 }
             } else {
-                rs = router->ExecuteRequestSQL(sql_case.db(), sql, request_row, &status);
+                rs = router->ExecuteSQLRequest(sql_case.db(), sql, request_row, &status);
             }
             if (!rs || status.code != 0) FAIL() << "sql case expect success == true" << status.msg;
             results.push_back(rs);

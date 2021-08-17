@@ -100,14 +100,14 @@ class SQLRouter {
     virtual std::shared_ptr<openmldb::sdk::SQLInsertRows> GetInsertRows(const std::string& db, const std::string& sql,
                                                                         ::hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteRequestSQL(
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLRequest(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> row,
         hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                                  hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
         hybridse::sdk::Status* status) = 0;
 
