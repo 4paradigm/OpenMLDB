@@ -37,11 +37,18 @@ else
     ./steps/setup_thirdparty.sh ${THIRDPARTY_PATH}
 fi
 
-echo "HYBRIDSE_SOURCE: "${HYBRIDSE_SOURCE}
+if [[ -d "THIRDSRC_PATH" ]]; then
+    echo "thirdsrc path: THIRDSRC_PATH already exist, skip download deps"
+else
+    curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
+    tar xzf thirdsrc.tar.gz -C "${THIRDSRC_PATH}" --strip-components 1
+fi
+
 if [ -d "$THIRDPARTY_PATH/hybridse" ]; then
-    echo "thirdparty path: $THIRDPARTY_PATH/hybridse already exist, skip download/install deps"
+    echo "thirdparty/hybridse path: $THIRDPARTY_PATH/hybridse already exist, skip download/install deps"
     exit 0
 fi
+echo "HYBRIDSE_SOURCE: "${HYBRIDSE_SOURCE}
 if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
   echo "Install hybridse locally"
   cd "${ROOT}/hybridse"
