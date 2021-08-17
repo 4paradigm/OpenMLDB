@@ -78,7 +78,7 @@ if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
   make -j"$(nproc)" install
   mv hybridse ${THIRDPARTY_PATH}/hybridse
 else
-  pushd "${THIRDSRC_PATH}"
+  pushd "${$THIRDPARTY_PATH}"
   tar xzf hybridse.tar.gz -C "${THIRDPARTY_PATH}/hybridse" --strip-components 1
   popd
 fi
