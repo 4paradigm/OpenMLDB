@@ -607,7 +607,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
             }
             node::ExprNode* body = ApplyExprFuncHelper(
                 &nm, arg_exprs, std::index_sequence_for<Args...>(), expr_func);
-            CHECK_TRUE(body != nullptr, kCodegenError,
+            CHECK_TRUE(body != nullptr, ::hybridse::common::kCodegenError,
                        "Build output expr failed");
 
             // type infer

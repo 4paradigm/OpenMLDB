@@ -7,6 +7,11 @@ on:
     tags:
       - v*
   pull_request:
+    paths:
+      - .github/workflows/hybridse-ci.yml
+      - cases/**/*
+      - hybridse/**/*
+  workflow_dispatch:
 
 defaults:
   run:
@@ -235,6 +240,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: lib-artifacts
+          path: ${{ env.HYBRIDSE_PATH }}
 
       - uses: actions/setup-java@v2
         with:

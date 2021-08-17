@@ -78,4 +78,5 @@ python/logs
 rsync_src.sh
 install_hybridse_cj.sh
 
-openmldb-*
+# ignore openmldb release dir & pkg
+./openmldb-*

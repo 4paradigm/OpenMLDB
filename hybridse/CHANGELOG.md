@@ -5,6 +5,7 @@
 ### SQL Syntax
 - Support parameterized query [#170](https://github.com/4paradigm/HybridSE/issues/170)
 - `nvl` & `nvl2`: [#190](https://github.com/4paradigm/HybridSE/pull/190)
+- bitwise operators: [#244](https://github.com/4paradigm/OpenMLDB/pull/244)
 
 ## [0.2.1] - 2021-08-08
 ### Feature

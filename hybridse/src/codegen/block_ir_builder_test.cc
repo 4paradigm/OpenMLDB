@@ -72,7 +72,7 @@ void CheckResult(node::NodeManager *manager, node::FnNodeFnDef *fn_def_node, int
     ASSERT_EQ(res, test_fn(a, b));
 }
 
-TEST_F(BlockIRBuilderTest, test_mutable_variable_test) {
+TEST_F(BlockIRBuilderTest, TestMutableVariableTest) {
     //    const std::string test =
     //        "%%fun\n"
     //        "def test(x:i32,y:i32):i32\n"
@@ -132,7 +132,7 @@ TEST_F(BlockIRBuilderTest, test_mutable_variable_test) {
 //    CheckResult(manager_, test, 2, 1, 2);
 //}
 //
-TEST_F(BlockIRBuilderTest, test_if_elif_else_block) {
+TEST_F(BlockIRBuilderTest, TestIfElifElseBlock) {
     //    const std::string test =
     //        "%%fun\n"
     //        "def test(x:i32,y:i32):i32\n"

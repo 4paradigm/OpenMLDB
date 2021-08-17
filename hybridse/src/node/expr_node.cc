@@ -213,6 +213,14 @@ Status ExprNode::IsCastAccept(node::NodeManager* nm, const TypeNode* src,
     return Status::OK();
 }
 
+/**
+* support rules:
+*  case target_type
+*   bool         -> from_type is bool
+*   int*         -> from_type is bool or from_type is equal/smaller integral type
+*   float|double -> from_type is bool or equal/smaller float type
+*   timestamp    -> from_type is timestamp or integral type
+*/
 bool ExprNode::IsSafeCast(const TypeNode* from_type,
                           const TypeNode* target_type) {
     if (from_type == nullptr || target_type == nullptr) {
@@ -471,6 +479,38 @@ Status ExprNode::LogicalOpTypeAccept(node::NodeManager* nm, const TypeNode* lhs,
     return Status::OK();
 }
 
+/**
+ * Bitwise Logical Operators, which is
+ *   - bitwise NOT: `~ rhs`
+ *   - bitwise AND: `lhs & rhs`
+ *   - bitwise OR:  `lhs & rhs`
+ *   - bitwise XOR: `lhs ^ rhs`
+ * Rules:
+ *  only accept NULL, int64, int32, int16
+ */
+Status ExprNode::BitwiseLogicalTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
+                                          const TypeNode** output_type) {
+    CHECK_TRUE(lhs != nullptr && rhs != nullptr, kTypeError, "lhs and rhs must not null");
+    CHECK_TRUE((lhs->IsNull() || lhs->IsIntegral()) && (rhs->IsNull() || rhs->IsIntegral()), kTypeError,
+               "Invalid Bitwise Op type, not integral type: lhs ", lhs->GetName(), ", rhs ", rhs->GetName());
+    if (lhs->IsNull()) {
+        *output_type = rhs;
+    } else if (rhs->IsNull()) {
+        *output_type = lhs;
+    } else {
+        CHECK_STATUS(InferNumberCastTypes(nm, lhs, rhs, output_type));
+    }
+    return Status::OK();
+}
+
+Status ExprNode::BitwiseNotTypeAccept(node::NodeManager* nm, const TypeNode* rhs, const TypeNode** output_type) {
+    CHECK_TRUE(rhs != nullptr, kTypeError, "value for bitwise NOT must not null");
+    CHECK_TRUE(rhs->IsNull() || rhs->IsIntegral(), kTypeError,
+               "value for bitwise NOT must be integral type, but get ", rhs->GetName());
+    *output_type = rhs;
+    return Status::OK();
+}
+
 Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2, kTypeError);
     auto left_type = GetChild(0)->GetOutputType();
@@ -550,6 +590,15 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             SetNullable(nullable);
             break;
         }
+        case kFnOpBitwiseAnd:
+        case kFnOpBitwiseOr:
+        case kFnOpBitwiseXor: {
+            const TypeNode* top_type = nullptr;
+            CHECK_STATUS(BitwiseLogicalTypeAccept(ctx->node_manager(), left_type, right_type, &top_type));
+            SetOutputType(top_type);
+            SetNullable(nullable);
+            break;
+        }
         case kFnOpAt: {
             return ctx->InferAsUdf(this, "at");
             break;
@@ -593,6 +642,11 @@ Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             break;
         }
         case kFnOpNonNull: {
+            SetOutputType(dtype);
+            SetNullable(false);
+            break;
+        }
+        case kFnOpBitwiseNot: {
             SetOutputType(dtype);
             SetNullable(false);
             break;
