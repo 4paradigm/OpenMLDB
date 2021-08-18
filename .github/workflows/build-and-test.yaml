@@ -24,57 +24,40 @@ jobs:
       - uses: actions/checkout@v1
       - name: build
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
-          rm -rf thirdparty
+          echo "build_and_cpp_ut build"
+#          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+#          mkdir -p build
+#          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
+#          rm -rf thirdparty
+#      - name: run cpp
+#        run: |
+#          bash steps/ut.sh
 
-      - name: pack OpenMLDB
-        if: ${{ github.event_name == 'push' }}
-        run: |
-          VERSION="snapshot"
-          if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=$(echo $VERSION | sed -e 's/^v//')
-          fi
-          bash steps/package_openmldb.sh $VERSION ${{ env.OS }}
-
-      - name: upload artifacts
-        if: ${{ github.event_name == 'push' }}
-        uses: actions/upload-artifact@v2
-        with:
-          path: openmldb-*.tar.gz
-          name: release-artifacts
-
-      - name: run cpp
-        run: |
-          bash steps/ut.sh
-
-      - name: upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-ut-result-cpp-${{ github.sha }}
-          path: |
-            reports/*.xml
-
-
-  publish-test-results:
-    runs-on: ubuntu-latest
-    needs: [ "build_and_cpp_ut"]
-
-    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
-    if: >
-      always() && github.event_name == 'push' || (
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.sender.login != 'dependabot[bot]' )
-    steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v2
-
-      - name: Publish OpenMLDB Linux UT Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          files: linux-ut-result-*/**/*.xml
-          check_name: Linux OpenMLDB Test Report
-          comment_title: Linux OpenMLDB Test Report
+#      - name: upload unit test results
+#        if: always()
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: linux-ut-result-cpp-${{ github.sha }}
+#          path: |
+#            reports/*.xml
+#
+#
+#  publish-test-results:
+#    runs-on: ubuntu-latest
+#    needs: [ "build_and_cpp_ut"]
+#
+#    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
+#    if: >
+#      always() && github.event_name == 'push' || (
+#      github.event.pull_request.head.repo.full_name == github.repository &&
+#      github.event.sender.login != 'dependabot[bot]' )
+#    steps:
+#      - name: Download Artifacts
+#        uses: actions/download-artifact@v2
+#
+#      - name: Publish OpenMLDB Linux UT Results
+#        uses: EnricoMi/publish-unit-test-result-action@v1
+#        with:
+#          files: linux-ut-result-*/**/*.xml
+#          check_name: Linux OpenMLDB Test Report
+#          comment_title: Linux OpenMLDB Test Report

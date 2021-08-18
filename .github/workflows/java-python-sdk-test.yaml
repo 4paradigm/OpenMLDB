@@ -23,74 +23,75 @@ jobs:
 
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
-
-      - name: run jdbc smoke test
-        run: |
-          sh steps/ut_zookeeper.sh start
-          cd onebox && sh start_onebox.sh && cd -
-          cd java
-          mvn test -Dscalatest.skip=true
-          cd -
-          cd onebox && sh stop_all.sh && cd -
-          sh steps/ut_zookeeper.sh stop
-
-      - name: upload java ut results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-ut-result-java-${{ github.sha }}
-          path: |
-            java/openmldb-jdbc/target/**/TEST-*.xml
-
-  python-sdk:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
-    steps:
-      - uses: actions/checkout@v1
-      - name: build pysdk and sqlalchemy
-        run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
-      - name: test sqlalchemy
-        run: |
-          python3 -m easy_install nose sqlalchemy pip
-          bash steps/fesql_test_python.sh
-      - name: upload python ut results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-ut-result-python-${{ github.sha }}
-          path: |
-            python/sqlalchemy-test/nosetests.xml
-      - name: upload pysdk and whl
-        if: ${{ github.event_name == 'push' }}
-        uses: actions/upload-artifact@v2
-        with:
-          path: |
-            build/python/dist/openmldb*.whl
-          name: python-artifacts
-
-  publish-test-results:
-    runs-on: ubuntu-latest
-    needs: [ "java-sdk", "python-sdk" ]
-
-    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
-    if: >
-      always() && github.event_name == 'push' || (
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.sender.login != 'dependabot[bot]' )
-    steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v2
-
-      - name: Publish Java and Python SDK Linux UT Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          files: linux-ut-result-*/**/*.xml
-          check_name: Linux Python/Java SDK Test Report
-          comment_title: Linux Python/Java SDK Test Report
+          echo "build jsdk and pysdk"
+#          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+#          mkdir -p build
+#          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+#
+#      - name: run jdbc smoke test
+#        run: |
+#          sh steps/ut_zookeeper.sh start
+#          cd onebox && sh start_onebox.sh && cd -
+#          cd java
+#          mvn test -Dscalatest.skip=true
+#          cd -
+#          cd onebox && sh stop_all.sh && cd -
+#          sh steps/ut_zookeeper.sh stop
+#
+#      - name: upload java ut results
+#        if: always()
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: linux-ut-result-java-${{ github.sha }}
+#          path: |
+#            java/openmldb-jdbc/target/**/TEST-*.xml
+#
+#  python-sdk:
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.0
+#    steps:
+#      - uses: actions/checkout@v1
+#      - name: build pysdk and sqlalchemy
+#        run: |
+#          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+#          mkdir -p build
+#          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
+#      - name: test sqlalchemy
+#        run: |
+#          python3 -m easy_install nose sqlalchemy pip
+#          bash steps/fesql_test_python.sh
+#      - name: upload python ut results
+#        if: always()
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: linux-ut-result-python-${{ github.sha }}
+#          path: |
+#            python/sqlalchemy-test/nosetests.xml
+#      - name: upload pysdk and whl
+#        if: ${{ github.event_name == 'push' }}
+#        uses: actions/upload-artifact@v2
+#        with:
+#          path: |
+#            build/python/dist/openmldb*.whl
+#          name: python-artifacts
+#
+#  publish-test-results:
+#    runs-on: ubuntu-latest
+#    needs: [ "java-sdk", "python-sdk" ]
+#
+#    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
+#    if: >
+#      always() && github.event_name == 'push' || (
+#      github.event.pull_request.head.repo.full_name == github.repository &&
+#      github.event.sender.login != 'dependabot[bot]' )
+#    steps:
+#      - name: Download Artifacts
+#        uses: actions/download-artifact@v2
+#
+#      - name: Publish Java and Python SDK Linux UT Results
+#        uses: EnricoMi/publish-unit-test-result-action@v1
+#        with:
+#          files: linux-ut-result-*/**/*.xml
+#          check_name: Linux Python/Java SDK Test Report
+#          comment_title: Linux Python/Java SDK Test Report
