@@ -104,6 +104,21 @@ class Table {
     std::string empty;
 };
 
+class ColumnTypes {
+ public:
+    ColumnTypes() : types_() {
+
+    }
+    void AddColumnType(hybridse::sdk::DataType type) {
+        types_.push_back(type);
+    }
+    const hybridse::sdk::DataType GetColumnType(size_t idx) const { return types_[idx]; }
+    const size_t GetTypeSize() const { return types_.size(); }
+
+ private:
+    std::vector<hybridse::sdk::DataType> types_;
+};
+
 class TableSet {
  public:
     TableSet() {}

@@ -87,9 +87,6 @@ class SQLRouter {
 
     virtual std::shared_ptr<openmldb::sdk::SQLRequestRow> GetRequestRow(const std::string& db, const std::string& sql,
                                                                         hybridse::sdk::Status* status) = 0;
-    virtual std::shared_ptr<openmldb::sdk::SQLRequestRow> GetRequestRow(
-        const std::string& db, const std::string& sql, const std::shared_ptr<::hybridse::sdk::Schema> parameter_schema,
-        hybridse::sdk::Status* status) = 0;
     virtual std::shared_ptr<openmldb::sdk::SQLRequestRow> GetRequestRowByProcedure(const std::string& db,
                                                                                    const std::string& sp_name,
                                                                                    ::hybridse::sdk::Status* status) = 0;

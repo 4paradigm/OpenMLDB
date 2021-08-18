@@ -49,23 +49,18 @@ public class SQLRouterSmokeTest {
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
-            // insert normal
+            // insert normal (1000, 'hello')
             String insert = "insert into tsql1010 values(1000, 'hello');";
             ok = router.executeInsert(dbname, insert);
             Assert.assertTrue(ok);
-            // insert placeholder
+            // insert placeholder (1001, 'world')
             String insertPlaceholder = "insert into tsql1010 values(?, ?);";
-            SQLInsertRow insertRow = router.getInsertRow(dbname, insertPlaceholder);
-            insertRow.Init(5);
-            insertRow.AppendInt64(1001);
-            insertRow.AppendString("world");
             PreparedStatement impl = router.getInsertPreparedStmt(dbname, insertPlaceholder);
             impl.setLong(1, 1001);
             impl.setString(2, "world");
             ok = impl.execute();
-            // ok = router.executeInsert(dbname, insertPlaceholder, insertRow);
             Assert.assertTrue(ok);
-            // insert placeholder batch
+            // insert placeholder batch (1002, 'hi'), (1003, 'word')
             SQLInsertRows insertRows = router.getInsertRows(dbname, insertPlaceholder);
             SQLInsertRow row1 = insertRows.NewRow();
             row1.Init(2);
@@ -77,18 +72,29 @@ public class SQLRouterSmokeTest {
             row2.AppendString("word");
             ok = router.executeInsert(dbname, insertPlaceholder, insertRows);
             Assert.assertTrue(ok);
+
             // select
             String select1 = "select * from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet)router.executeSQL(dbname, select1);
+
             Assert.assertEquals(2, rs1.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs1.GetInternalSchema().GetColumnType(0).toString());
             Assert.assertEquals("kTypeString", rs1.GetInternalSchema().GetColumnType(1).toString());
             Assert.assertTrue(rs1.next());
             Assert.assertEquals("hello", rs1.getString(2));
             Assert.assertEquals(1000, rs1.getLong(1));
+
             Assert.assertTrue(rs1.next());
             Assert.assertEquals("world", rs1.getString(2));
             Assert.assertEquals(1001, rs1.getLong(1));
+
+            Assert.assertTrue(rs1.next());
+            Assert.assertEquals("hi", rs1.getString(2));
+            Assert.assertEquals(1002, rs1.getLong(1));
+
+            Assert.assertTrue(rs1.next());
+            Assert.assertEquals("word", rs1.getString(2));
+            Assert.assertEquals(1003, rs1.getLong(1));
             rs1.close();
 
             String select2 = "select col1 from tsql1010;";
@@ -99,9 +105,14 @@ public class SQLRouterSmokeTest {
             Assert.assertEquals(1000, rs2.getLong(1));
             Assert.assertTrue(rs2.next());
             Assert.assertEquals(1001, rs2.getLong(1));
+            Assert.assertTrue(rs2.next());
+            Assert.assertEquals(1002, rs2.getLong(1));
+            Assert.assertTrue(rs2.next());
+            Assert.assertEquals(1003, rs2.getLong(1));
             rs2.close();
 
             String select3 = "select col2 from tsql1010;";
+
             com._4paradigm.openmldb.jdbc.SQLResultSet rs3 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select3);
             Assert.assertEquals(1, rs3.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeString", rs3.GetInternalSchema().GetColumnType(0).toString());
@@ -109,12 +120,88 @@ public class SQLRouterSmokeTest {
             Assert.assertEquals("hello", rs3.getString(1));
             Assert.assertTrue(rs3.next());
             Assert.assertEquals("world", rs3.getString(1));
+            Assert.assertTrue(rs3.next());
+            Assert.assertEquals("hi", rs3.getString(1));
+            Assert.assertTrue(rs3.next());
+            Assert.assertEquals("word", rs3.getString(1));
             rs3.close();
+
+            // parameterized query
+            String parameterizedQuerySql = "select col1, col2 from tsql1010 where col2 = ? and col1 < ?;";
+            PreparedStatement query_statement = router.getPreparedStatement(dbname, parameterizedQuerySql);
+            // col2 = "hi" and col1 < 1003
+            {
+                query_statement.setString(1, "hi");
+                query_statement.setLong(2, 1003);
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
+                Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
+                Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
+                Assert.assertTrue(rs4.next());
+                Assert.assertEquals(1002, rs4.getLong(1));
+                Assert.assertEquals("hi", rs4.getString(2));
+                Assert.assertFalse(rs4.next());
+                rs4.close();
+            }
+            // col2 = "hi" and col1 < 1002
+            {
+                query_statement.setString(1, "hi");
+                query_statement.setLong(2, 1002);
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
+                Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
+                Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
+                Assert.assertFalse(rs4.next());
+                rs4.close();
+            }
+            // col2 = "world" and col1 < 1003
+            {
+                query_statement.setString(1, "world");
+                query_statement.setLong(2, 1003);
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
+                Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
+                Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
+                Assert.assertTrue(rs4.next());
+                Assert.assertEquals(1001, rs4.getLong(1));
+                Assert.assertEquals("world", rs4.getString(2));
+                Assert.assertFalse(rs4.next());
+                rs4.close();
+            }
+            // col2 = "hello" and col1 < 1003
+            {
+                query_statement.setString(1, "hello");
+                query_statement.setLong(2, 1003);
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
+                Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
+                Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
+                Assert.assertTrue(rs4.next());
+                Assert.assertEquals(1000, rs4.getLong(1));
+                Assert.assertEquals("hello", rs4.getString(2));
+                Assert.assertFalse(rs4.next());
+                rs4.close();
+            }
+            // col2 = "word" and col1 < 1003
+            {
+                query_statement.setString(1, "word");
+                query_statement.setLong(2, 1003);
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
+                Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
+                Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
+                Assert.assertFalse(rs4.next());
+                rs4.close();
+            }
             // drop table
             String drop = "drop table tsql1010;";
             ok = router.executeDDL(dbname, drop);
             Assert.assertTrue(ok);
             // insert into deleted table
+            SQLInsertRow insertRow = router.getInsertRow(dbname, insertPlaceholder);
+            insertRow.Init(5);
+            insertRow.AppendInt64(1005);
+            insertRow.AppendString("abc");
             ok = router.executeInsert(dbname, insertPlaceholder, insertRow);
             Assert.assertFalse(ok);
             // drop database
@@ -126,6 +213,37 @@ public class SQLRouterSmokeTest {
         }
     }
 
+    @Test
+    public void testParameterizedQueryFail() {
+        SdkOption option = new SdkOption();
+        option.setZkPath(TestConfig.ZK_PATH);
+        option.setZkCluster(TestConfig.ZK_CLUSTER);
+        option.setSessionTimeout(200000);
+        try {
+            SqlExecutor router = new SqlClusterExecutor(option);
+            String dbname = "db" + random.nextInt(100000);
+            // create db
+            router.dropDB(dbname);
+            boolean ok = router.createDB(dbname);
+            Assert.assertTrue(ok);
+            String ddl = "create table tsql1010 ( col1 bigint, col2 string, index(key=col2, ts=col1));";
+            // create table
+            ok = router.executeDDL(dbname, ddl);
+            Assert.assertTrue(ok);
+            // parameterized query
+            String parameterizedQuerySql = "select col1, col2 from tsql1010 where col2 = ? and col1 < ?;";
+            PreparedStatement query_statement = router.getPreparedStatement(dbname, parameterizedQuerySql);
+            // missing 2nd parameter
+            {
+                query_statement.setString(1, "hi");
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                Assert.fail("executeQuery is expected to throw exception");
+                rs4.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     @Test
     public void testInsertMeta() {
         SdkOption option = new SdkOption();

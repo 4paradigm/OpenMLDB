@@ -28,6 +28,7 @@
 
 %shared_ptr(hybridse::sdk::ResultSet);
 %shared_ptr(hybridse::sdk::Schema);
+%shared_ptr(hybridse::sdk::ColumnTypes);
 %shared_ptr(openmldb::sdk::SQLRouter);
 %shared_ptr(openmldb::sdk::SQLRequestRow);
 %shared_ptr(openmldb::sdk::SQLRequestRowBatch);
