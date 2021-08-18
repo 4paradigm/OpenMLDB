@@ -4,7 +4,7 @@ on:
   # the action will only run on workflows completed
   workflow_run:
 #    workflows: [ "OpenMLDB Build and Test", "Cpp SDK Test", "Cpp SDK Cluster Test", "Java and Python SDK Test" ]
-    workflows: ["OpenMLDB Build and Test"]
+    workflows: ["build-and-test"]
     types:
       - completed
 env:
