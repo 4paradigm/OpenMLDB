@@ -234,56 +234,98 @@ cases:
         3, 3, 3, 3.0, 3.0, 1590115420003, 2020-05-22, NULL, 5
   - id: between_predicate_1
     desc: between predicate, return true
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1
+        data: |
+          1, 1590115420001, 2020-05-20
     sql: |
-      select 10 between 0 and 20 as col1;
+      select 10 between 0 and 20 as col1 from t1;
     expect:
       columns: ["col1:bool"]
       rows:
         - [true]
   - id: between_predicate_2
     desc: between predicate, return false
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1
+        data: |
+          1, 1590115420001, 2020-05-20
     sql: |
-      select 10 between 15 and 20 as col1;
+      select 10 between 15 and 20 as col1 from t1;
     expect:
       columns: ["col1:bool"]
       rows:
         - [false]
   - id: between_predicate_3
     desc: between (not) predicate, return true
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1
+        data: |
+          1, 1590115420001, 2020-05-20
     sql: |
-      select 10 not between 0 and 9 as col1;
+      select 10 not between 0 and 9 as col1 from t1;
     expect:
       columns: ["col1:bool"]
       rows:
         - [true]
   - id: between_predicate_4
     desc: between (not) predicate, return false
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1
+        data: |
+          1, 1590115420001, 2020-05-20
     sql: |
-      select 10 not between 0 and 20 as col1;
+      select 10 not between 0 and 20 as col1 from t1;
     expect:
       columns: ["col1:bool"]
       rows:
         - [false]
   - id: between_predicate_5
     desc: between predicate where expr1 is NULL, return NULL
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1
+        data: |
+          1, 1590115420001, 2020-05-20
     sql: |
-      select NULL between 0 and 20 as col1;
+      select NULL between 0 and 20 as col1 from t1;
     expect:
       columns: ["col1:bool"]
       rows:
         - [NULL]
   - id: between_predicate_6
     desc: between predicate where expr2 is NULL, return NULL
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1
+        data: |
+          1, 1590115420001, 2020-05-20
     sql: |
-      select 10 between NULL and 20 as col1;
+      select 10 between NULL and 20 as col1 from t1;
     expect:
       columns: ["col1:bool"]
       rows:
         - [NULL]
   - id: between_predicate_7
     desc: between (not) predicate where expr3 is NULL, return NULL
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1
+        data: |
+          1, 1590115420001, 2020-05-20
     sql: |
-      select 10 not between 0 and NULL as col1;
+      select 10 not between 0 and NULL as col1 from t1;
     expect:
       columns: ["col1:bool"]
       rows:

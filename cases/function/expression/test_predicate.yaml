@@ -380,14 +380,11 @@ cases:
           - [4, Boey,  C, 1612237214000, 2021-2-2]
           - [5, Bunny, D, 1612875381000, 2021-2-9]
     sql: |
-      SELECT id, name FROM {0} WHERE id BETWEEN 1 AND 4;
+      SELECT id, name FROM {0} WHERE id = 1 AND id BETWEEN 1 AND 4;
     expect:
       columns: ["id bigint", "name string"]
       rows:
         - [1, Lucy]
-        - [2, Zoey]
-        - [3, Joey]
-        - [4, Boey]
   - id: between_predicate_2
     desc: between predicate, string between
     inputs:
@@ -398,32 +395,61 @@ cases:
           - [2, Zoey,  B, 1609545841000, 2021-1-2]
           - [3, Joey,  B, 1610766254000, 2021-1-16]
           - [4, Boey,  C, 1612237214000, 2021-2-2]
+          - [5, Bill,  C, 1612875381000, 2021-2-9]
           - [5, Bunny, D, 1612875381000, 2021-2-9]
     sql: |
-      SELECT id, code FROM {0} WHERE code BETWEEN "A" AND "C";
+      SELECT id, code FROM {0} WHERE id = 5 AND code NOT BETWEEN "A" AND "C";
     expect:
       columns: ["id bigint", "code string"]
       rows:
-        - [1, A]
-        - [2, B]
-        - [3, B]
-        - [4, C]
+        - [5, D]
   - id: between_predicate_3
     desc: between predicate, timestamp between
     inputs:
       - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
         indexs: [ "index1:id:ctime" ]
         rows:
-          - [1, Lucy,  A, 1609459201000, 2021-1-1]
-          - [2, Zoey,  B, 1609545841000, 2021-1-2]
-          - [3, Joey,  B, 1610766254000, 2021-1-16]
-          - [4, Boey,  C, 1612237214000, 2021-2-2]
-          - [5, Bunny, D, 1612875381000, 2021-2-9]
+          - [1, Lucy,  A, 1609459201000, 2021-01-01]
+          - [2, Zoey,  B, 1609545841000, 2021-01-02]
+          - [3, Joey,  B, 1610766254000, 2021-02-09]
+          - [3, Joe,   B, 1612875381000, 2021-01-16]
+          - [4, Boey,  C, 1612237214000, 2021-02-02]
+          - [5, Bunny, D, 1612875381000, 2021-02-09]
     sql: |
-      SELECT id, name, code FROM {0} WHERE ctime BETWEEN timestamp("2021-1-1") AND timestamp("2021-1-30");
+      SELECT id, name, code FROM {0} WHERE id = 3 AND ctime BETWEEN timestamp("2021-01-01") AND timestamp("2021-01-30");
     expect:
       columns: ["id bigint", "name string", "code string"]
       rows:
-        - [1, Lucy, A]
-        - [2, Zoey, B]
         - [3, Joey, B]
+  - id: between_predicate_4
+    desc: between predicate with aggregation function
+    sql: |
+      SELECT id, col1, std_ts,
+      sum(id) OVER w1 BETWEEN 2 AND 6 as w1_id
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY col1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);
+    inputs:
+      - columns: ["id:bigint", "col1:int32", "std_ts:timestamp"]
+        indexs: ["index1:id:std_ts", "index2:col1:std_ts"]
+        rows:
+          - [1, 1, 1590115420000]
+          - [2, 2, 1590115420000]
+          - [3, 1, 1590115430000]
+          - [4, 2, 1590115430000]
+          - [5, 1, 1590115440000]
+          - [6, 2, 1590115440000]
+          - [7, 1, 1590115450000]
+          - [8, 2, 1590115450000]
+          - [9, 1, 1590115460000]
+    expect:
+      columns: ["id:bigint", "col1:int32", "std_ts:timestamp", "w1_id:bool"]
+      rows:
+          - [1, 1, 1590115420000, false]
+          - [3, 1, 1590115430000, true]
+          - [5, 1, 1590115440000, false]
+          - [7, 1, 1590115450000, false]
+          - [9, 1, 1590115460000, false]
+          - [2, 2, 1590115420000, true]
+          - [4, 2, 1590115430000, true]
+          - [6, 2, 1590115440000, false]
+          - [8, 2, 1590115450000, false]
