@@ -159,7 +159,7 @@ void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t si
     if (ts_cnt_ > 1) {
         return;
     }
-    DataBlock* db = new DataBlock(1, data, size);
+    auto* db = new DataBlock(1, data, size);
     Put(key, time, db);
 }
 
@@ -167,9 +167,13 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     if (ts_cnt_ > 1) {
         return;
     }
-    void* entry = NULL;
-    uint32_t byte_size = 0;
     std::lock_guard<std::mutex> lock(mu_);
+    PutUnlock(key, time, row);
+}
+
+void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
+    void* entry = nullptr;
+    uint32_t byte_size = 0;
     int ret = entries_->Get(key, entry);
     if (ret < 0 || entry == NULL) {
         char* pk = new char[key.size()];
@@ -189,13 +193,13 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
 }
 
-void Segment::BulkLoadPut(int key_entry_id, const Slice& key, uint64_t time, DataBlock* row) {
+void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t time, DataBlock* row) {
     void* key_entry_or_list = nullptr;
     uint32_t byte_size = 0;
     std::lock_guard<std::mutex> lock(mu_);  // TODO(hw): need lock?
     int ret = entries_->Get(key, key_entry_or_list);
     if (ts_cnt_ == 1) {
-        Put(key, time, row);
+        PutUnlock(key, time, row);
     } else {
         if (ret < 0 || key_entry_or_list == nullptr) {
             char* pk = new char[key.size()];

@@ -35,7 +35,6 @@ public class ImporterTest extends TestCase {
         // c++ hash result
         List<Integer> expected = Arrays.asList(0, 2, 3, 5, 1, 4, 6);
         Assert.assertArrayEquals(expected.toArray(), results.toArray());
-
     }
 
     // TODO(hw): run this test instead of running main class, just for simplifying.
@@ -56,7 +55,7 @@ public class ImporterTest extends TestCase {
 //                    "index(key=(vendor_id, passenger_count), ts=pickup_datetime),\n" +
 //                    "index(key=passenger_count, ts=dropoff_datetime))\n" +
                 ");",
-                "--files", "src/test/resources/train.csv.small, /home/huangwei/NYCTaxiDataset/train.csv",
+                "--files", " /home/huangwei/NYCTaxiDataset/train.csv",
                 "--rpc_size_limit", "20971520", // 20MB
                 "-f",
                 "--importer_mode", "bulkload"

@@ -81,20 +81,20 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
     MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
                         uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
 
-    ~MemTableKeyIterator();
+    ~MemTableKeyIterator() override;
 
-    void Seek(const std::string& key);
+    void Seek(const std::string& key) override;
 
-    void SeekToFirst();
+    void SeekToFirst() override;
 
-    void Next();
+    void Next() override;
 
-    bool Valid();
+    bool Valid() override;
 
-    std::unique_ptr<::hybridse::vm::RowIterator> GetValue();
-    ::hybridse::vm::RowIterator* GetRawValue();
+    std::unique_ptr<::hybridse::vm::RowIterator> GetValue() override;
+    ::hybridse::vm::RowIterator* GetRawValue() override;
 
-    const hybridse::codec::Row GetKey();
+    const hybridse::codec::Row GetKey() override;
 
  private:
     void NextPK();
@@ -108,7 +108,7 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
     ::openmldb::storage::TTLType ttl_type_;
     uint64_t expire_time_;
     uint64_t expire_cnt_;
-    uint32_t ts_index_;
+    uint32_t ts_index_{};
     Ticket ticket_;
     uint32_t ts_idx_;
 };
@@ -117,7 +117,7 @@ class MemTableTraverseIterator : public TableIterator {
  public:
     MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
                              uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
-    virtual ~MemTableTraverseIterator();
+    ~MemTableTraverseIterator() override;
     inline bool Valid() override;
     void Next() override;
     void Seek(const std::string& key, uint64_t time) override;
@@ -217,7 +217,7 @@ class MemTable : public Table {
 
     inline void RecordCntIncr(uint32_t cnt) { record_cnt_.fetch_add(cnt, std::memory_order_relaxed); }
 
-    inline uint32_t GetKeyEntryHeight() { return key_entry_max_height_; }
+    inline uint32_t GetKeyEntryHeight() const { return key_entry_max_height_; }
 
     bool DeleteIndex(std::string idx_name);
 
