@@ -1602,18 +1602,31 @@ class GetFieldExpr : public ExprNode {
 
 class BetweenExpr : public ExprNode {
  public:
-    BetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right)
-        : ExprNode(kExprBetween), expr_(expr), left_(left), right_(right), is_not_between_(false) {}
+    BetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right):
+        BetweenExpr(expr, left, right, false) {}
+    BetweenExpr(ExprNode* expr, ExprNode* left, ExprNode* right, bool is_not_between)
+        : ExprNode(kExprBetween), is_not_between_(is_not_between) {
+        AddChild(expr);
+        AddChild(left);
+        AddChild(right);
+    }
     ~BetweenExpr() {}
+
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
     BetweenExpr *ShadowCopy(NodeManager *) const override;
+
     void set_is_not_between(const bool flag) { is_not_between_ = flag; }
     const bool is_not_between() const { return is_not_between_; }
-    ExprNode *expr_;
-    ExprNode *left_;
-    ExprNode *right_;
+
+    ExprNode* GetExpr() const { return GetChildNum() > 0 ? GetChild(0) : nullptr; }
+    ExprNode* GetLeft() const { return GetChildNum() > 1 ? GetChild(1) : nullptr; }
+    ExprNode* GetRight() const { return GetChildNum() > 2 ? GetChild(2) : nullptr; }
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
+ private:
     bool is_not_between_;
 };
 class ResTarget : public SqlNode {
@@ -2435,7 +2448,7 @@ bool SqlListEquals(const SqlNodeList *left, const SqlNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);
 bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
 bool TypeEquals(const TypeNode *left, const TypeNode *right);
-bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows, ExprNode *node_ptr,
+bool WindowOfExpression(const std::map<std::string, const WindowDefNode *>& windows, ExprNode *node_ptr,
                         const WindowDefNode **output);
 void ColumnOfExpression(const ExprNode *node_ptr,
                         std::vector<const node::ExprNode *> *columns);  // NOLINT

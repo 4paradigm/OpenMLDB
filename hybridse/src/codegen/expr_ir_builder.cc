@@ -178,6 +178,12 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
                 output));
             break;
         }
+        case ::hybridse::node::kExprBetween: {
+            CHECK_STATUS(BuildBetweenExpr(
+                dynamic_cast<const ::hybridse::node::BetweenExpr*>(node),
+                output));
+            break;
+        }
         default: {
             return Status(kCodegenError,
                           "Expression Type " +
@@ -918,6 +924,20 @@ Status ExprIRBuilder::BuildCondExpr(const ::hybridse::node::CondExpr* node,
     CondSelectIRBuilder cond_select_builder;
     return cond_select_builder.Select(ctx_->GetCurrentBlock(), cond_value,
                                       left_value, right_value, output);
+}
+
+Status ExprIRBuilder::BuildBetweenExpr(const ::hybridse::node::BetweenExpr* node, NativeValue* output) {
+    NativeValue expr_value;
+    CHECK_STATUS(this->Build(node->GetExpr(), &expr_value));
+
+    NativeValue left_value;
+    CHECK_STATUS(this->Build(node->GetLeft(), &left_value));
+
+    NativeValue right_value;
+    CHECK_STATUS(this->Build(node->GetRight(), &right_value));
+
+    PredicateIRBuilder predicate_ir_builder(ctx_->GetCurrentBlock());
+    return predicate_ir_builder.BuildBetweenExpr(expr_value, left_value, right_value, node->is_not_between(), output);
 }
 
 Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const int schema_idx, llvm::Value** slice_ptr,

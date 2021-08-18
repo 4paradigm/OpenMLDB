@@ -749,7 +749,16 @@ AllNode* AllNode::ShadowCopy(NodeManager* nm) const {
 }
 
 BetweenExpr* BetweenExpr::ShadowCopy(NodeManager* nm) const {
-    return nm->MakeBetweenExpr(expr_, left_, right_, is_not_between_);
+    return nm->MakeBetweenExpr(GetExpr(), GetLeft(), GetRight(), is_not_between());
+}
+Status BetweenExpr::InferAttr(ExprAnalysisContext *ctx) {
+    CHECK_STATUS(GetExpr()->InferAttr(ctx));
+    CHECK_STATUS(GetLeft()->InferAttr(ctx));
+    CHECK_STATUS(GetRight()->InferAttr(ctx));
+    const TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+    SetOutputType(top_type);
+    SetNullable(GetExpr()->nullable() || GetLeft()->nullable() || GetRight()->nullable());
+    return Status::OK();
 }
 
 QueryExpr* QueryExpr::ShadowCopy(NodeManager* nm) const {
