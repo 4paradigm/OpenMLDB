@@ -1,18 +1,15 @@
 name: deploy
 
 on:
-  # the action will only run on dependabot/fork pull request
+  # the action will only run on workflows completed
   workflow_run:
     workflows: [ "OpenMLDB Build and Test", "Cpp SDK Test", "Java and Python SDK Test" ]
     types:
       - completed
-  push:
     branches:
       - main
     tags:
       - v*
-  pull_request:
-  workflow_dispatch:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
