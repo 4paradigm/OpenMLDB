@@ -11,7 +11,7 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  HYBRIDSE_SOURCE: local
+  HYBRIDSE_SOURCE: download
 
 jobs:
   build_and_cpp_ut:
