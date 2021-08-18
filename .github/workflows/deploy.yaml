@@ -6,9 +6,6 @@ on:
     workflows: [ "OpenMLDB Build and Test", "Cpp SDK Test", "Cpp SDK Cluster Test", "Java and Python SDK Test" ]
     types:
       - completed
-    tags:
-      - v*
-
 env:
   GIT_SUBMODULE_STRATEGY: recursive
   HYBRIDSE_SOURCE: download
