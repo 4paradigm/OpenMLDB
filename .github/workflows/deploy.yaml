@@ -6,8 +6,6 @@ on:
     workflows: [ "OpenMLDB Build and Test", "Cpp SDK Test", "Cpp SDK Cluster Test", "Java and Python SDK Test" ]
     types:
       - completed
-    branches:
-      - main
     tags:
       - v*
 
