@@ -12,13 +12,8 @@ env:
 
 jobs:
   build-and-pack:
-#    if: ${{ github.event.action == 'completed' && github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.action == 'completed' && github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    if: >
-      github.event.workflow_run.conclusion != 'skipped' && (
-         github.event.sender.login == 'dependabot[bot]' ||
-         github.event.workflow_run.head_repository.full_name != github.repository
-      )
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
