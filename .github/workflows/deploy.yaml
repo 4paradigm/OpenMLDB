@@ -13,8 +13,7 @@ env:
 
 jobs:
   build-and-pack:
-    if: >
-      github.event.workflow_run.conclusion == 'success' && startsWith(github.ref, 'refs/tags/v')
+#    if: ${{ github.event.action == 'completed' && github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
