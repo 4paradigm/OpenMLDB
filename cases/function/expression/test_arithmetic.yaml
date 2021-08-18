@@ -608,11 +608,14 @@ cases:
     expect:
       columns: [ 'r11 int16', 'r12 int32', 'r13 bigint', 'r22 int32', 'r23 bigint', 'r33 bigint' ]
     expectProvider:
-      - rows:
+      0:
+        rows:
           - [ 3, 2, 0, 6, 4, 12 ]
-      - rows:
+      1:
+        rows:
           - [ 3, 7, 15, 6, 14, 12 ]
-      - rows:
+      2:
+        rows:
           - [ 0, 5, 15, 0, 10, 0 ]
   - id: bitwise_operators_fail
     desc: bitwise and/or/xor, fail on non-integral operands
