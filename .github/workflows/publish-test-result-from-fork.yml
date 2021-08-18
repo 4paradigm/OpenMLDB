@@ -3,7 +3,7 @@ name: publish-test-result-from-fork
 on:
   # the action will only run on dependabot/fork pull request
   workflow_run:
-    workflows: ["OpenMLDB Build and Test", "Cpp SDK Test", "Cpp SDK Cluster Test", "Java and Python SDK Test"]
+    workflows: ["OpenMLDB Build and Test"]
     types:
       - completed
 
