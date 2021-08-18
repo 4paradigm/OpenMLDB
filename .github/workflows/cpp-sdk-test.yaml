@@ -1,0 +1,80 @@
+name: Cpp SDK Test
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GIT_SUBMODULE_STRATEGY: recursive
+  HYBRIDSE_SOURCE: download
+
+jobs:
+  sql_sdk_test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    steps:
+      - uses: actions/checkout@v1
+      - name: build
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_sdk_test && cd ../
+      - name: run sql_sdk_test
+        run: |
+          bash steps/ut.sh sql_sdk_test 0
+      - name: upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-ut-result-cpp-sdk-${{ github.sha }}
+          path: |
+            reports/*.xml
+
+  sql_cluster_test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    steps:
+      - uses: actions/checkout@v1
+      - name: build
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_cluster_test && cd ../
+      - name: run sql_sdk_test
+        run: |
+          bash steps/ut.sh sql_cluster_test 0
+      - name: upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-ut-result-cpp-cluster-${{ github.sha }}
+          path: |
+            reports/*.xml
+
+
+  publish-test-results:
+    runs-on: ubuntu-latest
+    needs: ["sql_sdk_test", "sql_cluster_test"]
+
+    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
+    if: >
+      always() && github.event_name == 'push' || (
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.sender.login != 'dependabot[bot]' )
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Publish Cpp SDK Linux UT Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: linux-ut-result-*/**/*.xml
+          check_name: Linux Cpp SDK Test Report
+          comment_title: Linux Cpp SDK Test Report
