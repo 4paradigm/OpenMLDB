@@ -73,10 +73,13 @@ java/fesql-auto-test-java/target/
 python/fesql-auto-test-python/logs
 python/fesql-auto-test-python/report
 python/logs
+python/sqlalchemy-test/*.xml
 
 .vscode/settings.json
 rsync_src.sh
 install_hybridse_cj.sh
 
 # ignore openmldb release dir & pkg
-./openmldb-*
+/openmldb-*
+
+/cmake-*
