@@ -698,9 +698,9 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
     }
 
 
-    hybridse::sdk::ColumnTypes parameter_types;
-    parameter_types.AddColumnType(::hybridse::sdk::kTypeString);
-    parameter_types.AddColumnType(::hybridse::sdk::kTypeInt64);
+    auto parameter_types = std::make_shared<hybridse::sdk::ColumnTypes>() ;
+    parameter_types->AddColumnType(::hybridse::sdk::kTypeString);
+    parameter_types->AddColumnType(::hybridse::sdk::kTypeInt64);
 
     std::string where_exist = "select * from trans where merch_id = ? and txn_time < ?;";
     // parameterized query
