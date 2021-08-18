@@ -371,20 +371,26 @@ cases:
   - id: between_predicate_1
     desc: between predicate, numberic between
     inputs:
-      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+      - columns: [ "id bigint", "name string", "code string", "ctime bigint", "cdate date" ]
         indexs: [ "index1:id:ctime" ]
         rows:
           - [1, Lucy,  A, 1609459201000, 2021-1-1]
           - [2, Zoey,  B, 1609545841000, 2021-1-2]
-          - [3, Joey,  B, 1610766254000, 2021-1-16]
-          - [4, Boey,  C, 1612237214000, 2021-2-2]
-          - [5, Bunny, D, 1612875381000, 2021-2-9]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
     sql: |
-      SELECT id, name FROM {0} WHERE id = 1 AND id BETWEEN 1 AND 4;
+      SELECT {0}.id, {0}.name, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts ON {0}.id = {1}.id AND {0}.id BETWEEN 1 AND 4;
     expect:
-      columns: ["id bigint", "name string"]
+      columns: ["id bigint", "name string", "score int"]
       rows:
-        - [1, Lucy]
+        - [1, Lucy, 10]
+        - [2, Zoey, 100]
   - id: between_predicate_2
     desc: between predicate, string between
     inputs:
@@ -393,34 +399,45 @@ cases:
         rows:
           - [1, Lucy,  A, 1609459201000, 2021-1-1]
           - [2, Zoey,  B, 1609545841000, 2021-1-2]
-          - [3, Joey,  B, 1610766254000, 2021-1-16]
-          - [4, Boey,  C, 1612237214000, 2021-2-2]
-          - [5, Bill,  C, 1612875381000, 2021-2-9]
-          - [5, Bunny, D, 1612875381000, 2021-2-9]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
     sql: |
-      SELECT id, code FROM {0} WHERE id = 5 AND code NOT BETWEEN "A" AND "C";
+      SELECT {0}.id, {0}.name, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts ON {0}.id = {1}.id AND {0}.code NOT BETWEEN 'B' AND 'C';
     expect:
-      columns: ["id bigint", "code string"]
+      columns: ["id bigint", "name string", "score int"]
       rows:
-        - [5, D]
+        - [1, Lucy, 10]
+        - [2, Zoey, NULL]
   - id: between_predicate_3
     desc: between predicate, timestamp between
     inputs:
       - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
         indexs: [ "index1:id:ctime" ]
         rows:
-          - [1, Lucy,  A, 1609459201000, 2021-01-01]
-          - [2, Zoey,  B, 1609545841000, 2021-01-02]
-          - [3, Joey,  B, 1610766254000, 2021-02-09]
-          - [3, Joe,   B, 1612875381000, 2021-01-16]
-          - [4, Boey,  C, 1612237214000, 2021-02-02]
-          - [5, Bunny, D, 1612875381000, 2021-02-09]
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1633265330000, 2021-10-3]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
     sql: |
-      SELECT id, name, code FROM {0} WHERE id = 3 AND ctime BETWEEN timestamp("2021-01-01") AND timestamp("2021-01-30");
+      SELECT {0}.id, {0}.name, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts
+      ON {0}.id = {1}.id AND {0}.ctime BETWEEN timestamp("2021-01-01") AND timestamp("2021-01-30");
     expect:
-      columns: ["id bigint", "name string", "code string"]
+      columns: ["id bigint", "name string", "score int"]
       rows:
-        - [3, Joey, B]
+        - [1, Lucy, 10]
+        - [2, Zoey, NULL]
   - id: between_predicate_4
     desc: between predicate with aggregation function
     sql: |
@@ -433,13 +450,9 @@ cases:
         indexs: ["index1:id:std_ts", "index2:col1:std_ts"]
         rows:
           - [1, 1, 1590115420000]
-          - [2, 2, 1590115420000]
           - [3, 1, 1590115430000]
-          - [4, 2, 1590115430000]
           - [5, 1, 1590115440000]
-          - [6, 2, 1590115440000]
           - [7, 1, 1590115450000]
-          - [8, 2, 1590115450000]
           - [9, 1, 1590115460000]
     expect:
       columns: ["id:bigint", "col1:int32", "std_ts:timestamp", "w1_id:bool"]
@@ -449,7 +462,3 @@ cases:
           - [5, 1, 1590115440000, false]
           - [7, 1, 1590115450000, false]
           - [9, 1, 1590115460000, false]
-          - [2, 2, 1590115420000, true]
-          - [4, 2, 1590115430000, true]
-          - [6, 2, 1590115440000, false]
-          - [8, 2, 1590115450000, false]
