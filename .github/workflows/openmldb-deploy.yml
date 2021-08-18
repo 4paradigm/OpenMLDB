@@ -1,4 +1,4 @@
-name: OpenMLDB Deploy
+name: openmldb-deploy
 
 on:
   # the action will only run on workflows completed

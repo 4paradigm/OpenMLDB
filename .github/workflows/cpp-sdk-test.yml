@@ -1,4 +1,4 @@
-name: Cpp SDK Test
+name: cpp-sdk-test
 
 on:
   push:

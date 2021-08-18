@@ -3,7 +3,7 @@ name: publish-test-result-from-fork
 on:
   # the action will only run on dependabot/fork pull request
   workflow_run:
-    workflows: ["build-and-test"]
+    workflows: ["build-and-test", "cpp-sdk-test"]
     types:
       - completed
 
