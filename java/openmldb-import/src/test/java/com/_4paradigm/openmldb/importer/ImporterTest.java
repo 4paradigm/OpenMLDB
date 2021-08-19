@@ -37,6 +37,10 @@ public class ImporterTest extends TestCase {
         Assert.assertArrayEquals(expected.toArray(), results.toArray());
     }
 
+    public void testHelp() {
+        Importer.main(new String[]{"--help"});
+    }
+
     // TODO(hw): run this test instead of running main class, just for simplifying.
     public void testMain() {
         Importer.main(new String[]{"--zk_cluster", "127.0.0.1:4181", "--db", "testdb", "--table", "t1", "--create_ddl", "create table t1 (\n" +
@@ -51,11 +55,11 @@ public class ImporterTest extends TestCase {
                 "dropoff_latitude double,\n" +
                 "store_and_fwd_flag string,\n" +
                 "trip_duration int,\n" +
-                "index(key=id, ts=pickup_datetime)) OPTIONS (partitionnum=8" +
+                "index(key=id, ts=pickup_datetime)) OPTIONS (partitionnum=1" +
 //                    "index(key=(vendor_id, passenger_count), ts=pickup_datetime),\n" +
 //                    "index(key=passenger_count, ts=dropoff_datetime))\n" +
                 ");",
-                "--files", "src/test/resources/train.csv.small",
+                "--files", "src/test/resources/train.csv.small, /home/huangwei/NYCTaxiDataset/train.csv",
                 "--rpc_size_limit", "20971520", // 20MB
                 "-f",
                 "--importer_mode", "bulkload"

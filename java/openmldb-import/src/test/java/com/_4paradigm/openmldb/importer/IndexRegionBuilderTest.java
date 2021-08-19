@@ -28,6 +28,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static com.google.protobuf.ByteString.copyFromUtf8;
+
 public class IndexRegionBuilderTest extends TestCase {
     private static final Logger logger = LoggerFactory.getLogger(IndexRegionBuilderTest.class);
 
@@ -37,13 +39,25 @@ public class IndexRegionBuilderTest extends TestCase {
         Assert.assertTrue(BulkLoadRequestSize.reqReservedSize >= emptyReq.build().getSerializedSize());
 
         Tablet.BulkLoadInfoResponse.Builder preInfo = Tablet.BulkLoadInfoResponse.newBuilder();
-        // TODO(hw): IndexRegionBuilder needs what?
+
         // InnerSegmentsList
         Tablet.BulkLoadInfoResponse.InnerSegments.Builder inner1 = preInfo.addInnerSegmentsBuilder();
         inner1.addSegmentBuilder().setTsCnt(1).addTsIdxMapBuilder().setKey(1).setValue(0);
 
         Tablet.BulkLoadInfoResponse.InnerSegments.Builder inner2 = preInfo.addInnerSegmentsBuilder();
         inner1.addSegmentBuilder().setTsCnt(1).addTsIdxMapBuilder().setKey(2).setValue(0);
+
+        // size growth in buildPartialSegment
+        Tablet.Segment.Builder builder = Tablet.Segment.newBuilder();
+        builder.setId(Integer.MAX_VALUE);
+        Assert.assertTrue(BulkLoadRequestSize.segmentReservedSize >= builder.build().getSerializedSize());
+        char[] chars = new char[1000];
+        Arrays.fill(chars, '1');
+        String key = new String(chars);
+        Tablet.Segment.KeyEntries.Builder keyEntriesBuilder = builder.addKeyEntriesBuilder()
+                .setKey(copyFromUtf8(key));
+        Assert.assertTrue(BulkLoadRequestSize.repeatedTolerance + key.length() > builder.build().getSerializedSize());
+
     }
 
     public void testSegmentKeyComparator() {
@@ -91,6 +105,7 @@ public class IndexRegionBuilderTest extends TestCase {
             segment.Put("k1", Collections.singletonList(Tablet.TSDimension.newBuilder().setTs(0).setIdx(11).build()), 0);
             segment.Put("k1", Collections.singletonList(Tablet.TSDimension.newBuilder().setTs(0).setIdx(22).build()), 1);
             // size limit 20 will put the first entry to segment msg. So building is not completed.
+            // TODO(hw): fix, size is estimated now, will be bigger
             Tablet.Segment partSeg = segment.buildPartialSegment(1, 20);
             Assert.assertNotNull(partSeg);
             logger.info("build partial segment size {}", partSeg.getSerializedSize());

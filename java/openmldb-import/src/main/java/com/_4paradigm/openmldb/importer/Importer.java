@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.importer;
 
 import com._4paradigm.openmldb.api.Tablet;
 import com._4paradigm.openmldb.common.Common;
+import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.ns.NS;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
@@ -40,6 +41,7 @@ import java.io.File;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -49,7 +51,8 @@ import java.util.stream.Collectors;
 
 import static com.google.common.collect.MoreCollectors.onlyElement;
 
-@CommandLine.Command(name = "data importer", mixinStandardHelpOptions = true, description = "insert/bulk load data(csv) to openmldb")
+@CommandLine.Command(name = "Data Importer", mixinStandardHelpOptions = true, requiredOptionMarker = '*',
+        description = "insert/bulk load data(csv) to openmldb")
 public class Importer {
     private static final Logger logger = LoggerFactory.getLogger(Importer.class);
 
@@ -58,7 +61,7 @@ public class Importer {
         BulkLoad
     }
 
-    @CommandLine.Option(names = "--importer_mode", defaultValue = "BulkLoad", description = "mode: ${COMPLETION-CANDIDATES}. Case insensitive.")
+    @CommandLine.Option(names = "--importer_mode", description = "mode: ${COMPLETION-CANDIDATES}. Case insensitive.", defaultValue = "BulkLoad")
     Mode mode;
 
     @CommandLine.Option(names = "--files", split = ",", required = true)
@@ -68,18 +71,18 @@ public class Importer {
     private String zkCluster;
     @CommandLine.Option(names = "--zk_root_path", description = "", required = true)
     private String zkRootPath;
-    @CommandLine.Option(names = "--db", required = true)
+    @CommandLine.Option(names = "--db", description = "", required = true)
     private String dbName;
-    @CommandLine.Option(names = "--table", required = true)
+    @CommandLine.Option(names = "--table", description = "", required = true)
     private String tableName;
-    @CommandLine.Option(names = "--create_ddl")
+    @CommandLine.Option(names = "--create_ddl", description = "If force_recreate_table is true, provide the create table sql", defaultValue = "")
     private String createDDL;
 
-    @CommandLine.Option(names = {"-f", "--force_recreate_table"})
+    @CommandLine.Option(names = {"-f", "--force_recreate_table"}, description = "If true, we will drop the table first")
     private boolean forceRecreateTable;
 
-    @CommandLine.Option(names = "--rpc_size_limit")
-    private int rpcDataSizeLimit = 32 * 1024 * 1024; // 32MB
+    @CommandLine.Option(names = "--rpc_size_limit", description = "", defaultValue = "33554432") // 32MB
+    private int rpcDataSizeLimit;
 
     FilesReader reader = null;
     SqlExecutor router = null;
@@ -115,22 +118,26 @@ public class Importer {
 
     public boolean checkTable() {
         Preconditions.checkNotNull(router);
-
-        if (forceRecreateTable && createDDL != null) {
+        // TODO(hw): fix, force & createddl logic
+        if (forceRecreateTable && !createDDL.isEmpty()) {
+            logger.info("drop table {}, then create", tableName);
             router.executeDDL(dbName, "drop table " + tableName + ";");
         }
-        //  try create table, if db is not existed, create it
+        // if db is not existed, create it
         router.createDB(dbName);
         // create table
         router.executeDDL(dbName, createDDL);
 
         try {
             logger.info("table should be empty");
-            return !router.executeSQL(dbName, "select * from " + tableName + " limit 1;").next();
+            SQLResultSet rs = (SQLResultSet) router.executeSQL(dbName, "select * from " + tableName + " limit 1;");
+            String tryGet = rs.getNString(0);
+            return tryGet == null;
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.debug(Arrays.toString(e.getStackTrace()));
+            // get failed means that table is empty
+            return true;
         }
-        return false;
     }
 
     public void Load() {
@@ -291,6 +298,10 @@ public class Importer {
         }
         // properties can be overwritten by command line
         cmd.parseArgs(args);
+        if (cmd.isUsageHelpRequested()) {
+            CommandLine.usage(cmd, System.out);
+            return;
+        }
 
         logger.info("Start...");
 
