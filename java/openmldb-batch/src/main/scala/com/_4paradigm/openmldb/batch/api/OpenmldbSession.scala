@@ -59,15 +59,6 @@ class OpenmldbSession {
     this.sparkSession = sparkSession
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
     this.setDefaultSparkConfig()
-
-    // Register table if using other constructors
-    val spark = this.sparkSession
-    spark.catalog.listDatabases().collect().flatMap(db => {
-      spark.catalog.listTables(db.name).collect().map(x => {
-        val fullyQualifiedName = s"${db.name}.${x.name}"
-        registerTable(fullyQualifiedName, spark.table(fullyQualifiedName))
-      })
-    })
   }
 
   /**
@@ -234,6 +225,20 @@ class OpenmldbSession {
    */
   def registerTable(name: String, df: DataFrame): Unit = {
     registeredTables.put(name, df)
+  }
+
+  /**
+   * Read table from Spark catalog and databases to register in OpenMLDB engine.
+   */
+  def registerCatalogTables(): Unit = {
+    val spark = this.sparkSession
+    spark.catalog.listDatabases().collect().flatMap(db => {
+      spark.catalog.listTables(db.name).collect().map(x => {
+        val fullyQualifiedName = s"${db.name}.${x.name}"
+        logger.error("Register table " + fullyQualifiedName)
+        registerTable(fullyQualifiedName, spark.table(fullyQualifiedName))
+      })
+    })
   }
 
   /**
