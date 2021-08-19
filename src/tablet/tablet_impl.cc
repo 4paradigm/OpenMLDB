@@ -4872,7 +4872,8 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
                   << ". Time:" << ::baidu::common::timer::get_micros() - start_time << " us";
 
         // TODO(hw): sync first, maybe use async later, e.g. another rpc request to load binlog.
-        //  we send x data blocks, so there will be x binlog info.
+
+        // we send x data blocks, so there will be x binlog info.
         if (request->binlog_info_size() != request->block_info_size()) {
             response->set_code(::openmldb::base::ReturnCode::kReceiveDataError);
             response->set_msg("bulk load data region and binlog info size mismatch");

@@ -18,7 +18,6 @@ package com._4paradigm.openmldb.importer;
 
 import com._4paradigm.openmldb.api.Tablet;
 import com.google.common.base.Preconditions;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,11 +35,12 @@ public class DataRegionBuilder {
     private final int rpcSizeLimit;
 
     private final List<Tablet.DataBlockInfo> dataBlockInfoList = new ArrayList<>(); // TODO(hw): to queue?
-    private List<Tablet.BinlogInfo> binlogInfoList = new ArrayList<>(); // TODO(hw): temp
-    private final List<ByteBuffer> dataList = new ArrayList<>(); // TODO(hw): to queue?
+    // binlog is one part of data region. May need refactor if binlog load is time-consuming.
+    private final List<Tablet.BinlogInfo> binlogInfoList = new ArrayList<>();
+    private final List<ByteBuffer> dataList = new ArrayList<>();
     private int absoluteDataLength = 0;
     private int absoluteNextId = 0;
-    private int estimatedTotalSize = 0;
+    private int estimatedDataAndInfoSize = 0;
 
     private int partId = 0;
 
@@ -69,36 +69,40 @@ public class DataRegionBuilder {
         dataBlockInfoList.add(info);
         absoluteDataLength += length;
         absoluteNextId++;
-        estimatedTotalSize += BulkLoadRequestSize.estimateInfoSize + length;
-        logger.debug("after size {}(exclude header 6)", estimatedTotalSize);
+        estimatedDataAndInfoSize += info.getSerializedSize() + length;
     }
 
     public void addBinlog(List<Tablet.Dimension> dimensions, List<Tablet.TSDimension> tsDimensions, long time, int dataBlockId) {
         Tablet.BinlogInfo info = Tablet.BinlogInfo.newBuilder().addAllDimensions(dimensions).
                 addAllTsDimensions(tsDimensions).setTime(time).setBlockId(dataBlockId).build();
         binlogInfoList.add(info);
+        estimatedDataAndInfoSize += info.getSerializedSize();
     }
 
     // not force: if data size > limit, send x(x<=limit), remain size-x. If size <= limit, return null, needs to force build.
-    // force: only send x(x<=limit) too. data size > limit is available, you may need to force build more than once until returns null.
+    // force: only send x(x<=limit) too. When data size > limit, you may need to force build more than once until returns null.
     public Tablet.BulkLoadRequest buildPartialRequest(boolean force, ByteArrayOutputStream attachmentStream) throws IOException {
-        // if current size < sizeLimit, no need to send.
-        if (!force && BulkLoadRequestSize.reqReservedSize + estimatedTotalSize <= rpcSizeLimit) {
+        // if current all data size < sizeLimit, no need to send.
+        if (!force && BulkLoadRequestSize.reqReservedSize + BulkLoadRequestSize.repeatedTolerance + estimatedDataAndInfoSize <= rpcSizeLimit) {
             return null;
         }
+        Preconditions.checkState(binlogInfoList.size() == dataBlockInfoList.size());
+
         // To limit the size properly, request message + attachment will be <= rpcSizeLimit
         // We need to add data blocks one by one.
-
         Tablet.BulkLoadRequest.Builder builder = Tablet.BulkLoadRequest.newBuilder();
         builder.setTid(tid).setPid(pid).setPartId(partId);
 
-        // TODO(hw): refactor this
         int shouldBeSentEnd = 0; // is block info size
-        int sentTotalSize = BulkLoadRequestSize.reqReservedSize;
+        int sentTotalSize = BulkLoadRequestSize.reqReservedSize + BulkLoadRequestSize.repeatedTolerance;
         attachmentStream.reset();
-        // TODO(hw): builder can get serialized size in every loop? estimateInfoSize is too big. May use removeBlockInfo()
         for (int i = 0; i < dataBlockInfoList.size(); i++) {
-            int add = dataBlockInfoList.get(i).getLength() + BulkLoadRequestSize.estimateInfoSize;
+            Tablet.DataBlockInfo dataBlockInfo = dataBlockInfoList.get(i);
+            Tablet.BinlogInfo binlogInfo = binlogInfoList.get(i);
+            ByteBuffer data = dataList.get(i);
+
+            // add = info size + binlog size + data size
+            int add = dataBlockInfo.getSerializedSize() + binlogInfo.getSerializedSize() + dataBlockInfo.getLength();
             if (sentTotalSize + add > rpcSizeLimit) {
                 break;
             }
@@ -111,24 +115,30 @@ public class DataRegionBuilder {
             shouldBeSentEnd++;
         }
 
-        // clear sent data [0..End)
-        logger.debug("sent {} data blocks, remain {} blocks", shouldBeSentEnd, dataBlockInfoList.size() - shouldBeSentEnd);
-        dataBlockInfoList.subList(0, shouldBeSentEnd).clear();
-        dataList.subList(0, shouldBeSentEnd).clear();
-        estimatedTotalSize -= (BulkLoadRequestSize.estimateInfoSize * shouldBeSentEnd + attachmentStream.size());
-
         if (shouldBeSentEnd == 0) {
-            Preconditions.checkState(estimatedTotalSize == 0 && dataList.isEmpty() && dataBlockInfoList.isEmpty(),
-                    "remain data can't be sent, maybe too big, or builder has internal error");
+            Preconditions.checkState(!force || dataBlockInfoList.isEmpty(),
+                    "remain data can't be sent when force is true, maybe too big, estimatedDataAndInfoSize = ", estimatedDataAndInfoSize);
             return null;
         }
 
-        partId++;
+        // clear should-send data [0, End)
+        logger.debug("should send {} data blocks, remain {} blocks", shouldBeSentEnd, dataBlockInfoList.size() - shouldBeSentEnd);
+        dataBlockInfoList.subList(0, shouldBeSentEnd).clear();
+        binlogInfoList.subList(0, shouldBeSentEnd).clear();
+        dataList.subList(0, shouldBeSentEnd).clear();
+        estimatedDataAndInfoSize -= sentTotalSize;
 
-        logger.debug("estimate data rpc size = {}, real size = {}",
-                BulkLoadRequestSize.estimateInfoSize * shouldBeSentEnd + attachmentStream.size(),
-                builder.build().getSerializedSize() + attachmentStream.size());
-        Preconditions.checkState(builder.build().getSerializedSize() <= rpcSizeLimit);
-        return builder.build();
+        partId++;
+        Preconditions.checkState(builder.getBlockInfoCount() == builder.getBinlogInfoCount());
+        Tablet.BulkLoadRequest req = builder.build();
+        int realSize = req.getSerializedSize() + attachmentStream.size();
+        if (logger.isDebugEnabled()) {
+            logger.debug("estimate data rpc size = {}, real size = {}",
+                    sentTotalSize, realSize);
+        }
+        Preconditions.checkState(realSize <= rpcSizeLimit,
+                "data partial req real size %d should <= size limit %d", realSize, rpcSizeLimit);
+
+        return req;
     }
 }

@@ -52,7 +52,7 @@ class InsertImporter implements Runnable {
             logger.warn("records is empty");
             return;
         }
-        // Use one record to generate insert place holder
+        // Use one record to generate insert placeholder
         StringBuilder builder = new StringBuilder("insert into " + tableName + " values(");
         CSVRecord peekRecord = records.get(0);
         for (int i = 0; i < peekRecord.size(); ++i) {

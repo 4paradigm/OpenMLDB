@@ -64,24 +64,25 @@ public class Importer {
     @CommandLine.Option(names = "--importer_mode", description = "mode: ${COMPLETION-CANDIDATES}. Case insensitive.", defaultValue = "BulkLoad")
     Mode mode;
 
-    @CommandLine.Option(names = "--files", split = ",", required = true)
+    @CommandLine.Option(names = "--files", description = "sources files, local or hdfs path", split = ",", required = true)
     private List<String> files;
 
     @CommandLine.Option(names = {"--zk_cluster", "-z"}, description = "zookeeper cluster address of openmldb", required = true)
     private String zkCluster;
-    @CommandLine.Option(names = "--zk_root_path", description = "", required = true)
+    @CommandLine.Option(names = "--zk_root_path", description = "zookeeper root path of openmldb", required = true)
     private String zkRootPath;
-    @CommandLine.Option(names = "--db", description = "", required = true)
+    @CommandLine.Option(names = "--db", description = "openmldb database", required = true)
     private String dbName;
-    @CommandLine.Option(names = "--table", description = "", required = true)
+    @CommandLine.Option(names = "--table", description = "openmldb table", required = true)
     private String tableName;
-    @CommandLine.Option(names = "--create_ddl", description = "If force_recreate_table is true, provide the create table sql", defaultValue = "")
+    @CommandLine.Option(names = "--create_ddl", description = "if force_recreate_table is true, provide the create table sql", defaultValue = "")
     private String createDDL;
 
-    @CommandLine.Option(names = {"-f", "--force_recreate_table"}, description = "If true, we will drop the table first")
+    @CommandLine.Option(names = {"-f", "--force_recreate_table"}, description = "if true, we will drop the table first")
     private boolean forceRecreateTable;
 
-    @CommandLine.Option(names = "--rpc_size_limit", description = "", defaultValue = "33554432") // 32MB
+    public static final String rpcDataSizeMinLimit = "33554432"; // 32MB
+    @CommandLine.Option(names = "--rpc_size_limit", description = "should >= " + rpcDataSizeMinLimit, defaultValue = rpcDataSizeMinLimit)
     private int rpcDataSizeLimit;
 
     FilesReader reader = null;
@@ -96,10 +97,7 @@ public class Importer {
             logger.info("config 'files' is empty");
             return false;
         }
-
-        // TODO(hw): check csv header?
         reader = new FilesReader(files);
-
         return true;
     }
 
@@ -118,26 +116,35 @@ public class Importer {
 
     public boolean checkTable() {
         Preconditions.checkNotNull(router);
-        // TODO(hw): fix, force & createddl logic
-        if (forceRecreateTable && !createDDL.isEmpty()) {
-            logger.info("drop table {}, then create", tableName);
+        if (forceRecreateTable && createDDL.isEmpty()) {
+            logger.warn("recreate table needs create table ddl");
+            return false;
+        }
+
+        if (forceRecreateTable) {
+            logger.info("drop table {} for recreating", tableName);
             router.executeDDL(dbName, "drop table " + tableName + ";");
         }
+
         // if db is not existed, create it
         router.createDB(dbName);
         // create table
         router.executeDDL(dbName, createDDL);
 
         try {
-            logger.info("table should be empty");
             SQLResultSet rs = (SQLResultSet) router.executeSQL(dbName, "select * from " + tableName + " limit 1;");
-            String tryGet = rs.getNString(0);
-            return tryGet == null;
+            return !rs.next();
         } catch (SQLException e) {
-            logger.debug(Arrays.toString(e.getStackTrace()));
-            // get failed means that table is empty
-            return true;
+            if (logger.isDebugEnabled()) {
+                e.getStackTrace();
+            }
+            return false;
         }
+    }
+
+    public boolean checkRpcLimit() {
+        int min = Integer.parseInt(rpcDataSizeMinLimit);
+        return rpcDataSizeLimit >= min;
     }
 
     public void Load() {
@@ -315,6 +322,11 @@ public class Importer {
         }
         if (!importer.checkTable()) {
             logger.error("check table failed");
+            return;
+        }
+
+        if (!importer.checkRpcLimit()) {
+            logger.error("rpc limit should > {}", Importer.rpcDataSizeMinLimit);
             return;
         }
 

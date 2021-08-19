@@ -42,7 +42,7 @@ public class IndexRegionBuilder {
     private final List<List<SegmentIndexRegion>> segmentIndexMatrix; // TODO(hw): to map?
 
     int realIdxCursor = 0, segIdxCursor = 0;
-    private int partId = 0; // TODO(hw): start after data region part id
+    private int partId = 0; // start after data region part id
 
     public IndexRegionBuilder(int tid, int pid, Tablet.BulkLoadInfoResponse bulkLoadInfo, int rpcSizeLimit) {
         this.tid = tid;
@@ -74,6 +74,7 @@ public class IndexRegionBuilder {
 
     // If null, no more index region rpc.
     public Tablet.BulkLoadRequest buildPartialRequest() {
+        Preconditions.checkState(partId > 0, "Data Region has been sent, Index Region part id can't be 0.");
         Tablet.BulkLoadRequest.Builder requestBuilder = Tablet.BulkLoadRequest.newBuilder();
         return setRequest(requestBuilder) ? requestBuilder.build() : null;
     }
@@ -213,7 +214,9 @@ public class IndexRegionBuilder {
                 String key = keyList.get(i);
                 Tablet.Segment.KeyEntries.Builder keyEntriesBuilder = builder.addKeyEntriesBuilder()
                         .setKey(copyFromUtf8(key));
+                // tolerant KeyEntry(repeated)
                 estimatedSize += BulkLoadRequestSize.repeatedTolerance + key.length();
+
                 List<Map<Long, Integer>> timeEntriesList = keyEntries.get(key);
                 // TODO(hw): timeEntriesList.size() == tsCnt
                 for (; j < timeEntriesList.size(); j++) {
@@ -226,16 +229,19 @@ public class IndexRegionBuilder {
 
                     Tablet.Segment.KeyEntries.KeyEntry.Builder keyEntryBuilder = keyEntriesBuilder.addKeyEntryBuilder().setKeyEntryId(j);
                     estimatedSize += BulkLoadRequestSize.repeatedTolerance + BulkLoadRequestSize.commonReservedSize;
+
                     for (; k < timeList.size(); k++) {
                         keyEntryBuilder.addTimeEntryBuilder().setTime(timeList.get(k)).
                                 setBlockId(timeEntries.get(timeList.get(k)));
                         estimatedSize += BulkLoadRequestSize.estimateTimeEntrySize;
-                        logger.debug("add one time entry({}-{}-{}), cur size {}, limit {}", i, j, k, estimatedSize, sizeLimit);
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("add one time entry({}-{}-{}), real size {}, cur estimated size {}, limit {}"
+                                    , i, j, k, builder.build().getSerializedSize(), estimatedSize, sizeLimit);
+                        }
 
                         if (estimatedSize > sizeLimit) {
-                            // TODO(hw): after estimating size, reverting is needless?
                             // revert this one
-                            Preconditions.checkState(keyEntryBuilder.getTimeEntryCount() > 0, "shouldn't");
+                            Preconditions.checkState(keyEntryBuilder.getTimeEntryCount() > 0);
                             logger.debug("revert this time entry");
                             keyEntryBuilder.removeTimeEntry(keyEntryBuilder.getTimeEntryCount() - 1);
                             if (keyEntryBuilder.getTimeEntryCount() == 0) {
@@ -248,7 +254,9 @@ public class IndexRegionBuilder {
                             }
                             Tablet.Segment req = builder.build();
                             int realSize = req.getSerializedSize();
-                            Preconditions.checkState(realSize <= sizeLimit, "must %d <= %d", realSize, sizeLimit);
+                            logger.debug("segment req real size {}, entry count {}", realSize, entryCount);
+                            Preconditions.checkState(realSize <= sizeLimit,
+                                    "real size %d must <= size limit %d", realSize, sizeLimit);
                             // next partial building starts from k
                             // If limit is too small, cursors may not incr.
                             updateIdxCursors(i, j, k);

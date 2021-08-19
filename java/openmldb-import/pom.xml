@@ -126,13 +126,7 @@
             <version>3.2.2</version>
             <scope>test</scope>
         </dependency>
-        <!-- csv TODO use apache common csv, replace it in FileSystemManagerTest-->
-        <dependency>
-            <groupId>net.sourceforge.javacsv</groupId>
-            <artifactId>javacsv</artifactId>
-            <version>2.0</version>
-            <scope>test</scope>
-        </dependency>
+        <!-- csv -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>

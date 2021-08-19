@@ -55,12 +55,12 @@ public class ImporterTest extends TestCase {
                 "dropoff_latitude double,\n" +
                 "store_and_fwd_flag string,\n" +
                 "trip_duration int,\n" +
-                "index(key=id, ts=pickup_datetime)) OPTIONS (partitionnum=1" +
-//                    "index(key=(vendor_id, passenger_count), ts=pickup_datetime),\n" +
-//                    "index(key=passenger_count, ts=dropoff_datetime))\n" +
-                ");",
+                "index(key=id, ts=pickup_datetime),\n" +
+                "index(key=(vendor_id, passenger_count), ts=pickup_datetime),\n" +
+                "index(key=passenger_count, ts=dropoff_datetime)\n" +
+                ") OPTIONS (partitionnum=1);",
                 "--files", "src/test/resources/train.csv.small, /home/huangwei/NYCTaxiDataset/train.csv",
-                "--rpc_size_limit", "20971520", // 20MB
+//                "--rpc_size_limit", "20971520", // 20MB
                 "-f",
                 "--importer_mode", "bulkload"
         });

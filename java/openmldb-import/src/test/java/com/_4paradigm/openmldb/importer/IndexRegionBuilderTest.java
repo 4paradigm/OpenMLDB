@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.importer;
 import com._4paradigm.openmldb.api.Tablet;
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,9 +52,8 @@ public class IndexRegionBuilderTest extends TestCase {
         Tablet.Segment.Builder builder = Tablet.Segment.newBuilder();
         builder.setId(Integer.MAX_VALUE);
         Assert.assertTrue(BulkLoadRequestSize.segmentReservedSize >= builder.build().getSerializedSize());
-        char[] chars = new char[1000];
-        Arrays.fill(chars, '1');
-        String key = new String(chars);
+
+        String key = StringUtils.repeat('1', 1000);
         Tablet.Segment.KeyEntries.Builder keyEntriesBuilder = builder.addKeyEntriesBuilder()
                 .setKey(copyFromUtf8(key));
         Assert.assertTrue(BulkLoadRequestSize.repeatedTolerance + key.length() > builder.build().getSerializedSize());
@@ -104,9 +104,8 @@ public class IndexRegionBuilderTest extends TestCase {
             IndexRegionBuilder.SegmentIndexRegion segment = new IndexRegionBuilder.SegmentIndexRegion(tsCnt, tsIdxMap);
             segment.Put("k1", Collections.singletonList(Tablet.TSDimension.newBuilder().setTs(0).setIdx(11).build()), 0);
             segment.Put("k1", Collections.singletonList(Tablet.TSDimension.newBuilder().setTs(0).setIdx(22).build()), 1);
-            // size limit 20 will put the first entry to segment msg. So building is not completed.
-            // TODO(hw): fix, size is estimated now, will be bigger
-            Tablet.Segment partSeg = segment.buildPartialSegment(1, 20);
+            // Size limit 100 will put the first entry to segment msg. The second is left. So building is not completed.
+            Tablet.Segment partSeg = segment.buildPartialSegment(1, 100);
             Assert.assertNotNull(partSeg);
             logger.info("build partial segment size {}", partSeg.getSerializedSize());
             Assert.assertFalse(segment.buildCompleted());
@@ -121,12 +120,10 @@ public class IndexRegionBuilderTest extends TestCase {
             }
 
             while (!segment.buildCompleted()) {
-                Tablet.Segment partSeg = segment.buildPartialSegment(1, 20);
+                Tablet.Segment partSeg = segment.buildPartialSegment(1, 100);
                 Assert.assertNotNull(partSeg);
                 logger.info("build partial segment size {}", partSeg.getSerializedSize());
             }
         }
     }
-
-    // TODO(hw): test build() time cost?
 }
