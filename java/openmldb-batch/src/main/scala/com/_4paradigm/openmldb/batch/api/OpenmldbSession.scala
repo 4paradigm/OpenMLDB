@@ -274,6 +274,7 @@ class OpenmldbSession {
     val tableIdentifier = TableIdentifier.of(databaseName, tableName)
 
     catalog.createTable(tableIdentifier, icebergSchema, partitionSpec)
+    catalog.close()
 
     // Register table in OpenMLDB engine
     registerTable(tableName, df)
@@ -296,6 +297,7 @@ class OpenmldbSession {
 
     // Create Iceberg table
     hadoopCatalog.createTable(tableIdentifier, icebergSchema, partitionSpec)
+    hadoopCatalog.close()
   }
 
   /**
