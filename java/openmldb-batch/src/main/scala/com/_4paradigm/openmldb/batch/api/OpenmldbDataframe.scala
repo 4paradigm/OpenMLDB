@@ -18,18 +18,16 @@ package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.SchemaUtil
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.slf4j.LoggerFactory
 
 
 case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFrame) {
 
-  private val logger = LoggerFactory.getLogger(this.getClass)
   private var tableName: String = "table"
 
   /**
    * Register the dataframe with name which can be used for sql.
    *
-   * @param name
+   * @param name the name of registered table
    */
   def createOrReplaceTempView(name: String): Unit = {
     tableName = name
@@ -42,18 +40,18 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
 
   def tiny(number: Long): OpenmldbDataframe = {
     sparkDf.createOrReplaceTempView(tableName)
-    val sqlCode = s"select * from ${tableName} limit ${number};"
+    val sqlCode = s"select * from $tableName limit $number;"
     OpenmldbDataframe(openmldbSession, openmldbSession.sparksql(sqlCode))
   }
 
   /**
    * Save the dataframe to file with Spark API.
    *
-   * @param path
-   * @param format
-   * @param mode
-   * @param renameDuplicateColumns
-   * @param partitionNum
+   * @param path the path to write
+   * @param format the format of file
+   * @param mode the mode of SavedMode
+   * @param renameDuplicateColumns if it renames the duplicated columns
+   * @param partitionNum the number of partitions
    */
   def write(path: String,
             format: String = "parquet",
@@ -106,45 +104,45 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
   /**
    * Sample with Spark API.
    *
-   * @param fraction
-   * @param seed
+   * @param fraction the fraction to sample
+   * @param seed the seed of sample
    * @return
    */
   def sample(fraction: Double, seed: Long): OpenmldbDataframe = {
-    new OpenmldbDataframe(openmldbSession, sparkDf.sample(fraction, seed))
+    OpenmldbDataframe(openmldbSession, sparkDf.sample(fraction, seed))
   }
 
   /**
    * Sample with Spark API.
    *
-   * @param fraction
+   * @param fraction the fraction to sample
    * @return
    */
   def sample(fraction: Double): OpenmldbDataframe = {
-    new OpenmldbDataframe(openmldbSession, sparkDf.sample(fraction))
+    OpenmldbDataframe(openmldbSession, sparkDf.sample(fraction))
   }
 
   /**
    * Describe with Spark API.
    *
-   * @param cols
+   * @param cols the columns to describe
    * @return
    */
   def describe(cols: String*): OpenmldbDataframe = {
-    new OpenmldbDataframe(openmldbSession, sparkDf.describe(cols: _*))
+    OpenmldbDataframe(openmldbSession, sparkDf.describe(cols: _*))
   }
 
   /**
    * Print Spark plan with Spark API.
    *
-   * @param extended
+   * @param extended if extended the output
    */
   def explain(extended: Boolean = false): Unit = {
     sparkDf.explain(extended)
   }
 
   def summary(): OpenmldbDataframe = {
-    new OpenmldbDataframe(openmldbSession, sparkDf.summary())
+    OpenmldbDataframe(openmldbSession, sparkDf.summary())
   }
 
   /**
@@ -153,7 +151,7 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
    * @return
    */
   def cache(): OpenmldbDataframe = {
-    new OpenmldbDataframe(openmldbSession, sparkDf.cache())
+    OpenmldbDataframe(openmldbSession, sparkDf.cache())
   }
 
   /**
@@ -179,7 +177,7 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
    *
    * @return
    */
-  def getSparkDf(): DataFrame = {
+  def getSparkDf: DataFrame = {
     sparkDf
   }
 
@@ -188,7 +186,7 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
    *
    * @return
    */
-  def getOpenmldbSession(): OpenmldbSession = {
+  def getOpenmldbSession: OpenmldbSession = {
     openmldbSession
   }
 
@@ -197,7 +195,7 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
    *
    * @return
    */
-  def getSparkSession(): SparkSession = {
+  def getSparkSession: SparkSession = {
     openmldbSession.getSparkSession
   }
 
@@ -213,7 +211,7 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
   /**
    * Print Spark codegen string.
    */
-  def printCodegen: Unit = {
+  def printCodegen(): Unit = {
     sparkDf.queryExecution.debug.codegen
   }
 
