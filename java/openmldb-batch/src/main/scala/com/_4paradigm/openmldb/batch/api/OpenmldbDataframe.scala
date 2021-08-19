@@ -168,7 +168,7 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
    *
    * @return
    */
-  override def toString: String = {
+  override def toString(): String = {
     sparkDf.toString()
   }
 
@@ -177,7 +177,7 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
    *
    * @return
    */
-  def getSparkDf: DataFrame = {
+  def getSparkDf(): DataFrame = {
     sparkDf
   }
 
@@ -186,7 +186,7 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
    *
    * @return
    */
-  def getOpenmldbSession: OpenmldbSession = {
+  def getOpenmldbSession(): OpenmldbSession = {
     openmldbSession
   }
 
@@ -195,7 +195,7 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
    *
    * @return
    */
-  def getSparkSession: SparkSession = {
+  def getSparkSession(): SparkSession = {
     openmldbSession.getSparkSession
   }
 
@@ -204,7 +204,7 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
    *
    * @return
    */
-  def schemaJson: String = {
+  def schemaJson(): String = {
     sparkDf.queryExecution.analyzed.schema.json
   }
 
