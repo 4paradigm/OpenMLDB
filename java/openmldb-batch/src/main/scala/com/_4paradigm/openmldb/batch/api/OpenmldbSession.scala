@@ -60,12 +60,14 @@ class OpenmldbSession {
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
     this.setDefaultSparkConfig()
 
-    // TODO: Register table if using other constructors
-    val catalogTables = this.sparkSession.catalog.listTables(config.defaultHiveDatabase).collect()
-    for (table <- catalogTables) {
-      logger.info(s"Register table ${table.name} for OpenMLDB engine")
-      registerTable(table.name, this.sparkSession.table(table.name))
-    }
+    // Register table if using other constructors
+    val spark = this.sparkSession
+    spark.catalog.listDatabases().collect().flatMap(db => {
+      spark.catalog.listTables(db.name).collect().map(x => {
+        val fullyQualifiedName = s"${db.name}.${x.name}"
+        registerTable(fullyQualifiedName, spark.table(fullyQualifiedName))
+      })
+    })
   }
 
   /**
@@ -277,7 +279,7 @@ class OpenmldbSession {
     catalog.close()
 
     // Register table in OpenMLDB engine
-    registerTable(tableName, df)
+    registerTable(s"$databaseName.$tableName", df)
   }
 
   /**
