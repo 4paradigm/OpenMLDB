@@ -751,11 +751,20 @@ AllNode* AllNode::ShadowCopy(NodeManager* nm) const {
 BetweenExpr* BetweenExpr::ShadowCopy(NodeManager* nm) const {
     return nm->MakeBetweenExpr(GetExpr(), GetLeft(), GetRight(), is_not_between());
 }
-Status BetweenExpr::InferAttr(ExprAnalysisContext *ctx) {
-    CHECK_STATUS(GetExpr()->InferAttr(ctx));
-    CHECK_STATUS(GetLeft()->InferAttr(ctx));
-    CHECK_STATUS(GetRight()->InferAttr(ctx));
-    const TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+Status BetweenExpr::InferAttr(ExprAnalysisContext* ctx) {
+    CHECK_TRUE(GetChildNum() == 3, kTypeError);
+
+    const TypeNode* cond_1 = nullptr;
+    CHECK_STATUS(
+        CompareTypeAccept(ctx->node_manager(), GetExpr()->GetOutputType(), GetLeft()->GetOutputType(), &cond_1));
+
+    const TypeNode* cond_2 = nullptr;
+    CHECK_STATUS(
+        CompareTypeAccept(ctx->node_manager(), GetExpr()->GetOutputType(), GetRight()->GetOutputType(), &cond_2));
+
+    const TypeNode* top_type = nullptr;
+    CHECK_STATUS(LogicalOpTypeAccept(ctx->node_manager(), cond_1, cond_2, &top_type));
+
     SetOutputType(top_type);
     SetNullable(GetExpr()->nullable() || GetLeft()->nullable() || GetRight()->nullable());
     return Status::OK();

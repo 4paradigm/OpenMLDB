@@ -748,12 +748,13 @@ Status PredicateIRBuilder::BuildBetweenExpr(const NativeValue& expr, const Nativ
     if (is_not_between) {
         CHECK_STATUS(BuildLtExpr(expr, left, &first_condition));
         CHECK_STATUS(BuildGtExpr(expr, right, &second_condition));
-        return BuildOrExpr(first_condition, second_condition, output);
+        CHECK_STATUS(BuildOrExpr(first_condition, second_condition, output));
     } else {
         CHECK_STATUS(BuildGeExpr(expr, left, &first_condition));
         CHECK_STATUS(BuildLeExpr(expr, right, &second_condition));
-        return BuildAndExpr(first_condition, second_condition, output);
+        CHECK_STATUS(BuildAndExpr(first_condition, second_condition, output));
     }
+    return Status::OK();
 }
 
 }  // namespace codegen
