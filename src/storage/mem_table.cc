@@ -672,7 +672,7 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
     return true;
 }
 
-bool MemTable::DeleteIndex(std::string idx_name) {
+bool MemTable::DeleteIndex(const std::string& idx_name) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx_name);
     if (!index_def) {
         PDLOG(WARNING, "index %s is not exist. tid %u pid %u", idx_name.c_str(), id_, pid_);

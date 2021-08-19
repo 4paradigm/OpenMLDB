@@ -471,7 +471,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                          ::hybridse::vm::RequestRunSession& session,                  // NOLINT
                          openmldb::api::QueryResponse& response, butil::IOBuf& buf);  // NOLINT
 
-    void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info);
+    void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
 
     Tables tables_;
     std::mutex mu_;

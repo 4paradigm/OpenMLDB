@@ -29,10 +29,10 @@ class BulkLoadMgr {
  public:
     bool AppendData(uint32_t tid, uint32_t pid, const ::openmldb::api::BulkLoadRequest* request,
                     const butil::IOBuf& data);
-    bool WriteBinlogToReplicator(uint32_t tid, uint32_t pid, std::shared_ptr<replica::LogReplicator> replicator,
+    bool WriteBinlogToReplicator(uint32_t tid, uint32_t pid, const std::shared_ptr<replica::LogReplicator>& replicator,
                                  const ::openmldb::api::BulkLoadRequest* request);
 
-    bool BulkLoad(std::shared_ptr<storage::MemTable> table, const ::openmldb::api::BulkLoadRequest* request);
+    bool BulkLoad(const std::shared_ptr<storage::MemTable>& table, const ::openmldb::api::BulkLoadRequest* request);
 
     void RemoveReceiver(uint32_t tid, uint32_t pid);
 

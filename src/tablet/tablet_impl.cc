@@ -4716,7 +4716,7 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl, const openmldb::api::Query
         session.EnableDebug();
     }
     ::hybridse::codec::Row row;
-    auto& request_buf = static_cast<brpc::Controller*>(ctrl)->request_attachment();
+    auto& request_buf = dynamic_cast<brpc::Controller*>(ctrl)->request_attachment();
     size_t input_slices = request.row_slices();
     if (!codec::DecodeRpcRow(request_buf, 0, request.row_size(), input_slices, &row)) {
         response.set_code(::openmldb::base::kSQLRunError);
@@ -4754,7 +4754,7 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl, const openmldb::api::Query
     response.set_code(::openmldb::base::kOk);
 }
 
-void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info) {
+void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info) {
     const std::string& db_name = sp_info->GetDbName();
     const std::string& sp_name = sp_info->GetSpName();
     const std::string& sql = sp_info->GetSql();
@@ -4891,7 +4891,7 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
 
             auto ok = bulk_load_mgr_.WriteBinlogToReplicator(tid, pid, replicator, request);
             if (!ok) {
-                DLOG(INFO) << "write binlog failed";
+                LOG(WARNING) << tid << "-" << pid << " write binlog failed";
             }
         } while (false);
         auto binlog_end = ::baidu::common::timer::get_micros();

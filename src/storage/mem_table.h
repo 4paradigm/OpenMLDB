@@ -219,7 +219,7 @@ class MemTable : public Table {
 
     inline uint32_t GetKeyEntryHeight() const { return key_entry_max_height_; }
 
-    bool DeleteIndex(std::string idx_name);
+    bool DeleteIndex(const std::string& idx_name);
 
     bool AddIndex(const ::openmldb::common::ColumnKey& column_key);
 

@@ -19,8 +19,6 @@
 #include <memory>
 #include <utility>
 
-#include "memory"
-
 namespace openmldb::tablet {
 
 bool BulkLoadMgr::AppendData(uint32_t tid, uint32_t pid, const ::openmldb::api::BulkLoadRequest* request,
@@ -42,7 +40,7 @@ bool BulkLoadMgr::AppendData(uint32_t tid, uint32_t pid, const ::openmldb::api::
     return true;
 }
 
-bool BulkLoadMgr::BulkLoad(std::shared_ptr<storage::MemTable> table, const ::openmldb::api::BulkLoadRequest* request) {
+bool BulkLoadMgr::BulkLoad(const std::shared_ptr<storage::MemTable>& table, const ::openmldb::api::BulkLoadRequest* request) {
     auto data_receiver = GetDataReceiver(table->GetId(), table->GetPid(), DO_NOT_CREATE);
     if (!data_receiver) {
         LOG(ERROR) << "BulkLoad: can't get data receiver for " << table->GetId() << "-" << table->GetPid();
@@ -55,7 +53,7 @@ bool BulkLoadMgr::BulkLoad(std::shared_ptr<storage::MemTable> table, const ::ope
 }
 
 bool BulkLoadMgr::WriteBinlogToReplicator(uint32_t tid, uint32_t pid,
-                                          std::shared_ptr<replica::LogReplicator> replicator,
+                                          const std::shared_ptr<replica::LogReplicator>& replicator,
                                           const ::openmldb::api::BulkLoadRequest* request) {
     auto data_receiver = GetDataReceiver(tid, pid, DO_NOT_CREATE);
     if (!data_receiver) {

@@ -28,7 +28,7 @@ bool DataReceiver::AppendData(const ::openmldb::api::BulkLoadRequest* request, c
         return false;
     }
     std::unique_lock<std::mutex> ul(mu_);
-    // We must copy data from IOBuf, cuz the rows have different TTLs, it's not a good idea to keep them together.
+    // We must copy data from IOBuf, cuz the rows have different TTLs, it's not a good idea to keep them in a memory block.
     butil::IOBufBytesIterator iter(data);
     auto last_block_size = data_blocks_.size();
     for (int i = 0; i < request->block_info_size(); ++i) {
@@ -64,7 +64,7 @@ bool DataReceiver::PartValidation(int part_id) {
     return true;
 }
 
-bool DataReceiver::BulkLoad(std::shared_ptr<storage::MemTable> table, const ::openmldb::api::BulkLoadRequest* request) {
+bool DataReceiver::BulkLoad(const std::shared_ptr<storage::MemTable>& table, const ::openmldb::api::BulkLoadRequest* request) {
     std::unique_lock<std::mutex> ul(mu_);
     DLOG_ASSERT(tid_ == table->GetId() && pid_ == table->GetPid());
 
@@ -76,6 +76,7 @@ bool DataReceiver::BulkLoad(std::shared_ptr<storage::MemTable> table, const ::op
 
     if (!table->BulkLoad(data_blocks_, request->index_region())) {
         LOG(ERROR) << "bulk load to mem table(" << tid_ << "-" << pid_ << ") failed.";
+        return false;
     }
 
     DLOG(INFO) << "bulk load to mem table(" << tid_ << "-" << pid_ << ") " << data_blocks_.size() << " rows.";
@@ -113,10 +114,6 @@ bool DataReceiver::WriteBinlogToReplicator(const std::shared_ptr<replica::LogRep
         replicator->AppendEntry(entry);
     }
     LOG(INFO) << "binlog write num " << request->binlog_info_size();
-    if (FLAGS_binlog_notify_on_put) {
-        replicator->Notify();
-    }
-
     return true;
 }
 }  // namespace openmldb::tablet
