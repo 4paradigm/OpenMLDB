@@ -40,6 +40,7 @@ cases:
   -
     id: 6
     desc: ttl_type=absolute-ttl=(3650m)
+    tags: ["TODO","bug:https://github.com/4paradigm/OpenMLDB/issues/189"]
     sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=(3650m),ttl_type=absolute));
     expect:
       success: false
