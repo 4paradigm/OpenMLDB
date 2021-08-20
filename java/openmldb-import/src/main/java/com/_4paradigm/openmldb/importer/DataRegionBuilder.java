@@ -69,21 +69,25 @@ public class DataRegionBuilder {
         dataBlockInfoList.add(info);
         absoluteDataLength += length;
         absoluteNextId++;
-        estimatedDataAndInfoSize += info.getSerializedSize() + length;
+        // TODO(hw): message size + attachment size v.s. max_body_size?
+        estimatedDataAndInfoSize += BulkLoadRequestSize.estimateDataBlockInfoSize + length;
     }
 
     public void addBinlog(List<Tablet.Dimension> dimensions, List<Tablet.TSDimension> tsDimensions, long time, int dataBlockId) {
         Tablet.BinlogInfo info = Tablet.BinlogInfo.newBuilder().addAllDimensions(dimensions).
                 addAllTsDimensions(tsDimensions).setTime(time).setBlockId(dataBlockId).build();
         binlogInfoList.add(info);
-        estimatedDataAndInfoSize += info.getSerializedSize();
+        // BinlogInfo size is hard to estimate, we use the real serialized size of each binlog info.
+        // When it's added in bulk load request, it will add some extra size(TagSize & fieldLength's tag size, cuz it's repeated).
+        // Add a tolerance size of TagSize & fieldLength.
+        estimatedDataAndInfoSize += info.getSerializedSize() + BulkLoadRequestSize.tagAndFieldLengthTolerance;
     }
 
     // not force: if data size > limit, send x(x<=limit), remain size-x. If size <= limit, return null, needs to force build.
     // force: only send x(x<=limit) too. When data size > limit, you may need to force build more than once until returns null.
     public Tablet.BulkLoadRequest buildPartialRequest(boolean force, ByteArrayOutputStream attachmentStream) throws IOException {
-        // if current all data size < sizeLimit, no need to send.
-        if (!force && BulkLoadRequestSize.reqReservedSize + BulkLoadRequestSize.repeatedTolerance + estimatedDataAndInfoSize <= rpcSizeLimit) {
+        // if current size < sizeLimit, no need to send.
+        if (!force && BulkLoadRequestSize.reqReservedSize + estimatedDataAndInfoSize <= rpcSizeLimit) {
             return null;
         }
         Preconditions.checkState(binlogInfoList.size() == dataBlockInfoList.size());
@@ -94,7 +98,7 @@ public class DataRegionBuilder {
         builder.setTid(tid).setPid(pid).setPartId(partId);
 
         int shouldBeSentEnd = 0; // is block info size
-        int sentTotalSize = BulkLoadRequestSize.reqReservedSize + BulkLoadRequestSize.repeatedTolerance;
+        int sentTotalSize = BulkLoadRequestSize.reqReservedSize;
         attachmentStream.reset();
         for (int i = 0; i < dataBlockInfoList.size(); i++) {
             Tablet.DataBlockInfo dataBlockInfo = dataBlockInfoList.get(i);
@@ -102,14 +106,16 @@ public class DataRegionBuilder {
             ByteBuffer data = dataList.get(i);
 
             // add = info size + binlog size + data size
-            int add = dataBlockInfo.getSerializedSize() + binlogInfo.getSerializedSize() + dataBlockInfo.getLength();
+            int add = BulkLoadRequestSize.estimateDataBlockInfoSize
+                    + binlogInfo.getSerializedSize() + BulkLoadRequestSize.tagAndFieldLengthTolerance
+                    + dataBlockInfo.getLength();
             if (sentTotalSize + add > rpcSizeLimit) {
                 break;
             }
 
-            builder.addBlockInfo(dataBlockInfoList.get(i));
-            builder.addBinlogInfo(binlogInfoList.get(i));
-            attachmentStream.write(dataList.get(i).array());
+            builder.addBlockInfo(dataBlockInfo);
+            builder.addBinlogInfo(binlogInfo);
+            attachmentStream.write(data.array());
 
             sentTotalSize += add;
             shouldBeSentEnd++;
@@ -117,7 +123,8 @@ public class DataRegionBuilder {
 
         if (shouldBeSentEnd == 0) {
             Preconditions.checkState(!force || dataBlockInfoList.isEmpty(),
-                    "remain data can't be sent when force is true, maybe too big, estimatedDataAndInfoSize = ", estimatedDataAndInfoSize);
+                    "remain data can't be sent when force is true, " +
+                            "maybe too big, estimatedDataAndInfoSize = ", estimatedDataAndInfoSize);
             return null;
         }
 
@@ -132,13 +139,54 @@ public class DataRegionBuilder {
         Preconditions.checkState(builder.getBlockInfoCount() == builder.getBinlogInfoCount());
         Tablet.BulkLoadRequest req = builder.build();
         int realSize = req.getSerializedSize() + attachmentStream.size();
-        if (logger.isDebugEnabled()) {
-            logger.debug("estimate data rpc size = {}, real size = {}",
-                    sentTotalSize, realSize);
-        }
+
+        logger.debug("estimate data rpc size = {}, real size = {}", sentTotalSize, realSize);
         Preconditions.checkState(realSize <= rpcSizeLimit,
                 "data partial req real size %d should <= size limit %d", realSize, rpcSizeLimit);
 
         return req;
+    }
+
+    public static int sizeDebug(Tablet.BulkLoadRequest request) {
+        int size;
+        size = 0;
+        if (request.hasTid()) {
+            size += com.google.protobuf.CodedOutputStream
+                    .computeUInt32Size(1, request.getTid());
+            logger.info("size {}", size);
+        }
+        if (request.hasPid()) {
+            size += com.google.protobuf.CodedOutputStream
+                    .computeUInt32Size(2, request.getPid());
+            logger.info("size {}", size);
+        }
+        if (request.hasPartId()) {
+            size += com.google.protobuf.CodedOutputStream
+                    .computeInt32Size(3, request.getPartId());
+            logger.info("size {}", size);
+        }
+        for (int i = 0; i < request.getBlockInfoCount(); i++) {
+            size += com.google.protobuf.CodedOutputStream
+                    .computeMessageSize(4, request.getBlockInfo(i));
+            logger.info("size {}", size);
+        }
+        for (int i = 0; i < request.getBinlogInfoCount(); i++) {
+            size += com.google.protobuf.CodedOutputStream
+                    .computeMessageSize(5, request.getBinlogInfo(i));
+            logger.info("size {}", size);
+        }
+        for (int i = 0; i < request.getIndexRegionCount(); i++) {
+            size += com.google.protobuf.CodedOutputStream
+                    .computeMessageSize(6, request.getIndexRegion(i));
+            logger.info("size {}", size);
+        }
+        if (request.hasEof()) {
+            size += com.google.protobuf.CodedOutputStream
+                    .computeBoolSize(7, request.getEof());
+        }
+        logger.info("size {}", size);
+        size += request.getUnknownFields().getSerializedSize();
+        logger.info("size {}", size);
+        return size;
     }
 }

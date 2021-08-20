@@ -139,8 +139,8 @@ public class BulkLoadGenerator implements Runnable {
                 // set the dataBlockInfo's ref count when index region insertion
                 AtomicInteger realRefCnt = new AtomicInteger();
                 // 1. if tsDimensions is empty, we will put data into `ready Index` without checking.
-                //      But we'll check the Index whether has the ts column. Mismatch meta returns false.
-                // 2. if tsDimensions is not empty, we will find the corresponding tsDimensions to put data. If can't find, continue.
+                //      But we'll check the Index whether it has the ts column. Mismatch meta returns false.
+                // 2. if tsDimensions is not empty, we will find the corresponding tsDimensions to put data. If it can't find, continue.
                 innerIndexKeyMap.forEach((k, v) -> {
                     // TODO(hw): check idx valid
                     Tablet.BulkLoadInfoResponse.InnerIndexSt innerIndex = indexInfoFromTablet.getInnerIndex(k);
@@ -196,8 +196,9 @@ public class BulkLoadGenerator implements Runnable {
                     }
                 }
 
-                // If success, add data & info
+                // If success, add block data & info
                 dataRegionBuilder.addDataBlock(dataBuffer, realRefCnt.get());
+                // add binlog too
                 dataRegionBuilder.addBinlog(dimensions, tsDimensions, time, dataBlockId);
 
                 // If reach limit, set part id, send data block infos & data, no index region.
@@ -267,11 +268,12 @@ public class BulkLoadGenerator implements Runnable {
         if (attachmentStream != null) {
             RpcContext.getContext().setRequestBinaryAttachment(attachmentStream.toByteArray());
         }
+        logger.info("send rpc, message size {}, attachment {}", request.getSerializedSize(),
+                attachmentStream == null ? "empty" : attachmentStream.size());
 
+        // com.baidu.brpc.exceptions.RpcException will be thrown up, generator run() will fail immediately
         Tablet.GeneralResponse response = service.bulkLoad(request);
         statistics += request.getBlockInfoCount();
-        logger.info("sent rpc, message size {}, attachment {}", request.getSerializedSize(),
-                attachmentStream == null ? "empty" : attachmentStream.size());
         if (response.getCode() != 0) {
             throw new RuntimeException("bulk load rpc to " + request.getTid() + "-" + request.getPid()
                     + "(part " + request.getPartId() + ") failed" + ", " + response);

@@ -26,25 +26,37 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 public class DataRegionBuilderTest extends TestCase {
     private static final Logger logger = LoggerFactory.getLogger(DataRegionBuilderTest.class);
 
-    public void testRequestSize() {
+    public void testMessageSize() {
         Tablet.BulkLoadRequest.Builder builder = Tablet.BulkLoadRequest.newBuilder();
         builder.setTid(Integer.MAX_VALUE).setPid(Integer.MAX_VALUE);
         builder.setPartId(Integer.MAX_VALUE);
         Assert.assertTrue(BulkLoadRequestSize.reqReservedSize >= builder.build().getSerializedSize());
-        for (int i = 0; i < 10; i++) {
-            Tablet.DataBlockInfo info = Tablet.DataBlockInfo.newBuilder().setRefCnt(Integer.MAX_VALUE).
-                    setOffset(Long.MAX_VALUE).setLength(Integer.MAX_VALUE).build();
-//            Assert.assertTrue(BulkLoadRequestSize.estimateInfoSize >= info.getSerializedSize());
-            builder.addBlockInfo(info);
-//            Assert.assertTrue(BulkLoadRequestSize.reqReservedSize + (i + 1) * BulkLoadRequestSize.estimateInfoSize >=
-//                    builder.build().getSerializedSize());
+
+        Tablet.DataBlockInfo dataBlockInfo = Tablet.DataBlockInfo.newBuilder().setRefCnt(Integer.MAX_VALUE).
+                setOffset(Long.MAX_VALUE).setLength(Integer.MAX_VALUE).build();
+        Assert.assertTrue(BulkLoadRequestSize.estimateDataBlockInfoSize >= dataBlockInfo.getSerializedSize());
+
+        String sampleKey = StringUtils.repeat('1', 1000);
+        Tablet.Dimension dim = Tablet.Dimension.newBuilder().setKey(sampleKey).setIdx(10).build();
+        Tablet.TSDimension tsDim = Tablet.TSDimension.newBuilder().setTs(System.currentTimeMillis()).setIdx(10).build();
+        Tablet.BinlogInfo binlogInfo = Tablet.BinlogInfo.newBuilder().addAllDimensions(Collections.nCopies(10, dim))
+                .addAllTsDimensions(Collections.nCopies(100, tsDim)).setTime(System.currentTimeMillis())
+                .setBlockId(Integer.MAX_VALUE).build();
+        int binlogInfoSize = binlogInfo.getSerializedSize();
+
+        for (int i = 0; i < 100; i++) {
+            builder.addBlockInfo(dataBlockInfo);
+            builder.addBinlogInfo(binlogInfo);
+            int estimateSize = BulkLoadRequestSize.reqReservedSize
+                    + (i + 1) * (BulkLoadRequestSize.estimateDataBlockInfoSize + binlogInfoSize + BulkLoadRequestSize.tagAndFieldLengthTolerance);
+            int realSize = builder.build().getSerializedSize();
+            Assert.assertTrue("The " + i + " time: estimate size " + estimateSize + " must >= real size " + realSize,
+                    estimateSize >= realSize);
         }
     }
 
@@ -54,13 +66,14 @@ public class DataRegionBuilderTest extends TestCase {
         ByteBuffer bufferSample = ByteBuffer.allocate(10);
 
         String sampleKey = StringUtils.repeat('1', 1000);
+        Tablet.Dimension dim = Tablet.Dimension.newBuilder().setKey(sampleKey).setIdx(10).build();
+        Tablet.TSDimension tsDim = Tablet.TSDimension.newBuilder().setTs(System.currentTimeMillis()).setIdx(10).build();
 
         for (int i = 0; i < 10; i++) {
             // one row add 11205B
             dataRegionBuilder.addDataBlock(bufferSample, 0);
-            Tablet.Dimension dim = Tablet.Dimension.newBuilder().setKey(sampleKey).setIdx(10).build();
-            Tablet.TSDimension tsDim = Tablet.TSDimension.newBuilder().setTs(System.currentTimeMillis()).setIdx(10).build();
             dataRegionBuilder.addBinlog(Collections.nCopies(10, dim), Collections.nCopies(100, tsDim), System.currentTimeMillis(), 0);
+
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
             Tablet.BulkLoadRequest request = dataRegionBuilder.buildPartialRequest(false, stream);
             if (i == 0) {

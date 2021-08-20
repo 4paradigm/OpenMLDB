@@ -20,12 +20,13 @@
 
 namespace openmldb::tablet {
 bool DataReceiver::AppendData(const ::openmldb::api::BulkLoadRequest* request, const butil::IOBuf& data) {
+    std::unique_lock<std::mutex> ul(mu_);
     if (!request->has_part_id() || !PartValidation(request->part_id())) {
         LOG(WARNING) << tid_ << "-" << pid_ << " data receiver received invalid part id, expect " << next_part_id_
                      << ", actual " << (request->has_part_id() ? "no id" : std::to_string(request->part_id()));
         return false;
     }
-    std::unique_lock<std::mutex> ul(mu_);
+
     // We must copy data from IOBuf, cuz the rows have different TTLs, it's not a good idea to keep them in a memory
     // block.
     butil::IOBufBytesIterator iter(data);

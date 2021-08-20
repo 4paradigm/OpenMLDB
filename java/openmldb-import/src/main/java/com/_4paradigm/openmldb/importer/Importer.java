@@ -212,14 +212,6 @@ public class Importer {
             CSVRecord record;
             while ((record = reader.next()) != null) {
                 Map<Integer, List<Tablet.Dimension>> dims = buildDimensions(record, keyIndexMap, tableMetaData.getPartitionNum());
-//                if (logger.isDebugEnabled()) {
-//                    logger.debug(record.toString());
-//                    logger.debug(dims.entrySet().stream().map(entry -> entry.getKey().toString() + ": " +
-//                                    entry.getValue().stream().map(pair ->
-//                                                    "<" + pair.getKey() + ", " + pair.getIdx() + ">")
-//                                            .collect(Collectors.joining(", ", "(", ")")))
-//                            .collect(Collectors.joining("], [", "[", "]")));
-//                }
 
                 // distribute the row to the bulk load generators for each MemTable(tid, pid)
                 for (Integer pid : dims.keySet()) {
@@ -330,20 +322,14 @@ public class Importer {
         }
 
         logger.info("start bulk load");
-//        int X = 8; // put_concurrency_limit default is 8
-
-        // TODO(hw): check arg rpcDataSizeLimit >= minLimitSize
-
         long startTime = System.currentTimeMillis();
-
         importer.Load();
-
         long endTime = System.currentTimeMillis();
 
         long totalTime = endTime - startTime;
+        logger.info("End. Total time: {} ms", totalTime);
 
         importer.close();
-        logger.info("End. Total time: {} ms", totalTime);
     }
 
     // TODO(hw): insert import mode refactor. limited retry, report the real-time status of progress.
@@ -417,6 +403,14 @@ public class Importer {
             dims.put(pid, dim);
         }
         return dims;
+    }
+
+    private static String printDimensions(Map<Integer, List<Tablet.Dimension>> dims) {
+        return dims.entrySet().stream().map(entry -> entry.getKey().toString() + ": " +
+                        entry.getValue().stream().map(pair ->
+                                        "<" + pair.getKey() + ", " + pair.getIdx() + ">")
+                                .collect(Collectors.joining(", ", "(", ")")))
+                .collect(Collectors.joining("], [", "[", "]"));
     }
 }
 

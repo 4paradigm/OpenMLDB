@@ -20,23 +20,20 @@ package com._4paradigm.openmldb.importer;
 // But it's time-consuming when we need to call it so many times.
 // So we use bigger sizes to estimate the request size.
 public class BulkLoadRequestSize {
-    // brpc max_body_size default is 64MB, too small limit is just nonsense
-    public static final int minLimitSize = 32 * 1024 * 1024;
-
     public static final int commonReservedSize = 10;
 
-    // tid/pid/part_id is int and optional, max serialized size is 6B * 3
+    // tid/pid/part_id/eof is int and optional, max serialized size is 6B * 4
     // We set it to the max, to ensure that the real rpc size <= the estimated size
-    public static final int reqReservedSize = 18;
+    public static final int reqReservedSize = 24;
 
     // Tablet.DataBlockInfo 2 int, 1 long, all optional
-    public static final int estimateInfoSize = 24;
+    public static final int estimateDataBlockInfoSize = 24;
+
+    public static int tagAndFieldLengthTolerance = 5 + 5;
 
     // When we add a repeated message(size = X), the size may grow more than X. It won't be too big, set it to 32
     public static final int repeatedTolerance = 32;
 
     public static final int segmentReservedSize = 10;
     public static final int estimateTimeEntrySize = 12;
-
-
 }

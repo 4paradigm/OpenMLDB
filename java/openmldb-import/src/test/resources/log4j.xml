@@ -14,7 +14,7 @@
     </appender>
     <!-- 指定logger的设置，additivity指示是否遵循缺省的继承机制-->
     <logger name="com._4paradigm.openmldb.importer" additivity="false">
-        <level value="debug"/>
+        <level value="info"/>
         <appender-ref ref="myConsole"/>
     </logger>
 
