@@ -93,11 +93,15 @@ object PhysicalNodeUtil {
       val orderExpr = orders.GetOrderExpression(i)
       val colIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, windowAggNode.GetProducer(0))
       val column = SparkColumnUtil.getColumnFromIndex(inputDf, colIdx)
+      // TODO: Support reading is_asc from physical node, currently use asc by default
+      orderByCols += column.asc
+      /*
       if (orders.is_asc()) {
         orderByCols += column.asc
       } else {
         orderByCols += column.desc
       }
+      */
     }
 
     orderByCols
