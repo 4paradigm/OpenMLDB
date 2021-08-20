@@ -5667,7 +5667,7 @@ TEST_F(TabletImplTest, BulkLoad) {
         ASSERT_EQ(0, response.code()) << response.msg();
     }
 
-    // get data from the table
+    // TODO(hw): get data from the table
 }
 
 }  // namespace tablet

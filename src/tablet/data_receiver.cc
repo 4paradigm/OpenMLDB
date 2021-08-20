@@ -18,8 +18,6 @@
 
 #include "storage/segment.h"
 
-DECLARE_bool(binlog_notify_on_put);
-
 namespace openmldb::tablet {
 bool DataReceiver::AppendData(const ::openmldb::api::BulkLoadRequest* request, const butil::IOBuf& data) {
     if (!request->has_part_id() || !PartValidation(request->part_id())) {
@@ -28,7 +26,8 @@ bool DataReceiver::AppendData(const ::openmldb::api::BulkLoadRequest* request, c
         return false;
     }
     std::unique_lock<std::mutex> ul(mu_);
-    // We must copy data from IOBuf, cuz the rows have different TTLs, it's not a good idea to keep them in a memory block.
+    // We must copy data from IOBuf, cuz the rows have different TTLs, it's not a good idea to keep them in a memory
+    // block.
     butil::IOBufBytesIterator iter(data);
     auto last_block_size = data_blocks_.size();
     for (int i = 0; i < request->block_info_size(); ++i) {
@@ -64,7 +63,8 @@ bool DataReceiver::PartValidation(int part_id) {
     return true;
 }
 
-bool DataReceiver::BulkLoad(const std::shared_ptr<storage::MemTable>& table, const ::openmldb::api::BulkLoadRequest* request) {
+bool DataReceiver::BulkLoad(const std::shared_ptr<storage::MemTable>& table,
+                            const ::openmldb::api::BulkLoadRequest* request) {
     std::unique_lock<std::mutex> ul(mu_);
     DLOG_ASSERT(tid_ == table->GetId() && pid_ == table->GetPid());
 

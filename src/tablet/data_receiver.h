@@ -27,7 +27,7 @@ namespace openmldb::tablet {
 // TODO(hw): Create a abstract receiver to manage received data. FileReceiver can inherited from it too.
 class DataReceiver {
  public:
-    //    DataReceiver() = default;
+    DataReceiver() = delete;
     DataReceiver(uint32_t tid, uint32_t pid) : tid_(tid), pid_(pid) {}
 
     // only one of the methods below executes at the time.
@@ -41,9 +41,8 @@ class DataReceiver {
     bool PartValidation(int part_id);
 
  private:
-    // TODO(hw): init val?
-    const uint32_t tid_{};
-    const uint32_t pid_{};
+    const uint32_t tid_;
+    const uint32_t pid_;
 
     std::mutex mu_;
     int next_part_id_{0};

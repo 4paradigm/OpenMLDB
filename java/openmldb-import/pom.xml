@@ -15,14 +15,13 @@
 
     <dependencyManagement>
         <dependencies>
-            <!-- needs for maven omitted for conflict ? -->
+            <!-- needs for maven omitted for conflict -->
             <!-- https://mvnrepository.com/artifact/commons-logging/commons-logging -->
             <dependency>
                 <groupId>commons-logging</groupId>
                 <artifactId>commons-logging</artifactId>
                 <version>1.2</version>
             </dependency>
-
         </dependencies>
     </dependencyManagement>
 
@@ -188,52 +187,6 @@
             <artifactId>parquet-encoding</artifactId>
             <version>1.10.1</version>
         </dependency>
-
-        <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-common -->
-<!--          version 3.2.0->3.2.2, hadoop needs the same version, use ${hadoop.version} is better-->
-<!--         <dependency> -->
-<!--             <groupId>org.apache.hadoop</groupId> -->
-<!--             <artifactId>hadoop-common</artifactId> -->
-<!--             <version>3.2.0</version> -->
-<!--             <exclusions> -->
-<!--                 <exclusion> -->
-<!--                     <artifactId>protobuf-java</artifactId> -->
-<!--                     <groupId>com.google.protobuf</groupId> -->
-<!--                 </exclusion> -->
-<!--                 <exclusion> -->
-<!--                     <artifactId>zookeeper</artifactId> -->
-<!--                     <groupId>org.apache.zookeeper</groupId> -->
-<!--                 </exclusion> -->
-<!--                 <exclusion> -->
-<!--                     <artifactId>slf4j-api</artifactId> -->
-<!--                     <groupId>org.slf4j</groupId> -->
-<!--                 </exclusion> -->
-<!--                 <exclusion> -->
-<!--                     <artifactId>slf4j-log4j12</artifactId> -->
-<!--                     <groupId>org.slf4j</groupId> -->
-<!--                 </exclusion> -->
-<!--             </exclusions> -->
-<!--         </dependency> -->
-        <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-mapreduce-client-core -->
-<!--         <dependency> -->
-<!--             <groupId>org.apache.hadoop</groupId> -->
-<!--             <artifactId>hadoop-mapreduce-client-core</artifactId> -->
-<!--             <version>3.2.0</version> -->
-<!--             <exclusions> -->
-<!--                 <exclusion> -->
-<!--                     <artifactId>protobuf-java</artifactId> -->
-<!--                     <groupId>com.google.protobuf</groupId> -->
-<!--                 </exclusion> -->
-<!--                 <exclusion> -->
-<!--                     <artifactId>slf4j-api</artifactId> -->
-<!--                     <groupId>org.slf4j</groupId> -->
-<!--                 </exclusion> -->
-<!--                 <exclusion> -->
-<!--                     <artifactId>slf4j-log4j12</artifactId> -->
-<!--                     <groupId>org.slf4j</groupId> -->
-<!--                 </exclusion> -->
-<!--             </exclusions> -->
-<!--         </dependency> -->
         <!--解析parquet所需依赖包结束-->
 
         <!--解析orc所需依赖包开始-->
@@ -276,7 +229,7 @@
     </dependencies>
 
     <build>
-        <finalName>data-importer</finalName>
+        <finalName>openmldb-import</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
@@ -338,11 +291,11 @@
             </plugin>
         </plugins>
     </build>
-    <!--      for fedb-jdbc -->
+    <!-- for openmldb-jdbc -->
     <repositories>
         <repository>
-            <id>my-repo1</id>
-            <name>your custom repo</name>
+            <id>openmldb</id>
+            <name>openmldb sdk repo</name>
             <url>https://repo.maven.apache.org/maven2</url>
         </repository>
     </repositories>

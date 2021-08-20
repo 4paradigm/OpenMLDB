@@ -40,7 +40,8 @@ bool BulkLoadMgr::AppendData(uint32_t tid, uint32_t pid, const ::openmldb::api::
     return true;
 }
 
-bool BulkLoadMgr::BulkLoad(const std::shared_ptr<storage::MemTable>& table, const ::openmldb::api::BulkLoadRequest* request) {
+bool BulkLoadMgr::BulkLoad(const std::shared_ptr<storage::MemTable>& table,
+                           const ::openmldb::api::BulkLoadRequest* request) {
     auto data_receiver = GetDataReceiver(table->GetId(), table->GetPid(), DO_NOT_CREATE);
     if (!data_receiver) {
         LOG(ERROR) << "BulkLoad: can't get data receiver for " << table->GetId() << "-" << table->GetPid();
@@ -119,7 +120,7 @@ void BulkLoadMgr::RemoveReceiver(uint32_t tid, uint32_t pid) {
     }
     pid_cat.erase(iter);
     // TODO(hw): if bulk load is failed, the data blocks(the real data) needs to be deleted manually
-    //  BulkLoad may have used some data blocks, may be we should reset segments in MemTable, then delete all data
+    //  BulkLoad may have used some data blocks, we should reset segments in MemTable, then delete all data
     //  blocks.
     LOG(INFO) << "data receiver for " << tid << "-" << pid << " removed";
 }

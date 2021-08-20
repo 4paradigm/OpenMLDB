@@ -41,7 +41,6 @@ import java.io.File;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -75,9 +74,9 @@ public class Importer {
     private String dbName;
     @CommandLine.Option(names = "--table", description = "openmldb table", required = true)
     private String tableName;
+
     @CommandLine.Option(names = "--create_ddl", description = "if force_recreate_table is true, provide the create table sql", defaultValue = "")
     private String createDDL;
-
     @CommandLine.Option(names = {"-f", "--force_recreate_table"}, description = "if true, we will drop the table first")
     private boolean forceRecreateTable;
 
@@ -213,14 +212,14 @@ public class Importer {
             CSVRecord record;
             while ((record = reader.next()) != null) {
                 Map<Integer, List<Tablet.Dimension>> dims = buildDimensions(record, keyIndexMap, tableMetaData.getPartitionNum());
-                if (logger.isDebugEnabled()) {
-                    logger.debug(record.toString());
-                    logger.debug(dims.entrySet().stream().map(entry -> entry.getKey().toString() + ": " +
-                                    entry.getValue().stream().map(pair ->
-                                                    "<" + pair.getKey() + ", " + pair.getIdx() + ">")
-                                            .collect(Collectors.joining(", ", "(", ")")))
-                            .collect(Collectors.joining("], [", "[", "]")));
-                }
+//                if (logger.isDebugEnabled()) {
+//                    logger.debug(record.toString());
+//                    logger.debug(dims.entrySet().stream().map(entry -> entry.getKey().toString() + ": " +
+//                                    entry.getValue().stream().map(pair ->
+//                                                    "<" + pair.getKey() + ", " + pair.getIdx() + ">")
+//                                            .collect(Collectors.joining(", ", "(", ")")))
+//                            .collect(Collectors.joining("], [", "[", "]")));
+//                }
 
                 // distribute the row to the bulk load generators for each MemTable(tid, pid)
                 for (Integer pid : dims.keySet()) {
