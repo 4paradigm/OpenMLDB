@@ -86,12 +86,12 @@ object PhysicalNodeUtil {
     val windowOp = windowAggNode.window()
 
     val orders = windowOp.sort().orders()
-    val orderExprs = orders.order_by()
+    val ordersExprListNode = orders.getOrder_expressions_
     val orderByCols = mutable.ArrayBuffer[Column]()
 
-    for (i <- 0 until orderExprs.GetChildNum()) {
-      val expr = orderExprs.GetChild(i)
-      val colIdx = SparkColumnUtil.resolveColumnIndex(expr, windowAggNode.GetProducer(0))
+    for (i <- 0 until ordersExprListNode.GetChildNum()) {
+      val orderExpr = orders.GetOrderExpression(i)
+      val colIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, windowAggNode.GetProducer(0))
       val column = SparkColumnUtil.getColumnFromIndex(inputDf, colIdx)
       if (orders.is_asc()) {
         orderByCols += column.asc
@@ -113,15 +113,15 @@ object PhysicalNodeUtil {
     val windowOp = windowAggNode.window()
 
     val orders = windowOp.sort().orders()
-    val orderExprs = orders.order_by()
+    val orderExprListNode = orders.getOrder_expressions_
 
-    if (orderExprs.GetChildNum() <= 0) {
+    if (orderExprListNode.GetChildNum() <= 0) {
       throw new HybridSeException("Can not get orderby column name from dataframe: " + inputDf)
-    } else if (orderExprs.GetChildNum() > 1) {
-      throw new HybridSeException("Can more than one orderby keys: " + orderExprs.GetChildNum())
+    } else if (orderExprListNode.GetChildNum() > 1) {
+      throw new HybridSeException("Can more than one orderby keys: " + orderExprListNode.GetChildNum())
     } else {
-      val expr = orderExprs.GetChild(0)
-      val colIdx = SparkColumnUtil.resolveColumnIndex(expr, windowAggNode.GetProducer(0))
+      val orderExpr = orders.GetOrderExpression(0)
+      val colIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, windowAggNode.GetProducer(0))
       inputDf.schema.apply(colIdx).name
     }
   }
@@ -133,15 +133,15 @@ object PhysicalNodeUtil {
     val windowOp = windowAggNode.window()
 
     val orders = windowOp.sort().orders()
-    val orderExprs = orders.order_by()
+    val orderExprListNode = orders.getOrder_expressions_
 
-    if (orderExprs.GetChildNum() <= 0) {
+    if (orderExprListNode.GetChildNum() <= 0) {
       throw new HybridSeException("Can not get orderby column name from dataframe: " + inputDf)
-    } else if (orderExprs.GetChildNum() > 1) {
-      throw new HybridSeException("Can more than one orderby keys: " + orderExprs.GetChildNum())
+    } else if (orderExprListNode.GetChildNum() > 1) {
+      throw new HybridSeException("Can more than one orderby keys: " + orderExprListNode.GetChildNum())
     } else {
-      val expr = orderExprs.GetChild(0)
-      val colIdx = SparkColumnUtil.resolveColumnIndex(expr, windowAggNode.GetProducer(0))
+      val orderExpr = orders.GetOrderExpression(0)
+      val colIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, windowAggNode.GetProducer(0))
       colIdx
     }
   }
