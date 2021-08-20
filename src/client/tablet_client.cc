@@ -98,7 +98,6 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     for (auto& type : parameter_types) {
         request.add_parameter_types(type);
     }
-    LOG(INFO) << "Query request: " << request.DebugString();
     auto& io_buf = cntl->request_attachment();
     if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(parameter_row.data()), parameter_row.size(), &io_buf)) {
         LOG(WARNING) << "Encode parameter buffer failed";
