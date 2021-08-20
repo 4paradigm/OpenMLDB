@@ -47,7 +47,7 @@ class LocalTabletRowHandler : public RowHandler {
     base::Status SyncValue() {
         DLOG(INFO) << "Sync Value ... local tablet SubQuery request: task id "
                    << task_id_;
-        if (0 != session_.Run(task_id_, request_, Row(), &value_)) {
+        if (0 != session_.Run(task_id_, request_, &value_)) {
             return base::Status(common::kCallMethodError,
                                 "sub query fail: session run fail");
         }
@@ -107,7 +107,7 @@ class LocalTabletTableHandler : public MemTableHandler {
     base::Status SyncValue() {
         DLOG(INFO) << "Local tablet SubQuery batch request: task id "
                    << task_id_;
-        if (0 != session_.Run(task_id_, requests_, Row(), table_)) {
+        if (0 != session_.Run(task_id_, requests_, table_)) {
             return base::Status(common::kCallMethodError,
                                 "sub query fail: session run fail");
         }

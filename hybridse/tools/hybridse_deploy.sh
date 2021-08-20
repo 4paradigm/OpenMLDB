@@ -44,7 +44,7 @@ fi
 mkdir -p build
 pushd build/
 
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse"
+cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCMAKE_INSTALL_PREFIX="hybridse"
 make -j "$(nproc)" install
 mv hybridse "$OUTPUT_DIR"
 tar czf "../$OUTPUT_ARCHIVE" "$OUTPUT_DIR"

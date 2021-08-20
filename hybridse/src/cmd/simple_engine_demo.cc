@@ -162,10 +162,9 @@ int run() {
             get_status.code != common::kOk) {
             return SIMPLE_ENGINE_COMPILE_ERROR;
         }
-        Row empty_parameter_row;
         std::vector<Row> outputs;
         // run sql query
-        if (0 != session.Run(empty_parameter_row, outputs)) {
+        if (0 != session.Run(outputs)) {
             return SIMPLE_ENGINE_RUN_ERROR;
         }
         PrintRows(session.GetSchema(), outputs);

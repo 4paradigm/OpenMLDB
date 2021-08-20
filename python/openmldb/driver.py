@@ -128,7 +128,7 @@ class Driver(object):
 
         status = sql_router_sdk.Status()
         if row_builder is not None:
-            rs = self.sdk.ExecuteSQL(db, sql, row_builder, status)
+            rs = self.sdk.ExecuteSQLRequest(db, sql, row_builder, status)
         else:
             rs = self.sdk.ExecuteSQL(db, sql, status)
         if status.code != 0:

@@ -21,7 +21,9 @@ popd
 # goto hybridse directory
 pushd "$(dirname "$0")/.."
 
-./tools/setup_thirdparty.sh
+# install thirdparty hybrise
+HYBRIDSE_THIRDPARTY="$(pwd)/thirdparty"
+../steps/setup_thirdparty.sh ${HYBRIDSE_THIRDPARTY}
 
 if uname -a | grep -q Darwin; then
   # in case coreutils not install on mac
@@ -32,8 +34,6 @@ mkdir -p build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j"$(nproc)"
-./src/base/fe_slice_test
-./src/base/hash_test
 SQL_CASE_BASE_DIR=${OPENMLDB_DIR} make -j"$(nproc)" test
 
 popd

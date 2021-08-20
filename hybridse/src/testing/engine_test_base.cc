@@ -379,7 +379,14 @@ Status EngineTestRunner::Compile() {
     if (hybridse::sqlcase::SqlCase::IsDebug() || sql_case_.debug()) {
         session_->EnableDebug();
     }
-    session_->SetParameterSchema(parameter_schema_);
+    if (session_->engine_mode() == kBatchMode) {
+        auto batch_session =
+            std::dynamic_pointer_cast<BatchRunSession>(session_);
+        batch_session->SetParameterSchema(parameter_schema_);
+    } else {
+        CHECK_TRUE(parameter_schema_.empty(), common::kUnSupport,
+                   "Request or BatchRequest mode do not support parameterized query currently")
+    }
     struct timeval st;
     struct timeval et;
     gettimeofday(&st, nullptr);

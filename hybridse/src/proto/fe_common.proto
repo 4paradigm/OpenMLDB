@@ -22,6 +22,7 @@ option java_outer_classname = "Common";
 enum StatusCode {
     kOk = 0;
     kRunning = 1;
+    kRunError = 2;
     kTypeError = 8;
     kFileIOError = 9;
     kUnSupport = 10;
