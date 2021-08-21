@@ -126,9 +126,6 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption("openmldb.enable.hive.metastore", "Need to set hive.metastore.uris")
   var enableHiveMetaStore = false
 
-  @ConfigOption("openmldb.hive.default.database", "The default database from hive metastore")
-  var defaultHiveDatabase = "default"
-
   @ConfigOption(name="openmldb.hadoop.warehouse.path", doc="The path of Hadoop warehouse")
   var hadoopWarehousePath = ""
 
