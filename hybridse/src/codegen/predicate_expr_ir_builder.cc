@@ -741,17 +741,17 @@ Status PredicateIRBuilder::BuildIsNullExpr(NativeValue input,
     return Status::OK();
 }
 
-Status PredicateIRBuilder::BuildBetweenExpr(const NativeValue& expr, const NativeValue& left, const NativeValue& right,
+Status PredicateIRBuilder::BuildBetweenExpr(const NativeValue& lhs, const NativeValue& low, const NativeValue& high,
                                             bool is_not_between, NativeValue* output) {
     NativeValue first_condition;
     NativeValue second_condition;
     if (is_not_between) {
-        CHECK_STATUS(BuildLtExpr(expr, left, &first_condition));
-        CHECK_STATUS(BuildGtExpr(expr, right, &second_condition));
+        CHECK_STATUS(BuildLtExpr(lhs, low, &first_condition));
+        CHECK_STATUS(BuildGtExpr(lhs, high, &second_condition));
         CHECK_STATUS(BuildOrExpr(first_condition, second_condition, output));
     } else {
-        CHECK_STATUS(BuildGeExpr(expr, left, &first_condition));
-        CHECK_STATUS(BuildLeExpr(expr, right, &second_condition));
+        CHECK_STATUS(BuildGeExpr(lhs, low, &first_condition));
+        CHECK_STATUS(BuildLeExpr(lhs, high, &second_condition));
         CHECK_STATUS(BuildAndExpr(first_condition, second_condition, output));
     }
     return Status::OK();

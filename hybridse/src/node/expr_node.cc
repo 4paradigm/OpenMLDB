@@ -511,6 +511,20 @@ Status ExprNode::BitwiseNotTypeAccept(node::NodeManager* nm, const TypeNode* rhs
     return Status::OK();
 }
 
+Status ExprNode::BetweenTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* low,
+                                   const TypeNode* high, const TypeNode** output_type) {
+    CHECK_TRUE(lhs != nullptr && low != nullptr && high != nullptr, kTypeError);
+
+    const TypeNode* cond_1 = nullptr;
+    CHECK_STATUS(CompareTypeAccept(nm, lhs, low, &cond_1));
+
+    const TypeNode* cond_2 = nullptr;
+    CHECK_STATUS(CompareTypeAccept(nm, lhs, high, &cond_2));
+
+    CHECK_STATUS(LogicalOpTypeAccept(nm, cond_1, cond_2, output_type));
+    return Status::OK();
+}
+
 Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2, kTypeError);
     auto left_type = GetChild(0)->GetOutputType();
@@ -749,24 +763,17 @@ AllNode* AllNode::ShadowCopy(NodeManager* nm) const {
 }
 
 BetweenExpr* BetweenExpr::ShadowCopy(NodeManager* nm) const {
-    return nm->MakeBetweenExpr(GetExpr(), GetLeft(), GetRight(), is_not_between());
+    return nm->MakeBetweenExpr(GetLhs(), GetLow(), GetHigh(), is_not_between());
 }
 Status BetweenExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 3, kTypeError);
 
-    const TypeNode* cond_1 = nullptr;
-    CHECK_STATUS(
-        CompareTypeAccept(ctx->node_manager(), GetExpr()->GetOutputType(), GetLeft()->GetOutputType(), &cond_1));
-
-    const TypeNode* cond_2 = nullptr;
-    CHECK_STATUS(
-        CompareTypeAccept(ctx->node_manager(), GetExpr()->GetOutputType(), GetRight()->GetOutputType(), &cond_2));
-
     const TypeNode* top_type = nullptr;
-    CHECK_STATUS(LogicalOpTypeAccept(ctx->node_manager(), cond_1, cond_2, &top_type));
+    CHECK_STATUS(BetweenTypeAccept(ctx->node_manager(), GetLhs()->GetOutputType(), GetLow()->GetOutputType(),
+                                   GetHigh()->GetOutputType(), &top_type));
 
     SetOutputType(top_type);
-    SetNullable(GetExpr()->nullable() || GetLeft()->nullable() || GetRight()->nullable());
+    SetNullable(GetLhs()->nullable() || GetLow()->nullable() || GetHigh()->nullable());
     return Status::OK();
 }
 

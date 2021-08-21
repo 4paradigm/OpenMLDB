@@ -501,6 +501,9 @@ class ExprNode : public SqlNode {
 
     static Status BitwiseNotTypeAccept(node::NodeManager* nm, const TypeNode* rhs, const TypeNode** output_type);
 
+    static Status BetweenTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* low,
+                                    const TypeNode* high, const TypeNode** output_type);
+
  private:
     const TypeNode *output_type_ = nullptr;
     bool nullable_ = true;
@@ -1604,11 +1607,11 @@ class BetweenExpr : public ExprNode {
  public:
     BetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right):
         BetweenExpr(expr, left, right, false) {}
-    BetweenExpr(ExprNode* expr, ExprNode* left, ExprNode* right, bool is_not_between)
+    BetweenExpr(ExprNode* lhs, ExprNode* low, ExprNode* high, bool is_not_between)
         : ExprNode(kExprBetween), is_not_between_(is_not_between) {
-        AddChild(expr);
-        AddChild(left);
-        AddChild(right);
+        AddChild(lhs);
+        AddChild(low);
+        AddChild(high);
     }
     ~BetweenExpr() {}
 
@@ -1620,9 +1623,9 @@ class BetweenExpr : public ExprNode {
     void set_is_not_between(const bool flag) { is_not_between_ = flag; }
     const bool is_not_between() const { return is_not_between_; }
 
-    ExprNode* GetExpr() const { return GetChildNum() > 0 ? GetChild(0) : nullptr; }
-    ExprNode* GetLeft() const { return GetChildNum() > 1 ? GetChild(1) : nullptr; }
-    ExprNode* GetRight() const { return GetChildNum() > 2 ? GetChild(2) : nullptr; }
+    ExprNode* GetLhs() const { return GetChildNum() > 0 ? GetChild(0) : nullptr; }
+    ExprNode* GetLow() const { return GetChildNum() > 1 ? GetChild(1) : nullptr; }
+    ExprNode* GetHigh() const { return GetChildNum() > 2 ? GetChild(2) : nullptr; }
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 

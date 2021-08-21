@@ -909,7 +909,6 @@ Status ExprIRBuilder::BuildCaseExpr(
 Status ExprIRBuilder::BuildCondExpr(const ::hybridse::node::CondExpr* node,
                                     NativeValue* output) {
     // build condition
-    Status status;
     NativeValue cond_value;
     CHECK_STATUS(this->Build(node->GetCondition(), &cond_value));
 
@@ -927,17 +926,19 @@ Status ExprIRBuilder::BuildCondExpr(const ::hybridse::node::CondExpr* node,
 }
 
 Status ExprIRBuilder::BuildBetweenExpr(const ::hybridse::node::BetweenExpr* node, NativeValue* output) {
-    NativeValue expr_value;
-    CHECK_STATUS(this->Build(node->GetExpr(), &expr_value));
+    CHECK_TRUE(node != nullptr && node->GetChildNum() == 3, kCodegenError, "invalid between expr node");
 
-    NativeValue left_value;
-    CHECK_STATUS(this->Build(node->GetLeft(), &left_value));
+    NativeValue lhs_value;
+    CHECK_STATUS(Build(node->GetLhs(), &lhs_value), "failed to build between lhs expr");
 
-    NativeValue right_value;
-    CHECK_STATUS(this->Build(node->GetRight(), &right_value));
+    NativeValue low_value;
+    CHECK_STATUS(Build(node->GetLow(), &low_value), "failed to build between low expr");
+
+    NativeValue high_value;
+    CHECK_STATUS(Build(node->GetHigh(), &high_value), "failed to build between high expr");
 
     PredicateIRBuilder predicate_ir_builder(ctx_->GetCurrentBlock());
-    return predicate_ir_builder.BuildBetweenExpr(expr_value, left_value, right_value, node->is_not_between(), output);
+    return predicate_ir_builder.BuildBetweenExpr(lhs_value, low_value, high_value, node->is_not_between(), output);
 }
 
 Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const int schema_idx, llvm::Value** slice_ptr,
