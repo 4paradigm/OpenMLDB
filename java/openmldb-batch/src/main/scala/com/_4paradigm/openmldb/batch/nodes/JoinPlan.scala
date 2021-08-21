@@ -56,7 +56,8 @@ object JoinPlan {
 
     val hasOrderby =
       ((node.join.right_sort != null) && (node.join.right_sort.orders != null)
-    && (node.join.right_sort.orders.order_by != null))
+        && (node.join.right_sort.orders.getOrder_expressions_ != null)
+        && (node.join.right_sort.orders.getOrder_expressions_.GetChildNum() != 0))
 
     // Check if we can use native last join
     val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, hasOrderby)
@@ -141,10 +142,10 @@ object JoinPlan {
     } else if (joinType == JoinType.kJoinTypeLast) {
       // Resolve order by column index
       if (hasOrderby) {
-        val orderbyExprListNode = node.join.right_sort.orders.order_by
+        val orderExpr = node.join.right_sort.orders.GetOrderExpression(0)
         val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
         // Get the time column index from right table
-        val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node.GetProducer(1))
+        val timeColIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, node.GetProducer(1))
         assert(timeColIdx >= 0)
 
         val timeIdxInJoined = timeColIdx + leftDf.schema.size

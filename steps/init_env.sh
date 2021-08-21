@@ -68,10 +68,10 @@ else
   pushd "${THIRDSRC_PATH}"
 
   if [[ "$OSTYPE" = "darwin"* ]]; then
-    curl -SLo hybridse.tar.gz https://github.com/4paradigm/HybridSE/releases/download/v0.2.1/hybridse-0.2.1-darwin-x86_64.tar.gz
+    curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.3.0-alpha-0817/hybridse-0.3.0-alpha-0817-darwin-x86_64.tar.gz
   elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
     if [[ $ARCH = 'x86_64' ]]; then
-        curl -SLo hybridse.tar.gz https://github.com/4paradigm/HybridSE/releases/download/v0.2.1/hybridse-0.2.1-linux-x86_64.tar.gz
+        curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.3.0-alpha-0817/hybridse-0.3.0-alpha-0817-linux-x86_64.tar.gz
     elif [[ $ARCH = 'aarch64' ]]; then
         # NOTE: missing hybridse-aarch64
         echo "missing hybridse-aarch64"

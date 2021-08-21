@@ -148,7 +148,7 @@
         <parameters>
             <!-- Update by 4paradigm -->
             <!-- init:<parameter name="allowed"><![CDATA[2]]></parameter> -->
-            <parameter name="allowed"><![CDATA[10]]></parameter>
+            <parameter name="allowed"><![CDATA[20]]></parameter>
             <parameter name="ignoreRegex"><![CDATA[^""$]]></parameter>
         </parameters>
     </check>
