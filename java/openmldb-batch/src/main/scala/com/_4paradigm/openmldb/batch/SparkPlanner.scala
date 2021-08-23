@@ -18,10 +18,18 @@ package com._4paradigm.openmldb.batch
 
 import com._4paradigm.hybridse.HybridSeLibrary
 import com._4paradigm.hybridse.`type`.TypeOuterClass.Database
-import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode, PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode, PhysicalSortNode, PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType}
+import com._4paradigm.hybridse.vm.{
+  CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
+  PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalOpNode,
+  PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode, PhysicalSortNode,
+  PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType
+}
 import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
 import com._4paradigm.hybridse.node.JoinType
-import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan, JoinPlan, LimitPlan, SortByPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, WindowAggPlan}
+import com._4paradigm.openmldb.batch.nodes.{
+  ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan,
+  GroupByPlan, JoinPlan, LimitPlan, SortByPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, WindowAggPlan
+}
 import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -208,7 +216,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
             WindowAggPlan.gen(ctx, PhysicalWindowAggrerationNode.CastFrom(projectNode), children.head)
           case ProjectType.kGroupAggregation =>
             GroupByAggregationPlan.gen(ctx, PhysicalGroupAggrerationNode.CastFrom(projectNode), children.head)
-          case _ => throw new UnsupportedHybridSeException (
+          case _ => throw new UnsupportedHybridSeException(
             s"Project type ${projectNode.getProject_type_} not supported")
         }
       case PhysicalOpType.kPhysicalOpGroupBy =>
@@ -235,8 +243,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
 
 
   /**
-    * Run plan slowly by storing and loading each intermediate result from external data path.
-    */
+   * Run plan slowly by storing and loading each intermediate result from external data path.
+   */
   def slowRunWithHDFSCache(root: PhysicalOpNode, ctx: PlanContext,
                            cacheDir: String, isRoot: Boolean): SparkInstance = {
     val sess = ctx.getSparkSession
@@ -258,7 +266,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
       } else if (child.GetOpType() == PhysicalOpType.kPhysicalOpDataProvider) {
         visitNode(child, ctx, Array())
       } else {
-        slowRunWithHDFSCache(child, ctx, cacheDir, isRoot=false)
+        slowRunWithHDFSCache(child, ctx, cacheDir, isRoot = false)
       }
       children += childResult
     }

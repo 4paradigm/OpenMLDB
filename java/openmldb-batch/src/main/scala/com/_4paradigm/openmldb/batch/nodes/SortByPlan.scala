@@ -24,7 +24,7 @@ object SortByPlan {
   def gen(ctx: PlanContext, node: PhysicalSortNode, input: SparkInstance): SparkInstance = {
 
     val dfWithIndex = input.getDfConsideringIndex(ctx, node.GetNodeId())
-    val outputDf = dfWithIndex.sort(PhysicalNodeUtil.getOrderbyColumns(node, dfWithIndex):_*)
+    val outputDf = dfWithIndex.sort(PhysicalNodeUtil.getOrderbyColumns(node, dfWithIndex): _*)
 
     SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
