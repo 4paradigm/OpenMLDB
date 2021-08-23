@@ -38,19 +38,16 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<scala.version>2.12.8</scala.version>
-		<scala.binary.version>2.12</scala.binary.version>
-		<spark.version>3.0.0</spark.version>
-		<scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
-		<scalatest.skip>false</scalatest.skip>
-		<spark.dependencyScope>provided</spark.dependencyScope>
         <encoding>UTF-8</encoding>
         <java.version>1.8</java.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-		<!-- Set the default project version -->
-		<default.project.version>0.1.5</default.project.version>
-		<default.hybridse.sdk.version>0.1.5</default.hybridse.sdk.version>
+		<scala.version>2.12.8</scala.version>
+		<scala.binary.version>2.12</scala.binary.version>
+		<spark.version>3.0.0</spark.version>
+		<spark.dependencyScope>provided</spark.dependencyScope>
+		<default.project.version>0.2.1</default.project.version>
+		<default.hybridse.sdk.version>0.2.1</default.hybridse.sdk.version>
 	</properties>
 
 	<profiles>
@@ -78,164 +75,9 @@
 				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-allinone</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
-
-		<!-- Build with Spark 2.3.0
-		<profile>
-			<id>spark2.3.0</id>
-			<properties>
-				<spark.version>2.3.0</spark.version>
-				<scala.version>2.11.8</scala.version>
-				<scala.binary.version>2.11</scala.binary.version>
-			</properties>
-			<activation>
-				<activeByDefault>false</activeByDefault>
-			</activation>
-		</profile>
-		-->
-
-		<!-- Build with Spark 2.4.5
-		<profile>
-			<id>spark2.4.5</id>
-			<properties>
-				<spark.version>2.4.5</spark.version>
-				<scala.version>2.12.10</scala.version>
-				<scala.binary.version>2.12</scala.binary.version>
-			</properties>
-			<activation>
-				<activeByDefault>false</activeByDefault>
-			</activation>
-		</profile>
-		-->
-		<profile>
-			<id>run_shade</id>
-			<build>
-				<plugins>
-					<!--					<plugin>-->
-					<!--						<groupId>org.apache.maven.plugins</groupId>-->
-					<!--						<artifactId>maven-shade-plugin</artifactId>-->
-					<!--						<version>2.4.1</version>-->
-					<!--						<executions>-->
-					<!--							<execution>-->
-					<!--								<phase>package</phase>-->
-					<!--								<goals>-->
-					<!--									<goal>shade</goal>-->
-					<!--								</goals>-->
-					<!--								<configuration>-->
-					<!--									<shadedArtifactAttached>true</shadedArtifactAttached>-->
-					<!--									<shadedClassifierName>with-dependencies</shadedClassifierName>-->
-					<!--									&lt;!&ndash; <minimizeJar>true</minimizeJar> &ndash;&gt;-->
-					<!--									&lt;!&ndash; Exclude the jars which are in Spark libraries &ndash;&gt;-->
-					<!--									<artifactSet>-->
-					<!--										<excludes>-->
-					<!--											<exclude>org.apache.spark:*</exclude>-->
-					<!--											<exclude>org.scala-lang:*</exclude>-->
-					<!--											<exclude>org.scala-lang.modules:*</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-annotations</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-auth</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-client</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-common</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-hdfs</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-mapreduce-client-app</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-mapreduce-client-common</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-mapreduce-client-core</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-mapreduce-client-jobclient</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-mapreduce-client-shuffle</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-yarn-api</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-yarn-client</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-yarn-common</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-yarn-server-common</exclude>-->
-					<!--											<exclude>org.apache.hadoop:hadoop-yarn-server-web-proxy</exclude>-->
-					<!--											<exclude>org.apache.parquet:parquet-column</exclude>-->
-					<!--											<exclude>org.apache.parquet:parquet-common</exclude>-->
-					<!--											<exclude>org.apache.parquet:parquet-encoding</exclude>-->
-					<!--											<exclude>org.apache.parquet:parquet-format</exclude>-->
-					<!--											<exclude>org.apache.parquet:parquet-hadoop</exclude>-->
-					<!--											<exclude>org.apache.parquet:parquet-jackson</exclude>-->
-					<!--											<exclude>net.sf.py4j:py4j</exclude>-->
-					<!--											<exclude>com.google.protobuf:protobuf-java</exclude>-->
-					<!--											<exclude>org.antlr:antlr4-runtime</exclude>-->
-					<!--											<exclude>log4j:log4j</exclude>-->
-					<!--											<exclude>org.slf4j:slf4j-api</exclude>-->
-					<!--											<exclude>org.slf4j:slf4j-log4j12</exclude>-->
-					<!--											<exclude>org.apache.logging.log4j:log4j-core</exclude>-->
-					<!--											<exclude>org.apache.logging.log4j:log4j-slf4j-impl</exclude>-->
-					<!--											<exclude>org.apache.avro:avro-ipc</exclude>-->
-					<!--											<exclude>org.apache.avro:avro-mapred</exclude>-->
-					<!--											<exclude>org.apache.commons:commons-compress</exclude>-->
-					<!--											<exclude>org.apache.commons:commons-math3</exclude>-->
-					<!--											<exclude>org.apache.commons:commons-lang3</exclude>-->
-					<!--											<exclude>org.apache.commons:commons-crypto</exclude>-->
-					<!--											<exclude>com.google.code.gson:gson</exclude>-->
-					<!--											<exclude>com.google.guava:guava</exclude>-->
-					<!--											<exclude>org.glassfish.hk2:hk2-api</exclude>-->
-					<!--											<exclude>org.glassfish.hk2:hk2-locator</exclude>-->
-					<!--											<exclude>org.glassfish.hk2:hk2-utils</exclude>-->
-					<!--											<exclude>org.codehaus.jackson:jackson-core-asl</exclude>-->
-					<!--											<exclude>org.codehaus.jackson:jackson-mapper-asl</exclude>-->
-					<!--											<exclude>org.codehaus.jackson:jackson-xc</exclude>-->
-					<!--											<exclude>com.fasterxml.jackson.core:jackson-databind</exclude>-->
-					<!--											<exclude>com.fasterxml.jackson.core:jackson-core</exclude>-->
-					<!--											<exclude>com.fasterxml.jackson.core:jackson-annotations</exclude>-->
-					<!--											<exclude>org.slf4j:jcl-over-slf4j</exclude>-->
-					<!--											<exclude>org.glassfish.jersey.core:jersey-client</exclude>-->
-					<!--											<exclude>org.glassfish.jersey.core:jersey-common</exclude>-->
-					<!--											<exclude>org.glassfish.jersey.bundles.repackaged:jersey-guava</exclude>-->
-					<!--											<exclude>org.glassfish.jersey.core:jersey-server</exclude>-->
-					<!--											<exclude>org.glassfish.jersey.media:jersey-media-jaxb</exclude>-->
-					<!--											<exclude>org.glassfish.jersey.containers:jersey-container-servlet</exclude>-->
-					<!--											<exclude>org.mortbay.jetty:jetty-util</exclude>-->
-					<!--											<exclude>joda-time:joda-time</exclude>-->
-					<!--											<exclude>org.json4s:json4s-jackson_2.11</exclude>-->
-					<!--											<exclude>org.json4s:json4s-core_2.11</exclude>-->
-					<!--											<exclude>org.gson4s:json4s-ast_2.11</exclude>-->
-					<!--											<exclude>com.esotericsoftware:kryo-shaded</exclude>-->
-					<!--											<exclude>org.fusesource.leveldbjni:leveldbjni-all</exclude>-->
-					<!--											<exclude>org.lz4:lz4-java</exclude>-->
-					<!--											<exclude>io.dropwizard.metrics:metrics-core</exclude>-->
-					<!--											<exclude>io.dropwizard.metrics:metrics-jvm</exclude>-->
-					<!--											<exclude>io.dropwizard.metrics:metrics-json</exclude>-->
-					<!--											<exclude>io.dropwizard.metrics:metrics-graphite</exclude>-->
-					<!--											<exclude>com.esotericsoftware:minlog:jar</exclude>-->
-					<!--											<exclude>io.netty:netty</exclude>-->
-					<!--											<exclude>io.netty:netty-all</exclude>-->
-					<!--											<exclude>org.objenesis:objenesis</exclude>-->
-					<!--											<exclude>org.apache.orc:orc-core</exclude>-->
-					<!--											<exclude>org.apache.orc:orc-mapreduce</exclude>-->
-					<!--											<exclude>oro:oro</exclude>-->
-					<!--											<exclude>org.xerial.snappy:snappy-java</exclude>-->
-					<!--											<exclude>javax.xml.stream:stax-api</exclude>-->
-					<!--											<exclude>com.clearspring.analytics:stream</exclude>-->
-					<!--											<exclude>com.univocity:univocity-parsers</exclude>-->
-					<!--											<exclude>javax.validation:validation-api</exclude>-->
-					<!--											<exclude>org.apache.xbean:xbean-asm5-shaded</exclude>-->
-					<!--											<exclude>xmlenc:xmlenc</exclude>-->
-					<!--											<exclude>org.tukaani:xz</exclude>-->
-					<!--											<exclude>com.github.luben:zstd-jni</exclude>-->
-					<!--											<exclude>org.apache.zookeeper:zookeeper</exclude>-->
-					<!--										</excludes>-->
-					<!--									</artifactSet>-->
-					<!--									<filters>-->
-					<!--										<filter>-->
-					<!--											<artifact>*:*</artifact>-->
-					<!--											<excludes>-->
-					<!--												<exclude>META-INF/*.SF</exclude>-->
-					<!--												<exclude>META-INF/*.DSA</exclude>-->
-					<!--												<exclude>META-INF/*.RSA</exclude>-->
-					<!--											</excludes>-->
-					<!--										</filter>-->
-					<!--									</filters>-->
-					<!--								</configuration>-->
-					<!--							</execution>-->
-					<!--						</executions>-->
-					<!--					</plugin>-->
-				</plugins>
-			</build>
-		</profile>
 	</profiles>
 
-
 	<dependencies>
-
 		<dependency>
 			<groupId>com.4paradigm.hybridse</groupId>
 			<artifactId>hybridse-native</artifactId>
@@ -527,7 +369,7 @@
 					<verbose>false</verbose>
 					<failOnViolation>true</failOnViolation>
 					<includeTestSourceDirectory>true</includeTestSourceDirectory>
-					<failOnWarning>false</failOnWarning>
+					<failOnWarning>true</failOnWarning>
 					<sourceDirectory>${project.basedir}/src/main/scala</sourceDirectory>
 					<testSourceDirectory>${project.basedir}/src/test/scala</testSourceDirectory>
 					<configLocation>${project.basedir}/scala_style.xml</configLocation>
@@ -698,8 +540,6 @@
 
 	<reporting>
 		<plugins>
-
-
 			<!-- Generate report for jacoco -->
 			<plugin>
 				<groupId>org.jacoco</groupId>
@@ -728,4 +568,3 @@
 	</distributionManagement>
 
 </project>
-

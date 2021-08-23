@@ -286,7 +286,6 @@ cases:
       success: false
   - id: 11-2
     desc: NVL is synonyms to ifnull
-    mode: hybridse-only
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
         indexs: ["index1:col1:col4"]
@@ -305,7 +304,6 @@ cases:
         - [3, ""]
   - id: 11-3
     desc: NVL-表达式-/0
-    mode: hybridse-only
     inputs:
       - columns: ["col1 int","col2 int", "col4 timestamp"]
         indexs: ["index1:col1:col4"]
@@ -348,7 +346,6 @@ cases:
 
   - id: NVL2-1
     desc: NVL2
-    mode: hybridse-only
     inputs:
       - columns: ["col1 int","col2 int", "col4 timestamp"]
         indexs: ["index1:col1:col4"]
@@ -368,7 +365,6 @@ cases:
 
   - id: NVL2-2
     desc: NVL2, type not match
-    mode: hybridse-only
     inputs:
       - columns: ["col1 int","col2 int", "col4 timestamp"]
         indexs: ["index1:col1:col4"]
@@ -383,7 +379,6 @@ cases:
 
   - id: NVL2-3
     desc: NVL2, sub expression
-    mode: hybridse-only
     inputs:
       - columns: ["col1 int","col2 int", "col4 timestamp"]
         indexs: ["index1:col1:col4"]

@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.batch.utils
 
 import com._4paradigm.hybridse.sdk.{HybridSeException, UnsupportedHybridSeException}
-import com._4paradigm.hybridse.node.{ConstNode, ExprNode, ExprType, DataType => HybridseDataType}
+import com._4paradigm.hybridse.node.{ConstNode, ExprNode, ExprType, OrderExpression, DataType => HybridseDataType}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalJoinNode, PhysicalOpNode}
 import com._4paradigm.openmldb.batch.PlanContext
 import org.apache.spark.sql.functions.lit
@@ -74,10 +74,13 @@ object SparkColumnUtil {
           throw new HybridSeException(s"Column index out of bounds: $index")
         }
         index
-
       case _ => throw new HybridSeException(
         s"Expr ${expr.GetExprString()} not supported")
     }
+  }
+
+  def resolveOrderColumnIndex(orderExpr: OrderExpression, planNode: PhysicalOpNode): Int = {
+    resolveColumnIndex(orderExpr.expr(), planNode)
   }
 
   // Resolve HybridSE expr node to get Spark column

@@ -92,6 +92,7 @@ bool SQLRequestRow::Init(int32_t str_length) {
         return true;
     }
     has_error_ = false;
+    is_ok_ = false;
     str_length_expect_ = str_length;
     str_length_current_ = 0;
     uint32_t total_length = str_field_start_offset_;

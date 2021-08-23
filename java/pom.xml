@@ -8,7 +8,7 @@
     <packaging>pom</packaging>
     <name>openmldb</name>
     <!-- Use the version from different profile -->
-    <version>0.2.0</version>
+    <version>0.2.1-SNAPSHOT</version>
     <modules>
         <module>openmldb-jdbc</module>
         <module>openmldb-native</module>
@@ -438,13 +438,6 @@
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
                 <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.7</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>sonatype-nexus-staging</serverId>
-                    <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -517,7 +510,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-gpg-plugin</artifactId>
-                    <version>1.5</version>
+                    <version>3.0.1</version>
                     <executions>
                         <execution>
                             <id>sign-artifacts</id>
@@ -525,6 +518,15 @@
                             <goals>
                                 <goal>sign</goal>
                             </goals>
+                            <configuration>
+                                <!-- <useAgent>true</useAgent> -->
+                                <!-- uncomment this if want to specify gpg sign key -->
+                                <!-- <keyname>${gpg.keyname}</keyname> -->
+
+                                <passphraseServerId>gpg.passphrase</passphraseServerId>
+
+                                <!-- <passphrase>${gpg.passphrase}</passphrase> -->
+                            </configuration>
                         </execution>
                     </executions>
                 </plugin>

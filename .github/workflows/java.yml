@@ -46,11 +46,6 @@ jobs:
         with:
           java-version: '8'
           distribution: 'adopt'
-      - name: Install thirdparty
-        run: |
-          brew install gflags
-          brew install glog
-          brew install yaml-cpp
       - name: Run unit tests for all-in-one
         working-directory: java/openmldb-batch
         run: |

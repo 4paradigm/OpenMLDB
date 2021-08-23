@@ -173,22 +173,20 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             session.EnableDebug();
         }
         codec::Row parameter(request->parameter_row());
-        auto table = session.Run(parameter);
+        std::vector<hybridse::codec::Row> outputs;
+        int32_t ret = session.Run(parameter, outputs);
 
-        if (!table) {
+        if (0 != ret) {
             LOG(WARNING) << "fail to run sql " << request->sql();
             status->set_code(common::kSqlError);
             status->set_msg("fail to run sql");
             return;
         }
 
-        auto iter = table->GetIterator();
         uint32_t byte_size = 0;
         uint32_t count = 0;
-        while (iter->Valid()) {
-            const codec::Row& row = iter->GetValue();
+        for(auto& row: outputs) {
             byte_size += row.size();
-            iter->Next();
             buf.append(reinterpret_cast<void*>(row.buf()), row.size());
             count += 1;
         }
@@ -203,7 +201,6 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             return;
         }
         vm::RequestRunSession session;
-        session.SetParameterSchema(request->parameter_schema());
         {
             base::Status base_status;
             bool ok = engine_->Get(request->sql(), request->db(), session,
@@ -218,10 +215,9 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         if (request->is_debug()) {
             session.EnableDebug();
         }
-        codec::Row parameter(request->parameter_row());
         codec::Row row(request->row());
         codec::Row output;
-        int32_t ret = session.Run(request->task_id(), row, parameter, &output);
+        int32_t ret = session.Run(request->task_id(), row, &output);
         if (ret != 0) {
             LOG(WARNING) << "fail to run sql " << request->sql();
             status->set_code(common::kSqlError);

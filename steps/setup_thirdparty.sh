@@ -54,5 +54,4 @@ fi
 tar xzf thirdparty.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
 tar xzf libzetasql.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
 popd
-
 popd

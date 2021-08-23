@@ -69,6 +69,11 @@ java/openmldb-jdbc/target/
 python/fesql-auto-test-python/logs
 python/fesql-auto-test-python/report
 python/logs
+python/sqlalchemy-test/*.xml
 
 .vscode/settings.json
-./openmldb-*
+
+# ignore openmldb release dir & pkg
+/openmldb-*
+
+/cmake-*
