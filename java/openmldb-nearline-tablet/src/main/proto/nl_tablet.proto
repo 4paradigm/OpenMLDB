@@ -1,17 +1,23 @@
-syntax = "proto3";
+syntax = "proto2";
 
-package openmldb;
+import "common.proto";
+
+package openmldb.nltablet;
 option java_package = "com._4paradigm.openmldb.server";
 option java_outer_classname = "NLTablet";
 option cc_generic_services = true;
 
 
 message CreateTableRequest {
-    string name = 1;
+    optional string db_name = 1;
+    optional string table_name = 2;
+    repeated openmldb.common.ColumnDesc column_desc = 3;
+    optional string partition_key = 4;
 };
+
 message CreateTableResponse {
-    int32 code = 1;
-    string msg = 2;
+    optional int32 code = 1;
+    optional string msg = 2;
 };
 
 service NLTabletServer {

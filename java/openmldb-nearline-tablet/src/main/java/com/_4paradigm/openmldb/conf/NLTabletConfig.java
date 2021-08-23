@@ -13,6 +13,7 @@ public class NLTabletConfig {
     public static String ZK_CLUSTER;
     public static String ZK_ROOTPATH;
     public static int ZK_SESSION_TIMEOUT = 5000;
+    public static String HDFS_PATH;
     static {
         try {
             Properties prop = new Properties();
@@ -24,6 +25,7 @@ public class NLTabletConfig {
             ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
             ZK_CLUSTER = prop.getProperty("zookeeper.cluster");
             ZK_ROOTPATH = prop.getProperty("zookeeper.root_path");
+            HDFS_PATH = prop.getProperty("iceberg.hdfs.path");
         } catch (Exception e) {
             e.printStackTrace();
         }
