@@ -510,8 +510,8 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     column_key.set_ts_name(create_index_node->index_->GetTs());
     auto setTTL = column_key.mutable_ttl();
     ::openmldb::type::TTLType ttl_type;
-    if (!::openmldb::type::TTLType_Parse(create_index_node->index_->ttl_type(), &ttl_type)) {
-        std::cout << "ttl type invalid" << std::endl;
+    if (!::openmldb::client::NsClient::TTLTypeParse(create_index_node->index_->ttl_type(), &ttl_type)) {
+        std::cout << "ttl type " << create_index_node->index_->ttl_type() << " is invalid" << std::endl;
         return;
     }
     setTTL->set_ttl_type(ttl_type);
