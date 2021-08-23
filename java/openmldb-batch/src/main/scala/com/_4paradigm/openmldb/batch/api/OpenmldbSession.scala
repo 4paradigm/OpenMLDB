@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.batch.api
 
+import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
@@ -284,13 +285,16 @@ class OpenmldbSession {
     try {
       catalog.createNamespace(namespace)
     } catch {
-      case _: org.apache.iceberg.exceptions.AlreadyExistsException =>
+      case _: org.apache.iceberg.exceptions.AlreadyExistsException => {
+        logger.warn("Database %s already exists".format(databaseName))
+      }
     }
 
     // Check if table exists
     if(catalog.tableExists(tableIdentifier)) {
       catalog.close()
       logger.error("Table %s already exists".format(tableName))
+      throw new HybridSeException("Table %s already exists, Please check the table name".format(tableName))
     }
 
     // Create Iceberg table
@@ -320,13 +324,16 @@ class OpenmldbSession {
     try {
       hadoopCatalog.createNamespace(namespace)
     } catch {
-      case _: org.apache.iceberg.exceptions.AlreadyExistsException =>
+      case _: org.apache.iceberg.exceptions.AlreadyExistsException => {
+        logger.warn("Database %s already exists".format(databaseName))
+      }
     }
 
     // Check if table exists
     if(hadoopCatalog.tableExists(tableIdentifier)) {
       hadoopCatalog.close()
       logger.error("Table %s already exists".format(tableName))
+      throw new HybridSeException("Table %s already exists, Please check the table name".format(tableName))
     }
 
     // Create Iceberg table
