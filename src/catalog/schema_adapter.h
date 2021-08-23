@@ -232,6 +232,154 @@ class SchemaAdapter {
         return true;
     }
 
+    static bool ConvertType(hybridse::type::Type hybridse_type, openmldb::type::DataType* oepnmldb_type) {
+        if (oepnmldb_type == nullptr) {
+            return false;
+        }
+        switch (hybridse_type) {
+            case hybridse::type::kBool:
+                *oepnmldb_type = openmldb::type::kBool;
+                break;
+            case hybridse::type::kInt16:
+                *oepnmldb_type = openmldb::type::kSmallInt;
+                break;
+            case hybridse::type::kInt32:
+                *oepnmldb_type = openmldb::type::kInt;
+                break;
+            case hybridse::type::kInt64:
+                *oepnmldb_type = openmldb::type::kBigInt;
+                break;
+            case hybridse::type::kFloat:
+                *oepnmldb_type = openmldb::type::kFloat;
+                break;
+            case hybridse::type::kDouble:
+                *oepnmldb_type = openmldb::type::kDouble;
+                break;
+            case hybridse::type::kDate:
+                *oepnmldb_type = openmldb::type::kDate;
+                break;
+            case hybridse::type::kTimestamp:
+                *oepnmldb_type = openmldb::type::kTimestamp;
+                break;
+            case hybridse::type::kVarchar:
+                *oepnmldb_type = openmldb::type::kVarchar;
+                break;
+            default:
+                LOG(WARNING) << "unsupported type" << hybridse_type;
+                return false;
+        }
+        return true;
+    }
+
+    static bool ConvertType(openmldb::type::DataType oepnmldb_type, hybridse::type::Type* hybridse_type) {
+        if (hybridse_type == nullptr) {
+            return false;
+        }
+        switch (oepnmldb_type) {
+            case openmldb::type::kBool:
+                *hybridse_type = hybridse::type::kBool;
+                break;
+            case openmldb::type::kSmallInt:
+                *hybridse_type = hybridse::type::kInt16;
+                break;
+            case openmldb::type::kInt:
+                *hybridse_type = hybridse::type::kInt32;
+                break;
+            case openmldb::type::kBigInt:
+                *hybridse_type = hybridse::type::kInt64;
+                break;
+            case openmldb::type::kFloat:
+                *hybridse_type = hybridse::type::kFloat;
+                break;
+            case openmldb::type::kDouble:
+                *hybridse_type = hybridse::type::kDouble;
+                break;
+            case openmldb::type::kDate:
+                *hybridse_type = hybridse::type::kDate;
+                break;
+            case openmldb::type::kTimestamp:
+                *hybridse_type = hybridse::type::kTimestamp;
+                break;
+            case openmldb::type::kVarchar:
+            case openmldb::type::kString:
+                *hybridse_type = hybridse::type::kVarchar;
+                break;
+            default:
+                LOG(WARNING) << "unsupported type: " << openmldb::type::DataType_Name(oepnmldb_type);
+                return false;
+        }
+        return true;
+    }
+
+    static bool ConvertType(hybridse::sdk::DataType type, hybridse::type::Type *cased_type) {
+        switch (type) {
+            case hybridse::sdk::DataType::kTypeBool:
+                *cased_type = hybridse::type::kBool;
+                return true;
+            case hybridse::sdk::DataType::kTypeInt16:
+                *cased_type = hybridse::type::kInt16;
+                return true;
+            case hybridse::sdk::DataType::kTypeInt32:
+                *cased_type = hybridse::type::kInt32;
+                return true;
+            case hybridse::sdk::DataType::kTypeInt64:
+                *cased_type = hybridse::type::kInt64;
+                return true;
+            case hybridse::sdk::DataType::kTypeFloat:
+                *cased_type = hybridse::type::kFloat;
+                return true;
+            case hybridse::sdk::DataType::kTypeDouble:
+                *cased_type = hybridse::type::kDouble;
+                return true;
+            case hybridse::sdk::DataType::kTypeDate:
+                *cased_type = hybridse::type::kDate;
+                return true;
+            case hybridse::sdk::DataType::kTypeTimestamp:
+                *cased_type = hybridse::type::kTimestamp;
+                return true;
+            case hybridse::sdk::DataType::kTypeString:
+                *cased_type = hybridse::type::kVarchar;
+                return true;
+            default:
+                return false;
+        }
+        return false;
+    }
+    static bool ConvertType(hybridse::sdk::DataType type, openmldb::type::DataType *cased_type) {
+        switch (type) {
+            case hybridse::sdk::DataType::kTypeBool:
+                *cased_type = openmldb::type::kBool;
+                return true;
+            case hybridse::sdk::DataType::kTypeInt16:
+                *cased_type = openmldb::type::kSmallInt;
+                return true;
+            case hybridse::sdk::DataType::kTypeInt32:
+                *cased_type = openmldb::type::kInt;
+                return true;
+            case hybridse::sdk::DataType::kTypeInt64:
+                *cased_type = openmldb::type::kBigInt;
+                return true;
+            case hybridse::sdk::DataType::kTypeFloat:
+                *cased_type = openmldb::type::kFloat;
+                return true;
+            case hybridse::sdk::DataType::kTypeDouble:
+                *cased_type = openmldb::type::kDouble;
+                return true;
+            case hybridse::sdk::DataType::kTypeDate:
+                *cased_type = openmldb::type::kDate;
+                return true;
+            case hybridse::sdk::DataType::kTypeTimestamp:
+                *cased_type = openmldb::type::kTimestamp;
+                return true;
+            case hybridse::sdk::DataType::kTypeString:
+                *cased_type = openmldb::type::kString;
+                return true;
+            default:
+                return false;
+        }
+        return false;
+    }
+
     static bool ConvertType(const hybridse::type::ColumnDef& sql_column, openmldb::common::ColumnDesc* fedb_column) {
         if (fedb_column == nullptr) {
             LOG(WARNING) << "fedb_column is null";
@@ -240,38 +388,12 @@ class SchemaAdapter {
         fedb_column->set_name(sql_column.name());
         fedb_column->set_not_null(sql_column.is_not_null());
         fedb_column->set_is_constant(sql_column.is_constant());
-        switch (sql_column.type()) {
-            case hybridse::type::kBool:
-                fedb_column->set_data_type(openmldb::type::kBool);
-                break;
-            case hybridse::type::kInt16:
-                fedb_column->set_data_type(openmldb::type::kSmallInt);
-                break;
-            case hybridse::type::kInt32:
-                fedb_column->set_data_type(openmldb::type::kInt);
-                break;
-            case hybridse::type::kInt64:
-                fedb_column->set_data_type(openmldb::type::kBigInt);
-                break;
-            case hybridse::type::kFloat:
-                fedb_column->set_data_type(openmldb::type::kFloat);
-                break;
-            case hybridse::type::kDouble:
-                fedb_column->set_data_type(openmldb::type::kDouble);
-                break;
-            case hybridse::type::kDate:
-                fedb_column->set_data_type(openmldb::type::kDate);
-                break;
-            case hybridse::type::kTimestamp:
-                fedb_column->set_data_type(openmldb::type::kTimestamp);
-                break;
-            case hybridse::type::kVarchar:
-                fedb_column->set_data_type(openmldb::type::kVarchar);
-                break;
-            default:
-                LOG(WARNING) << "type " << hybridse::type::Type_Name(sql_column.type()) << " is not supported";
-                return false;
+        openmldb::type::DataType openmldb_type;
+        if (!ConvertType(sql_column.type(), &openmldb_type)) {
+            LOG(WARNING) << "type " << hybridse::type::Type_Name(sql_column.type()) << " is not supported";
+            return false;
         }
+        fedb_column->set_data_type(openmldb_type);
         return true;
     }
 

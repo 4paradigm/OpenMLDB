@@ -10,11 +10,11 @@
 
 ## 介绍
 
-OpenMLDB是一个面向机器学习应用提供正确、高效数据供给的开源数据库。除了超过10倍的机器学习数据开发效率的提升，OpenMLDB也提供了统一的计算与存储引擎减少开发运维的复杂性与总体成本。 
+OpenMLDB是一个开源机器学习数据库，面向机器学习应用提供正确、高效数据供给。除了超过10倍的机器学习数据开发效率的提升，OpenMLDB也提供了统一的计算与存储引擎减少开发运维的复杂性与总体成本。 
 
 ## 谁在用OpenMLDB
 
-目前OpenMLDB已经在生产环境被很多金融，零售头部公司用于机器学习应用数据供给，目前落地达120+应用场景，包含内容推荐、广告ctr、aiops、金融反欺诈、交易反欺诈和营销等场景。
+目前OpenMLDB已经在生产环境被诸多金融、零售头部公司用于机器学习应用数据供给，目前落地达120+应用场景，包含内容推荐、广告CTR预估、AIOps、金融反欺诈、交易反欺诈和营销等场景。
 
 
 ## 系统特性
@@ -123,6 +123,15 @@ python3 predict.py
 ## 学术论文
 
 * Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
+
+## 博客介绍
+
+[OpenMLDB在银行上线事中交易反欺诈模型实践](https://zhuanlan.zhihu.com/p/389599785)
+
+[OpenMLDB在AIOPS领域关于交易系统异常检测应用实践](https://zhuanlan.zhihu.com/p/393602288)
+
+[5分钟完成硬件剩余寿命智能预测](https://zhuanlan.zhihu.com/p/399346826)
+
 
 ## 许可证
 

@@ -262,13 +262,14 @@ class RequestEngineTestRunner : public EngineTestRunner {
         auto request_session =
             std::dynamic_pointer_cast<RequestRunSession>(session_);
         std::string request_name = request_session->GetRequestName();
+        CHECK_TRUE(parameter_rows_.empty(), common::kUnSupport, "Request do not support parameterized query currently")
         Row parameter = parameter_rows_.empty() ? Row() : parameter_rows_[0];
         for (auto in_row : request_rows_) {
             Row out_row;
-            int run_ret = request_session->Run(in_row, parameter, &out_row);
+            int run_ret = request_session->Run(in_row, &out_row);
             if (run_ret != 0) {
                 return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
-                return Status(kSqlError, "Run request session failed");
+                return Status(common::kRunError, "Run request session failed");
             }
             if (!has_batch_request) {
                 CHECK_TRUE(AddRowIntoTable(request_name, in_row), kSqlError,
@@ -417,8 +418,10 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
         auto request_session =
             std::dynamic_pointer_cast<BatchRequestRunSession>(session_);
         CHECK_TRUE(request_session != nullptr, common::kSqlError);
-        Row parameter = parameter_rows_.empty() ? Row() : parameter_rows_[0];
-        int run_ret = request_session->Run(request_rows_, parameter, *outputs);
+        // Currently parameterized query un-support currently
+        CHECK_TRUE(parameter_rows_.empty(), common::kUnSupport,
+                   "Batch request do not support parameterized query currently")
+        int run_ret = request_session->Run(request_rows_, *outputs);
         if (run_ret != 0) {
             return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
             return Status(kSqlError, "Run batch request session failed");

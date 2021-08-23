@@ -653,6 +653,9 @@ message QueryRequest {
     optional uint64 task_id = 7;
     optional uint32 row_size = 8;
     optional uint32 row_slices = 9;
+    optional uint32 parameter_row_size = 10;
+    optional uint32 parameter_row_slices = 11;
+    repeated openmldb.type.DataType parameter_types = 12;
 }
 
 message QueryResponse {
