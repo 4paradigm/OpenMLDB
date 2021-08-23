@@ -18,14 +18,10 @@ package com._4paradigm.openmldb.batch
 
 import com._4paradigm.hybridse.HybridSeLibrary
 import com._4paradigm.hybridse.`type`.TypeOuterClass.Database
-import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
-  PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalOpNode,
-  PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode, PhysicalTableProjectNode,
-  PhysicalWindowAggrerationNode, ProjectType}
+import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode, PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode, PhysicalSortNode, PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType}
 import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
 import com._4paradigm.hybridse.node.JoinType
-import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan,
-  JoinPlan, LimitPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, WindowAggPlan}
+import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan, JoinPlan, LimitPlan, SortByPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, WindowAggPlan}
 import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -223,6 +219,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
         LimitPlan.gen(ctx, PhysicalLimitNode.CastFrom(root), children.head)
       case PhysicalOpType.kPhysicalOpRename =>
         RenamePlan.gen(ctx, PhysicalRenameNode.CastFrom(root), children.head)
+      case PhysicalOpType.kPhysicalOpSortBy =>
+        SortByPlan.gen(ctx, PhysicalSortNode.CastFrom(root), children.head)
       //case PhysicalOpType.kPhysicalOpFilter =>
       //  FilterPlan.gen(ctx, PhysicalFilterNode.CastFrom(root), children.head)
       case _ =>
