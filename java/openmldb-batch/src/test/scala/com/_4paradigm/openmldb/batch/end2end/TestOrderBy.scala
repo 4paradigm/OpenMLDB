@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.batch.end2end
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
+import com._4paradigm.openmldb.batch.utils.SparkUtil.smallDfEqual
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 import org.apache.spark.sql.{Row, SparkSession}
 import org.scalatest.FunSuite;
@@ -58,10 +59,7 @@ class TestOrderBy extends FunSuite {
     val outputDfAsc = sess.sql(sqlText1).getSparkDf()
     val sparksqlOutputDfAsc = sess.sparksql(sqlText1)
 
-    val outputDfAscList = outputDfAsc.collectAsList()
-    val sparksqlOutputDfAscList = sparksqlOutputDfAsc.collectAsList()
-
-    assert(outputDfAscList.equals(sparksqlOutputDfAscList))
+    assert(smallDfEqual(outputDfAsc,sparksqlOutputDfAsc))
 
     val sqlText2 =
       """
@@ -71,10 +69,7 @@ class TestOrderBy extends FunSuite {
     val outputDfDesc = sess.sql(sqlText2).getSparkDf()
     val sparksqlOutputDfDesc = sess.sparksql(sqlText2)
 
-    val outputDfDescList = outputDfDesc.collectAsList()
-    val sparksqlOutputDfDescList = sparksqlOutputDfDesc.collectAsList()
-
-    assert(outputDfDescList.equals(sparksqlOutputDfDescList))
+    assert(smallDfEqual(outputDfDesc,sparksqlOutputDfDesc))
   }
 
 }
