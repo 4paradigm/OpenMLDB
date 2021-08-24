@@ -240,6 +240,9 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<!-- Refer to issue in https://issues.apache.org/jira/browse/SUREFIRE-1443 -->
 				<version>2.21.0</version>
+				<configuration>
+					<skipAfterFailureCount>1</skipAfterFailureCount>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>net.alchim31.maven</groupId>
