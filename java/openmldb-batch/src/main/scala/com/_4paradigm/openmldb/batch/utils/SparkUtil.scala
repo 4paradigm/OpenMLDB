@@ -138,7 +138,7 @@ object SparkUtil {
         return false
       }
     }
-    df1.except(df2).isEmpty && df2.except(df1).isEmpty
+    df1.except(df1).isEmpty && df2.except(df2).isEmpty
   }
 
   /** Use Java reflect to call private method to convert RDD[InternalRow] to DataFrame.
