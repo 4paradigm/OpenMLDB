@@ -71,7 +71,7 @@ else
     curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.3.0-test-0823-snapshot/hybridse-0.3.0-test-0823-snapshot-darwin-x86_64.tar.gz
   elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
     if [[ $ARCH = 'x86_64' ]]; then
-        curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/tag/hybridse-v0.3.0-test-0823-snapshot#:~:text=hybridse-0.3.0-test-0823-snapshot-linux-x86_64.tar.gz
+        curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.3.0-test-0823-snapshot/hybridse-0.3.0-test-0823-snapshot-linux-x86_64.tar.gz
     elif [[ $ARCH = 'aarch64' ]]; then
         # NOTE: missing hybridse-aarch64
         echo "missing hybridse-aarch64"
