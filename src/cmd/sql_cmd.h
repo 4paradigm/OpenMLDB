@@ -55,7 +55,6 @@ const std::string LOGO =  // NOLINT
     " \\_____/| ||_/ \\____)_| |_|_||_||_|_______)_____/ |______/  \n"
     "        |_|                                                 \n";
 
-
 const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
                             std::to_string(OPENMLDB_VERSION_MINOR) + "." + std::to_string(OPENMLDB_VERSION_BUG) + "." +
                             OPENMLDB_COMMIT_ID;
@@ -210,7 +209,7 @@ void PrintTableSchema(std::ostream &stream, const ::hybridse::vm::Schema &schema
     t.end_of_row();
 
     for (uint32_t i = 0; i < items_size; i++) {
-        auto column = schema.Get(i);
+        const auto &column = schema.Get(i);
         t.add(std::to_string(i + 1));
         t.add(column.name());
         t.add(::hybridse::type::Type_Name(column.type()));
@@ -509,6 +508,15 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
         column_key.add_col_name(key);
     }
     column_key.set_ts_name(create_index_node->index_->GetTs());
+    auto ttl = column_key.mutable_ttl();
+    ::openmldb::type::TTLType ttl_type;
+    if (!::openmldb::client::NsClient::TTLTypeParse(create_index_node->index_->ttl_type(), &ttl_type)) {
+        std::cout << "ttl type " << create_index_node->index_->ttl_type() << " is invalid" << std::endl;
+        return;
+    }
+    ttl->set_ttl_type(ttl_type);
+    ttl->set_abs_ttl(create_index_node->index_->GetAbsTTL());
+    ttl->set_lat_ttl(create_index_node->index_->GetLatTTL());
 
     std::string error;
     auto ns = cs->GetNsClient();
@@ -534,8 +542,7 @@ void HandleSQL(const std::string &sql) {
     hybridse::node::PlanNode *node = plan_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeCmd: {
-            hybridse::node::CmdPlanNode *cmd =
-                dynamic_cast<hybridse::node::CmdPlanNode *>(node);
+            hybridse::node::CmdPlanNode *cmd = dynamic_cast<hybridse::node::CmdPlanNode *>(node);
             HandleCmd(cmd);
             return;
         }
