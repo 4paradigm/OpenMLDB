@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.batch.utils
 
-import com._4paradigm.hybridse.node.OrderByNode
+import com._4paradigm.hybridse.node.{OrderByNode, OrderExpression}
 import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.hybridse.vm.{PhysicalOpNode, PhysicalSortNode, PhysicalWindowAggrerationNode}
 import org.apache.spark.sql.{Column, DataFrame}
@@ -91,7 +91,8 @@ object PhysicalNodeUtil {
     val orderByCols = mutable.ArrayBuffer[Column]()
 
     for (i <- 0 until ordersExprListNode.GetChildNum()) {
-      orderByCols += getSparkColumn(orders, windowAggNode, inputDf, i)
+      val orderExpr = orders.GetOrderExpression(i)
+      orderByCols += getSparkOrderByColumn(orderExpr, windowAggNode, inputDf)
     }
 
     orderByCols
@@ -101,16 +102,15 @@ object PhysicalNodeUtil {
     val orders = sortByNode.sort().orders()
     val ordersExprListNode = orders.getOrder_expressions_
     val orderByCols = mutable.ArrayBuffer[Column]()
-
     for (i <- 0 until ordersExprListNode.GetChildNum()) {
-      orderByCols += getSparkColumn(orders, sortByNode, inputDf, i)
+      val orderExpr = orders.GetOrderExpression(i)
+      orderByCols += getSparkOrderByColumn(orderExpr, sortByNode, inputDf)
     }
 
     orderByCols
   }
 
-  def getSparkColumn(orders: OrderByNode, physicalNode: PhysicalOpNode, inputDf: DataFrame, index: Int): Column = {
-    val orderExpr = orders.GetOrderExpression(index)
+  def getSparkOrderByColumn(orderExpr: OrderExpression, physicalNode: PhysicalOpNode, inputDf: DataFrame): Column = {
     val colIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, physicalNode.GetProducer(0))
     val column = SparkColumnUtil.getColumnFromIndex(inputDf, colIdx)
     if (orderExpr.is_asc()) {
