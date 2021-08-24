@@ -50,7 +50,7 @@ bool DataReceiver::AppendData(const ::openmldb::api::BulkLoadRequest* request, c
     }
 
     LOG(INFO) << "inserted into table(" << tid_ << "-" << pid_ << ") " << request->block_info_size()
-               << " rows. Looking forward to part " << next_part_id_ << " or IndexRegion.";
+              << " rows. Looking forward to part " << next_part_id_ << " or IndexRegion.";
     return true;
 }
 
@@ -130,7 +130,7 @@ bool DataReceiver::Close(bool force) {
         for (decltype(data_blocks_.size()) i = 0; i < data_blocks_.size(); ++i) {
             data_blocks_[i]->dim_cnt_down--;
             if (data_blocks_[i]->dim_cnt_down == 0) {
-                LOG(WARNING) << "data block(" << i << "is useless";
+                LOG_FIRST_N(WARNING, 10) << "data block(" << i << ") is useless";
                 delete data_blocks_[i];
             }
         }
