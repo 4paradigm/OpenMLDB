@@ -129,16 +129,8 @@ public class Importer {
         router.createDB(dbName);
         // create table
         router.executeDDL(dbName, createDDL);
-
-        try {
-            SQLResultSet rs = (SQLResultSet) router.executeSQL(dbName, "select * from " + tableName + " limit 1;");
-            return !rs.next();
-        } catch (SQLException e) {
-            if (logger.isDebugEnabled()) {
-                e.getStackTrace();
-            }
-            return false;
-        }
+        // TODO(hw): check table is empty
+        return true;
     }
 
     public boolean checkRpcLimit() {

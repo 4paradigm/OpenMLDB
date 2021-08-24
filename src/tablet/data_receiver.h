@@ -37,6 +37,8 @@ class DataReceiver {
 
     bool BulkLoad(const std::shared_ptr<storage::MemTable>& table, const ::openmldb::api::BulkLoadRequest* request);
 
+    bool Close(bool force);
+
  private:
     bool PartValidation(int part_id);
 

@@ -5650,7 +5650,7 @@ TEST_F(TabletImplTest, BulkLoad) {
         }
     }
 
-    // handle a bulk load request
+    // handle a bulk load request // TODO(hw): fix
     {
         ::fedb::api::BulkLoadRequest request;
         request.set_tid(id);

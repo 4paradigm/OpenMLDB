@@ -2863,6 +2863,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
             PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
             break;
         }
+
         bool ok = ChooseDBRootPath(tid, pid, root_path);
         if (!ok) {
             PDLOG(WARNING, "fail to get db root path. tid %u pid %u", tid, pid);
@@ -2897,8 +2898,17 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         if (!table->GetDB().empty()) {
             catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
+
+        auto data_receiver = bulk_load_mgr_.GetDataReceiver(tid, pid, BulkLoadMgr::DO_NOT_CREATE);
+        if (data_receiver) {
+            LOG(INFO) << tid << "-" << pid << " is bulk loading, needs special cleanup";
+            // But can't ensure that table is owned only by me here. Mark it, bulk load mgr can ensure cleanup is after
+            // table destroyed.
+            bulk_load_mgr_.RemoveReceiverLater(table);
+        }
+
         code = 0;
-    } while (0);
+    } while (false);
     if (code < 0) {
         if (task_ptr) {
             std::lock_guard<std::mutex> lock(mu_);
@@ -2929,6 +2939,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         std::lock_guard<std::mutex> lock(mu_);
         task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
     }
+
     PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
     return 0;
 }
@@ -4835,6 +4846,12 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
         return;
     }
     uint64_t start_time = ::baidu::common::timer::get_micros();
+
+    // TODO(hw): cleanup useless receivers here for simplify, may need improve
+    // We can send an empty bulk load request to let bulk load mgr gc useless receivers.
+    bulk_load_mgr_.ReceiverCleanup();
+    LOG(INFO) << "receiver cleanup cost " << ::baidu::common::timer::get_micros() - start_time << " us";
+
     auto tid = request->tid();
     auto pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
@@ -4920,10 +4937,11 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
         PDLOG(INFO, "%u-%u, bulk load only load cost %lu us", request->tid(), request->pid(), load_time - start_time);
     }
 
+    // If the previous parts load succeed, and no other parts, only need to remove the data receiver
+    // If not, we delete all relative memory when drop the table or redo bulk load in the same table.
     if (request->eof()) {
-        // no more jobs to do
-        LOG(INFO) << tid << "-" << pid << " get eof rpc, clean up the data receiver()";
-        bulk_load_mgr_.RemoveReceiver(tid, pid);
+        LOG(INFO) << tid << "-" << pid << " get bulk load eof(means success), clean up the data receiver";
+        bulk_load_mgr_.RemoveReceiver(tid, pid, false);
     }
 }
 

@@ -595,7 +595,7 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (!index_def || !index_def->IsReady()) {
         return false;
     }
-    uint64_t* data_array = new uint64_t[seg_cnt_];
+    auto* data_array = new uint64_t[seg_cnt_];
     uint32_t real_idx = index_def->GetInnerPos();
     for (uint32_t i = 0; i < seg_cnt_; i++) {
         data_array[i] = segments_[real_idx][i]->GetIdxCnt();

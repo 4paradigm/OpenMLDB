@@ -265,9 +265,11 @@ public class BulkLoadGenerator implements Runnable {
     }
 
     private void sendRequest(Tablet.BulkLoadRequest request, ByteArrayOutputStream attachmentStream) {
+        byte[] attachment = null;
         if (attachmentStream != null) {
-            RpcContext.getContext().setRequestBinaryAttachment(attachmentStream.toByteArray());
+            attachment = attachmentStream.toByteArray();
         }
+        RpcContext.getContext().setRequestBinaryAttachment(attachment);
         logger.info("send rpc, message size {}, attachment {}", request.getSerializedSize(),
                 attachmentStream == null ? "empty" : attachmentStream.size());
 

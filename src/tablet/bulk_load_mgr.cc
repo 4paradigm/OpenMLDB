@@ -95,7 +95,8 @@ std::shared_ptr<DataReceiver> BulkLoadMgr::GetDataReceiver(uint32_t tid, uint32_
             break;
         }
 
-        // catalog has the receiver for tid-pid, we treat it as error. // TODO(hw): or should treat it as covering?
+        // Catalog has the receiver for tid-pid, we treat it as error. // TODO(hw): or should treat it as covering?
+        // If bulk load failed, plz recreate table and bulk load again.
         if (create) {
             LOG(WARNING) << "already has the receiver for " << tid << "-" << pid << ", but want to create a new one";
             break;
@@ -105,8 +106,12 @@ std::shared_ptr<DataReceiver> BulkLoadMgr::GetDataReceiver(uint32_t tid, uint32_
     return data_receiver;
 }
 
-void BulkLoadMgr::RemoveReceiver(uint32_t tid, uint32_t pid) {
+void BulkLoadMgr::RemoveReceiver(uint32_t tid, uint32_t pid, bool del_data_blocks) {
     std::unique_lock<std::mutex> ul(catalog_mu_);
+    RemoveReceiverUnlock(tid, pid, del_data_blocks);
+}
+
+void BulkLoadMgr::RemoveReceiverUnlock(uint32_t tid, uint32_t pid, bool del_data_blocks) {
     auto table_cat_iter = catalog_.find(tid);
     if (table_cat_iter == catalog_.end()) {
         LOG(WARNING) << "not existed table, " << tid << "-" << pid;
@@ -118,10 +123,32 @@ void BulkLoadMgr::RemoveReceiver(uint32_t tid, uint32_t pid) {
         LOG(WARNING) << "not existed partition, " << tid << "-" << pid;
         return;
     }
+
+    iter->second->Close(del_data_blocks);
     pid_cat.erase(iter);
-    // TODO(hw): if bulk load is failed, the data blocks(the real data) needs to be deleted manually
-    //  BulkLoad may have used some data blocks, we should reset segments in MemTable, then delete all data
-    //  blocks.
-    LOG(INFO) << "data receiver for " << tid << "-" << pid << " removed";
+    LOG(INFO) << "data receiver for " << tid << "-" << pid << " removed " << (del_data_blocks ? "forcefully" : "");
+}
+
+void BulkLoadMgr::RemoveReceiverLater(const std::shared_ptr<storage::Table>& table) {
+    std::unique_lock<std::mutex> ul(catalog_mu_);
+    auto tid = table->GetId();
+    auto pid = table->GetPid();
+    to_cleanup_.emplace_back(tid, pid, table);
+}
+
+void BulkLoadMgr::ReceiverCleanup() {
+    std::unique_lock<std::mutex> ul(catalog_mu_);
+    for (auto iter = to_cleanup_.begin(); iter != to_cleanup_.end();) {
+        if (!iter->ptr.expired()) {
+            LOG(WARNING) << iter->tid << "-" << iter->pid
+                         << " bulk load cleanup, but iter is holding by others too, can't do memory cleanup, try again";
+            iter++;
+        } else {
+            // data receiver deletes all data blocks forcefully(cuz the ref in data blocks is mismatch with real
+            // reference count)
+            RemoveReceiverUnlock(iter->tid, iter->pid, true);
+            iter = to_cleanup_.erase(iter);
+        }
+    }
 }
 }  // namespace openmldb::tablet
