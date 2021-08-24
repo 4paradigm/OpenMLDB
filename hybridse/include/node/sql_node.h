@@ -236,6 +236,16 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "cond";
         case kExprUnknow:
             return "unknow";
+        case kExprIn:
+            return "in";
+        case kExprList:
+            return "expr_list";
+        case kExprForIn:
+            return "for_in";
+        case kExprRange:
+            return "range";
+        case kExprOrderExpression:
+            return "order";
         default:
             return "unknown expr type";
     }
@@ -419,6 +429,9 @@ class ExprNode : public SqlNode {
     void AddChild(ExprNode *expr) { children_.push_back(expr); }
     void SetChild(size_t idx, ExprNode *expr) { children_[idx] = expr; }
     ExprNode *GetChild(size_t idx) const { return children_[idx]; }
+    ExprNode *GetChildOrNull(size_t idx) const {
+        return idx < GetChildNum() ? GetChild(idx) : nullptr;
+    }
     uint32_t GetChildNum() const { return children_.size(); }
 
     const ExprType GetExprType() const { return expr_type_; }
@@ -1630,6 +1643,34 @@ class BetweenExpr : public ExprNode {
  private:
     bool is_not_between_;
 };
+
+class InExpr : public ExprNode {
+ public:
+    explicit InExpr(ExprNode* lhs, ExprNode* in_list, bool is_not)
+        : ExprNode(kExprIn), is_not_(is_not) {
+        AddChild(lhs);
+        AddChild(in_list);
+    }
+    ~InExpr() {}
+
+    const bool IsNot() const { return is_not_; }
+    ExprNode* GetLhs() const { return GetChildOrNull(0); }
+    ExprNode* GetInList() const { return GetChildOrNull(1); }
+
+    void Print(std::ostream &output, const std::string &org_tab) const final;
+    const std::string GetExprString() const final;
+    bool Equals(const ExprNode *node) const final;
+    InExpr *ShadowCopy(NodeManager *) const final;
+    Status InferAttr(ExprAnalysisContext *ctx) final;
+
+    std::string GetInTypeString() const;
+
+ private:
+    const bool is_not_ = false;
+    // TODO(aceforeverd): support query
+    // TODO(aceforeverd): support unnest expression
+};
+
 class ResTarget : public SqlNode {
  public:
     ResTarget() : SqlNode(kResTarget, 0, 0), name_(""), val_(nullptr) {}

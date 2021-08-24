@@ -452,8 +452,33 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             return status;
         }
 
+        case zetasql::AST_IN_EXPRESSION: {
+            auto in_expr = ast_expression->GetAsOrNull<zetasql::ASTInExpression>();
+            CHECK_TRUE(in_expr != nullptr, common::kSqlError, "not an ASTInExpression");
+
+            node::ExprNode* lhs_expr = nullptr;
+            CHECK_STATUS(ConvertExprNode(in_expr->lhs(), node_manager, &lhs_expr));
+
+            bool is_not = in_expr->is_not();
+
+            if (in_expr->in_list() != nullptr) {
+                node::ExprListNode* in_list = nullptr;
+                CHECK_STATUS(ConvertExprNodeList(in_expr->in_list()->list(), node_manager, &in_list));
+                *output = node_manager->MakeInExpr(lhs_expr, in_list, is_not);
+            } else if (in_expr->query() != nullptr) {
+                node::QueryNode* query_node = nullptr;
+                CHECK_STATUS(ConvertQueryNode(in_expr->query(), node_manager, &query_node));
+                node::QueryExpr* query_expr = node_manager->MakeQueryExprNode(query_node);
+                *output = node_manager->MakeInExpr(lhs_expr, query_expr, is_not);
+            } else {
+                // TODO(aceforeverd): support unnest expression
+                return base::Status(common::kSqlError, "Un-supported in expression with unnest expression");
+            }
+            return base::Status::OK();
+        }
+
         default: {
-            status.msg = "Unsupport ASTExpression " + ast_expression->GetNodeKindString();
+            status.msg = absl::StrCat("Unsupport ASTExpression ", ast_expression->GetNodeKindString());
             status.code = common::kSqlError;
             return status;
         }

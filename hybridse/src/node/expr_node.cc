@@ -776,6 +776,14 @@ Status BetweenExpr::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+InExpr* InExpr::ShadowCopy(NodeManager *nm) const {
+    return nm->MakeInExpr(GetLhs(), GetInList(), IsNot());
+}
+
+Status InExpr::InferAttr(ExprAnalysisContext *ctx) {
+    return Status::OK();
+}
+
 QueryExpr* QueryExpr::ShadowCopy(NodeManager* nm) const {
     return nm->MakeQueryExprNode(query_);
 }
