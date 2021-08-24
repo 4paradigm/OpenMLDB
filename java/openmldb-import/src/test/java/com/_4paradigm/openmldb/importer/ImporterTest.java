@@ -41,28 +41,4 @@ public class ImporterTest extends TestCase {
         Importer.main(new String[]{"--help"});
     }
 
-    // TODO(hw): run this test instead of running main class, just for simplifying.
-    public void testMain() {
-        Importer.main(new String[]{"--zk_cluster", "127.0.0.1:4181", "--db", "testdb", "--table", "t1", "--create_ddl", "create table t1 (\n" +
-                "id string,\n" +
-                "vendor_id int,\n" +
-                "pickup_datetime timestamp,\n" +
-                "dropoff_datetime timestamp,\n" +
-                "passenger_count int,\n" +
-                "pickup_longitude double,\n" +
-                "pickup_latitude double,\n" +
-                "dropoff_longitude double,\n" +
-                "dropoff_latitude double,\n" +
-                "store_and_fwd_flag string,\n" +
-                "trip_duration int,\n" +
-                "index(key=id, ts=pickup_datetime),\n" +
-                "index(key=(vendor_id, passenger_count), ts=pickup_datetime),\n" +
-                "index(key=passenger_count, ts=dropoff_datetime)\n" +
-                ") OPTIONS (partitionnum=1);",
-                "--files", "src/test/resources/train.csv.small",
-//                "--rpc_size_limit", "20971520", // 20MB
-                "-f",
-                "--importer_mode", "bulkload"
-        });
-    }
 }
