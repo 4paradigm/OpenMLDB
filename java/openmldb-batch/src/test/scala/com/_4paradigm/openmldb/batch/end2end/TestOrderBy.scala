@@ -16,18 +16,17 @@
 
 package com._4paradigm.openmldb.batch.end2end
 
+import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.utils.SparkUtil.smallDfEqual
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 import org.apache.spark.sql.{Row, SparkSession}
-import org.scalatest.FunSuite;
 
-class TestOrderBy extends FunSuite {
+class TestOrderBy extends SparkTestSuite {
 
   test("Test end2end Order by") {
 
-    val spark = SparkSession.builder().master("local[*]")
-      .getOrCreate()
+    val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
     val data = Seq(
