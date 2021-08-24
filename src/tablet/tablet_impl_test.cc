@@ -5593,7 +5593,7 @@ TEST_F(TabletImplTest, SendIndexData) {
     ::openmldb::base::GetFileSize(des_index_file, des_size);
     ASSERT_TRUE(::openmldb::base::IsExists(des_index_file));
     ASSERT_EQ(src_size, des_size);
-    ::fedb::base::RemoveDirRecursive(FLAGS_db_root_path);
+    ::openmldb::base::RemoveDirRecursive(FLAGS_db_root_path);
 }
 
 TEST_F(TabletImplTest, BulkLoad) {
@@ -5602,27 +5602,28 @@ TEST_F(TabletImplTest, BulkLoad) {
     tablet.Init("");
     uint32_t id = counter++;
     {
-        ::fedb::api::CreateTableRequest request;
-        ::fedb::api::TableMeta* table_meta = request.mutable_table_meta();
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_mode(::fedb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         auto column = table_meta->add_column_desc();
         column->set_name("card");
-        column->set_data_type(::fedb::type::kString);
+        column->set_data_type(::openmldb::type::kString);
         column = table_meta->add_column_desc();
         column->set_name("amt");
-        column->set_data_type(::fedb::type::kString);
+        column->set_data_type(::openmldb::type::kString);
         column = table_meta->add_column_desc();
         column->set_name("apprv_cde");
-        column->set_data_type(::fedb::type::kInt);
+        column->set_data_type(::openmldb::type::kInt);
         column = table_meta->add_column_desc();
         column->set_name("ts");
-        column->set_data_type(::fedb::type::kTimestamp);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "ts", ::fedb::type::kAbsoluteTime, 0, 0);
-        SchemaCodec::SetIndex(table_meta->add_column_key(), "amt", "amt", "ts", ::fedb::type::kAbsoluteTime, 0, 0);
-        ::fedb::api::CreateTableResponse response;
+        column->set_data_type(::openmldb::type::kTimestamp);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "ts", ::openmldb::type::kAbsoluteTime, 0,
+                              0);
+        SchemaCodec::SetIndex(table_meta->add_column_key(), "amt", "amt", "ts", ::openmldb::type::kAbsoluteTime, 0, 0);
+        ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -5630,10 +5631,10 @@ TEST_F(TabletImplTest, BulkLoad) {
 
     // get bulk load info
     {
-        ::fedb::api::BulkLoadInfoRequest request;
+        ::openmldb::api::BulkLoadInfoRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        ::fedb::api::BulkLoadInfoResponse response;
+        ::openmldb::api::BulkLoadInfoResponse response;
         MockClosure closure;
         brpc::Controller cntl;
         tablet.GetBulkLoadInfo(&cntl, &request, &response, &closure);
@@ -5646,20 +5647,23 @@ TEST_F(TabletImplTest, BulkLoad) {
         const uint32_t SEED = 0xe17a1465;
         std::vector<std::string> keys = {"2|1", "1|1", "1|4", "2/6", "4", "6", "1"};
         for (auto key : keys) {
-            LOG(INFO) << "hash(" << key << ") = " << ::fedb::base::hash(key.data(), key.size(), SEED) % 8;
+            LOG(INFO) << "hash(" << key << ") = " << ::openmldb::base::hash(key.data(), key.size(), SEED) % 8;
         }
     }
 
-    // handle a bulk load request // TODO(hw): fix
+    // handle a bulk load request data part
     {
-        ::fedb::api::BulkLoadRequest request;
+        ::openmldb::api::BulkLoadRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        auto index1 = request.add_index_region();
-        auto seg1 = index1->add_segment();
-        seg1->add_key_entries()->add_key_entry()->add_time_entry();
-        request.add_index_region();
-        ::fedb::api::GeneralResponse response;
+        request.set_part_id(0);
+        auto block_info = request.add_block_info();
+        block_info->set_ref_cnt(3);
+        block_info->set_offset(0);
+        block_info->set_length(3);
+        auto binlog_info = request.add_binlog_info();
+        binlog_info->set_block_id(0);
+        ::openmldb::api::GeneralResponse response;
         MockClosure closure;
         brpc::Controller cntl;
         cntl.request_attachment().append("123");
@@ -5667,7 +5671,26 @@ TEST_F(TabletImplTest, BulkLoad) {
         ASSERT_EQ(0, response.code()) << response.msg();
     }
 
-    // TODO(hw): get data from the table
+    // index part
+    {
+        ::openmldb::api::BulkLoadRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_part_id(1);
+        auto index1 = request.add_index_region();
+        auto seg1 = index1->add_segment();
+        auto entry = seg1->add_key_entries()->add_key_entry()->add_time_entry();
+        entry->set_block_id(0);
+        request.add_index_region();
+        ::openmldb::api::GeneralResponse response;
+        MockClosure closure;
+        brpc::Controller cntl;
+        tablet.BulkLoad(&cntl, &request, &response, &closure);
+        ASSERT_EQ(0, response.code()) << response.msg();
+    }
+
+    // TODO(hw): bulk load meaningful data, and get data from the table
+
 }
 
 }  // namespace tablet
