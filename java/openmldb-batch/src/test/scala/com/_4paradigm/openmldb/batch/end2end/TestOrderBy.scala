@@ -61,7 +61,7 @@ class TestOrderBy extends FunSuite {
     val outputDfAscList = outputDfAsc.collectAsList()
     val sparksqlOutputDfAscList = sparksqlOutputDfAsc.collectAsList()
 
-    assert(outputDfAscList.equals(sparksqlOutputDfAscList) && outputDfAsc.schema == sparksqlOutputDfAsc.schema)
+    assert(outputDfAscList.equals(sparksqlOutputDfAscList))
 
     val sqlText2 =
       """
@@ -71,10 +71,10 @@ class TestOrderBy extends FunSuite {
     val outputDfDesc = sess.sql(sqlText2).getSparkDf()
     val sparksqlOutputDfDesc = sess.sparksql(sqlText2)
 
-    val outputDfDescList = outputDfAsc.collectAsList()
-    val sparksqlOutputDfDescList = sparksqlOutputDfAsc.collectAsList()
+    val outputDfDescList = outputDfDesc.collectAsList()
+    val sparksqlOutputDfDescList = sparksqlOutputDfDesc.collectAsList()
 
-    assert(outputDfDescList.equals(sparksqlOutputDfDescList) && outputDfDesc.schema == sparksqlOutputDfDesc.schema)
+    assert(outputDfDescList.equals(sparksqlOutputDfDescList))
   }
 
 }
