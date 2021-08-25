@@ -219,7 +219,7 @@ class Driver(object):
             colName = schema.GetColumnName(i)
             if colName in commonCol:
                 commonCols.AddCommonColumnIdx(i)
-                commonColAddCount+=1
+                commnColAddCount+=1
         if commnColAddCount != len(commonCol):
             return False, "some common col is not in table schema"
         requestRowBatch = sql_router_sdk.SQLRequestRowBatch(schema, commonCols)
