@@ -370,7 +370,6 @@ cases:
 
   - id: between_predicate_1
     desc: between predicate, numberic between
-    mode: hybridse-only
     inputs:
       - columns: [ "id bigint", "name string", "code string", "ctime bigint", "cdate date" ]
         indexs: [ "index1:id:ctime" ]
@@ -394,7 +393,6 @@ cases:
         - [2, Zoey, 100]
   - id: between_predicate_2
     desc: between predicate, string between
-    mode: hybridse-only
     inputs:
       - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
         indexs: [ "index1:id:ctime" ]
@@ -418,7 +416,6 @@ cases:
         - [2, Zoey, BBC, NULL]
   - id: between_predicate_3
     desc: between predicate, timestamp between
-    mode: hybridse-only
     inputs:
       - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
         indexs: [ "index1:id:ctime" ]
@@ -443,7 +440,6 @@ cases:
         - [2, Zoey, NULL]
   - id: between_predicate_4
     desc: between predicate with aggregation function
-    mode: hybridse-only
     sql: |
       SELECT id, col1, std_ts,
       sum(id) OVER w1 BETWEEN 2 AND 6 as w1_id
