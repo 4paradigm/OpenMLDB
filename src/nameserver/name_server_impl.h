@@ -30,6 +30,7 @@
 
 #include "base/hash.h"
 #include "base/random.h"
+#include "client/nearline_tablet_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "codec/schema_codec.h"
@@ -50,7 +51,6 @@ using ::google::protobuf::RpcController;
 using ::openmldb::api::CreateProcedureRequest;
 using ::openmldb::api::DropProcedureRequest;
 using ::openmldb::api::ProcedureInfo;
-using ::openmldb::api::TabletState;
 using ::openmldb::client::NsClient;
 using ::openmldb::client::TabletClient;
 using ::openmldb::zk::DistLock;
@@ -59,16 +59,25 @@ using ::openmldb::zk::ZkClient;
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 const uint32_t INVALID_PID = UINT32_MAX;
 
+struct EndpointInfo {
+    ::openmldb::type::EndpointState state_ = ::openmldb::type::EndpointState::kOffline;
+    uint64_t ctime_ = 0;
+    bool Health() { return state_ == ::openmldb::type::EndpointState::kHealthy; }
+};
+
 // tablet info
 struct TabletInfo {
     // tablet state
-    TabletState state_;
+    ::openmldb::type::EndpointState state_;
     // tablet rpc handle
     std::shared_ptr<TabletClient> client_;
-    // the date create
     uint64_t ctime_;
 
-    bool Health() { return state_ == ::openmldb::api::TabletState::kTabletHealthy; }
+    bool Health() { return state_ == ::openmldb::type::EndpointState::kHealthy; }
+};
+
+struct NearLineTabletInfo : public EndpointInfo {
+    std::shared_ptr<::openmldb::client::NearLineTabletClient> client_;
 };
 
 class ClusterInfo {
@@ -752,6 +761,7 @@ class NameServerImpl : public NameServer {
  private:
     std::mutex mu_;
     Tablets tablets_;
+    NearLineTabletInfo nearline_tablet_;
     ::openmldb::nameserver::TableInfos table_info_;
     std::map<std::string, ::openmldb::nameserver::TableInfos> db_table_info_;
     std::map<std::string, std::shared_ptr<::openmldb::nameserver::ClusterInfo>> nsc_;

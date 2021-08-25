@@ -3,7 +3,7 @@ syntax = "proto2";
 import "common.proto";
 
 package openmldb.nltablet;
-option java_package = "com._4paradigm.openmldb.server";
+option java_package = "com._4paradigm.openmldb.proto";
 option java_outer_classname = "NLTablet";
 option cc_generic_services = true;
 

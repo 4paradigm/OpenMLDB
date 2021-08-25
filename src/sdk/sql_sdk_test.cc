@@ -698,7 +698,7 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
     }
 
 
-    auto parameter_types = std::make_shared<hybridse::sdk::ColumnTypes>() ;
+    auto parameter_types = std::make_shared<hybridse::sdk::ColumnTypes>();
     parameter_types->AddColumnType(::hybridse::sdk::kTypeString);
     parameter_types->AddColumnType(::hybridse::sdk::kTypeInt64);
 

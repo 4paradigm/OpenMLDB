@@ -21,7 +21,7 @@ import "sql_procedure.proto";
 package openmldb.nameserver;
 
 option cc_generic_services = true;
-option java_package = "com._4paradigm.openmldb.ns";
+option java_package = "com._4paradigm.openmldb.proto";
 option java_outer_classname = "NS";
 
 enum ServerMode {

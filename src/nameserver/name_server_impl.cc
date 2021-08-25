@@ -843,7 +843,7 @@ bool NameServerImpl::RecoverDb() {
 void NameServerImpl::RecoverOfflineTablet() {
     offline_endpoint_map_.clear();
     for (const auto& tablet : tablets_) {
-        if (tablet.second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+        if (tablet.second->state_ != ::openmldb::type::EndpointState::kHealthy) {
             offline_endpoint_map_.insert(std::make_pair(tablet.first, tablet.second->ctime_));
             thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval,
                                    boost::bind(&NameServerImpl::OnTabletOffline, this, tablet.first, false));
@@ -1252,15 +1252,53 @@ void NameServerImpl::UpdateTabletsLocked(const std::vector<std::string>& endpoin
 }
 
 void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
-    // check exist and newly add tablets
     std::set<std::string> alive;
     std::vector<std::string> tablet_endpoints;
-    {
-        std::vector<std::string>::const_iterator it = endpoints.begin();
-        for (; it != endpoints.end(); ++it) {
-            tablet_endpoints.push_back(*it);
+    std::string nearline_tablet_endpoint;
+    for (const auto& endpoint : endpoints) {
+        std::string cur_endpoint = endpoint;
+        if (boost::starts_with(cur_endpoint, ::openmldb::base::NEARLINE_PREFIX)) {
+            nearline_tablet_endpoint = endpoint.substr(::openmldb::base::NEARLINE_PREFIX.size());
+            cur_endpoint = nearline_tablet_endpoint;
+        } else {
+            tablet_endpoints.push_back(cur_endpoint);
+        }
+        auto it = real_ep_map_.find(cur_endpoint);
+        if (FLAGS_use_name) {
+            std::string real_ep;
+            if (!zk_client_->GetNodeValue(FLAGS_zk_root_path + "/map/names/" + cur_endpoint, real_ep)) {
+                PDLOG(WARNING, "get tablet names value failed. endpint %s", cur_endpoint.c_str());
+                continue;
+            }
+            if (it == real_ep_map_.end()) {
+                real_ep_map_.emplace(cur_endpoint, real_ep);
+            } else {
+                it->second = real_ep;
+            }
+        } else if (it == real_ep_map_.end()) {
+            real_ep_map_.emplace(cur_endpoint, cur_endpoint);
         }
     }
+
+    if (nearline_tablet_endpoint.empty()) {
+        if (nearline_tablet_.state_ == ::openmldb::type::EndpointState::kHealthy) {
+            nearline_tablet_.state_ = ::openmldb::type::EndpointState::kOffline;
+            PDLOG(WARNING, "nearline endpoint %s is offline", nearline_tablet_.client_->GetEndpoint().c_str());
+        }
+    } else if (nearline_tablet_.state_ == ::openmldb::type::EndpointState::kOffline) {
+        auto it = real_ep_map_.find(nearline_tablet_endpoint);
+        if (it != real_ep_map_.end()) {
+            nearline_tablet_.client_ =
+                std::make_shared<::openmldb::client::NearLineTabletClient>(nearline_tablet_endpoint, it->second, true);
+            if (nearline_tablet_.client_->Init() == 0) {
+                nearline_tablet_.state_ = ::openmldb::type::EndpointState::kHealthy;
+                PDLOG(INFO, "nearline endpoint %s is online", it->second.c_str());
+            } else {
+                PDLOG(WARNING, "fail to init nearline endpoint %s", it->second.c_str());
+            }
+        }
+    }
+
     auto it = tablet_endpoints.begin();
     for (; it != tablet_endpoints.end(); ++it) {
         alive.insert(*it);
@@ -1268,22 +1306,15 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         // register a new tablet
         if (tit == tablets_.end()) {
             std::shared_ptr<TabletInfo> tablet = std::make_shared<TabletInfo>();
-            tablet->state_ = ::openmldb::api::TabletState::kTabletHealthy;
+            tablet->state_ = ::openmldb::type::EndpointState::kHealthy;
             if (FLAGS_use_name) {
-                std::string real_ep;
-                if (!zk_client_->GetNodeValue(FLAGS_zk_root_path + "/map/names/" + *it, real_ep)) {
-                    PDLOG(WARNING, "get tablet names value failed");
+                auto real_ep_map_it = real_ep_map_.find(*it);
+                if (real_ep_map_it == real_ep_map_.end()) {
+                    PDLOG(WARNING, "fail to get real endpoint. endpoint %s", it->c_str());
                     continue;
                 }
-                tablet->client_ = std::make_shared<::openmldb::client::TabletClient>(*it, real_ep, true);
-                auto n_it = real_ep_map_.find(*it);
-                if (n_it == real_ep_map_.end()) {
-                    real_ep_map_.insert(std::make_pair(*it, real_ep));
-                } else {
-                    n_it->second = real_ep;
-                }
+                tablet->client_ = std::make_shared<::openmldb::client::TabletClient>(*it, real_ep_map_it->second, true);
             } else {
-                real_ep_map_.emplace(*it, *it);
                 tablet->client_ = std::make_shared<::openmldb::client::TabletClient>(*it, "", true);
             }
             if (tablet->client_->Init() != 0) {
@@ -1295,27 +1326,21 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             PDLOG(INFO, "add tablet client. endpoint[%s]", it->c_str());
             NotifyTableChanged();
         } else {
-            if (tit->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            if (tit->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 if (FLAGS_use_name) {
-                    auto r_it = real_ep_map_.find(tit->first);
-                    if (r_it == real_ep_map_.end()) {
-                        PDLOG(WARNING, "%s not in real_ep_map", tit->first.c_str());
+                    auto real_ep_map_it = real_ep_map_.find(*it);
+                    if (real_ep_map_it == real_ep_map_.end()) {
+                        PDLOG(WARNING, "fail to get real endpoint. endpoint %s", it->c_str());
                         continue;
                     }
-                    std::string real_ep;
-                    if (!zk_client_->GetNodeValue(FLAGS_zk_root_path + "/map/names/" + *it, real_ep)) {
-                        PDLOG(WARNING, "get tablet names value failed");
-                        continue;
-                    }
-                    r_it->second = real_ep;
                     tit->second->client_ =
-                        std::make_shared<::openmldb::client::TabletClient>(tit->first, real_ep, true);
+                        std::make_shared<::openmldb::client::TabletClient>(*it, real_ep_map_it->second, true);
                     if (tit->second->client_->Init() != 0) {
                         PDLOG(WARNING, "tablet client init error. endpoint[%s]", tit->first.c_str());
                         continue;
                     }
                 }
-                tit->second->state_ = ::openmldb::api::TabletState::kTabletHealthy;
+                tit->second->state_ = ::openmldb::type::EndpointState::kHealthy;
                 tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint[%s]", tit->first.c_str());
                 thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
@@ -1326,10 +1351,10 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     // handle offline tablet
     for (Tablets::iterator tit = tablets_.begin(); tit != tablets_.end(); ++tit) {
         if (alive.find(tit->first) == alive.end() &&
-            tit->second->state_ == ::openmldb::api::TabletState::kTabletHealthy) {
+            tit->second->state_ == ::openmldb::type::EndpointState::kHealthy) {
             // tablet offline
             PDLOG(INFO, "offline tablet with endpoint[%s]", tit->first.c_str());
-            tit->second->state_ = ::openmldb::api::TabletState::kTabletOffline;
+            tit->second->state_ = ::openmldb::type::EndpointState::kOffline;
             tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
             if (offline_endpoint_map_.find(tit->first) == offline_endpoint_map_.end()) {
                 offline_endpoint_map_.insert(std::make_pair(tit->first, tit->second->ctime_));
@@ -1363,7 +1388,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
             PDLOG(WARNING, "cannot find endpoint %s in offline endpoint map", endpoint.c_str());
             return;
         }
-        if (!startup_flag && tit->second->state_ == ::openmldb::api::TabletState::kTabletHealthy) {
+        if (!startup_flag && tit->second->state_ == ::openmldb::type::EndpointState::kHealthy) {
             PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint", endpoint.c_str());
             return;
         }
@@ -1507,7 +1532,7 @@ void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletReque
                 status->set_real_endpoint(n_it->second);
             }
         }
-        status->set_state(::openmldb::api::TabletState_Name(it->second->state_));
+        status->set_state(::openmldb::type::EndpointState_Name(it->second->state_));
         status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_);
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -1614,7 +1639,7 @@ int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
-            if (iter->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            if (iter->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 DEBUGLOG("tablet[%s] is not Healthy", iter->first.c_str());
                 uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
                 if (cur_time < iter->second->ctime_ + FLAGS_tablet_heartbeat_timeout) {
@@ -1964,7 +1989,7 @@ int NameServerImpl::DeleteTask() {
             return 0;
         }
         for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
-            if (iter->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            if (iter->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 DEBUGLOG("tablet[%s] is not Healthy", iter->first.c_str());
                 continue;
             }
@@ -2395,7 +2420,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : tablets_) {
-            if (kv.second->state_ == ::openmldb::api::TabletState::kTabletHealthy) {
+            if (kv.second->state_ == ::openmldb::type::EndpointState::kHealthy) {
                 endpoint_pid_bucked.insert(std::make_pair(kv.first, 0));
             }
         }
@@ -2534,7 +2559,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::
                 }
                 tablet_ptr = iter->second;
                 // check tablet healthy
-                if (tablet_ptr->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+                if (tablet_ptr->state_ != ::openmldb::type::EndpointState::kHealthy) {
                     PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
                     return -1;
                 }
@@ -2585,7 +2610,7 @@ int NameServerImpl::DropTableOnTablet(std::shared_ptr<::openmldb::nameserver::Ta
                 }
                 tablet_ptr = iter->second;
                 // check tablet healthy
-                if (tablet_ptr->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+                if (tablet_ptr->state_ != ::openmldb::type::EndpointState::kHealthy) {
                     PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
                     continue;
                 }
@@ -2877,7 +2902,7 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller, const RecoverEnd
             response->set_msg("endpoint is not exist");
             PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
             return;
-        } else if (iter->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+        } else if (iter->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
             response->set_code(::openmldb::base::ReturnCode::kTabletIsNotHealthy);
             response->set_msg("tablet is not healthy");
             PDLOG(WARNING, "tablet[%s] is not healthy", endpoint.c_str());
@@ -2919,7 +2944,7 @@ void NameServerImpl::RecoverTable(RpcController* controller, const RecoverTableR
         response->set_msg("endpoint is not exist");
         PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
         return;
-    } else if (it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    } else if (it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         response->set_code(::openmldb::base::ReturnCode::kTabletIsNotHealthy);
         response->set_msg("tablet is not healthy");
         PDLOG(WARNING, "tablet[%s] is not healthy", endpoint.c_str());
@@ -3005,7 +3030,7 @@ void NameServerImpl::CancelOP(RpcController* controller, const CancelOPRequest* 
             }
         }
         for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
-            if (iter->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            if (iter->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 DEBUGLOG("tablet[%s] is not Healthy", iter->first.c_str());
                 continue;
             }
@@ -3272,7 +3297,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                     continue;
                 }
                 // check tablet healthy
-                if (tablets_iter->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+                if (tablets_iter->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                     PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
                     continue;
                 }
@@ -3640,7 +3665,7 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller, const Crea
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : tablets_) {
-            if (kv.second->state_ == ::openmldb::api::TabletState::kTabletHealthy) {
+            if (kv.second->state_ == ::openmldb::type::EndpointState::kHealthy) {
                 tablets_size++;
             }
         }
@@ -3746,7 +3771,7 @@ void NameServerImpl::CreateTableInfo(RpcController* controller, const CreateTabl
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : tablets_) {
-            if (kv.second->state_ == ::openmldb::api::TabletState::kTabletHealthy) {
+            if (kv.second->state_ == ::openmldb::type::EndpointState::kHealthy) {
                 tablets_size++;
             }
         }
@@ -4049,7 +4074,7 @@ void NameServerImpl::RefreshTablet(uint32_t tid) {
         tablets = tablets_;
     }
     for (const auto& kv : tablets) {
-        if (kv.second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+        if (kv.second->state_ != ::openmldb::type::EndpointState::kHealthy) {
             PDLOG(WARNING, "endpoint [%s] is offline", kv.first.c_str());
             continue;
         }
@@ -4385,7 +4410,7 @@ void NameServerImpl::AddReplicaNS(RpcController* controller, const AddReplicaNSR
     }
     std::lock_guard<std::mutex> lock(mu_);
     auto it = tablets_.find(request->endpoint());
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         response->set_code(::openmldb::base::ReturnCode::kTabletIsNotHealthy);
         response->set_msg("tablet is not healthy");
         PDLOG(WARNING, "tablet[%s] is not healthy", request->endpoint().c_str());
@@ -4490,7 +4515,7 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller, const Add
     }
     uint32_t pid = request->pid();
     auto it = tablets_.find(request->endpoint());
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         response->set_code(::openmldb::base::ReturnCode::kTabletIsNotHealthy);
         response->set_msg("tablet is not healthy");
         PDLOG(WARNING, "tablet[%s] is not healthy", request->endpoint().c_str());
@@ -4587,7 +4612,7 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     auto it = tablets_.find(request.endpoint());
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", request.endpoint().c_str());
         return -1;
     }
@@ -4685,14 +4710,14 @@ void NameServerImpl::Migrate(RpcController* controller, const MigrateRequest* re
     }
     std::lock_guard<std::mutex> lock(mu_);
     auto pos = tablets_.find(request->src_endpoint());
-    if (pos == tablets_.end() || pos->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (pos == tablets_.end() || pos->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         response->set_code(::openmldb::base::ReturnCode::kSrcEndpointIsNotExistOrNotHealthy);
         response->set_msg("src_endpoint is not exist or not healthy");
         PDLOG(WARNING, "src_endpoint[%s] is not exist or not healthy", request->src_endpoint().c_str());
         return;
     }
     pos = tablets_.find(request->des_endpoint());
-    if (pos == tablets_.end() || pos->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (pos == tablets_.end() || pos->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         response->set_code(::openmldb::base::ReturnCode::kDesEndpointIsNotExistOrNotHealthy);
         response->set_msg("des_endpoint is not exist or not healthy");
         PDLOG(WARNING, "des_endpoint[%s] is not exist or not healthy", request->des_endpoint().c_str());
@@ -4744,7 +4769,7 @@ void NameServerImpl::Migrate(RpcController* controller, const MigrateRequest* re
             break;
         }
         auto it = tablets_.find(leader_endpoint);
-        if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+        if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
             sprintf(error_msg,  // NOLINT
                     "leader[%s] is offline. name[%s] pid[%u]", leader_endpoint.c_str(), request->name().c_str(), pid);
             has_error = true;
@@ -4838,7 +4863,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     auto it = tablets_.find(leader_endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         PDLOG(WARNING, "leader[%s] is not online", leader_endpoint.c_str());
         return -1;
     }
@@ -4960,7 +4985,7 @@ void NameServerImpl::DelReplicaNS(RpcController* controller, const DelReplicaNSR
         return;
     }
     auto it = tablets_.find(request->endpoint());
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         response->set_code(::openmldb::base::ReturnCode::kTabletIsNotHealthy);
         response->set_msg("tablet is not healthy");
         PDLOG(WARNING, "tablet[%s] is not healthy", request->endpoint().c_str());
@@ -5212,7 +5237,7 @@ void NameServerImpl::SchedMakeSnapshot() {
             return;
         }
         for (const auto& kv : tablets_) {
-            if (kv.second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            if (kv.second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 continue;
             }
             tablet_ptr_map.insert(std::make_pair(kv.first, kv.second));
@@ -5337,7 +5362,7 @@ void NameServerImpl::UpdateTableStatus() {
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : tablets_) {
-            if (kv.second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            if (kv.second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 continue;
             }
             tablet_ptr_map.insert(std::make_pair(kv.first, kv.second));
@@ -5621,7 +5646,7 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, const std::str
                 if (!table_info->table_partition(idx).partition_meta(meta_idx).is_leader()) {
                     auto tablets_iter = tablets_.find(endpoint);
                     if (tablets_iter != tablets_.end() &&
-                        tablets_iter->second->state_ == ::openmldb::api::TabletState::kTabletHealthy) {
+                        tablets_iter->second->state_ == ::openmldb::type::EndpointState::kHealthy) {
                         follower_endpoint.push_back(endpoint);
                     } else {
                         PDLOG(WARNING, "endpoint[%s] is offline. table[%s] pid[%u]", endpoint.c_str(), name.c_str(),
@@ -5887,7 +5912,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
                             return;
                         }
                         leader_tablet_ptr = tablet_iter->second;
-                        if (leader_tablet_ptr->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+                        if (leader_tablet_ptr->state_ != ::openmldb::type::EndpointState::kHealthy) {
                             PDLOG(WARNING, "leader endpoint [%s] is offline. op_id[%lu]", leader_endpoint.c_str(),
                                   task_info->op_id());
                             task_info->set_status(::openmldb::api::TaskStatus::kFailed);
@@ -5918,7 +5943,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
                         return;
                     }
                     tablet_ptr = tablet_iter->second;
-                    if (tablet_ptr->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+                    if (tablet_ptr->state_ != ::openmldb::type::EndpointState::kHealthy) {
                         PDLOG(WARNING, "endpoint [%s] is offline. op_id[%lu]", endpoint.c_str(), task_info->op_id());
                         task_info->set_status(::openmldb::api::TaskStatus::kFailed);
                         return;
@@ -6028,7 +6053,7 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, const std::str
                                          const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id,
                                          uint32_t concurrency) {
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
         return -1;
     }
@@ -6183,7 +6208,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
     uint64_t offset_delta = recover_table_data.offset_delta();
     uint32_t pid = op_data->op_info_.pid();
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
         return -1;
     }
@@ -6267,7 +6292,7 @@ int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, const st
                                                const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id,
                                                uint32_t concurrency) {
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
         return -1;
     }
@@ -6442,7 +6467,7 @@ int NameServerImpl::CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_da
     uint64_t offset_delta = recover_table_data.offset_delta();
     uint32_t pid = op_data->op_info_.pid();
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
         return -1;
     }
@@ -6690,7 +6715,7 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     uint32_t pid = op_data->op_info_.pid();
     std::string endpoint = op_data->op_info_.data();
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
         return -1;
     }
@@ -6870,7 +6895,7 @@ std::shared_ptr<Task> NameServerImpl::CreateMakeSnapshotTask(const std::string& 
                                                              uint32_t pid, uint64_t end_offset) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         return std::shared_ptr<Task>();
     }
     task->task_info_->set_op_id(op_index);
@@ -6889,7 +6914,7 @@ std::shared_ptr<Task> NameServerImpl::CreatePauseSnapshotTask(const std::string&
                                                               uint32_t pid) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         return std::shared_ptr<Task>();
     }
     task->task_info_->set_op_id(op_index);
@@ -6908,7 +6933,7 @@ std::shared_ptr<Task> NameServerImpl::CreateRecoverSnapshotTask(const std::strin
                                                                 uint32_t pid) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         return std::shared_ptr<Task>();
     }
     task->task_info_->set_op_id(op_index);
@@ -6928,7 +6953,7 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(const std::string& 
                                                              const std::string& des_endpoint) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         return std::shared_ptr<Task>();
     }
     task->task_info_->set_op_id(op_index);
@@ -6996,7 +7021,7 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
                                                           bool is_leader) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         return std::shared_ptr<Task>();
     }
     task->task_info_->set_op_id(op_index);
@@ -7057,7 +7082,7 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaRemoteTask(const std::stri
         PDLOG(WARNING, "provide endpoint [%s] not found", endpoint.c_str());
         return std::shared_ptr<Task>();
     }
-    if (it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         PDLOG(WARNING, "provide endpoint [%s] is not healthy", endpoint.c_str());
         return std::shared_ptr<Task>();
     }
@@ -7105,7 +7130,7 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaTask(const std::string& en
                                                            const std::string& des_endpoint) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         return std::shared_ptr<Task>();
     }
     task->task_info_->set_op_id(op_index);
@@ -7239,7 +7264,7 @@ std::shared_ptr<Task> NameServerImpl::CreateDelReplicaTask(const std::string& en
                                                            const std::string& follower_endpoint) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         return std::shared_ptr<Task>();
     }
     task->task_info_->set_op_id(op_index);
@@ -7257,7 +7282,7 @@ std::shared_ptr<Task> NameServerImpl::CreateDropTableTask(const std::string& end
                                                           ::openmldb::api::OPType op_type, uint32_t tid, uint32_t pid) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         return std::shared_ptr<Task>();
     }
     task->task_info_->set_op_id(op_index);
@@ -7821,7 +7846,7 @@ void NameServerImpl::SelectLeader(const std::string& name, const std::string& db
         {
             std::lock_guard<std::mutex> lock(mu_);
             auto it = tablets_.find(endpoint);
-            if (it == tablets_.end() || it->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 PDLOG(WARNING, "endpoint[%s] is offline. table[%s] pid[%u]  op_id[%lu]", endpoint.c_str(), name.c_str(),
                       pid, task_info->op_id());
                 task_info->set_status(::openmldb::api::TaskStatus::kFailed);
@@ -7917,7 +7942,7 @@ void NameServerImpl::ChangeLeader(std::shared_ptr<::openmldb::api::TaskInfo> tas
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = tablets_.find(leader_endpoint);
-        if (iter == tablets_.end() || iter->second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+        if (iter == tablets_.end() || iter->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
             PDLOG(WARNING, "endpoint[%s] is offline", leader_endpoint.c_str());
             task_info->set_status(::openmldb::api::TaskStatus::kFailed);
             return;
@@ -8221,7 +8246,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller, const ClusterA
                     std::lock_guard<std::mutex> lock(mu_);
                     auto it = tablets_.begin();
                     for (; it != tablets_.end(); it++) {
-                        if (it->second->state_ != api::kTabletHealthy) {
+                        if (it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                             continue;
                         }
                         tablets.insert(std::make_pair(it->first, it->second));
@@ -8370,7 +8395,7 @@ void NameServerImpl::ShowCatalog(RpcController* controller, const ShowCatalogReq
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : tablets_) {
-            if (kv.second->state_ == ::openmldb::api::TabletState::kTabletHealthy) {
+            if (kv.second->state_ == ::openmldb::type::EndpointState::kHealthy) {
                 tablet_map.emplace(kv.first, kv.second);
             }
         }
@@ -8791,7 +8816,7 @@ int NameServerImpl::SyncExistTable(const std::string& alias, const std::string& 
             std::lock_guard<std::mutex> lock(mu_);
             auto it = tablets_.begin();
             for (; it != tablets_.end(); it++) {
-                if (it->second->state_ != api::kTabletHealthy) {
+                if (it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                     continue;
                 }
                 tablets.insert(std::make_pair(it->first, it->second));
@@ -8910,7 +8935,7 @@ void NameServerImpl::DistributeTabletMode() {
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& tablet : tablets_) {
-            if (tablet.second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            if (tablet.second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 continue;
             }
             tmp_tablets.insert(std::make_pair(tablet.first, tablet.second));
@@ -9017,7 +9042,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
             return;
         }
         for (const auto& kv : tablets_) {
-            if (kv.second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            if (kv.second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 response->set_code(::openmldb::base::ReturnCode::kTabletIsNotHealthy);
                 response->set_msg("tablet is offline!");
                 PDLOG(WARNING, "tablet[%s] is offline!", kv.second->client_->GetEndpoint().c_str());
@@ -9772,7 +9797,7 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller, const SetSdkEndpo
             }
             std::lock_guard<std::mutex> lock(mu_);
             auto it = tablets_.find(server_name);
-            if (it != tablets_.end() && it->second->state_ == ::openmldb::api::TabletState::kTabletHealthy) {
+            if (it != tablets_.end() && it->second->state_ == ::openmldb::type::EndpointState::kHealthy) {
                 break;
             }
             has_found = false;
@@ -9853,7 +9878,7 @@ void NameServerImpl::UpdateRealEpMapToTablet() {
             return;
         }
         for (const auto& tablet : tablets_) {
-            if (tablet.second->state_ != ::openmldb::api::TabletState::kTabletHealthy) {
+            if (tablet.second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 continue;
             }
             tmp_tablets.insert(std::make_pair(tablet.first, tablet.second));

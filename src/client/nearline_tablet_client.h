@@ -30,8 +30,9 @@ namespace client {
 
 class NearLineTabletClient : public Client {
  public:
-    NearLineTabletClient(const std::string& endpoint, const std::string& real_endpoint)
-        : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint) {}
+    NearLineTabletClient(const std::string& endpoint, const std::string& real_endpoint, bool use_sleep_policy)
+        : Client(endpoint, real_endpoint),
+        client_(real_endpoint.empty() ? endpoint : real_endpoint, use_sleep_policy) {}
 
     ~NearLineTabletClient() {}
 

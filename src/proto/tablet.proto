@@ -19,6 +19,7 @@ import "common.proto";
 import "sql_procedure.proto";
 package openmldb.api;
 
+option java_package = "com._4paradigm.openmldb.proto";
 option cc_generic_services = true;
 
 enum TableMode {
@@ -32,11 +33,6 @@ enum TableState {
     kTableLoading = 2;
     kMakingSnapshot = 3;
     kSnapshotPaused  = 4;
-}
-
-enum TabletState {
-    kTabletOffline = 1;
-    kTabletHealthy = 10;
 }
 
 enum GetType {
