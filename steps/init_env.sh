@@ -40,6 +40,7 @@ fi
 if [[ -d "$THIRDSRC_PATH" ]]; then
     echo "thirdsrc path: THIRDSRC_PATH already exist, skip download deps"
 else
+    mkdir -p "$THIRDSRC_PATH"
     curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
     tar xzf thirdsrc.tar.gz -C "$THIRDSRC_PATH" --strip-components 1
 fi
