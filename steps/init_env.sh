@@ -28,58 +28,60 @@ HYBRIDSE_SOURCE=$1
 THIRDPARTY_PATH=${2:-"$ROOT/thirdparty"}
 THIRDSRC_PATH="$ROOT/thirdsrc"
 
-echo "THIRDPARTY_PATH: "${THIRDPARTY_PATH}
+echo "THIRDPARTY_PATH: ${THIRDPARTY_PATH}"
 echo "Install thirdparty ... for $(uname -a)"
 
 if [[ -d "$THIRDPARTY_PATH" ]]; then
     echo "thirdparty path: $THIRDPARTY_PATH already exist, skip download deps"
 else
-    ./steps/setup_thirdparty.sh ${THIRDPARTY_PATH}
+    ./steps/setup_thirdparty.sh "$THIRDPARTY_PATH"
 fi
 
 if [[ -d "THIRDSRC_PATH" ]]; then
     echo "thirdsrc path: THIRDSRC_PATH already exist, skip download deps"
 else
     curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
-    tar xzf thirdsrc.tar.gz -C "${THIRDSRC_PATH}" --strip-components 1
+    tar xzf thirdsrc.tar.gz -C "$THIRDSRC_PATH" --strip-components 1
 fi
 
 if [ -d "$THIRDPARTY_PATH/hybridse" ]; then
     echo "thirdparty/hybridse path: $THIRDPARTY_PATH/hybridse already exist, skip download/install deps"
     exit 0
 fi
-echo "HYBRIDSE_SOURCE: "${HYBRIDSE_SOURCE}
+
+echo "HYBRIDSE_SOURCE: $HYBRIDSE_SOURCE"
 if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
-  echo "Install hybridse locally"
-  cd "${ROOT}/hybridse"
-  ln -sf $THIRDPARTY_PATH thirdparty
-  ln -sf $THIRDSRC_PATH thirdsrc
-  if uname -a | grep -q Darwin; then
-    # in case coreutils not install on mac
-    alias nproc='sysctl -n hw.logicalcpu'
-  fi
-  rm -rf build
-  mkdir -p build && cd build
-  cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCMAKE_INSTALL_PREFIX="hybridse"
-  make -j"$(nproc)" install
-  mv hybridse ${THIRDPARTY_PATH}/hybridse
-else
-  echo "Download hybridse package"
-  pushd "${THIRDSRC_PATH}"
-
-  if [[ "$OSTYPE" = "darwin"* ]]; then
-    curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.3.0-test-0823-snapshot/hybridse-0.3.0-test-0823-snapshot-darwin-x86_64.tar.gz
-  elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
-    if [[ $ARCH = 'x86_64' ]]; then
-        curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.3.0-test-0823-snapshot/hybridse-0.3.0-test-0823-snapshot-linux-x86_64.tar.gz
-    elif [[ $ARCH = 'aarch64' ]]; then
-        # NOTE: missing hybridse-aarch64
-        echo "missing hybridse-aarch64"
+    echo "Install hybridse locally"
+    pushd "${ROOT}/hybridse"
+    ln -sf "$THIRDPARTY_PATH" thirdparty
+    ln -sf "$THIRDSRC_PATH" thirdsrc
+    if uname -a | grep -q Darwin; then
+        # in case coreutils not install on mac
+        nproc() {
+            sysctl -n hw.logicalcpu
+        }
     fi
-  fi
-  mkdir -p "$THIRDPARTY_PATH/hybridse"
-  tar xzf hybridse.tar.gz -C "${THIRDPARTY_PATH}/hybridse" --strip-components 1
-  popd
-fi
-cd ${ROOT}
+    cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCMAKE_INSTALL_PREFIX="hybridse"
+    cmake --build build --target install -- -j"$(nproc)"
+    mv hybridse "$THIRDPARTY_PATH/hybridse"
+    popd
+else
+    echo "Download hybridse package"
+    pushd "${THIRDSRC_PATH}"
 
+    if [[ "$OSTYPE" = "darwin"* ]]; then
+        curl -SLo hybridse.tar.gz https://github.com/aceforeverd/fedb/releases/download/hybridse-v0.3.0-SNAPSHOT/hybridse-0.3.0-SNAPSHOT-darwin-x86_64.tar.gz
+    elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
+        if [[ $ARCH = 'x86_64' ]]; then
+            curl -SLo hybridse.tar.gz https://github.com/aceforeverd/fedb/releases/download/hybridse-v0.3.0-SNAPSHOT/hybridse-0.3.0-SNAPSHOT-linux-x86_64.tar.gz
+        elif [[ $ARCH = 'aarch64' ]]; then
+            # NOTE: missing hybridse-aarch64
+            echo "missing hybridse-aarch64"
+        fi
+    fi
+    mkdir -p "$THIRDPARTY_PATH/hybridse"
+    tar xzf hybridse.tar.gz -C "${THIRDPARTY_PATH}/hybridse" --strip-components 1
+    popd
+fi
+
+popd
