@@ -69,7 +69,7 @@ public class NLTabletServerImpl implements NLTabletServer {
         try {
             icebergSchema = ConvertSchema(schema);
         } catch (Exception e) {
-            log.info("fail to create table {}", name);
+            log.error("fail to create table {}", name);
             return false;
         }
         PartitionSpec spec = PartitionSpec.builderFor(icebergSchema)
