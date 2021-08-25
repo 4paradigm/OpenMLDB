@@ -47,6 +47,5 @@ JAVA_VERSION="$BASE_VERSION$SUFFIX_VERSION"
 
 mvn versions:set -DnewVersion="$JAVA_VERSION"
 
-# rm '-SNAPSHOT' suffix in version.base
 mvn versions:set-property -Dproperty="project.version.base" -DnewVersion="$BASE_VERSION"
 mvn versions:set-property -Dproperty="project.version.suffix" -DnewVersion="$SUFFIX_VERSION"
