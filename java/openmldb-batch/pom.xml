@@ -99,7 +99,7 @@
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.13.1</version>
+			<version>4.13.2</version>
 		</dependency>
 
 		<!-- Spark -->
@@ -238,10 +238,13 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<!-- Refer to issue in https://issues.apache.org/jira/browse/SUREFIRE-1443 -->
-				<version>2.21.0</version>
+				<version>3.0.0-M5</version>
 				<configuration>
+					<!-- Make sure the SparkSession is unique for each unit test -->
+					<reuseForks>false</reuseForks>
+					<forkCount>4</forkCount>
 					<skipAfterFailureCount>1</skipAfterFailureCount>
+					<skipTests>false</skipTests>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -286,6 +289,9 @@
 						</goals>
 					</execution>
 				</executions>
+				<configuration>
+					<forkMode>never</forkMode>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -372,7 +378,7 @@
 					<verbose>false</verbose>
 					<failOnViolation>true</failOnViolation>
 					<includeTestSourceDirectory>true</includeTestSourceDirectory>
-					<failOnWarning>true</failOnWarning>
+					<failOnWarning>false</failOnWarning>
 					<sourceDirectory>${project.basedir}/src/main/scala</sourceDirectory>
 					<testSourceDirectory>${project.basedir}/src/test/scala</testSourceDirectory>
 					<configLocation>${project.basedir}/scala_style.xml</configLocation>
