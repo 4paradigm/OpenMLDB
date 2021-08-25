@@ -89,7 +89,6 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     // select target_list
     CHECK_TRUE(nullptr != root->GetSelectList() && !root->GetSelectList()->GetList().empty(), common::kPlanError,
                "fail to create select query plan: select expr list is null or empty")
-    const node::NodePointVector &select_expr_list = root->GetSelectList()->GetList();
 
     // prepare window list
     std::map<const node::WindowDefNode *, node::ProjectListNode *> project_list_map;
@@ -106,6 +105,7 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         }
     }
 
+    const node::NodePointVector &select_expr_list = root->GetSelectList()->GetList();
     for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
         auto expr = select_expr_list[pos];
         std::string project_name;

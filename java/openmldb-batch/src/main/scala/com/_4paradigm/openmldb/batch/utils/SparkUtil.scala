@@ -97,12 +97,12 @@ object SparkUtil {
 
     // Check field name and type, but not nullable
     val fieldSize = schema1.fields.size
-    for (i <- 0 until fieldSize)  {
+    for (i <- 0 until fieldSize) {
       val field1 = schema1.fields(i)
       val field2 = schema2.fields(i)
       if (field1.name != field2.name || field1.dataType != field2.dataType) {
         logger.warn("Schema name or type not match, filed(%s %s) and field(%s %s)"
-          .format(field1.dataType, field1.name,field2.dataType, field2.name))
+          .format(field1.dataType, field1.name, field2.dataType, field2.name))
         return false
       }
     }
@@ -138,7 +138,6 @@ object SparkUtil {
         return false
       }
     }
-
     df1.except(df1).isEmpty && df2.except(df2).isEmpty
   }
 

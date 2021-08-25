@@ -48,7 +48,7 @@ struct TabletInfo {
 class NsClient {
  public:
     explicit NsClient(const std::string& endpoint, const std::string& real_endpoint);
-    ~NsClient() {}
+    ~NsClient() = default;
 
     int Init();
 
@@ -58,7 +58,7 @@ class NsClient {
 
     void ClearDb();
 
-    bool Use(std::string db, std::string& msg);  // NOLINT
+    bool Use(const std::string& db, std::string& msg);  // NOLINT
 
     bool CreateDatabase(const std::string& db, std::string& msg);  // NOLINT
 
@@ -194,7 +194,7 @@ class NsClient {
     bool UpdateTTL(const std::string& name, const ::openmldb::type::TTLType& type, uint64_t abs_ttl, uint64_t lat_ttl,
                    const std::string& ts_name, std::string& msg);  // NOLINT
 
-    bool AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t term,
+    bool AddReplicaClusterByNs(const std::string& alias, const std::string& name, uint64_t term,
                                std::string& msg);  // NOLINT
 
     bool AddReplicaCluster(const std::string& zk_ep, const std::string& zk_path, const std::string& alias,
@@ -203,15 +203,17 @@ class NsClient {
     bool ShowReplicaCluster(std::vector<::openmldb::nameserver::ClusterAddAge>& clusterinfo,  // NOLINT
                             std::string& msg);                                                // NOLINT
 
-    bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term,
+    bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, uint64_t term,
                                   int& code,          // NOLINT
                                   std::string& msg);  // NOLINT
 
     bool RemoveReplicaCluster(const std::string& alias,
                               std::string& msg);  // NOLINT
 
-    bool SwitchMode(const ::openmldb::nameserver::ServerMode mode,
+    bool SwitchMode(const ::openmldb::nameserver::ServerMode& mode,
                     std::string& msg);  // NOLINT
+
+    static bool TTLTypeParse(const std::string& type_str, ::openmldb::type::TTLType* type);
 
     bool AddIndex(const std::string& table_name, const ::openmldb::common::ColumnKey& column_key,
                   std::vector<openmldb::common::ColumnDesc>* cols,
@@ -232,12 +234,10 @@ class NsClient {
     bool TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, ::openmldb::nameserver::TableInfo* table,
                              hybridse::base::Status* status);
 
-    bool HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node,
-                      const std::string& db, hybridse::base::Status* sql_status);
-    bool HandleSQLCreateTable(hybridse::node::CreatePlanNode* create,
-                              const std::string& db,
-                              hybridse::node::NodeManager* node_manager,
-                              hybridse::base::Status* sql_status);
+    bool HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
+                      hybridse::base::Status* sql_status);
+    bool HandleSQLCreateTable(hybridse::node::CreatePlanNode* create, const std::string& db,
+                              hybridse::node::NodeManager* node_manager, hybridse::base::Status* sql_status);
 
  private:
     std::string endpoint_;

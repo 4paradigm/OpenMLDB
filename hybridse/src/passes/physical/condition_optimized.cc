@@ -117,7 +117,7 @@ bool ConditionOptimized::Transform(PhysicalOpNode* in,
 // Transform condition expression some sub conditions
 // e.g.
 // condition : sub_expr1 and sub_expr2 and sub expr3
-// and_condition_list [sub_expr1, sub_expr2, sub_exor3]
+// and_condition_list [sub_expr1, sub_expr2, sub_expr3]
 bool ConditionOptimized::TransfromAndConditionList(
     const node::ExprNode* condition, node::ExprListNode* and_condition_list) {
     if (nullptr == condition) {

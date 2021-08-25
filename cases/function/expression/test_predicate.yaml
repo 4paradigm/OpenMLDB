@@ -367,3 +367,102 @@ cases:
            NULL, NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL, NULL]
+
+  - id: between_predicate_1
+    desc: between predicate, numberic between
+    mode: hybridse-only
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime bigint", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1609545841000, 2021-1-2]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    sql: |
+      SELECT {0}.id, {0}.name, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts ON {0}.id = {1}.id AND {0}.id BETWEEN 1 AND 4;
+    expect:
+      columns: ["id bigint", "name string", "score int"]
+      rows:
+        - [1, Lucy, 10]
+        - [2, Zoey, 100]
+  - id: between_predicate_2
+    desc: between predicate, string between
+    mode: hybridse-only
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  ABC, 1609459201000, 2021-1-1]
+          - [2, Zoey,  BBC, 1609545841000, 2021-1-2]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    sql: |
+      SELECT {0}.id, {0}.name, {0}.code, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts ON {0}.id = {1}.id AND {0}.code NOT BETWEEN 'BBB' AND 'CCC';
+    expect:
+      columns: ["id bigint", "name string", "code string", "score int"]
+      rows:
+        - [1, Lucy, ABC, 10]
+        - [2, Zoey, BBC, NULL]
+  - id: between_predicate_3
+    desc: between predicate, timestamp between
+    mode: hybridse-only
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1633265330000, 2021-10-3]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    sql: |
+      SELECT {0}.id, {0}.name, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts
+      ON {0}.id = {1}.id AND {0}.ctime BETWEEN timestamp("2021-01-01") AND timestamp("2021-01-30");
+    expect:
+      columns: ["id bigint", "name string", "score int"]
+      rows:
+        - [1, Lucy, 10]
+        - [2, Zoey, NULL]
+  - id: between_predicate_4
+    desc: between predicate with aggregation function
+    mode: hybridse-only
+    sql: |
+      SELECT id, col1, std_ts,
+      sum(id) OVER w1 BETWEEN 2 AND 6 as w1_id
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY col1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);
+    inputs:
+      - columns: ["id:bigint", "col1:int32", "std_ts:timestamp"]
+        indexs: ["index1:id:std_ts", "index2:col1:std_ts"]
+        rows:
+          - [1, 1, 1590115420000]
+          - [3, 1, 1590115430000]
+          - [5, 1, 1590115440000]
+          - [7, 1, 1590115450000]
+          - [9, 1, 1590115460000]
+    expect:
+      columns: ["id:bigint", "col1:int32", "std_ts:timestamp", "w1_id:bool"]
+      rows:
+          - [1, 1, 1590115420000, false]
+          - [3, 1, 1590115430000, true]
+          - [5, 1, 1590115440000, false]
+          - [7, 1, 1590115450000, false]
+          - [9, 1, 1590115460000, false]

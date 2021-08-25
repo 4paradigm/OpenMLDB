@@ -97,6 +97,8 @@ class ExprIRBuilder {
     Status BuildCondExpr(const ::hybridse::node::CondExpr* node,
                          NativeValue* output);
 
+    Status BuildBetweenExpr(const ::hybridse::node::BetweenExpr* node, NativeValue* output);
+
     Status ExtractSliceFromRow(const NativeValue& input_value, const int schema_idx, ::llvm::Value** slice_ptr,
                                ::llvm::Value** slice_size);
     ::llvm::Function* GetFuncion(

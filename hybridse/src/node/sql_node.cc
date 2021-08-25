@@ -1087,7 +1087,7 @@ void ColumnOfExpression(const ExprNode *node_ptr, std::vector<const node::ExprNo
     }
 }
 
-bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows, ExprNode *node_ptr,
+bool WindowOfExpression(const std::map<std::string, const WindowDefNode *>& windows, ExprNode *node_ptr,
                         const WindowDefNode **output) {
     // try to resolved window ptr from expression like: call(args...) over
     // window
@@ -1164,9 +1164,9 @@ bool ExprIsConst(const ExprNode *expr) {
         case node::kExprBetween: {
             std::vector<node::ExprNode *> expr_list;
             auto between_expr = dynamic_cast<const node::BetweenExpr *>(expr);
-            expr_list.push_back(between_expr->left_);
-            expr_list.push_back(between_expr->right_);
-            expr_list.push_back(between_expr->expr_);
+            expr_list.push_back(between_expr->GetLow());
+            expr_list.push_back(between_expr->GetHigh());
+            expr_list.push_back(between_expr->GetLhs());
             return ExprListIsConst(expr_list);
         }
         case node::kExprCall: {
@@ -1700,19 +1700,21 @@ void BetweenExpr::Print(std::ostream &output, const std::string &org_tab) const 
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSqlNode(output, tab, expr_, "value", false);
+    PrintValue(output, tab, is_not_between() ? "true" : "false", "is_not_between", false);
     output << "\n";
-    PrintSqlNode(output, tab, left_, "left", false);
+    PrintSqlNode(output, tab, GetLhs(), "value", false);
     output << "\n";
-    PrintSqlNode(output, tab, right_, "right", true);
+    PrintSqlNode(output, tab, GetLow(), "left", false);
+    output << "\n";
+    PrintSqlNode(output, tab, GetHigh(), "right", true);
 }
 const std::string BetweenExpr::GetExprString() const {
     std::string str = "";
-    str.append(ExprString(expr_));
+    str.append(ExprString(GetLhs()));
     if (is_not_between_) {
         str.append(" not ");
     }
-    str.append(" between ").append(ExprString(left_)).append(" and ").append(ExprString(right_));
+    str.append(" between ").append(ExprString(GetLow())).append(" and ").append(ExprString(GetHigh()));
     return str;
 }
 bool BetweenExpr::Equals(const ExprNode *node) const {
@@ -1720,8 +1722,8 @@ bool BetweenExpr::Equals(const ExprNode *node) const {
         return false;
     }
     const BetweenExpr *that = dynamic_cast<const BetweenExpr *>(node);
-    return is_not_between_ == that->is_not_between_ && ExprEquals(expr_, that->expr_) &&
-           ExprEquals(left_, that->left_) && ExprEquals(right_, that->right_);
+    return is_not_between() == that->is_not_between() && ExprEquals(GetLhs(), that->GetLhs()) &&
+           ExprEquals(GetLow(), that->GetLow()) && ExprEquals(GetHigh(), that->GetHigh());
 }
 
 std::string FnDefNode::GetFlatString() const {
