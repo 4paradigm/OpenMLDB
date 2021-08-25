@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.*;
+import com._4paradigm.openmldb.sdk.impl.Util;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -26,20 +27,18 @@ import java.nio.charset.Charset;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.*;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-public class RequestPreparedStatement implements java.sql.PreparedStatement {
+public class PreparedStatement implements java.sql.PreparedStatement {
     public static final Charset CHARSET = Charset.forName("utf-8");
     protected String db;
     protected String currentSql;
     protected SQLRouter router;
     protected SQLRequestRow currentRow;
     protected Schema currentSchema;
-    protected List<Object> currentDatas;
-    protected List<Boolean> hasSet;
+    protected TreeMap<Integer, com._4paradigm.openmldb.DataType> types;
+    protected TreeMap<Integer, com._4paradigm.openmldb.DataType> orgTypes;
+    protected TreeMap<Integer, Object> currentDatas;
     protected boolean closed = false;
     protected boolean closeOnComplete = false;
     protected Map<Integer, Integer> stringsLen = new HashMap<>();
@@ -54,23 +53,17 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
         if (router == null) {
             throw new SQLException("SQLRouter is null");
         }
-        if (currentRow == null) {
-            throw new SQLException("SQLRequestRow is null");
-        }
-        if (currentSchema == null) {
-            throw new SQLException("schema is null");
-        }
         if (currentDatas == null) {
             throw new SQLException("currentDatas is null");
         }
-        if (hasSet == null) {
-            throw new SQLException("hasSet is null");
+        if (types == null) {
+            throw new SQLException("currentDatas is null");
         }
     }
 
     protected void checkClosed() throws SQLException {
         if (closed) {
-            throw new SQLException("preparedstatement closed");
+            throw new SQLException("PreparedStatement closed");
         }
     }
 
@@ -78,16 +71,10 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
         checkClosed();
         checkNull();
         if (i <= 0) {
-            throw new SQLException("index underflow, index: " + i + " size: " + this.currentSchema.GetColumnCnt());
+            throw new SQLException("index out of array");
         }
-        if (i > this.currentSchema.GetColumnCnt()) {
-            throw new SQLException("index overflow, index: " + i + " size: " + this.currentSchema.GetColumnCnt());
-        }
-    }
-
-    private void checkType(int i, DataType type) throws SQLException {
-        if (this.currentSchema.GetColumnType(i - 1) != type) {
-            throw new SQLException("data type not match");
+        if (currentDatas.containsKey(i)) {
+            throw new SQLException("index duplicate, index: " + i + " already exist");
         }
     }
 
@@ -96,7 +83,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
         checkClosed();
         dataBuild();
         Status status = new Status();
-        com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLRequest(db, currentSql, currentRow, status);
+        com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLParameterized(db, currentSql, currentRow, status);
         if (resultSet == null || status.getCode() != 0) {
             String msg = status.getMsg();
             status.delete();
@@ -119,27 +106,21 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
         throw new SQLException("current do not support this method");
     }
 
-    private void setNull(int i) throws SQLException {
-        checkIdx(i);
-        boolean notAllowNull = checkNotAllowNull(i);
-        if (notAllowNull) {
-            throw new SQLException("this column not allow null");
-        }
-        hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, null);
-    }
-
     @Override
-    public void setNull(int i, int i1) throws SQLException {
-        setNull(i);
+    public void setNull(int parameterIndex, int sqlType) throws SQLException {
+        setNull(parameterIndex, Util.sqlTypeToDataType(sqlType));
+    }
+    private void setNull(int i, DataType type) throws SQLException {
+        checkIdx(i);
+        types.put(i, type);
+        currentDatas.put(i, null);
     }
 
     @Override
     public void setBoolean(int i, boolean b) throws SQLException {
         checkIdx(i);
-        checkType(i, DataType.kTypeBool);
-        hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, b);
+        types.put(i, DataType.kTypeBool);
+        currentDatas.put(i, b);
     }
 
     @Override
@@ -151,42 +132,37 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     @Override
     public void setShort(int i, short i1) throws SQLException {
         checkIdx(i);
-        checkType(i, DataType.kTypeInt16);
-        hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, i1);
+        types.put(i, DataType.kTypeInt16);
+        currentDatas.put(i, i1);
     }
 
     @Override
     public void setInt(int i, int i1) throws SQLException {
         checkIdx(i);
-        checkType(i, DataType.kTypeInt32);
-        hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, i1);
+        types.put(i, DataType.kTypeInt32);
+        currentDatas.put(i, i1);
 
     }
 
     @Override
     public void setLong(int i, long l) throws SQLException {
         checkIdx(i);
-        checkType(i, DataType.kTypeInt64);
-        hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, l);
+        types.put(i, DataType.kTypeInt64);
+        currentDatas.put(i, l);
     }
 
     @Override
     public void setFloat(int i, float v) throws SQLException {
         checkIdx(i);
-        checkType(i, DataType.kTypeFloat);
-        hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, v);
+        types.put(i, DataType.kTypeFloat);
+        currentDatas.put(i, v);
     }
 
     @Override
     public void setDouble(int i, double v) throws SQLException {
         checkIdx(i);
-        checkType(i, DataType.kTypeDouble);
-        hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, v);
+        types.put(i, DataType.kTypeDouble);
+        currentDatas.put(i, v);
     }
 
     @Override
@@ -195,22 +171,17 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
         throw new SQLException("current do not support this type");
     }
 
-    private boolean checkNotAllowNull(int i) {
-        return this.currentSchema.IsColumnNotNull(i - 1);
-    }
-
     @Override
     public void setString(int i, String s) throws SQLException {
         checkIdx(i);
-        checkType(i, DataType.kTypeString);
         if (s == null) {
-            setNull(i);
+            setNull(i, DataType.kTypeString);
             return;
         }
+        types.put(i, DataType.kTypeString);
         byte bytes[] = s.getBytes(CHARSET);
         stringsLen.put(i, bytes.length);
-        hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, bytes);
+        currentDatas.put(i, bytes);
     }
 
     @Override
@@ -220,15 +191,14 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     }
 
     @Override
-    public void setDate(int i, java.sql.Date date) throws SQLException {
+    public void setDate(int i, Date date) throws SQLException {
         checkIdx(i);
-        checkType(i, DataType.kTypeDate);
         if (date == null) {
-            setNull(i);
+            setNull(i, DataType.kTypeDate);
             return;
         }
-        hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, date);
+        types.put(i, DataType.kTypeDate);
+        currentDatas.put(i, date);
     }
 
     @Override
@@ -240,14 +210,13 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     @Override
     public void setTimestamp(int i, Timestamp timestamp) throws SQLException {
         checkIdx(i);
-        checkType(i, DataType.kTypeTimestamp);
         if (timestamp == null) {
-            setNull(i);
+            setNull(i, DataType.kTypeTimestamp);
             return;
         }
-        hasSet.set(i - 1, true);
+        types.put(i, DataType.kTypeTimestamp);
         long ts = timestamp.getTime();
-        currentDatas.set(i - 1, ts);
+        currentDatas.put(i, ts);
     }
 
     @Override
@@ -270,10 +239,8 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
 
     @Override
     public void clearParameters() {
-        for (int i = 0; i < hasSet.size(); i++) {
-            hasSet.set(i, false);
-            currentDatas.set(i, null);
-        }
+        currentDatas.clear();
+        types.clear();
         stringsLen.clear();
     }
 
@@ -284,13 +251,27 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     }
 
     protected void dataBuild() throws SQLException {
-        if (this.currentRow == null) {
-            throw new SQLException("currentRow is null");
+        if (types == null) {
+            throw new SQLException("fail to build data when data types is null");
         }
-        for (int i = 0; i < this.hasSet.size(); i++) {
-            if (!this.hasSet.get(i)) {
-                throw new SQLException("data not enough, index is " + i);
+        // types has been updated
+        if (null == this.currentRow || orgTypes != types) {
+            if (types.firstKey() != 1 || types.lastKey() != types.size()) {
+                throw new SQLException("data not enough, indexes are " + currentDatas.keySet().toString());
             }
+            ColumnTypes columnTypes = new ColumnTypes();
+            for(int i = 0 ; i < types.size(); i++) {
+                columnTypes.AddColumnType(types.get(i+1));
+            }
+            this.currentRow = SQLRequestRow.CreateSQLRequestRowFromColumnTypes(columnTypes);
+            this.currentSchema = this.currentRow.GetSchema();
+            this.orgTypes = this.types;
+        }
+        if (this.currentRow == null) {
+            throw new SQLException("fail to build data with null row");
+        }
+        if (this.currentSchema == null) {
+            throw new SQLException("fail to build data with null schema");
         }
         int strLen = 0;
         for (Map.Entry<Integer, Integer> entry : stringsLen.entrySet()) {
@@ -302,14 +283,14 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
         }
         for (int i = 0; i < this.currentSchema.GetColumnCnt(); i++) {
             DataType dataType = this.currentSchema.GetColumnType(i);
-            Object data = this.currentDatas.get(i);
+            Object data = this.currentDatas.get(i+1);
             if (data == null) {
                 ok = this.currentRow.AppendNULL();
             } else {
                 if (DataType.kTypeBool.equals(dataType)) {
                     ok = this.currentRow.AppendBool((boolean) data);
                 } else if (DataType.kTypeDate.equals(dataType)) {
-                    java.sql.Date date = (java.sql.Date) data;
+                    Date date = (Date) data;
                     ok = this.currentRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
                 } else if (DataType.kTypeDouble.equals(dataType)) {
                     ok = this.currentRow.AppendDouble((double) data);
@@ -546,7 +527,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
 
     @Override
     @Deprecated
-    public java.sql.ResultSet executeQuery(String s) throws SQLException {
+    public ResultSet executeQuery(String s) throws SQLException {
         throw new SQLException("current do not support this method");
     }
 
@@ -566,7 +547,8 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
             this.currentSchema = null;
         }
         this.currentDatas = null;
-        this.hasSet = null;
+        this.types = null;
+        this.orgTypes = null;
         this.stringsLen = null;
         if (this.currentRow != null) {
             this.currentRow.delete();
@@ -649,7 +631,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
 
     @Override
     @Deprecated
-    public java.sql.ResultSet getResultSet() throws SQLException {
+    public ResultSet getResultSet() throws SQLException {
         throw new SQLException("current do not support this method");
     }
 

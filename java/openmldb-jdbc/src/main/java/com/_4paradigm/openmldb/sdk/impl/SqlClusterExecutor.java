@@ -146,6 +146,10 @@ public class SqlClusterExecutor implements SqlExecutor {
         RequestPreparedStatementImpl impl = new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
         return impl;
     }
+    public PreparedStatement getPreparedStatement(String db, String sql) throws SQLException {
+        PreparedStatementImpl impl = new PreparedStatementImpl(db, sql, this.sqlRouter);
+        return impl;
+    }
 
     public PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
                                                          List<Integer> commonColumnIndices) throws SQLException {

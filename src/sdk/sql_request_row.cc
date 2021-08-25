@@ -15,7 +15,7 @@
  */
 
 #include "sdk/sql_request_row.h"
-
+#include "catalog/schema_adapter.h"
 #include <stdint.h>
 
 #include <string>
@@ -348,6 +348,23 @@ bool SQLRequestRow::GetRecordVal(const std::string& col, std::string* val) {
         return true;
     }
     return false;
+}
+
+std::shared_ptr<SQLRequestRow> SQLRequestRow::CreateSQLRequestRowFromColumnTypes(
+    std::shared_ptr<hybridse::sdk::ColumnTypes> types) {
+    hybridse::codec::Schema schema;
+    for(size_t idx = 0; idx < types->GetTypeSize(); idx++) {
+        hybridse::type::Type hybridse_type;
+        if (!openmldb::catalog::SchemaAdapter::ConvertType(types->GetColumnType(idx), &hybridse_type)) {
+            LOG(WARNING) << "fail to create sql request row from column types: invalid type " <<
+                hybridse::sdk::DataTypeName(types->GetColumnType(idx));
+            return std::shared_ptr<SQLRequestRow>();
+        }
+        auto column = schema.Add();
+        column->set_type(hybridse_type);
+    }
+    const std::shared_ptr<::hybridse::sdk::Schema> schema_impl = std::make_shared<hybridse::sdk::SchemaImpl>(schema);
+    return std::make_shared<SQLRequestRow>(schema_impl, std::set<std::string>());
 }
 
 ::hybridse::type::Type ProtoTypeFromDataType(::hybridse::sdk::DataType type) {

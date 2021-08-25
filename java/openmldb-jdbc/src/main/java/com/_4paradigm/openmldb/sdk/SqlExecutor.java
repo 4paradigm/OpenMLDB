@@ -46,6 +46,7 @@ public interface SqlExecutor {
     PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException;
 
     PreparedStatement getRequestPreparedStmt(String db, String sql) throws SQLException;
+    PreparedStatement getPreparedStatement(String db, String sql) throws SQLException;
 
     PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
                                                   List<Integer> commonColumnIndices) throws SQLException;

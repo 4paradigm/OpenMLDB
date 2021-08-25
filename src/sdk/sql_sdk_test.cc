@@ -698,19 +698,13 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
     }
 
 
-    hybridse::codec::Schema schema;
-    {
-        auto column = schema.Add();
-        column->set_type(::hybridse::type::kVarchar);
-    }
-    {
-        auto column = schema.Add();
-        column->set_type(::hybridse::type::kInt64);
-    }
-    const std::shared_ptr<::hybridse::sdk::Schema> schema_impl = std::make_shared<hybridse::sdk::SchemaImpl>(schema);
+    auto parameter_types = std::make_shared<hybridse::sdk::ColumnTypes>() ;
+    parameter_types->AddColumnType(::hybridse::sdk::kTypeString);
+    parameter_types->AddColumnType(::hybridse::sdk::kTypeInt64);
+
     std::string where_exist = "select * from trans where merch_id = ? and txn_time < ?;";
     // parameterized query
-    auto parameter_row = std::make_shared<SQLRequestRow>(schema_impl, std::set<std::string>());
+    auto parameter_row = SQLRequestRow::CreateSQLRequestRowFromColumnTypes(parameter_types);
     {
         ASSERT_EQ(2, parameter_row->GetSchema()->GetColumnCnt());
         ASSERT_TRUE(parameter_row->Init(4));

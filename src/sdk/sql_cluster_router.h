@@ -56,7 +56,14 @@ struct SQLCache {
         : table_info(table_info), default_map(default_map), column_schema(), str_length(str_length) {
         column_schema = openmldb::sdk::ConvertToSchema(table_info);
     }
-
+    SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema,
+             const ::hybridse::vm::Router& input_router)
+        : table_info(),
+          default_map(),
+          column_schema(column_schema),
+          parameter_schema(),
+          str_length(0),
+          router(input_router) {}
     SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema,
              std::shared_ptr<::hybridse::sdk::Schema> parameter_schema, const ::hybridse::vm::Router& input_router)
         : table_info(),
@@ -122,9 +129,6 @@ class SQLClusterRouter : public SQLRouter {
 
     std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db, const std::string& sql,
                                                  ::hybridse::sdk::Status* status) override;
-    std::shared_ptr<openmldb::sdk::SQLRequestRow> GetRequestRow(
-        const std::string& db, const std::string& sql,
-        const std::shared_ptr<::hybridse::sdk::Schema> parameter_schema, hybridse::sdk::Status* status) override;
     std::shared_ptr<SQLRequestRow> GetRequestRowByProcedure(const std::string& db, const std::string& sp_name,
                                                             ::hybridse::sdk::Status* status) override;
 
