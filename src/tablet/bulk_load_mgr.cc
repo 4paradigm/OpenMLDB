@@ -106,12 +106,12 @@ std::shared_ptr<DataReceiver> BulkLoadMgr::GetDataReceiver(uint32_t tid, uint32_
     return data_receiver;
 }
 
-void BulkLoadMgr::RemoveReceiver(uint32_t tid, uint32_t pid, bool del_data_blocks) {
+void BulkLoadMgr::RemoveReceiver(uint32_t tid, uint32_t pid) {
     std::unique_lock<std::mutex> ul(catalog_mu_);
-    RemoveReceiverUnlock(tid, pid, del_data_blocks);
+    RemoveReceiverUnlock(tid, pid);
 }
 
-void BulkLoadMgr::RemoveReceiverUnlock(uint32_t tid, uint32_t pid, bool del_data_blocks) {
+void BulkLoadMgr::RemoveReceiverUnlock(uint32_t tid, uint32_t pid) {
     auto table_cat_iter = catalog_.find(tid);
     if (table_cat_iter == catalog_.end()) {
         LOG(WARNING) << "not existed table, " << tid << "-" << pid;
@@ -124,31 +124,8 @@ void BulkLoadMgr::RemoveReceiverUnlock(uint32_t tid, uint32_t pid, bool del_data
         return;
     }
 
-    iter->second->Close(del_data_blocks);
     pid_cat.erase(iter);
-    LOG(INFO) << "data receiver for " << tid << "-" << pid << " removed " << (del_data_blocks ? "forcefully" : "");
+    LOG(INFO) << "data receiver for " << tid << "-" << pid << " removed ";
 }
 
-void BulkLoadMgr::RemoveReceiverLater(const std::shared_ptr<storage::Table>& table) {
-    std::unique_lock<std::mutex> ul(catalog_mu_);
-    auto tid = table->GetId();
-    auto pid = table->GetPid();
-    to_cleanup_.emplace_back(tid, pid, table);
-}
-
-void BulkLoadMgr::ReceiverCleanup() {
-    std::unique_lock<std::mutex> ul(catalog_mu_);
-    for (auto iter = to_cleanup_.begin(); iter != to_cleanup_.end();) {
-        if (!iter->ptr.expired()) {
-            LOG(WARNING) << iter->tid << "-" << iter->pid
-                         << " bulk load cleanup, but iter is holding by others too, can't do memory cleanup, try again";
-            iter++;
-        } else {
-            // data receiver deletes all data blocks forcefully(cuz the ref in data blocks is mismatch with real
-            // reference count)
-            RemoveReceiverUnlock(iter->tid, iter->pid, true);
-            iter = to_cleanup_.erase(iter);
-        }
-    }
-}
 }  // namespace openmldb::tablet

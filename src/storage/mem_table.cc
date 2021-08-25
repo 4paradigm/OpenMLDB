@@ -811,9 +811,9 @@ bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
                         }
 
                         VLOG(1) << "do segment(" << real_idx << "-" << seg_idx << ") put, key" << pk.ToString()
-                                   << ", time " << time_entry.time() << ", key_entry_id " << key_entry_id
-                                   << ", block id " << time_entry.block_id();
-
+                                << ", time " << time_entry.time() << ", key_entry_id " << key_entry_id << ", block id "
+                                << time_entry.block_id();
+                        block->dim_cnt_down++;
                         segment->BulkLoadPut(key_entry_id, pk, time_entry.time(), block);
                     }
                 }

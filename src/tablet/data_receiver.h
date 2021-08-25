@@ -29,6 +29,7 @@ class DataReceiver {
  public:
     DataReceiver() = delete;
     DataReceiver(uint32_t tid, uint32_t pid) : tid_(tid), pid_(pid) {}
+    ~DataReceiver();
 
     // only one of the methods below executes at the time.
     bool AppendData(const ::openmldb::api::BulkLoadRequest* request, const butil::IOBuf& data);
@@ -36,8 +37,6 @@ class DataReceiver {
                                  const ::openmldb::api::BulkLoadRequest* request);
 
     bool BulkLoad(const std::shared_ptr<storage::MemTable>& table, const ::openmldb::api::BulkLoadRequest* request);
-
-    bool Close(bool force);
 
  private:
     bool PartValidation(int part_id);

@@ -34,32 +34,20 @@ class BulkLoadMgr {
 
     bool BulkLoad(const std::shared_ptr<storage::MemTable>& table, const ::openmldb::api::BulkLoadRequest* request);
 
-    void RemoveReceiver(uint32_t tid, uint32_t pid, bool del_data_blocks);
+    void RemoveReceiver(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<DataReceiver> GetDataReceiver(uint32_t tid, uint32_t pid, bool create);
 
     static const bool DO_NOT_CREATE = false;
 
-    // All marked remove receivers are failed receivers, should delete data blocks forcefully in ReceiverCleanup()
-    void RemoveReceiverLater(const std::shared_ptr<storage::Table>& table);
-
-    void ReceiverCleanup();
-
  private:
-    void RemoveReceiverUnlock(uint32_t tid, uint32_t pid, bool del_data_blocks);
+    void RemoveReceiverUnlock(uint32_t tid, uint32_t pid);
 
  private:
     // RWLock is not easy when we're using two-level map catalog. Use unique lock for simplicity.
     std::mutex catalog_mu_;
     std::map<uint32_t, std::map<uint32_t, std::shared_ptr<DataReceiver>>> catalog_;
-    struct CleanupInfo {
-        uint32_t tid;
-        uint32_t pid;
-        std::weak_ptr<storage::Table> ptr;
-        CleanupInfo(uint32_t tid, uint32_t pid, const std::shared_ptr<storage::Table> ptr)
-            : tid(tid), pid(pid), ptr(ptr) {}
-    };
-    std::vector<CleanupInfo> to_cleanup_;
+
     // TODO(hw): support time measurement
 };
 }  // namespace openmldb::tablet

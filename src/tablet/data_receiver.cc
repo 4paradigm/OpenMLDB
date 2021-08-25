@@ -35,13 +35,14 @@ bool DataReceiver::AppendData(const ::openmldb::api::BulkLoadRequest* request, c
         const auto& info = request->block_info(i);
         auto buf = new char[info.length()];  // TODO(hw): use pool
         iter.copy_and_forward(buf, info.length());
-        data_blocks_.emplace_back(new storage::DataBlock(info.ref_cnt() + 1, buf, info.length(), true));
+        // receiver adds 1 ref, when receiver destroy, ref - 1
+        data_blocks_.emplace_back(new storage::DataBlock(1, buf, info.length(), true));
     }
     if (iter.bytes_left() != 0) {
         LOG(ERROR) << tid_ << "-" << pid_ << " data and info mismatch, revert this part";
         // Not only ptr, DataBlock needs delete.
         for (auto i = last_block_size; i < data_blocks_.size(); ++i) {
-            // regardless of dim_cnt_down
+            // regardless of dim_cnt_down, only receiver ref the new blocks.
             delete data_blocks_[i];
         }
         // range erase
@@ -74,7 +75,7 @@ bool DataReceiver::BulkLoad(const std::shared_ptr<storage::MemTable>& table,
                      << ", actual " << (request->has_part_id() ? "no id" : std::to_string(request->part_id()));
         return false;
     }
-
+    // data blocks ref count will be changed
     if (!table->BulkLoad(data_blocks_, request->index_region())) {
         LOG(ERROR) << "bulk load to mem table(" << tid_ << "-" << pid_ << ") failed.";
         return false;
@@ -118,24 +119,11 @@ bool DataReceiver::WriteBinlogToReplicator(const std::shared_ptr<replica::LogRep
     return true;
 }
 
-bool DataReceiver::Close(bool force) {
-    std::unique_lock<std::mutex> ul(mu_);
-    if (force) {
-        // Regardless of dim_cnt_down, force delete
-        // After table destroy, all data blocks ref still >= 1, it's safe to delete all data blocks
-        for (auto& block : data_blocks_) {
+DataReceiver::~DataReceiver() {
+    for (auto block : data_blocks_) {
+        if ((--block->dim_cnt_down) == 0) {
             delete block;
         }
-    } else {
-        for (decltype(data_blocks_.size()) i = 0; i < data_blocks_.size(); ++i) {
-            data_blocks_[i]->dim_cnt_down--;
-            if (data_blocks_[i]->dim_cnt_down == 0) {
-                LOG_FIRST_N(WARNING, 10) << "data block(" << i << ") is useless";
-                delete data_blocks_[i];
-            }
-        }
     }
-
-    return true;
 }
 }  // namespace openmldb::tablet

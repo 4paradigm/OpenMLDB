@@ -44,6 +44,7 @@
 #include "base/strings.h"
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
+#include "catalog/schema_adapter.h"
 #include "codec/codec.h"
 #include "codec/row_codec.h"
 #include "codec/sql_rpc_row_codec.h"
@@ -52,7 +53,6 @@
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
-#include "catalog/schema_adapter.h"
 
 using google::protobuf::RepeatedPtrField;
 using ::openmldb::base::ReturnCode;
@@ -2898,15 +2898,9 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         if (!table->GetDB().empty()) {
             catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
-
-        auto data_receiver = bulk_load_mgr_.GetDataReceiver(tid, pid, BulkLoadMgr::DO_NOT_CREATE);
-        if (data_receiver) {
-            LOG(INFO) << tid << "-" << pid << " is bulk loading, needs special cleanup";
-            // But can't ensure that table is owned only by me here. Mark it, bulk load mgr can ensure cleanup is after
-            // table destroyed.
-            bulk_load_mgr_.RemoveReceiverLater(table);
-        }
-
+        // bulk load data receiver should be destroyed too, and can't do at the same time. So keep data receiver destroy
+        // before table destroy
+        bulk_load_mgr_.RemoveReceiver(tid, pid);
         code = 0;
     } while (false);
     if (code < 0) {
@@ -4847,11 +4841,6 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
     }
     uint64_t start_time = ::baidu::common::timer::get_micros();
 
-    // TODO(hw): cleanup useless receivers here for simplify, may need improve
-    // We can send an empty bulk load request to let bulk load mgr gc useless receivers.
-    bulk_load_mgr_.ReceiverCleanup();
-    LOG(INFO) << "receiver cleanup cost " << ::baidu::common::timer::get_micros() - start_time << " us";
-
     auto tid = request->tid();
     auto pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
@@ -4924,6 +4913,9 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
 
     if (request->index_region_size() > 0) {
         LOG(INFO) << tid << "-" << pid << " get index region, do bulk load";
+        // table must disable gc when index region loading, but we can't know which is the first index region part,
+        // set it every time.
+        std::dynamic_pointer_cast<MemTable>(table)->SetExpire(false);
         // The request may have both data & index region(the first index rpc, contains some rest data), it's ok.
         // BulkLoad() only load index region to table.
         if (!bulk_load_mgr_.BulkLoad(std::dynamic_pointer_cast<MemTable>(table), request)) {
@@ -4941,7 +4933,8 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
     // If not, we delete all relative memory when drop the table or redo bulk load in the same table.
     if (request->eof()) {
         LOG(INFO) << tid << "-" << pid << " get bulk load eof(means success), clean up the data receiver";
-        bulk_load_mgr_.RemoveReceiver(tid, pid, false);
+        bulk_load_mgr_.RemoveReceiver(tid, pid);
+        std::dynamic_pointer_cast<MemTable>(table)->SetExpire(true);
     }
 }
 
