@@ -37,7 +37,7 @@ else
     ./steps/setup_thirdparty.sh "$THIRDPARTY_PATH"
 fi
 
-if [[ -d "THIRDSRC_PATH" ]]; then
+if [[ -d "$THIRDSRC_PATH" ]]; then
     echo "thirdsrc path: THIRDSRC_PATH already exist, skip download deps"
 else
     curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
