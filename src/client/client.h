@@ -36,18 +36,12 @@ namespace client {
 class Client {
  public:
     Client(const std::string& endpoint, const std::string& real_endpoint)
-        : endpoint_(endpoint), real_endpoint_(real_endpoint), use_sleep_policy_(false) {
+        : endpoint_(endpoint), real_endpoint_(real_endpoint) {
         if (real_endpoint_.empty()) {
             real_endpoint_ = endpoint_;
         }
     }
 
-    Client(const std::string& endpoint, const std::string& real_endpoint, bool use_sleep_policy)
-        : endpoint_(endpoint), real_endpoint_(real_endpoint), use_sleep_policy_(use_sleep_policy) {
-        if (real_endpoint_.empty()) {
-            real_endpoint_ = endpoint_;
-        }
-    }
     virtual ~Client() {}
 
     virtual int Init() = 0;
@@ -63,7 +57,6 @@ class Client {
  private:
     std::string endpoint_;
     std::string real_endpoint_;
-    bool use_sleep_policy_;
 };
 
 }  // namespace client

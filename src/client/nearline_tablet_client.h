@@ -20,6 +20,7 @@
 #include <string>
 #include "client/client.h"
 #include "proto/nl_tablet.pb.h"
+#include "rpc/rpc_client.h"
 
 using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
 
@@ -30,7 +31,7 @@ namespace client {
 class NearLineTabletClient : public Client {
  public:
     NearLineTabletClient(const std::string& endpoint, const std::string& real_endpoint)
-        : Tablet(endpoint, real_endpoint), client_(real_endpoint_) {}
+        : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint) {}
 
     ~NearLineTabletClient() {}
 
@@ -42,7 +43,7 @@ class NearLineTabletClient : public Client {
             const std::string& partition_key, const Schema& schema);
 
  private:
-    ::openmldb::RpcClient<::openmldb::nltablet::NLTabletServer> client_;
+    ::openmldb::RpcClient<::openmldb::nltablet::NLTabletServer_Stub> client_;
 };
 
 }  // namespace client

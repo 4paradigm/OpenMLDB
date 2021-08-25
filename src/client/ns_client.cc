@@ -27,15 +27,9 @@ namespace openmldb {
 namespace client {
 using hybridse::plan::PlanAPI;
 NsClient::NsClient(const std::string& endpoint, const std::string& real_endpoint)
-    : endpoint_(endpoint), client_(endpoint) {
-    if (!real_endpoint.empty()) {
-        client_ = ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>(real_endpoint);
-    }
-}
+    : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint) {}
 
 int NsClient::Init() { return client_.Init(); }
-
-std::string NsClient::GetEndpoint() { return endpoint_; }
 
 const std::string& NsClient::GetDb() { return db_; }
 
