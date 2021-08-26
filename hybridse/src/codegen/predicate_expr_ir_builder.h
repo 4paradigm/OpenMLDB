@@ -53,6 +53,9 @@ class PredicateIRBuilder {
                        NativeValue* output);
     Status BuildIsNullExpr(NativeValue left, NativeValue* output);
 
+    Status BuildBetweenExpr(const NativeValue& expr, const NativeValue& left, const NativeValue& right,
+                            bool is_not_between, NativeValue* output);
+
     static bool BuildEqExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                             ::llvm::Value* right, ::llvm::Value** output,
                             Status& status);  // NOLINT

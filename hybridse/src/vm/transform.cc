@@ -1207,7 +1207,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
     }
 
     if (enable_batch_window_parallelization_) {
-        LOG(INFO) << "Apply column pruning for window aggregation";
+        DLOG(INFO) << "Apply column pruning for window aggregation";
         WindowColumnPruning pass;
         PhysicalOpNode* pruned_op = nullptr;
         Status status = pass.Apply(&plan_ctx_, *output, &pruned_op);

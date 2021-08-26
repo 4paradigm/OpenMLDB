@@ -191,15 +191,10 @@ bool SQLClusterRouter::Init() {
 
 std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(const std::string& db, const std::string& sql,
                                                                ::hybridse::sdk::Status* status) {
-    return GetRequestRow(db, sql, std::shared_ptr<::hybridse::sdk::Schema>(), status);
-}
-std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
-    const std::string& db, const std::string& sql, const std::shared_ptr<::hybridse::sdk::Schema> parameter_schema,
-    ::hybridse::sdk::Status* status) {
     if (status == NULL) return std::shared_ptr<SQLRequestRow>();
     std::shared_ptr<SQLCache> cache = GetCache(db, sql);
     std::set<std::string> col_set;
-    if (cache && cache->IsCompatibleCache(parameter_schema)) {
+    if (cache) {
         status->code = 0;
         const std::string& router_col = cache->router.GetRouterCol();
         if (!router_col.empty()) {
@@ -210,10 +205,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     ::hybridse::vm::ExplainOutput explain;
     ::hybridse::base::Status vm_status;
 
-    const std::shared_ptr<::hybridse::sdk::SchemaImpl> schema_impl =
-        std::dynamic_pointer_cast<::hybridse::sdk::SchemaImpl>(parameter_schema);
     bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode,
-                                                 schema_impl ? schema_impl->GetSchema() : ::hybridse::vm::Schema(),
                                                  &explain, &vm_status);
     if (!ok) {
         status->code = -1;
@@ -223,7 +215,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     }
     std::shared_ptr<::hybridse::sdk::SchemaImpl> schema =
         std::make_shared<::hybridse::sdk::SchemaImpl>(explain.input_schema);
-    SetCache(db, sql, std::make_shared<SQLCache>(schema, parameter_schema, explain.router));
+    SetCache(db, sql, std::make_shared<SQLCache>(schema, explain.router));
     const std::string& router_col = explain.router.GetRouterCol();
     if (!router_col.empty()) {
         col_set.insert(router_col);
@@ -827,6 +819,8 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
     if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
                        options_.enable_debug)) {
+        status->msg = response->msg();
+        status->code = -1;
         return std::shared_ptr<::hybridse::sdk::ResultSet>();
     }
     auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);

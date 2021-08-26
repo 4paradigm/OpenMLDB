@@ -847,7 +847,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/expression/test_arithmetic.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestCompare, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/expression/test_compare.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/expression/test_predicate.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestCondition, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/expression/test_condition.yaml")));

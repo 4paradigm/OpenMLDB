@@ -16,10 +16,36 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
+import com._4paradigm.openmldb.DataType;
+
 import java.sql.SQLException;
 import java.sql.Types;
 
 public class Util {
+    public static DataType sqlTypeToDataType(int sqlType) throws SQLException {
+        switch (sqlType) {
+            case Types.SMALLINT:
+                return DataType.kTypeInt16;
+            case Types.INTEGER:
+                return DataType.kTypeInt32;
+            case Types.BIGINT:
+                return DataType.kTypeInt64;
+            case Types.FLOAT:
+                return DataType.kTypeFloat;
+            case Types.DOUBLE:
+                return DataType.kTypeDouble;
+            case Types.BOOLEAN:
+                return DataType.kTypeBool;
+            case Types.VARCHAR:
+                return DataType.kTypeString;
+            case Types.TIMESTAMP:
+                return DataType.kTypeTimestamp;
+            case Types.DATE:
+                return DataType.kTypeDate;
+            default:
+                throw new SQLException("unsupported type: " + sqlType);
+        }
+    }
     public static String sqlTypeToString(int sqlType) throws SQLException {
         switch (sqlType) {
             case Types.SMALLINT:
