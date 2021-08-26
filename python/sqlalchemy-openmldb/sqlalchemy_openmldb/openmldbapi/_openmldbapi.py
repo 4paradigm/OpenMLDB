@@ -118,7 +118,13 @@ class CursorClosedException(Error):
 
     def __str__(self):
         return repr(self.message)
+class ConnectionClosedException(Error):
 
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return repr(self.message)
 class Cursor(object):
 
     def __init__(self, db, zk, zkPath, conn):
@@ -141,7 +147,7 @@ class Cursor(object):
             if self._connected is False:
                 raise CursorClosedException("Cursor object is closed")
             elif self.connection._connected is False:
-                raise ConnectionClosedException("Connection object is closed")
+                raise CursorClosedException("Connection object is closed")
             else:
                 return func(self, *args, **kwargs)
         return func_wrapper
@@ -183,7 +189,7 @@ class Cursor(object):
 
     def callproc(self, procname, parameters=()):
         if len(parameters) < 1:
-            raise DataBaseError("please providate data for proc")
+            raise DatabaseError("please providate data for proc")
         ok, rs = self.connection._sdk.doProc(self.db, procname, parameters)
         if not ok:
             raise DatabaseError("execute select fail")
@@ -197,8 +203,8 @@ class Cursor(object):
 
     def checkCmd(cmd: str) -> bool:
         if cmd.find("select cast") == 0:
-            return false
-        return true
+            return False
+        return True
 
     def execute(self, operation, parameters=()):
         command = operation.strip(' \t\n\r') if operation else None

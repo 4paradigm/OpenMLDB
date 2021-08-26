@@ -17,19 +17,18 @@
 import unittest
 import logging
 import time
+from datetime import date
+from datetime import datetime
 
 import sqlalchemy as db
 
-ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));"
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 class TestRtidbClient(unittest.TestCase):
   
-  def show(self, rs):
-    logging.info("Dataset size: %d", rs.rowcount)
-    for i in rs:
-      logging.info(i);
+  
 
   def test_basic(self):
+    ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));"
     logging.info("test_basic ...")
     engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
     connection = engine.connect()
@@ -72,41 +71,41 @@ class TestRtidbClient(unittest.TestCase):
       logging.warning("error occured {}".format(e))
       self.assertTrue(False)
     logging.info("[Execute]: select * from tsql1010;")
-    self.assertTrue(rs.rowcount == 5)
-    self.show(rs);
-    for i in rs:
-      j = 0
-      line = data[i[0]]
-      for d in i:
-        self.assertTrue(d == line[j])
-        j+=1
+
+    rs = list(rs)
+    expectRows = [
+        (1000,'2020-12-25', 'guangdon', '广州', 1),
+        (1001, '2020-12-26', 'hefei', 'anhui', 2),
+        (1002, '2020-12-27', 'fujian', 'fuzhou', 3),
+        (1003, '2020-12-28', 'jiangxi', 'nanchang', 4),
+        (1004, '2020-12-29', 'hubei', 'wuhan', 5),
+    ]
+    self.check_result(rs, expectRows, 0);
     # test condition select
     rs = connection.execute("select * from tsql1010 where col3 = 'hefei';");
     logging.info("[Execute]: select * from tsql1010 where col3 = 'hefei';")
-    self.show(rs);
-    for i in rs:
-      j = 0
-      line = data[i[0]]
-      for d in i:
-        self.assertTrue(d == line[j])
-        j+=1
+    rs = list(rs)
+    expectRows = [
+        (1001, '2020-12-26', 'hefei', 'anhui', 2)
+    ]
+    self.check_result(rs, expectRows, 0);
     # test request mode
     rs = connection.execute("select * from tsql1010;", ({"col1":9999, "col2":'2020-12-27', "col3":'zhejiang', "col4":'hangzhou', "col5":100}))
     logging.info("[Request Execute]: select * from tsql1010;")
-    self.show(rs);
-    self.assertTrue(rs.rowcount == 1) 
-    for row in rs:
-      self.assertEqual(row, (9999, "2020-12-27", "zhejiang", "hangzhou", 100))
-      break
+    rs = list(rs)
+    expectRows = [
+        (9999, "2020-12-27", "zhejiang", "hangzhou", 100)
+    ]
+    self.check_result(rs, expectRows, 0);
 
     # test parameterized query in batch mode
     logging.info("[Execute]: select * from tsql1010 where col3 = ?; ('hefei')")
     rs = connection.execute("select * from tsql1010 where col3 = ?;", ('hefei'))
-    self.show(rs);
-    self.assertTrue(rs.rowcount == 1) 
-    for row in rs:
-      self.assertEqual(row, Tuple(1001, '2020-12-26', 'hefei', 'anhui', 2))
-      break
+    rs = list(rs)
+    expectRows = [
+        (1001, '2020-12-26', 'hefei', 'anhui', 2),
+    ]
+    self.check_result(rs, expectRows, 0);
 
     # test storage produce
     try:
@@ -165,11 +164,19 @@ class TestRtidbClient(unittest.TestCase):
       except Exception as e:
         self.assertTrue(False)
 
-  def check_result(self, rs, expectRows):
-    self.assertEqual(rs.rowcount, len(expectRows))
+  def show_result_list(self, rs):
+    logging.info("result size: %d", len(rs))
+    for row in rs:
+      logging.info(row)
+    
+  def check_result(self, rs, expectRows, orderIdx = 0):
+    rs = sorted(rs, key=lambda x: x[orderIdx])
+    expectRows = sorted(expectRows, key=lambda x: x[orderIdx])
+    self.show_result_list(rs)
+    self.assertEqual(len(rs), len(expectRows))
     i = 0;
     for row in rs:
-      self.assertEqual(row, expectRows[i])
+      self.assertEqual(row, expectRows[i], "not equal row: {}\n{}".format(row, expectRows[i]))
       i+=1
     
   def test_parameterized_query(self):
@@ -188,64 +195,86 @@ class TestRtidbClient(unittest.TestCase):
 
     time.sleep(2)
 
+    ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, col6 timestamp, index(key=col3, ts=col1), index(key=col3, ts=col6));"
     connection.execute(ddl)
     insert_sqls = [
-      "insert into tsql1010 values(1000, '2020-12-25', 'province1', 'city1', 1);",
-      "insert into tsql1010 values(1001, '2020-12-26', 'province1', 'city2', 2);",
-      "insert into tsql1010 values(1002, '2020-12-27', 'province1', 'city3', 3);",
-      "insert into tsql1010 values(1003, '2020-12-28', 'province2', 'city4', 4);",
-      "insert into tsql1010 values(1004, '2020-12-29', 'province2', 'city5', 5);",
-      "insert into tsql1010 values(1005, '2020-12-30', 'province2', 'city6', 6);",
-      "insert into tsql1010 values(1006, '2020-12-31', 'province3', 'city7', 7);",
-      "insert into tsql1010 values(1007, '2021-01-01', 'province3', 'city8', 8);",
-      "insert into tsql1010 values(1008, '2021-01-02', 'province3', 'city9', 9);",
-      "insert into tsql1010 values(1009, '2021-01-03', 'province3', 'city10', 10);"
+      "insert into tsql1010 values(1000, '2020-12-25', 'province1', 'city1', 1, 1590738990000);",
+      "insert into tsql1010 values(1001, '2020-12-26', 'province1', 'city2', 2, 1590738991000);",
+      "insert into tsql1010 values(1002, '2020-12-27', 'province1', 'city3', 3, 1590738992000);",
+      "insert into tsql1010 values(1003, '2020-12-28', 'province2', 'city4', 4, 1590738993000);",
+      "insert into tsql1010 values(1004, '2020-12-29', 'province2', 'city5', 5, 1590738994000);",
+      "insert into tsql1010 values(1005, '2020-12-30', 'province2', 'city6', 6, 1590738995000);",
+      "insert into tsql1010 values(1006, '2020-12-31', 'province3', 'city7', 7, 1590738996000);",
+      "insert into tsql1010 values(1007, '2021-01-01', 'province3', 'city8', 8, 1590738997000);",
+      "insert into tsql1010 values(1008, '2021-01-02', 'province3', 'city9', 9, 1590738998000);",
+      "insert into tsql1010 values(1009, '2021-01-03', 'province3', 'city10', 10, 1590738999000);"
     ]
     self.execute_insert_sqls(connection, insert_sqls)
 
     # test parameterized query in batch mode case 1
     logging.info("[Execute]: select * from tsql1010 where col3 = ?; ('province1')")
     rs = connection.execute("select * from tsql1010 where col3 = ?;", ('province1'))
-    self.show(rs);
+    rs = list(rs);
     expectRows = [
-      (1000, '2020-12-25', 'province1', 'city1', 1),
-      (1001, '2020-12-26', 'province1', 'city2', 2),
-      (1002, '2020-12-27', 'province1', 'city3', 3),
+      (1000, '2020-12-25', 'province1', 'city1', 1, 1590738990000),
+      (1001, '2020-12-26', 'province1', 'city2', 2, 1590738991000),
+      (1002, '2020-12-27', 'province1', 'city3', 3, 1590738992000),
       ]
     self.check_result(rs, expectRows)
     
     # test parameterized query in batch mode case 2
     logging.info("[Execute]: select * from tsql1010 where col3 = ?; ('province2')")
     rs = connection.execute("select * from tsql1010 where col3 = ?;", ('province2'))
-    self.show(rs);
+    rs = list(rs);
     expectRows = [
-      (1003, '2020-12-28', 'province2', 'city4', 4),
-      (1004, '2020-12-29', 'province2', 'city5', 5),
-      (1005, '2020-12-30', 'province2', 'city6', 6)
+      (1003, '2020-12-28', 'province2', 'city4', 4, 1590738993000),
+      (1004, '2020-12-29', 'province2', 'city5', 5, 1590738994000),
+      (1005, '2020-12-30', 'province2', 'city6', 6, 1590738995000),
       ]
     self.check_result(rs, expectRows)
 
     # test parameterized query in batch mode case 3
     logging.info("[Execute]: select * from tsql1010 where col3 = ?; ('province3')")
     rs = connection.execute("select * from tsql1010 where col3 = ?;", ('province3'))
-    self.show(rs);
+    rs = list(rs)
     expectRows = [
-      (1006, '2020-12-31', 'province3', 'city7', 7),
-      (1007, '2021-01-01', 'province3', 'city8', 8),
-      (1008, '2021-01-02', 'province3', 'city9', 9),
-      (1009, '2021-01-03', 'province3', 'city10', 10)
+      (1006, '2020-12-31', 'province3', 'city7', 7, 1590738996000),
+      (1007, '2021-01-01', 'province3', 'city8', 8, 1590738997000),
+      (1008, '2021-01-02', 'province3', 'city9', 9, 1590738998000),
+      (1009, '2021-01-03', 'province3', 'city10', 10, 1590738999000),
       ]
     self.check_result(rs, expectRows)
 
     # test parameterized query in batch mode case 3
     logging.info("[Execute]: select * from tsql1010 where col3 = ? and col1 < ?; ('province3', 1008)")
     rs = connection.execute("select * from tsql1010 where col3 = ? and col1 < ?;", ('province3', 1008))
-    self.show(rs);
+    rs = list(rs);
     expectRows = [
-      (1006, '2020-12-31', 'province3', 'city7', 7),
-      (1007, '2021-01-01', 'province3', 'city8', 8),
+      (1006, '2020-12-31', 'province3', 'city7', 7, 1590738996000),
+      (1007, '2021-01-01', 'province3', 'city8', 8, 1590738997000),
       ]
     self.check_result(rs, expectRows)
+
+    # test parameterized query in batch mode case 4
+    logging.info("[Execute]: select * from tsql1010 where col3 = ? and col1 < ? and col2 < ?; ('province3', 1008, date.fromisoformat('2021-01-01'))")
+    rs = connection.execute("select * from tsql1010 where col3 = ? and col1 < ? and col2 < ?;", ('province3', 1008, date.fromisoformat('2021-01-01')))
+    rs = list(rs);
+    expectRows = [
+      (1006, '2020-12-31', 'province3', 'city7', 7, 1590738996000),
+      ]
+    self.check_result(rs, expectRows)
+
+    # test parameterized query in batch mode case 5
+    logging.info("[Execute]: select * from tsql1010 where col3 = ? and col6 < ?; ('province3', datetime.fromtimestamp(1590739000000))")
+    rs = connection.execute("select * from tsql1010 where col3 = ? and col6 < ?;", ('province3', datetime.fromtimestamp(1590738999.000)))
+    rs = list(rs);
+    expectRows = [
+      (1006, '2020-12-31', 'province3', 'city7', 7, 1590738996000),
+      (1007, '2021-01-01', 'province3', 'city8', 8, 1590738997000),
+      (1008, '2021-01-02', 'province3', 'city9', 9, 1590738998000),
+      ]
+    self.check_result(rs, expectRows)
+ 
 
 
 

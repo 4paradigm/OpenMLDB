@@ -17,6 +17,8 @@
 
 import logging
 from . import sql_router_sdk
+from datetime import date
+from datetime import datetime
 logger = logging.getLogger("openmldb_driver")
 class DriverOptions(object):
     def __init__(self, zk_cluster, zk_path, session_timeout = 3000):
@@ -75,15 +77,21 @@ class Driver(object):
         for col in data:
             col_type = sql_router_sdk.kTypeUnknow
             if isinstance(col, int):
-                col_type = sql_router_sdk.kTypeInt32
+                col_type = sql_router_sdk.kTypeInt64
             elif isinstance(col, float):
                 col_type = sql_router_sdk.kTypeDouble
             elif isinstance(col, str):
                 col_type = sql_router_sdk.kTypeString
             elif isinstance(col, bool):
                 col_type = sql_router_sdk.kTypeBool
+            elif isinstance(col, datetime):
+                col_type = sql_router_sdk.kTypeTimestamp
+            elif isinstance(col, date):
+                col_type = sql_router_sdk.kTypeDate
+            
             else: 
                 return False, "invalid parameter type " + str(type(col))
+            logger.debug("val type {} Column Type {}".format(type(col), sql_router_sdk.DataTypeName(col_type)))
             columnTypes.AddColumnType(col_type)
 
         parameterRow = sql_router_sdk.SQLRequestRow.CreateSQLRequestRowFromColumnTypes(columnTypes)
@@ -215,11 +223,49 @@ class Driver(object):
     def _append_request_row(self, requestRow, schema, data):
         if isinstance(data, dict):
             return self._append_request_row_with_dict(requestRow, schema, data)
-        elif isinstance(data, tuple):
+        elif isinstance(data, tuple) and len(data) > 0:
             return self._append_request_row_with_tuple(requestRow, schema, data)
         else:
             return False, "Invalid row type " + str(type(data));
 
+    def _extract_timestamp(self, x):
+        if isinstance(x, str):
+            logging.debug("extract datetime/timestamp with string item")
+            try:
+                dt = datetime.fromisoformat(x)
+                return True, int(dt.timestamp()*1000)
+            except Exception as e:
+                return False, "fail extract date from string {}".format(e)
+        elif isinstance(x, int):
+            logging.debug("extract datetime/timestamp with integer")
+            return True, x
+        elif isinstance(x, datetime):
+            logging.debug("extract datetime/timestamp with datetime item")
+            return True, int(x.timestamp()*1000)
+        elif isinstance(x, date):
+            logging.debug("extract datetime/timestamp with date item")
+            dt = datetime(x.year, x.month, x.day, 0, 0, 0)
+            return True, int(dt.timestamp()*1000)
+        else:
+            return False, "fail extract datetime, invalid type {}".format(type(x))
+    
+    def _extract_date(self, x):
+        if isinstance(x, str):
+            logging.debug("append date with string item")
+            try:
+                dt = date.fromisoformat(x)
+                return True, (dt.year, dt.month, dt.day)
+            except Exception as e:
+                return False, "fail extract date from string {}".format(e)
+        elif isinstance(x, datetime):
+            logging.debug("extract date with datetime item")
+            return True, (x.year, x.month, x.day)
+        elif isinstance(x, date):
+            logging.debug("append date with date item")
+            return True, (x.year, x.month, x.day)
+        else:
+            return False, "fail to extract date, invallid type {}".format(type(x))
+ 
     def _append_request_row_with_tuple(self, requestRow, schema, data):
         appendMap = {
             sql_router_sdk.kTypeBool: requestRow.AppendBool,
@@ -229,7 +275,7 @@ class Driver(object):
             sql_router_sdk.kTypeFloat: requestRow.AppendFloat,
             sql_router_sdk.kTypeDouble: requestRow.AppendDouble,
             sql_router_sdk.kTypeString: requestRow.AppendString,
-            sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and requestRow.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+            sql_router_sdk.kTypeDate: lambda x: len(x) == 3 and requestRow.AppendDate(x[0], x[1], x[2]),
             sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
             }
         count = schema.GetColumnCnt()
@@ -245,6 +291,17 @@ class Driver(object):
                 requestRow.AppendNULL()
                 continue
             colType = schema.GetColumnType(i)
+            if colType == sql_router_sdk.kTypeDate:
+                ok, val = self._extract_date(val)
+                if not ok:
+                    return False, "error when extract date value {}".format(val)
+            if colType == sql_router_sdk.kTypeTimestamp:
+                ok, val = self._extract_timestamp(val)
+                if not ok:
+                    return False, val
+                else:
+                    logging.debug("timestamp val: {}".format(val))
+            
             ok = appendMap[colType](val)
             if not ok:
                 return False, "erred at append data seq {}".format(i)
@@ -262,7 +319,7 @@ class Driver(object):
             sql_router_sdk.kTypeFloat: requestRow.AppendFloat,
             sql_router_sdk.kTypeDouble: requestRow.AppendDouble,
             sql_router_sdk.kTypeString: requestRow.AppendString,
-            sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and requestRow.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+            sql_router_sdk.kTypeDate: lambda x: len(x) == 3 and requestRow.AppendDate(x[0], x[1], x[2]),
             sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
             }
         count = schema.GetColumnCnt()
@@ -288,9 +345,17 @@ class Driver(object):
             name = schema.GetColumnName(i)
             val = data.get(name)
             if val is None:
-                builder.AppendNULL()
+                requestRow.AppendNULL()
                 continue
             colType = schema.GetColumnType(i)
+            if colType == sql_router_sdk.kTypeDate:
+                ok, val = self._extract_date(val)
+                if not ok:
+                    return False, "error when extract date value {}".format(val)
+            if colType == sql_router_sdk.kTypeTimestamp:
+                ok, val = self._extract_timestamp(val)
+                if not ok:
+                    return False, val
             ok = appendMap[colType](val)
             if not ok:
                 return False, "erred at append data seq {}".format(i)
