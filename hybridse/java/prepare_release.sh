@@ -25,8 +25,6 @@
 
 set -eE
 
-shopt -s extglob
-
 if [ -z "$1" ]; then
     echo -e "Usage: $0 \$VERSION.\n\terror: version number required"
     exit 1
@@ -36,10 +34,14 @@ cd "$(dirname "$0")"
 
 VERSION=$1
 # rm semVer number from VERSION
-SUFFIX_VERSION=${VERSION#+([0-9]).+([0-9]).+([0-9])}
+#  0.1.2 -> ''
+#  0.1.2-SNAPSHOT -> '-SNAPSHOT'
+#  0.1.2.beta1    -> '.beta1'
+# shellcheck disable=SC2001
+SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
 # get BASE VERSION by rm suffix version
-BASE_VERSION=${VERSION%$SUFFIX_VERSION}
-if [[ -n ${VERSION#$BASE_VERSION} ]] ; then
+BASE_VERSION=${VERSION%"$SUFFIX_VERSION"}
+if [[ -n $SUFFIX_VERSION ]] ; then
     SUFFIX_VERSION=-SNAPSHOT
 fi
 
