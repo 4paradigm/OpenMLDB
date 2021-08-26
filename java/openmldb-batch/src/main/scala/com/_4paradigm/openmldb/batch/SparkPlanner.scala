@@ -50,24 +50,29 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
   }
   Engine.InitializeGlobalLLVM()
 
-  def this(session: SparkSession) = {
-    this(session, session.conf.get("spark.app.name"))
-  }
-
   def this(session: SparkSession, dbName: String) = {
     this(session, OpenmldbBatchConfig.fromSparkSession(session), dbName)
   }
 
+  def this(session: SparkSession, config: OpenmldbBatchConfig) = {
+    this(session, config, session.conf.get("spark.app.name"))
+  }
+
+  def this(session: SparkSession) = {
+    this(session, OpenmldbBatchConfig.fromSparkSession(session), session.conf.get("spark.app.name"))
+  }
+
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
     // Translation state
-    val planCtx = new PlanContext(config.configDBName + "-" + sql, session, this, config)
+    val tag = s"$dbName-$sql"
+    val planCtx = new PlanContext(tag, session, this, config)
 
     // Set input tables
     tableDict.foreach {
       case (name, df) => planCtx.registerDataFrame(name, df)
     }
 
-    withSQLEngine(sql, HybridseUtil.getDatabase(config.configDBName, tableDict), config) { engine =>
+    withSQLEngine(sql, HybridseUtil.getDatabase(dbName, tableDict), config) { engine =>
       val irBuffer = engine.getIrBuffer
       planCtx.setModuleBuffer(irBuffer)
 

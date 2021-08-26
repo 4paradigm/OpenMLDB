@@ -240,8 +240,7 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.0.0-M5</version>
 				<configuration>
-					<!-- Make sure the SparkSession is unique for each unit test -->
-					<reuseForks>false</reuseForks>
+					<!-- <reuseForks>false</reuseForks> -->
 					<forkCount>4</forkCount>
 					<skipAfterFailureCount>1</skipAfterFailureCount>
 					<skipTests>false</skipTests>
@@ -290,7 +289,7 @@
 					</execution>
 				</executions>
 				<configuration>
-					<forkMode>never</forkMode>
+					<!-- <forkMode>never</forkMode> -->
 				</configuration>
 			</plugin>
 			<plugin>

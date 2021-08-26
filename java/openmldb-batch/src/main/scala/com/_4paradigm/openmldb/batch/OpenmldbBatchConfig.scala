@@ -26,9 +26,6 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.groupby.partitions", doc="Default partition number used in group by")
   var groupbyPartitions: Int = -1
 
-  @ConfigOption(name="openmldb.dbName", doc="Database name")
-  var configDBName = "spark_db"
-
   @ConfigOption(name="spark.sql.session.timeZone")
   var timeZone = "Asia/Shanghai"
 
