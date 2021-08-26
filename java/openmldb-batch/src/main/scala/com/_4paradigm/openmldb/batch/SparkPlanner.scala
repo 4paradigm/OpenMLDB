@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 
 
-class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
+class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: String) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -46,12 +46,16 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
   if (config.hybridseJsdkLibraryPath.equals("")) {
     HybridSeLibrary.initCore()
   } else {
-    //HybridSeLibrary.initCore(config.hybridseJsdkLibraryPath)
+    HybridSeLibrary.initCore(config.hybridseJsdkLibraryPath)
   }
   Engine.InitializeGlobalLLVM()
 
   def this(session: SparkSession) = {
-    this(session, OpenmldbBatchConfig.fromSparkSession(session))
+    this(session, session.conf.get("spark.app.name"))
+  }
+
+  def this(session: SparkSession, dbName: String) = {
+    this(session, OpenmldbBatchConfig.fromSparkSession(session), dbName)
   }
 
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {

@@ -94,7 +94,7 @@ object GroupByAggregationPlan {
         if (hybridseJsdkLibraryPath.equals("")) {
           JitManager.initJitModule(tag, buffer)
         } else {
-          //JitManager.initJitModule(tag, buffer, hybridseJsdkLibraryPath)
+          JitManager.initJitModule(tag, buffer, hybridseJsdkLibraryPath)
         }
 
         val jit = JitManager.getJit(tag)

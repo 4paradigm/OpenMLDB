@@ -119,8 +119,7 @@ class OpenmldbBatchConfig extends Serializable {
   var disableOpenmldb = false
 
   // HybridSE dynamic library path
-  // TODO: Support this when upgrading hybridse-sdk to 0.1.4
-  //@ConfigOption(name="openmldb.hybridse.jsdk.path", doc="The path of HybridSE jsdk core file path")
+  @ConfigOption(name="openmldb.hybridse.jsdk.path", doc="The path of HybridSE jsdk core file path")
   var hybridseJsdkLibraryPath = ""
 
   @ConfigOption("openmldb.enable.hive.metastore", "Need to set hive.metastore.uris")
