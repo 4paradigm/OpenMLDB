@@ -1,9 +1,9 @@
 package com._4paradigm.openmldb.server.impl;
 
 import com._4paradigm.openmldb.conf.NLTabletConfig;
-import com._4paradigm.openmldb.server.NLTablet;
-import com._4paradigm.openmldb.common.Common.ColumnDesc;
-import com._4paradigm.openmldb.type.Type.DataType;
+import com._4paradigm.openmldb.proto.NLTablet;
+import com._4paradigm.openmldb.proto.Common.ColumnDesc;
+import com._4paradigm.openmldb.proto.Type.DataType;
 import com._4paradigm.openmldb.server.NLTabletServer;
 import com._4paradigm.openmldb.zk.ZKClient;
 import com._4paradigm.openmldb.zk.ZKConfig;
@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.hadoop.HadoopCatalog;
-import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.types.Type;
@@ -25,8 +24,12 @@ import java.util.List;
 public class NLTabletServerImpl implements NLTabletServer {
     private ZKClient zkClient;
     private static final String NLTabletPrefix = "NLTABLET_";
+    private HadoopCatalog catalog;
 
     public NLTabletServerImpl() throws Exception {
+        Configuration conf = new Configuration();
+        //conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+        catalog = new HadoopCatalog(conf, NLTabletConfig.HDFS_PATH);
         try {
             connectZookeeper();
         } catch (Exception e) {
@@ -51,7 +54,7 @@ public class NLTabletServerImpl implements NLTabletServer {
     @Override
     public NLTablet.CreateTableResponse createTable(NLTablet.CreateTableRequest request) {
         NLTablet.CreateTableResponse.Builder builder = NLTablet.CreateTableResponse.newBuilder();
-        if (CreateTable(request.getDbName(), request.getTableName(), request.getPartitionKey(), request.getColumnDescList())) {
+        if (createTable(request.getDbName(), request.getTableName(), request.getPartitionKey(), request.getColumnDescList())) {
             builder.setCode(0).setMsg("ok");
         } else {
             builder.setCode(-1).setMsg("create table failed");
@@ -60,32 +63,38 @@ public class NLTabletServerImpl implements NLTabletServer {
         return response;
     }
 
-    public boolean CreateTable(String dbName, String tableName, String partitionKey, List<ColumnDesc> schema) {
-        Configuration conf = new Configuration();
-        conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
-        HadoopCatalog catalog = new HadoopCatalog(conf, NLTabletConfig.HDFS_PATH);
-        TableIdentifier name = TableIdentifier.of(dbName, tableName);
+    public boolean createTable(String dbName, String tableName, String partitionKey, List<ColumnDesc> schema) {
+        TableIdentifier table = TableIdentifier.of(dbName, tableName);
+        if (catalog.tableExists(table)) {
+            log.warn("table {} already exists in db {}", tableName, dbName);
+            return false;
+        }
         Schema icebergSchema = null;
         try {
-            icebergSchema = ConvertSchema(schema);
+            icebergSchema = convertSchema(schema);
         } catch (Exception e) {
-            log.error("fail to create table {}", name);
+            log.warn("fail to create table {}", tableName);
             return false;
         }
         PartitionSpec spec = PartitionSpec.builderFor(icebergSchema)
                 .day(partitionKey)  // use day partition default
                 .build();
-        catalog.createTable(name, icebergSchema, spec);
-        log.info("create table {} success", name);
+        try {
+            catalog.createTable(table, icebergSchema, spec);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        log.info("create table {} success", tableName);
         return true;
     }
 
-    public Schema ConvertSchema(List<ColumnDesc> schema) throws Exception {
+    public Schema convertSchema(List<ColumnDesc> schema) throws Exception {
         List<Types.NestedField> columns = new ArrayList<Types.NestedField>();
         try {
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc col = schema.get(i);
-            columns.add(Types.NestedField.required(i + 1, col.getName(), ConvertType(col.getDataType())));
+            columns.add(Types.NestedField.required(i + 1, col.getName(), convertType(col.getDataType())));
         }
         } catch (Exception e) {
             throw e;
@@ -93,7 +102,7 @@ public class NLTabletServerImpl implements NLTabletServer {
         return new Schema(columns);
     }
 
-    public Type.PrimitiveType ConvertType(DataType dataType) throws Exception {
+    public Type.PrimitiveType convertType(DataType dataType) throws Exception {
         if (dataType == DataType.kBool) {
             return Types.BooleanType.get();
         } else if (dataType == DataType.kString || dataType == DataType.kVarchar) {
@@ -113,7 +122,7 @@ public class NLTabletServerImpl implements NLTabletServer {
         } else if (dataType == DataType.kTimestamp) {
             return Types.TimestampType.withoutZone();
         } else {
-            log.error("invalid type {}", dataType.toString());
+            log.warn("invalid type {}", dataType.toString());
             throw new Exception("invalid type");
         }
     }
