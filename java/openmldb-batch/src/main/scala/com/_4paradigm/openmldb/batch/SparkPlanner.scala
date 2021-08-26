@@ -52,7 +52,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
 
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
     // Translation state
-    val planCtx = new PlanContext(sql, session, this, config)
+    val planCtx = new PlanContext(config.configDBName + "-" + sql, session, this, config)
 
     // Set input tables
     tableDict.foreach {
