@@ -195,7 +195,7 @@ class Driver(object):
             name = schema.GetColumnName(i)
             val = data.get(name)
             if val is None:
-                builder.AppendNULL()
+                requestRow.AppendNULL
                 continue
             colType = schema.GetColumnType(i)
             ok = appendMap[colType](val)
