@@ -36,7 +36,8 @@ python3 -m pip install "${whl_name}" -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # needs: easy_install nose sqlalchemy
 cd "${ROOT_DIR}"/python/sqlalchemy-test
-#nosetests --with-xunit
-python3 rtidb_client_test.py
+nosetests --with-xunit
+#python3 rtidb_client_test.py
+
 cd "${ROOT_DIR}"/onebox && sh stop_all.sh && cd "$ROOT_DIR" || exit
 cd thirdsrc/zookeeper-3.4.14 || ./bin/zkServer.sh stop && cd "$ROOT_DIR" || exit
