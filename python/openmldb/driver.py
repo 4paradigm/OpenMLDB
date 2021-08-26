@@ -68,6 +68,32 @@ class Driver(object):
             self.sdk.RefreshCatalog()
             return True, "ok"
 
+    def getParameterBuilder(self, data):
+        logger.debug("getParameterBuilder data type: %s", str(type(data)))
+        logger.debug(data);
+        columnTypes = sql_router_sdk.ColumnTypes()
+        for col in data:
+            col_type = sql_router_sdk.kTypeUnknow
+            if isinstance(col, int):
+                col_type = sql_router_sdk.kTypeInt32
+            elif isinstance(col, float):
+                col_type = sql_router_sdk.kTypeDouble
+            elif isinstance(col, str):
+                col_type = sql_router_sdk.kTypeString
+            elif isinstance(col, bool):
+                col_type = sql_router_sdk.kTypeBool
+            else: 
+                return False, "invalid parameter type " + str(type(col))
+            columnTypes.AddColumnType(col_type)
+
+        parameterRow = sql_router_sdk.SQLRequestRow.CreateSQLRequestRowFromColumnTypes(columnTypes)
+        schema = parameterRow.GetSchema()
+        ok, msg = self._append_request_row(parameterRow, schema, data)
+        if not ok:
+            return ok, msg
+        else:
+            return True, parameterRow
+
     def getInsertBuilder(self, db, sql):
         if not self.sdk:
             return False, "please init driver first"
@@ -110,9 +136,9 @@ class Driver(object):
             return False, status.msg
         return True, row_builder
  
-    def doQuery(self, db, sql, data):
+    def doRequestQuery(self, db, sql, data):
         if data is None:
-            return self.executeQuery(db, sql, None)
+            return False, "please init request data"
         ok, requestRow = self.getRequestBuilder(db, sql)
         if not ok:
             return ok, requestRow
@@ -121,6 +147,18 @@ class Driver(object):
         if not ok:
             return ok, msg
         return self.executeQuery(db, sql, requestRow)
+        
+    def doParameterizedQuery(self, db, sql, data):
+        logging.debug("doParameterizedQuery data: %s", str(data))
+        if isinstance(data, tuple) and len(data) > 0:
+            ok, parameterRow = self.getParameterBuilder(data)
+        else:
+            return False, "Invalid query data type " + str(type(data))
+        if not ok:
+            return False, parameterRow
+        return self.executeQueryParameterized(db, sql, parameterRow)
+    def doQuery(self, db, sql):
+        return self.executeQuery(db, sql, None)
 
     def executeQuery(self, db, sql, row_builder = None):
         if not self.sdk:
@@ -136,6 +174,20 @@ class Driver(object):
         else:
             return True, rs
 
+    def executeQueryParameterized(self, db, sql, row_builder):
+        if not self.sdk:
+            return False, "please init driver first"
+
+        if not row_builder:
+            return False, "pealse init parameter row"
+
+        status = sql_router_sdk.Status()
+        rs = self.sdk.ExecuteSQLParameterized(db, sql, row_builder, status)
+        if status.code != 0:
+            return False, status.msg
+        else:
+            return True, rs
+    
     def getRowBySp(self, db, sp):
         status = sql_router_sdk.Status()
         row_builder = self.sdk.GetRequestRowByProcedure(db, sp, status)
@@ -161,6 +213,47 @@ class Driver(object):
         return self.callProc(db, sp, requestRow)
     
     def _append_request_row(self, requestRow, schema, data):
+        if isinstance(data, dict):
+            return self._append_request_row_with_dict(requestRow, schema, data)
+        elif isinstance(data, tuple):
+            return self._append_request_row_with_tuple(requestRow, schema, data)
+        else:
+            return False, "Invalid row type " + str(type(data));
+
+    def _append_request_row_with_tuple(self, requestRow, schema, data):
+        appendMap = {
+            sql_router_sdk.kTypeBool: requestRow.AppendBool,
+            sql_router_sdk.kTypeInt16: requestRow.AppendInt16,
+            sql_router_sdk.kTypeInt32: requestRow.AppendInt32,
+            sql_router_sdk.kTypeInt64: requestRow.AppendInt64,
+            sql_router_sdk.kTypeFloat: requestRow.AppendFloat,
+            sql_router_sdk.kTypeDouble: requestRow.AppendDouble,
+            sql_router_sdk.kTypeString: requestRow.AppendString,
+            sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and requestRow.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+            sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
+            }
+        count = schema.GetColumnCnt()
+        strSize = 0
+        for val in data:
+            if isinstance(val, str):
+                strSize += len(val)
+            
+        requestRow.Init(strSize)
+        for i in range(count):
+            val = data[i]
+            if val is None:
+                requestRow.AppendNULL()
+                continue
+            colType = schema.GetColumnType(i)
+            ok = appendMap[colType](val)
+            if not ok:
+                return False, "erred at append data seq {}".format(i)
+        ok = requestRow.Build()
+        if not ok:
+           return False, "erred at build request row data"
+        return ok, ""
+
+    def _append_request_row_with_dict(self, requestRow, schema, data):
         appendMap = {
             sql_router_sdk.kTypeBool: requestRow.AppendBool,
             sql_router_sdk.kTypeInt16: requestRow.AppendInt16,

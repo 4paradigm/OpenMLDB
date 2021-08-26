@@ -56,6 +56,7 @@ class SQLRequestRow {
 
     static std::shared_ptr<openmldb::sdk::SQLRequestRow> CreateSQLRequestRowFromColumnTypes(
         std::shared_ptr<hybridse::sdk::ColumnTypes> types);
+
  private:
     bool Check(hybridse::sdk::DataType type);
 
