@@ -3964,7 +3964,7 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             return;
         }
     }
-    if (table_info->column_key_size() == 1 && !table_info->column_key(0).has_index_name()
+    if (table_info->column_key_size() == 1 && table_info->column_key(0).index_name().empty()
             && table_info->column_key(0).col_name_size() == 0) {
         if (CreateOfflineTable(table_info->db(), table_info->name(), table_info->column_key(0).ts_name(),
                     table_info->column_desc())) {
@@ -4062,10 +4062,11 @@ bool NameServerImpl::CreateOfflineTable(const std::string& db_name, const std::s
         const std::string& partition_key, const Schema& schema) {
     if (nearline_tablet_.client_ && nearline_tablet_.Health()) {
         if (nearline_tablet_.client_->CreateTable(db_name, table_name, partition_key, schema)) {
-            PDLOG(INFO, "create table %s success!", table_name.c_str());
+            PDLOG(INFO, "create table %s success", table_name.c_str());
             return true;
         }
     }
+    PDLOG(WARNING, "fail to create table %s", table_name.c_str());
     return false;
 }
 

@@ -33,6 +33,14 @@ static const char* TIME_LABEL[] = {"ms", "s", "m", "h", "d"};
 
 static const std::string NEARLINE_PREFIX = "NLTABLET_"; // NOLINT
 
+static inline std::string ExtractEndpoint(const std::string& endpoint) {
+    if (endpoint.find(NEARLINE_PREFIX) != std::string::npos) {
+        return endpoint.substr(NEARLINE_PREFIX.size());
+    } else {
+        return endpoint;
+    }
+}
+
 static inline void SplitString(const std::string& full, const std::string& delim,
                                std::vector<std::string>& result) {  // NOLINT
     result.clear();
