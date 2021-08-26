@@ -15,7 +15,7 @@
  */
 syntax = "proto2";
 package openmldb.apiserver;
-
+option java_package = "com._4paradigm.openmldb.proto";
 option cc_generic_services = true;
 
 message HttpRequest {};

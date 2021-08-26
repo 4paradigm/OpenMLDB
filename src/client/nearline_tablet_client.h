@@ -22,11 +22,12 @@
 #include "proto/nl_tablet.pb.h"
 #include "rpc/rpc_client.h"
 
-using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
 
 namespace openmldb {
 
 namespace client {
+
+using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
 
 class NearLineTabletClient : public Client {
  public:

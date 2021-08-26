@@ -66,8 +66,7 @@ java/openmldb-native/src/main/resources
 java/openmldb-native/src/main/java
 java/openmldb-native/target/
 java/openmldb-jdbc/target/
-python/fesql-auto-test-python/logs
-python/fesql-auto-test-python/report
+java/openmldb-nearline-tablet/src/main/java/com/_4paradigm/openmldb/proto
 python/logs
 python/sqlalchemy-test/*.xml
 

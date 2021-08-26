@@ -1333,6 +1333,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                         PDLOG(WARNING, "fail to get real endpoint. endpoint %s", it->c_str());
                         continue;
                     }
+                    // TODO(denglong) guarantee threadsafe
                     tit->second->client_ =
                         std::make_shared<::openmldb::client::TabletClient>(*it, real_ep_map_it->second, true);
                     if (tit->second->client_->Init() != 0) {
@@ -3963,6 +3964,18 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             return;
         }
     }
+    if (table_info->column_key_size() == 1 && !table_info->column_key(0).has_index_name()
+            && table_info->column_key(0).col_name_size() == 0) {
+        if (CreateOfflineTable(table_info->db(), table_info->name(), table_info->column_key(0).ts_name(),
+                    table_info->column_desc())) {
+             response->set_code(0);
+             response->set_msg("ok");
+        } else {
+             response->set_code(-1);
+             response->set_msg("fail to create offline table");
+        }
+        return;
+    }
     if (CheckTableMeta(*table_info) < 0) {
         response->set_code(::openmldb::base::ReturnCode::kInvalidParameter);
         response->set_msg("check TableMeta failed");
@@ -4043,6 +4056,17 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         response->set_code(response->code());
         response->set_msg(response->msg());
     }
+}
+
+bool NameServerImpl::CreateOfflineTable(const std::string& db_name, const std::string& table_name,
+        const std::string& partition_key, const Schema& schema) {
+    if (nearline_tablet_.client_ && nearline_tablet_.Health()) {
+        if (nearline_tablet_.client_->CreateTable(db_name, table_name, partition_key, schema)) {
+            PDLOG(INFO, "create table %s success!", table_name.c_str());
+            return true;
+        }
+    }
+    return false;
 }
 
 bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {

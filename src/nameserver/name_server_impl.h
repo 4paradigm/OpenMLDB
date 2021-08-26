@@ -56,6 +56,8 @@ using ::openmldb::client::TabletClient;
 using ::openmldb::zk::DistLock;
 using ::openmldb::zk::ZkClient;
 
+using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
+
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 const uint32_t INVALID_PID = UINT32_MAX;
 
@@ -173,6 +175,9 @@ class NameServerImpl : public NameServer {
     void CreateTableInternel(GeneralResponse& response,  // NOLINT
                              std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, uint64_t cur_term,
                              uint32_t tid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
+
+    bool CreateOfflineTable(const std::string& db_name, const std::string& table_name,
+                const std::string& partition_key, const Schema& schema);
 
     void RefreshTablet(uint32_t tid);
 
