@@ -16,20 +16,19 @@
 
 package com._4paradigm.openmldb.batch.end2end
 
+import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.utils.SparkUtil
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
-import org.apache.spark.sql.{Row, SparkSession}
-import org.scalatest.FunSuite
 
 
-class TestUnsafeRowProject extends FunSuite {
+class TestUnsafeRowProject extends SparkTestSuite {
 
   test("Test end2end UnsafeRow optimization for row project") {
 
-    val spark = SparkSession.builder().master("local[*]")
-      .config("spark.openmldb.unsaferow.opt", true)
-      .getOrCreate()
+    getSparkSession.conf.set("spark.openmldb.unsaferow.opt", true)
+    val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
     val data = Seq(

@@ -245,7 +245,7 @@ object JoinPlan {
       if (hybridseJsdkLibraryPath.equals("")) {
         JitManager.initJitModule(moduleTag, buffer)
       } else {
-        //JitManager.initJitModule(moduleTag, buffer, hybridseJsdkLibraryPath)
+        JitManager.initJitModule(moduleTag, buffer, hybridseJsdkLibraryPath)
       }
 
       JitManager.getJit(moduleTag)

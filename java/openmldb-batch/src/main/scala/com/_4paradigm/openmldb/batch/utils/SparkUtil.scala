@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.batch.utils
 
 import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.hybridse.node.JoinType
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.functions.monotonically_increasing_id
@@ -138,7 +139,7 @@ object SparkUtil {
         return false
       }
     }
-    df1.except(df1).isEmpty && df2.except(df2).isEmpty
+    df1.except(df2).isEmpty && df2.except(df1).isEmpty
   }
 
   /** Use Java reflect to call private method to convert RDD[InternalRow] to DataFrame.
@@ -156,6 +157,11 @@ object SparkUtil {
         classOf[StructType], classOf[Boolean])
     internalCreateDataFrameMethod.invoke(spark, internalRowRdd, schema, false: java.lang.Boolean)
       .asInstanceOf[DataFrame]
+  }
+
+  def disableSparkLog(): Unit = {
+    Logger.getLogger("org").setLevel(Level.OFF);
+    Logger.getLogger("akka").setLevel(Level.OFF);
   }
 
 }
