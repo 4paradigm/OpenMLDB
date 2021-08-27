@@ -3966,14 +3966,10 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
     }
     if (table_info->column_key_size() == 1 && table_info->column_key(0).index_name().empty()
             && table_info->column_key(0).col_name_size() == 0) {
-        if (CreateOfflineTable(table_info->db(), table_info->name(), table_info->column_key(0).ts_name(),
-                    table_info->column_desc())) {
-             response->set_code(0);
-             response->set_msg("ok");
-        } else {
-             response->set_code(-1);
-             response->set_msg("fail to create offline table");
-        }
+        auto ret = CreateOfflineTable(table_info->db(), table_info->name(), table_info->column_key(0).ts_name(),
+                    table_info->column_desc());
+        response->set_code(ret.code);
+        response->set_msg(ret.msg);
         return;
     }
     if (CheckTableMeta(*table_info) < 0) {
@@ -4058,16 +4054,19 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
     }
 }
 
-bool NameServerImpl::CreateOfflineTable(const std::string& db_name, const std::string& table_name,
-        const std::string& partition_key, const Schema& schema) {
+::openmldb::base::ResultMsg NameServerImpl::CreateOfflineTable(const std::string& db_name,
+        const std::string& table_name, const std::string& partition_key, const Schema& schema) {
     if (nearline_tablet_.client_ && nearline_tablet_.Health()) {
-        if (nearline_tablet_.client_->CreateTable(db_name, table_name, partition_key, schema)) {
+        auto ret = nearline_tablet_.client_->CreateTable(db_name, table_name, partition_key, schema);
+        if (ret.OK()) {
             PDLOG(INFO, "create table %s success", table_name.c_str());
-            return true;
+        } else {
+            PDLOG(WARNING, "fail to create table %s. error: %s", table_name.c_str(), ret.msg.c_str());
         }
+        return ret;
     }
     PDLOG(WARNING, "fail to create table %s", table_name.c_str());
-    return false;
+    return ::openmldb::base::ResultMsg(-1, "nearline tablet is not health");
 }
 
 bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {

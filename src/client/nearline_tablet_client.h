@@ -18,6 +18,7 @@
 #define SRC_CLIENT_NEARLINE_TABLET_CLIENT_H_
 
 #include <string>
+#include "base/status.h"
 #include "client/client.h"
 #include "proto/nl_tablet.pb.h"
 #include "rpc/rpc_client.h"
@@ -41,7 +42,7 @@ class NearLineTabletClient : public Client {
         return client_.Init();
     }
 
-    bool CreateTable(const std::string& db_name, const std::string& table_name,
+    ::openmldb::base::ResultMsg CreateTable(const std::string& db_name, const std::string& table_name,
             const std::string& partition_key, const Schema& schema);
 
  private:
