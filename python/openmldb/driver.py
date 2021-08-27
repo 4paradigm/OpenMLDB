@@ -280,9 +280,15 @@ class Driver(object):
             }
         count = schema.GetColumnCnt()
         strSize = 0
-        for val in data:
+        for i in range(count):
+            colType = schema.GetColumnType(i)
+            if colType != sql_router_sdk.kTypeString:
+                continue
+            val = data[i]
             if isinstance(val, str):
                 strSize += len(val)
+            else:
+                return False, "column[{}] type is not str".format(i)
             
         requestRow.Init(strSize)
         for i in range(count):

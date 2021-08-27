@@ -147,7 +147,7 @@ class Cursor(object):
             if self._connected is False:
                 raise CursorClosedException("Cursor object is closed")
             elif self.connection._connected is False:
-                raise CursorClosedException("Connection object is closed")
+                raise ConnectionClosedException("Connection object is closed")
             else:
                 return func(self, *args, **kwargs)
         return func_wrapper
