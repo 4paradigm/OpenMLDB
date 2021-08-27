@@ -43,7 +43,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.session_timeout = 30000;
+    sql_opt.session_timeout = 60000;
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
     return NewClusterSQLRouter(sql_opt);
 }
