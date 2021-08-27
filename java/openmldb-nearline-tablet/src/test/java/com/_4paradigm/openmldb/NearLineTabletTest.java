@@ -30,9 +30,14 @@ public class NearLineTabletTest {
         Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("col1").setDataType(Type.DataType.kString).build();
         Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("col2").setDataType(Type.DataType.kBigInt).build();
         Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("col3").setDataType(Type.DataType.kTimestamp).build();
+        Common.ColumnDesc col4 = Common.ColumnDesc.newBuilder().setName("col4").setDataType(Type.DataType.kDate).build();
         schema.add(col1);
         schema.add(col2);
         schema.add(col3);
-        Assert.assertTrue(server.createTable("db_1", "table_" + random.nextInt(), "col3", schema));
+        schema.add(col4);
+        Assert.assertFalse(server.createTable("db_1", "table_" + random.nextInt(), "col1", schema, new String()));
+        Assert.assertFalse(server.createTable("db_1", "table_" + random.nextInt(), "col2", schema, new String()));
+        Assert.assertTrue(server.createTable("db_1", "table_" + random.nextInt(), "col3", schema, new String()));
+        Assert.assertTrue(server.createTable("db_1", "table_" + random.nextInt(), "col4", schema, new String()));
     }
 }

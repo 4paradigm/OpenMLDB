@@ -7,7 +7,6 @@ import com._4paradigm.openmldb.proto.Type.DataType;
 import com._4paradigm.openmldb.server.NLTabletServer;
 import com._4paradigm.openmldb.zk.ZKClient;
 import com._4paradigm.openmldb.zk.ZKConfig;
-import com.sun.javafx.binding.StringFormatter;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.hadoop.conf.Configuration;
@@ -30,6 +29,7 @@ public class NLTabletServerImpl implements NLTabletServer {
     public NLTabletServerImpl() throws Exception {
         Configuration conf = new Configuration();
         //conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+        // TODO(denglong) use hive metastore and s3
         catalog = new HadoopCatalog(conf, NLTabletConfig.HDFS_PATH);
         if (!connectZookeeper()) {
             throw new Exception("connect zk error");
@@ -74,24 +74,17 @@ public class NLTabletServerImpl implements NLTabletServer {
             log.warn(msg);
             return false;
         }
-        Schema icebergSchema = null;
         try {
-            icebergSchema = convertSchema(schema);
+            Schema icebergSchema = convertSchema(schema);
+            PartitionSpec spec = PartitionSpec.builderFor(icebergSchema)
+                    .day(partitionKey)  // use day partition default
+                    .build();
+            catalog.createTable(table, icebergSchema, spec);
         } catch (Exception e) {
-            msg = String.format("fail to create table {}. convert schema error", tableName);
+            msg = e.getMessage();
             log.warn(msg);
             return false;
         }
-        PartitionSpec spec = PartitionSpec.builderFor(icebergSchema)
-                .day(partitionKey)  // use day partition default
-                .build();
-        try {
-            catalog.createTable(table, icebergSchema, spec);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-
         log.info("create table {} success", tableName);
         return true;
     }
@@ -130,7 +123,7 @@ public class NLTabletServerImpl implements NLTabletServer {
             return Types.TimestampType.withoutZone();
         } else {
             log.warn("invalid type {}", dataType.toString());
-            throw new Exception("invalid type");
+            throw new Exception("invalid type " + dataType.toString());
         }
     }
 }
