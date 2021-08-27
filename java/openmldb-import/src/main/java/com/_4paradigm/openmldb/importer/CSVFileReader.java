@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-syntax = "proto2";
+package com._4paradigm.openmldb.importer;
 
-package openmldb.apiserver;
+import org.apache.commons.csv.CSVRecord;
 
-option cc_generic_services = true;
+public interface CSVFileReader {
+    boolean hasNext();
 
-message HttpRequest {};
-message HttpResponse {};
-
-service APIServer {
-  rpc Process(HttpRequest) returns (HttpResponse);
-  rpc Refresh(HttpRequest) returns (HttpResponse);
-};
+    CSVRecord next();
+}

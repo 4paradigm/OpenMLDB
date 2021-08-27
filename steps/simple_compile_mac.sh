@@ -1,3 +1,5 @@
+#! /bin/sh
+
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#! /bin/sh
-#
 # compile.sh
 
-WORK_DIR=`pwd`
+WORK_DIR=$(pwd)
 
 sh steps/install_hybridse_mac.sh
 ln -sf /opt/depends/thirdparty thirdparty
 ln -sf /opt/depends/thirdsrc thirdsrc
-mkdir -p $WORK_DIR/build
-cd $WORK_DIR/build && cmake .. && make -j4 fedb sql_pysdk_package sql_jsdk
+mkdir -p "$WORK_DIR"/build
+cd "$WORK_DIR"/build && cmake .. && make -j4 openmldb sql_pysdk_package sql_jsdk
 code=$?
-cd $WORK_DIR
+cd "$WORK_DIR" || exit
 exit $code
