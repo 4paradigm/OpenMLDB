@@ -224,7 +224,7 @@ bool GroupAndSortOptimized::KeysOptimized(
 
     if (PhysicalOpType::kPhysicalOpDataProvider == in->GetOpType()) {
         auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
-        // Do not optimized with Request DataProvider (no index has been provided)
+        // Do not optimize with Request DataProvider (no index has been provided)
         if (DataProviderType::kProviderTypeRequest == scan_op->provider_type_) {
             return false;
         }

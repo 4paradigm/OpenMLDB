@@ -9327,7 +9327,7 @@ int NameServerImpl::CreateAddIndexOP(const std::string& name, const std::string&
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
         return -1;
     }
-    // zk_op_sync_node only need to create once, so implment that through pid == 0
+    // zk_op_sync_node only need to create once, so implement that through pid == 0
     if (pid == 0) {
         std::string partition_num_value = std::to_string(table_info->table_partition_size());
         std::string table_sync_node = zk_op_sync_path_ + "/" + std::to_string(table_info->tid());
@@ -9455,7 +9455,7 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     task = CreateAddIndexToTabletTask(op_index, kAddIndexOP, tid, pid, endpoints, ck);
     if (!task) {
-        LOG(WARNING) << "create add index tasdk failed. tid[" << tid << "] pid[" << pid << "]";
+        LOG(WARNING) << "create add index task failed. tid[" << tid << "] pid[" << pid << "]";
         return -1;
     }
     op_data->task_list_.push_back(task);

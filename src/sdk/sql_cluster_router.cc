@@ -205,8 +205,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(const std::string
     ::hybridse::vm::ExplainOutput explain;
     ::hybridse::base::Status vm_status;
 
-    bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode,
-                                                 &explain, &vm_status);
+    bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode, &explain, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;
@@ -538,15 +537,14 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::name
         if (!column_map.empty()) {
             i = column_map.at(idx);
         }
-        if (hybridse::node::kExprPrimary != row->children_.at(i)->GetExprType()
-            && hybridse::node::kExprParameter != row->children_.at(i)->GetExprType()) {
+        if (hybridse::node::kExprPrimary != row->children_.at(i)->GetExprType() &&
+            hybridse::node::kExprParameter != row->children_.at(i)->GetExprType()) {
             LOG(WARNING) << "insert value isn't const value or placeholder";
             return DefaultValueMap();
         }
 
         if (hybridse::node::kExprPrimary == row->children_.at(i)->GetExprType()) {
-            ::hybridse::node::ConstNode* primary =
-                dynamic_cast<::hybridse::node::ConstNode*>(row->children_.at(i));
+            ::hybridse::node::ConstNode* primary = dynamic_cast<::hybridse::node::ConstNode*>(row->children_.at(i));
             std::shared_ptr<::hybridse::node::ConstNode> val;
             if (primary->IsNull()) {
                 if (column.not_null()) {
@@ -766,8 +764,7 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
                 }
             }
             if (schema) {
-                cache = std::make_shared<SQLCache>(
-                    schema, parameter_schema, explain.router);
+                cache = std::make_shared<SQLCache>(schema, parameter_schema, explain.router);
                 SetCache(db, sql, cache);
             }
         }
@@ -906,7 +903,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
 
     auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>(), parameter);
     if (!client) {
-        DLOG(INFO) << "no tablet avilable for sql " << sql;
+        DLOG(INFO) << "no tablet available for sql " << sql;
         return std::shared_ptr<::hybridse::sdk::ResultSet>();
     }
     DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
@@ -1282,11 +1279,10 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedureP
     bool ok;
     hybridse::vm::ExplainOutput explain_output;
     if (input_common_column_indices.empty()) {
-        ok = cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kRequestMode, &explain_output,
-                                                &sql_status);
+        ok = cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status);
     } else {
-        ok = cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kBatchRequestMode,
-                                                input_common_column_indices, &explain_output, &sql_status);
+        ok = cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kBatchRequestMode, input_common_column_indices,
+                                                &explain_output, &sql_status);
     }
     if (!ok) {
         *msg = "fail to explain sql" + sql_status.msg;
@@ -1361,7 +1357,7 @@ bool SQLClusterRouter::CheckSQLSyntax(const std::string& sql) {
     return true;
 }
 bool SQLClusterRouter::ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema> schema,
-                           std::vector<openmldb::type::DataType>& db_types) {  // NOLINT
+                                      std::vector<openmldb::type::DataType>& db_types) {  // NOLINT
     if (schema) {
         for (int i = 0; i < schema->GetColumnCnt(); i++) {
             openmldb::type::DataType casted_type;
