@@ -85,6 +85,7 @@ public class NLTabletServerImpl implements NLTabletServer {
             e.printStackTrace();
             return false;
         }
+
         log.info("create table {} success", tableName);
         return true;
     }
