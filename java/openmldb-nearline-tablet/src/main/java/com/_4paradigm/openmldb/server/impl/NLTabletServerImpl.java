@@ -7,6 +7,7 @@ import com._4paradigm.openmldb.proto.Type.DataType;
 import com._4paradigm.openmldb.server.NLTabletServer;
 import com._4paradigm.openmldb.zk.ZKClient;
 import com._4paradigm.openmldb.zk.ZKConfig;
+import com.sun.javafx.binding.StringFormatter;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.hadoop.conf.Configuration;
@@ -55,26 +56,30 @@ public class NLTabletServerImpl implements NLTabletServer {
     @Override
     public NLTablet.CreateTableResponse createTable(NLTablet.CreateTableRequest request) {
         NLTablet.CreateTableResponse.Builder builder = NLTablet.CreateTableResponse.newBuilder();
-        if (createTable(request.getDbName(), request.getTableName(), request.getPartitionKey(), request.getColumnDescList())) {
+        String msg = new String();
+        if (createTable(request.getDbName(), request.getTableName(), request.getPartitionKey(),
+                request.getColumnDescList(), msg)) {
             builder.setCode(0).setMsg("ok");
         } else {
-            builder.setCode(-1).setMsg("create table failed");
+            builder.setCode(-1).setMsg(msg);
         }
         NLTablet.CreateTableResponse response = builder.build();
         return response;
     }
 
-    public boolean createTable(String dbName, String tableName, String partitionKey, List<ColumnDesc> schema) {
+    public boolean createTable(String dbName, String tableName, String partitionKey, List<ColumnDesc> schema, String msg) {
         TableIdentifier table = TableIdentifier.of(dbName, tableName);
         if (catalog.tableExists(table)) {
-            log.warn("table {} already exists in db {}", tableName, dbName);
+            msg = String.format("table {} already exists in db {}", tableName, dbName);
+            log.warn(msg);
             return false;
         }
         Schema icebergSchema = null;
         try {
             icebergSchema = convertSchema(schema);
         } catch (Exception e) {
-            log.warn("fail to create table {}", tableName);
+            msg = String.format("fail to create table {}. convert schema error", tableName);
+            log.warn(msg);
             return false;
         }
         PartitionSpec spec = PartitionSpec.builderFor(icebergSchema)

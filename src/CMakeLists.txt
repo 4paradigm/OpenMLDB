@@ -19,6 +19,7 @@ add_custom_command(OUTPUT ${project_dir}/src/proto/${proto_name}.pb.cc
         COMMAND ${CMAKE_PREFIX_PATH}/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto
         --cpp_out=${project_dir}/src/proto/
         --java_out=${project_dir}/java/openmldb-nearline-tablet/src/main/java
+        --java_out=${project_dir}/java/openmldb-import/src/main/java
         ${project_dir}/src/proto/${proto_name}.proto
         DEPENDS ${project_dir}/src/proto/${proto_name}.proto
         )

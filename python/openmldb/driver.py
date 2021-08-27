@@ -195,7 +195,7 @@ class Driver(object):
             name = schema.GetColumnName(i)
             val = data.get(name)
             if val is None:
-                builder.AppendNULL()
+                requestRow.AppendNULL
                 continue
             colType = schema.GetColumnType(i)
             ok = appendMap[colType](val)
@@ -219,7 +219,7 @@ class Driver(object):
             colName = schema.GetColumnName(i)
             if colName in commonCol:
                 commonCols.AddCommonColumnIdx(i)
-                commonColAddCount+=1
+                commnColAddCount+=1
         if commnColAddCount != len(commonCol):
             return False, "some common col is not in table schema"
         requestRowBatch = sql_router_sdk.SQLRequestRowBatch(schema, commonCols)

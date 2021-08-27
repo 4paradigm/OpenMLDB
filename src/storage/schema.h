@@ -188,8 +188,8 @@ class TableColumn {
 class IndexDef {
  public:
     IndexDef(const std::string& name, uint32_t id);
-    IndexDef(const std::string& name, uint32_t id, IndexStatus stauts);
-    IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts, ::openmldb::type::IndexType type,
+    IndexDef(const std::string& name, uint32_t id, IndexStatus status);
+    IndexDef(const std::string& name, uint32_t id, const IndexStatus& status, ::openmldb::type::IndexType type,
              const std::vector<ColumnDef>& column_idx_map);
     const std::string& GetName() const { return name_; }
     inline const std::shared_ptr<ColumnDef>& GetTsColumn() const { return ts_column_; }
