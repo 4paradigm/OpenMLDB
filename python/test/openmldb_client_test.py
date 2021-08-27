@@ -22,7 +22,7 @@ import sqlalchemy as db
 
 ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));"
 
-class TestRtidbClient(unittest.TestCase):
+class TestOpenMLDBClient(unittest.TestCase):
   
   def test_basic(self):
     engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')

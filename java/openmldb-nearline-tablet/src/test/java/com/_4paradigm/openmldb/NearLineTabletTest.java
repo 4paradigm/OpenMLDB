@@ -35,9 +35,29 @@ public class NearLineTabletTest {
         schema.add(col2);
         schema.add(col3);
         schema.add(col4);
-        Assert.assertFalse(server.createTable("db_1", "table_" + random.nextInt(), "col1", schema, new String()));
-        Assert.assertFalse(server.createTable("db_1", "table_" + random.nextInt(), "col2", schema, new String()));
-        Assert.assertTrue(server.createTable("db_1", "table_" + random.nextInt(), "col3", schema, new String()));
-        Assert.assertTrue(server.createTable("db_1", "table_" + random.nextInt(), "col4", schema, new String()));
+        try {
+            server.createTable("db_1", "table_" + random.nextInt(), "col1", schema);
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            server.createTable("db_1", "table_" + random.nextInt(), "col2", schema);
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            server.createTable("db_1", "table_" + random.nextInt(), "col3", schema);
+            Assert.assertTrue(true);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        try {
+            server.createTable("db_1", "table_" + random.nextInt(), "col4", schema);
+            Assert.assertTrue(true);
+        } catch (Exception e) {
+            Assert.fail();
+        }
     }
 }

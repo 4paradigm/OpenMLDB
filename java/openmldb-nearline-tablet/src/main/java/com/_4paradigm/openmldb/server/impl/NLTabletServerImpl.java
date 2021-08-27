@@ -56,37 +56,29 @@ public class NLTabletServerImpl implements NLTabletServer {
     @Override
     public NLTablet.CreateTableResponse createTable(NLTablet.CreateTableRequest request) {
         NLTablet.CreateTableResponse.Builder builder = NLTablet.CreateTableResponse.newBuilder();
-        String msg = new String();
-        if (createTable(request.getDbName(), request.getTableName(), request.getPartitionKey(),
-                request.getColumnDescList(), msg)) {
+        try {
+            createTable(request.getDbName(), request.getTableName(), request.getPartitionKey(),
+                    request.getColumnDescList());
             builder.setCode(0).setMsg("ok");
-        } else {
-            builder.setCode(-1).setMsg(msg);
+        } catch (Exception e) {
+            builder.setCode(-1).setMsg(e.getMessage());
+            log.warn("fail to create table {}. error msg: {}", request.getTableName(), e.getMessage());
         }
         NLTablet.CreateTableResponse response = builder.build();
         return response;
     }
 
-    public boolean createTable(String dbName, String tableName, String partitionKey, List<ColumnDesc> schema, String msg) {
+    public void createTable(String dbName, String tableName, String partitionKey, List<ColumnDesc> schema) throws Exception {
         TableIdentifier table = TableIdentifier.of(dbName, tableName);
         if (catalog.tableExists(table)) {
-            msg = String.format("table {} already exists in db {}", tableName, dbName);
-            log.warn(msg);
-            return false;
+            throw new Exception(String.format("table %s already exists in db %s", tableName, dbName));
         }
-        try {
-            Schema icebergSchema = convertSchema(schema);
-            PartitionSpec spec = PartitionSpec.builderFor(icebergSchema)
-                    .day(partitionKey)  // use day partition default
-                    .build();
-            catalog.createTable(table, icebergSchema, spec);
-        } catch (Exception e) {
-            msg = e.getMessage();
-            log.warn(msg);
-            return false;
-        }
+        Schema icebergSchema = convertSchema(schema);
+        PartitionSpec spec = PartitionSpec.builderFor(icebergSchema)
+                .day(partitionKey)  // use day partition default
+                .build();
+        catalog.createTable(table, icebergSchema, spec);
         log.info("create table {} success", tableName);
-        return true;
     }
 
     public Schema convertSchema(List<ColumnDesc> schema) throws Exception {
