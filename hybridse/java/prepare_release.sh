@@ -17,8 +17,7 @@
 #  acceptable version style
 #  - release version: '0.1.4'
 #  - snapshot version: '0.1.4-SNAPSHOT'
-#  not acceptable version style
-#  - beta/alpha: '0.12.2.beta1', '0.12.2.alpha2', currently not defined for those version number
+#  - beta/alpha: '0.12.2.beta1', '0.12.2.alpha2', will convert released as '0.12.2-SNAPSHOT'
 #
 # in case the version number passed in (extracted from tag) is in wrong style, the script will
 # replace any string after 'x.x.x' with '-SNAPSHOT', to avoid publish directly into maven central
