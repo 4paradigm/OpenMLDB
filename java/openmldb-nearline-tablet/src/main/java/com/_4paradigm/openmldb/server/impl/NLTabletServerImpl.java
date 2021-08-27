@@ -30,25 +30,26 @@ public class NLTabletServerImpl implements NLTabletServer {
         Configuration conf = new Configuration();
         //conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
         catalog = new HadoopCatalog(conf, NLTabletConfig.HDFS_PATH);
-        try {
-            connectZookeeper();
-        } catch (Exception e) {
-            log.error("init zk error");
-            throw e;
+        if (!connectZookeeper()) {
+            throw new Exception("connect zk error");
         }
     }
 
-    public void connectZookeeper() throws Exception {
+    public boolean connectZookeeper() throws Exception {
         ZKConfig config = ZKConfig.builder()
                 .cluster(NLTabletConfig.ZK_CLUSTER)
                 .namespace(NLTabletConfig.ZK_ROOTPATH)
                 .sessionTimeout(NLTabletConfig.ZK_SESSION_TIMEOUT)
                 .build();
         zkClient = new ZKClient(config);
-        zkClient.connect();
+        if (!zkClient.connect()) {
+            log.error("fail to connect zookeeper");
+            return false;
+        }
         String endpoint = NLTabletConfig.HOST + ":" + NLTabletConfig.PORT;
         String value = NLTabletPrefix + endpoint;
         zkClient.createEphemeralNode("nodes/" + value, value.getBytes());
+        return true;
     }
 
     @Override

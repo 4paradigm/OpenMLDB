@@ -15,5 +15,7 @@ public class ZKConfig {
     private int maxRetries = 10;
     @Builder.Default
     private int baseSleepTime = 1000;
+    @Builder.Default
+    private int maxConnectWaitTime = 30000;
 
 }

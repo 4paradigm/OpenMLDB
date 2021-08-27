@@ -14,6 +14,8 @@ import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.utils.ZKPaths;
 import org.apache.zookeeper.CreateMode;
 
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 public class ZKClient {
     private ZKConfig config;
@@ -23,7 +25,7 @@ public class ZKClient {
         this.config = config;
     }
 
-    public void connect() throws Exception {
+    public boolean connect() throws Exception {
         log.info("ZKClient connect with config: {}", config);
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(config.getBaseSleepTime(), config.getMaxRetries());
         CuratorFramework client = CuratorFrameworkFactory.builder()
@@ -33,9 +35,12 @@ public class ZKClient {
                 .retryPolicy(retryPolicy)
                 .build();
         client.start();
-        client.blockUntilConnected();
+        if (!client.blockUntilConnected(config.getMaxConnectWaitTime(), TimeUnit.MILLISECONDS)) {
+            return false;
+        }
         client.getConnectionStateListenable();
         this.client = client;
+        return true;
     }
 
     public void createEphemeralNode(String path, byte[] data) throws Exception {
