@@ -28,10 +28,12 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
+import java.util.Map;
 
 public class HDFSCSVFileReader implements CSVFileReader {
 
     private final Iterator<CSVRecord> iter;
+    private final Map<String, Integer> headerMap;
 
     public HDFSCSVFileReader(String filePath) throws IOException {
         Configuration conf = new Configuration();
@@ -39,7 +41,9 @@ public class HDFSCSVFileReader implements CSVFileReader {
         FileSystem fs = FileSystem.get(uri, conf);
         FSDataInputStream stream = fs.open(new Path(uri));
         CSVFormat format = CSVFormat.Builder.create().setHeader().build();
-        iter = CSVParser.parse(stream, StandardCharsets.UTF_8, format).iterator();
+        CSVParser parser = CSVParser.parse(stream, StandardCharsets.UTF_8, format);
+        iter = parser.iterator();
+        headerMap = parser.getHeaderMap();
     }
 
     @Override
@@ -50,5 +54,10 @@ public class HDFSCSVFileReader implements CSVFileReader {
     @Override
     public CSVRecord next() {
         return iter.next();
+    }
+
+    @Override
+    public Map<String, Integer> getHeader() {
+        return headerMap;
     }
 }

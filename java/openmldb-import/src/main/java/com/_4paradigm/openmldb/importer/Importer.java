@@ -18,7 +18,6 @@ package com._4paradigm.openmldb.importer;
 
 import com._4paradigm.openmldb.api.Tablet;
 import com._4paradigm.openmldb.common.Common;
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.ns.NS;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
@@ -39,7 +38,6 @@ import picocli.CommandLine;
 
 import java.io.File;
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -200,6 +198,9 @@ public class Importer {
         Map<Integer, List<Integer>> keyIndexMap = new HashMap<>();
         Set<Integer> tsIdxSet = new HashSet<>();
         parseIndexMapAndTsSet(tableMetaData, keyIndexMap, tsIdxSet);
+
+        // check header, header should == tableMetaData.
+        reader.enableCheckHeader(tableMetaData);
         try {
             CSVRecord record;
             while ((record = reader.next()) != null) {
@@ -226,12 +227,12 @@ public class Importer {
             }
         }
         if (generators.values().stream().anyMatch(BulkLoadGenerator::hasInternalError)) {
-            logger.error("BulkLoad has failed.");
+            System.out.println("bulk load failed, reloading needs to drop this table");
+        }else{
+            System.out.println("");
         }
 
         // TODO(hw): get statistics from generators
-        logger.info("BulkLoad finished.");
-
         // rpc client release
         rpcClients.forEach(RpcClient::stop);
     }
@@ -313,13 +314,13 @@ public class Importer {
             return;
         }
 
-        logger.info("start bulk load");
+        System.out.println("start bulk load");
         long startTime = System.currentTimeMillis();
         importer.Load();
         long endTime = System.currentTimeMillis();
 
         long totalTime = endTime - startTime;
-        logger.info("End. Total time: {} ms", totalTime);
+        System.out.println("End. Total time: " + totalTime + " ms");
 
         importer.close();
     }

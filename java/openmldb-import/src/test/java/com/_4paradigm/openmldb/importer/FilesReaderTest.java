@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.importer;
 
+import com._4paradigm.openmldb.ns.NS;
 import junit.framework.TestCase;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -36,6 +37,7 @@ import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class FilesReaderTest extends TestCase {
@@ -110,4 +112,23 @@ public class FilesReaderTest extends TestCase {
             e.printStackTrace();
         }
     }
+
+    public void testNoHeader() {
+        FilesReader filesReader = new FilesReader(Collections.singletonList("src/test/resources/train.csv.noheader"));
+        NS.TableInfo.Builder tableInfoBuilder = NS.TableInfo.newBuilder();
+        tableInfoBuilder.addColumnDescBuilder().setName("c1");
+        tableInfoBuilder.addColumnDescBuilder().setName("c2");
+        filesReader.enableCheckHeader(tableInfoBuilder.build());
+        try {
+            CSVRecord record;
+            while ((record = filesReader.next()) != null) {
+                logger.info(record);
+            }
+            Assert.fail();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertEquals(IllegalStateException.class, e.getClass());
+        }
+    }
+
 }

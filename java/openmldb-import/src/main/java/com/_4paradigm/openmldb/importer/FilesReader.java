@@ -16,13 +16,18 @@
 
 package com._4paradigm.openmldb.importer;
 
+import com._4paradigm.openmldb.common.Common;
+import com._4paradigm.openmldb.ns.NS;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeMap;
 
 public class FilesReader {
     private static final Logger logger = LoggerFactory.getLogger(FilesReader.class);
@@ -30,6 +35,7 @@ public class FilesReader {
     private final List<String> files;
     private int nextFileIdx = 0;
     private CSVFileReader curReader = null;
+    private final Set<String> expectedColSet = Sets.newHashSet();
 
     public FilesReader(List<String> files) {
         this.files = files;
@@ -45,6 +51,11 @@ public class FilesReader {
             } else {
                 curReader = new LocalCSVFileReader(filePath);
             }
+
+            // only check col name set
+            Preconditions.checkState(expectedColSet.isEmpty()
+                            || Sets.difference(curReader.getHeader().keySet(), expectedColSet).isEmpty(),
+                    "file's header " + curReader.getHeader().keySet() + " != expected header " + expectedColSet);
 
             nextFileIdx++;
             if (curReader.hasNext()) {
@@ -67,4 +78,11 @@ public class FilesReader {
         return curReader.next();
     }
 
+    public void enableCheckHeader(NS.TableInfo tableMetaData) {
+        Preconditions.checkState(expectedColSet.isEmpty(), "do not reset the expected header map");
+        for (int i = 0; i < tableMetaData.getColumnDescCount(); i++) {
+            Common.ColumnDesc col = tableMetaData.getColumnDesc(i);
+            expectedColSet.add(col.getName());
+        }
+    }
 }
