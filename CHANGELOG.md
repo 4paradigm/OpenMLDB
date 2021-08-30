@@ -4,11 +4,15 @@
 
 ### Feature
 - Support parameterized query under BatchMode [#262](https://github.com/4paradigm/OpenMLDB/issues/262), [#168](https://github.com/4paradigm/OpenMLDB/issues/168)
+- Data importer support bulk load [#250](https://github.com/4paradigm/OpenMLDB/pull/250)
 
 ### SQL Syntax
 - `nvl` & `nvl2`: [#238](https://github.com/4paradigm/OpenMLDB/issues/238)
 - bitwise operators: `&`, `|`, `^`, `~` [#244](https://github.com/4paradigm/OpenMLDB/pull/244)
 - between predicate: [#277](https://github.com/4paradigm/OpenMLDB/pull/277)
+
+### Bugfix
+- `desc` do not display the value of ttl after adding index[#156](https://github.com/4paradigm/OpenMLDB/issues/156)
 
 ## [0.2.2] - 2021-08-08
 ### Feature
