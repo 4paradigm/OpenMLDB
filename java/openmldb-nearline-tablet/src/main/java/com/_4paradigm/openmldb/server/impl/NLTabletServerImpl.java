@@ -45,7 +45,7 @@ public class NLTabletServerImpl implements NLTabletServer {
                 .build();
         zkClient = new ZKClient(config);
         if (!zkClient.connect()) {
-            log.error("fail to connect zookeeper");
+            log.error("fail to connect zookeeper {}", NLTabletConfig.ZK_CLUSTER);
             return false;
         }
         String endpoint = NLTabletConfig.HOST + ":" + NLTabletConfig.PORT;
@@ -85,10 +85,10 @@ public class NLTabletServerImpl implements NLTabletServer {
     public Schema convertSchema(List<ColumnDesc> schema) throws Exception {
         List<Types.NestedField> columns = new ArrayList<Types.NestedField>();
         try {
-        for (int i = 0; i < schema.size(); i++) {
-            ColumnDesc col = schema.get(i);
-            columns.add(Types.NestedField.required(i + 1, col.getName(), convertType(col.getDataType())));
-        }
+            for (int i = 0; i < schema.size(); i++) {
+                ColumnDesc col = schema.get(i);
+                columns.add(Types.NestedField.required(i + 1, col.getName(), convertType(col.getDataType())));
+            }
         } catch (Exception e) {
             throw e;
         }
