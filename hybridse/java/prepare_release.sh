@@ -1,7 +1,4 @@
 #!/bin/bash
-
-# prepare for maven release, it tweak pom.xml based on a given version number
-#  Note: version number should be SemVer (no suffix), e.g. 0.1.4
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# prepare for maven release, it tweak pom.xml based on a given version number
+#  acceptable version style
+#  - release version: '0.1.4'
+#  - snapshot version: '0.1.4-SNAPSHOT'
+#  - beta/alpha: '0.12.2.beta1', '0.12.2.alpha2', will convert released as '0.12.2-SNAPSHOT'
+#
+# in case the version number passed in (extracted from tag) is in wrong style, the script will
+# replace any string after 'x.x.x' with '-SNAPSHOT', to avoid publish directly into maven central
+
 set -eE
 
 if [ -z "$1" ]; then
@@ -26,10 +32,21 @@ fi
 cd "$(dirname "$0")"
 
 VERSION=$1
-mvn versions:set -DnewVersion="$VERSION"
+# rm semVer number from VERSION
+#  0.1.2 -> ''
+#  0.1.2-SNAPSHOT -> '-SNAPSHOT'
+#  0.1.2.beta1    -> '.beta1'
+# shellcheck disable=SC2001
+SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
+# get BASE VERSION by rm suffix version
+BASE_VERSION=${VERSION%"$SUFFIX_VERSION"}
+if [[ -n $SUFFIX_VERSION ]] ; then
+    SUFFIX_VERSION=-SNAPSHOT
+fi
 
-# rm '-SNAPSHOT' suffix in version.base
-BASE_VERSION=${VERSION%-SNAPSHOT}
-SUFFIX_VERSION=${VERSION#$BASE_VERSION}
+JAVA_VERSION="$BASE_VERSION$SUFFIX_VERSION"
+
+mvn versions:set -DnewVersion="$JAVA_VERSION"
+
 mvn versions:set-property -Dproperty="project.version.base" -DnewVersion="$BASE_VERSION"
 mvn versions:set-property -Dproperty="project.version.suffix" -DnewVersion="$SUFFIX_VERSION"
