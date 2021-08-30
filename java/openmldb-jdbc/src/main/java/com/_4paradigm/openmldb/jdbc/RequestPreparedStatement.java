@@ -31,7 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class RequestPreparedStatement implements PreparedStatement {
+public class RequestPreparedStatement implements java.sql.PreparedStatement {
     public static final Charset CHARSET = Charset.forName("utf-8");
     protected String db;
     protected String currentSql;

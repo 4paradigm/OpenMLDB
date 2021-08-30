@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.batch.utils
 
 import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.hybridse.node.JoinType
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.functions.monotonically_increasing_id
@@ -97,12 +98,12 @@ object SparkUtil {
 
     // Check field name and type, but not nullable
     val fieldSize = schema1.fields.size
-    for (i <- 0 until fieldSize)  {
+    for (i <- 0 until fieldSize) {
       val field1 = schema1.fields(i)
       val field2 = schema2.fields(i)
       if (field1.name != field2.name || field1.dataType != field2.dataType) {
         logger.warn("Schema name or type not match, filed(%s %s) and field(%s %s)"
-          .format(field1.dataType, field1.name,field2.dataType, field2.name))
+          .format(field1.dataType, field1.name, field2.dataType, field2.name))
         return false
       }
     }
@@ -138,8 +139,7 @@ object SparkUtil {
         return false
       }
     }
-
-    df1.except(df1).isEmpty && df2.except(df2).isEmpty
+    df1.except(df2).isEmpty && df2.except(df1).isEmpty
   }
 
   /** Use Java reflect to call private method to convert RDD[InternalRow] to DataFrame.
@@ -157,6 +157,11 @@ object SparkUtil {
         classOf[StructType], classOf[Boolean])
     internalCreateDataFrameMethod.invoke(spark, internalRowRdd, schema, false: java.lang.Boolean)
       .asInstanceOf[DataFrame]
+  }
+
+  def disableSparkLog(): Unit = {
+    Logger.getLogger("org").setLevel(Level.OFF);
+    Logger.getLogger("akka").setLevel(Level.OFF);
   }
 
 }

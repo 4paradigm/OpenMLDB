@@ -8,6 +8,7 @@
 ### SQL Syntax
 - `nvl` & `nvl2`: [#238](https://github.com/4paradigm/OpenMLDB/issues/238)
 - bitwise operators: `&`, `|`, `^`, `~` [#244](https://github.com/4paradigm/OpenMLDB/pull/244)
+- between predicate: [#277](https://github.com/4paradigm/OpenMLDB/pull/277)
 
 ## [0.2.2] - 2021-08-08
 ### Feature

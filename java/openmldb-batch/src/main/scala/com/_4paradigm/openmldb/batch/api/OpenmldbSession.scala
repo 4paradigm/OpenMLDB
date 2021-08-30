@@ -16,11 +16,12 @@
 
 package com._4paradigm.openmldb.batch.api
 
+import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.iceberg.PartitionSpec
-import org.apache.iceberg.catalog.TableIdentifier
+import org.apache.iceberg.catalog.{Namespace, TableIdentifier}
 import org.apache.iceberg.hadoop.HadoopCatalog
 import org.apache.iceberg.hive.HiveCatalog
 import org.apache.iceberg.spark.SparkSchemaUtil
@@ -269,7 +270,6 @@ class OpenmldbSession {
    * Create table in offline storage.
    */
   def createHiveTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
-    // TODO: Check if table exists
 
     logger.info("Register the table %s to create table in offline storage".format(tableName))
     df.createOrReplaceTempView(tableName)
@@ -280,6 +280,24 @@ class OpenmldbSession {
     val partitionSpec = PartitionSpec.builderFor(icebergSchema).build()
     val tableIdentifier = TableIdentifier.of(databaseName, tableName)
 
+    // Create Iceberg database if not exists
+    val namespace = Namespace.of(databaseName)
+    try {
+      catalog.createNamespace(namespace)
+    } catch {
+      case _: org.apache.iceberg.exceptions.AlreadyExistsException => {
+        logger.warn("Database %s already exists".format(databaseName))
+      }
+    }
+
+    // Check if table exists
+    if(catalog.tableExists(tableIdentifier)) {
+      catalog.close()
+      logger.error("Table %s already exists".format(tableName))
+      throw new HybridSeException("Table %s already exists, Please check the table name".format(tableName))
+    }
+
+    // Create Iceberg table
     catalog.createTable(tableIdentifier, icebergSchema, partitionSpec)
     catalog.close()
 
@@ -291,7 +309,6 @@ class OpenmldbSession {
    * Create table in offline storage.
    */
   def createHadoopCatalogTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
-    // TODO: Check if table exists
 
     logger.info("Register the table %s to create table in offline storage".format(tableName))
     df.createOrReplaceTempView(tableName)
@@ -301,6 +318,23 @@ class OpenmldbSession {
     val icebergSchema = SparkSchemaUtil.schemaForTable(this.getSparkSession, tableName)
     val partitionSpec = PartitionSpec.builderFor(icebergSchema).build()
     val tableIdentifier = TableIdentifier.of(databaseName, tableName)
+
+    // Create Iceberg database if not exists
+    val namespace = Namespace.of(databaseName)
+    try {
+      hadoopCatalog.createNamespace(namespace)
+    } catch {
+      case _: org.apache.iceberg.exceptions.AlreadyExistsException => {
+        logger.warn("Database %s already exists".format(databaseName))
+      }
+    }
+
+    // Check if table exists
+    if(hadoopCatalog.tableExists(tableIdentifier)) {
+      hadoopCatalog.close()
+      logger.error("Table %s already exists".format(tableName))
+      throw new HybridSeException("Table %s already exists, Please check the table name".format(tableName))
+    }
 
     // Create Iceberg table
     hadoopCatalog.createTable(tableIdentifier, icebergSchema, partitionSpec)

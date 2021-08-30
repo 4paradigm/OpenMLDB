@@ -69,7 +69,6 @@ void ExprCheck(
         << "Fail Expr Check: "
         << "Ret: " << DataTypeTrait<Ret>::to_string << "Args: ...";
 
-    std::ostringstream oss;
     Ret result = compiled_func(args...);
     ASSERT_EQ(expect, result);
 }
@@ -869,10 +868,65 @@ TEST_F(ExprIRBuilderTest, TestBitwiseNotExpr) {
     auto not_expr = [](node::NodeManager* nm, node::ExprNode* input) {
         return nm->MakeUnaryExprNode(input, ::hybridse::node::kFnOpBitwiseNot);
     };
-    ExprCheck<int16_t, int16_t>(not_expr, 0, -1);
+    ExprCheck<int16_t, int16_t>(not_expr, static_cast<int16_t>(-1), static_cast<int16_t>(0));
     ExprCheck<int32_t, int32_t>(not_expr, 0, -1);
     ExprCheck<int64_t, int64_t>(not_expr, 0L, -1L);
+
+    ExprErrorCheck<codec::StringRef, codec::StringRef>(not_expr);
 }
+
+TEST_F(ExprIRBuilderTest, TestBetweenExpr) {
+    auto between_expr = [](node::NodeManager *nm, node::ExprNode *lhs, node::ExprNode *low, node::ExprNode *high) {
+        return nm->MakeBetweenExpr(lhs, low, high, false);
+    };
+    // number between
+    ExprCheck<bool, int32_t, int32_t, int32_t>(between_expr, true, 3, 1, 5);
+    ExprCheck<bool, int16_t, int32_t, int64_t>(between_expr, true, static_cast<int16_t>(3), 3, 5L);
+    ExprCheck<bool, int32_t, int32_t, int32_t>(between_expr, false, 3, 6, 9);
+    ExprCheck<bool, float, double, double>(between_expr, true, 3.0f, 1.0, 5.0);
+    ExprCheck<bool, double, double, double>(between_expr, false, 3.0, 9.0, 11.0);
+    ExprCheck<bool, int32_t, double, double>(between_expr, false, 3, 9.0, 11.0);
+
+    // string between
+    ExprCheck<bool, codec::StringRef, codec::StringRef, codec::StringRef>(
+        between_expr, true, codec::StringRef("def"), codec::StringRef("aaa"), codec::StringRef("fgc"));
+    ExprCheck<bool, codec::StringRef, codec::StringRef, codec::StringRef>(
+        between_expr, false, codec::StringRef("aaa"), codec::StringRef("ddd"), codec::StringRef("fgc"));
+    // timestamp between
+    ExprCheck<bool, codec::Timestamp, codec::Timestamp, codec::Timestamp>(
+        between_expr, true, codec::Timestamp(1629521917000), codec::Timestamp(1629521917000),
+        codec::Timestamp(1629521919000));
+}
+TEST_F(ExprIRBuilderTest, TestNotBetweenExpr) {
+    auto not_between_expr = [](node::NodeManager *nm, node::ExprNode *lhs, node::ExprNode *low, node::ExprNode *high) {
+        return nm->MakeBetweenExpr(lhs, low, high, true);
+    };
+    // number between
+    ExprCheck<bool, int32_t, int32_t, int32_t>(not_between_expr, false, 3, 1, 5);
+    ExprCheck<bool, int16_t, int32_t, int64_t>(not_between_expr, false, static_cast<int16_t>(3), 3, 5L);
+    ExprCheck<bool, int32_t, int32_t, int32_t>(not_between_expr, true, 3, 6, 9);
+    ExprCheck<bool, float, double, double>(not_between_expr, false, 3.0f, 1.0, 5.0);
+    ExprCheck<bool, double, double, double>(not_between_expr, true, 3.0, 9.0, 11.0);
+    ExprCheck<bool, int32_t, double, double>(not_between_expr, true, 3, 9.0, 11.0);
+
+    // string between
+    ExprCheck<bool, codec::StringRef, codec::StringRef, codec::StringRef>(
+        not_between_expr, false, codec::StringRef("def"), codec::StringRef("aaa"), codec::StringRef("fgc"));
+    ExprCheck<bool, codec::StringRef, codec::StringRef, codec::StringRef>(
+        not_between_expr, true, codec::StringRef("aaa"), codec::StringRef("ddd"), codec::StringRef("fgc"));
+    // timestamp between
+    ExprCheck<bool, codec::Timestamp, codec::Timestamp, codec::Timestamp>(
+        not_between_expr, false, codec::Timestamp(1629521917000), codec::Timestamp(1629521917000),
+        codec::Timestamp(1629521919000));
+}
+TEST_F(ExprIRBuilderTest, TestBetweenExprFail) {
+    auto between_expr = [](node::NodeManager *nm, node::ExprNode *lhs, node::ExprNode *low, node::ExprNode *high) {
+        return nm->MakeBetweenExpr(lhs, low, high, false);
+    };
+    ExprErrorCheck<bool, int64_t, codec::Timestamp, codec::Timestamp>(between_expr);
+    ExprErrorCheck<bool, double, codec::Timestamp, codec::Timestamp>(between_expr);
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 

@@ -329,11 +329,11 @@ static Status DoSearchExprDependentColumns(
         case node::kExprBetween: {
             std::vector<node::ExprNode*> expr_list;
             auto between_expr = dynamic_cast<const node::BetweenExpr*>(expr);
-            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->left_, ctx,
+            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetLow(), ctx,
                                                       columns));
-            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->right_, ctx,
+            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetHigh(), ctx,
                                                       columns));
-            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->expr_, ctx,
+            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetLhs(), ctx,
                                                       columns));
             break;
         }

@@ -18,14 +18,18 @@ package com._4paradigm.openmldb.batch
 
 import com._4paradigm.hybridse.HybridSeLibrary
 import com._4paradigm.hybridse.`type`.TypeOuterClass.Database
-import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
+import com._4paradigm.hybridse.vm.{
+  CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
   PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalOpNode,
-  PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode, PhysicalTableProjectNode,
-  PhysicalWindowAggrerationNode, ProjectType}
+  PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode, PhysicalSortNode,
+  PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType
+}
 import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
 import com._4paradigm.hybridse.node.JoinType
-import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan,
-  JoinPlan, LimitPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, WindowAggPlan}
+import com._4paradigm.openmldb.batch.nodes.{
+  ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan,
+  GroupByPlan, JoinPlan, LimitPlan, SortByPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, WindowAggPlan
+}
 import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -34,7 +38,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 
 
-class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
+class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: String) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -42,24 +46,33 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
   if (config.hybridseJsdkLibraryPath.equals("")) {
     HybridSeLibrary.initCore()
   } else {
-    //HybridSeLibrary.initCore(config.hybridseJsdkLibraryPath)
+    HybridSeLibrary.initCore(config.hybridseJsdkLibraryPath)
   }
   Engine.InitializeGlobalLLVM()
 
+  def this(session: SparkSession, dbName: String) = {
+    this(session, OpenmldbBatchConfig.fromSparkSession(session), dbName)
+  }
+
+  def this(session: SparkSession, config: OpenmldbBatchConfig) = {
+    this(session, config, session.conf.get("spark.app.name"))
+  }
+
   def this(session: SparkSession) = {
-    this(session, OpenmldbBatchConfig.fromSparkSession(session))
+    this(session, OpenmldbBatchConfig.fromSparkSession(session), session.conf.get("spark.app.name"))
   }
 
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
     // Translation state
-    val planCtx = new PlanContext(sql, session, this, config)
+    val tag = s"$dbName-$sql"
+    val planCtx = new PlanContext(tag, session, this, config)
 
     // Set input tables
     tableDict.foreach {
       case (name, df) => planCtx.registerDataFrame(name, df)
     }
 
-    withSQLEngine(sql, HybridseUtil.getDatabase(config.configDBName, tableDict), config) { engine =>
+    withSQLEngine(sql, HybridseUtil.getDatabase(dbName, tableDict), config) { engine =>
       val irBuffer = engine.getIrBuffer
       planCtx.setModuleBuffer(irBuffer)
 
@@ -212,7 +225,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
             WindowAggPlan.gen(ctx, PhysicalWindowAggrerationNode.CastFrom(projectNode), children.head)
           case ProjectType.kGroupAggregation =>
             GroupByAggregationPlan.gen(ctx, PhysicalGroupAggrerationNode.CastFrom(projectNode), children.head)
-          case _ => throw new UnsupportedHybridSeException (
+          case _ => throw new UnsupportedHybridSeException(
             s"Project type ${projectNode.getProject_type_} not supported")
         }
       case PhysicalOpType.kPhysicalOpGroupBy =>
@@ -223,6 +236,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
         LimitPlan.gen(ctx, PhysicalLimitNode.CastFrom(root), children.head)
       case PhysicalOpType.kPhysicalOpRename =>
         RenamePlan.gen(ctx, PhysicalRenameNode.CastFrom(root), children.head)
+      case PhysicalOpType.kPhysicalOpSortBy =>
+        SortByPlan.gen(ctx, PhysicalSortNode.CastFrom(root), children.head)
       //case PhysicalOpType.kPhysicalOpFilter =>
       //  FilterPlan.gen(ctx, PhysicalFilterNode.CastFrom(root), children.head)
       case _ =>
@@ -237,8 +252,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
 
 
   /**
-    * Run plan slowly by storing and loading each intermediate result from external data path.
-    */
+   * Run plan slowly by storing and loading each intermediate result from external data path.
+   */
   def slowRunWithHDFSCache(root: PhysicalOpNode, ctx: PlanContext,
                            cacheDir: String, isRoot: Boolean): SparkInstance = {
     val sess = ctx.getSparkSession
@@ -260,7 +275,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig) {
       } else if (child.GetOpType() == PhysicalOpType.kPhysicalOpDataProvider) {
         visitNode(child, ctx, Array())
       } else {
-        slowRunWithHDFSCache(child, ctx, cacheDir, isRoot=false)
+        slowRunWithHDFSCache(child, ctx, cacheDir, isRoot = false)
       }
       children += childResult
     }

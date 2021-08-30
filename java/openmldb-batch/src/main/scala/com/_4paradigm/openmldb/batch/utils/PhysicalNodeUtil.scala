@@ -16,8 +16,9 @@
 
 package com._4paradigm.openmldb.batch.utils
 
+import com._4paradigm.hybridse.node.{OrderByNode, OrderExpression}
 import com._4paradigm.hybridse.sdk.HybridSeException
-import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
+import com._4paradigm.hybridse.vm.{PhysicalOpNode, PhysicalSortNode, PhysicalWindowAggrerationNode}
 import org.apache.spark.sql.{Column, DataFrame}
 
 import scala.collection.mutable
@@ -91,20 +92,32 @@ object PhysicalNodeUtil {
 
     for (i <- 0 until ordersExprListNode.GetChildNum()) {
       val orderExpr = orders.GetOrderExpression(i)
-      val colIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, windowAggNode.GetProducer(0))
-      val column = SparkColumnUtil.getColumnFromIndex(inputDf, colIdx)
-      // TODO: Support reading is_asc from physical node, currently use asc by default
-      orderByCols += column.asc
-      /*
-      if (orders.is_asc()) {
-        orderByCols += column.asc
-      } else {
-        orderByCols += column.desc
-      }
-      */
+      orderByCols += getSparkOrderByColumn(orderExpr, windowAggNode, inputDf)
     }
 
     orderByCols
+  }
+
+  def getOrderbyColumns(sortByNode: PhysicalSortNode, inputDf: DataFrame): mutable.ArrayBuffer[Column] = {
+    val orders = sortByNode.sort().orders()
+    val ordersExprListNode = orders.getOrder_expressions_
+    val orderByCols = mutable.ArrayBuffer[Column]()
+    for (i <- 0 until ordersExprListNode.GetChildNum()) {
+      val orderExpr = orders.GetOrderExpression(i)
+      orderByCols += getSparkOrderByColumn(orderExpr, sortByNode, inputDf)
+    }
+
+    orderByCols
+  }
+
+  def getSparkOrderByColumn(orderExpr: OrderExpression, physicalNode: PhysicalOpNode, inputDf: DataFrame): Column = {
+    val colIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, physicalNode.GetProducer(0))
+    val column = SparkColumnUtil.getColumnFromIndex(inputDf, colIdx)
+    if (orderExpr.is_asc()) {
+      column.asc
+    } else {
+      column.desc
+    }
   }
 
 
