@@ -16,9 +16,9 @@
 
 package com._4paradigm.openmldb.importer;
 
-import com._4paradigm.openmldb.common.Common.ColumnDesc;
-import com._4paradigm.openmldb.type.Type.DataType;
-import com._4paradigm.openmldb.common.Common;
+import com._4paradigm.openmldb.proto.Common.ColumnDesc;
+import com._4paradigm.openmldb.proto.Type.DataType;
+import com._4paradigm.openmldb.proto.Common;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

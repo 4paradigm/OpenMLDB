@@ -16,10 +16,10 @@
 
 package com._4paradigm.openmldb.importer;
 
-import com._4paradigm.openmldb.common.Common;
-import com._4paradigm.openmldb.common.Common.ColumnDesc;
-import com._4paradigm.openmldb.type.Type;
-import com._4paradigm.openmldb.type.Type.DataType;
+import com._4paradigm.openmldb.proto.Common;
+import com._4paradigm.openmldb.proto.Common.ColumnDesc;
+import com._4paradigm.openmldb.proto.Type;
+import com._4paradigm.openmldb.proto.Type.DataType;
 
 import java.nio.charset.Charset;
 import java.util.HashMap;

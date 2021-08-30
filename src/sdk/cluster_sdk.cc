@@ -228,11 +228,12 @@ bool ClusterSDK::InitTabletClient() {
     }
     std::map<std::string, std::string> real_ep_map;
     for (const auto& endpoint : tablets) {
+        std::string cur_endpoint = ::openmldb::base::ExtractEndpoint(endpoint);
         std::string real_endpoint;
-        if (!GetRealEndpoint(endpoint, &real_endpoint)) {
+        if (!GetRealEndpoint(cur_endpoint, &real_endpoint)) {
             return false;
         }
-        real_ep_map.emplace(endpoint, real_endpoint);
+        real_ep_map.emplace(cur_endpoint, real_endpoint);
     }
     client_manager_->UpdateClient(real_ep_map);
     return true;
