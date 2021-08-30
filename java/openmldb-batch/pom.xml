@@ -46,7 +46,7 @@
 		<scala.binary.version>2.12</scala.binary.version>
 		<spark.version>3.0.0</spark.version>
 		<spark.dependencyScope>provided</spark.dependencyScope>
-		<default.project.version>0.2.1</default.project.version>
+		<default.project.version>0.3.0</default.project.version>
 		<default.hybridse.sdk.version>0.3.0</default.hybridse.sdk.version>
 	</properties>
 
