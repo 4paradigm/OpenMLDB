@@ -3969,6 +3969,9 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         auto ret = CreateOfflineTable(table_info->db(), table_info->name(), table_info->column_key(0).ts_name(),
                     table_info->column_desc());
         response->set_code(ret.code);
+        if (ret.code != 0) {
+          response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
+        }
         response->set_msg(ret.msg);
         return;
     }

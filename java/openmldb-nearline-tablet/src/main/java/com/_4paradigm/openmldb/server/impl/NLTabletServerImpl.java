@@ -7,6 +7,7 @@ import com._4paradigm.openmldb.proto.Type.DataType;
 import com._4paradigm.openmldb.server.NLTabletServer;
 import com._4paradigm.openmldb.zk.ZKClient;
 import com._4paradigm.openmldb.zk.ZKConfig;
+import com._4paradigm.openmldb.server.StatusCode;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.hadoop.conf.Configuration;
@@ -59,9 +60,9 @@ public class NLTabletServerImpl implements NLTabletServer {
         try {
             createTable(request.getDbName(), request.getTableName(), request.getPartitionKey(),
                     request.getColumnDescList());
-            builder.setCode(0).setMsg("ok");
+            builder.setCode(StatusCode.SUCCESS).setMsg("ok");
         } catch (Exception e) {
-            builder.setCode(-1).setMsg(e.getMessage());
+            builder.setCode(StatusCode.CREATE_TABLE_FAILED).setMsg(e.getMessage());
             log.warn("fail to create table {}. error msg: {}", request.getTableName(), e.getMessage());
         }
         NLTablet.CreateTableResponse response = builder.build();
