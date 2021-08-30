@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from . import driver
 import re
 
@@ -117,7 +118,13 @@ class CursorClosedException(Error):
 
     def __str__(self):
         return repr(self.message)
+class ConnectionClosedException(Error):
 
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return repr(self.message)
 class Cursor(object):
 
     def __init__(self, db, zk, zkPath, conn):
@@ -182,7 +189,7 @@ class Cursor(object):
 
     def callproc(self, procname, parameters=()):
         if len(parameters) < 1:
-            raise DataBaseError("please providate data for proc")
+            raise DatabaseError("please providate data for proc")
         ok, rs = self.connection._sdk.doProc(self.db, procname, parameters)
         if not ok:
             raise DatabaseError("execute select fail")
@@ -196,8 +203,8 @@ class Cursor(object):
 
     def checkCmd(cmd: str) -> bool:
         if cmd.find("select cast") == 0:
-            return false
-        return true
+            return False
+        return True
 
     def execute(self, operation, parameters=()):
         command = operation.strip(' \t\n\r') if operation else None
@@ -273,10 +280,13 @@ class Cursor(object):
             if not ok:
                 raise DatabaseError(error)
         elif selectRE.match(command):
-            if isinstance(parameters, dict): # single element in tuple, that tuple type is dict
-                ok, rs = self.connection._sdk.doQuery(self.db, command, parameters)
+            logging.debug("selectRE: %s", str(parameters))
+            if isinstance(parameters, tuple) and len(parameters) > 0:
+                ok, rs = self.connection._sdk.doParameterizedQuery(self.db, command, parameters)
+            elif isinstance(parameters, dict):
+                ok, rs = self.connection._sdk.doRequestQuery(self.db, command, parameters)
             else:
-                ok, rs = self.connection._sdk.doQuery(self.db, command, None)
+                ok, rs = self.connection._sdk.doQuery(self.db, command)
             if not ok:
                 raise DatabaseError("execute select fail, msg: {}".format(rs))
             self._pre_process_result(rs)
@@ -290,7 +300,7 @@ class Cursor(object):
             if not ok:
                 raise DatabaseError(error)
         elif dropProduce.match(command):
-            self.connection._sdk.executeDDL(self.db, command)
+            ok, error = self.connection._sdk.executeDDL(self.db, command)
             if not ok:
                 raise DatabaseError(error)
         else:
@@ -364,6 +374,16 @@ class Cursor(object):
         self._pre_process_result(rs)
         return self
 
+    def executeRequest(self, sql, parameter): 
+        command = sql.strip(' \t\n\r') 
+        if selectRE.match(command) == False:
+            raise Exception("Invalid opertion for request")
+
+        ok, rs = self.connection._sdk.doRequestQuery(self.db, sql, parameter)
+        if not ok:
+            raise DatabaseError("execute select fail {}".format(rs))
+        self._pre_process_result(rs)
+        return self
 
 class Connection(object):
 

@@ -697,7 +697,6 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
         ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     }
 
-
     auto parameter_types = std::make_shared<hybridse::sdk::ColumnTypes>();
     parameter_types->AddColumnType(::hybridse::sdk::kTypeString);
     parameter_types->AddColumnType(::hybridse::sdk::kTypeInt64);

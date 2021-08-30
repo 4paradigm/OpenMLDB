@@ -15,6 +15,7 @@
  */
 
 #include "sdk/sql_request_row.h"
+
 #include <stdint.h>
 #include <string>
 #include <unordered_map>
@@ -355,8 +356,8 @@ std::shared_ptr<SQLRequestRow> SQLRequestRow::CreateSQLRequestRowFromColumnTypes
     for (size_t idx = 0; idx < types->GetTypeSize(); idx++) {
         hybridse::type::Type hybridse_type;
         if (!openmldb::catalog::SchemaAdapter::ConvertType(types->GetColumnType(idx), &hybridse_type)) {
-            LOG(WARNING) << "fail to create sql request row from column types: invalid type " <<
-                hybridse::sdk::DataTypeName(types->GetColumnType(idx));
+            LOG(WARNING) << "fail to create sql request row from column types: invalid type "
+                         << hybridse::sdk::DataTypeName(types->GetColumnType(idx));
             return std::shared_ptr<SQLRequestRow>();
         }
         auto column = schema.Add();
