@@ -190,12 +190,12 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
         ::openmldb::nameserver::TabletStatus status = response.tablets(0);
         ASSERT_EQ("tb1", status.endpoint());
         ASSERT_EQ(tb_real_ep_1, status.real_endpoint());
-        ASSERT_EQ("kTabletHealthy", status.state());
+        ASSERT_EQ("kHealthy", status.state());
 
         status = response.tablets(1);
         ASSERT_EQ("tb2", status.endpoint());
         ASSERT_EQ(tb_real_ep_2, status.real_endpoint());
-        ASSERT_EQ("kTabletHealthy", status.state());
+        ASSERT_EQ("kHealthy", status.state());
     }
     std::string ns_sdk_ep = "127.0.0.1:8881";
     std::string tb_sdk_ep_1 = "127.0.0.1:8882";

@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.importer;
 
-import com._4paradigm.openmldb.api.Tablet;
+import com._4paradigm.openmldb.proto.Tablet;
 import com.baidu.brpc.protocol.BrpcMeta;
 
 public interface TabletService {

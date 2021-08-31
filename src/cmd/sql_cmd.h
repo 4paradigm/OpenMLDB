@@ -291,7 +291,7 @@ void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema
             t.end_of_row();
         }
         stream << t << std::endl;
-    } catch (std::bad_cast) {
+    } catch (std::bad_cast&) {
         return;
     }
 }

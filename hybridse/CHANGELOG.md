@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [0.2.3] - 2021-08-31
 ### Feature
 - Support parameterized query under BatchMode [#262](https://github.com/4paradigm/OpenMLDB/issues/262)
 ### SQL Syntax
@@ -44,7 +46,8 @@ Removed
 - `||` and `&&` as logical operator: [#99](https://github.com/4paradigm/HybridSE/issues/99)
 - `at` function: [#136](https://github.com/4paradigm/HybridSE/pull/136)
 
-[Unreleased]: https://github.com/4paradigm/HybridSE/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/4paradigm/OpenMLDB/compare/hybridse-v0.2.3...HEAD
+[0.2.3]: https://github.com/4paradigm/OpenMLDB/releases/tag/hybridse-v0.2.3
 [0.2.1]: https://github.com/4paradigm/HybridSE/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/4paradigm/HybridSE/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/4paradigm/HybridSE/compare/v0.1.4...v0.1.5
