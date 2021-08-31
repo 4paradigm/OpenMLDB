@@ -78,7 +78,10 @@ LogReplicator::~LogReplicator() {
     nodes_.clear();
 }
 
-void LogReplicator::SetRole(const ReplicatorRole& role) { role_ = role; }
+void LogReplicator::SetRole(const ReplicatorRole& role) {
+    std::lock_guard<bthread::Mutex> lock(mu_);
+    role_ = role;
+}
 
 void LogReplicator::SyncToDisk() {
     std::lock_guard<std::mutex> lock(wmu_);
