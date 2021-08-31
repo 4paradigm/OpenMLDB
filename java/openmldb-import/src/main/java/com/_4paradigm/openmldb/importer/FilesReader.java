@@ -16,8 +16,8 @@
 
 package com._4paradigm.openmldb.importer;
 
-import com._4paradigm.openmldb.common.Common;
-import com._4paradigm.openmldb.ns.NS;
+import com._4paradigm.openmldb.proto.Common;
+import com._4paradigm.openmldb.proto.NS;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import org.apache.commons.csv.CSVRecord;
@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeMap;
 
 public class FilesReader {
     private static final Logger logger = LoggerFactory.getLogger(FilesReader.class);

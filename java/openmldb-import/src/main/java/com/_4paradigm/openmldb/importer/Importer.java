@@ -16,13 +16,9 @@
 
 package com._4paradigm.openmldb.importer;
 
-import com._4paradigm.openmldb.api.Tablet;
-import com._4paradigm.openmldb.common.Common;
-import com._4paradigm.openmldb.ns.NS;
-import com._4paradigm.openmldb.proto.Tablet;
 import com._4paradigm.openmldb.proto.Common;
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.proto.NS;
+import com._4paradigm.openmldb.proto.Tablet;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
@@ -42,7 +38,6 @@ import picocli.CommandLine;
 
 import java.io.File;
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -159,13 +154,13 @@ public class Importer {
         logger.info("create generators for each table partition(MemTable)");
         Map<Integer, BulkLoadGenerator> generators = new HashMap<>();
         List<Thread> threads = new ArrayList<>();
-        //  http/h2 can't add attachment, cuz it use attachment to pass message. So we need to use brpc-java RpcClient
+        //  http/h2 can't add attachment, cuz it uses attachment to pass message. So we need to use brpc-java RpcClient
         List<RpcClient> rpcClients = new ArrayList<>();
         try {
             // When bulk loading, cannot AddIndex().
             //  And MemTable::table_index_ may be modified by AddIndex()/Delete...,
             //  so we should get table_index_'s info from MemTable, to know the real status.
-            //  And the status can't be changed until bulk lood finished.
+            //  And the status can't be changed until bulk load finished.
             for (NS.TablePartition partition : tableMetaData.getTablePartitionList()) {
                 logger.debug("tid-pid {}-{}, {}", tableMetaData.getTid(), partition.getPid(), partition.getPartitionMetaList());
                 NS.PartitionMeta leader = partition.getPartitionMetaList().stream().filter(NS.PartitionMeta::getIsLeader).collect(onlyElement());

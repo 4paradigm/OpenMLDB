@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.importer;
 
-import com._4paradigm.openmldb.ns.NS;
+import com._4paradigm.openmldb.proto.NS;
 import junit.framework.TestCase;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;

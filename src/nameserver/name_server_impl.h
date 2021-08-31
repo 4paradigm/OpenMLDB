@@ -612,7 +612,7 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<::openmldb::api::TaskInfo> FindTask(uint64_t op_id, ::openmldb::api::TaskType task_type);
 
-    bool SaveTableInfo(const std::shared_ptr<TableInfo>& table_info);
+    bool SaveTableInfo(std::shared_ptr<TableInfo> table_info);
 
     int CreateOPData(::openmldb::api::OPType op_type, const std::string& value,
                      std::shared_ptr<OPData>& op_data,  // NOLINT
