@@ -265,6 +265,7 @@ public class Importer {
                     return info;
                 }
             }
+            client.close();
         } catch (Exception e) {
             logger.warn(e.getMessage());
         }
