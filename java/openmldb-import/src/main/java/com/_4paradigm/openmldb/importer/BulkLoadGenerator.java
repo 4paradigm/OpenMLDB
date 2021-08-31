@@ -215,6 +215,7 @@ public class BulkLoadGenerator implements Runnable {
             ByteArrayOutputStream attachmentStream = new ByteArrayOutputStream();
             Tablet.BulkLoadRequest request = dataRegionBuilder.buildPartialRequest(true, attachmentStream);
             if (request != null) {
+                logger.info("send data region part {}", request.getPartId());
                 sendRequest(request, attachmentStream);
             }
             Preconditions.checkState(dataRegionBuilder.buildPartialRequest(true, attachmentStream)
@@ -234,8 +235,10 @@ public class BulkLoadGenerator implements Runnable {
             indexRegionBuilder.setStartPartId(dataRegionBuilder.getNextPartId());
             Tablet.BulkLoadRequest req;
             while ((req = indexRegionBuilder.buildPartialRequest()) != null) {
-                logger.info("send index region part {}, eof {}, size {}", req.getPartId(), req.getEof(), req.getSerializedSize());
-                logger.debug("{}", req);
+                logger.info("send index region part {}, eof {}", req.getPartId(), req.getEof());
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{}", req);
+                }
                 sendRequest(req, null);
             }
             long endTime = System.currentTimeMillis();
@@ -256,7 +259,9 @@ public class BulkLoadGenerator implements Runnable {
             String v = valueMap.get(desc.getName());
             Type.DataType type = desc.getDataType();
             Object obj = buildTypedValues(v, type);
-            Preconditions.checkNotNull(obj);
+            if (obj == null) {
+                throw new RuntimeException("build value failed, raw " + v + ", col " + desc.getName() + ", type " + type.name());
+            }
             rowValues.add(obj);
         }
         ByteBuffer dataBuffer = RowBuilder.encode(rowValues.toArray(), tableInfo.getColumnDescList(), 1);
