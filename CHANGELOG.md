@@ -1,5 +1,7 @@
 # Changelog
 
+## [Unreleased]
+
 ## [0.2.3] - 2021-08-31
 ### Feature
 - Data importer support bulk load [#250](https://github.com/4paradigm/OpenMLDB/pull/250)
@@ -51,6 +53,6 @@ Removed
 - aarch64 artifacts consider experimental
 
 [Unreleased]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.3...HEAD
-[0.2.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.2...0.2.3
+[0.2.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.0...0.2.2
 [0.2.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.1.5-pre...v0.2.0
