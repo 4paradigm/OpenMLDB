@@ -3956,7 +3956,7 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
                 pid_set.insert(table_info->table_partition(idx).pid());
             }
             auto iter = pid_set.rbegin();
-            if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
+            if (*iter != static_cast<uint32_t>(table_info->table_partition_size()) - 1) {
                 response->set_code(::openmldb::base::ReturnCode::kInvalidParameter);
                 response->set_msg("invalid parameter");
                 PDLOG(WARNING, "pid is not start with zero and consecutive");
@@ -4020,7 +4020,7 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
     }
 }
 
-bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
+bool NameServerImpl::SaveTableInfo(const std::shared_ptr<TableInfo>& table_info) {
     std::string table_value;
     table_info->SerializeToString(&table_value);
     if (table_info->db().empty()) {

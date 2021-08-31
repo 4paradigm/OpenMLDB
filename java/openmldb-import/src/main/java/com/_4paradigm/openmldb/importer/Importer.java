@@ -43,6 +43,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -144,7 +145,7 @@ public class Importer {
 
         NS.TableInfo tableMetaData = getTableMetaData();
         if (tableMetaData == null) {
-            logger.error("table {} meta data is not found", tableName);
+            logger.error("table {}.{} meta data is not found", dbName, tableName);
             return;
         }
 
@@ -228,8 +229,8 @@ public class Importer {
         }
         if (generators.values().stream().anyMatch(BulkLoadGenerator::hasInternalError)) {
             System.out.println("bulk load failed, reloading needs to drop this table");
-        }else{
-            System.out.println("");
+        } else {
+            System.out.println("bulk load succeed");
         }
 
         // TODO(hw): get statistics from generators
@@ -260,7 +261,7 @@ public class Importer {
             for (String tableId : tables) {
                 byte[] tableInfo = client.getData().forPath(tableInfoPath + "/" + tableId);
                 NS.TableInfo info = NS.TableInfo.parseFrom(tableInfo);
-                if (info.getName().equals(tableName)) {
+                if (info.getName().equals(tableName) && info.getDb().equals(dbName)) {
                     return info;
                 }
             }
@@ -279,8 +280,7 @@ public class Importer {
         CommandLine cmd = new CommandLine(importer).setCaseInsensitiveEnumValuesAllowed(true);
         try {
             URL prop = importer.getClass().getClassLoader().getResource("importer.properties");
-            Preconditions.checkNotNull(prop);
-            logger.info("load properties file {}", prop.getFile());
+            logger.info("load properties file {}", Objects.requireNonNull(prop).getFile());
             File defaultsFile = new File(prop.getFile());
             cmd.setDefaultValueProvider(new CommandLine.PropertiesDefaultProvider(defaultsFile));
         } catch (Exception e) {
