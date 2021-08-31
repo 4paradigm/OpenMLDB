@@ -2044,19 +2044,20 @@ void TabletImpl::AppendEntries(RpcController* controller, const ::openmldb::api:
         response->set_log_offset(last_log_offset);
         if (!FLAGS_zk_cluster.empty() && request->term() > term) {
             replicator->SetLeaderTerm(request->term());
-            PDLOG(INFO, "get log_offset %lu and set term %lu. tid %u, pid %u", last_log_offset, term, tid, pid);
+            PDLOG(INFO, "get log_offset %lu and set term %lu. tid %u, pid %u",
+                    last_log_offset, request->term(), tid, pid);
             return;
         }
         PDLOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u]", last_log_offset, tid, pid);
         return;
     }
     for (int32_t i = 0; i < request->entries_size(); i++) {
-        if (request->entries(i).log_index() <= last_log_offset) {
+        const auto& entry = request->entries(i);
+        if (entry.log_index() <= last_log_offset) {
             PDLOG(WARNING, "entry log_index %lu cur log_offset %lu tid %u pid %u", request->entries(i).log_index(),
                     last_log_offset, tid, pid);
             continue;
         }
-        const auto& entry = request->entries(i);
         if (!replicator->ApplyEntry(entry)) {
             PDLOG(WARNING, "fail to write binlog. tid %u pid %u", tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kFailToAppendEntriesToReplicator);
@@ -2072,7 +2073,12 @@ void TabletImpl::AppendEntries(RpcController* controller, const ::openmldb::api:
             }
             table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
         }
-        table->Put(entry);
+        if (!table->Put(entry)) {
+            PDLOG(WARNING, "fail to put entry. tid %u pid %u", tid, pid);
+            response->set_code(::openmldb::base::ReturnCode::kFailToAppendEntriesToReplicator);
+            response->set_msg("fail to append entry to table");
+            return;
+        }
     }
     response->set_log_offset(replicator->GetOffset());
 }
