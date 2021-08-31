@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/bash
 
 # Copyright 2021 4Paradigm
 #
@@ -17,17 +17,23 @@
 #
 # package.sh
 #
-WORKDIR=$(pwd)
 set -e
-if [ -z "$1" ]; then
-    echo "Usage: $0 \$VERSION. error: version number required"
-    exit 1
-fi
-sdk_version=$1
-mkdir -p build && cd build &&  cmake -DSQL_JAVASDK_ENABLE=ON .. && make -j4 sql_jsdk
 
-cd "${WORKDIR}"
+pushd "$(dirname "$0")"
+
+sdk_version=$1
+cmake -H. -Bbuild -DSQL_JAVASDK_ENABLE=ON
+cmake --build build --target sql_jsdk -- -j4
+
 mkdir -p java/openmldb-native/src/main/resources/
 test -f build/src/sdk/libsql_jsdk.dylib && cp build/src/sdk/libsql_jsdk.dylib  java/openmldb-native/src/main/resources/
 test -f build/src/sdk/libsql_jsdk.so && cp build/src/sdk/libsql_jsdk.so  java/openmldb-native/src/main/resources/
-cd java/ &&  mvn versions:set -DnewVersion="${sdk_version}" && mvn deploy -Dmaven.test.skip=true
+
+pushd java/
+if [ -n "$sdk_version" ] ; then
+    mvn versions:set -DnewVersion="${sdk_version}"
+fi
+mvn deploy -Dmaven.test.skip=true
+popd
+
+popd
