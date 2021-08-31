@@ -53,6 +53,6 @@ Removed
 - aarch64 artifacts consider experimental
 
 [Unreleased]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.3...HEAD
-[0.2.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.2...v0.2.3
+[0.2.3]: https://github.com/4paradigm/OpenMLDB/compare/0.2.2...v0.2.3
 [0.2.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.0...0.2.2
 [0.2.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.1.5-pre...v0.2.0
