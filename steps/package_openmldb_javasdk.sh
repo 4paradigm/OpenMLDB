@@ -14,14 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#
-# package.sh
-#
 set -e
 
-pushd "$(dirname "$0")"
+pushd "$(dirname "$0")/.."
 
-sdk_version=$1
+VERSION=$1
 cmake -H. -Bbuild -DSQL_JAVASDK_ENABLE=ON
 cmake --build build --target sql_jsdk -- -j4
 
@@ -30,8 +27,17 @@ test -f build/src/sdk/libsql_jsdk.dylib && cp build/src/sdk/libsql_jsdk.dylib  j
 test -f build/src/sdk/libsql_jsdk.so && cp build/src/sdk/libsql_jsdk.so  java/openmldb-native/src/main/resources/
 
 pushd java/
-if [ -n "$sdk_version" ] ; then
-    mvn versions:set -DnewVersion="${sdk_version}"
+if [ -n "$VERSION" ] ; then
+    # tweak VERSION based on rules:
+    #  - 0.2.2     -> 0.2.2
+    #  - 0.2.2(.*) -> 0.2.2-SNAPSHOT
+    # shellcheck disable=SC2001
+    SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
+    BASE_VERSION=${VERSION%"$SUFFIX_VERSION"}
+    if [ -n "$SUFFIX_VERSION" ]; then
+        VERSION="$BASE_VERSION-SNAPSHOT"
+    fi
+    mvn versions:set -DnewVersion="${VERSION}"
 fi
 mvn deploy -Dmaven.test.skip=true
 popd
