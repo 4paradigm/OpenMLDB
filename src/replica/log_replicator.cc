@@ -42,9 +42,12 @@ namespace replica {
 
 static const ::openmldb::base::DefaultComparator scmp;
 
-LogReplicator::LogReplicator(const std::string& path, const std::map<std::string, std::string>& real_ep_map,
-                             const ReplicatorRole& role, std::shared_ptr<Table> table, std::atomic<bool>* follower)
-    : path_(path),
+LogReplicator::LogReplicator(uint32_t tid, uint32_t pid, const std::string& path,
+                             const std::map<std::string, std::string>& real_ep_map,
+                             const ReplicatorRole& role, std::atomic<bool>* follower)
+    : tid_(tid),
+      pid_(pid),
+      path_(path),
       log_path_(),
       log_offset_(0),
       logs_(NULL),
@@ -58,7 +61,6 @@ LogReplicator::LogReplicator(const std::string& path, const std::map<std::string
       cv_(),
       wmu_(),
       follower_(follower) {
-    table_ = table;
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
     snapshot_last_offset_.store(0, std::memory_order_relaxed);
@@ -104,7 +106,7 @@ bool LogReplicator::Init() {
     if (role_ == kLeaderNode) {
         for (const auto& kv : real_ep_map_) {
             std::shared_ptr<ReplicateNode> replicate_node =
-                std::make_shared<ReplicateNode>(kv.first, logs_, log_path_, table_->GetId(), table_->GetPid(), &term_,
+                std::make_shared<ReplicateNode>(kv.first, logs_, log_path_, tid_, pid_, &term_,
                                                 &log_offset_, &mu_, &cv_, false, &follower_offset_, kv.second);
             if (replicate_node->Init() < 0) {
                 PDLOG(WARNING, "init replicate node %s error", kv.first.c_str());
@@ -172,7 +174,7 @@ bool LogReplicator::Recover() {
     std::vector<std::string> logs;
     int ret = ::openmldb::base::GetFileName(log_path_, logs);
     if (ret != 0) {
-        PDLOG(WARNING, "fail to get binlog log list for tid %u pid %u", table_->GetId(), table_->GetPid());
+        PDLOG(WARNING, "fail to get binlog log list for tid %u pid %u", tid_, pid_);
         return false;
     }
     if (logs.size() <= 0) {
@@ -282,78 +284,29 @@ uint64_t LogReplicator::GetLeaderTerm() { return term_.load(std::memory_order_re
 
 void LogReplicator::SetLeaderTerm(uint64_t term) { term_.store(term, std::memory_order_relaxed); }
 
-bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
-    if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
-        if (entry.dimensions_size() == 0) {
-            PDLOG(WARNING, "no dimesion. tid %u pid %u", table_->GetId(), table_->GetPid());
-            return false;
-        }
-        table_->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
-        return true;
-    }
-    return table_->Put(entry);
-}
-
-bool LogReplicator::AppendEntries(const ::openmldb::api::AppendEntriesRequest* request,
-                                  ::openmldb::api::AppendEntriesResponse* response) {
-    if (!follower_->load(std::memory_order_relaxed)) {
-        if (!FLAGS_zk_cluster.empty() && request->term() < term_.load(std::memory_order_relaxed)) {
-            PDLOG(WARNING,
-                  "leader id not match. request term  %lu, cur term %lu, tid "
-                  "%u, pid %u",
-                  request->term(), term_.load(std::memory_order_relaxed), request->tid(), request->pid());
-            return false;
-        }
-    }
+bool LogReplicator::ApplyEntry(const LogEntry& entry) {
     std::lock_guard<std::mutex> lock(wmu_);
     uint64_t last_log_offset = GetOffset();
-    if (request->pre_log_index() == 0 && request->entries_size() == 0) {
-        response->set_log_offset(last_log_offset);
-        if (!FLAGS_zk_cluster.empty() && request->term() > term_.load(std::memory_order_relaxed)) {
-            term_.store(request->term(), std::memory_order_relaxed);
-            PDLOG(INFO, "get log_offset %lu and set term %lu. tid %u, pid %u", last_log_offset,
-                  term_.load(std::memory_order_relaxed), request->tid(), request->pid());
-            return true;
-        }
-        PDLOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u]", last_log_offset, request->tid(),
-              request->pid());
-        return true;
-    }
     if (wh_ == NULL || (wh_->GetSize() / (1024 * 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size) {
-        bool ok = RollWLogFile();
-        if (!ok) {
+        if (!RollWLogFile()) {
             PDLOG(WARNING, "fail to roll write log for path %s", path_.c_str());
             return false;
         }
     }
-    if (request->pre_log_index() > last_log_offset) {
-        PDLOG(WARNING,
-              "log mismatch for path %s, pre_log_index %lu, come log index "
-              "%lu. tid %u pid %u",
-              path_.c_str(), last_log_offset, request->pre_log_index(), request->tid(), request->pid());
+    if (entry.log_index() <= last_log_offset) {
+        PDLOG(WARNING, "entry log_index %lu cur log_offset %lu tid %u pid %u",
+                entry.log_index(), last_log_offset, tid_, pid_);
+        return true;
+    }
+    std::string buffer;
+    entry.SerializeToString(&buffer);
+    ::openmldb::base::Slice slice(buffer.c_str(), buffer.size());
+    ::openmldb::base::Status status = wh_->Write(slice);
+    if (!status.ok()) {
+        PDLOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
         return false;
     }
-    for (int32_t i = 0; i < request->entries_size(); i++) {
-        if (request->entries(i).log_index() <= last_log_offset) {
-            PDLOG(WARNING, "entry log_index %lu cur log_offset %lu tid %u pid %u", request->entries(i).log_index(),
-                  last_log_offset, request->tid(), request->pid());
-            continue;
-        }
-        std::string buffer;
-        request->entries(i).SerializeToString(&buffer);
-        ::openmldb::base::Slice slice(buffer.c_str(), buffer.size());
-        ::openmldb::base::Status status = wh_->Write(slice);
-        if (!status.ok()) {
-            PDLOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
-            return false;
-        }
-        if (!ApplyEntryToTable(request->entries(i))) {
-            PDLOG(WARNING, "apply failed. tid %u pid %u", table_->GetId(), table_->GetPid());
-            return false;
-        }
-        log_offset_.store(request->entries(i).log_index(), std::memory_order_relaxed);
-        response->set_log_offset(GetOffset());
-    }
+    log_offset_.store(entry.log_index(), std::memory_order_relaxed);
     DEBUGLOG("sync log entry to offset %lu for %s", GetOffset(), path_.c_str());
     return true;
 }
@@ -384,11 +337,11 @@ int LogReplicator::AddReplicateNode(const std::map<std::string, std::string>& re
         std::shared_ptr<ReplicateNode> replicate_node;
         if (tid == UINT32_MAX) {
             replicate_node =
-                std::make_shared<ReplicateNode>(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), &term_,
+                std::make_shared<ReplicateNode>(endpoint, logs_, log_path_, tid_, pid_, &term_,
                                                 &log_offset_, &mu_, &cv_, false, &follower_offset_, kv.second);
         } else {
             replicate_node =
-                std::make_shared<ReplicateNode>(endpoint, logs_, log_path_, tid, table_->GetPid(), &term_, &log_offset_,
+                std::make_shared<ReplicateNode>(endpoint, logs_, log_path_, tid, pid_, &term_, &log_offset_,
                                                 &mu_, &cv_, true, &follower_offset_, kv.second);
         }
         if (replicate_node->Init() < 0) {
@@ -396,7 +349,7 @@ int LogReplicator::AddReplicateNode(const std::map<std::string, std::string>& re
             return -1;
         }
         if (replicate_node->Start() != 0) {
-            PDLOG(WARNING, "fail to start sync thread for table #tid %u, #pid %u", table_->GetId(), table_->GetPid());
+            PDLOG(WARNING, "fail to start sync thread for table #tid %u, #pid %u", tid_, pid_);
             return -1;
         }
         nodes_.push_back(replicate_node);
@@ -404,8 +357,7 @@ int LogReplicator::AddReplicateNode(const std::map<std::string, std::string>& re
         if (tid == UINT32_MAX) {
             local_endpoints_.push_back(endpoint);
         }
-        PDLOG(INFO, "add ReplicateNode with endpoint %s ok. tid[%u] pid[%u]", endpoint.c_str(), table_->GetId(),
-              table_->GetPid());
+        PDLOG(INFO, "add ReplicateNode with endpoint %s ok. tid[%u] pid[%u]", endpoint.c_str(), tid_, pid_);
     }
     return 0;
 }
@@ -433,8 +385,7 @@ int LogReplicator::DelReplicateNode(const std::string& endpoint) {
         real_ep_map_.erase(endpoint);
         local_endpoints_.erase(std::remove(local_endpoints_.begin(), local_endpoints_.end(), endpoint),
                                local_endpoints_.end());
-        PDLOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]", endpoint.c_str(), table_->GetId(),
-              table_->GetPid());
+        PDLOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]", endpoint.c_str(), tid_, pid_);
     }
     if (node) {
         node->Stop();
@@ -463,8 +414,7 @@ bool LogReplicator::DelAllReplicateNode() {
         if (nodes_.size() <= 0) {
             return true;
         }
-        PDLOG(INFO, "delete all replica. replica num [%u] tid[%u] pid[%u]", nodes_.size(), table_->GetId(),
-              table_->GetPid());
+        PDLOG(INFO, "delete all replica. replica num [%u] tid[%u] pid[%u]", nodes_.size(), tid_, pid_);
         nodes_.clear();
         real_ep_map_.clear();
         local_endpoints_.clear();

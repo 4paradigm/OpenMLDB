@@ -53,10 +53,11 @@ class MockTabletImpl : public ::openmldb::api::TabletServer {
  public:
     MockTabletImpl(const ReplicatorRole& role, const std::string& path,
                    const std::map<std::string, std::string>& real_ep_map, std::shared_ptr<MemTable> table)
-        : role_(role),
+        : table_(table),
+          role_(role),
           path_(path),
           real_ep_map_(real_ep_map),
-          replicator_(path_, real_ep_map_, role_, table, &follower_) {}
+          replicator_(table->GetId(), table->GetPid(), path_, real_ep_map_, role_, &follower_) {}
 
     ~MockTabletImpl() {}
     bool Init() {
@@ -79,14 +80,20 @@ class MockTabletImpl : public ::openmldb::api::TabletServer {
 
     void AppendEntries(RpcController* controller, const ::openmldb::api::AppendEntriesRequest* request,
                        ::openmldb::api::AppendEntriesResponse* response, Closure* done) {
-        bool ok = replicator_.AppendEntries(request, response);
-        if (ok) {
-            PDLOG(INFO, "receive log entry from leader ok");
-            response->set_code(0);
-        } else {
-            PDLOG(INFO, "receive log entry from leader error");
-            response->set_code(1);
+        uint64_t last_log_offset = replicator_.GetOffset();
+        for (int32_t i = 0; i < request->entries_size(); i++) {
+            if (request->entries(i).log_index() <= last_log_offset) {
+                continue;
+            }
+            const auto& entry = request->entries(i);
+            if (!replicator_.ApplyEntry(entry)) {
+                response->set_code(::openmldb::base::ReturnCode::kFailToAppendEntriesToReplicator);
+                response->set_msg("fail to append entries to replicator");
+                return;
+            }
+            table_->Put(entry);
         }
+        response->set_log_offset(replicator_.GetOffset());
         done->Run();
         replicator_.Notify();
     }
@@ -96,6 +103,7 @@ class MockTabletImpl : public ::openmldb::api::TabletServer {
     bool GetMode() { return follower_.load(std::memory_order_relaxed); }
 
  private:
+    std::shared_ptr<Table> table_;
     ReplicatorRole role_;
     std::string path_;
     std::map<std::string, std::string> real_ep_map_;
@@ -119,11 +127,7 @@ TEST_F(LogReplicatorTest, Init) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     std::atomic<bool> follower(false);
-    mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> table =
-        std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
-    table->Init();
-    LogReplicator replicator(folder, map, kLeaderNode, table, &follower);
+    LogReplicator replicator(1, 1, folder, map, kLeaderNode, &follower);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
 }
@@ -134,10 +138,7 @@ TEST_F(LogReplicatorTest, BenchMark) {
     std::map<std::string, uint32_t> mapping;
     std::atomic<bool> follower(false);
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> table =
-        std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime);
-    table->Init();
-    LogReplicator replicator(folder, map, kLeaderNode, table, &follower);
+    LogReplicator replicator(1, 1, folder, map, kLeaderNode, &follower);
     bool ok = replicator.Init();
     ::openmldb::api::LogEntry entry;
     entry.set_term(1);
@@ -177,7 +178,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     endpoints.push_back("127.0.0.1:17527");
     std::string folder = "/tmp/" + GenRand() + "/";
     std::atomic<bool> follower(false);
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
+    LogReplicator leader(1, 1, folder, g_endpoints, kLeaderNode, &follower);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     // put the first row
@@ -319,7 +320,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     endpoints.push_back("127.0.0.1:18527");
     std::string folder = "/tmp/" + GenRand() + "/";
     std::atomic<bool> follower(false);
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
+    LogReplicator leader(1, 1, folder, g_endpoints, kLeaderNode, &follower);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::openmldb::api::LogEntry entry;
@@ -494,7 +495,7 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     endpoints.push_back("127.0.0.1:18527");
     std::string folder = "/tmp/" + GenRand() + "/";
     std::atomic<bool> follower(false);
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
+    LogReplicator leader(1, 1, folder, g_endpoints, kLeaderNode, &follower);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::openmldb::api::LogEntry entry;
