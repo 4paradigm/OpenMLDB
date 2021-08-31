@@ -3,7 +3,6 @@
 ## [Unreleased]
 
 ### Feature
-- Support parameterized query under BatchMode [#262](https://github.com/4paradigm/OpenMLDB/issues/262), [#168](https://github.com/4paradigm/OpenMLDB/issues/168)
 - Data importer support bulk load [#250](https://github.com/4paradigm/OpenMLDB/pull/250)
 
 ### SQL Syntax
