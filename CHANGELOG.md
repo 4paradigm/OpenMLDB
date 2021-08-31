@@ -4,6 +4,12 @@
 
 ### Feature
 - Support parameterized query under BatchMode [#262](https://github.com/4paradigm/OpenMLDB/issues/262), [#168](https://github.com/4paradigm/OpenMLDB/issues/168)
+- Support Hive metastore and Iceberg tables for offline [#245](https://github.com/4paradigm/OpenMLDB/pull/245), [#146](https://github.com/4paradigm/OpenMLDB/pull/146)
+- Integrated with Trino [#254](https://github.com/4paradigm/OpenMLDB/pull/254)
+- Support global SortBy node for offline [#296](https://github.com/4paradigm/OpenMLDB/pull/296)
+
+### Bug Fix
+- Fix end2end offline tests for the same SQL [#300](https://github.com/4paradigm/OpenMLDB/pull/300)
 
 ### SQL Syntax
 - `nvl` & `nvl2`: [#238](https://github.com/4paradigm/OpenMLDB/issues/238)
