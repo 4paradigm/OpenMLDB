@@ -2027,13 +2027,15 @@ void TabletImpl::AppendEntries(RpcController* controller, const ::openmldb::api:
         return;
     }
     uint64_t term = replicator->GetLeaderTerm();
-    if (!FLAGS_zk_cluster.empty() && request->term() < term) {
-        PDLOG(WARNING,
-              "leader id not match. request term  %lu, cur term %lu, tid %u, pid %u",
-              request->term(), term, tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kFailToAppendEntriesToReplicator);
-        response->set_msg("fail to append entries to replicator");
-        return;
+    if (!follower_.load(std::memory_order_relaxed)) {
+        if (!FLAGS_zk_cluster.empty() && request->term() < term) {
+            PDLOG(WARNING,
+                  "leader id not match. request term  %lu, cur term %lu, tid %u, pid %u",
+                  request->term(), term, tid, pid);
+            response->set_code(::openmldb::base::ReturnCode::kFailToAppendEntriesToReplicator);
+            response->set_msg("fail to append entries to replicator");
+            return;
+        }
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -3448,10 +3450,10 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
         replicator =
-            std::make_shared<LogReplicator>(tid, pid, table_db_path, real_ep_map, ReplicatorRole::kLeaderNode, &follower_);
+            std::make_shared<LogReplicator>(tid, pid, table_db_path, real_ep_map, ReplicatorRole::kLeaderNode);
     } else {
         replicator = std::make_shared<LogReplicator>(tid, pid, table_db_path, std::map<std::string, std::string>(),
-                                                     ReplicatorRole::kFollowerNode, &follower_);
+                                                     ReplicatorRole::kFollowerNode);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u", tid, pid);

@@ -52,7 +52,7 @@ class LogReplicator {
  public:
     LogReplicator(uint32_t tid, uint32_t pid, const std::string& path,
                   const std::map<std::string, std::string>& real_ep_map,
-                  const ReplicatorRole& role, std::atomic<bool>* follower);
+                  const ReplicatorRole& role);
 
     ~LogReplicator();
 
@@ -136,10 +136,7 @@ class LogReplicator {
     std::atomic<int> snapshot_log_part_index_;
     std::atomic<uint64_t> snapshot_last_offset_;
 
-    std::shared_ptr<Table> table_;
-
     std::mutex wmu_;
-    std::atomic<bool>* follower_;
 };
 
 }  // namespace replica

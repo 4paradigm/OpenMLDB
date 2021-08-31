@@ -44,7 +44,7 @@ static const ::openmldb::base::DefaultComparator scmp;
 
 LogReplicator::LogReplicator(uint32_t tid, uint32_t pid, const std::string& path,
                              const std::map<std::string, std::string>& real_ep_map,
-                             const ReplicatorRole& role, std::atomic<bool>* follower)
+                             const ReplicatorRole& role)
     : tid_(tid),
       pid_(pid),
       path_(path),
@@ -59,8 +59,7 @@ LogReplicator::LogReplicator(uint32_t tid, uint32_t pid, const std::string& path
       term_(0),
       mu_(),
       cv_(),
-      wmu_(),
-      follower_(follower) {
+      wmu_() {
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
     snapshot_last_offset_.store(0, std::memory_order_relaxed);
