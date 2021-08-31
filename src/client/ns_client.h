@@ -28,6 +28,7 @@
 
 #include "base/status.h"
 #include "catalog/schema_adapter.h"
+#include "client/client.h"
 #include "node/node_manager.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
@@ -45,14 +46,12 @@ struct TabletInfo {
     std::string real_endpoint;
 };
 
-class NsClient {
+class NsClient : public Client {
  public:
     explicit NsClient(const std::string& endpoint, const std::string& real_endpoint);
     ~NsClient() = default;
 
-    int Init();
-
-    std::string GetEndpoint();
+    int Init() override;
 
     const std::string& GetDb();
 
@@ -240,7 +239,6 @@ class NsClient {
                               hybridse::node::NodeManager* node_manager, hybridse::base::Status* sql_status);
 
  private:
-    std::string endpoint_;
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> client_;
     std::string db_;
 };

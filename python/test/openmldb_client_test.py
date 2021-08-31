@@ -23,9 +23,7 @@ from datetime import datetime
 import sqlalchemy as db
 
 logging.basicConfig(level=logging.WARNING)
-class TestRtidbClient(unittest.TestCase):
-  
-  
+class TestOpenMLDBClient(unittest.TestCase):
 
   def test_basic(self):
     ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));"

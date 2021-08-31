@@ -49,6 +49,7 @@ inline void SetLogFile(std::string path) {
     ::google::InitGoogleLogging(path.c_str());
     std::string info_log_path = path + ".info.log.";
     std::string warning_log_path = path + ".warning.log.";
+    FLAGS_logbufsecs = 0;
     ::google::SetLogDestination(::google::INFO, info_log_path.c_str());
     ::google::SetLogDestination(::google::WARNING, warning_log_path.c_str());
 }

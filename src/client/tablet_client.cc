@@ -37,28 +37,14 @@ namespace openmldb {
 namespace client {
 
 TabletClient::TabletClient(const std::string& endpoint, const std::string& real_endpoint)
-    : endpoint_(endpoint), real_endpoint_(endpoint), client_(endpoint) {
-    if (!real_endpoint.empty()) {
-        real_endpoint_ = real_endpoint;
-        client_ = ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub>(real_endpoint);
-    }
-}
+    : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint) {}
 
 TabletClient::TabletClient(const std::string& endpoint, const std::string& real_endpoint, bool use_sleep_policy)
-    : endpoint_(endpoint), real_endpoint_(endpoint), client_(endpoint, use_sleep_policy) {
-    if (!real_endpoint.empty()) {
-        real_endpoint_ = real_endpoint;
-        client_ = ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub>(real_endpoint, use_sleep_policy);
-    }
-}
+    : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint, use_sleep_policy) {}
 
 TabletClient::~TabletClient() {}
 
 int TabletClient::Init() { return client_.Init(); }
-
-std::string TabletClient::GetEndpoint() { return endpoint_; }
-
-const std::string& TabletClient::GetRealEndpoint() const { return real_endpoint_; }
 
 bool TabletClient::Query(const std::string& db, const std::string& sql, const std::string& row, brpc::Controller* cntl,
                          openmldb::api::QueryResponse* response, const bool is_debug) {
