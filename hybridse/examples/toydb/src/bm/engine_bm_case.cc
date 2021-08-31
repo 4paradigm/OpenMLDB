@@ -163,19 +163,17 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
     switch (mode) {
         case BENCHMARK: {
             for (auto _ : *state) {
-                benchmark::DoNotOptimize(
-                    static_cast<
-                        const std::shared_ptr<hybridse::vm::DataHandler>>(
-                        session.Run()));
+                std::vector<hybridse::codec::Row> outputs;
+                benchmark::DoNotOptimize(session.Run(outputs));
             }
             break;
         }
         case TEST: {
-            auto res = session.Run();
-            if (!res) {
+            std::vector<hybridse::codec::Row> outputs;
+            if (0 != session.Run(outputs)) {
                 FAIL();
             }
-            ASSERT_EQ(static_cast<uint64_t>(limit_cnt), res->GetCount());
+            ASSERT_EQ(static_cast<uint64_t>(limit_cnt), outputs.size());
             break;
         }
     }
@@ -735,20 +733,22 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
         case BENCHMARK: {
             for (auto _ : *state) {
                 // use const value to avoid compiler bug for some version
+                vector<hybrise::codec::Row> outputs;
                 benchmark::DoNotOptimize(
                     static_cast<
                         const std::shared_ptr<hybridse::vm::DataHandler>>(
-                        session.Run()));
+                        session.Run(outputs)));
             }
             break;
         }
         case TEST: {
             session.EnableDebug();
-            auto res = session.Run();
-            if (!res) {
+            vector<hybrise::codec::Row> outputs;
+
+            if (0 != session.Run(outputs)) {
                 FAIL();
             }
-            ASSERT_GT(res->GetCount(), 0u);
+            ASSERT_GT(outputs.size(), 0u);
             break;
         }
     }

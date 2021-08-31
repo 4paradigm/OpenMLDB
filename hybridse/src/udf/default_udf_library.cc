@@ -1458,6 +1458,11 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .doc(R"(
             @brief Cast int64, date or string expression to timestamp
 
+            Supported string style:
+              - yyyy-mm-dd
+              - yyyymmdd
+              - yyyy-mm-dd hh:mm:ss
+
             Example:
 
             @code{.sql}

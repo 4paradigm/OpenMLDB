@@ -55,7 +55,9 @@ namespace openmldb {
 namespace sdk {
 
 constexpr int MAX_TABLET_NUM = 3;
+#ifdef __linux__
 #pragma pack(8)
+#endif
 class MiniCluster {
  public:
     explicit MiniCluster(int32_t zk_port)

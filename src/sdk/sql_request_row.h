@@ -30,7 +30,6 @@
 
 namespace openmldb {
 namespace sdk {
-
 class SQLRequestRow {
  public:
     SQLRequestRow() {}
@@ -54,6 +53,9 @@ class SQLRequestRow {
     inline const std::string& GetRow() { return val_; }
     inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() { return schema_; }
     bool GetRecordVal(const std::string& col, std::string* val);
+
+    static std::shared_ptr<openmldb::sdk::SQLRequestRow> CreateSQLRequestRowFromColumnTypes(
+        std::shared_ptr<hybridse::sdk::ColumnTypes> types);
 
  private:
     bool Check(hybridse::sdk::DataType type);

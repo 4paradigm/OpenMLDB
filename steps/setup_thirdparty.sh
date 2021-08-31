@@ -16,7 +16,6 @@
 set -eE
 set -o nounset
 
-# TODO: use same thirdparty with OpenMLDB
 pushd "$(dirname "$0")/.."
 ROOT=$(pwd)
 
@@ -54,5 +53,4 @@ fi
 tar xzf thirdparty.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
 tar xzf libzetasql.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
 popd
-
 popd

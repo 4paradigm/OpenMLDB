@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-syntax = "proto2";
-package openmldb.apiserver;
 
+syntax = "proto2";
+
+package openmldb.apiserver;
+option java_package = "com._4paradigm.openmldb.proto";
 option cc_generic_services = true;
 
 message HttpRequest {};

@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 syntax = "proto2";
+
 import "type.proto";
 import "common.proto";
 import "tablet.proto";
@@ -21,7 +23,7 @@ import "sql_procedure.proto";
 package openmldb.nameserver;
 
 option cc_generic_services = true;
-option java_package = "com._4paradigm.openmldb.ns";
+option java_package = "com._4paradigm.openmldb.proto";
 option java_outer_classname = "NS";
 
 enum ServerMode {

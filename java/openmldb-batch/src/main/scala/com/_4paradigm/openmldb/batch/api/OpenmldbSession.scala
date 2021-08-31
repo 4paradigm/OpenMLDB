@@ -16,11 +16,12 @@
 
 package com._4paradigm.openmldb.batch.api
 
+import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.iceberg.PartitionSpec
-import org.apache.iceberg.catalog.TableIdentifier
+import org.apache.iceberg.catalog.{Namespace, TableIdentifier}
 import org.apache.iceberg.hadoop.HadoopCatalog
 import org.apache.iceberg.hive.HiveCatalog
 import org.apache.iceberg.spark.SparkSchemaUtil
@@ -40,10 +41,10 @@ class OpenmldbSession {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  private var sparkSession: SparkSession = null
-  private var sparkMaster: String = null
+  private var sparkSession: SparkSession = _
+  private var sparkMaster: String = _
 
-  val registeredTables = mutable.HashMap[String, DataFrame]()
+  val registeredTables: mutable.Map[String, DataFrame] = mutable.HashMap[String, DataFrame]()
 
   private var config: OpenmldbBatchConfig = _
 
@@ -52,20 +53,13 @@ class OpenmldbSession {
   /**
    * Construct with Spark session.
    *
-   * @param sparkSession
+   * @param sparkSession the SparkSession object
    */
   def this(sparkSession: SparkSession) = {
     this()
     this.sparkSession = sparkSession
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
     this.setDefaultSparkConfig()
-
-    // TODO: Register table if using other constructors
-    val catalogTables = this.sparkSession.catalog.listTables(config.defaultHiveDatabase).collect()
-    for (table <- catalogTables) {
-      logger.info(s"Register table ${table.name} for OpenMLDB engine")
-      registerTable(table.name, this.sparkSession.table(table.name))
-    }
   }
 
   /**
@@ -131,8 +125,8 @@ class OpenmldbSession {
   /**
    * Read the file with get dataframe with Spark API.
    *
-   * @param filePath
-   * @param format
+   * @param filePath the path to read
+   * @param format the format of data
    * @return
    */
   def read(filePath: String, format: String = "parquet"): OpenmldbDataframe = {
@@ -147,14 +141,14 @@ class OpenmldbSession {
       case _ => null
     }
 
-    new OpenmldbDataframe(this, sparkDf)
+    OpenmldbDataframe(this, sparkDf)
   }
 
 
   /**
    * Read the Spark dataframe to OpenMLDB dataframe.
    *
-   * @param sparkDf
+   * @param sparkDf the Spark DataFrame object
    * @return
    */
   def readSparkDataframe(sparkDf: DataFrame): OpenmldbDataframe = {
@@ -164,7 +158,7 @@ class OpenmldbSession {
   /**
    * Run sql.
    *
-   * @param sqlText
+   * @param sqlText the SQL script
    * @return
    */
   def openmldbSql(sqlText: String): OpenmldbDataframe = {
@@ -185,7 +179,7 @@ class OpenmldbSession {
   /**
    * Run sql.
    *
-   * @param sqlText
+   * @param sqlText the SQL script
    * @return
    */
   def sql(sqlText: String): OpenmldbDataframe = {
@@ -195,7 +189,7 @@ class OpenmldbSession {
   /**
    * Run sql with Spark SQL API.
    *
-   * @param sqlText
+   * @param sqlText the SQL script
    * @return
    */
   def sparksql(sqlText: String): DataFrame = {
@@ -227,11 +221,25 @@ class OpenmldbSession {
   /**
    * Record the registered tables to run.
    *
-   * @param name
-   * @param df
+   * @param name the registered name of table
+   * @param df the Spark DataFrame
    */
   def registerTable(name: String, df: DataFrame): Unit = {
     registeredTables.put(name, df)
+  }
+
+  /**
+   * Read table from Spark catalog and databases to register in OpenMLDB engine.
+   */
+  def registerCatalogTables(): Unit = {
+    val spark = this.sparkSession
+    spark.catalog.listDatabases().collect().flatMap(db => {
+      spark.catalog.listTables(db.name).collect().map(x => {
+        val fullyQualifiedName = s"${db.name}.${x.name}"
+        logger.error("Register table " + fullyQualifiedName)
+        registerTable(fullyQualifiedName, spark.table(fullyQualifiedName))
+      })
+    })
   }
 
   /**
@@ -240,7 +248,7 @@ class OpenmldbSession {
    * @return
    */
   override def toString: String = {
-    sparkSession.toString()
+    sparkSession.toString
   }
 
   /**
@@ -262,7 +270,6 @@ class OpenmldbSession {
    * Create table in offline storage.
    */
   def createHiveTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
-    // TODO: Check if table exists
 
     logger.info("Register the table %s to create table in offline storage".format(tableName))
     df.createOrReplaceTempView(tableName)
@@ -273,17 +280,35 @@ class OpenmldbSession {
     val partitionSpec = PartitionSpec.builderFor(icebergSchema).build()
     val tableIdentifier = TableIdentifier.of(databaseName, tableName)
 
+    // Create Iceberg database if not exists
+    val namespace = Namespace.of(databaseName)
+    try {
+      catalog.createNamespace(namespace)
+    } catch {
+      case _: org.apache.iceberg.exceptions.AlreadyExistsException => {
+        logger.warn("Database %s already exists".format(databaseName))
+      }
+    }
+
+    // Check if table exists
+    if(catalog.tableExists(tableIdentifier)) {
+      catalog.close()
+      logger.error("Table %s already exists".format(tableName))
+      throw new HybridSeException("Table %s already exists, Please check the table name".format(tableName))
+    }
+
+    // Create Iceberg table
     catalog.createTable(tableIdentifier, icebergSchema, partitionSpec)
+    catalog.close()
 
     // Register table in OpenMLDB engine
-    registerTable(tableName, df)
+    registerTable(s"$databaseName.$tableName", df)
   }
 
   /**
    * Create table in offline storage.
    */
   def createHadoopCatalogTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
-    // TODO: Check if table exists
 
     logger.info("Register the table %s to create table in offline storage".format(tableName))
     df.createOrReplaceTempView(tableName)
@@ -294,8 +319,26 @@ class OpenmldbSession {
     val partitionSpec = PartitionSpec.builderFor(icebergSchema).build()
     val tableIdentifier = TableIdentifier.of(databaseName, tableName)
 
+    // Create Iceberg database if not exists
+    val namespace = Namespace.of(databaseName)
+    try {
+      hadoopCatalog.createNamespace(namespace)
+    } catch {
+      case _: org.apache.iceberg.exceptions.AlreadyExistsException => {
+        logger.warn("Database %s already exists".format(databaseName))
+      }
+    }
+
+    // Check if table exists
+    if(hadoopCatalog.tableExists(tableIdentifier)) {
+      hadoopCatalog.close()
+      logger.error("Table %s already exists".format(tableName))
+      throw new HybridSeException("Table %s already exists, Please check the table name".format(tableName))
+    }
+
     // Create Iceberg table
     hadoopCatalog.createTable(tableIdentifier, icebergSchema, partitionSpec)
+    hadoopCatalog.close()
   }
 
   /**

@@ -41,11 +41,12 @@ public interface SqlExecutor {
 
     SQLInsertRows getInsertRows(String db, String sql);
 
-    ResultSet executeSQL(String db, String sql, SQLRequestRow row);
+    ResultSet executeSQLRequest(String db, String sql, SQLRequestRow row);
 
     PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException;
 
     PreparedStatement getRequestPreparedStmt(String db, String sql) throws SQLException;
+    PreparedStatement getPreparedStatement(String db, String sql) throws SQLException;
 
     PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
                                                   List<Integer> commonColumnIndices) throws SQLException;

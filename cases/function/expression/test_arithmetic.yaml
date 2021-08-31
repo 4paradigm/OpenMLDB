@@ -595,7 +595,6 @@ cases:
            NULL, NULL, NULL, NULL, NULL]
   - id: bitwise_operators
     desc: bitwise and/or/xor
-    mode: hybridse-only
     inputs:
       - columns: ["c1 int16","c2 int32","c3 bigint", "c6 timestamp"]
         indexs: ["index1:c3:c6"]
@@ -608,22 +607,24 @@ cases:
     expect:
       columns: [ 'r11 int16', 'r12 int32', 'r13 bigint', 'r22 int32', 'r23 bigint', 'r33 bigint' ]
     expectProvider:
-      - rows:
+      0:
+        rows:
           - [ 3, 2, 0, 6, 4, 12 ]
-      - rows:
+      1:
+        rows:
           - [ 3, 7, 15, 6, 14, 12 ]
-      - rows:
+      2:
+        rows:
           - [ 0, 5, 15, 0, 10, 0 ]
   - id: bitwise_operators_fail
     desc: bitwise and/or/xor, fail on non-integral operands
-    mode: hybridse-only
     inputs:
       - columns: [ "c0 int", "c1 bool", "c2 float", "c3 double", "c4 string", "c5 date", "c6 timestamp" ]
         indexs: ["index1:c0:c6"]
         rows:
           - [1, true, 1.0, 2.0, "abc", "2012-8-11", 1590738989000]
     sql: |
-      select d[1] d[0] 10 as r1 from {0}
+      select d[1] d[0] 10 as r1 from {0};
     dataProvider:
       - ['&', '|', '^']
       - [ '{0}.c1', '{0}.c2', '{0}.c3', '{0}.c4', '{0}.c5', '{0}.c6' ]
@@ -631,28 +632,26 @@ cases:
       success: false
   - id: bitwise_operators_not
     desc: bitwise not
-    mode: hybridse-only
     inputs:
       - columns: ["c1 int16","c2 int32","c3 bigint", "c6 timestamp"]
         indexs: ["index1:c3:c6"]
         rows:
           - [3, 6, 12, 1590738989000]
     sql: |
-      select ~c1 as r1, ~c2 as r2, ~c3 as r3 from {0}
+      select ~c1 as r1, ~c2 as r2, ~c3 as r3 from {0};
     expect:
       columns: [ 'r1 int16', 'r2 int32', 'r3 bigint']
       rows:
         - [ -4, -7, -13 ]
   - id: bitwise_not_fail
     desc: bitwise not, fail on non-integral operand
-    mode: hybridse-only
     inputs:
       - columns: [ "c0 int", "c1 bool", "c2 float", "c3 double", "c4 string", "c5 date", "c6 timestamp" ]
         indexs: ["index1:c0:c6"]
         rows:
           - [1, true, 1.0, 2.0, "abc", "2012-8-11", 1590738989000]
     sql: |
-      select d[0] d[1] as r1 from {0}
+      select d[0] d[1] as r1 from {0};
     dataProvider:
       - ['~']
       - [ '{0}.c1', '{0}.c2', '{0}.c3', '{0}.c4', '{0}.c5', '{0}.c6' ]
@@ -660,28 +659,26 @@ cases:
       success: false
   - id: bitwise_null_operands
     desc: bitwise operation return null if any of operands is null
-    mode: hybridse-only
     inputs:
       - columns: ["c1 int16","c2 int32","c3 bigint", "c4 int16", "c6 timestamp"]
         indexs: ["index1:c3:c6"]
         rows:
           - [3, 6, 12, NULL, 1590738989000]
     sql: |
-      select {0}.c1 & {0}.c4 as r1, {0}.c2 | {0}.c4 as r2, {0}.c3 ^ {0}.c4 as r3, ~ {0}.c4 as r4 from {0}
+      select {0}.c1 & {0}.c4 as r1, {0}.c2 | {0}.c4 as r2, {0}.c3 ^ {0}.c4 as r3, ~ {0}.c4 as r4 from {0};
     expect:
       columns: [ 'r1 int16', 'r2 int32', 'r3 int64', 'r4 int16' ]
       rows:
         - [ NULL, NULL, NULL, NULL ]
   - id: bitwise_const_null_operands
     desc: bitwise operation return null if any of operands is null
-    mode: hybridse-only
     inputs:
       - columns: ["c1 int16","c2 int32","c3 bigint", "c4 int", "c6 timestamp"]
         indexs: ["index1:c3:c6"]
         rows:
           - [3, 6, 12, NULL, 1590738989000]
     sql: |
-      select {0}.c1 & NULL as r1, {0}.c2 | NULL as r2, {0}.c3 ^ NULL as r3, ~ NULL as r4 from {0}
+      select {0}.c1 & NULL as r1, {0}.c2 | NULL as r2, {0}.c3 ^ NULL as r3, ~ NULL as r4 from {0};
     expect:
       columns: [ 'r1 int16', 'r2 int32', 'r3 int64', 'r4 bool' ]
       rows:

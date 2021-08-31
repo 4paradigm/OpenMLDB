@@ -146,6 +146,10 @@ public class SqlClusterExecutor implements SqlExecutor {
         RequestPreparedStatementImpl impl = new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
         return impl;
     }
+    public PreparedStatement getPreparedStatement(String db, String sql) throws SQLException {
+        PreparedStatementImpl impl = new PreparedStatementImpl(db, sql, this.sqlRouter);
+        return impl;
+    }
 
     public PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
                                                          List<Integer> commonColumnIndices) throws SQLException {
@@ -178,10 +182,10 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public ResultSet executeSQL(String db, String sql, SQLRequestRow row) {
+    public ResultSet executeSQLRequest(String db, String sql, SQLRequestRow row) {
         //TODO(wangtaize) add execption
         Status status = new Status();
-        ResultSet rs = sqlRouter.ExecuteSQL(db, sql, row, status);
+        ResultSet rs = sqlRouter.ExecuteSQLRequest(db, sql, row, status);
         if (status.getCode() != 0) {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }

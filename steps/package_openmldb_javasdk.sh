@@ -27,7 +27,7 @@ sdk_version=$1
 mkdir -p build && cd build &&  cmake -DSQL_JAVASDK_ENABLE=ON .. && make -j4 sql_jsdk
 
 cd "${WORKDIR}"
-mkdir -p java/sql-native/src/main/resources/
-test -f build/src/sdk/libsql_jsdk.dylib && cp build/src/sdk/libsql_jsdk.dylib  java/sql-native/src/main/resources/
-test -f build/src/sdk/libsql_jsdk.so && cp build/src/sdk/libsql_jsdk.so  java/sql-native/src/main/resources/
+mkdir -p java/openmldb-native/src/main/resources/
+test -f build/src/sdk/libsql_jsdk.dylib && cp build/src/sdk/libsql_jsdk.dylib  java/openmldb-native/src/main/resources/
+test -f build/src/sdk/libsql_jsdk.so && cp build/src/sdk/libsql_jsdk.so  java/openmldb-native/src/main/resources/
 cd java/ &&  mvn versions:set -DnewVersion="${sdk_version}" && mvn deploy -Dmaven.test.skip=true

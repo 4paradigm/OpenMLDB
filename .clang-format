@@ -66,7 +66,6 @@ IncludeCategories:
     Priority:        3
 IncludeIsMainRegex: '([-_](test|unittest))?$'
 IndentCaseLabels: true
-IndentWidth:     2
 IndentWrappedFunctionNames: false
 JavaScriptQuotes: Leave
 JavaScriptWrapImports: true
@@ -106,4 +105,3 @@ TabWidth:        8
 UseTab:          Never
 BasedOnStyle: Google
 ...
-

@@ -72,7 +72,7 @@ Status CheckExprDependOnChildOnly(const node::ExprNode* expr,
  * @plan_ctx: PhysicalPlanContext op inside
  * @op: physical node
  * @idx: `op`'s `idx`th producer
- * child: physical node going to replace
+ * @child: physical node going to replace
  * @return true on success, false otherwise
  */
 bool ResetProducer(PhysicalPlanContext* plan_ctx, PhysicalOpNode* op,

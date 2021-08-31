@@ -25,6 +25,7 @@
 
 #include "base/kv_iterator.h"
 #include "brpc/channel.h"
+#include "client/client.h"
 #include "codec/schema_codec.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
@@ -44,19 +45,15 @@ namespace client {
 using ::openmldb::api::TaskInfo;
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
-class TabletClient {
+class TabletClient : public Client {
  public:
-    explicit TabletClient(const std::string& endpoint, const std::string& real_endpoint);
+    TabletClient(const std::string& endpoint, const std::string& real_endpoint);
 
     TabletClient(const std::string& endpoint, const std::string& real_endpoint, bool use_sleep_policy);
 
     ~TabletClient();
 
-    int Init();
-
-    std::string GetEndpoint();
-
-    const std::string& GetRealEndpoint() const;
+    int Init() override;
 
     bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl, uint64_t lat_ttl,
                      bool leader, const std::vector<std::string>& endpoints, const ::openmldb::type::TTLType& type,
@@ -68,8 +65,9 @@ class TabletClient {
                                     const openmldb::common::VersionPair& pair,
                                     std::string& msg);  // NOLINT
 
-    bool Query(const std::string& db, const std::string& sql, brpc::Controller* cntl,
-               ::openmldb::api::QueryResponse* response, const bool is_debug = false);
+    bool Query(const std::string& db, const std::string& sql,
+               const std::vector<openmldb::type::DataType>& parameter_types, const std::string& parameter_row,
+               brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug = false);
 
     bool Query(const std::string& db, const std::string& sql, const std::string& row, brpc::Controller* cntl,
                ::openmldb::api::QueryResponse* response, const bool is_debug = false);
@@ -278,8 +276,6 @@ class TabletClient {
                                       openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
 
  private:
-    std::string endpoint_;
-    std::string real_endpoint_;
     ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> client_;
     std::vector<uint64_t> percentile_;
 };

@@ -16,21 +16,20 @@
 
 package com._4paradigm.openmldb.batch.end2end
 
+import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.utils.SparkUtil
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
-import org.apache.spark.sql.{Row, SaveMode, SparkSession}
-import org.scalatest.FunSuite
+import org.apache.spark.sql.{Row, SaveMode}
 
 
-class TestWindowSkewOptimizationWithSkewConfig extends FunSuite {
+class TestWindowSkewOptimizationWithSkewConfig extends SparkTestSuite {
 
   test("Test end2end window skew optimization") {
 
-    val spark = SparkSession.builder().master("local[*]")
-      .config("spark.openmldb.window.skew.opt", true)
-      .config("openmldb.window.skew.opt.config", "file:///tmp/window_skew_opt_config/")
-      .getOrCreate()
+    getSparkSession.conf.set("spark.openmldb.window.skew.opt", true)
+    getSparkSession.conf.set("openmldb.window.skew.opt.config", "file:///tmp/window_skew_opt_config/")
+    val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
     val data = Seq(
@@ -53,7 +52,6 @@ class TestWindowSkewOptimizationWithSkewConfig extends FunSuite {
 
     sess.registerTable("t1", df)
     df.createOrReplaceTempView("t1")
-
 
     // Generate skew config
     val distributionData = Seq(
