@@ -22,11 +22,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-
 /**
  *
  **/
-public class SkewUtils {
+public class SkewSqlUtils {
 
     public static String genPercentileSql(String table1, int quantile, List<String> keys, String ts, String cnt) {
         StringBuffer sql = new StringBuffer();
@@ -34,11 +33,11 @@ public class SkewUtils {
         for (String e : keys) {
             sql.append(String.format("`%s`,\n", e));
         }
-//        count(employee_name, department) as key_cnt,
         List<String> newkeys = new ArrayList<>();
         for (String e : keys) {
             newkeys.add(String.format("`%s`", e));
         }
+        // TODO: Support count colums, This way has problem
         sql.append(String.format("count(%s) AS %s,\n", StringUtils.join(newkeys, ","), cnt));
         double factor = 1.0 / new Double(quantile);
         for (int i = 0; i < quantile; i++) {
@@ -52,7 +51,9 @@ public class SkewUtils {
         return sql.toString();
     }
 
-    public static String genPercentileTagSql(String table1, String table2, int quantile, List<String> schemas, Map<String, String> keysMap, String ts, String tag1, String tag2, String tag3, long tag4) {
+    public static String genPercentileTagSql(String table1, String table2, int quantile, List<String> schemas,
+                                             Map<String, String> keysMap, String ts, String tag1, String tag2,
+                                             String tag3, long tag4) {
         StringBuffer sql = new StringBuffer();
         sql.append("SELECT \n");
         for (String e : schemas) {
@@ -75,16 +76,19 @@ public class SkewUtils {
         return sql.toString();
     }
 
-    public static String caseWhenTag(String table1, String table2, String ts, int quantile, String output, String con1, long cnt) {
+    public static String caseWhenTag(String table1, String table2, String ts, int quantile, String output,
+                                     String con1, long cnt) {
         StringBuffer sql = new StringBuffer();
         sql.append("\nCASE\n");
         sql.append(String.format("WHEN `%s`.`%s` < %s THEN 1\n", table2, con1, cnt));
+        // TODO: Problem
         for (int i = 0; i < quantile; i++) {
             if (i == 0) {
                 sql.append(String.format("WHEN `%s`.`%s` <= percentile_%s THEN %d\n", table1, ts, i, quantile - i));
             }
 
-            sql.append(String.format("WHEN `%s`.`%s` > percentile_%s and `%s`.`%s` <= percentile_%d THEN %d\n", table1, ts, i, table1, ts, i + 1, quantile - i));
+            sql.append(String.format("WHEN `%s`.`%s` > percentile_%s and `%s`.`%s` <= percentile_%d THEN %d\n",
+                    table1, ts, i, table1, ts, i + 1, quantile - i));
             if (i == quantile) {
                 sql.append(String.format("WHEN `%s`.`%s` > percentile_%s THEN %d\n", table1, ts, i + 1, quantile - i));
             }
@@ -92,8 +96,9 @@ public class SkewUtils {
         sql.append("END AS " + output + "\n");
         return sql.toString();
     }
-    
-    public static String explodeDataSql(String table, int quantile, List<String> schemas, String tag1, String tag2, long watershed, long windowSize) {
+
+    public static String explodeDataSql(String table, int quantile, List<String> schemas, String tag1, String tag2,
+                                        long watershed, long windowSize) {
         // watershed 水位线 windowSize 窗口的大小，0表示无限
 
         List<String> sqls = new ArrayList<>();
@@ -137,6 +142,5 @@ public class SkewUtils {
         String res = StringUtils.join(sqls, "\nUNION\n") + ";";
         return res;
     }
-
 }
 
