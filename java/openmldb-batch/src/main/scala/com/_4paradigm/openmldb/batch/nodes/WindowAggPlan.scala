@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
-import com._4paradigm.openmldb.batch.utils.SkewDataFrameUtils.{genDistributionDf, genExplodeDataDf, genPercentileTagDf}
+import com._4paradigm.openmldb.batch.utils.SkewDataFrameUtils.{genDistributionDf, genUnionDf, genAddColumnsDf}
 import com._4paradigm.openmldb.batch.utils.{
   AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SparkColumnUtil, SparkUtil
 }
@@ -169,7 +169,7 @@ object WindowAggPlan {
       logger.info("Generate distribution dataframe")
 
       // 2. Add "part" column and "expand" column by joining the distribution table
-      val addColumnsDf = genPercentileTagDf(inputDf, distributionDf, quantile.intValue(), repartitionColIndexes,
+      val addColumnsDf = genAddColumnsDf(inputDf, distributionDf, quantile.intValue(), repartitionColIndexes,
         percentileColIndex, partColName, expandColName)
       logger.info("Generate percentile_tag dataframe")
 
@@ -217,10 +217,10 @@ object WindowAggPlan {
     windowAggConfig.skewPositionIdx = addColumnsDf.schema.fieldNames.length - 1
 
     // 3. Expand the table data by union
-    val unionDf = genExplodeDataDf(addColumnsDf, quantile.intValue(), partColName, expandColName)
+    val unionDf = genUnionDf(addColumnsDf, quantile.intValue(), partColName, expandColName)
     logger.info("Generate union dataframe")
 
-    // 4. Repartition and orderby
+    // 4. Repartition and order by
     val repartitionCols = mutable.ArrayBuffer[Column]()
     repartitionCols += addColumnsDf(partColName)
     for (i <- repartitionColIndexes.indices) {

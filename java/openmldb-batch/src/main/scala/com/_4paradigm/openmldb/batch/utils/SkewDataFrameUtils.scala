@@ -41,8 +41,9 @@ object SkewDataFrameUtils {
     inputDf.groupBy(groupByCol.as(partitionColName)).agg(percentileApproxCols.head, percentileApproxCols.tail: _*)
   }
 
-  def genPercentileTagDf(inputDf: DataFrame, distributionDf: DataFrame, quantile: Int,
-                         repartitionColIndex: mutable.ArrayBuffer[Int], percentileColIndex: Int, partColName: String, expandColName: String): DataFrame = {
+  def genAddColumnsDf(inputDf: DataFrame, distributionDf: DataFrame, quantile: Int,
+                      repartitionColIndex: mutable.ArrayBuffer[Int], percentileColIndex: Int,
+                      partColName: String, expandColName: String): DataFrame = {
 
     // Input dataframe left join distribution dataframe
     // TODO: Support multiple repartition keys
@@ -73,8 +74,8 @@ object SkewDataFrameUtils {
     joinDf
   }
 
-  def genExplodeDataDf(addColumnsDf: DataFrame, quantile: Int,
-                       partColName: String, expandColName: String): DataFrame = {
+  def genUnionDf(addColumnsDf: DataFrame, quantile: Int,
+                 partColName: String, expandColName: String): DataFrame = {
 
     // True By default
     val isClibing = true
