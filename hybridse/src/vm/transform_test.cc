@@ -684,7 +684,32 @@ INSTANTIATE_TEST_SUITE_P(
             "    SIMPLE_PROJECT(sources=(c1 -> col1, c2 -> col2, c3 -> col3))\n"
             "      DATA_PROVIDER(type=Partition, table=tc, "
             "index=index12_tc)")));
-
+INSTANTIATE_TEST_SUITE_P(
+    WhereGroupOptimized, TransformPassOptimizedTest,
+    testing::Values(
+        std::make_pair("SELECT sum(col1) as col1sum FROM t1 where col1 = 10 group by col1;",
+                       "PROJECT(type=GroupAggregation, group_keys=(col1))\n"
+                       "  FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(10))\n"
+                       "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
+        std::make_pair("SELECT sum(col1) as col1sum FROM t1 where col1 = 10 and col2 = 20 group by col1;",
+                       "PROJECT(type=GroupAggregation, group_keys=(col1))\n"
+                       "  FILTER_BY(condition=, left_keys=(20), right_keys=(col2), index_keys=(10))\n"
+                       "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
+        std::make_pair("SELECT sum(col1) as col1sum FROM t1 where col1 = 10 and col2 = 20 group by col1, col2;",
+                       "PROJECT(type=GroupAggregation, group_keys=(col1,col2))\n"
+                       "  FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(10,20))\n"
+                       "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair("SELECT sum(col1) as col1sum FROM t1 where col1 = 10 and col2 = 20 group by col1, col2, col3;",
+                       "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col3))\n"
+                       "  FILTER_BY(condition=, left_keys=(10,20), right_keys=(col1,col2), index_keys=)\n"
+                       "    GROUP_BY(group_keys=(col3))\n"
+                       "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair("SELECT sum(col1) as col1sum FROM (select c1 as col1, c2 as col2 , "
+                       "c3 as col3 from tc) where col1 = 10 and col2 = 20 group by col2, col1;",
+                       "PROJECT(type=GroupAggregation, group_keys=(col2,col1))\n"
+                       "  FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(10,20))\n"
+                       "    SIMPLE_PROJECT(sources=(c1 -> col1, c2 -> col2, c3 -> col3))\n"
+                       "      DATA_PROVIDER(type=Partition, table=tc, index=index12_tc)")));
 INSTANTIATE_TEST_SUITE_P(
     SortOptimized, TransformPassOptimizedTest,
     testing::Values(

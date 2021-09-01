@@ -224,6 +224,7 @@ class BatchModeTransformer {
     base::Status CheckTimeOrIntegerOrderColumn(
         const node::OrderByNode* orders, const SchemasContext* schemas_ctx);
 
+    base::Status ExtractGroupKeys(vm::PhysicalOpNode* depend, const node::ExprListNode** keys);
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;

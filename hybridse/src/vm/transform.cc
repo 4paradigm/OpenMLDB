@@ -1083,12 +1083,13 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
             break;
         }
         case kGroupAggregation: {
-            auto group_op = dynamic_cast<PhysicalGroupNode*>(depend);
-            CHECK_TRUE(group_op != nullptr, kPlanError,
-                       "Can not create group agg after non group op");
+            const node::ExprListNode* keys = nullptr;
+            CHECK_STATUS(ExtractGroupKeys(depend, &keys));
+            CHECK_TRUE(keys != nullptr, kPlanError,
+                       "Can not create group agg with non group keys");
             PhysicalGroupAggrerationNode* agg_op = nullptr;
             CHECK_STATUS(CreateOp<PhysicalGroupAggrerationNode>(
-                &agg_op, depend, column_projects, group_op->group_.keys()));
+                &agg_op, depend, column_projects, keys));
             *output = agg_op;
             break;
         }
@@ -1118,6 +1119,17 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
     return Status::OK();
 }
 
+base::Status BatchModeTransformer::ExtractGroupKeys(vm::PhysicalOpNode* depend, const node::ExprListNode** keys) {
+    CHECK_TRUE(nullptr != depend, common::kNullPointer, "Invalid op, is null")
+    if (depend->GetOpType() == kPhysicalOpGroupBy) {
+        *keys = dynamic_cast<PhysicalGroupNode*>(depend)->group().keys_;
+    } else if (depend->GetOpType() == kPhysicalOpFilter) {
+        CHECK_STATUS(ExtractGroupKeys(depend->GetProducer(0), keys))
+    } else {
+        FAIL_STATUS(kPlanError, "Fail to extract group keys from op ", vm::PhysicalOpTypeName(depend->GetOpType()));
+    }
+    return base::Status::OK();
+}
 Status BatchModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* node,
     bool append_input, PhysicalOpNode** output) {
