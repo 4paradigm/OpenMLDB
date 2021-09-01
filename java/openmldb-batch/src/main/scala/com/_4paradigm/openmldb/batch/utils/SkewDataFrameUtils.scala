@@ -41,11 +41,12 @@ object SkewDataFrameUtils {
     inputDf.groupBy(groupByCol.as(partitionColName)).agg(percentileApproxCols.head, percentileApproxCols.tail: _*)
   }
 
-  def genPercentileTagDf(inputDf: DataFrame, distributionDf: DataFrame, quantile: Int, repartitionColIndex: Int,
-                         percentileColIndex: Int, partColName: String, expandColName: String): DataFrame = {
+  def genPercentileTagDf(inputDf: DataFrame, distributionDf: DataFrame, quantile: Int,
+                         repartitionColIndex: mutable.ArrayBuffer[Int], percentileColIndex: Int, partColName: String, expandColName: String): DataFrame = {
 
     // Input dataframe left join distribution dataframe
-    val inputDfJoinCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex)
+    // TODO: Support multiple repartition keys
+    val inputDfJoinCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
     val distributionDfJoinCol = SparkColumnUtil.getColumnFromIndex(distributionDf, 0)
 
     var joinDf = inputDf.join(distributionDf, inputDfJoinCol === distributionDfJoinCol, "left")

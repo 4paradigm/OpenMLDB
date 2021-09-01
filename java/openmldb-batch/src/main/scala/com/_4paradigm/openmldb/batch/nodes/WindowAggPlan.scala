@@ -169,7 +169,7 @@ object WindowAggPlan {
       logger.info("Generate distribution dataframe")
 
       // 2. Add "part" column and "expand" column by joining the distribution table
-      val addColumnsDf = genPercentileTagDf(inputDf, distributionDf, quantile.intValue(), repartitionColIndexes(0),
+      val addColumnsDf = genPercentileTagDf(inputDf, distributionDf, quantile.intValue(), repartitionColIndexes,
         percentileColIndex, partColName, expandColName)
       logger.info("Generate percentile_tag dataframe")
 

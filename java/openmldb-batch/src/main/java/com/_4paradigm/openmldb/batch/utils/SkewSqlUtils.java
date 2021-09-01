@@ -37,9 +37,9 @@ public class SkewSqlUtils {
         for (String e : keys) {
             newkeys.add(String.format("`%s`", e));
         }
-        // TODO: Support count colums, This way has problem
+        // TODO: Support count multiple column, This way has problem
         sql.append(String.format("count(%s) AS %s,\n", StringUtils.join(newkeys, ","), cnt));
-        double factor = 1.0 / new Double(quantile);
+        double factor = 1.0 / (double) quantile;
         for (int i = 0; i < quantile; i++) {
             double v = i * factor;
             sql.append(String.format("percentile_approx(`%s`, %s) AS percentile_%s,\n", ts, v, i));
@@ -81,7 +81,7 @@ public class SkewSqlUtils {
         StringBuffer sql = new StringBuffer();
         sql.append("\nCASE\n");
         sql.append(String.format("WHEN `%s`.`%s` < %s THEN 1\n", table2, con1, cnt));
-        // TODO: Problem
+        // TODO: It is not necessary to append all percentile_tag columns
         for (int i = 0; i < quantile; i++) {
             if (i == 0) {
                 sql.append(String.format("WHEN `%s`.`%s` <= percentile_%s THEN %d\n", table1, ts, i, quantile - i));
@@ -102,7 +102,6 @@ public class SkewSqlUtils {
         // watershed 水位线 windowSize 窗口的大小，0表示无限
 
         List<String> sqls = new ArrayList<>();
-        // 默认需要爬坡
         boolean isClibing = true;
         // if window size = 0, then there is no conut window, only time window
         if (windowSize > 0 && watershed / quantile > windowSize) {
