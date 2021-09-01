@@ -119,7 +119,7 @@ struct TTLSt {
     std::string ToString() const {
         switch (ttl_type) {
             case TTLType::kAbsoluteTime:
-                return std::to_string(abs_ttl) + "min";
+                return std::to_string(abs_ttl / (60 * 1000)) + "min";
             case TTLType::kLatestTime:
                 return std::to_string(lat_ttl);
             case TTLType::kAbsAndLat:
