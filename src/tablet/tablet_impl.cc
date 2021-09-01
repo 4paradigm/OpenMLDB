@@ -879,9 +879,9 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
 
     bool enable_project = false;
     ::openmldb::codec::RowProject row_project(vers_schema, request->projection());
-    if (request->projection().size() > 0 && meta.format_version() == 1) {
+    if (!request->projection().empty() && meta.format_version() == 1) {
         if (meta.compress_type() == ::openmldb::type::kSnappy) {
-            LOG(WARNING) << "project on compress row data do not eing supported";
+            LOG(WARNING) << "project on compress row data, not supported";
             return -1;
         }
         bool ok = row_project.Init();
@@ -901,7 +901,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
         if (limit > 0 && tmp.size() >= limit) {
             break;
         }
-        if (remove_duplicated_record && tmp.size() > 0 && last_time == combine_it->GetTs()) {
+        if (remove_duplicated_record && !tmp.empty() && last_time == combine_it->GetTs()) {
             combine_it->Next();
             continue;
         }
@@ -935,7 +935,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
             int8_t* ptr = nullptr;
             uint32_t size = 0;
             openmldb::base::Slice data = combine_it->GetValue();
-            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
+            const auto* row_ptr = reinterpret_cast<const int8_t*>(data.data());
             bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
             if (!ok) {
                 PDLOG(WARNING, "fail to make a projection");
@@ -1154,7 +1154,7 @@ void TabletImpl::Scan(RpcController* controller, const ::openmldb::api::ScanRequ
         response->set_code(code);
         response->set_count(count);
     } else {
-        brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+        auto* cntl = dynamic_cast<brpc::Controller*>(controller);
         butil::IOBuf& buf = cntl->response_attachment();
         code = ScanIndex(request, *table_meta, vers_schema, &combine_it, &buf, &count);
         response->set_code(code);

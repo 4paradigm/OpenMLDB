@@ -1649,12 +1649,13 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
         return;
     }
     uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % tables[0].table_partition_size());
+    uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key) % tables[0].table_partition_size());
     std::shared_ptr<TabletClient> tb_client = GetTabletClient(tables[0], pid, msg);
     if (!tb_client) {
         std::cout << "failed to scan. error msg: " << msg << std::endl;
         return;
     }
+    // TODO(hw): ?
     bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
     if (no_schema) {
         std::shared_ptr<::openmldb::base::KvIterator> it;
@@ -1685,7 +1686,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
         }
     } else {
         if (parts.size() < 6) {
-            std::cout << "scan format error. eg: scan table_name key col_name "
+            std::cout << "scan format error. eg: scan table_name key index_name "
                          "start_time end_time [limit]"
                       << std::endl;
             return;
