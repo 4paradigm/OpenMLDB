@@ -1,0 +1,25 @@
+syntax = "proto2";
+
+import "common.proto";
+
+package openmldb.taskmanager;
+
+option java_package = "com._4paradigm.openmldb.proto";
+option java_outer_classname = "TaskManager";
+option cc_generic_services = true;
+
+
+message RunBatchSqlRequest {
+    required string sql = 1;
+    optional string output_table_name = 2;
+};
+
+message RunBatchSqlResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional int32 job_id = 3;
+};
+
+service TaskManagerServer {
+    rpc RunBatchSql(RunBatchSqlRequest) returns (RunBatchSqlResponse);
+};
