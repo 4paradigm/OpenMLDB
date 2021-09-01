@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.importer;
 
-import com._4paradigm.openmldb.api.Tablet;
+import com._4paradigm.openmldb.proto.Tablet;
 import junit.framework.TestCase;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;

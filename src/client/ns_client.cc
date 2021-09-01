@@ -27,15 +27,9 @@ namespace openmldb {
 namespace client {
 using hybridse::plan::PlanAPI;
 NsClient::NsClient(const std::string& endpoint, const std::string& real_endpoint)
-    : endpoint_(endpoint), client_(endpoint) {
-    if (!real_endpoint.empty()) {
-        client_ = ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>(real_endpoint);
-    }
-}
+    : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint) {}
 
 int NsClient::Init() { return client_.Init(); }
-
-std::string NsClient::GetEndpoint() { return endpoint_; }
 
 const std::string& NsClient::GetDb() { return db_; }
 
@@ -1089,7 +1083,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
             case hybridse::node::kColumnIndex: {
                 auto* column_index = (hybridse::node::ColumnIndexNode*)column_desc;
                 std::string index_name = column_index->GetName();
-                if (index_name.empty()) {
+                if (index_name.empty() && !column_index->GetKey().empty()) {
                     index_name = PlanAPI::GenerateName("INDEX", table->column_key_size());
                     column_index->SetName(index_name);
                 }
@@ -1098,15 +1092,17 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
                     status->code = hybridse::common::kSqlError;
                     return false;
                 }
-                index_names.insert(index_name);
                 ::openmldb::common::ColumnKey* index = table->add_column_key();
-                index->set_index_name(index_name);
-
-                if (column_index->GetKey().empty()) {
-                    status->msg = "CREATE common: INDEX KEY empty";
-                    status->code = hybridse::common::kSqlError;
-                    return false;
+                if (!index_name.empty()) {
+                    if (column_index->GetKey().empty()) {
+                        status->msg = "CREATE common: INDEX KEY empty";
+                        status->code = hybridse::common::kSqlError;
+                        return false;
+                    }
+                    index_names.insert(index_name);
+                    index->set_index_name(index_name);
                 }
+
                 for (const auto& key : column_index->GetKey()) {
                     auto cit = column_names.find(key);
                     if (cit == column_names.end()) {

@@ -16,10 +16,10 @@
 
 package com._4paradigm.openmldb.importer;
 
-import com._4paradigm.openmldb.api.Tablet;
-import com._4paradigm.openmldb.common.Common;
+import com._4paradigm.openmldb.proto.Tablet;
+import com._4paradigm.openmldb.proto.Common;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
-import com._4paradigm.openmldb.ns.NS;
+import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
