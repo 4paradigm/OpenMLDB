@@ -16,6 +16,7 @@
     ```
 4. 下载依赖包并初始化环境(只需要初始化一次)
     ```
+    cd /OpenMLDB
     bash steps/init_env.sh  
     ``` 
 5. 编译OpenMLDB
