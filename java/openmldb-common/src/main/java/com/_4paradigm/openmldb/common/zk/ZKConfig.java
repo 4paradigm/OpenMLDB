@@ -1,4 +1,4 @@
-package com._4paradigm.openmldb.zk;
+package com._4paradigm.openmldb.common.zk;
 import lombok.Builder;
 import lombok.Data;
 

@@ -5,8 +5,8 @@ import com._4paradigm.openmldb.proto.NLTablet;
 import com._4paradigm.openmldb.proto.Common.ColumnDesc;
 import com._4paradigm.openmldb.proto.Type.DataType;
 import com._4paradigm.openmldb.server.NLTabletServer;
-import com._4paradigm.openmldb.zk.ZKClient;
-import com._4paradigm.openmldb.zk.ZKConfig;
+import com._4paradigm.openmldb.common.zk.ZKClient;
+import com._4paradigm.openmldb.common.zk.ZKConfig;
 import com._4paradigm.openmldb.server.StatusCode;
 import lombok.extern.slf4j.Slf4j;
 

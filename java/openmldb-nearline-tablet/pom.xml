@@ -4,9 +4,9 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.4paradigm.openmldb</groupId>
-    <artifactId>openmldb-tablet</artifactId>
+    <artifactId>openmldb-nearline-tablet</artifactId>
     <packaging>jar</packaging>
-    <name>openmldb-tablet</name>
+    <name>openmldb-nearline-tablet</name>
     <version>0.2.0</version>
 
     <properties>
@@ -23,6 +23,11 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.7</version>
+        </dependency>
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-common</artifactId>
+            <version>0.2.3</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
@@ -63,21 +68,7 @@
             <artifactId>protobuf-java-util</artifactId>
             <version>3.11.0</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.zookeeper</groupId>
-            <artifactId>zookeeper</artifactId>
-            <version>3.4.14</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.curator</groupId>
-            <artifactId>curator-framework</artifactId>
-            <version>4.2.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.curator</groupId>
-            <artifactId>curator-recipes</artifactId>
-            <version>4.2.0</version>
-        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
