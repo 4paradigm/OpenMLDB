@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <base/texttable.h>
 #include <gflags/gflags.h>
 #include <snappy.h>
 
@@ -26,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/texttable.h"
 #include "cmd/sdk_iterator.h"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
