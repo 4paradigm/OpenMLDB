@@ -267,7 +267,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
       logger.info(s"Compute $rootKey ${i}th child: $key")
 
       val cacheDataPath = cacheDir + "/" + key + "/data"
-      val existCache = fileSystem.isDirectory(new Path(cacheDataPath)) &&
+      val existCache = fileSystem.getFileStatus(new Path(cacheDataPath)).isDirectory &&
         fileSystem.exists(new Path(cacheDataPath + "/_SUCCESS"))
       val childResult = if (existCache) {
         logger.info(s"Load cached $key: $cacheDataPath")
