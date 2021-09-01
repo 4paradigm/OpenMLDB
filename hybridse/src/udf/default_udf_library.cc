@@ -1319,7 +1319,7 @@ void DefaultUdfLibrary::InitUtilityUdf() {
         @param expr2   Return value if expr1 is not null
         @param expr3   Return value if expr1 is null
 
-        @since 0.3.0
+        @since 0.2.3
     )");
 }
 
