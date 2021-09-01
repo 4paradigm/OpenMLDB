@@ -172,7 +172,7 @@ public class BulkLoadGenerator implements Runnable {
                     tsDimsWrap = Collections.singletonList(Tablet.TSDimension.newBuilder().setTs(time).build());
                 }
 
-                // Index Region insert, only use id
+                // Index Region insert, only use data block id
                 int dataBlockId = dataRegionBuilder.nextId();
                 for (Map.Entry<Integer, String> idx2key : innerIndexKeyMap.entrySet()) {
                     Integer innerIdx = idx2key.getKey();
