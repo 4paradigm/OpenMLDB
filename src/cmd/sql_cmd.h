@@ -228,7 +228,7 @@ void PrintItems(std::ostream &stream, const std::string &head, const std::vector
     ::hybridse::base::TextTable t('-', ' ', ' ');
     t.add(head);
     t.end_of_row();
-    for (auto item : items) {
+    for (const auto& item : items) {
         t.add(item);
         t.end_of_row();
     }
@@ -251,7 +251,7 @@ void PrintItems(const std::vector<std::pair<std::string, std::string>> &items, s
     t.add("DB");
     t.add("SP");
     t.end_of_row();
-    for (auto item : items) {
+    for (const auto& item : items) {
         t.add(item.first);
         t.add(item.second);
         t.end_of_row();
@@ -267,7 +267,7 @@ void PrintItems(const std::vector<std::pair<std::string, std::string>> &items, s
 
 void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema &sdk_schema, std::ostream &stream) {
     try {
-        const ::hybridse::sdk::SchemaImpl &schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl &>(sdk_schema);
+        const auto &schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl &>(sdk_schema);
         auto &schema = schema_impl.GetSchema();
         if (schema.empty()) {
             stream << "Empty set" << std::endl;
@@ -283,7 +283,7 @@ void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema
         t.end_of_row();
 
         for (uint32_t i = 0; i < items_size; i++) {
-            auto column = schema.Get(i);
+            const auto& column = schema.Get(i);
             t.add(std::to_string(i + 1));
             t.add(column.name());
             t.add(::hybridse::type::Type_Name(column.type()));
@@ -458,8 +458,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             std::string error;
             std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos = cs->GetProcedureInfo(&error);
             std::vector<std::pair<std::string, std::string>> pairs;
-            for (uint32_t i = 0; i < sp_infos.size(); i++) {
-                auto &sp_info = sp_infos.at(i);
+            for (auto & sp_info : sp_infos) {
                 pairs.push_back(std::make_pair(sp_info->GetDbName(), sp_info->GetSpName()));
             }
             PrintItems(pairs, std::cout);
@@ -539,7 +538,7 @@ void HandleSQL(const std::string &sql) {
     hybridse::node::PlanNode *node = plan_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeCmd: {
-            hybridse::node::CmdPlanNode *cmd = dynamic_cast<hybridse::node::CmdPlanNode *>(node);
+            auto *cmd = dynamic_cast<hybridse::node::CmdPlanNode *>(node);
             HandleCmd(cmd);
             return;
         }
@@ -576,7 +575,7 @@ void HandleSQL(const std::string &sql) {
                 std::cout << "please use database first" << std::endl;
                 return;
             }
-            hybridse::node::CreateIndexPlanNode *create_index_node =
+            auto *create_index_node =
                 dynamic_cast<hybridse::node::CreateIndexPlanNode *>(node);
             HandleCreateIndex(create_index_node->create_index_node_);
             return;
