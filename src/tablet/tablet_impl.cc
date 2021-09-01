@@ -4533,7 +4533,7 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         response->set_msg("table is not exist");
         return;
     }
-    MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+    auto* mem_table = dynamic_cast<MemTable*>(table.get());
     if (mem_table == NULL) {
         PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
@@ -4930,7 +4930,7 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
     }
 
     // If the previous parts load succeed, and no other parts, only need to remove the data receiver
-    // If not, we delete all relative memory when drop the table or redo bulk load in the same table.
+    // If not, we delete all relative memory when drop the table.
     if (request->eof()) {
         LOG(INFO) << tid << "-" << pid << " get bulk load eof(means success), clean up the data receiver";
         bulk_load_mgr_.RemoveReceiver(tid, pid);

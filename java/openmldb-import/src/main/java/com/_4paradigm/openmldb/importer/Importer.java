@@ -83,6 +83,11 @@ public class Importer {
     @CommandLine.Option(names = "--rpc_size_limit", description = "should >= " + rpcDataSizeMinLimit, defaultValue = rpcDataSizeMinLimit)
     private int rpcDataSizeLimit;
 
+    @CommandLine.Option(names = "--rpc_write_timeout", description = "rpc write timeout(ms)", defaultValue = "10000")
+    private int rpcWriteTimeout;
+    @CommandLine.Option(names = "--rpc_read_timeout", description = "rpc read timeout(ms)", defaultValue = "50000")
+    private int rpcReadTimeout;
+
     FilesReader reader = null;
     SqlExecutor router = null;
 
@@ -240,11 +245,13 @@ public class Importer {
 
     private RpcClientOptions getRpcClientOptions() {
         RpcClientOptions clientOption = new RpcClientOptions();
-        // clientOption.setWriteTimeoutMillis(1000);
-        clientOption.setReadTimeoutMillis(50000); // index rpc may take time, cuz need to do bulk load
+        clientOption.setWriteTimeoutMillis(rpcWriteTimeout); // concurrent rpc may let write slowly
+        clientOption.setReadTimeoutMillis(rpcReadTimeout); // index rpc may take time, cuz need to do bulk load
         // clientOption.setMinIdleConnections(10);
         // clientOption.setCompressType(Options.CompressType.COMPRESS_TYPE_NONE);
         clientOption.setGlobalThreadPoolSharing(true);
+        // TODO(hw): disable retry for simplicity, timeout retry is dangerous
+        clientOption.setMaxTryTimes(1);
         return clientOption;
     }
 
