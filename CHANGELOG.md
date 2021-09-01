@@ -2,7 +2,9 @@
 
 ## [Unreleased]
 
+## [0.2.3] - 2021-08-31
 ### Feature
+- Data importer support bulk load [#250](https://github.com/4paradigm/OpenMLDB/pull/250)
 - Support parameterized query under BatchMode [#262](https://github.com/4paradigm/OpenMLDB/issues/262), [#168](https://github.com/4paradigm/OpenMLDB/issues/168)
 - Support Hive metastore and Iceberg tables for offline [#245](https://github.com/4paradigm/OpenMLDB/pull/245), [#146](https://github.com/4paradigm/OpenMLDB/pull/146)
 - Integrated with Trino [#254](https://github.com/4paradigm/OpenMLDB/pull/254)
@@ -10,6 +12,7 @@
 
 ### Bug Fix
 - Fix end2end offline tests for the same SQL [#300](https://github.com/4paradigm/OpenMLDB/pull/300)
+- `desc` do not display the value of ttl after adding index[#156](https://github.com/4paradigm/OpenMLDB/issues/156)
 
 ### SQL Syntax
 - `nvl` & `nvl2`: [#238](https://github.com/4paradigm/OpenMLDB/issues/238)
@@ -49,6 +52,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
-[Unreleased]: https://github.com/4paradigm/OpenMLDB/compare/0.2.2...HEAD
+[Unreleased]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/4paradigm/OpenMLDB/compare/0.2.2...v0.2.3
 [0.2.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.0...0.2.2
 [0.2.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.1.5-pre...v0.2.0
