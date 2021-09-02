@@ -38,8 +38,12 @@ insert/bulk load data(csv) to openmldb
   -h, --help                Show this help message and exit.
       --importer_mode=<mode>
                             mode: Insert, BulkLoad. Case insensitive.
+      --rpc_read_timeout=<rpcReadTimeout>
+                            rpc read timeout(ms)
       --rpc_size_limit=<rpcDataSizeLimit>
                             should >= 33554432
+      --rpc_write_timeout=<rpcWriteTimeout>
+                            rpc write timeout(ms)
 *     --table=<tableName>   openmldb table
   -V, --version             Print version information and exit.
 * -z, --zk_cluster=<zkCluster>
@@ -53,6 +57,12 @@ insert/bulk load data(csv) to openmldb
 导入必须配置openmldb地址，库名表名，以及导入源文件。目前源文件只支持csv格式的本地文件，并且csv文件必须有header，文件的列名和表的列名必须一致，顺序可以不一样。
 
 库名表名可以是不存在的，importer可以帮助创建。但请注意，如果导入到已存在的表，需要表内数据为空，否则将会极大影响导入效率。
+
+#### 配置调整
+
+由于目前import只是单机模式，大数据导入可能较大地消耗资源，一些操作会变得很耗时。
+
+如果导入中出现oom，请调大-Xmx。如果出现rpc send失败，调大rpc_write_timeout。如果rpc回复timeout，也适当调大rpc_read_timeout。
 
 #### 错误处理
 
