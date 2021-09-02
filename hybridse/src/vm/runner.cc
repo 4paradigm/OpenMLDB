@@ -3375,14 +3375,13 @@ std::shared_ptr<TableHandler> IndexSeekGenerator::SegmentOfKey(
 
 std::shared_ptr<DataHandler> FilterGenerator::Filter(
     std::shared_ptr<PartitionHandler> partition, const Row& parameter) {
+    if (!partition) {
+        LOG(WARNING) << "fail to filter table: input is empty";
+        return std::shared_ptr<DataHandler>();
+    }
     if (index_seek_gen_.Valid()) {
         return Filter(index_seek_gen_.SegmnetOfConstKey(parameter, partition), parameter);
     } else {
-        auto fail_ptr = std::shared_ptr<DataHandler>();
-        if (!partition) {
-            LOG(WARNING) << "fail to filter table: input is empty";
-            return fail_ptr;
-        }
         if (!condition_gen_.Valid()) {
             return partition;
         }

@@ -60,38 +60,6 @@ std::ostream& operator<<(std::ostream& output,
                          const hybridse::vm::LogicalOp& thiz) {
     return output << *(thiz.node_);
 }
-bool TransformLogicalTreeToLogicalGraph(
-    const ::hybridse::node::PlanNode* node, LogicalGraph* graph_ptr,
-    hybridse::base::Status& status) {  // NOLINT
-
-    if (nullptr == node || nullptr == graph_ptr) {
-        status.msg = "node or graph_ptr is null";
-        status.code = common::kOpGenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-    auto& graph = *graph_ptr;
-    std::stack<LogicalOp> stacks;
-    LogicalOp op(node);
-    graph.AddVertex(op);
-    stacks.push(op);
-    while (!stacks.empty()) {
-        auto source = stacks.top();
-        stacks.pop();
-        auto& children = source.node_->GetChildren();
-        if (!children.empty()) {
-            for (auto iter = children.cbegin(); iter != children.cend();
-                 iter++) {
-                LogicalOp target(*iter);
-                if (!graph.IsExist(target)) {
-                    stacks.push(target);
-                }
-                graph.AddEdge(source, target);
-            }
-        }
-    }
-    return true;
-}
 
 BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                                            const std::shared_ptr<Catalog>& catalog,
@@ -1121,13 +1089,12 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
 
 base::Status BatchModeTransformer::ExtractGroupKeys(vm::PhysicalOpNode* depend, const node::ExprListNode** keys) {
     CHECK_TRUE(nullptr != depend, common::kNullPointer, "Invalid op, is null")
-    if (depend->GetOpType() == kPhysicalOpGroupBy) {
-        *keys = dynamic_cast<PhysicalGroupNode*>(depend)->group().keys_;
-    } else if (depend->GetOpType() == kPhysicalOpFilter) {
+    if (depend->GetOpType() == kPhysicalOpFilter) {
         CHECK_STATUS(ExtractGroupKeys(depend->GetProducer(0), keys))
-    } else {
-        FAIL_STATUS(kPlanError, "Fail to extract group keys from op ", vm::PhysicalOpTypeName(depend->GetOpType()));
+        return base::Status::OK();
     }
+    CHECK_TRUE(depend->GetOpType() == kPhysicalOpGroupBy, kPlanError, "Fail to extract group keys from op ", vm::PhysicalOpTypeName(depend->GetOpType()))
+    *keys = dynamic_cast<PhysicalGroupNode*>(depend)->group().keys_;
     return base::Status::OK();
 }
 Status BatchModeTransformer::TransformProjectOp(

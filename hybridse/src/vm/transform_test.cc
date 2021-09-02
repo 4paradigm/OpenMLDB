@@ -699,6 +699,10 @@ INSTANTIATE_TEST_SUITE_P(
                        "PROJECT(type=GroupAggregation, group_keys=(col1,col2))\n"
                        "  FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(10,20))\n"
                        "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair("SELECT sum(col1) as col1sum FROM t1 where col2 = 20 group by col1;",
+                       "PROJECT(type=GroupAggregation, group_keys=(col1))\n"
+                       "  FILTER_BY(condition=, left_keys=(20), right_keys=(col2), index_keys=)\n"
+                       "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
         std::make_pair("SELECT sum(col1) as col1sum FROM t1 where col1 = 10 and col2 = 20 group by col1, col2, col3;",
                        "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col3))\n"
                        "  FILTER_BY(condition=, left_keys=(10,20), right_keys=(col1,col2), index_keys=)\n"

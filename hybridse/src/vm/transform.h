@@ -333,10 +333,6 @@ inline bool SchemaType2DataType(const ::hybridse::type::Type type,
     return true;
 }
 
-bool TransformLogicalTreeToLogicalGraph(
-    const ::hybridse::node::PlanNode* node, LogicalGraph* graph,
-    hybridse::base::Status& status);  // NOLINT
-
 Status ExtractProjectInfos(const node::PlanNodeList& projects,
                            const node::FrameNode* primary_frame,
                            const SchemasContext* schemas_ctx,

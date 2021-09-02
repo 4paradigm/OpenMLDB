@@ -384,7 +384,7 @@ cases:
         - [10, 20]
   - id: 12
     desc: 带参数的Where条件后Group By
-    mode: request-unsupport, offline-unsupport, hybride-only
+    mode: request-unsupport, offline-unsupport, hybridse-only
     db: db1
     sql: |
       SELECT col2, sum(col1) as sum_col1, count(col1) as cnt_col1 FROM {0} where col2=? group by col2;
@@ -412,7 +412,7 @@ cases:
         5, 3, 2
   - id: 13
     desc: 带参数的Where条件后Group By
-    mode: request-unsupport, offline-unsupport, hybride-only
+    mode: request-unsupport, offline-unsupport, hybridse-only
     db: db1
     sql: |
       SELECT col2, sum(col1) as sum_col1, count(col1) as cnt_col1 FROM {0} where col1 < ? group by col2;
