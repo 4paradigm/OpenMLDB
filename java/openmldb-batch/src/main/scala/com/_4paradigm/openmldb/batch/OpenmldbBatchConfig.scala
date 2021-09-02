@@ -49,9 +49,6 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.window.skew.opt.postfix", doc="The postfix for internal tables and columns")
   var windowSkewOptPostfix = ""
 
-  @ConfigOption(name="openmldb.skew.watershed", doc="针对key的分水岭，默认是100*100条，才做数据倾斜优化")
-  var skewCnt: Int = 2
-
   @ConfigOption(name="openmldb.skew.level", doc="""
       | 数据倾斜优化级别，默认是1，数据拆分两份分别计算，优化1倍。
       | 因为数据按照2的n次方拆分。所以不建议level改太大""")

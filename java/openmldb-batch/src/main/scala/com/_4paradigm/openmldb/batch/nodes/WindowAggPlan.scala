@@ -17,9 +17,9 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
-import com._4paradigm.openmldb.batch.utils.SkewDataFrameUtils.{genDistributionDf, genUnionDf, genAddColumnsDf}
 import com._4paradigm.openmldb.batch.utils.{
-  AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SparkColumnUtil, SparkUtil
+  AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil,
+  SkewDataFrameUtils, SparkColumnUtil, SparkUtil
 }
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
@@ -150,8 +150,8 @@ object WindowAggPlan {
     // Get repartition keys and orderby key
     // TODO: Support multiple repartition keys and orderby keys
     val repartitionColIndexes = PhysicalNodeUtil.getRepartitionColumnIndexes(windowAggNode, inputDf)
-    val percentileColIndex = PhysicalNodeUtil.getOrderbyColumnIndex(windowAggNode, inputDf)
-    val percentileColType = inputDf.schema(percentileColIndex).dataType
+    val orderByColIndex = PhysicalNodeUtil.getOrderbyColumnIndex(windowAggNode, inputDf)
+    val orderByColType = inputDf.schema(orderByColIndex).dataType
 
     // Register the input table
     val partColName = "_PART_" + uniqueNamePostfix
@@ -164,13 +164,13 @@ object WindowAggPlan {
       // 1. Analyze the data distribution
       val partitionColName = "_PARTITION_" + uniqueNamePostfix
 
-      val distributionDf = genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
-        percentileColIndex, partitionColName)
+      val distributionDf = SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
+        orderByColIndex, partitionColName)
       logger.info("Generate distribution dataframe")
 
       // 2. Add "part" column and "expand" column by joining the distribution table
-      val addColumnsDf = genAddColumnsDf(inputDf, distributionDf, quantile.intValue(), repartitionColIndexes,
-        percentileColIndex, partColName, expandColName)
+      val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
+        repartitionColIndexes, orderByColIndex, partColName, expandColName)
       logger.info("Generate percentile_tag dataframe")
 
       addColumnsDf
@@ -188,13 +188,13 @@ object WindowAggPlan {
         // Combine the repartition keys to one string which is equal to the first column of skew config
         val combineString = repartitionColIndexes.map(index => row.get(index)).mkString("_")
         // TODO: Support for more datatype of orderby columns
-        val condition = if (percentileColType.equals(TimestampType)) {
-          row.get(percentileColIndex).asInstanceOf[java.sql.Timestamp].compareTo(distributionMap(combineString)
+        val condition = if (orderByColType.equals(TimestampType)) {
+          row.get(orderByColIndex).asInstanceOf[java.sql.Timestamp].compareTo(distributionMap(combineString)
             .asInstanceOf[java.sql.Timestamp])
-        } else if (percentileColType.equals(LongType)) {
-          row.get(percentileColIndex).asInstanceOf[Long].compareTo(distributionMap(combineString).asInstanceOf[Long])
+        } else if (orderByColType.equals(LongType)) {
+          row.get(orderByColIndex).asInstanceOf[Long].compareTo(distributionMap(combineString).asInstanceOf[Long])
         } else {
-          row.get(percentileColIndex).asInstanceOf[Int].compareTo(distributionMap(combineString).asInstanceOf[Int])
+          row.get(orderByColIndex).asInstanceOf[Int].compareTo(distributionMap(combineString).asInstanceOf[Int])
         }
 
         val partValue = if (condition <= 0) {
@@ -217,7 +217,7 @@ object WindowAggPlan {
     windowAggConfig.skewPositionIdx = addColumnsDf.schema.fieldNames.length - 1
 
     // 3. Expand the table data by union
-    val unionDf = genUnionDf(addColumnsDf, quantile.intValue(), partColName, expandColName)
+    val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partColName, expandColName)
     logger.info("Generate union dataframe")
 
     // 4. Repartition and order by
@@ -233,11 +233,11 @@ object WindowAggPlan {
       unionDf.repartition(repartitionCols: _*)
     }
 
-    val orderByCol = SparkColumnUtil.getColumnFromIndex(addColumnsDf, percentileColIndex)
-    val orderByCols = orderByCol +: repartitionCols
+    val sortedByCol = SparkColumnUtil.getColumnFromIndex(addColumnsDf, orderByColIndex)
+    val sortedByCols = sortedByCol +: repartitionCols
 
     // TODO: Support order desc and asc
-    val sortedDf = repartitionDf.sortWithinPartitions(orderByCols: _*)
+    val sortedDf = repartitionDf.sortWithinPartitions(sortedByCols: _*)
     logger.info("Generate repartition and orderby dataframe")
 
     sortedDf

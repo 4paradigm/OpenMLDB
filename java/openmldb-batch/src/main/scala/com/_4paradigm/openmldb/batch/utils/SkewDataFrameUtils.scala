@@ -35,7 +35,7 @@ object SkewDataFrameUtils {
     val factor = 1.0 / quantile.toDouble
     for (i <- 1 until quantile) {
       val ratio = i * factor
-      percentileApproxCols += percentileApprox(percentileCol, lit(ratio)).as(s"percentlie_${i}")
+      percentileApproxCols += percentileApprox(percentileCol, lit(ratio)).as(s"percentile_${i}")
     }
 
     inputDf.groupBy(groupByCol.as(partitionColName)).agg(percentileApproxCols.head, percentileApproxCols.tail: _*)
@@ -58,9 +58,9 @@ object SkewDataFrameUtils {
     var part: Column = null
     for (i <- 1 to quantile) {
       if (i != quantile) {
-        part = when(inputDfPercentileCol <= joinDf(s"percentlie_${i}"), quantile - i + 1)
+        part = when(inputDfPercentileCol <= joinDf(s"percentile_${i}"), quantile - i + 1)
       } else {
-        part = part.otherwise(quantile)
+        part = part.otherwise(1)
       }
     }
     joinDf = joinDf.withColumn(partColName, part).withColumn(expandColName, part)

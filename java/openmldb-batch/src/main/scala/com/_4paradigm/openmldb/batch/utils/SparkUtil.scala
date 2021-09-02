@@ -121,7 +121,6 @@ object SparkUtil {
     if (df1.schema != df2.schema) {
       return false
     }
-
     df1.collect().sameElements(df2.collect())
   }
 
