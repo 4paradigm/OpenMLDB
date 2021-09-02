@@ -5,6 +5,13 @@
 [![docker pulls](https://img.shields.io/docker/pulls/4pdosc/openmldb.svg)](https://hub.docker.com/r/4pdosc/openmldb)
 [![slack](https://img.shields.io/badge/Slack-Join%20Slack-blue)](https://join.slack.com/t/hybridsql-ws/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
 [![discuss](https://img.shields.io/badge/Discuss-Ask%20Questions-blue)](https://github.com/4paradigm/OpenMLDB/discussions)
+![coverage](https://img.shields.io/codecov/c/github/4paradigm/OpenMLDB/main)
+[![release](https://img.shields.io/github/v/release/4paradigm/OpenMLDB?color=lime)](https://github.com/4paradigm/OpenMLDB/releases)
+[![license](https://img.shields.io/github/license/4paradigm/OpenMLDB?color=orange)](https://github.com/4paradigm/OpenMLDB/blob/main/LICENSE)
+[![gitee](https://img.shields.io/badge/Gitee-mirror-lightyellow)](https://gitee.com/paradigm4/OpenMLDB)
+[![maven](https://img.shields.io/badge/maven-pkg-green)](https://mvnrepository.com/artifact/com.4paradigm.openmldb/openmldb-batch)
+[![maven](https://img.shields.io/badge/maven-pkg-blue)](https://mvnrepository.com/artifact/com.4paradigm.openmldb/openmldb-jdbc)
+[![pypi](https://img.shields.io/badge/pypi-pkg-blue)](https://pypi.org/project/openmldb/)
 
 [English version](./README.md)|中文版
 
