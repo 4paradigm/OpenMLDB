@@ -39,7 +39,8 @@ struct TTLSt {
     TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(::openmldb::storage::TTLType::kAbsoluteTime) {}
     TTLSt(uint64_t abs, uint64_t lat, ::openmldb::storage::TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
 
-    explicit TTLSt(const ::openmldb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl()), lat_ttl(ttl.lat_ttl()) {
+    // TODO(hw): needs fix, common::TTLSt::abs_ttl should be ms
+    explicit TTLSt(const ::openmldb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
         ttl_type = ConvertTTLType(ttl.ttl_type());
     }
 
