@@ -16,10 +16,9 @@
 
 package com._4paradigm.openmldb.importer;
 
-import com._4paradigm.openmldb.proto.Tablet;
 import com._4paradigm.openmldb.proto.Common;
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.proto.NS;
+import com._4paradigm.openmldb.proto.Tablet;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
@@ -39,12 +38,12 @@ import picocli.CommandLine;
 
 import java.io.File;
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -83,6 +82,11 @@ public class Importer {
     public static final String rpcDataSizeMinLimit = "33554432"; // 32MB
     @CommandLine.Option(names = "--rpc_size_limit", description = "should >= " + rpcDataSizeMinLimit, defaultValue = rpcDataSizeMinLimit)
     private int rpcDataSizeLimit;
+
+    @CommandLine.Option(names = "--rpc_write_timeout", description = "rpc write timeout(ms)", defaultValue = "10000")
+    private int rpcWriteTimeout;
+    @CommandLine.Option(names = "--rpc_read_timeout", description = "rpc read timeout(ms)", defaultValue = "50000")
+    private int rpcReadTimeout;
 
     FilesReader reader = null;
     SqlExecutor router = null;
@@ -146,7 +150,7 @@ public class Importer {
 
         NS.TableInfo tableMetaData = getTableMetaData();
         if (tableMetaData == null) {
-            logger.error("table {} meta data is not found", tableName);
+            logger.error("table {}.{} meta data is not found", dbName, tableName);
             return;
         }
 
@@ -155,13 +159,13 @@ public class Importer {
         logger.info("create generators for each table partition(MemTable)");
         Map<Integer, BulkLoadGenerator> generators = new HashMap<>();
         List<Thread> threads = new ArrayList<>();
-        //  http/h2 can't add attachment, cuz it use attachment to pass message. So we need to use brpc-java RpcClient
+        //  http/h2 can't add attachment, cuz it uses attachment to pass message. So we need to use brpc-java RpcClient
         List<RpcClient> rpcClients = new ArrayList<>();
         try {
             // When bulk loading, cannot AddIndex().
             //  And MemTable::table_index_ may be modified by AddIndex()/Delete...,
             //  so we should get table_index_'s info from MemTable, to know the real status.
-            //  And the status can't be changed until bulk lood finished.
+            //  And the status can't be changed until bulk load finished.
             for (NS.TablePartition partition : tableMetaData.getTablePartitionList()) {
                 logger.debug("tid-pid {}-{}, {}", tableMetaData.getTid(), partition.getPid(), partition.getPartitionMetaList());
                 NS.PartitionMeta leader = partition.getPartitionMetaList().stream().filter(NS.PartitionMeta::getIsLeader).collect(onlyElement());
@@ -200,6 +204,9 @@ public class Importer {
         Map<Integer, List<Integer>> keyIndexMap = new HashMap<>();
         Set<Integer> tsIdxSet = new HashSet<>();
         parseIndexMapAndTsSet(tableMetaData, keyIndexMap, tsIdxSet);
+
+        // check header, header should == tableMetaData.
+        reader.enableCheckHeader(tableMetaData);
         try {
             CSVRecord record;
             while ((record = reader.next()) != null) {
@@ -226,23 +233,25 @@ public class Importer {
             }
         }
         if (generators.values().stream().anyMatch(BulkLoadGenerator::hasInternalError)) {
-            logger.error("BulkLoad has failed.");
+            System.out.println("bulk load failed, reloading needs to drop this table");
+        } else {
+            System.out.println("bulk load succeed");
         }
 
         // TODO(hw): get statistics from generators
-        logger.info("BulkLoad finished.");
-
         // rpc client release
         rpcClients.forEach(RpcClient::stop);
     }
 
     private RpcClientOptions getRpcClientOptions() {
         RpcClientOptions clientOption = new RpcClientOptions();
-        // clientOption.setWriteTimeoutMillis(1000);
-        clientOption.setReadTimeoutMillis(50000); // index rpc may take time, cuz need to do bulk load
+        clientOption.setWriteTimeoutMillis(rpcWriteTimeout); // concurrent rpc may let write slowly
+        clientOption.setReadTimeoutMillis(rpcReadTimeout); // index rpc may take time, cuz need to do bulk load
         // clientOption.setMinIdleConnections(10);
         // clientOption.setCompressType(Options.CompressType.COMPRESS_TYPE_NONE);
         clientOption.setGlobalThreadPoolSharing(true);
+        // TODO(hw): disable retry for simplicity, timeout retry is dangerous
+        clientOption.setMaxTryTimes(1);
         return clientOption;
     }
 
@@ -259,10 +268,11 @@ public class Importer {
             for (String tableId : tables) {
                 byte[] tableInfo = client.getData().forPath(tableInfoPath + "/" + tableId);
                 NS.TableInfo info = NS.TableInfo.parseFrom(tableInfo);
-                if (info.getName().equals(tableName)) {
+                if (info.getName().equals(tableName) && info.getDb().equals(dbName)) {
                     return info;
                 }
             }
+            client.close();
         } catch (Exception e) {
             logger.warn(e.getMessage());
         }
@@ -278,8 +288,7 @@ public class Importer {
         CommandLine cmd = new CommandLine(importer).setCaseInsensitiveEnumValuesAllowed(true);
         try {
             URL prop = importer.getClass().getClassLoader().getResource("importer.properties");
-            Preconditions.checkNotNull(prop);
-            logger.info("load properties file {}", prop.getFile());
+            logger.info("load properties file {}", Objects.requireNonNull(prop).getFile());
             File defaultsFile = new File(prop.getFile());
             cmd.setDefaultValueProvider(new CommandLine.PropertiesDefaultProvider(defaultsFile));
         } catch (Exception e) {
@@ -313,13 +322,13 @@ public class Importer {
             return;
         }
 
-        logger.info("start bulk load");
+        System.out.println("start bulk load");
         long startTime = System.currentTimeMillis();
         importer.Load();
         long endTime = System.currentTimeMillis();
 
         long totalTime = endTime - startTime;
-        logger.info("End. Total time: {} ms", totalTime);
+        System.out.println("End. Total time: " + totalTime + " ms");
 
         importer.close();
     }
