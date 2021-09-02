@@ -105,7 +105,9 @@ public class IndexRegionBuilder {
                     addSegment = true;
                 }
                 if (!seg.buildCompleted()) {
-                    logger.debug("near limit, used {}, limit {}", requestBuilder.build().getSerializedSize(), rpcSizeLimit);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("near limit, used {}, limit {}", requestBuilder.build().getSerializedSize(), rpcSizeLimit);
+                    }
                     updateSegmentCursor(realIdx, segIdx);
                     partId++;
                     logger.info("build index rpc cost {} ms", System.currentTimeMillis() - start);
@@ -114,6 +116,7 @@ public class IndexRegionBuilder {
                 Preconditions.checkState(!(segMsg == null && seg.buildCompleted()),
                         "completed false->true, but no index entry append");
             }
+            segIdx = 0;
         }
         updateSegmentCursor(realIdx, segIdx);
         partId++;
@@ -173,15 +176,14 @@ public class IndexRegionBuilder {
             if (tsCnt == 1) {
                 if (tsDimensions.size() == 1) {
                     Put(key, this.NO_IDX, tsDimensions.get(0).getTs(), dataBlockId);
-                    put = true;
                 } else {
                     // tsCnt == 1 & has tsIdxMap, so tsIdxMap only has one element.
                     Preconditions.checkArgument(tsIdxMap.size() == 1);
                     Integer tsIdx = tsIdxMap.keySet().stream().collect(onlyElement());
                     Tablet.TSDimension needPutIdx = tsDimensions.stream().filter(tsDimension -> tsDimension.getIdx() == tsIdx).collect(onlyElement());
                     Put(key, this.ONE_IDX, needPutIdx.getTs(), dataBlockId);
-                    put = true;
                 }
+                put = true;
             } else {
                 // tsCnt != 1, KeyEntry array for one key
                 for (Tablet.TSDimension tsDimension : tsDimensions) {

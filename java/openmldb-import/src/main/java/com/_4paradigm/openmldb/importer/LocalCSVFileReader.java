@@ -17,21 +17,26 @@
 package com._4paradigm.openmldb.importer;
 
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Iterator;
+import java.util.Map;
 
 public class LocalCSVFileReader implements CSVFileReader {
 
     private final Iterator<CSVRecord> iter;
+    private final Map<String, Integer> headerMap;
 
     public LocalCSVFileReader(String filePath) throws IOException {
         Reader in = new FileReader(filePath);
         CSVFormat format = CSVFormat.Builder.create().setHeader().build();
-        iter = format.parse(in).iterator();
+        CSVParser parser = format.parse(in);
+        iter = parser.iterator();
+        headerMap = parser.getHeaderMap();
     }
 
     @Override
@@ -42,5 +47,10 @@ public class LocalCSVFileReader implements CSVFileReader {
     @Override
     public CSVRecord next() {
         return iter.next();
+    }
+
+    @Override
+    public Map<String, Integer> getHeader() {
+        return headerMap;
     }
 }

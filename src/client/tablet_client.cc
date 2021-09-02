@@ -637,7 +637,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
         request.set_idx_name(idx_name);
     }
     request.set_limit(limit);
-    ::openmldb::api::ScanResponse* response = new ::openmldb::api::ScanResponse();
+    auto* response = new ::openmldb::api::ScanResponse();
     bool ok =
         client_.SendRequest(&::openmldb::api::TabletServer_Stub::Scan, &request, response, FLAGS_request_timeout_ms, 1);
     if (response->has_msg()) {
@@ -646,7 +646,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     if (!ok || response->code() != 0) {
         return NULL;
     }
-    ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(response);
+    auto* kv_it = new ::openmldb::base::KvIterator(response);
     return kv_it;
 }
 
