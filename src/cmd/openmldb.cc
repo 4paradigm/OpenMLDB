@@ -92,9 +92,8 @@ DECLARE_bool(use_name);
 DECLARE_string(data_dir);
 
 const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
-    std::to_string(OPENMLDB_VERSION_MINOR) + "." +
-    std::to_string(OPENMLDB_VERSION_BUG) + "." +
-    OPENMLDB_COMMIT_ID;
+                                     std::to_string(OPENMLDB_VERSION_MINOR) + "." +
+                                     std::to_string(OPENMLDB_VERSION_BUG) + "." + OPENMLDB_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -275,8 +274,8 @@ void StartTablet() {
         exit(1);
     }
 #ifdef PZFPGA_ENABLE
-    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga",
-          real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
+    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga", real_endpoint.c_str(),
+          OPENMLDB_VERSION.c_str());
 #else
     PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
 #endif
@@ -303,7 +302,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
             }
             for (int inner_idx = 0; inner_idx < cur_table_partition.partition_meta_size(); inner_idx++) {
                 if (cur_table_partition.partition_meta(inner_idx).is_leader() &&
-                cur_table_partition.partition_meta(inner_idx).is_alive()) {
+                    cur_table_partition.partition_meta(inner_idx).is_alive()) {
                     endpoint = cur_table_partition.partition_meta(inner_idx).endpoint();
                     break;
                 }
@@ -452,7 +451,7 @@ std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const ::openml
         }
         for (int inner_idx = 0; inner_idx < table_info.table_partition(idx).partition_meta_size(); inner_idx++) {
             if (table_info.table_partition(idx).partition_meta(inner_idx).is_leader() &&
-            table_info.table_partition(idx).partition_meta(inner_idx).is_alive()) {
+                table_info.table_partition(idx).partition_meta(inner_idx).is_alive()) {
                 endpoint = table_info.table_partition(idx).partition_meta(inner_idx).endpoint();
                 break;
             }
@@ -794,7 +793,7 @@ void HandleNSClientSyncTable(const std::vector<std::string>& parts, ::openmldb::
     if (parts.size() != 3 && parts.size() != 4) {
         std::cout << "Bad format for synctable! eg. synctable table_name "
                      "cluster_alias [pid]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     uint32_t pid = UINT32_MAX;
@@ -818,7 +817,7 @@ void HandleNSClientSetSdkEndpoint(const std::vector<std::string>& parts, ::openm
     if (parts.size() != 3) {
         std::cout << "Bad format for setsdkendpoint!"
                      "eg. setsdkendpoint server_name sdkendpoint"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     std::string msg;
@@ -834,7 +833,7 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts, ::openmldb::c
     if (parts.size() < 3) {
         std::cout << "Bad format for addindex! eg. addindex table_name "
                      "index_name [col_name] [ts_name]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     ::openmldb::common::ColumnKey column_key;
@@ -980,7 +979,7 @@ void HandleNSClientMigrate(const std::vector<std::string>& parts, ::openmldb::cl
     if (parts.size() < 5) {
         std::cout << "Bad format. eg, migrate 127.0.0.1:9991 table1 1-10 "
                      "127.0.0.1:9992"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     if (parts[1] == parts[4]) {
@@ -1129,7 +1128,7 @@ void HandleNSDelete(const std::vector<std::string>& parts, ::openmldb::client::N
         if (parts.size() < 3) {
             std::cout << "delete format error. eg: delete table_name key | delete"
                          "table_name key idx_name"
-                         << std::endl;
+                      << std::endl;
             return;
         }
         std::vector<::openmldb::nameserver::TableInfo> tables;
@@ -1275,28 +1274,28 @@ bool ParseCondAndOp(const std::string& source, uint64_t& first_end,  // NOLINT
                 value_begin = i + 1;
                 get_type = openmldb::api::kSubKeyEq;
                 return true;
-                case '<':
-                    first_end = i;
-                    if (source[i + 1] == '=') {
-                        value_begin = i + 2;
-                        get_type = openmldb::api::kSubKeyLe;
-                    } else {
-                        value_begin = i + 1;
-                        get_type = openmldb::api::kSubKeyLt;
-                    }
-                    return true;
-                    case '>':
-                        first_end = i;
-                        if (source[i + 1] == '=') {
-                            value_begin = i + 2;
-                            get_type = openmldb::api::kSubKeyGe;
-                        } else {
-                            value_begin = i + 1;
-                            get_type = openmldb::api::kSubKeyGt;
-                        }
-                        return true;
-                        default:
-                            continue;
+            case '<':
+                first_end = i;
+                if (source[i + 1] == '=') {
+                    value_begin = i + 2;
+                    get_type = openmldb::api::kSubKeyLe;
+                } else {
+                    value_begin = i + 1;
+                    get_type = openmldb::api::kSubKeyLt;
+                }
+                return true;
+            case '>':
+                first_end = i;
+                if (source[i + 1] == '=') {
+                    value_begin = i + 2;
+                    get_type = openmldb::api::kSubKeyGe;
+                } else {
+                    value_begin = i + 1;
+                    get_type = openmldb::api::kSubKeyGt;
+                }
+                return true;
+            default:
+                continue;
         }
     }
     return false;
@@ -1397,14 +1396,14 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
         std::cout << "get format error. eg: get table_name key ts | get "
                      "table_name key idx_name ts | get table_name=xxx key=xxx "
                      "index_name=xxx ts=xxx ts_name=xxx "
-                     << std::endl;
+                  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
         std::cout << "get format error. eg: get table_name=xxx key=xxx "
                      "index_name=xxx ts=xxx ts_name=xxx "
-                     << std::endl;
+                  << std::endl;
         return;
     }
     bool is_pair_format = parameter_map.empty() ? false : true;
@@ -1560,14 +1559,14 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                      "[limit] | scan table_name key key_name start_time end_time "
                      "[limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx "
                      "et=xxx ts_name=xxx [limit=xxx] [atleast=xxx]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
         std::cout << "scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx "
                      "ts_name=xxx [limit=xxx] [atleast=xxx]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     bool is_pair_format = parameter_map.empty() ? false : true;
@@ -1670,7 +1669,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                 it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
             } catch (std::exception const& e) {
                 std::cout << "Invalid args. st and et should be uint64_t, limit should"
-                << "be uint32_t" << std::endl;
+                          << "be uint32_t" << std::endl;
                 return;
             }
         }
@@ -1687,7 +1686,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
         if (parts.size() < 6) {
             std::cout << "scan format error. eg: scan table_name key col_name "
                          "start_time end_time [limit]"
-                         << std::endl;
+                      << std::endl;
             return;
         }
         if (!is_pair_format) {
@@ -1740,14 +1739,14 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
         std::cout << "count format error | count table_name key [col_name] "
                      "[filter_expired_data] | count table_name=xxx key=xxx "
                      "index_name=xxx ts_name [filter_expired_data]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
         std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx "
                      "index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     bool is_pair_format = parameter_map.empty() ? false : true;
@@ -1849,7 +1848,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
             if (!tablet_client) {
                 std::cout << "failed to count. cannot not found tablet client, "
                              "pid is "
-                             << cur_pid << std::endl;
+                          << cur_pid << std::endl;
                 return;
             }
             if (!tablet_client->Count(tid, cur_pid, key, index_name, ts_name, filter_expired_data, cur_value, msg)) {
@@ -1980,7 +1979,7 @@ void HandleNSAddTableField(const std::vector<std::string>& parts, ::openmldb::cl
     if (parts.size() != 4) {
         std::cout << "addtablefield format error. eg: addtablefield tablename "
                      "column_name column_type"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     auto iter = ::openmldb::codec::DATA_TYPE_MAP.find(parts[3]);
@@ -2029,7 +2028,7 @@ void HandleNSAddReplicaCluster(const std::vector<std::string>& parts, ::openmldb
     if (parts.size() < 4) {
         std::cout << "addrepcluster format error. eg: addrepcluster "
                      "zk_endpoints zk_path alias_name"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     std::string zk_endpoints, zk_path, alias, msg;
@@ -2248,7 +2247,7 @@ int SetColumnDesc(const ::openmldb::client::TableInfo& table_info,
     std::set<std::string> ts_col_set;
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
         if (table_info.column_desc(idx).name() == "" ||
-        name_map.find(table_info.column_desc(idx).name()) != name_map.end()) {
+            name_map.find(table_info.column_desc(idx).name()) != name_map.end()) {
             printf("check column_desc name failed. name is %s\n", table_info.column_desc(idx).name().c_str());
             return -1;
         }
@@ -2478,7 +2477,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::openmldb::clie
     } else {
         std::cout << "create format error! ex: create table_meta_file | create "
                      "name ttl partition_num replica_num [name:type:index ...]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     ns_table_info.set_db(client->GetDb());
@@ -3146,7 +3145,7 @@ void HandleClientGet(const std::vector<std::string>& parts, ::openmldb::client::
     } catch (std::exception const& e) {
         std::cout << "Invalid args tid and pid should be uint32_t, ts should "
                      "be uint64_t"
-                     << std::endl;
+                  << std::endl;
     }
 }
 
@@ -3247,7 +3246,7 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::openmldb::
     if (parts.size() < 6) {
         std::cout << "Bad create format, input like create <name> <tid> <pid> "
                      "<ttl> <seg_cnt>"
-                     << std::endl;
+                  << std::endl;
         return;
     }
 
@@ -3267,7 +3266,7 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::openmldb::
                     if (lat_ttl > FLAGS_latest_ttl_max) {
                         std::cout << "Create failed. The max num of latest "
                                      "LatestTime is "
-                                     << FLAGS_latest_ttl_max << std::endl;
+                                  << FLAGS_latest_ttl_max << std::endl;
                         return;
                     }
                 } else {
@@ -3277,7 +3276,7 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::openmldb::
             } else {
                 if (abs_ttl > FLAGS_absolute_ttl_max) {
                     std::cout << "Create failed. The max num of AbsoluteTime ttl is " << FLAGS_absolute_ttl_max
-                    << std::endl;
+                              << std::endl;
                     return;
                 }
             }
@@ -3702,7 +3701,7 @@ void HandleClientLoadTable(const std::vector<std::string> parts, ::openmldb::cli
     if (parts.size() < 6) {
         std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
                      "<ttl> <seg_cnt> [<is_leader>]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     try {
@@ -3719,7 +3718,7 @@ void HandleClientLoadTable(const std::vector<std::string> parts, ::openmldb::cli
             } else {
                 std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> "
                              "<ttl> <seg_cnt> [<is_leader>]"
-                             << std::endl;
+                          << std::endl;
                 return;
             }
         }
@@ -3887,7 +3886,7 @@ void HandleClientScan(const std::vector<std::string>& parts, ::openmldb::client:
     if (parts.size() < 6) {
         std::cout << "Bad scan format! eg. scan tid pid pk start_time end_time "
                      "[limit]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     try {
@@ -3922,7 +3921,7 @@ void HandleClientScan(const std::vector<std::string>& parts, ::openmldb::client:
     } catch (std::exception const& e) {
         std::cout << "Invalid args, tid pid should be uint32_t, st and et "
                      "should be uint64_t"
-                     << std::endl;
+                  << std::endl;
     }
 }
 
@@ -4039,14 +4038,14 @@ void HandleClientCount(const std::vector<std::string>& parts, ::openmldb::client
         std::cout << "count format error! eg. count tid pid key [col_name] "
                      "[filter_expired_data] | count tid=xxx pid=xxx key=xxx "
                      "index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("tid", parts, "=", parameter_map)) {
         std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx "
                      "index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     bool is_pair_format = parameter_map.empty() ? false : true;
@@ -4172,14 +4171,14 @@ void HandleClientSGet(const std::vector<std::string>& parts, ::openmldb::client:
     if (parts.size() < 5) {
         std::cout << "Bad sget format, eg. sget tid pid key index_name ts | sget "
                      "table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("tid", parts, "=", parameter_map)) {
         std::cout << "sget format erro! eg. sget table_name=xxx key=xxx "
                      "index_name=xxx ts=xxx ts_name=xxx"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     bool is_pair_format = parameter_map.empty() ? false : true;
@@ -4237,7 +4236,7 @@ void HandleClientSGet(const std::vector<std::string>& parts, ::openmldb::client:
     } catch (std::exception const& e) {
         std::cout << "Invalid args. tid pid should be uint32_t, ts should be "
                      "uint64_t, "
-                     << std::endl;
+                  << std::endl;
         return;
     }
     ::openmldb::api::TableMeta table_meta;
@@ -4301,14 +4300,14 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::openmldb::client
         std::cout << "Bad scan format! eg.sscan tid pid key col_name start_time "
                      "end_time [limit] | sscan table_name=xxx key=xxx index_name=xxx "
                      "st=xxx et=xxx ts_name=xxx [limit=xxx]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("tid", parts, "=", parameter_map)) {
         std::cout << "scan format erro! eg. sscan table_name=xxx key=xxx "
                      "index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     bool is_pair_format = parameter_map.empty() ? false : true;
@@ -4384,7 +4383,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::openmldb::client
     } catch (std::exception const& e) {
         std::cout << "Invalid args. tid pid should be uint32_t, st and et "
                      "should be uint64_t, limit should be uint32"
-                     << std::endl;
+                  << std::endl;
         return;
     }
     std::string msg;
@@ -4906,7 +4905,7 @@ int main(int argc, char* argv[]) {
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, "
                      "nameserver, ns_client, apiserver"
-                     << std::endl;
+                  << std::endl;
     }
     return 0;
 }

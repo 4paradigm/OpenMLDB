@@ -56,8 +56,8 @@ const std::string LOGO =  // NOLINT
     "        |_|                                                 \n";
 
 const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
-    std::to_string(OPENMLDB_VERSION_MINOR) + "." + std::to_string(OPENMLDB_VERSION_BUG) + "." +
-    OPENMLDB_COMMIT_ID;
+                            std::to_string(OPENMLDB_VERSION_MINOR) + "." + std::to_string(OPENMLDB_VERSION_BUG) + "." +
+                            OPENMLDB_COMMIT_ID;
 
 std::string db = "";  // NOLINT
 ::openmldb::sdk::ClusterSDK *cs = NULL;
@@ -177,7 +177,7 @@ void PrintTableIndex(std::ostream &stream, const ::hybridse::vm::IndexList &inde
             oss << index.ttl(i);
             if (i != index.ttl_size() - 1) {
                 oss << "m"
-                << ",";
+                    << ",";
             }
         }
         t.add(oss.str());
@@ -291,7 +291,7 @@ void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema
             t.end_of_row();
         }
         stream << t << std::endl;
-    } catch (std::bad_cast&) {
+    } catch (std::bad_cast &) {
         return;
     }
 }
@@ -560,59 +560,59 @@ void HandleSQL(const std::string &sql) {
             return;
         }
         case hybridse::node::kPlanTypeCreate:
-            case hybridse::node::kPlanTypeCreateSp: {
-                if (db.empty()) {
-                    std::cout << "please use database first" << std::endl;
-                    return;
-                }
-                ::hybridse::sdk::Status status;
-                bool ok = sr->ExecuteDDL(db, sql, &status);
-                if (!ok) {
-                    std::cout << "fail to execute ddl" << std::endl;
-                } else {
-                    sr->RefreshCatalog();
-                }
+        case hybridse::node::kPlanTypeCreateSp: {
+            if (db.empty()) {
+                std::cout << "please use database first" << std::endl;
                 return;
             }
-            case hybridse::node::kPlanTypeCreateIndex: {
-                if (db.empty()) {
-                    std::cout << "please use database first" << std::endl;
-                    return;
-                }
-                hybridse::node::CreateIndexPlanNode *create_index_node =
-                    dynamic_cast<hybridse::node::CreateIndexPlanNode *>(node);
-                HandleCreateIndex(create_index_node->create_index_node_);
+            ::hybridse::sdk::Status status;
+            bool ok = sr->ExecuteDDL(db, sql, &status);
+            if (!ok) {
+                std::cout << "fail to execute ddl" << std::endl;
+            } else {
+                sr->RefreshCatalog();
+            }
+            return;
+        }
+        case hybridse::node::kPlanTypeCreateIndex: {
+            if (db.empty()) {
+                std::cout << "please use database first" << std::endl;
                 return;
             }
-            case hybridse::node::kPlanTypeInsert: {
-                if (db.empty()) {
-                    std::cout << "please use database first" << std::endl;
-                    return;
-                }
-                ::hybridse::sdk::Status status;
-                bool ok = sr->ExecuteInsert(db, sql, &status);
-                if (!ok) {
-                    std::cout << "fail to execute insert" << std::endl;
-                }
+            hybridse::node::CreateIndexPlanNode *create_index_node =
+                dynamic_cast<hybridse::node::CreateIndexPlanNode *>(node);
+            HandleCreateIndex(create_index_node->create_index_node_);
+            return;
+        }
+        case hybridse::node::kPlanTypeInsert: {
+            if (db.empty()) {
+                std::cout << "please use database first" << std::endl;
                 return;
             }
-            case hybridse::node::kPlanTypeFuncDef:
-                case hybridse::node::kPlanTypeQuery: {
-                    if (db.empty()) {
-                        std::cout << "please use database first" << std::endl;
-                        return;
-                    }
-                    ::hybridse::sdk::Status status;
-                    auto rs = sr->ExecuteSQL(db, sql, &status);
-                    if (!rs) {
-                        std::cout << "fail to execute query" << std::endl;
-                    } else {
-                        PrintResultSet(std::cout, rs.get());
-                    }
-                    return;
-                }
-                default: {
-                }
+            ::hybridse::sdk::Status status;
+            bool ok = sr->ExecuteInsert(db, sql, &status);
+            if (!ok) {
+                std::cout << "fail to execute insert" << std::endl;
+            }
+            return;
+        }
+        case hybridse::node::kPlanTypeFuncDef:
+        case hybridse::node::kPlanTypeQuery: {
+            if (db.empty()) {
+                std::cout << "please use database first" << std::endl;
+                return;
+            }
+            ::hybridse::sdk::Status status;
+            auto rs = sr->ExecuteSQL(db, sql, &status);
+            if (!rs) {
+                std::cout << "fail to execute query" << std::endl;
+            } else {
+                PrintResultSet(std::cout, rs.get());
+            }
+            return;
+        }
+        default: {
+        }
     }
 }
 
