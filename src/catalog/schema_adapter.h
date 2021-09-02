@@ -83,12 +83,12 @@ class SchemaAdapter {
         }
         for (int32_t i = 0; i < index.size(); i++) {
             const ::openmldb::common::ColumnKey& key = index.Get(i);
-            ::hybridse::type::IndexDef* index_def = output->Add();
-            index_def->set_name(key.index_name());
-            index_def->mutable_first_keys()->CopyFrom(key.col_name());
+            ::hybridse::type::IndexDef* index = output->Add();
+            index->set_name(key.index_name());
+            index->mutable_first_keys()->CopyFrom(key.col_name());
             if (key.has_ts_name() && !key.ts_name().empty()) {
-                index_def->set_second_key(key.ts_name());
-                index_def->set_ts_offset(0);
+                index->set_second_key(key.ts_name());
+                index->set_ts_offset(0);
             }
             if (key.has_ttl()) {
                 auto ttl_type = key.ttl().ttl_type();
@@ -97,14 +97,14 @@ class SchemaAdapter {
                     LOG(WARNING) << "not found " << ::openmldb::type::TTLType_Name(ttl_type);
                     return false;
                 }
-                index_def->set_ttl_type(it->second);
+                index->set_ttl_type(it->second);
                 if (ttl_type == ::openmldb::type::kAbsAndLat || ttl_type == ::openmldb::type::kAbsOrLat) {
-                    index_def->add_ttl(key.ttl().abs_ttl());
-                    index_def->add_ttl(key.ttl().lat_ttl());
+                    index->add_ttl(key.ttl().abs_ttl());
+                    index->add_ttl(key.ttl().lat_ttl());
                 } else if (ttl_type == ::openmldb::type::kAbsoluteTime) {
-                    index_def->add_ttl(key.ttl().abs_ttl());
+                    index->add_ttl(key.ttl().abs_ttl());
                 } else {
-                    index_def->add_ttl(key.ttl().lat_ttl());
+                    index->add_ttl(key.ttl().lat_ttl());
                 }
             }
         }

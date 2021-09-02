@@ -166,7 +166,7 @@ void PrintTableIndex(std::ostream &stream, const ::hybridse::vm::IndexList &inde
         t.add(std::to_string(i + 1));
         t.add(index.name());
         t.add(index.first_keys(0));
-        const std::string& ts_name = index.second_key();
+        std::string ts_name = index.second_key();
         if (ts_name.empty()) {
             t.add("-");
         } else {
@@ -291,7 +291,7 @@ void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema
             t.end_of_row();
         }
         stream << t << std::endl;
-    } catch (std::bad_cast &) {
+    } catch (std::bad_cast&) {
         return;
     }
 }
@@ -346,9 +346,12 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
                 std::cerr << "table " << cmd_node->GetArgs()[0] << " does not exist" << std::endl;
                 return;
             }
-
-            PrintSchema(table->column_desc());
-            PrintColumnKey(table->column_key());
+            ::hybridse::vm::Schema output_schema;
+            ::openmldb::catalog::SchemaAdapter::ConvertSchema(table->column_desc(), &output_schema);
+            PrintTableSchema(std::cout, output_schema);
+            ::hybridse::vm::IndexList index_list;
+            ::openmldb::catalog::SchemaAdapter::ConvertIndex(table->column_key(), &index_list);
+            PrintTableIndex(std::cout, index_list);
             break;
         }
 
