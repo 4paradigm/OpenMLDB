@@ -16,11 +16,9 @@
 
 #include "storage/schema.h"
 
-#include <iostream>
 #include <string>
 
 #include "base/glog_wapper.h"
-#include "base/slice.h"
 #include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 
@@ -38,7 +36,7 @@ void AssertIndex(const ::openmldb::storage::IndexDef& index, const std::string& 
         ASSERT_EQ(index.GetName(), name);
     }
     auto ttl = index.GetTTL();
-    ASSERT_EQ(ttl->abs_ttl / (60 * 1000), abs_ttl);
+    ASSERT_EQ(ttl->abs_ttl, abs_ttl);
     ASSERT_EQ(ttl->ttl_type, ttl_type);
     if (!ts_col_name.empty()) {
         auto ts_col = index.GetTsColumn();
@@ -50,10 +48,10 @@ void AssertIndex(const ::openmldb::storage::IndexDef& index, const std::string& 
 void AssertInnerIndex(const ::openmldb::storage::InnerIndexSt& inner_index, uint32_t id,
                       const std::vector<std::string>& index_vec, const std::vector<uint32_t> ts_vec) {
     ASSERT_EQ(inner_index.GetId(), id);
-    const auto& indexs = inner_index.GetIndex();
-    ASSERT_EQ(indexs.size(), index_vec.size());
+    const auto& indexes = inner_index.GetIndex();
+    ASSERT_EQ(indexes.size(), index_vec.size());
     for (size_t i = 0; i < ts_vec.size(); i++) {
-        ASSERT_EQ(indexs[i]->GetName(), index_vec[i]);
+        ASSERT_EQ(indexes[i]->GetName(), index_vec[i]);
     }
     const auto& ts_idx = inner_index.GetTsIdx();
     ASSERT_EQ(ts_idx.size(), ts_vec.size());
