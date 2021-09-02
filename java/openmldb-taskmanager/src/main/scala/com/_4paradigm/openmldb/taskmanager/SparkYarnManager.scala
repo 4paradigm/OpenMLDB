@@ -96,20 +96,4 @@ object SparkYarnManager {
     sparkAppHandle.getAppId
   }
 
-
-
-  def main(args: Array[String]): Unit = {
-
-
-    //showSparkVersion()
-
-    val fileType = "parquet"
-    val filePath = "hdfs:///Users/tobe/data/taxi_tour_parquet_all/"
-    val dbName = "taxitour5"
-    val tableName = "t10"
-
-    importHdfsFile(fileType, filePath, dbName, tableName)
-  }
-
-
 }
