@@ -36,17 +36,17 @@ void AssertIndex(const ::openmldb::storage::IndexDef& index, const std::string& 
         ASSERT_EQ(index.GetName(), name);
     }
     auto ttl = index.GetTTL();
-    ASSERT_EQ(ttl->abs_ttl, abs_ttl);
+    ASSERT_EQ(ttl->abs_ttl / 60 / 1000, abs_ttl);
     ASSERT_EQ(ttl->ttl_type, ttl_type);
     if (!ts_col_name.empty()) {
-        auto ts_col = index.GetTsColumn();
+        const auto& ts_col = index.GetTsColumn();
         ASSERT_EQ(ts_col->GetName(), ts_col_name);
         ASSERT_EQ((uint32_t)ts_col->GetTsIdx(), ts_index);
     }
 }
 
 void AssertInnerIndex(const ::openmldb::storage::InnerIndexSt& inner_index, uint32_t id,
-                      const std::vector<std::string>& index_vec, const std::vector<uint32_t> ts_vec) {
+                      const std::vector<std::string>& index_vec, const std::vector<uint32_t>& ts_vec) {
     ASSERT_EQ(inner_index.GetId(), id);
     const auto& indexes = inner_index.GetIndex();
     ASSERT_EQ(indexes.size(), index_vec.size());
@@ -154,8 +154,8 @@ TEST_F(SchemaTest, ParseEmpty) {
     std::map<std::string, uint8_t> ts_mapping;
     TableIndex table_index;
     ASSERT_GE(table_index.ParseFromMeta(table_meta, &ts_mapping), 0);
-    auto indexs = table_index.GetAllIndex();
-    ASSERT_EQ(indexs.size(), 1u);
+    auto indexes = table_index.GetAllIndex();
+    ASSERT_EQ(indexes.size(), 1u);
     ASSERT_EQ(ts_mapping.size(), 0u);
     auto index = table_index.GetPkIndex();
     ASSERT_STREQ(index->GetName().c_str(), "idx0");
