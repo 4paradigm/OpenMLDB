@@ -18,6 +18,7 @@ syntax = "proto2";
 
 import "common.proto";
 package openmldb.client;
+option java_package = "com._4paradigm.openmldb.proto";
 
 message TablePartition {
     required string endpoint = 1;
