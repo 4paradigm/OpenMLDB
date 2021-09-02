@@ -18,8 +18,12 @@ package com._4paradigm.openmldb.importer;
 
 import org.apache.commons.csv.CSVRecord;
 
+import java.util.Map;
+
 public interface CSVFileReader {
     boolean hasNext();
 
     CSVRecord next();
+
+    Map<String, Integer> getHeader();
 }
