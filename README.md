@@ -80,6 +80,10 @@ sh start_predict_server.sh ./fe.sql 8887 /tmp/model.txt
 python3 predict.py
 ```
 
+## Build
+
+See [here](docs/en/compile.md)
+
 ## Architecture 
 
 <div align=center><img src="./images/openmldb_architecture.png"/></div>

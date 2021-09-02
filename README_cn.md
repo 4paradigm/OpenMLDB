@@ -79,6 +79,10 @@ sh start_predict_server.sh ./fe.sql 8887 /tmp/model.txt
 python3 predict.py
 ```
 
+## 编译
+
+点击[这里](docs/cn/compile.md)
+
 ## 系统架构
 
 <div align=center><img src="./images/openmldb_architecture.png"/></div>
