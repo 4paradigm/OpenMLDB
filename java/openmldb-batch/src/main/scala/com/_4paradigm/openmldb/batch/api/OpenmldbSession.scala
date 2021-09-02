@@ -236,7 +236,7 @@ class OpenmldbSession {
     spark.catalog.listDatabases().collect().flatMap(db => {
       spark.catalog.listTables(db.name).collect().map(x => {
         val fullyQualifiedName = s"${db.name}.${x.name}"
-        logger.error("Register table " + fullyQualifiedName)
+        logger.info("Register table " + fullyQualifiedName)
         registerTable(fullyQualifiedName, spark.table(fullyQualifiedName))
       })
     })

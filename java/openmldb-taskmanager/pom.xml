@@ -18,10 +18,12 @@
         <scala.version>2.12.8</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
         <spark.version>3.1.2</spark.version>
+        <hadoop.version>2.7.4</hadoop.version>
     </properties>
 
     <dependencies>
 
+        <!-- Scala -->
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
@@ -104,21 +106,33 @@
             <version>1.18.4</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- Hadoop -->
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
-            <version>2.7.4</version>
+            <version>${hadoop.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-hdfs</artifactId>
-            <version>2.7.4</version>
+            <artifactId>hadoop-yarn-client</artifactId>
+            <version>${hadoop.version}</version>
         </dependency>
+
         <dependency>
             <groupId>org.apache.iceberg</groupId>
             <artifactId>iceberg-core</artifactId>
             <version>0.12.0</version>
         </dependency>
+
+        <!-- Spark -->
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-launcher_${scala.binary.version}</artifactId>
+            <version>${spark.version}</version>
+        </dependency>
+
+
     </dependencies>
 
     <build>
@@ -176,6 +190,37 @@
                             <goal>compile</goal>
                             <goal>testCompile</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/main/scala</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-test-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/test/scala</source>
+                            </sources>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
