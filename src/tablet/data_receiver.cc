@@ -23,7 +23,7 @@ bool DataReceiver::AppendData(const ::openmldb::api::BulkLoadRequest* request, c
     std::unique_lock<std::mutex> ul(mu_);
     if (!request->has_part_id() || !PartValidation(request->part_id())) {
         LOG(WARNING) << tid_ << "-" << pid_ << " data receiver received invalid part id, expect " << next_part_id_
-                     << ", actual " << (request->has_part_id() ? "no id" : std::to_string(request->part_id()));
+                     << ", actual " << (request->has_part_id() ? std::to_string(request->part_id()) : "no id");
         return false;
     }
 
@@ -72,7 +72,7 @@ bool DataReceiver::BulkLoad(const std::shared_ptr<storage::MemTable>& table,
 
     if (!request->has_part_id() || !PartValidation(request->part_id())) {
         LOG(WARNING) << tid_ << "-" << pid_ << " data receiver received invalid part id, expect " << next_part_id_
-                     << ", actual " << (request->has_part_id() ? "no id" : std::to_string(request->part_id()));
+                     << ", actual " << (request->has_part_id() ? std::to_string(request->part_id()) : "no id");
         return false;
     }
     // data blocks ref count will be changed

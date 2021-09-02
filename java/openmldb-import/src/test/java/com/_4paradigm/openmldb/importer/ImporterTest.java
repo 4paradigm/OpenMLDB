@@ -40,5 +40,4 @@ public class ImporterTest extends TestCase {
     public void testHelp() {
         Importer.main(new String[]{"--help"});
     }
-
 }
