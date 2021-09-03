@@ -34,7 +34,7 @@ cases:
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c6 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW);
     request_plan: |
       PROJECT(type=Aggregation)
-        REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c6, -3000, 0), index_keys=(auto_t0.c1))
+        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c6, -3000, 0), index_keys=(auto_t0.c1))
           DATA_PROVIDER(request=auto_t0)
           DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
     expect:
@@ -66,7 +66,7 @@ cases:
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c6 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW);
     request_plan: |
       PROJECT(type=Aggregation)
-        REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c6, -3000, 0), index_keys=(auto_t0.c1))
+        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c6, -3000, 0), index_keys=(auto_t0.c1))
           DATA_PROVIDER(request=auto_t0)
           DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
     expect:
@@ -103,11 +103,11 @@ cases:
       SIMPLE_PROJECT(sources=(c1, c3, c6, c7, w1_cnt, w2_cnt))
         REQUEST_JOIN(type=kJoinTypeConcat)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c6, -3000, 0), index_keys=(auto_t0.c1))
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c6, -3000, 0), index_keys=(auto_t0.c1))
               DATA_PROVIDER(request=auto_t0)
               DATA_PROVIDER(type=Partition, table=auto_t0, index=index3)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -3000, 0), index_keys=(auto_t0.c1))
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, -3000, 0), index_keys=(auto_t0.c1))
               DATA_PROVIDER(request=auto_t0)
               DATA_PROVIDER(type=Partition, table=auto_t0, index=index2)
     expect:
@@ -139,7 +139,7 @@ cases:
       last join {1} as t1 ORDER BY t1.c3 on {0}.c1 = t1.c1;
     request_plan: |
       SIMPLE_PROJECT(sources=(auto_t0.c1, auto_t0.c2, t1.c3 -> t1_c3, t1.c4 -> t1_c4))
-        REQUEST_JOIN(type=LastJoin, right_sort=() ASC, condition=, left_keys=(), right_keys=(), index_keys=(auto_t0.c1))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(auto_t0.c1))
           DATA_PROVIDER(request=auto_t0)
           RENAME(name=t1)
             DATA_PROVIDER(type=Partition, table=auto_t1, index=index1)
@@ -169,8 +169,8 @@ cases:
       last join {1} as t2 ORDER BY t2.c4 on {0}.c1 = t2.c1;
     request_plan: |
       SIMPLE_PROJECT(sources=(auto_t0.c1, auto_t0.c2, t1.c3 -> t1_c3, t1.c4 -> t1_c4, t2.c3 -> t2_c3, t2.c4 -> t2_c4))
-        REQUEST_JOIN(type=LastJoin, right_sort=() ASC, condition=, left_keys=(), right_keys=(), index_keys=(auto_t0.c1))
-          REQUEST_JOIN(type=LastJoin, right_sort=() ASC, condition=, left_keys=(), right_keys=(), index_keys=(auto_t0.c1))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(auto_t0.c1))
+          REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(auto_t0.c1))
             DATA_PROVIDER(request=auto_t0)
             RENAME(name=t1)
               DATA_PROVIDER(type=Partition, table=auto_t1, index=index1)

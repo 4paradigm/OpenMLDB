@@ -16,19 +16,18 @@
 
 package com._4paradigm.openmldb.batch.end2end
 
+import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
-import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import com._4paradigm.openmldb.batch.utils.SparkUtil
-import org.apache.spark.sql.{Row, SparkSession}
-import org.scalatest.FunSuite
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 
 
-class TestWindow extends FunSuite {
+class TestWindow extends SparkTestSuite {
 
   test("Test end2end window aggregation") {
 
-    val spark = SparkSession.builder().master("local[*]")
-      .getOrCreate()
+    val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
     val data = Seq(

@@ -51,6 +51,16 @@ struct DataBlock {
         memcpy(data, input, len);
     }
 
+    DataBlock(uint8_t dim_cnt, char* input, uint32_t len, bool skip_copy)
+        : dim_cnt_down(dim_cnt), size(len), data(NULL) {
+        if (skip_copy) {
+            data = input;
+        } else {
+            data = new char[len];
+            memcpy(data, input, len);
+        }
+    }
+
     ~DataBlock() {
         delete[] data;
         data = NULL;
@@ -147,6 +157,10 @@ class Segment {
 
     void Put(const Slice& key, uint64_t time, DataBlock* row);
 
+    void PutUnlock(const Slice& key, uint64_t time, DataBlock* row);
+
+    void BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t time, DataBlock* row);
+
     void Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock* row);
 
     // Get time data
@@ -209,6 +223,8 @@ class Segment {
         }
         return 0;
     }
+
+    const std::map<uint32_t, uint32_t>& GetTsIdxMap() const { return ts_idx_map_; }
 
     inline uint64_t GetIdxByteSize() { return idx_byte_size_.load(std::memory_order_relaxed); }
 

@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+syntax = "proto2";
+
 import "type.proto";
 package openmldb.common;
 
 option cc_generic_services = false;
-option java_package = "com._4paradigm.openmldb.common";
+option java_package = "com._4paradigm.openmldb.proto";
 option java_outer_classname = "Common";
 
 message KvPair {

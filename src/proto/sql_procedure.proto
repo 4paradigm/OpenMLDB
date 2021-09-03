@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+syntax = "proto2";
+
 import "common.proto";
 package openmldb.api;
 
 option cc_generic_services = true;
-option java_package = "com._4paradigm.openmldb.api";
+option java_package = "com._4paradigm.openmldb.proto";
 option java_outer_classname = "SQLProcedure";
 
 message ProcedureInfo {

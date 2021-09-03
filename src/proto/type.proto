@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
+syntax = "proto2";
+
 package openmldb.type;
 
 option cc_generic_services = false;
-option java_package = "com._4paradigm.openmldb.type";
+option java_package = "com._4paradigm.openmldb.proto";
 option java_outer_classname = "Type";
 
 enum DataType {
@@ -54,4 +56,9 @@ enum TTLType {
 enum CompressType {
     kNoCompress = 0;
     kSnappy = 1;
+}
+
+enum EndpointState {
+    kOffline = 1;
+    kHealthy = 2;
 }

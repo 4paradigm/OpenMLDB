@@ -27,21 +27,15 @@ namespace openmldb {
 namespace client {
 using hybridse::plan::PlanAPI;
 NsClient::NsClient(const std::string& endpoint, const std::string& real_endpoint)
-    : endpoint_(endpoint), client_(endpoint), db_("") {
-    if (!real_endpoint.empty()) {
-        client_ = ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>(real_endpoint);
-    }
-}
+    : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint) {}
 
 int NsClient::Init() { return client_.Init(); }
-
-std::string NsClient::GetEndpoint() { return endpoint_; }
 
 const std::string& NsClient::GetDb() { return db_; }
 
 void NsClient::ClearDb() { db_.clear(); }
 
-bool NsClient::Use(std::string db, std::string& msg) {
+bool NsClient::Use(const std::string& db, std::string& msg) {
     ::openmldb::nameserver::UseDatabaseRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_db(db);
@@ -268,8 +262,7 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script, std:
     }
 }
 
-bool NsClient::HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node,
-                            const std::string& db,
+bool NsClient::HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
                             hybridse::base::Status* sql_status) {
     switch (cmd_node->GetCmdType()) {
         case hybridse::node::kCmdDropTable: {
@@ -869,7 +862,7 @@ bool NsClient::AddReplicaCluster(const std::string& zk_ep, const std::string& zk
                                  std::string& msg) {
     ::openmldb::nameserver::ClusterAddress request;
     ::openmldb::nameserver::GeneralResponse response;
-    if (zk_ep.size() < 1 || zk_path.size() < 1 || alias.size() < 1) {
+    if (zk_ep.empty() || zk_path.empty() || alias.empty()) {
         msg = "zookeeper endpoints or zk_path or alias is null";
         return false;
     }
@@ -896,7 +889,7 @@ bool NsClient::ShowReplicaCluster(std::vector<::openmldb::nameserver::ClusterAdd
     msg = response.msg();
     if (ok && (response.code() == 0)) {
         for (int32_t i = 0; i < response.replicas_size(); i++) {
-            auto status = response.replicas(i);
+            const auto& status = response.replicas(i);
             clusterinfo.push_back(status);
         }
         return true;
@@ -936,7 +929,7 @@ bool NsClient::RemoveReplicaClusterByNs(const std::string& alias, const std::str
     return false;
 }
 
-bool NsClient::SwitchMode(const ::openmldb::nameserver::ServerMode mode, std::string& msg) {
+bool NsClient::SwitchMode(const ::openmldb::nameserver::ServerMode& mode, std::string& msg) {
     ::openmldb::nameserver::SwitchModeRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_sm(mode);
@@ -1026,7 +1019,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
         status->code = hybridse::common::kSqlError;
         return false;
     }
-    table->set_replica_num((uint32_t)replica_num);
+    table->set_replica_num(static_cast<uint32_t>(replica_num));
     int partition_num = create_node->GetPartitionNum();
     if (partition_num <= 0) {
         status->msg = "CREATE common: partition_num should be greater than 0";
@@ -1039,7 +1032,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
     for (auto column_desc : column_desc_list) {
         switch (column_desc->GetType()) {
             case hybridse::node::kColumnDesc: {
-                hybridse::node::ColumnDefNode* column_def = (hybridse::node::ColumnDefNode*)column_desc;
+                auto* column_def = (hybridse::node::ColumnDefNode*)column_desc;
                 ::openmldb::common::ColumnDesc* column_desc = table->add_column_desc();
                 if (column_names.find(column_desc->name()) != column_names.end()) {
                     status->msg = "CREATE common: COLUMN NAME " + column_def->GetColumnName() + " duplicate";
@@ -1088,9 +1081,9 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
             }
 
             case hybridse::node::kColumnIndex: {
-                hybridse::node::ColumnIndexNode* column_index = (hybridse::node::ColumnIndexNode*)column_desc;
+                auto* column_index = (hybridse::node::ColumnIndexNode*)column_desc;
                 std::string index_name = column_index->GetName();
-                if (index_name.empty()) {
+                if (index_name.empty() && !column_index->GetKey().empty()) {
                     index_name = PlanAPI::GenerateName("INDEX", table->column_key_size());
                     column_index->SetName(index_name);
                 }
@@ -1099,16 +1092,18 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
                     status->code = hybridse::common::kSqlError;
                     return false;
                 }
-                index_names.insert(index_name);
                 ::openmldb::common::ColumnKey* index = table->add_column_key();
-                index->set_index_name(index_name);
-
-                if (column_index->GetKey().empty()) {
-                    status->msg = "CREATE common: INDEX KEY empty";
-                    status->code = hybridse::common::kSqlError;
-                    return false;
+                if (!index_name.empty()) {
+                    if (column_index->GetKey().empty()) {
+                        status->msg = "CREATE common: INDEX KEY empty";
+                        status->code = hybridse::common::kSqlError;
+                        return false;
+                    }
+                    index_names.insert(index_name);
+                    index->set_index_name(index_name);
                 }
-                for (auto key : column_index->GetKey()) {
+
+                for (const auto& key : column_index->GetKey()) {
                     auto cit = column_names.find(key);
                     if (cit == column_names.end()) {
                         status->msg = "column " + key + " does not exist";
@@ -1121,19 +1116,13 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
                 if (!column_index->ttl_type().empty()) {
                     std::string ttl_type = column_index->ttl_type();
                     std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
-                    if (ttl_type == "absolute") {
-                        ttl_st->set_ttl_type(openmldb::type::kAbsoluteTime);
-                    } else if (ttl_type == "latest") {
-                        ttl_st->set_ttl_type(openmldb::type::kLatestTime);
-                    } else if (ttl_type == "absorlat") {
-                        ttl_st->set_ttl_type(openmldb::type::kAbsOrLat);
-                    } else if (ttl_type == "absandlat") {
-                        ttl_st->set_ttl_type(openmldb::type::kAbsAndLat);
-                    } else {
+                    openmldb::type::TTLType type;
+                    if (!TTLTypeParse(ttl_type, &type)) {
                         status->msg = "CREATE common: ttl_type " + column_index->ttl_type() + " not support";
                         status->code = hybridse::common::kSqlError;
                         return false;
                     }
+                    ttl_st->set_ttl_type(type);
                 } else {
                     ttl_st->set_ttl_type(openmldb::type::kAbsoluteTime);
                 }
@@ -1209,7 +1198,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
         return false;
     }
     if (!distribution_list.empty()) {
-        if (replica_num != (int32_t)distribution_list.size()) {
+        if (replica_num != static_cast<int32_t>(distribution_list.size())) {
             status->msg =
                 "CREATE common: "
                 "replica_num should equal to partition meta size";
@@ -1222,7 +1211,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
         for (auto partition_meta : distribution_list) {
             switch (partition_meta->GetType()) {
                 case hybridse::node::kPartitionMeta: {
-                    hybridse::node::PartitionMetaNode* p_meta_node = (hybridse::node::PartitionMetaNode*)partition_meta;
+                    auto* p_meta_node = (hybridse::node::PartitionMetaNode*)partition_meta;
                     const std::string& ep = p_meta_node->GetEndpoint();
                     if (std::find(ep_vec.begin(), ep_vec.end(), ep) != ep_vec.end()) {
                         status->msg =
@@ -1270,6 +1259,21 @@ bool NsClient::DropProcedure(const std::string& db_name, const std::string& sp_n
         return true;
     }
     return false;
+}
+bool NsClient::TTLTypeParse(const std::string& type_str, ::openmldb::type::TTLType* type) {
+    if (type_str == "absolute") {
+        *type = openmldb::type::kAbsoluteTime;
+    } else if (type_str == "latest") {
+        *type = openmldb::type::kLatestTime;
+    } else if (type_str == "absorlat") {
+        *type = openmldb::type::kAbsOrLat;
+    } else if (type_str == "absandlat") {
+        *type = openmldb::type::kAbsAndLat;
+    } else {
+        return false;
+    }
+
+    return true;
 }
 
 }  // namespace client

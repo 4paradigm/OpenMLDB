@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.batch.nodes
 
+import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.sdk.{JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalTableProjectNode}
 import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, SparkUtil, UnsafeRowUtil}
@@ -78,7 +79,7 @@ object RowProjectPlan {
         if (hybridseJsdkLibraryPath.equals("")) {
           JitManager.initJitModule(tag, buffer)
         } else {
-          //JitManager.initJitModule(tag, buffer, hybridseJsdkLibraryPath)
+          JitManager.initJitModule(tag, buffer, hybridseJsdkLibraryPath)
         }
 
         val jit = JitManager.getJit(tag)
@@ -135,8 +136,10 @@ object RowProjectPlan {
           // Encode the spark row to native row
           val nativeInputRow = encoder.encode(row)
 
+          val emptyParameter = new codec.Row()
+
           // Call native project method
-          val outputNativeRow = CoreAPI.RowProject(fn, nativeInputRow, false)
+          val outputNativeRow = CoreAPI.RowProject(fn, nativeInputRow, emptyParameter, false)
 
           // Decode the native row to spark row
           decoder.decode(outputNativeRow, outputArr)

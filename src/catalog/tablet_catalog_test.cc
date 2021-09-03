@@ -213,16 +213,14 @@ TEST_F(TabletCatalogTest, sql_smoke_test) {
         std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(::hybridse::common::kOk, status.code);
-    std::vector<int8_t *> output;
-    std::shared_ptr<::hybridse::vm::TableHandler> result = session.Run();
-    if (!result) {
+    std::vector<hybridse::codec::Row> outputs;
+    if (0 != session.Run(outputs)) {
         ASSERT_TRUE(false);
     }
     ::hybridse::codec::RowView rv(session.GetSchema());
     ASSERT_EQ(2, session.GetSchema().size());
-    auto it = result->GetIterator();
-    ASSERT_TRUE(it->Valid());
-    const ::hybridse::codec::Row &row = it->GetValue();
+    ASSERT_EQ(1u, outputs.size());
+    const ::hybridse::codec::Row &row = outputs[0];
     rv.Reset(row.buf(), row.size());
     int64_t val = 0;
     ASSERT_EQ(0, rv.GetInt64(1, &val));
@@ -263,15 +261,12 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     }
     ASSERT_EQ(::hybridse::common::kOk, status.code);
     std::vector<int8_t *> output;
-    std::shared_ptr<::hybridse::vm::TableHandler> result = session.Run();
-    if (!result) {
-        ASSERT_TRUE(false);
-    }
+    std::vector<hybridse::codec::Row> output_rows;
+    ASSERT_EQ(0, session.Run(output_rows));
     ::hybridse::codec::RowView rv(session.GetSchema());
     ASSERT_EQ(4, session.GetSchema().size());
-    auto it = result->GetIterator();
-    ASSERT_TRUE(it->Valid());
-    const ::hybridse::codec::Row &row = it->GetValue();
+    ASSERT_EQ(1u, output_rows.size());
+    auto& row = output_rows[0];
     rv.Reset(row.buf(), row.size());
     ASSERT_EQ(args->pk, rv.GetStringUnsafe(0));
 }
@@ -303,15 +298,14 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     }
     ASSERT_EQ(::hybridse::common::kOk, status.code);
     std::vector<int8_t *> output;
-    std::shared_ptr<::hybridse::vm::TableHandler> result = session.Run();
-    if (!result) {
+    std::vector<hybridse::codec::Row> outputs;
+    if (0 != session.Run(outputs)) {
         ASSERT_TRUE(false);
     }
     ::hybridse::codec::RowView rv(session.GetSchema());
     ASSERT_EQ(4, session.GetSchema().size());
-    auto it = result->GetIterator();
-    ASSERT_TRUE(it->Valid());
-    const ::hybridse::codec::Row &row = it->GetValue();
+    ASSERT_EQ(1u, outputs.size());
+    auto& row = outputs[0];
     rv.Reset(row.buf(), row.size());
     const char *data = NULL;
     uint32_t data_size = 0;
@@ -343,9 +337,8 @@ TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
         std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(::hybridse::common::kOk, status.code);
-    std::vector<int8_t *> output;
-    std::shared_ptr<::hybridse::vm::TableHandler> result = session.Run();
-    if (!result) {
+    std::vector<hybridse::codec::Row> outputs;
+    if (0 != session.Run(outputs)) {
         ASSERT_TRUE(false);
     }
     ::hybridse::codec::RowView rv(session.GetSchema());
@@ -371,16 +364,14 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
         std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(::hybridse::common::kOk, status.code);
-    std::vector<int8_t *> output;
-    std::shared_ptr<::hybridse::vm::TableHandler> result = session.Run();
-    if (!result) {
+    std::vector<hybridse::codec::Row> outputs;
+    if (0 != session.Run(outputs)) {
         ASSERT_TRUE(false);
     }
     ::hybridse::codec::RowView rv(session.GetSchema());
     ASSERT_EQ(3, session.GetSchema().size());
-    auto it = result->GetIterator();
-    ASSERT_TRUE(it->Valid());
-    const ::hybridse::codec::Row &row = it->GetValue();
+    ASSERT_EQ(1u, outputs.size());
+    const ::hybridse::codec::Row &row = outputs[0];
     rv.Reset(row.buf(), row.size());
     int64_t val = 0;
     ASSERT_EQ(0, rv.GetInt64(0, &val));

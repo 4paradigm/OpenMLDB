@@ -18,12 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      # TODO: tweak HybridSE source & rm '-build/header_guard' filter
       - uses: reviewdog/action-cpplint@master
         with:
           github_token: ${{ secrets.github_token }}
           level: info
           reporter: github-pr-review
           flags: --linelength=120
+          filter: -build/header_guard
 
   detect-secrets:
     runs-on: ubuntu-latest
@@ -35,3 +37,15 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review # Change reporter.
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: reviewdog/action-shellcheck@v1
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          filter_mode: diff_context
+          fail_on_error: true
+          exclude: "./.git/*" # Optional.

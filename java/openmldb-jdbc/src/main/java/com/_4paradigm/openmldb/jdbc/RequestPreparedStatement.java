@@ -31,7 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class RequestPreparedStatement implements PreparedStatement {
+public class RequestPreparedStatement implements java.sql.PreparedStatement {
     public static final Charset CHARSET = Charset.forName("utf-8");
     protected String db;
     protected String currentSql;
@@ -96,7 +96,7 @@ public class RequestPreparedStatement implements PreparedStatement {
         checkClosed();
         dataBuild();
         Status status = new Status();
-        com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQL(db, currentSql, currentRow, status);
+        com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLRequest(db, currentSql, currentRow, status);
         if (resultSet == null || status.getCode() != 0) {
             String msg = status.getMsg();
             status.delete();

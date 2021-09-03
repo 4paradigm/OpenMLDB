@@ -87,7 +87,6 @@ class SQLRouter {
 
     virtual std::shared_ptr<openmldb::sdk::SQLRequestRow> GetRequestRow(const std::string& db, const std::string& sql,
                                                                         hybridse::sdk::Status* status) = 0;
-
     virtual std::shared_ptr<openmldb::sdk::SQLRequestRow> GetRequestRowByProcedure(const std::string& db,
                                                                                    const std::string& sp_name,
                                                                                    ::hybridse::sdk::Status* status) = 0;
@@ -98,12 +97,16 @@ class SQLRouter {
     virtual std::shared_ptr<openmldb::sdk::SQLInsertRows> GetInsertRows(const std::string& db, const std::string& sql,
                                                                         ::hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
-                                                                 std::shared_ptr<openmldb::sdk::SQLRequestRow> row,
-                                                                 hybridse::sdk::Status* status) = 0;
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLRequest(
+        const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> row,
+        hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                                  hybridse::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(
+        const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
+        hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLBatchRequest(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRowBatch> row_batch,

@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.`type`.TypeOuterClass.ColumnDef
+import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.codec.RowView
 import com._4paradigm.hybridse.sdk.{HybridSeException, JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.node.{ExprListNode, JoinType}
@@ -56,7 +57,8 @@ object JoinPlan {
 
     val hasOrderby =
       ((node.join.right_sort != null) && (node.join.right_sort.orders != null)
-    && (node.join.right_sort.orders.order_by != null))
+        && (node.join.right_sort.orders.getOrder_expressions_ != null)
+        && (node.join.right_sort.orders.getOrder_expressions_.GetChildNum() != 0))
 
     // Check if we can use native last join
     val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, hasOrderby)
@@ -141,10 +143,10 @@ object JoinPlan {
     } else if (joinType == JoinType.kJoinTypeLast) {
       // Resolve order by column index
       if (hasOrderby) {
-        val orderbyExprListNode = node.join.right_sort.orders.order_by
+        val orderExpr = node.join.right_sort.orders.GetOrderExpression(0)
         val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
         // Get the time column index from right table
-        val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node.GetProducer(1))
+        val timeColIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, node.GetProducer(1))
         assert(timeColIdx >= 0)
 
         val timeIdxInJoined = timeColIdx + leftDf.schema.size
@@ -244,7 +246,7 @@ object JoinPlan {
       if (hybridseJsdkLibraryPath.equals("")) {
         JitManager.initJitModule(moduleTag, buffer)
       } else {
-        //JitManager.initJitModule(moduleTag, buffer, hybridseJsdkLibraryPath)
+        JitManager.initJitModule(moduleTag, buffer, hybridseJsdkLibraryPath)
       }
 
       JitManager.getJit(moduleTag)
@@ -254,8 +256,10 @@ object JoinPlan {
       // call encode
       val nativeInputRow = encoder.encode(row)
 
+      val emptyParameter = new codec.Row()
+
       // call native compute
-      val result = CoreAPI.ComputeCondition(fn, nativeInputRow, outView, 0)
+      val result = CoreAPI.ComputeCondition(fn, nativeInputRow, emptyParameter, outView, 0)
 
       // release swig jni objects
       nativeInputRow.delete()
