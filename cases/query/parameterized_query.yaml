@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+db: testdb
+debugs: []
 cases:
   - id: 0
     desc: 带参数的Where条件命中索引
