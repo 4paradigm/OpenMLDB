@@ -1,5 +1,5 @@
 
-<div align=center><img src="./images/openmldb_logo.png"/></div>
+<div align=center><img src="./images/openmldb_logo.png" width="400" /></div>
 
 [![build status](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml/badge.svg?branch=openmldb)](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml)
 [![docker pulls](https://img.shields.io/docker/pulls/4pdosc/openmldb.svg)](https://hub.docker.com/r/4pdosc/openmldb)
