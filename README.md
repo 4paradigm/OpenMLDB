@@ -1,5 +1,5 @@
 
-<div align=center><img src="./images/openmldb_logo.png"/></div>
+<div align=center><img src="./images/openmldb_logo.png" width="400" /></div>
 
 [![build status](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml/badge.svg?branch=openmldb)](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml)
 [![docker pulls](https://img.shields.io/docker/pulls/4pdosc/openmldb.svg)](https://hub.docker.com/r/4pdosc/openmldb)
@@ -62,7 +62,7 @@ Comparing with the popular Spark computation framework, using OpenMLDB for batch
 
 ## QuickStart
 
-Take Predict Taxi Tour Duration as example, we can use OpenMLDB to develop and deploy ML applications easily.
+Take Predict Taxi Tour Duration as example, we can use OpenMLDB to develop and deploy ML applications easily. The demo code is [here](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/demo).
 
 ```bash 
 # Start docker image (support linux/amd64 & linux/arm64 image)

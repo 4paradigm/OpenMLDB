@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/texttable.h"
 #include "cmd/sdk_iterator.h"
 #include "codec/flat_array.h"
 #include "codec/row_codec.h"
@@ -53,87 +54,60 @@ static void TransferString(std::vector<std::string>* vec) {
 }
 
 __attribute__((unused)) static void PrintSchema(
-    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& column_desc_field) {
-    std::vector<std::string> row;
-    row.push_back("#");
-    row.push_back("name");
-    row.push_back("type");
-    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
-    tp.AddRow(row);
-    uint32_t idx = 0;
-    for (const auto& column_desc : column_desc_field) {
-        row.clear();
-        row.push_back(std::to_string(idx));
-        row.push_back(column_desc.name());
-        auto iter = ::openmldb::codec::DATA_TYPE_STR_MAP.find(column_desc.data_type());
-        if (iter != ::openmldb::codec::DATA_TYPE_STR_MAP.end()) {
-            row.push_back(iter->second);
-        } else {
-            row.push_back("-");
-        }
-        tp.AddRow(row);
-        idx++;
+    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& column_desc,
+    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& added_column_desc) {
+    ::hybridse::base::TextTable t('-', ' ', ' ');
+    t.add("#");
+    t.add("Field");
+    t.add("Type");
+    t.add("Null");
+    t.end_of_row();
+
+    for (int i = 0; i < column_desc.size(); i++) {
+        const auto& column = column_desc.Get(i);
+        t.add(std::to_string(i + 1));
+        t.add(column.name());
+        // kXXX discard k
+        t.add(DataType_Name(column.data_type()).substr(1));
+        t.add(column.not_null() ? "NO" : "YES");
+        t.end_of_row();
     }
-    tp.Print(true);
+
+    for (int i = 0; i < added_column_desc.size(); i++) {
+        const auto& column = added_column_desc.Get(i);
+        t.add(std::to_string(i + 1));
+        t.add(column.name());
+        // kXXX discard k
+        t.add(DataType_Name(column.data_type()).substr(1));
+        t.add(column.not_null() ? "NO" : "YES");
+        t.end_of_row();
+    }
+    std::cout << t;
 }
 
 __attribute__((unused)) static void PrintSchema(
-    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& column_desc,
-    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& added_column_desc) {
-    std::vector<std::string> row;
-    row.push_back("#");
-    row.push_back("name");
-    row.push_back("type");
-    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
-    tp.AddRow(row);
-    uint32_t idx = 0;
-    for (const auto& column_desc : column_desc) {
-        row.clear();
-        row.push_back(std::to_string(idx));
-        row.push_back(column_desc.name());
-        auto iter = ::openmldb::codec::DATA_TYPE_STR_MAP.find(column_desc.data_type());
-        if (iter != ::openmldb::codec::DATA_TYPE_STR_MAP.end()) {
-            row.push_back(iter->second);
-        } else {
-            row.push_back("-");
-        }
-        tp.AddRow(row);
-        idx++;
-    }
-    for (const auto& column_desc : added_column_desc) {
-        row.clear();
-        row.push_back(std::to_string(idx));
-        row.push_back(column_desc.name());
-        auto iter = ::openmldb::codec::DATA_TYPE_STR_MAP.find(column_desc.data_type());
-        if (iter != ::openmldb::codec::DATA_TYPE_STR_MAP.end()) {
-            row.push_back(iter->second);
-        } else {
-            row.push_back("-");
-        }
-        tp.AddRow(row);
-        idx++;
-    }
-    tp.Print(true);
+    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& column_desc_field) {
+    PrintSchema(column_desc_field, {});
 }
 
 __attribute__((unused)) static void PrintColumnKey(
     const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& column_key_field) {
-    std::vector<std::string> row;
-    row.push_back("#");
-    row.push_back("index_name");
-    row.push_back("col_name");
-    row.push_back("ts_col");
-    row.push_back("ttl");
-    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
-    tp.AddRow(row);
-    uint32_t idx = 0;
-    for (const auto& column_key : column_key_field) {
+    ::hybridse::base::TextTable t('-', ' ', ' ');
+    t.add("#");
+    t.add("name");
+    t.add("keys");
+    t.add("ts");
+    t.add("ttl");
+    t.add("ttl_type");
+    t.end_of_row();
+
+    for (int i = 0; i < column_key_field.size(); i++) {
+        const auto& column_key = column_key_field.Get(i);
         if (column_key.flag() == 1) {
             continue;
         }
-        row.clear();
-        row.push_back(std::to_string(idx));
-        row.push_back(column_key.index_name());
+        t.add(std::to_string(i + 1));
+        t.add(column_key.index_name());
         std::string key;
         for (const auto& name : column_key.col_name()) {
             if (key.empty()) {
@@ -142,26 +116,29 @@ __attribute__((unused)) static void PrintColumnKey(
                 key += "|" + name;
             }
         }
-        if (key.empty()) {
-            key = column_key.index_name();
-        }
-        row.push_back(key);
+        t.add((key.empty() ? column_key.index_name() : key));
+
         if (!column_key.ts_name().empty()) {
-            row.push_back(column_key.ts_name());
+            t.add(column_key.ts_name());
         } else {
-            row.push_back("-");
+            t.add("-");
         }
+
         if (column_key.has_ttl()) {
-            ::openmldb::storage::TTLSt cur_ttl_st(column_key.ttl());
-            cur_ttl_st.abs_ttl = cur_ttl_st.abs_ttl / (60 * 1000);
-            row.push_back(cur_ttl_st.ToString());
+            std::ostringstream oss;
+            auto& ttl = column_key.ttl();
+            // TODO(hw): it's better to construct from common::TTLSt, but the abs will be measured in minutes. Needs fix
+            storage::TTLSt ttl_st(ttl.abs_ttl(), ttl.lat_ttl(), storage::TTLSt::ConvertTTLType(ttl.ttl_type()));
+            t.add(ttl_st.ToString());
+            t.add(TTLType_Name(ttl_st.GetProtoTTLType()));
         } else {
-            row.push_back("-");
+            t.add("-");  // ttl
+            t.add("-");  // ttl_type
         }
-        tp.AddRow(row);
-        idx++;
+
+        t.end_of_row();
     }
-    tp.Print(true);
+    std::cout << t;
 }
 
 __attribute__((unused)) static void ShowTableRows(bool is_compress, ::openmldb::codec::SDKCodec* codec,
