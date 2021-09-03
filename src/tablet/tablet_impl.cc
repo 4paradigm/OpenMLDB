@@ -111,6 +111,7 @@ static const uint32_t SEED = 0xe17a1465;
 
 TabletImpl::TabletImpl()
     : tables_(),
+      message_tables_(),
       mu_(),
       gc_pool_(FLAGS_gc_pool_size),
       replicators_(),
@@ -2936,6 +2937,39 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
 
     PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
     return 0;
+}
+
+void TabletImpl::CreateMessageTable(RpcController* controller,
+                             const ::openmldb::api::CreateMessageTableRequest* request,
+                             ::openmldb::api::CreateMessageTableResponse* response,
+                             Closure* done) {
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    brpc::ClosureGuard done_guard(done);
+    do {
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto it = message_tables_.find(tid);
+            if (it == message_tables_.end()) {
+                it = message_tables_.emplace(tid,
+                        std::map<uint32_t, std::shared_ptr<::openmldb::storage::MessageTable>>()).first;
+            }
+            auto pid_it = it->second.find(pid);
+            if (pid_it == it->second.end()) {
+                auto message_table = std::make_shared<MessageTable>(request->db(), request->table_name(), tid, pid);
+                it->second.emplace(pid, message_table);
+            } else {
+                break;
+            }
+        }
+        response->set_code(::openmldb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        PDLOG(INFO, "create message table success. tid[%u] pid[%u]", tid, pid);
+        return;
+    } while (false);
+    response->set_code(::openmldb::base::ReturnCode::kTableAlreadyExists);
+    response->set_msg("table already exists");
+    PDLOG(WARNING, "table already exists. tid[%u] pid[%u]", tid, pid);
 }
 
 void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::CreateTableRequest* request,

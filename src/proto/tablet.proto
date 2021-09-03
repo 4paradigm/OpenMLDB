@@ -327,6 +327,18 @@ message CreateTableResponse {
     optional string msg = 2;
 }
 
+message CreateMessageTableRequest {
+    optional string db = 1;
+    optional string table_name = 2;
+    optional uint32 tid = 3;
+    optional uint32 pid = 4;
+}
+
+message CreateMessageTableResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 message LoadTableRequest {
     optional TableMeta table_meta = 1;
     optional TaskInfo task_info = 2;
@@ -831,6 +843,7 @@ service TabletServer {
 
     // table api for nameserver
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+    rpc CreateMessageTable(CreateMessageTableRequest) returns (CreateMessageTableResponse);
     rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);

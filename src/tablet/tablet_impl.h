@@ -37,6 +37,7 @@
 #include "replica/log_replicator.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
+#include "storage/message_table.h"
 #include "tablet/bulk_load_mgr.h"
 #include "tablet/combine_iterator.h"
 #include "tablet/file_receiver.h"
@@ -98,6 +99,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void CreateTable(RpcController* controller, const ::openmldb::api::CreateTableRequest* request,
                      ::openmldb::api::CreateTableResponse* response, Closure* done);
+
+    void CreateMessageTable(RpcController* controller, const ::openmldb::api::CreateMessageTableRequest* request,
+                     ::openmldb::api::CreateMessageTableResponse* response, Closure* done);
 
     void LoadTable(RpcController* controller, const ::openmldb::api::LoadTableRequest* request,
                    ::openmldb::api::GeneralResponse* response, Closure* done);
@@ -389,6 +393,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
 
     Tables tables_;
+    std::map<uint32_t, std::map<uint32_t, std::shared_ptr<::openmldb::storage::MessageTable>>> message_tables_;
     std::mutex mu_;
     SpinMutex spin_mutex_;
     ThreadPool gc_pool_;
