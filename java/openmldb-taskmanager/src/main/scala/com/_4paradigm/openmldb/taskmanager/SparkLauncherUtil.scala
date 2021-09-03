@@ -22,10 +22,16 @@ import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import org.apache.spark.launcher.{SparkAppHandle, SparkLauncher}
 import org.slf4j.LoggerFactory
 
-object SparkYarnManager {
+object SparkLauncherUtil {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
+  /**
+   * Create the SparkLauncher object with pre-set parameters like yarn-cluster.
+   *
+   * @param mainClass the full-qualified Java class name
+   * @return the SparkLauncher object
+   */
   def createSparkLauncher(mainClass: String): SparkLauncher = {
     new SparkLauncher()
       .setAppResource(TaskManagerConfig.BATCHJOB_JAR_PATH)
@@ -36,12 +42,19 @@ object SparkYarnManager {
       .setConf("spark.yarn.maxAppAttempts", "1")
   }
 
-  def showSparkVersion(): Unit = {
+  /**
+   * Submit the Spark job and wait its job to be done.
+   *
+   * @param mainClass the full-qualified Java class name
+   * @param args the arguments of Java class main function
+   */
+  def submitSparkAndWait(mainClass: String, args: Array[String] = null): Unit = {
     val lock = new CountDownLatch(1)
 
-    val mainClass = "com._4paradigm.openmldb.batchjob.SparkVersionApp"
-
     val sparkLauncher = createSparkLauncher(mainClass)
+    if (args != null) {
+      sparkLauncher.addAppArgs(args:_*)
+    }
 
     val sparkAppHandle = sparkLauncher.startApplication(new SparkAppHandle.Listener() {
       override def stateChanged(sparkAppHandle: SparkAppHandle): Unit = {
@@ -56,28 +69,23 @@ object SparkYarnManager {
 
     lock.await()
 
-    logger.info(s"Final state: ${sparkAppHandle.getState}")
+    logger.info(s"Final state: ${sparkAppHandle.getState}, appId: ${sparkAppHandle.getAppId}")
   }
 
-  def batchRunSql(sql: String, dbName: String, outputTableName: String): String = {
-    val mainClass = "com._4paradigm.openmldb.batchjob.BatchRunSql"
-    val args = List(TaskManagerConfig.HIVE_METASTORE_ENDPOINT, sql, dbName, outputTableName)
-
-    submitSparkGetAppId(mainClass, args.toArray)
-  }
-
-  def importHdfsFile(fileType: String, filePath: String, dbName: String, tableName: String): String = {
-    val mainClass = "com._4paradigm.openmldb.batchjob.ImportHdfsFile"
-    val args = List(TaskManagerConfig.HIVE_METASTORE_ENDPOINT, fileType, filePath, dbName, tableName)
-
-    submitSparkGetAppId(mainClass, args.toArray)
-  }
-
-  def submitSparkGetAppId(mainClass: String, args: Array[String]): String = {
+  /**
+   * Submit the Spark job then wait its state to be SUBMITTED and get yarn AppId.
+   *
+   * @param mainClass the full-qualified Java class name
+   * @param args the arguments of Java class main function
+   * @return the Yarn AppId in String format
+   */
+  def submitSparkGetAppId(mainClass: String, args: Array[String] = null): String = {
     val lock = new CountDownLatch(1)
 
     val sparkLauncher = createSparkLauncher(mainClass)
-    sparkLauncher.addAppArgs(args:_*)
+    if (args != null) {
+      sparkLauncher.addAppArgs(args:_*)
+    }
 
     val sparkAppHandle = sparkLauncher.startApplication(new SparkAppHandle.Listener() {
       override def stateChanged(sparkAppHandle: SparkAppHandle): Unit = {

@@ -23,7 +23,7 @@ import com.baidu.brpc.server.RpcServer;
 import com.baidu.brpc.server.RpcServerOptions;
 
 @Slf4j
-public class TaskManagerService {
+public class TaskManagerEntrypoint {
 
     public static void main(String[] args) {
         try {
@@ -40,9 +40,9 @@ public class TaskManagerService {
             log.info("start nearLine tablet on {} with worker thread number {}", TaskManagerConfig.PORT, TaskManagerConfig.WORKER_THREAD);
 
             // make server keep running
-            synchronized (TaskManagerService.class) {
+            synchronized (TaskManagerEntrypoint.class) {
                 try {
-                    TaskManagerService.class.wait();
+                    TaskManagerEntrypoint.class.wait();
                 } catch (Throwable e) {
                 }
             }

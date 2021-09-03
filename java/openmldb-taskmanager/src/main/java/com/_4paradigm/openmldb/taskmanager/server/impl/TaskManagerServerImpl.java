@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.taskmanager.server.impl;
 
 import com._4paradigm.openmldb.proto.TaskManager;
-import com._4paradigm.openmldb.taskmanager.SparkYarnManager;
+import com._4paradigm.openmldb.taskmanager.OpenmldbBatchjobManager;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerServer;
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,14 +28,23 @@ public class TaskManagerServerImpl implements TaskManagerServer {
 
     }
 
-    public TaskManager.RunBatchSqlResponse runBatchSql(TaskManager.RunBatchSqlRequest request) {
-        // TODO: Get default db name from request or client context
-        String dbName = "taxitour5";
-
-        SparkYarnManager.batchRunSql(request.getSql(), dbName, request.getOutputTableName());
+    public TaskManager.YarnJobResponse runBatchSql(TaskManager.RunBatchSqlRequest request) {
+        OpenmldbBatchjobManager.batchRunSql(request.getSql(), request.getDbName(), request.getOutputTableName());
 
         // TODO: Return with status code and message
-        return TaskManager.RunBatchSqlResponse.newBuilder().build();
+        return TaskManager.YarnJobResponse.newBuilder().setCode(0).build();
+    }
+
+    @Override
+    public TaskManager.YarnJobResponse importHdfsFile(TaskManager.ImportHdfsFileRequest request) {
+        OpenmldbBatchjobManager.importHdfsFile(request.getFileType(), request.getFilePath(), request.getDbName(), request.getOutputTableName());
+        return TaskManager.YarnJobResponse.newBuilder().setCode(0).build();
+    }
+
+    @Override
+    public TaskManager.YarnJobStateResponse getYarnJobState(TaskManager.GetYarnJobStateRequest request) {
+        String state = OpenmldbBatchjobManager.getJobState(request.getJobId());
+        return TaskManager.YarnJobStateResponse.newBuilder().setCode(0).setState(state).build();
     }
 
 }

@@ -21,5 +21,11 @@ import com.baidu.brpc.protocol.BrpcMeta;
 
 public interface TaskManagerServer {
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "RunBatchSql")
-    TaskManager.RunBatchSqlResponse runBatchSql(TaskManager.RunBatchSqlRequest request);
+    TaskManager.YarnJobResponse runBatchSql(TaskManager.RunBatchSqlRequest request);
+
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ImportHdfsFile")
+    TaskManager.YarnJobResponse importHdfsFile(TaskManager.ImportHdfsFileRequest request);
+
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "GetYarnJobState")
+    TaskManager.YarnJobStateResponse getYarnJobState(TaskManager.GetYarnJobStateRequest request);
 }
