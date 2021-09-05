@@ -34,5 +34,14 @@ public interface DatabaseSetup {
      */
     void teardown() throws SQLException;
 
+    /**
+     * get the database name of the connection, which may required
+     *   in the jdbc url. e.g 'jdbc:mariadb:localhost:3306/db_name'
+     * @return generated database name
+     */
+    default String getDb() {
+        return "db_" + this.getClass().getSimpleName();
+    }
+
     Connection getConnection();
 }

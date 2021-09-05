@@ -25,17 +25,15 @@ import java.sql.Statement;
  * parameterized query benchmark where have two filter conditions
  */
 public interface ParameterizedQuery2Benchmark extends QueryBenchmark {
-    String ddl = "create table %s (col1 int, col2 int, " +
-            "col3 timestamp," +
-            "col4 float," +
-            "col5 varchar(128)," +
-            "primary key (col1));";
-    String insertValues = " values (%d, %d, %d, 200.0, 'hello world');";
-
     int param1 = 500;
     int param2 = 40;
 
     default String getDDL() {
+        String ddl = "create table %s (col1 int, col2 int, " +
+                "col3 timestamp," +
+                "col4 float," +
+                "col5 varchar(128)," +
+                "primary key (col1));";
         return String.format(ddl, getTableName());
     }
 
@@ -48,6 +46,7 @@ public interface ParameterizedQuery2Benchmark extends QueryBenchmark {
     }
 
     default String getInsertStmt() {
+        String insertValues = " values (%d, %d, %d, 200.0, 'hello world');";
         return String.format("insert into %s %s", getTableName(), insertValues);
     }
 

@@ -13,8 +13,10 @@ import java.util.Properties;
 public class MemsqlSetup implements DatabaseSetup {
     private Connection connection;
 
+    // Note: can't auto create database from jdbc url using option 'createDatabaseIfNotExist=true'
+    //  override `getDb` method as workaround, you may create database manually
+    @Override
     public String getDb() {
-        // return "db_" + this.getClass().getSimpleName();
         return "benchmark";
     }
 

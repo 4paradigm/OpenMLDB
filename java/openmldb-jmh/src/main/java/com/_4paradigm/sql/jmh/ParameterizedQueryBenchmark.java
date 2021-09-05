@@ -26,21 +26,13 @@ import java.sql.Statement;
  */
 public interface ParameterizedQueryBenchmark extends QueryBenchmark {
     String param1 = "pk-2-55";
-    String query = "SELECT col1, col2, col3, col4, col5 FROM %s WHERE col1=?";
-
-    String ddl = "create table %s (col1 varchar(128), col2 timestamp, " +
-            "col3 float," +
-            "col4 float," +
-            "col5 varchar(128)," +
-            "primary key (col1));";
-
-    String insertValues = "(col1, col2, col3, col4, col5) values ('%s', %d, 100.0, 200.0, 'hello world');";
 
     default int getRecordSize() {
         return 10000;
     }
 
     default String getInsertStmt() {
+        String insertValues = "(col1, col2, col3, col4, col5) values ('%s', %d, 100.0, 200.0, 'hello world');";
         return String.format("insert into %s %s", getTableName(), insertValues);
     }
 
@@ -50,11 +42,16 @@ public interface ParameterizedQueryBenchmark extends QueryBenchmark {
      * @return ddl
      */
     default String getDDL() {
+        String ddl = "create table %s (col1 varchar(128), col2 timestamp, " +
+                "col3 float," +
+                "col4 float," +
+                "col5 varchar(128)," +
+                "primary key (col1));";
         return String.format(ddl, getTableName());
     }
 
     default String getQuery() {
-        return String.format(query, getTableName());
+        return String.format( "SELECT col1, col2, col3, col4, col5 FROM %s WHERE col1=?", getTableName());
     }
 
     default void prepareData() throws SQLException {
@@ -86,7 +83,7 @@ public interface ParameterizedQueryBenchmark extends QueryBenchmark {
         return String.format("drop table %s", getTableName());
     }
 
-    default ResultSet query()  throws SQLException {
+    default ResultSet query() throws SQLException {
         try (PreparedStatement stmt = getConnection().prepareStatement(getQuery())) {
             stmt.setString(1, param1);
             return stmt.executeQuery();

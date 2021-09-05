@@ -30,10 +30,6 @@ import java.sql.SQLException;
 public class OpenMLDBSetup implements DatabaseSetup {
     public SqlExecutor executor;
 
-    public String getDb() {
-        return "db_" + this.getClass().getSimpleName();
-    }
-
     @Override
     public void setup() throws SQLException {
         SdkOption sdkOption = new SdkOption();

@@ -10,7 +10,6 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.All)
