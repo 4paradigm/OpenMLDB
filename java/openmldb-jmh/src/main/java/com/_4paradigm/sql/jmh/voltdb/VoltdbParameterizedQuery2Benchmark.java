@@ -41,50 +41,19 @@ public class VoltdbParameterizedQuery2Benchmark extends VoltdbSetup implements P
     @Setup(Level.Trial)
     public void setup() throws SQLException {
         super.setup();
-        try (Statement createStmt = connection.createStatement()) {
-            createStmt.execute(getDDL());
-            // create a non-unique index for col3
-            createStmt.execute(createIndexSql());
-        }
-
-
-        int cnt = 0;
-        try (Statement insertStmt = connection.createStatement()) {
-            int val;
-            for (int i = 0; i < getRecordSize(); i++) {
-                val = i % 100;
-                String sql = String.format(getInsertStmt(), i, val, System.currentTimeMillis());
-                insertStmt.execute(sql);
-                cnt ++;
-            }
-        } finally {
-            log.info("inserted {}/{} records", cnt, getRecordSize());
-        }
+        prepareData();
     }
 
     @Override
     @TearDown(Level.Trial)
     public void teardown() throws SQLException {
-        if (connection != null) {
-            try (Statement stmt = connection.createStatement()) {
-                stmt.execute(getCleanDDL());
-            }
-            connection.close();
-        }
+        cleanup();
+        super.teardown();
     }
 
     @Benchmark
-    @Override
-    public ResultSet query() throws SQLException {
-        try (PreparedStatement stmt = connection.prepareStatement(getQuery())) {
-            stmt.setInt(1, param1);
-            stmt.setInt(2, param2);
-            return stmt.executeQuery();
-        }
-    }
-
-    private String createIndexSql() {
-        return "create index col3_index on " + getTableName() + " (col2)";
+    public ResultSet bm() throws SQLException {
+        return query();
     }
 
     public static void main(String[] args) throws RunnerException {

@@ -11,7 +11,7 @@ import java.util.Properties;
 
 @Slf4j
 public class MemsqlSetup implements DatabaseSetup {
-    Connection connection;
+    private Connection connection;
 
     public String getDb() {
         // return "db_" + this.getClass().getSimpleName();
@@ -31,5 +31,9 @@ public class MemsqlSetup implements DatabaseSetup {
         if (connection != null) {
             connection.close();
         }
+    }
+
+    public Connection getConnection() {
+        return connection;
     }
 }

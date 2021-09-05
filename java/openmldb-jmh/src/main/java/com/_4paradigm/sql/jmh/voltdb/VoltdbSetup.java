@@ -26,7 +26,7 @@ import java.sql.SQLException;
 
 @Slf4j
 public class VoltdbSetup implements DatabaseSetup {
-    public Connection connection;
+    private Connection connection;
 
     @Override
     public void teardown() throws SQLException {
@@ -44,5 +44,10 @@ public class VoltdbSetup implements DatabaseSetup {
             throw new SQLException(e);
         }
         connection = DriverManager.getConnection(BenchmarkConfig.VOLTDB_URL);
+    }
+
+    @Override
+    public Connection getConnection() {
+        return connection;
     }
 }

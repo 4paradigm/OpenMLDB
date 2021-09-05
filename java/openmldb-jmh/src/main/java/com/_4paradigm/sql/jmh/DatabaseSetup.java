@@ -16,6 +16,7 @@
 
 package com._4paradigm.sql.jmh;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 
 public interface DatabaseSetup {
@@ -32,4 +33,6 @@ public interface DatabaseSetup {
      * @throws SQLException
      */
     void teardown() throws SQLException;
+
+    Connection getConnection();
 }

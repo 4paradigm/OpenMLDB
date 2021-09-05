@@ -38,43 +38,19 @@ public class VoltdbParameterizedQueryBenchmark extends VoltdbSetup implements Pa
     @Override
     public void setup() throws SQLException {
         super.setup();
-        // prepare the data
-        try (Statement createStmt = connection.createStatement()) {
-            createStmt.execute(getDDL());
-        }
-
-        int cnt = 0;
-        try (Statement insertStmt = connection.createStatement()) {
-            for (int i = 0; i < getRecordSize() / 1000; i++) {
-                for (int j = 0; j < 1000; j++) {
-                    String sql = String.format(getInsertStmt(), String.format("pk-%d-%d", i, j), System.currentTimeMillis());
-                    insertStmt.execute(sql);
-                    cnt ++;
-                }
-            }
-        } finally {
-            log.info("inserted {}/{} records", cnt, getRecordSize());
-        }
+        prepareData();
     }
 
     @Override
     @TearDown(Level.Trial)
     public void teardown() throws SQLException {
-        if (connection != null) {
-            try (Statement stmt = connection.createStatement()) {
-                stmt.execute(getCleanDDL());
-            }
-            connection.close();
-        }
+        cleanup();
+        super.teardown();
     }
 
     @Benchmark
-    @Override
-    public ResultSet query() throws SQLException {
-        try (PreparedStatement stmt = connection.prepareStatement(getQuery())) {
-            stmt.setString(1, param1);
-            return stmt.executeQuery();
-        }
+    public ResultSet bm() throws SQLException {
+        return query();
     }
 
     public static void main(String[] args) throws RunnerException {

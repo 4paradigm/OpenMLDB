@@ -16,6 +16,11 @@
 
 package com._4paradigm.sql.jmh;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 /**
  * provide a set of rules of one benchmark case
  */
@@ -23,15 +28,13 @@ public interface ParameterizedQueryBenchmark extends QueryBenchmark {
     String param1 = "pk-2-55";
     String query = "SELECT col1, col2, col3, col4, col5 FROM %s WHERE col1=?";
 
-    String ddl = "create table %s (col1 varchar, col2 timestamp, " +
+    String ddl = "create table %s (col1 varchar(128), col2 timestamp, " +
             "col3 float," +
             "col4 float," +
-            "col5 varchar," +
+            "col5 varchar(128)," +
             "primary key (col1));";
 
     String insertValues = "(col1, col2, col3, col4, col5) values ('%s', %d, 100.0, 200.0, 'hello world');";
-
-    String cleanDDL = "drop table %s";
 
     default int getRecordSize() {
         return 10000;
@@ -54,7 +57,39 @@ public interface ParameterizedQueryBenchmark extends QueryBenchmark {
         return String.format(query, getTableName());
     }
 
+    default void prepareData() throws SQLException {
+        try (Statement createStmt = getConnection().createStatement()) {
+            createStmt.execute(getDDL());
+        }
+
+        try (Statement insertStmt = getConnection().createStatement()) {
+            for (int i = 0; i < getRecordSize() / 1000; i++) {
+                for (int j = 0; j < 1000; j++) {
+                    String sql = String.format(getInsertStmt(), String.format("pk-%d-%d", i, j), System.currentTimeMillis());
+                    insertStmt.execute(sql);
+                }
+            }
+        }
+    }
+
+    /**
+     * delete prepared data and inserted tables
+     * @throws SQLException
+     */
+    default void cleanup() throws SQLException {
+        try (PreparedStatement stmt = getConnection().prepareStatement(getQuery())) {
+            stmt.execute(getCleanDDL());
+        }
+    }
+
     default String getCleanDDL() {
-        return String.format(cleanDDL, getTableName());
+        return String.format("drop table %s", getTableName());
+    }
+
+    default ResultSet query()  throws SQLException {
+        try (PreparedStatement stmt = getConnection().prepareStatement(getQuery())) {
+            stmt.setString(1, param1);
+            return stmt.executeQuery();
+        }
     }
 }

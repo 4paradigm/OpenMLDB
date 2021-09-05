@@ -16,13 +16,24 @@
 
 package com._4paradigm.sql.jmh;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * general case for query benchmark
+ *  require a set of tables & data, and query string
+ */
 public interface QueryBenchmark {
+    void prepareData() throws SQLException;
+
     ResultSet query() throws SQLException;
+
+    void cleanup() throws SQLException;
 
     default String getTableName() {
         return "table_" + this.getClass().getSimpleName();
     }
+
+    Connection getConnection();
 }

@@ -16,6 +16,11 @@
 
 package com._4paradigm.sql.jmh;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 /**
  * parameterized query benchmark where have two filter conditions
  */
@@ -50,7 +55,39 @@ public interface ParameterizedQuery2Benchmark extends QueryBenchmark {
         return String.format("select col1, col2, col3, col4, col5 from %s where col1 > ? and col2 = ?;", getTableName());
     }
 
+    @Override
+    default void prepareData() throws SQLException {
+        try (Statement createStmt = getConnection().createStatement()) {
+            createStmt.execute(getDDL());
+            // create a non-unique index for col3
+            createStmt.execute(String.format("create index col3_index on %s (%s)",  getTableName(), " col2"));
+        }
+
+        try (Statement insertStmt = getConnection().createStatement()) {
+            for (int i = 0; i < getRecordSize(); i++) {
+                int val = i % 100;
+                String sql = String.format(getInsertStmt(), i, val, System.currentTimeMillis());
+                insertStmt.execute(sql);
+            }
+        }
+    }
+
+    @Override
+    default void cleanup() throws SQLException {
+        try (PreparedStatement stmt = getConnection().prepareStatement(getQuery())) {
+            stmt.execute(getCleanDDL());
+        }
+    }
+
     default String getCleanDDL() {
         return String.format("drop table %s", getTableName());
+    }
+
+    default ResultSet query() throws SQLException {
+        try (PreparedStatement stmt = getConnection().prepareStatement(getQuery())) {
+            stmt.setInt(1, param1);
+            stmt.setInt(2, param2);
+            return stmt.executeQuery();
+        }
     }
 }
