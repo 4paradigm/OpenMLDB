@@ -1,20 +1,4 @@
-/*
- * Copyright 2021 4Paradigm
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package com._4paradigm.sql.jmh.voltdb;
+package com._4paradigm.sql.jmh.memsql;
 
 import com._4paradigm.sql.jmh.ParameterizedQuery2Benchmark;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
 @Warmup(iterations = 1)
 @Slf4j
-public class VoltdbParameterizedQuery2Benchmark extends VoltdbSetup implements ParameterizedQuery2Benchmark {
+public class MemsqlParameterizedQuery2Benchmark extends MemsqlSetup implements ParameterizedQuery2Benchmark {
     @Override
     @Setup(Level.Trial)
     public void setup() throws SQLException {
@@ -62,15 +46,13 @@ public class VoltdbParameterizedQuery2Benchmark extends VoltdbSetup implements P
         }
     }
 
-    @Override
     @TearDown(Level.Trial)
+    @Override
     public void teardown() throws SQLException {
-        if (connection != null) {
-            try (Statement stmt = connection.createStatement()) {
-                stmt.execute(getCleanDDL());
-            }
-            connection.close();
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(getCleanDDL());
         }
+        super.teardown();
     }
 
     @Benchmark
@@ -89,7 +71,7 @@ public class VoltdbParameterizedQuery2Benchmark extends VoltdbSetup implements P
 
     public static void main(String[] args) throws RunnerException {
         Options opt = new OptionsBuilder()
-                .include(VoltdbParameterizedQuery2Benchmark.class.getSimpleName())
+                .include(MemsqlParameterizedQuery2Benchmark.class.getSimpleName())
                 .shouldFailOnError(true)
                 .forks(1)
                 .build();

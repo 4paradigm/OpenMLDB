@@ -23,7 +23,7 @@ public interface ParameterizedQuery2Benchmark extends QueryBenchmark {
     String ddl = "create table %s (col1 int, col2 int, " +
             "col3 timestamp," +
             "col4 float," +
-            "col5 varchar," +
+            "col5 varchar(128)," +
             "primary key (col1));";
     String insertValues = " values (%d, %d, %d, 200.0, 'hello world');";
 

@@ -1,20 +1,4 @@
-/*
- * Copyright 2021 4Paradigm
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package com._4paradigm.sql.jmh.voltdb;
+package com._4paradigm.sql.jmh.memsql;
 
 import com._4paradigm.sql.jmh.ParameterizedQueryBenchmark;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +8,10 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.sql.*;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.All)
@@ -33,9 +20,9 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
 @Warmup(iterations = 1)
 @Slf4j
-public class VoltdbParameterizedQueryBenchmark extends VoltdbSetup implements ParameterizedQueryBenchmark {
-    @Setup(Level.Trial)
+public class MemsqlParameterizedQueryBenchmark extends MemsqlSetup implements ParameterizedQueryBenchmark {
     @Override
+    @Setup(Level.Trial)
     public void setup() throws SQLException {
         super.setup();
         // prepare the data
@@ -64,12 +51,12 @@ public class VoltdbParameterizedQueryBenchmark extends VoltdbSetup implements Pa
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute(getCleanDDL());
             }
-            connection.close();
         }
+        super.teardown();
     }
 
-    @Benchmark
     @Override
+    @Benchmark
     public ResultSet query() throws SQLException {
         try (PreparedStatement stmt = connection.prepareStatement(getQuery())) {
             stmt.setString(1, param1);
@@ -77,9 +64,18 @@ public class VoltdbParameterizedQueryBenchmark extends VoltdbSetup implements Pa
         }
     }
 
+    @Override
+    public String getDDL() {
+        return String.format("create table %s (col1 varchar(128), col2 timestamp, " +
+                "col3 float," +
+                "col4 float," +
+                "col5 varchar(128)," +
+                "primary key (col1));", getTableName());
+    }
+
     public static void main(String[] args) throws RunnerException {
         Options opt = new OptionsBuilder()
-                .include(VoltdbParameterizedQueryBenchmark.class.getSimpleName())
+                .include(MemsqlParameterizedQueryBenchmark.class.getSimpleName())
                 .shouldFailOnError(true)
                 .forks(1)
                 .build();

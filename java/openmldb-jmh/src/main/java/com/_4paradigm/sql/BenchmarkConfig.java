@@ -31,7 +31,8 @@ public class BenchmarkConfig {
 
     public static String VOLTDB_URL = "jdbc:voltdb://localhost:21212";
 
-    public static String MEMSQL_URL="jdbc:mysql://172.27.128.37:3306/benchmark?user=benchmark&password=benchmark";
+    // memsql can connect via mysql/maraiadb jdbc
+    public static String MEMSQL_URL="jdbc:mariadb://localhost:3306";
     public static String PARTITION_NUM = "4";
     public static int BATCH_SIZE = 1;
     public static Mode mode = Mode.REQUEST;
