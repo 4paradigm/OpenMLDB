@@ -258,7 +258,7 @@ object WindowAggPlan {
     }
 
     val sortedByCol = PhysicalNodeUtil.getOrderbyColumns(windowAggNode, addColumnsDf)
-    val sortedByCols = sortedByCol ++ repartitionCols
+    val sortedByCols = repartitionCols ++ sortedByCol
 
     val sortedDf = repartitionDf.sortWithinPartitions(sortedByCols: _*)
     logger.info("Generate repartition and orderby dataframe")
