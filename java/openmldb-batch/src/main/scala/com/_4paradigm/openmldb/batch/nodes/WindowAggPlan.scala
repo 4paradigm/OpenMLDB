@@ -16,20 +16,21 @@
 
 package com._4paradigm.openmldb.batch.nodes
 
-import java.util
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
-import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil,
-  PhysicalNodeUtil, SkewUtils, SparkUtil}
+import com._4paradigm.openmldb.batch.utils.{
+  AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil,
+  SkewDataFrameUtils, SparkColumnUtil, SparkUtil
+}
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types.{IntegerType, LongType, StructType, TimestampType}
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConverters.{bufferAsJavaListConverter, asScalaBufferConverter}
+import scala.collection.mutable
 
 /** The planner which implements window agg physical node.
  *
@@ -42,8 +43,8 @@ import scala.collection.JavaConverters.{bufferAsJavaListConverter, asScalaBuffer
  * 4. Window skew optimization with skew config. Pre-compute the data distribution to accelerate the skew optimization.
  * 5. UnsafeRow optimization. Reuse the memory layout of Spark UnsafeRow.
  * 6. Window parallel optimization. Multiple windows could be computed in parallel and the input table would has new
- *    index column.
- **/
+ * index column.
+ * */
 object WindowAggPlan {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -80,7 +81,6 @@ object WindowAggPlan {
       windowPartition(ctx, physicalNode, unionTable)
     }
 
-
     // Get the output schema which may add the index column
     val outputSchema = if (isKeepIndexColumn) {
       HybridseUtil.getSparkSchema(physicalNode.GetOutputSchema())
@@ -107,9 +107,9 @@ object WindowAggPlan {
     } else { // isUnsafeRowOptimization is false
       val outputRdd = if (isWindowWithUnion) {
         repartitionDf.rdd.mapPartitionsWithIndex {
-        case (partitionIndex, iter) =>
-          val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
-          windowAggIterWithUnionFlag(computer, iter, sparkFeConfig, windowAggConfig)
+          case (partitionIndex, iter) =>
+            val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
+            windowAggIterWithUnionFlag(computer, iter, sparkFeConfig, windowAggConfig)
         }
       } else {
         repartitionDf.rdd.mapPartitionsWithIndex {
@@ -118,8 +118,6 @@ object WindowAggPlan {
             windowAggIter(computer, iter, sparkFeConfig, windowAggConfig)
         }
       }
-
-
       // Create dataframe from rdd row and schema
       ctx.getSparkSession.createDataFrame(outputRdd, outputSchema)
     }
@@ -149,50 +147,62 @@ object WindowAggPlan {
     }
 
     // Get repartition keys and orderby key
-    // TODO: Now it does not support columns with the same names because it uses column name for repartition
-    val repartitionColNames = PhysicalNodeUtil.getRepartitionColumnNames(windowAggNode, inputDf).asJava
+    // TODO: Support multiple repartition keys and orderby keys
     val repartitionColIndexes = PhysicalNodeUtil.getRepartitionColumnIndexes(windowAggNode, inputDf)
-    val orderbyColName = PhysicalNodeUtil.getOrderbyColumnName(windowAggNode, inputDf)
-    val orderbyColIndex = PhysicalNodeUtil.getOrderbyColumnIndex(windowAggNode, inputDf)
-    val orderbyColType = inputDf.schema(orderbyColIndex).dataType
+    val orderByColIndex = PhysicalNodeUtil.getOrderbyColumnIndex(windowAggNode, inputDf)
+    val orderByColType = inputDf.schema(orderByColIndex).dataType
 
     // Register the input table
-    val inputTableName = "_INPUT_TABLE_" + uniqueNamePostfix
-    inputDf.createOrReplaceTempView(inputTableName)
+    val partColName = "_PART_" + uniqueNamePostfix
+    val expandColName = "_EXPAND_" + uniqueNamePostfix
+    // "_GREATER_FLAG_" is used to determine whether distinct count is greater than quantile
+    val greaterFlagColName = "_GREATER_FLAG_" + uniqueNamePostfix
+    val countColName = "_COUNT_" + uniqueNamePostfix
 
-    val partColumnName = "_PART_" + ctx.getConf.windowSkewOptPostfix
-    val expandColumnName = "_EXPAND_" + ctx.getConf.windowSkewOptPostfix
-    val addColumnsTableName = "_ADD_COLUMNS_TABLE_" + uniqueNamePostfix
+    var minCount = Long.MaxValue
 
     val quantile = math.pow(2, ctx.getConf.skewLevel.toDouble)
-    val schemas = scala.collection.JavaConverters.seqAsJavaList(inputDf.schema.fieldNames)
-    var keyScala = repartitionColNames.asScala
 
-    val addColumnsDf = if (ctx.getConf.windowSkewOptConfig.equals("")) { // Do not use skew config
+    val addColumnsDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
+      // Do not use skew config
       // 1. Analyze the data distribution
-      val distributionTableName = "_DISTRIBUTION_TABLE_" + uniqueNamePostfix
-      val countColumnName = "_COUNT_" + uniqueNamePostfix
+      val partitionColName = "_PARTITION_" + uniqueNamePostfix
 
-      val distributionSqlText = SkewUtils
-        .genPercentileSql(inputTableName, quantile.intValue(), repartitionColNames, orderbyColName, countColumnName)
-      logger.info(s"Generate distribution sql: $distributionSqlText")
-      val distributionDf = ctx.sparksql(distributionSqlText)
-      distributionDf.createOrReplaceTempView(distributionTableName)
+      val distributionDf = SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
+        orderByColIndex, partitionColName, greaterFlagColName, countColName)
+      logger.info("Generate distribution dataframe")
+
+      if (ctx.getConf.windowSkewOptCache) {
+        distributionDf.cache()
+      }
+
+      val flags = distributionDf.select(distributionDf(greaterFlagColName), distributionDf(countColName)).collect()
+      for (flag <- flags) {
+        val greaterFlag = flag.getBoolean(0)
+        val count = flag.getLong(1)
+        // When greaterFlag == false, quantile can not be divided equally
+        if (!greaterFlag) {
+          logger.info("Unnecessary to open skew optimization")
+          logger.info("Re-Execute in windowPartition")
+          ctx.getConf.enableWindowSkewOpt = false
+          return windowPartition(ctx, windowAggNode, inputDf)
+        } else {
+          minCount = math.min(minCount, count)
+        }
+      }
 
       // 2. Add "part" column and "expand" column by joining the distribution table
-      val keysMap = new util.HashMap[String, String]()
-      keyScala.foreach(e => keysMap.put(e, e))
+      val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
+        repartitionColIndexes, orderByColIndex, partColName, expandColName, countColName)
+      logger.info("Generate percentile_tag dataframe")
 
-      val addColumnsSqlText = SkewUtils.genPercentileTagSql(inputTableName, distributionTableName,
-        quantile.intValue(), schemas, keysMap, orderbyColName,
-        partColumnName, expandColumnName, countColumnName, ctx.getConf.skewCnt.longValue())
-      logger.info(s"Generate add columns sql: $addColumnsSqlText")
-      ctx.sparksql(addColumnsSqlText)
-    } else { // Use skew config
+      addColumnsDf
+    } else {
+      // Use skew config
       val distributionDf = ctx.getSparkSession.read.parquet(ctx.getConf.windowSkewOptConfig)
       val distributionCollect = distributionDf.collect()
 
-      val distributionMap = Map(distributionCollect.map(p => (p.get(0), p.get(1))):_*)
+      val distributionMap = Map(distributionCollect.map(p => (p.get(0), p.get(1))): _*)
 
       val outputSchema = inputDf.schema.add("_PART_", IntegerType, false)
         .add("_EXPAND_", IntegerType, false)
@@ -201,13 +211,13 @@ object WindowAggPlan {
         // Combine the repartition keys to one string which is equal to the first column of skew config
         val combineString = repartitionColIndexes.map(index => row.get(index)).mkString("_")
         // TODO: Support for more datatype of orderby columns
-        val condition = if (orderbyColType.equals(TimestampType)) {
-          row.get(orderbyColIndex).asInstanceOf[java.sql.Timestamp].compareTo(distributionMap(combineString)
+        val condition = if (orderByColType.equals(TimestampType)) {
+          row.get(orderByColIndex).asInstanceOf[java.sql.Timestamp].compareTo(distributionMap(combineString)
             .asInstanceOf[java.sql.Timestamp])
-        } else if (orderbyColType.equals(LongType)) {
-          row.get(orderbyColIndex).asInstanceOf[Long].compareTo(distributionMap(combineString).asInstanceOf[Long])
+        } else if (orderByColType.equals(LongType)) {
+          row.get(orderByColIndex).asInstanceOf[Long].compareTo(distributionMap(combineString).asInstanceOf[Long])
         } else {
-          row.get(orderbyColIndex).asInstanceOf[Int].compareTo(distributionMap(combineString).asInstanceOf[Int])
+          row.get(orderByColIndex).asInstanceOf[Int].compareTo(distributionMap(combineString).asInstanceOf[Int])
         }
 
         val partValue = if (condition <= 0) {
@@ -224,30 +234,34 @@ object WindowAggPlan {
     if (ctx.getConf.windowSkewOptCache) {
       addColumnsDf.cache()
     }
-    addColumnsDf.createOrReplaceTempView(addColumnsTableName)
 
     // Update the column indexes and repartition keys
     windowAggConfig.skewTagIdx = addColumnsDf.schema.fieldNames.length - 2
     windowAggConfig.skewPositionIdx = addColumnsDf.schema.fieldNames.length - 1
 
     // 3. Expand the table data by union
-    val unionSqlText = SkewUtils.explodeDataSql(addColumnsTableName, quantile.toInt, schemas,
-      partColumnName, expandColumnName, ctx.getConf.skewCnt.toLong, windowAggConfig.rowPreceding)
-    logger.info(s"Generate union sql: $unionSqlText")
-    val unionDf = ctx.sparksql(unionSqlText)
+    val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partColName, expandColName,
+      minCount, windowAggConfig.rowPreceding, windowAggConfig.startOffset)
+    logger.info("Generate union dataframe")
 
-    // 4. Repartition and orderby
-    val partitionKeys = partColumnName +: keyScala
-
-    val repartitionDf = if (ctx.getConf.groupbyPartitions > 0) {
-      unionDf.repartition(ctx.getConf.groupbyPartitions, partitionKeys.map(addColumnsDf(_)): _*)
-    } else {
-      unionDf.repartition(partitionKeys.map(addColumnsDf(_)): _*)
+    // 4. Repartition and order by
+    val repartitionCols = mutable.ArrayBuffer[Column]()
+    repartitionCols += addColumnsDf(partColName)
+    for (i <- repartitionColIndexes.indices) {
+      repartitionCols += SparkColumnUtil.getColumnFromIndex(addColumnsDf, repartitionColIndexes(i))
     }
 
-    val orderbyKeys =  partitionKeys :+ orderbyColName
-    // TODO: Support order desc and asc
-    val sortedDf = repartitionDf.sortWithinPartitions(orderbyKeys.map(unionDf(_)): _*)
+    val repartitionDf = if (ctx.getConf.groupbyPartitions > 0) {
+      unionDf.repartition(ctx.getConf.groupbyPartitions, repartitionCols: _*)
+    } else {
+      unionDf.repartition(repartitionCols: _*)
+    }
+
+    val sortedByCol = PhysicalNodeUtil.getOrderbyColumns(windowAggNode, addColumnsDf)
+    val sortedByCols = repartitionCols ++ sortedByCol
+
+    val sortedDf = repartitionDf.sortWithinPartitions(sortedByCols: _*)
+    logger.info("Generate repartition and orderby dataframe")
 
     sortedDf
   }
