@@ -13,10 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com._4paradigm.openmldb.common.zk;
+import lombok.Builder;
+import lombok.Data;
 
-package com._4paradigm.openmldb.server;
+@Data
+@Builder
+public class ZKConfig {
+    private String cluster;
+    private String namespace;
+    @Builder.Default
+    private int sessionTimeout = 5000;
+    @Builder.Default
+    private int connectionTimeout = 5000;
+    @Builder.Default
+    private int maxRetries = 10;
+    @Builder.Default
+    private int baseSleepTime = 1000;
+    @Builder.Default
+    private int maxConnectWaitTime = 30000;
 
-public class StatusCode {
-    public static final int SUCCESS = 0;
-    public static final int CREATE_TABLE_FAILED = 100;
 }
