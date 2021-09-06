@@ -24,6 +24,11 @@ OpenMLDB is an open-source database designed and optimized to enable data correc
 ## Who Uses OpenMLDB 
 The OpenMLDB project originated from several enterprise AI data products(RTiDB, SparkFE & FeDB) at 4Paradigm. OpenMLDB is now used in production to serve machine learning scenarios in many leading companies, with more than 120 industry landed use cases including content recommender system, ads CTR prediction, AIOps, anti-money laundering, anti-fraud recognition, intelligent marketing, etc. 
 
+## Use OpenMLDB in machine learning pipeline
+
+<div align=center><img src="./images/openmldb.svg"/></div>
+
+
 ## Features
 
 * **Consistency**
