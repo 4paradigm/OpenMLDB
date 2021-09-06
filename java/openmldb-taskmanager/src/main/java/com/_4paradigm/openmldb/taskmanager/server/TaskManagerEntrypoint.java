@@ -37,7 +37,7 @@ public class TaskManagerEntrypoint {
             rpcServer.registerService(new TaskManagerServerImpl());
             rpcServer.start();
 
-            log.info("start nearLine tablet on {} with worker thread number {}", TaskManagerConfig.PORT, TaskManagerConfig.WORKER_THREAD);
+            log.info("Start TaskManager on {} with worker thread number {}", TaskManagerConfig.PORT, TaskManagerConfig.WORKER_THREAD);
 
             // make server keep running
             synchronized (TaskManagerEntrypoint.class) {
