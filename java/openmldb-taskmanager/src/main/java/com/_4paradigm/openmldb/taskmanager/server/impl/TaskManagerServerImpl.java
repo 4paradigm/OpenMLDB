@@ -24,15 +24,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TaskManagerServerImpl implements TaskManagerServer {
 
-    public TaskManagerServerImpl() throws Exception {
+    public TaskManagerServerImpl() {
 
     }
 
     public TaskManager.YarnJobResponse runBatchSql(TaskManager.RunBatchSqlRequest request) {
-        OpenmldbBatchjobManager.batchRunSql(request.getSql(), request.getDbName(), request.getOutputTableName());
+        String appId = OpenmldbBatchjobManager.batchRunSql(request.getSql(), request.getDbName(), request.getOutputTableName());
 
         // TODO: Return with status code and message
-        return TaskManager.YarnJobResponse.newBuilder().setCode(0).build();
+        return TaskManager.YarnJobResponse.newBuilder().setCode(0).setAppId(appId).build();
     }
 
     @Override
