@@ -51,6 +51,7 @@
 #include "sdk/table_reader.h"
 
 using hybridse::sdk::Schema;
+using hybridse::sdk::ColumnTypes;
 using hybridse::sdk::ResultSet;
 using openmldb::sdk::SQLRouter;
 using openmldb::sdk::SQLRouterOptions;

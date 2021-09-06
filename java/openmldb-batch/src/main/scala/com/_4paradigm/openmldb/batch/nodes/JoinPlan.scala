@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.`type`.TypeOuterClass.ColumnDef
+import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.codec.RowView
 import com._4paradigm.hybridse.sdk.{HybridSeException, JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.node.{ExprListNode, JoinType}
@@ -245,7 +246,7 @@ object JoinPlan {
       if (hybridseJsdkLibraryPath.equals("")) {
         JitManager.initJitModule(moduleTag, buffer)
       } else {
-        //JitManager.initJitModule(moduleTag, buffer, hybridseJsdkLibraryPath)
+        JitManager.initJitModule(moduleTag, buffer, hybridseJsdkLibraryPath)
       }
 
       JitManager.getJit(moduleTag)
@@ -255,8 +256,10 @@ object JoinPlan {
       // call encode
       val nativeInputRow = encoder.encode(row)
 
+      val emptyParameter = new codec.Row()
+
       // call native compute
-      val result = CoreAPI.ComputeCondition(fn, nativeInputRow, outView, 0)
+      val result = CoreAPI.ComputeCondition(fn, nativeInputRow, emptyParameter, outView, 0)
 
       // release swig jni objects
       nativeInputRow.delete()

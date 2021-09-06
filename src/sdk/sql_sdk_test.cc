@@ -43,7 +43,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.session_timeout = 30000;
+    sql_opt.session_timeout = 60000;
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
     return NewClusterSQLRouter(sql_opt);
 }
@@ -697,8 +697,7 @@ TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
         ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     }
 
-
-    auto parameter_types = std::make_shared<hybridse::sdk::ColumnTypes>() ;
+    auto parameter_types = std::make_shared<hybridse::sdk::ColumnTypes>();
     parameter_types->AddColumnType(::hybridse::sdk::kTypeString);
     parameter_types->AddColumnType(::hybridse::sdk::kTypeInt64);
 

@@ -73,7 +73,7 @@ DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
 DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client | apiserver",
-        "Set the openmldb role for start");
+              "Set the openmldb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
@@ -92,9 +92,8 @@ DECLARE_bool(use_name);
 DECLARE_string(data_dir);
 
 const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
-                                 std::to_string(OPENMLDB_VERSION_MINOR) + "." +
-                                 std::to_string(OPENMLDB_VERSION_BUG) + "." +
-                                 OPENMLDB_COMMIT_ID;
+                                     std::to_string(OPENMLDB_VERSION_MINOR) + "." +
+                                     std::to_string(OPENMLDB_VERSION_BUG) + "." + OPENMLDB_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -276,7 +275,7 @@ void StartTablet() {
     }
 #ifdef PZFPGA_ENABLE
     PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga",
-            real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
+          real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
 #else
     PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
 #endif

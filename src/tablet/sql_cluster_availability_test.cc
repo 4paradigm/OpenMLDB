@@ -174,7 +174,7 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
         ASSERT_EQ(response.tablets_size(), 1);
         ::openmldb::nameserver::TabletStatus status = response.tablets(0);
         ASSERT_EQ(FLAGS_endpoint, status.endpoint());
-        ASSERT_EQ("kTabletHealthy", status.state());
+        ASSERT_EQ("kHealthy", status.state());
     }
 
     // create table
@@ -299,7 +299,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
         ASSERT_EQ(response.tablets_size(), 1);
         ::openmldb::nameserver::TabletStatus status = response.tablets(0);
         ASSERT_EQ(FLAGS_endpoint, status.endpoint());
-        ASSERT_EQ("kTabletHealthy", status.state());
+        ASSERT_EQ("kHealthy", status.state());
     }
 
     // create table

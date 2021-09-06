@@ -28,17 +28,18 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 
-namespace openmldb {
-namespace storage {
+namespace openmldb::storage {
 
 static constexpr uint32_t MAX_INDEX_NUM = 200;
 
 enum TTLType { kAbsoluteTime = 1, kRelativeTime = 2, kLatestTime = 3, kAbsAndLat = 4, kAbsOrLat = 5 };
 
+// ttl unit: millisecond
 struct TTLSt {
     TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(::openmldb::storage::TTLType::kAbsoluteTime) {}
     TTLSt(uint64_t abs, uint64_t lat, ::openmldb::storage::TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
 
+    // TODO(hw): needs fix, common::TTLSt::abs_ttl should be ms
     explicit TTLSt(const ::openmldb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
         ttl_type = ConvertTTLType(ttl.ttl_type());
     }
@@ -76,13 +77,13 @@ struct TTLSt {
     bool NeedGc() const {
         switch (ttl_type) {
             case TTLType::kAbsoluteTime:
-                return abs_ttl == 0 ? false : true;
+                return abs_ttl != 0;
             case TTLType::kLatestTime:
-                return lat_ttl == 0 ? false : true;
+                return lat_ttl != 0;
             case TTLType::kAbsAndLat:
-                return abs_ttl == 0 || lat_ttl == 0 ? false : true;
+                return !(abs_ttl == 0 || lat_ttl == 0);
             case TTLType::kAbsOrLat:
-                return abs_ttl == 0 && lat_ttl == 0 ? false : true;
+                return !(abs_ttl == 0 && lat_ttl == 0);
             default:
                 return true;
         }
@@ -119,7 +120,7 @@ struct TTLSt {
     std::string ToString() const {
         switch (ttl_type) {
             case TTLType::kAbsoluteTime:
-                return std::to_string(abs_ttl) + "min";
+                return std::to_string(abs_ttl / (60 * 1000)) + "min";
             case TTLType::kLatestTime:
                 return std::to_string(lat_ttl);
             case TTLType::kAbsAndLat:
@@ -188,8 +189,8 @@ class TableColumn {
 class IndexDef {
  public:
     IndexDef(const std::string& name, uint32_t id);
-    IndexDef(const std::string& name, uint32_t id, IndexStatus stauts);
-    IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts, ::openmldb::type::IndexType type,
+    IndexDef(const std::string& name, uint32_t id, IndexStatus status);
+    IndexDef(const std::string& name, uint32_t id, const IndexStatus& status, ::openmldb::type::IndexType type,
              const std::vector<ColumnDef>& column_idx_map);
     const std::string& GetName() const { return name_; }
     inline const std::shared_ptr<ColumnDef>& GetTsColumn() const { return ts_column_; }
@@ -319,7 +320,7 @@ class TableSt {
         if (pid < partitions->size()) {
             return partitions->at(pid);
         }
-        return PartitionSt();
+        return {};
     }
 
     bool SetPartition(const PartitionSt& partition_st);
@@ -344,5 +345,4 @@ class TableSt {
     std::shared_ptr<std::vector<PartitionSt>> partitions_;
 };
 
-}  // namespace storage
-}  // namespace openmldb
+}  // namespace openmldb::storage

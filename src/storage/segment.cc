@@ -159,7 +159,7 @@ void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t si
     if (ts_cnt_ > 1) {
         return;
     }
-    DataBlock* db = new DataBlock(1, data, size);
+    auto* db = new DataBlock(1, data, size);
     Put(key, time, db);
 }
 
@@ -167,9 +167,13 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     if (ts_cnt_ > 1) {
         return;
     }
-    void* entry = NULL;
-    uint32_t byte_size = 0;
     std::lock_guard<std::mutex> lock(mu_);
+    PutUnlock(key, time, row);
+}
+
+void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
+    void* entry = nullptr;
+    uint32_t byte_size = 0;
     int ret = entries_->Get(key, entry);
     if (ret < 0 || entry == NULL) {
         char* pk = new char[key.size()];
@@ -187,6 +191,37 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
         ->count_.fetch_add(1, std::memory_order_relaxed);
     byte_size += GetRecordTsIdxSize(height);
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+}
+
+void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t time, DataBlock* row) {
+    void* key_entry_or_list = nullptr;
+    uint32_t byte_size = 0;
+    std::lock_guard<std::mutex> lock(mu_);  // TODO(hw): need lock?
+    int ret = entries_->Get(key, key_entry_or_list);
+    if (ts_cnt_ == 1) {
+        PutUnlock(key, time, row);
+    } else {
+        if (ret < 0 || key_entry_or_list == nullptr) {
+            char* pk = new char[key.size()];
+            memcpy(pk, key.data(), key.size());
+            Slice skey(pk, key.size());
+            auto** entry_arr_tmp = new KeyEntry*[ts_cnt_];
+            for (uint32_t i = 0; i < ts_cnt_; i++) {
+                entry_arr_tmp[i] = new KeyEntry(key_entry_max_height_);
+            }
+            auto entry_arr = (void*)entry_arr_tmp;  // NOLINT
+            uint8_t height = entries_->Insert(skey, entry_arr);
+            byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_);
+            pk_cnt_.fetch_add(1, std::memory_order_relaxed);
+        }
+        uint8_t height = ((KeyEntry**)key_entry_or_list)[key_entry_id]->entries.Insert(  // NOLINT
+            time, row);
+        ((KeyEntry**)key_entry_or_list)[key_entry_id]->count_.fetch_add(  // NOLINT
+            1, std::memory_order_relaxed);
+        byte_size += GetRecordTsIdxSize(height);
+        idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+        idx_cnt_vec_[key_entry_id]->fetch_add(1, std::memory_order_relaxed);
+    }
 }
 
 void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock* row) {

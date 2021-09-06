@@ -21,7 +21,7 @@ import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.utils.SparkUtil.{addColumnByMonotonicallyIncreasingId, addColumnByZipWithIndex,
   addColumnByZipWithUniqueId, addIndexColumn, checkSchemaIgnoreNullable,
-  rddInternalRowToDf, smallDfEqual, supportNativeLastJoin}
+  rddInternalRowToDf, smallDfEqual, supportNativeLastJoin, approximateDfEqual}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType, TimestampType}
 
@@ -122,8 +122,9 @@ class TestSparkUtil extends SparkTestSuite {
     val tableTest2: DataFrame = Session.createDataFrame(dataTest2.map(Row.fromTuple(_)).asJava, schemaTest1)
     val tableTest3: DataFrame = Session.createDataFrame(dataTest3.map(Row.fromTuple(_)).asJava, schemaTest2)
 
-    assert(!smallDfEqual(tableTest1,tableTest2))
-    assert(!smallDfEqual(tableTest1,tableTest3))
+    assert(smallDfEqual(tableTest1, tableTest1))
+    assert(!smallDfEqual(tableTest1, tableTest2))
+    assert(!smallDfEqual(tableTest1, tableTest3))
   }
 
   test("test rddInternalRowToDf") {
@@ -135,6 +136,30 @@ class TestSparkUtil extends SparkTestSuite {
     val df1 = Session.createDataFrame(dataTest1.map(Row.fromTuple(_)).asJava, schemaTest1)
     val internalRow = df1.queryExecution.toRdd
     assert(rddInternalRowToDf(Session, internalRow, schemaTest1).collect() sameElements df1.collect())
+  }
+
+  test("test approximateDfEqual") {
+    val dataTest1 = Seq(
+      (0, Timestamp.valueOf("1969-01-01 0:0:0")),
+      (0, Timestamp.valueOf("2019-09-11 0:0:0"))
+    )
+    val dataTest2 = Seq(
+      (0, Timestamp.valueOf("0001-01-01 0:0:0")),
+      (0, Timestamp.valueOf("1899-04-01 0:0:0"))
+    )
+    val dataTest3 = Seq(
+      (0, 1, Timestamp.valueOf("0001-01-01 0:0:0")),
+      (0, 1, Timestamp.valueOf("1899-04-01 0:0:0"))
+    )
+
+    val Session: SparkSession = getSparkSession
+    val tableTest1: DataFrame = Session.createDataFrame(dataTest1.map(Row.fromTuple(_)).asJava, schemaTest1)
+    val tableTest2: DataFrame = Session.createDataFrame(dataTest2.map(Row.fromTuple(_)).asJava, schemaTest1)
+    val tableTest3: DataFrame = Session.createDataFrame(dataTest3.map(Row.fromTuple(_)).asJava, schemaTest2)
+
+    assert(approximateDfEqual(tableTest1, tableTest1))
+    assert(!approximateDfEqual(tableTest1, tableTest2))
+    assert(!approximateDfEqual(tableTest1, tableTest3))
   }
 
 }
