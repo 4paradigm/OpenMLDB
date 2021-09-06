@@ -1,5 +1,5 @@
 
-<div align=center><img src="./images/openmldb_logo.png"/></div>
+<div align=center><img src="./images/openmldb_logo.png" width="400"/></div>
 
 [![build status](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml/badge.svg)](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml)
 [![docker pulls](https://img.shields.io/docker/pulls/4pdosc/openmldb.svg)](https://hub.docker.com/r/4pdosc/openmldb)
@@ -63,7 +63,7 @@ OpenMLDB是一个开源机器学习数据库，面向机器学习应用提供正
 
 ## 快速开始
 
-使用OpenMLDB快速开发和上线ML应用，以Kaggle比赛Predict Taxi Tour Duration项目为例。
+使用OpenMLDB快速开发和上线ML应用，以Kaggle比赛Predict Taxi Tour Duration项目为例。点击可[查看](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/demo)下文实例代码。
 
 ```bash
 # 启动docker镜像 (目前提供了 linux/amd64, linux/arm64 架构的镜像)

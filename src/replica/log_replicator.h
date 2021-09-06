@@ -50,8 +50,9 @@ enum ReplicatorRole { kLeaderNode = 1, kFollowerNode };
 
 class LogReplicator {
  public:
-    LogReplicator(const std::string& path, const std::map<std::string, std::string>& real_ep_map,
-                  const ReplicatorRole& role, std::shared_ptr<Table> table, std::atomic<bool>* follower);
+    LogReplicator(uint32_t tid, uint32_t pid, const std::string& path,
+                  const std::map<std::string, std::string>& real_ep_map,
+                  const ReplicatorRole& role);
 
     ~LogReplicator();
 
@@ -60,8 +61,7 @@ class LogReplicator {
     bool StartSyncing();
 
     // the slave node receives master log entries
-    bool AppendEntries(const ::openmldb::api::AppendEntriesRequest* request,
-                       ::openmldb::api::AppendEntriesResponse* response);
+    bool ApplyEntry(const ::openmldb::api::LogEntry& entry);
 
     // the master node append entry
     bool AppendEntry(::openmldb::api::LogEntry& entry);  // NOLINT
@@ -111,10 +111,10 @@ class LogReplicator {
  private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 
-    bool ApplyEntryToTable(const LogEntry& entry);
-
  private:
     // the replicator root data path
+    uint32_t tid_;
+    uint32_t pid_;
     std::string path_;
     std::string log_path_;
     // the term for leader judgement
@@ -136,10 +136,7 @@ class LogReplicator {
     std::atomic<int> snapshot_log_part_index_;
     std::atomic<uint64_t> snapshot_last_offset_;
 
-    std::shared_ptr<Table> table_;
-
     std::mutex wmu_;
-    std::atomic<bool>* follower_;
 };
 
 }  // namespace replica

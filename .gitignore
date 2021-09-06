@@ -68,6 +68,7 @@ java/openmldb-native/src/main/java
 java/openmldb-native/target/
 java/openmldb-jdbc/target/
 java/openmldb-nearline-tablet/src/main/java/com/_4paradigm/openmldb/proto
+java/openmldb-import/src/main/java/com/_4paradigm/openmldb/proto
 python/logs
 python/sqlalchemy-test/*.xml
 
