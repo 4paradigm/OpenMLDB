@@ -28,7 +28,6 @@ The OpenMLDB project originated from several enterprise AI data products(RTiDB, 
 
 <div align=center><img src="./images/openmldb.svg"/></div>
 
-
 ## Features
 
 * **Consistency**
