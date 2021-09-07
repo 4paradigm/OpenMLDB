@@ -17,8 +17,10 @@
 package com._4paradigm.sql.jmh.voltdb;
 
 import com._4paradigm.sql.jmh.ParameterizedQueryBenchmark;
+import com._4paradigm.sql.jmh.memsql.MemsqlParameterizedQueryBenchmark;
 import lombok.extern.slf4j.Slf4j;
 import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
@@ -57,6 +59,8 @@ public class VoltdbParameterizedQueryBenchmark extends VoltdbSetup implements Pa
         Options opt = new OptionsBuilder()
                 .include(VoltdbParameterizedQueryBenchmark.class.getSimpleName())
                 .shouldFailOnError(true)
+                .resultFormat(ResultFormatType.JSON)
+                .result(MemsqlParameterizedQueryBenchmark.class.getSimpleName() + ".json")
                 .forks(1)
                 .build();
         new Runner(opt).run();

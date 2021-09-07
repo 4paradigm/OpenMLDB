@@ -3,6 +3,7 @@ package com._4paradigm.sql.jmh.memsql;
 import com._4paradigm.sql.jmh.ParameterizedQueryBenchmark;
 import lombok.extern.slf4j.Slf4j;
 import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
@@ -10,7 +11,6 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.All)
@@ -45,6 +45,8 @@ public class MemsqlParameterizedQueryBenchmark extends MemsqlSetup implements Pa
         Options opt = new OptionsBuilder()
                 .include(MemsqlParameterizedQueryBenchmark.class.getSimpleName())
                 .shouldFailOnError(true)
+                .resultFormat(ResultFormatType.JSON)
+                .result(MemsqlParameterizedQueryBenchmark.class.getSimpleName() + ".json")
                 .forks(1)
                 .build();
         new Runner(opt).run();
