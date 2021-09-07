@@ -1,0 +1,45 @@
+syntax = "proto2";
+
+import "common.proto";
+
+package openmldb.taskmanager;
+
+option java_package = "com._4paradigm.openmldb.proto";
+option java_outer_classname = "TaskManager";
+option cc_generic_services = true;
+
+
+message RunBatchSqlRequest {
+    required string sql = 1;
+    optional string db_name = 2;
+    optional string output_table_name = 3;
+};
+
+message YarnJobResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    optional string app_id = 3;
+};
+
+message ImportHdfsFileRequest {
+    optional string file_type = 1;
+    required string file_path = 2;
+    optional string db_name = 3;
+    optional string output_table_name = 4;
+};
+
+message GetYarnJobStateRequest {
+    required string job_id = 1;
+};
+
+message YarnJobStateResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    optional string state = 3;
+};
+
+service TaskManagerServer {
+    rpc RunBatchSql(RunBatchSqlRequest) returns (YarnJobResponse);
+    rpc ImportHdfsFile(ImportHdfsFileRequest) returns (YarnJobResponse);
+    rpc GetYarnJobState(GetYarnJobStateRequest) returns (YarnJobStateResponse);
+};
