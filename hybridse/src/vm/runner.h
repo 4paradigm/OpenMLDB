@@ -260,9 +260,9 @@ class FilterGenerator : public PredicateFun {
     const bool Valid() const {
         return index_seek_gen_.Valid() || condition_gen_.Valid();
     }
-    std::shared_ptr<TableHandler> Filter(std::shared_ptr<TableHandler> table,
+    std::shared_ptr<DataHandler> Filter(std::shared_ptr<TableHandler> table,
                                          const Row& parameter);
-    std::shared_ptr<TableHandler> Filter(
+    std::shared_ptr<DataHandler> Filter(
         std::shared_ptr<PartitionHandler> table, const Row& parameter);
     bool operator()(const Row& row, const Row& parameter) const override {
         if (!Valid()) {

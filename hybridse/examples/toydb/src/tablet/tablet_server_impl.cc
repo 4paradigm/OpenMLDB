@@ -185,7 +185,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
 
         uint32_t byte_size = 0;
         uint32_t count = 0;
-        for(auto& row: outputs) {
+        for (auto& row : outputs) {
             byte_size += row.size();
             buf.append(reinterpret_cast<void*>(row.buf()), row.size());
             count += 1;

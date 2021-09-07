@@ -99,6 +99,8 @@ cases:
     desc: SELECT过滤条件是逻辑关系表达式, 两个占位参数
     mode: physical-plan-unsupport
     sql: SELECT COL1 FROM t1 where COL1 = ? and COL2 > ? ;
+    parameters:
+      columns: [ "1 int", "2 bigint"]
     expect:
       node_tree_str: |
         +-node[kQuery]: kQuerySelect
@@ -146,8 +148,9 @@ cases:
           +-window_list: []
   - id: 14
     desc: SELECT 过滤后分组聚合条数, 两个占位参数
-    mode: physical-plan-unsupport
     sql: SELECT col1, COUNT(COL1) FROM t1 where COL1 = ? and COL2 > ? group by col1;
+    parameters:
+      columns: [ "1 int", "2 bigint" ]
     expect:
       node_tree_str: |
         +-node[kQuery]: kQuerySelect

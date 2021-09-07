@@ -224,8 +224,13 @@ bool GroupAndSortOptimized::KeysOptimized(
 
     if (PhysicalOpType::kPhysicalOpDataProvider == in->GetOpType()) {
         auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
-        if (DataProviderType::kProviderTypeTable == scan_op->provider_type_) {
-            std::string index_name;
+        // Do not optimized with Request DataProvider (no index has been provided)
+        if (DataProviderType::kProviderTypeRequest == scan_op->provider_type_) {
+            return false;
+        }
+
+        if (DataProviderType::kProviderTypeTable == scan_op->provider_type_ ||
+            DataProviderType::kProviderTypePartition == scan_op->provider_type_) {
             const node::ExprListNode* right_partition =
                 right_key == nullptr ? left_key->keys() : right_key->keys();
 
@@ -233,20 +238,34 @@ bool GroupAndSortOptimized::KeysOptimized(
             std::vector<bool> bitmap(key_num, false);
             node::ExprListNode order_values;
 
-            if (!TransformKeysAndOrderExpr(
-                    root_schemas_ctx, right_partition,
-                    nullptr == sort ? nullptr : sort->orders_,
-                    scan_op->table_handler_, &index_name, &bitmap)) {
-                return false;
+            PhysicalPartitionProviderNode* partition_op = nullptr;
+            std::string index_name;
+            if (DataProviderType::kProviderTypeTable == scan_op->provider_type_) {
+                // Apply key columns and order column optimization with all indexes binding to scan_op->table_handler_
+                // Return false if fail to find an appropriate index
+                if (!TransformKeysAndOrderExpr(root_schemas_ctx, right_partition,
+                                               nullptr == sort ? nullptr : sort->orders_, scan_op->table_handler_,
+                                               &index_name, &bitmap)) {
+                    return false;
+                }
+                Status status = plan_ctx_->CreateOp<PhysicalPartitionProviderNode>(&partition_op, scan_op, index_name);
+                if (!status.isOK()) {
+                    LOG(WARNING) << "Fail to create partition op: " << status;
+                    return false;
+                }
+            } else {
+                partition_op = dynamic_cast<PhysicalPartitionProviderNode*>(scan_op);
+                index_name = partition_op->index_name_;
+                // Apply key columns and order column optimization with given index name
+                // Return false if given index do not match the keys and order column
+                if (!TransformKeysAndOrderExpr(root_schemas_ctx, right_partition,
+                                               nullptr == sort ? nullptr : sort->orders_, scan_op->table_handler_,
+                                               &index_name, &bitmap)) {
+                    return false;
+                }
             }
 
-            PhysicalPartitionProviderNode* partition_op = nullptr;
-            Status status = plan_ctx_->CreateOp<PhysicalPartitionProviderNode>(
-                &partition_op, scan_op, index_name);
-            if (!status.isOK()) {
-                LOG(WARNING) << "Fail to create partition op: " << status;
-                return false;
-            }
+
             auto new_left_keys = node_manager_->MakeExprList();
             auto new_right_keys = node_manager_->MakeExprList();
             auto new_index_keys = node_manager_->MakeExprList();
@@ -481,6 +500,8 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
     return true;
 }
 
+// When *index_name is empty, return true if we can find the best index for key columns and order column
+// When *index_name isn't empty, return true if the given index_name match key columns and order column
 bool GroupAndSortOptimized::MatchBestIndex(
     const std::vector<std::string>& columns,
     const std::vector<std::string>& order_columns,
@@ -515,8 +536,16 @@ bool GroupAndSortOptimized::MatchBestIndex(
         LOG(WARNING) << "fail to match best index: non-support multi ts index";
         return false;
     }
+    // Go through the all indexs to find out index meet the requirements.
+    // Notice: only deal with index specific by given index name when (*index_name) is non-emtpy
     for (auto iter = index_hint.cbegin(); iter != index_hint.cend(); iter++) {
         IndexSt index = iter->second;
+
+        if (!(*index_name).empty() && index.name != *index_name) {
+            // if (*index_name) isn't empty
+            // skip index whose index.name != given index_name
+            continue;
+        }
         if (!order_columns.empty()) {
             if (index.ts_pos == INVALID_POS) {
                 continue;

@@ -67,6 +67,9 @@ INSTANTIATE_TEST_SUITE_P(
     BatchRequestBatchGroupQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(sqlcase::InitCases("/cases/query/group_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(
+    BatchRequestBatchWhereGroupQuery, BatchRequestOptimizeTest,
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/where_group_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
     BatchRequestTestWindowRowQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(
         sqlcase::InitCases("/cases/function/window/test_window_row.yaml")));
