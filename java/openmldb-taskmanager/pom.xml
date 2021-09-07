@@ -189,6 +189,13 @@
                 <version>2.15.2</version>
                 <executions>
                     <execution>
+                        <id>add-source</id>
+                        <phase>pre-site</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                    </execution>
+                    <execution>
                         <goals>
                             <goal>compile</goal>
                             <goal>testCompile</goal>

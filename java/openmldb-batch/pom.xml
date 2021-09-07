@@ -271,6 +271,13 @@
 				</configuration>
 				<executions>
 					<execution>
+						<id>add-source</id>
+						<phase>pre-site</phase>
+						<goals>
+							<goal>add-source</goal>
+						</goals>
+					</execution>
+					<execution>
 						<id>scala-compile-first</id>
 						<phase>process-resources</phase>
 						<goals>
