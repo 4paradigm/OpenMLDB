@@ -3,13 +3,19 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com.4paradigm.openmldb</groupId>
-	<artifactId>openmldb-batch</artifactId>
-	<!-- Notice that the version is set from different profile, use "revision" to ignore maven warning -->
-	<version>${revision}</version>
-	<packaging>jar</packaging>
 
+
+    <parent>
+        <artifactId>openmldb-parent</artifactId>
+        <groupId>com.4paradigm.openmldb</groupId>
+        <version>0.2.3</version>
+    </parent>
+
+	<artifactId>openmldb-batch</artifactId>
 	<name>openmldb-batch</name>
+    <packaging>jar</packaging>
+	<version>${revision}</version>
+
 	<description>OpenMLDB Batch is the LLVM-based and high-performance batch execution engine for feature engineering.</description>
 	<url>https://github.com/4paradigm/OpenMLDB</url>
 	<licenses>
