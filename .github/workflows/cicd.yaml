@@ -209,6 +209,10 @@ jobs:
     needs: [ "build_and_cpp_ut", "sql_sdk_test", "sql_cluster_test", "java-sdk", "python-sdk" ]
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
+    # java deploy is triggered with a push to main or a tag push
+    # a 'vX.Y.Z' tag push will deploy a release version to maven central,
+    # any other push will deploy a SNAPSHOT version.
+    # see more in 'steps/package_openmldb_javasdk.sh'
     if: >
       success() && github.event_name == 'push'
     steps:
