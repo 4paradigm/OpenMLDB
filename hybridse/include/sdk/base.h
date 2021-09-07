@@ -106,9 +106,7 @@ class Table {
 
 class ColumnTypes {
  public:
-    ColumnTypes() : types_() {
-
-    }
+    ColumnTypes() : types_() {}
     void AddColumnType(hybridse::sdk::DataType type) {
         types_.push_back(type);
     }

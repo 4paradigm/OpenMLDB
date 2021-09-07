@@ -74,17 +74,19 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         // TODO(chenjing): 处理子查询
         table_name = MakeTableName(current_node);
     }
-    // where condition
-    if (nullptr != root->where_clause_ptr_) {
-        current_node = node_manager_->MakeFilterPlanNode(current_node, root->where_clause_ptr_);
-    }
-
     // group by
     bool group_by_agg = false;
     if (nullptr != root->group_clause_ptr_) {
         current_node = node_manager_->MakeGroupPlanNode(current_node, root->group_clause_ptr_);
         group_by_agg = true;
     }
+
+    // where condition
+    if (nullptr != root->where_clause_ptr_) {
+        current_node = node_manager_->MakeFilterPlanNode(current_node, root->where_clause_ptr_);
+    }
+
+
 
     // select target_list
     CHECK_TRUE(nullptr != root->GetSelectList() && !root->GetSelectList()->GetList().empty(), common::kPlanError,

@@ -2447,7 +2447,9 @@ std::shared_ptr<DataHandler> FilterRunner::Run(
         }
     }
 }
-
+// Run group aggreration on data
+// When data is grouped(partitioned), apply aggregation on each group
+// When data is a single table, apply aggregation on the table
 std::shared_ptr<DataHandler> GroupAggRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
@@ -2460,36 +2462,44 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
         LOG(WARNING) << "group aggregation fail: input is null";
         return std::shared_ptr<DataHandler>();
     }
-
-    if (kPartitionHandler != input->GetHanlderType()) {
-        LOG(WARNING) << "group aggregation fail: input isn't partition ";
-        return std::shared_ptr<DataHandler>();
-    }
-    auto partition = std::dynamic_pointer_cast<PartitionHandler>(input);
-    auto output_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
-    auto iter = partition->GetWindowIterator();
-    if (!iter) {
-        LOG(WARNING) << "group aggregation fail: input iterator is null";
-        return std::shared_ptr<DataHandler>();
-    }
     auto& parameter = ctx.GetParameterRow();
-    iter->SeekToFirst();
-    int32_t cnt = 0;
-    while (iter->Valid()) {
-        if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
-            break;
-        }
-        auto segment_iter = iter->GetValue();
-        if (!segment_iter) {
-            LOG(WARNING) << "group aggregation fail: segment iterator is null";
+    auto output_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
+
+    if (kTableHandler == input->GetHanlderType()) {
+        auto table = std::dynamic_pointer_cast<TableHandler>(input);
+        if (!table) {
+            LOG(WARNING) << "group aggregation fail: input table is null";
             return std::shared_ptr<DataHandler>();
         }
-        auto key = iter->GetKey().ToString();
-        auto segment = partition->GetSegment(key);
-        output_table->AddRow(agg_gen_.Gen(parameter, segment));
-        iter->Next();
+        output_table->AddRow(agg_gen_.Gen(parameter, table));
+        return output_table;
+    } else if (kPartitionHandler == input->GetHanlderType()) {
+        auto partition = std::dynamic_pointer_cast<PartitionHandler>(input);
+        auto iter = partition->GetWindowIterator();
+        if (!iter) {
+            LOG(WARNING) << "group aggregation fail: input iterator is null";
+            return std::shared_ptr<DataHandler>();
+        }
+        iter->SeekToFirst();
+        int32_t cnt = 0;
+        while (iter->Valid()) {
+            if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
+                break;
+            }
+            auto key = iter->GetKey().ToString();
+            auto segment = partition->GetSegment(key);
+            if (!segment) {
+                LOG(WARNING) << "group aggregation fail: segment segment is null";
+                return std::shared_ptr<DataHandler>();
+            }
+            output_table->AddRow(agg_gen_.Gen(parameter, segment));
+            iter->Next();
+        }
+        return output_table;
+    } else {
+        LOG(WARNING) << "group aggregation fail: input isn't partition/table ";
+        return std::shared_ptr<DataHandler>();
     }
-    return output_table;
 }
 std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     RunnerContext& ctx,
@@ -3363,11 +3373,22 @@ std::shared_ptr<TableHandler> IndexSeekGenerator::SegmentOfKey(
     }
 }
 
-std::shared_ptr<TableHandler> FilterGenerator::Filter(
-    std::shared_ptr<PartitionHandler> table, const Row& parameter) {
-    return Filter(index_seek_gen_.SegmnetOfConstKey(parameter, table), parameter);
+std::shared_ptr<DataHandler> FilterGenerator::Filter(
+    std::shared_ptr<PartitionHandler> partition, const Row& parameter) {
+    if (!partition) {
+        LOG(WARNING) << "fail to filter table: input is empty";
+        return std::shared_ptr<DataHandler>();
+    }
+    if (index_seek_gen_.Valid()) {
+        return Filter(index_seek_gen_.SegmnetOfConstKey(parameter, partition), parameter);
+    } else {
+        if (!condition_gen_.Valid()) {
+            return partition;
+        }
+        return std::shared_ptr<PartitionHandler>(new PartitionFilterWrapper(partition, parameter, this));
+    }
 }
-std::shared_ptr<TableHandler> FilterGenerator::Filter(
+std::shared_ptr<DataHandler> FilterGenerator::Filter(
     std::shared_ptr<TableHandler> table,
     const Row& parameter) {
     auto fail_ptr = std::shared_ptr<TableHandler>();

@@ -224,6 +224,7 @@ class BatchModeTransformer {
     base::Status CheckTimeOrIntegerOrderColumn(
         const node::OrderByNode* orders, const SchemasContext* schemas_ctx);
 
+    base::Status ExtractGroupKeys(vm::PhysicalOpNode* depend, const node::ExprListNode** keys);
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
@@ -331,10 +332,6 @@ inline bool SchemaType2DataType(const ::hybridse::type::Type type,
     }
     return true;
 }
-
-bool TransformLogicalTreeToLogicalGraph(
-    const ::hybridse::node::PlanNode* node, LogicalGraph* graph,
-    hybridse::base::Status& status);  // NOLINT
 
 Status ExtractProjectInfos(const node::PlanNodeList& projects,
                            const node::FrameNode* primary_frame,
