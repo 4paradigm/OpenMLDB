@@ -3022,6 +3022,31 @@ void TabletImpl::CreateMessageTable(RpcController* controller,
     PDLOG(WARNING, "table already exists. tid[%u] pid[%u]", tid, pid);
 }
 
+void TabletImpl::AddMessage(RpcController* controller, const ::openmldb::api::AddMessageRequest* request,
+        ::openmldb::api::AddMessageResponse* response, Closure* done) {
+
+    brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    auto* cntl = dynamic_cast<brpc::Controller*>(controller);
+    const auto& data = cntl->request_attachment();
+    if (data.empty()) {
+        response->set_code(::openmldb::base::ReturnCode::kReceiveDataError);
+        response->set_msg("empty data");
+        DEBUGLOG("empty data. tid %u pid %u", tid, pid);
+        return;
+    }
+    auto message_table = GetMessageTable(tid, pid);
+    if (!message_table) {
+        DEBUGLOG("table is not exist. tid %u pid %u", tid, pid);
+        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
+    }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
 void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::CreateTableRequest* request,
                              ::openmldb::api::CreateTableResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -3788,6 +3813,18 @@ std::shared_ptr<Table> TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
         }
     }
     return std::shared_ptr<Table>();
+}
+
+std::shared_ptr<::openmldb::storage::MessageTable> TabletImpl::GetMessageTable(uint32_t tid, uint32_t pid) {
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+    auto it = message_tables_.find(tid);
+    if (it != message_tables_.end()) {
+        auto tit = it->second.find(pid);
+        if (tit != it->second.end()) {
+            return tit->second;
+        }
+    }
+    return std::shared_ptr<::openmldb::storage::MessageTable>();
 }
 
 void TabletImpl::ShowMemPool(RpcController* controller, const ::openmldb::api::HttpRequest* request,

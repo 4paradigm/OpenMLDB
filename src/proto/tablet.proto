@@ -826,6 +826,16 @@ message BulkLoadInfoResponse {
     repeated InnerSegments inner_segments = 6; // MemTable::segments_
 }
 
+message AddMessageRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message AddMessageResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 service TabletServer {
     // kv storage api for client
     rpc Put(PutRequest) returns (PutResponse);
@@ -897,4 +907,7 @@ service TabletServer {
     // TODO(hw): nameserver call this?
     rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
     rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
+
+
+    rpc AddMessage(AddMessageRequest) returns (AddMessageResponse);
 }

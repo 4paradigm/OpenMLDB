@@ -253,6 +253,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
 
+    std::shared_ptr<::openmldb::storage::MessageTable> GetMessageTable(uint32_t tid, uint32_t pid);
+
     void CreateProcedure(RpcController* controller, const openmldb::api::CreateProcedureRequest* request,
                          openmldb::api::GeneralResponse* response, Closure* done);
 
@@ -264,6 +266,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
                   ::openmldb::api::GeneralResponse* response, Closure* done);
+
+    void AddMessage(RpcController* controller, const ::openmldb::api::AddMessageRequest* request,
+                  ::openmldb::api::AddMessageResponse* response, Closure* done);
 
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
