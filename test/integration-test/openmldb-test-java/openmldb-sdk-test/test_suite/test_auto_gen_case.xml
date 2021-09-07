@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="auto-gen-case-test" parallel="false" thread-count="2">
+    <test name="auto-gen-case-test">
+        <parameter name="env" value="qa"/>
+        <parameter name="version" value="2.3.0"/>
+        <parameter name="fedbPath" value=""/>
+        <classes>
+            <class name="com._4paradigm.hybridsql.fedb_sdk_test.auto_gen_case.AutoGenCaseTest"/>
+        </classes>
+    </test>
+    <listeners>
+        <listener class-name="com._4paradigm.hybridsql.fedb_sdk_test.report.AddAttachmentListener" />
+    </listeners>
+</suite>
