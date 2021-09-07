@@ -20,7 +20,7 @@ import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.utils.SparkUtil
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType, StructField, StructType}
 
 class TestWindowSkewOptimizationWithUnion extends SparkTestSuite {
 
@@ -84,6 +84,7 @@ class TestWindowSkewOptimizationWithUnion extends SparkTestSuite {
       StructField("w1_col3_sum", DoubleType)))
 
     val compareDf = spark.createDataFrame(spark.sparkContext.makeRDD(compareData), compareSchema)
+
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), compareDf, false))
   }
 }
