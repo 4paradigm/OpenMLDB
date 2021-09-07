@@ -97,7 +97,7 @@ public class OpenMLDBParameterizedQueryBenchmark extends OpenMLDBSetup implement
                 .include(OpenMLDBParameterizedQueryBenchmark.class.getSimpleName())
                 .shouldFailOnError(true)
                 .resultFormat(ResultFormatType.JSON)
-                .result(MemsqlParameterizedQueryBenchmark.class.getSimpleName() + ".json")
+                .result(OpenMLDBParameterizedQueryBenchmark.class.getSimpleName() + ".json")
                 .forks(1)
                 .build();
         new Runner(opt).run();

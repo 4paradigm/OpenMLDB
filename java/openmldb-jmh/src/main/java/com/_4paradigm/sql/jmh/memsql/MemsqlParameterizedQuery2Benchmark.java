@@ -44,7 +44,7 @@ public class MemsqlParameterizedQuery2Benchmark extends MemsqlSetup implements P
                 .include(MemsqlParameterizedQuery2Benchmark.class.getSimpleName())
                 .shouldFailOnError(true)
                 .resultFormat(ResultFormatType.JSON)
-                .result(MemsqlParameterizedQueryBenchmark.class.getSimpleName() + ".json")
+                .result(MemsqlParameterizedQuery2Benchmark.class.getSimpleName() + ".json")
                 .forks(1)
                 .build();
         new Runner(opt).run();
