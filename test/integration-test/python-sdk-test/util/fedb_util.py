@@ -3,13 +3,13 @@
 from datetime import datetime
 
 from nb_log import LogManager
-from sqlalchemy_fedb.fedbapi import Type as feType
+from sqlalchemy_openmldb.openmldbapi import Type as feType
 import re
 import random
 import string
 import time
 
-from sqlalchemy_fedb.fedbapi.sql_router_sdk import DataTypeName, SQLRequestRow
+from sqlalchemy_openmldb.openmldbapi.sql_router_sdk import DataTypeName, SQLRequestRow
 
 from common import fedb_config
 from entity.fedb_result import FedbResult

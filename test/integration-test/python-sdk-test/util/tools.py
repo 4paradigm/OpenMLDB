@@ -5,16 +5,16 @@ import os
 
 def getCasePath(path:str):
     currentPath = os.getcwd()
-    index = currentPath.rfind('HybridSQL-test')
+    index = currentPath.rfind('OpenMLDB')
     prePath = currentPath[0:index]
-    casePath = prePath+"HybridSQL-test/cases"+path
+    casePath = prePath+"OpenMLDB/cases"+path
     return casePath
 
 def getRootPath():
     currentPath = os.getcwd()
-    index = currentPath.rfind('fedb-sdk-test')
+    index = currentPath.rfind('python-sdk-test')
     prePath = currentPath[0:index]
-    rootPath = prePath + "fedb-sdk-test"
+    rootPath = prePath + "python-sdk-test"
     return rootPath
 
 def getAbsolutePath(path:str):
