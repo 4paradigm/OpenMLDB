@@ -58,7 +58,8 @@ object SkewDataFrameUtils {
     val inputDfJoinCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
     val distributionDfJoinCol = SparkColumnUtil.getColumnFromIndex(distributionDropCountDf, 0)
 
-    var joinDf = inputDf.join(distributionDropCountDf, inputDfJoinCol === distributionDfJoinCol, "left")
+    var joinDf = inputDf.join(distributionDropCountDf.hint("broadcast"),
+      inputDfJoinCol === distributionDfJoinCol, "left")
 
     // Select * and case when(...) from joinDf
     val inputDfPercentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, percentileColIndex)
