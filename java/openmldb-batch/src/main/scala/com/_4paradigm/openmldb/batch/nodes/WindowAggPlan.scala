@@ -205,7 +205,7 @@ object WindowAggPlan {
       val distributionMap = Map(distributionCollect.map(p => (p.get(0), p.get(1))): _*)
 
       val outputSchema = inputDf.schema.add("_PART_", IntegerType, false)
-        .add("_EXPAND_", IntegerType, false)
+        .add("_ORIGINAL_PART_", IntegerType, false)
 
       val outputRdd = inputDf.rdd.map(row => {
         // Combine the repartition keys to one string which is equal to the first column of skew config
@@ -221,9 +221,9 @@ object WindowAggPlan {
         }
 
         val partValue = if (condition <= 0) {
-          2
-        } else {
           1
+        } else {
+          2
         }
 
         Row.fromSeq(row.toSeq :+ partValue :+ partValue)
