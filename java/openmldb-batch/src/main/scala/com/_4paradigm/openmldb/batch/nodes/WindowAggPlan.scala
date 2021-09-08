@@ -18,14 +18,13 @@ package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
 import com._4paradigm.openmldb.batch.utils.{
-  AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil,
-  SkewDataFrameUtils, SparkColumnUtil, SparkUtil
+  AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SkewDataFrameUtils, SparkColumnUtil, SparkUtil
 }
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.types.{IntegerType, LongType, StructType, TimestampType}
+import org.apache.spark.sql.types.{BooleanType, IntegerType, LongType, StructType, TimestampType}
 import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
@@ -150,7 +149,6 @@ object WindowAggPlan {
     // TODO: Support multiple repartition keys and orderby keys
     val repartitionColIndexes = PhysicalNodeUtil.getRepartitionColumnIndexes(windowAggNode, inputDf)
     val orderByColIndex = PhysicalNodeUtil.getOrderbyColumnIndex(windowAggNode, inputDf)
-    val orderByColType = inputDf.schema(orderByColIndex).dataType
 
     // Register the input table
     val partColName = "_PART_" + uniqueNamePostfix
@@ -159,13 +157,14 @@ object WindowAggPlan {
     val greaterFlagColName = "_GREATER_FLAG_" + uniqueNamePostfix
     val countColName = "_COUNT_" + uniqueNamePostfix
 
+    // For the optimization in the third step
     var minCount = Long.MaxValue
 
     val quantile = math.pow(2, ctx.getConf.skewLevel.toDouble)
 
-    val addColumnsDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
+    // 1. Analyze the data distribution
+    val distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
       // Do not use skew config
-      // 1. Analyze the data distribution
       val partitionColName = "_PARTITION_" + uniqueNamePostfix
 
       val distributionDf = SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
@@ -176,60 +175,35 @@ object WindowAggPlan {
         distributionDf.cache()
       }
 
-      val flags = distributionDf.select(distributionDf(greaterFlagColName), distributionDf(countColName)).collect()
-      for (flag <- flags) {
-        val greaterFlag = flag.getBoolean(0)
-        val count = flag.getLong(1)
-        // When greaterFlag == false, quantile can not be divided equally
-        if (!greaterFlag) {
-          logger.info("Unnecessary to open skew optimization")
-          logger.info("Re-Execute in windowPartition")
-          ctx.getConf.enableWindowSkewOpt = false
-          return windowPartition(ctx, windowAggNode, inputDf)
-        } else {
-          minCount = math.min(minCount, count)
-        }
-      }
-
-      // 2. Add "part" column and "expand" column by joining the distribution table
-      val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-        repartitionColIndexes, orderByColIndex, partColName, originalPartColName, countColName)
-      logger.info("Generate percentile_tag dataframe")
-
-      addColumnsDf
+      distributionDf
     } else {
       // Use skew config
       val distributionDf = ctx.getSparkSession.read.parquet(ctx.getConf.windowSkewOptConfig)
-      val distributionCollect = distributionDf.collect()
+      logger.info("Load distribution dataframe")
 
-      val distributionMap = Map(distributionCollect.map(p => (p.get(0), p.get(1))): _*)
-
-      val outputSchema = inputDf.schema.add("_PART_", IntegerType, false)
-        .add("_ORIGINAL_PART_", IntegerType, false)
-
-      val outputRdd = inputDf.rdd.map(row => {
-        // Combine the repartition keys to one string which is equal to the first column of skew config
-        val combineString = repartitionColIndexes.map(index => row.get(index)).mkString("_")
-        // TODO: Support for more datatype of orderby columns
-        val condition = if (orderByColType.equals(TimestampType)) {
-          row.get(orderByColIndex).asInstanceOf[java.sql.Timestamp].compareTo(distributionMap(combineString)
-            .asInstanceOf[java.sql.Timestamp])
-        } else if (orderByColType.equals(LongType)) {
-          row.get(orderByColIndex).asInstanceOf[Long].compareTo(distributionMap(combineString).asInstanceOf[Long])
-        } else {
-          row.get(orderByColIndex).asInstanceOf[Int].compareTo(distributionMap(combineString).asInstanceOf[Int])
-        }
-
-        val partValue = if (condition <= 0) {
-          1
-        } else {
-          2
-        }
-
-        Row.fromSeq(row.toSeq :+ partValue :+ partValue)
-      })
-      ctx.getSparkSession.createDataFrame(outputRdd, outputSchema)
+      distributionDf
     }
+
+    // Judge whether to turn on window skew optimization
+    val flags = distributionDf.select(distributionDf(greaterFlagColName), distributionDf(countColName)).collect()
+    for (flag <- flags) {
+      val greaterFlag = flag.getBoolean(0)
+      val count = flag.getLong(1)
+      // When greaterFlag == false, quantile can not be divided equally
+      if (!greaterFlag) {
+        logger.info("Unnecessary to open skew optimization")
+        logger.info("Re-Execute in windowPartition")
+        ctx.getConf.enableWindowSkewOpt = false
+        return windowPartition(ctx, windowAggNode, inputDf)
+      } else {
+        minCount = math.min(minCount, count)
+      }
+    }
+
+    // 2. Add "part" column and "expand" column by joining the distribution table
+    val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
+      repartitionColIndexes, orderByColIndex, partColName, originalPartColName, countColName)
+    logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {
       addColumnsDf.cache()
@@ -443,7 +417,7 @@ object WindowAggPlan {
             if (tag == position) {
               Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
             } else {
-              if(!config.instanceNotInWindow) {
+              if (!config.instanceNotInWindow) {
                 computer.bufferRowOnly(row, orderKey)
               }
               None
