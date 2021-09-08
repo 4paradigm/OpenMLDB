@@ -154,7 +154,7 @@ object WindowAggPlan {
 
     // Register the input table
     val partColName = "_PART_" + uniqueNamePostfix
-    val expandColName = "_EXPAND_" + uniqueNamePostfix
+    val originalPartColName = "_ORIGINAL_PART_" + uniqueNamePostfix
     // "_GREATER_FLAG_" is used to determine whether distinct count is greater than quantile
     val greaterFlagColName = "_GREATER_FLAG_" + uniqueNamePostfix
     val countColName = "_COUNT_" + uniqueNamePostfix
@@ -171,6 +171,8 @@ object WindowAggPlan {
       val distributionDf = SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
         orderByColIndex, partitionColName, greaterFlagColName, countColName)
       logger.info("Generate distribution dataframe")
+
+      distributionDf.show()
 
       if (ctx.getConf.windowSkewOptCache) {
         distributionDf.cache()
@@ -193,8 +195,10 @@ object WindowAggPlan {
 
       // 2. Add "part" column and "expand" column by joining the distribution table
       val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-        repartitionColIndexes, orderByColIndex, partColName, expandColName, countColName)
+        repartitionColIndexes, orderByColIndex, partColName, originalPartColName, countColName)
       logger.info("Generate percentile_tag dataframe")
+
+      addColumnsDf.show()
 
       addColumnsDf
     } else {
@@ -240,9 +244,11 @@ object WindowAggPlan {
     windowAggConfig.skewPositionIdx = addColumnsDf.schema.fieldNames.length - 1
 
     // 3. Expand the table data by union
-    val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partColName, expandColName,
+    val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partColName, originalPartColName,
       minCount, windowAggConfig.rowPreceding, windowAggConfig.startOffset)
     logger.info("Generate union dataframe")
+
+    unionDf.show()
 
     // 4. Repartition and order by
     val repartitionCols = mutable.ArrayBuffer[Column]()
@@ -262,6 +268,8 @@ object WindowAggPlan {
 
     val sortedDf = repartitionDf.sortWithinPartitions(sortedByCols: _*)
     logger.info("Generate repartition and orderby dataframe")
+
+    sortedDf.show()
 
     sortedDf
   }

@@ -67,11 +67,11 @@ object SkewDataFrameUtils {
 
     for (i <- 1 to quantile) {
       if (i == 1) {
-        part = when(inputDfPercentileCol <= joinDf(s"percentile_${i}"), quantile - i + 1)
+        part = when(inputDfPercentileCol <= joinDf(s"percentile_${i}"), i)
       } else if (i != quantile) {
-        part = part.when(inputDfPercentileCol <= joinDf(s"percentile_${i}"), quantile - i + 1)
+        part = part.when(inputDfPercentileCol <= joinDf(s"percentile_${i}"), i)
       } else {
-        part = part.otherwise(1)
+        part = part.otherwise(quantile)
       }
     }
     joinDf = joinDf.withColumn(partColName, part).withColumn(expandColName, part)
@@ -97,17 +97,17 @@ object SkewDataFrameUtils {
     }
     // Filter expandWindowColumns and union
     var unionDf = addColumnsDf
-    for (i <- 1 until quantile) {
+    for (i <- 2 to quantile) {
       if (isClibing) {
         val temDf = addColumnsDf.withColumn(partColName, lit(i))
-        for (explode <- i + 1 to quantile) {
+        for (explode <- 1 until i) {
           unionDf = unionDf.union(temDf.filter(expandColName + s" = ${explode}"))
         }
       }
       else {
         // When the min rowsWindowSize > rowsWindowSize, means that only need one next part of quantile
         val temDf = addColumnsDf.withColumn(partColName, lit(i))
-        unionDf = unionDf.union(temDf.filter(expandColName + s" = ${i + 1}"))
+        unionDf = unionDf.union(temDf.filter(expandColName + s" = ${i - 1}"))
       }
     }
 
