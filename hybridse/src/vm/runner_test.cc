@@ -56,7 +56,9 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     SqlWindowQueryParse, RunnerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
-
+INSTANTIATE_TEST_SUITE_P(
+    SqlTableUdafQueryPlan, RunnerTest,
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/native_udaf_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(
     SqlWherePlan, RunnerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
@@ -82,7 +84,7 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     sql_context.parameter_types = parameter_types;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
-    ASSERT_TRUE(ok);
+    ASSERT_TRUE(ok) << compile_status;
     ASSERT_TRUE(sql_compiler.BuildClusterJob(sql_context, compile_status));
     ASSERT_TRUE(nullptr != sql_context.physical_plan);
     ASSERT_TRUE(sql_context.cluster_job.IsValid());

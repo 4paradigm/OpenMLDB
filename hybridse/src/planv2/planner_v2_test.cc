@@ -75,7 +75,9 @@ INSTANTIATE_TEST_SUITE_P(SqlSubQueryParse, PlannerV2Test,
 
 // INSTANTIATE_TEST_SUITE_P(UdfParse, PlannerV2Test,
 //                        testing::ValuesIn(sqlcase::InitCases("cases/plan/udf.yaml", FILTERS)));
-//
+INSTANTIATE_TEST_SUITE_P(NativeUdafFunction, PlannerV2Test,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/native_udaf_query.yaml", FILTERS)));
+
 INSTANTIATE_TEST_SUITE_P(SQLCreate, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));
 
@@ -193,7 +195,7 @@ TEST_F(PlannerV2Test, SelectPlanWithWindowProjectTest) {
     ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
 
     ASSERT_EQ("(COL2)", node::ExprString(project_list->GetW()->GetKeys()));
-    ASSERT_TRUE(project_list->IsWindowAgg());
+    ASSERT_TRUE(project_list->IsAgg());
 
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
@@ -244,7 +246,7 @@ TEST_F(PlannerV2Test, SelectPlanWithMultiWindowProjectTest) {
     ASSERT_EQ(1u, project_list->GetProjects().size());
     ASSERT_TRUE(nullptr != project_list->GetW());
 
-    ASSERT_TRUE(project_list->IsWindowAgg());
+    ASSERT_TRUE(project_list->IsAgg());
 
     ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
     ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
@@ -259,7 +261,7 @@ TEST_F(PlannerV2Test, SelectPlanWithMultiWindowProjectTest) {
     ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
 
     ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
-    ASSERT_TRUE(project_list->IsWindowAgg());
+    ASSERT_TRUE(project_list->IsAgg());
     ASSERT_FALSE(project_list->GetW()->instance_not_in_window());
 
     plan_ptr = plan_ptr->GetChildren()[0];
@@ -304,7 +306,7 @@ TEST_F(PlannerV2Test, WindowWithUnionTest) {
     ASSERT_EQ(3u, project_list->GetProjects().size());
     ASSERT_TRUE(nullptr != project_list->GetW());
 
-    ASSERT_TRUE(project_list->IsWindowAgg());
+    ASSERT_TRUE(project_list->IsAgg());
 
     ASSERT_EQ(-3, project_list->GetW()->GetStartOffset());
     ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
@@ -421,7 +423,7 @@ TEST_F(PlannerV2Test, MultiProjectListPlanPostTest) {
         ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
         ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
         ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
-        ASSERT_TRUE(project_list->IsWindowAgg());
+        ASSERT_TRUE(project_list->IsAgg());
 
         // validate w2_col3_sum pos 1
         {

@@ -439,7 +439,7 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
         dynamic_cast<hybridse::node::ProjectListNode*>(
             node->project_list_vec_[0]);
     auto project_list = node_manager_->MakeProjectListPlanNode(
-        first_project_list->w_ptr_, first_project_list->is_window_agg_);
+        first_project_list->w_ptr_, first_project_list->is_agg_);
     uint32_t pos = 0;
     for (auto iter = node->pos_mapping_.cbegin();
          iter != node->pos_mapping_.cend(); iter++) {
@@ -1093,7 +1093,8 @@ base::Status BatchModeTransformer::ExtractGroupKeys(vm::PhysicalOpNode* depend, 
         CHECK_STATUS(ExtractGroupKeys(depend->GetProducer(0), keys))
         return base::Status::OK();
     }
-    CHECK_TRUE(depend->GetOpType() == kPhysicalOpGroupBy, kPlanError, "Fail to extract group keys from op ", vm::PhysicalOpTypeName(depend->GetOpType()))
+    CHECK_TRUE(depend->GetOpType() == kPhysicalOpGroupBy, kPlanError, "Fail to extract group keys from op ",
+               vm::PhysicalOpTypeName(depend->GetOpType()))
     *keys = dynamic_cast<PhysicalGroupNode*>(depend)->group().keys_;
     return base::Status::OK();
 }
@@ -1112,12 +1113,19 @@ Status BatchModeTransformer::TransformProjectOp(
             return CreatePhysicalProjectNode(
                 kGroupAggregation, depend, project_list, append_input, output);
         case kSchemaTypeTable:
-            if (project_list->is_window_agg_) {
-                CHECK_STATUS(
-                    CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
-                return CreatePhysicalProjectNode(kWindowAggregation, depend,
-                                                 project_list, append_input,
-                                                 output);
+            if (project_list->IsAgg()) {
+                if (project_list->IsWindowProject()) {
+                    CHECK_STATUS(
+                        CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
+                    return CreatePhysicalProjectNode(kWindowAggregation, depend,
+                                                     project_list, append_input,
+                                                     output);
+                } else {
+                    return CreatePhysicalProjectNode(kAggregation, depend,
+                                                     project_list, append_input,
+                                                     output);
+                }
+
             } else {
                 return CreatePhysicalProjectNode(
                     kTableProject, depend, project_list, append_input, output);
@@ -1926,6 +1934,7 @@ Status RequestModeTransformer::TransformProjectOp(
     }
     switch (new_depend->GetOutputType()) {
         case kSchemaTypeRow:
+            CHECK_TRUE(!project_list->is_agg_, kPlanError, "Non-support aggregation project on request row")
             return CreatePhysicalProjectNode(
                 kRowProject, new_depend, project_list, append_input, output);
         case kSchemaTypeGroup:
@@ -1933,7 +1942,7 @@ Status RequestModeTransformer::TransformProjectOp(
                                              project_list, append_input,
                                              output);
         case kSchemaTypeTable:
-            if (project_list->is_window_agg_) {
+            if (project_list->is_agg_) {
                 return CreatePhysicalProjectNode(kAggregation, new_depend,
                                                  project_list, append_input,
                                                  output);

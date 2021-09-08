@@ -282,9 +282,9 @@ class WindowPlanNode : public LeafPlanNode {
 
 class ProjectListNode : public LeafPlanNode {
  public:
-    ProjectListNode() : LeafPlanNode(kProjectList), is_window_agg_(false), w_ptr_(nullptr), projects({}) {}
-    ProjectListNode(const WindowPlanNode *w_ptr, const bool is_window_agg)
-        : LeafPlanNode(kProjectList), is_window_agg_(is_window_agg), w_ptr_(w_ptr), projects({}) {}
+    ProjectListNode() : LeafPlanNode(kProjectList), is_agg_(false), w_ptr_(nullptr), projects({}) {}
+    ProjectListNode(const WindowPlanNode *w_ptr, const bool is_agg)
+        : LeafPlanNode(kProjectList), is_agg_(is_agg), w_ptr_(w_ptr), projects({}) {}
     ~ProjectListNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -293,12 +293,16 @@ class ProjectListNode : public LeafPlanNode {
 
     const WindowPlanNode *GetW() const { return w_ptr_; }
 
-    const bool IsWindowAgg() const { return is_window_agg_; }
+    void SetIsAgg(const bool is_agg) {
+        is_agg_ = is_agg;
+    }
+    const bool IsAgg() const { return is_agg_; }
+    const bool IsWindowProject() const { return nullptr != w_ptr_; }
     virtual bool Equals(const PlanNode *node) const;
 
     static bool MergeProjectList(node::ProjectListNode *project_list1, node::ProjectListNode *project_list2,
                                  node::ProjectListNode *merged_project);
-    const bool is_window_agg_;
+    bool is_agg_;
     const WindowPlanNode *w_ptr_;
 
     bool IsSimpleProjectList();

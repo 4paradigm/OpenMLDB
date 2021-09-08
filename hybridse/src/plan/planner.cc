@@ -24,7 +24,7 @@
 #include <vector>
 #include "plan/plan_api.h"
 #include "proto/fe_common.pb.h"
-
+#include "udf/default_udf_library.h"
 namespace hybridse {
 namespace plan {
 
@@ -75,10 +75,8 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         table_name = MakeTableName(current_node);
     }
     // group by
-    bool group_by_agg = false;
     if (nullptr != root->group_clause_ptr_) {
         current_node = node_manager_->MakeGroupPlanNode(current_node, root->group_clause_ptr_);
-        group_by_agg = true;
     }
 
     // where condition
@@ -92,8 +90,10 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     CHECK_TRUE(nullptr != root->GetSelectList() && !root->GetSelectList()->GetList().empty(), common::kPlanError,
                "fail to create select query plan: select expr list is null or empty")
 
+    const udf::UdfLibrary* lib = udf::DefaultUdfLibrary::get();
     // prepare window list
     std::map<const node::WindowDefNode *, node::ProjectListNode *> project_list_map;
+    node::ProjectListNode *table_project_list = node_manager_->MakeProjectListPlanNode(nullptr, false);
     // prepare window def
     int w_id = 1;
     std::map<std::string, const node::WindowDefNode *> windows;
@@ -132,23 +132,35 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         CHECK_TRUE(node::WindowOfExpression(windows, project_expr, &w_ptr), common::kPlanError,
                    "fail to resolved window")
 
-        if (project_list_map.find(w_ptr) == project_list_map.end()) {
-            if (w_ptr == nullptr) {
-                project_list_map[w_ptr] = node_manager_->MakeProjectListPlanNode(nullptr, group_by_agg);
-
+        // deal with row project / table aggregation project
+        if (w_ptr == nullptr) {
+            if (node::IsAggregationExpression(lib, project_expr)) {
+                table_project_list->AddProject(
+                    node_manager_->MakeAggProjectNode(pos, project_name, project_expr, nullptr));
+                table_project_list->SetIsAgg(true);
             } else {
-                node::WindowPlanNode *w_node_ptr = node_manager_->MakeWindowPlanNode(w_id++);
-                CHECK_STATUS(CreateWindowPlanNode(w_ptr, w_node_ptr))
-                project_list_map[w_ptr] = node_manager_->MakeProjectListPlanNode(w_node_ptr, true);
+                table_project_list->AddProject(node_manager_->MakeRowProjectNode(pos, project_name, project_expr));
             }
+            continue;
         }
-        node::ProjectNode *project_node_ptr =
-            nullptr == w_ptr ? node_manager_->MakeRowProjectNode(pos, project_name, project_expr)
-                             : node_manager_->MakeAggProjectNode(pos, project_name, project_expr, w_ptr->GetFrame());
-
-        project_list_map[w_ptr]->AddProject(project_node_ptr);
+        // deal with window project
+        if (project_list_map.find(w_ptr) == project_list_map.end()) {
+            node::WindowPlanNode *w_node_ptr = node_manager_->MakeWindowPlanNode(w_id++);
+            CHECK_STATUS(CreateWindowPlanNode(w_ptr, w_node_ptr))
+            project_list_map[w_ptr] = node_manager_->MakeProjectListPlanNode(w_node_ptr, true);
+        }
+        project_list_map[w_ptr]->AddProject(
+            node_manager_->MakeAggProjectNode(pos, project_name, project_expr, w_ptr->GetFrame()));
     }
 
+    // Can't support table aggregation and window aggregation simutaneously
+    CHECK_TRUE(!(table_project_list->IsAgg() && !project_list_map.empty()), common::kPlanError,
+               "Can't support table aggregationg and window aggregation simutanesously")
+    // Add table projects into project map beforehand
+    // Thus we can merge project list based on window frame when it is necessary.
+    if (!table_project_list->GetProjects().empty()) {
+        project_list_map[nullptr] = table_project_list;
+    }
     // merge window map
     std::map<const node::WindowDefNode *, node::ProjectListNode *> merged_project_list_map;
     CHECK_STATUS(MergeProjectMap(project_list_map, &merged_project_list_map))

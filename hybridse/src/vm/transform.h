@@ -275,8 +275,7 @@ class RequestModeTransformer : public BatchModeTransformer {
                                           PhysicalOpNode** output);
     virtual Status TransformJoinOp(const node::JoinPlanNode* node,
                                    PhysicalOpNode** output);
-    virtual Status TransformScanOp(const node::TablePlanNode* node,
-                                   PhysicalOpNode** output);
+    virtual Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output);
 
  private:
     bool enable_batch_request_opt_;

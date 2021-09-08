@@ -98,7 +98,6 @@ bool CallExprNode::RequireListAt(ExprAnalysisContext* ctx, size_t index) const {
 bool CallExprNode::IsListReturn(ExprAnalysisContext* ctx) const {
     return GetFnDef()->IsListReturn(ctx);
 }
-
 Status ExprIdNode::InferAttr(ExprAnalysisContext* ctx) {
     // var node should be bind outside
     CHECK_TRUE(this->GetOutputType() != nullptr, kTypeError,
