@@ -44,9 +44,9 @@ class SQLBaseSuite extends SparkTestSuite {
 
   final private val rootDir = {
     var pwd = new File(System.getProperty("user.dir"))
-    if (pwd.getAbsolutePath.endsWith("sparkfe_test")) {
+    if (pwd.getAbsolutePath.endsWith("openmldb-batch-test")) {
       // TODO: Use the better method to get the root dir
-      pwd = pwd.getParentFile.getParentFile.getParentFile // ../../
+      pwd = pwd.getParentFile.getParentFile.getParentFile // ../../../
     }
     pwd
   }
