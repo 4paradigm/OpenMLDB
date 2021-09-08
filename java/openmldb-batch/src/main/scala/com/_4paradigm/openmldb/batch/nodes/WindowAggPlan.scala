@@ -172,8 +172,6 @@ object WindowAggPlan {
         orderByColIndex, partitionColName, greaterFlagColName, countColName)
       logger.info("Generate distribution dataframe")
 
-      distributionDf.show()
-
       if (ctx.getConf.windowSkewOptCache) {
         distributionDf.cache()
       }
@@ -197,8 +195,6 @@ object WindowAggPlan {
       val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
         repartitionColIndexes, orderByColIndex, partColName, originalPartColName, countColName)
       logger.info("Generate percentile_tag dataframe")
-
-      addColumnsDf.show()
 
       addColumnsDf
     } else {
@@ -248,8 +244,6 @@ object WindowAggPlan {
       minCount, windowAggConfig.rowPreceding, windowAggConfig.startOffset)
     logger.info("Generate union dataframe")
 
-    unionDf.show()
-
     // 4. Repartition and order by
     val repartitionCols = mutable.ArrayBuffer[Column]()
     repartitionCols += addColumnsDf(partColName)
@@ -268,8 +262,6 @@ object WindowAggPlan {
 
     val sortedDf = repartitionDf.sortWithinPartitions(sortedByCols: _*)
     logger.info("Generate repartition and orderby dataframe")
-
-    sortedDf.show()
 
     sortedDf
   }
