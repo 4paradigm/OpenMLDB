@@ -443,7 +443,9 @@ object WindowAggPlan {
             if (tag == position) {
               Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
             } else {
-              computer.bufferRowOnly(row, orderKey)
+              if(!config.instanceNotInWindow) {
+                computer.bufferRowOnly(row, orderKey)
+              }
               None
             }
           } else {
