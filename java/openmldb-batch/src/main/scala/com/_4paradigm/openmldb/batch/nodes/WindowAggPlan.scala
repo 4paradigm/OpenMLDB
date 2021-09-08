@@ -151,8 +151,8 @@ object WindowAggPlan {
     val orderByColIndex = PhysicalNodeUtil.getOrderbyColumnIndex(windowAggNode, inputDf)
 
     // Register the input table
-    val partColName = "_PART_" + uniqueNamePostfix
-    val originalPartColName = "_ORIGINAL_PART_" + uniqueNamePostfix
+    val partIdColName = "_PART_ID_" + uniqueNamePostfix
+    val originalPartIdColName = "_ORIGINAL_PART_ID_" + uniqueNamePostfix
     // "_GREATER_FLAG_" is used to determine whether distinct count is greater than quantile
     val greaterFlagColName = "_GREATER_FLAG_" + uniqueNamePostfix
     val countColName = "_COUNT_" + uniqueNamePostfix
@@ -202,7 +202,7 @@ object WindowAggPlan {
 
     // 2. Add "part" column and "expand" column by joining the distribution table
     val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-      repartitionColIndexes, orderByColIndex, partColName, originalPartColName, countColName)
+      repartitionColIndexes, orderByColIndex, partIdColName, originalPartIdColName, countColName)
     logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {
@@ -214,13 +214,13 @@ object WindowAggPlan {
     windowAggConfig.skewPositionIdx = addColumnsDf.schema.fieldNames.length - 1
 
     // 3. Expand the table data by union
-    val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partColName, originalPartColName,
+    val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, originalPartIdColName,
       minCount, windowAggConfig.rowPreceding, windowAggConfig.startOffset)
     logger.info("Generate union dataframe")
 
     // 4. Repartition and order by
     val repartitionCols = mutable.ArrayBuffer[Column]()
-    repartitionCols += addColumnsDf(partColName)
+    repartitionCols += addColumnsDf(partIdColName)
     for (i <- repartitionColIndexes.indices) {
       repartitionCols += SparkColumnUtil.getColumnFromIndex(addColumnsDf, repartitionColIndexes(i))
     }
