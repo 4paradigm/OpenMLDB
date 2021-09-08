@@ -48,14 +48,14 @@ public class FedbTool {
         File directory = new File(".");
         directory = directory.getAbsoluteFile();
         while (null != directory) {
-            if (directory.isDirectory() && "HybridSQL-test".equals(directory.getName())) {
+            if (directory.isDirectory() && "OpenMLDB".equals(directory.getName())) {
                 break;
             }
             logger.debug("current directory name {}", directory.getName());
             directory = directory.getParentFile();
         }
 
-        if ("HybridSQL-test".equals(directory.getName())) {
+        if ("OpenMLDB".equals(directory.getName())) {
             return directory;
         } else {
             return null;

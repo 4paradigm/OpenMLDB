@@ -2,10 +2,10 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
 <suite name="fesql-v1" parallel="false" thread-count="2">
     <test name="fesql-v1-test">
-        <parameter name="env" value="standalone"/>
-        <parameter name="version" value="2.2.0"/>
+        <parameter name="env" value="qa"/>
+        <parameter name="version" value="0.2.3"/>
         <classes>
-            <class name="com._4paradigm.hybridsql.fedb_sdk_test.function.v220.DMLTest">
+            <class name="com._4paradigm.openmldb.java_sdk_test.v230.DMLTest">
                 <!--<methods>-->
                     <!--<include name="testInsert" />-->
                 <!--</methods>-->
@@ -16,6 +16,6 @@
         <!--</packages>-->
     </test>
     <listeners>
-        <listener class-name="com._4paradigm.hybridsql.fedb_sdk_test.report.AddAttachmentListener" />
+        <listener class-name="com._4paradigm.openmldb.java_sdk_test.report.AddAttachmentListener" />
     </listeners>
 </suite>
