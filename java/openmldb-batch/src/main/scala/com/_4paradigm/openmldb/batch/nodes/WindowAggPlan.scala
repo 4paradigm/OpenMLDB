@@ -165,10 +165,10 @@ object WindowAggPlan {
     // 1. Analyze the data distribution
     val distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
       // Do not use skew config
-      val partitionColName = "_PARTITION_" + uniqueNamePostfix
+      val partitionKeyColName = "_PARTITION_KEY_" + uniqueNamePostfix
 
       val distributionDf = SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
-        orderByColIndex, partitionColName, greaterFlagColName, countColName)
+        orderByColIndex, partitionKeyColName, greaterFlagColName, countColName)
       logger.info("Generate distribution dataframe")
 
       if (ctx.getConf.windowSkewOptCache) {
