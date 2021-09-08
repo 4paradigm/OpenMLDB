@@ -908,6 +908,5 @@ service TabletServer {
     rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
     rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
 
-
     rpc AddMessage(AddMessageRequest) returns (AddMessageResponse);
 }

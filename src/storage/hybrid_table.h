@@ -21,7 +21,7 @@
 namespace openmldb {
 namespace storage {
 
-using Schema = google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;    
+using Schema = google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
 
 enum TableType {
     kNearlineTable = 1,

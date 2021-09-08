@@ -28,13 +28,14 @@
 #include "base/skiplist.h"
 #include "bthread/bthread.h"
 #include "bthread/condition_variable.h"
+#include "butil/iobuf.h"
 #include "common/thread_pool.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
-#include "storage/table.h"
+#include "replica/memtable_replicate_node.h"
 
 namespace openmldb {
 namespace replica {
@@ -44,7 +45,6 @@ using ::openmldb::api::LogEntry;
 using ::openmldb::log::Reader;
 using ::openmldb::log::SequentialFile;
 using ::openmldb::log::WriteHandle;
-using ::openmldb::storage::Table;
 
 enum ReplicatorRole { kLeaderNode = 1, kFollowerNode };
 
@@ -65,6 +65,8 @@ class LogReplicator {
 
     // the master node append entry
     bool AppendEntry(::openmldb::api::LogEntry& entry);  // NOLINT
+
+    bool AppendMessage(const ::butil::IOBuf& message);
 
     //  data to slave nodes
     void Notify();

@@ -17,30 +17,32 @@
 #pragma once
 
 #include <string>
-
+#include <memory>
+#include "butil/iobuf.h"
+#include "replica/log_replicator.h"
 namespace openmldb {
 namespace storage {
 
 class MessageTable {
  public:
-     MessageTable(const std::string& db_name, const std::string& table_name, uint32_t tid, uint32_t pid) :
-         db_name_(db_name), table_name_(table_name), tid_(tid), pid_(pid) {}
-     ~MessageTable() = default;
+    MessageTable(const std::string& db_name, const std::string& table_name, uint32_t tid, uint32_t pid) :
+     db_name_(db_name), table_name_(table_name), tid_(tid), pid_(pid), replicator_() {}
+    ~MessageTable() = default;
 
-     const std::string& GetDB() const { return db_name_; }
-     const std::string& GetName() const { return table_name_; }
-     uint32_t GetTableId() const { return tid_; }
-     uint32_t GetPartitionId() const { return pid_; }
-
-     bool Put() {
-         return true;
-     }
+    bool Init();
+    const std::string& GetDB() const { return db_name_; }
+    const std::string& GetName() const { return table_name_; }
+    uint32_t GetTableId() const { return tid_; }
+    uint32_t GetPartitionId() const { return pid_; }
+    bool AddMessage(const ::butil::IOBuf& message);
+    bool AddConsumer(const std::string& endpoint);
 
  private:
-     std::string db_name_;
-     std::string table_name_;
-     uint32_t tid_;
-     uint32_t pid_;
+    std::string db_name_;
+    std::string table_name_;
+    uint32_t tid_;
+    uint32_t pid_;
+    std::shared_ptr<::openmldb::replica::LogReplicator> replicator_;
 };
 
 }  // namespace storage

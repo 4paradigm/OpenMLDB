@@ -28,10 +28,10 @@
 #include <utility>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "base/strings.h"
+#include "codec/message_codec.h"
 #include "log/log_format.h"
-#include "storage/segment.h"
 
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_name_length);
@@ -107,8 +107,8 @@ bool LogReplicator::Init() {
     }
     if (role_ == kLeaderNode) {
         for (const auto& kv : real_ep_map_) {
-            std::shared_ptr<ReplicateNode> replicate_node =
-                std::make_shared<ReplicateNode>(kv.first, logs_, log_path_, tid_, pid_, &term_,
+            std::shared_ptr<MemTableReplicateNode> replicate_node =
+                std::make_shared<MemTableReplicateNode>(kv.first, logs_, log_path_, tid_, pid_, &term_,
                                                 &log_offset_, &mu_, &cv_, false, &follower_offset_, kv.second);
             if (replicate_node->Init() < 0) {
                 PDLOG(WARNING, "init replicate node %s error", kv.first.c_str());
@@ -339,11 +339,11 @@ int LogReplicator::AddReplicateNode(const std::map<std::string, std::string>& re
         std::shared_ptr<ReplicateNode> replicate_node;
         if (tid == UINT32_MAX) {
             replicate_node =
-                std::make_shared<ReplicateNode>(endpoint, logs_, log_path_, tid_, pid_, &term_,
+                std::make_shared<MemTableReplicateNode>(endpoint, logs_, log_path_, tid_, pid_, &term_,
                                                 &log_offset_, &mu_, &cv_, false, &follower_offset_, kv.second);
         } else {
             replicate_node =
-                std::make_shared<ReplicateNode>(endpoint, logs_, log_path_, tid, pid_, &term_, &log_offset_,
+                std::make_shared<MemTableReplicateNode>(endpoint, logs_, log_path_, tid, pid_, &term_, &log_offset_,
                                                 &mu_, &cv_, true, &follower_offset_, kv.second);
         }
         if (replicate_node->Init() < 0) {
@@ -433,8 +433,7 @@ bool LogReplicator::DelAllReplicateNode() {
 bool LogReplicator::AppendEntry(LogEntry& entry) {
     std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ == NULL || wh_->GetSize() / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
-        bool ok = RollWLogFile();
-        if (!ok) {
+        if (!RollWLogFile()) {
             return false;
         }
     }
@@ -453,6 +452,28 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
                                      // sync to remote replica
         follower_offset_.store(cur_offset + 1, std::memory_order_relaxed);
     }
+    return true;
+}
+
+bool LogReplicator::AppendMessage(const ::butil::IOBuf& message) {
+    std::lock_guard<std::mutex> lock(wmu_);
+    if (wh_ == NULL || wh_->GetSize() / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
+        if (!RollWLogFile()) {
+            return false;
+        }
+    }
+    uint64_t cur_offset = log_offset_.load(std::memory_order_relaxed);
+    ::openmldb::base::Slice slice;
+    if (!::openmldb::codec::MessageCodec::Encode(1 + cur_offset, message, &slice)) {
+        PDLOG(WARNING, "fail to encode message. tid %u pid %u", tid_, pid_);
+        return false;
+    }
+    ::openmldb::base::Status status = wh_->Write(slice);
+    if (!status.ok()) {
+        PDLOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
+        return false;
+    }
+    log_offset_.fetch_add(1, std::memory_order_relaxed);
     return true;
 }
 

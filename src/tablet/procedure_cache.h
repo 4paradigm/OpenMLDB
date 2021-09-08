@@ -18,6 +18,8 @@
 
 #include <string>
 #include <map>
+#include <memory>
+#include <utility>
 #include "base/spinlock.h"
 #include "sdk/base.h"
 #include "vm/engine_context.h"

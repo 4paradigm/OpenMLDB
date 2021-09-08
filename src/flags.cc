@@ -79,7 +79,8 @@ DEFINE_uint32(put_slow_log_threshold, 50000, "config the threshold of put slow l
 DEFINE_uint32(query_slow_log_threshold, 50000, "config the threshold of query slow log");
 
 // local db config
-DEFINE_string(db_root_path, "/tmp/", "the root path of db");
+DEFINE_string(db_root_path, "/tmp/", "the root path of memory table");
+DEFINE_string(message_root_path, "/tmp/", "the root path of message table");
 
 // thread pool config
 DEFINE_int32(scan_concurrency_limit, 8, "the limit of scan concurrency");

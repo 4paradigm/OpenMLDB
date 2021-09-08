@@ -3024,7 +3024,6 @@ void TabletImpl::CreateMessageTable(RpcController* controller,
 
 void TabletImpl::AddMessage(RpcController* controller, const ::openmldb::api::AddMessageRequest* request,
         ::openmldb::api::AddMessageResponse* response, Closure* done) {
-
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
@@ -3041,6 +3040,12 @@ void TabletImpl::AddMessage(RpcController* controller, const ::openmldb::api::Ad
         DEBUGLOG("table is not exist. tid %u pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
+        return;
+    }
+    if (!message_table->AddMessage(data)) {
+        response->set_code(::openmldb::base::ReturnCode::kPutFailed);
+        response->set_msg("fail to add message");
+        DEBUGLOG("fail to add message. tid %u pid %u", tid, pid);
         return;
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
