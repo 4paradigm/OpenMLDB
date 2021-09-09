@@ -12,7 +12,7 @@ log = LogManager('python-sdk-test').get_logger_and_add_handlers()
 
 class TestExpress(FedbTest):
 
-    @pytest.mark.parametrize("testCase", getCases(["/function/expression/test_arithmetic.yaml"]))
+    @pytest.mark.parametrize("testCase", getCases(["/function/expression/"]))
     @allure.feature("Express")
     @allure.story("batch")
     def test_express(self, testCase):
