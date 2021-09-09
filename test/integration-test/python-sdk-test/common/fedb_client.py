@@ -13,6 +13,6 @@ class FedbClient:
         self.dbName = dbName
 
     def getConnect(self):
-        engine = db.create_engine('fedb://@/{}?zk={}&zkPath={}'.format(self.dbName, self.zkCluster, self.zkRootPath))
+        engine = db.create_engine('openmldb://@/{}?zk={}&zkPath={}'.format(self.dbName, self.zkCluster, self.zkRootPath))
         connect = engine.connect()
         return connect

@@ -7,7 +7,7 @@ from abc import ABCMeta, abstractmethod
 
 from util import fedb_util
 
-log = LogManager('fedb-sdk-test').get_logger_and_add_handlers()
+log = LogManager('python-sdk-test').get_logger_and_add_handlers()
 
 
 class BaseExecutor(metaclass=ABCMeta):
