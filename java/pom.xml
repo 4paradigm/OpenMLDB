@@ -294,6 +294,7 @@
                 <artifactId>versions-maven-plugin</artifactId>
                 <version>2.2</version>
             </plugin>
+            <!--
             <plugin>
                 <groupId>org.scoverage</groupId>
                 <artifactId>scoverage-maven-plugin</artifactId>
@@ -303,11 +304,12 @@
                         <id>scoverage-report</id>
                         <phase>prepare-package</phase>
                         <goals>
-                            <goal>report</goal> <!-- or integration-check -->
+                            <goal>report</goal>
                         </goals>
                     </execution>
                 </executions>
             </plugin>
+            -->
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
