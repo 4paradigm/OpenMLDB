@@ -363,6 +363,8 @@ def buildInsertSQLFromRows(tableName: str, columns: list, datas: list):
                         dataStr = "'" + dataStr + "'"
                     elif columnType == 'timestamp':
                         dataStr = dataStr + "L"
+                    elif columnType == 'book':
+                        dataStr = dataStr.lower()
                 insertSql += dataStr + ","
             if insertSql.endswith(","):
                 insertSql = insertSql[0:-1]
