@@ -12,7 +12,7 @@ log = LogManager('python-sdk-test').get_logger_and_add_handlers()
 
 class TestSelect(FedbTest):
 
-    @pytest.mark.parametrize("testCase", getCases([
+    @pytest.mark.parametrize("testCase", getCases(["/function/select/test_select_sample.yaml",
                                                    "/function/select/test_sub_select.yaml"]))
     @allure.feature("SelectTest")
     @allure.story("batch")

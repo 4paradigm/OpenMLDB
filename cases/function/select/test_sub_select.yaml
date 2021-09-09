@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["last join 子查询和副表, 子查询包含window"]
+debugs: []
 cases:
   -
     id: 0
@@ -133,6 +133,7 @@ cases:
   -
     id: 6
     desc: last join 子查询和副表, 子查询包含window
+    tags: ["TODO"]
     sqlDialect: ["HybridSQL"]
     inputs:
       -
