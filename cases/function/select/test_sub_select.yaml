@@ -133,12 +133,10 @@ cases:
   -
     id: 6
     desc: last join 子查询和副表, 子查询包含window
-    tags: ["TODO"]
     sqlDialect: ["HybridSQL"]
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
-
         indexs: ["index1:card_no:trx_time"]
         rows:
           - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]

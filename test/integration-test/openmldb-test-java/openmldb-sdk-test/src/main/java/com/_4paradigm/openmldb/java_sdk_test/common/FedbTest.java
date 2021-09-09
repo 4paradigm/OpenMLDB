@@ -66,7 +66,7 @@ public class FedbTest extends BaseTest {
                     .tabletEndpoints(Lists.newArrayList("172.24.4.55:10003", "172.24.4.55:10004", "172.24.4.55:10005"))
                     .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10006"))
                     .build();
-            FedbGlobalVar.env = "cluster";
+            FedbGlobalVar.env = "standalone";
         }
         String caseEnv = System.getProperty("caseEnv");
         if (!StringUtils.isEmpty(caseEnv)) {

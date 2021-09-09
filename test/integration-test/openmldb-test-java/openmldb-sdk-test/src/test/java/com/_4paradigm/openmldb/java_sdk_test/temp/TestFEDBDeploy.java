@@ -28,6 +28,13 @@ public class TestFEDBDeploy {
         System.out.println(fedbInfo);
     }
     @Test
+    public void test5(){
+        FEDBDeploy deploy = new FEDBDeploy("0.2.3");
+        deploy.setCluster(false);
+        FEDBInfo fedbInfo = deploy.deployFEDB(2,3);
+        System.out.println(fedbInfo);
+    }
+    @Test
     public void test3(){
         FEDBDeploy deploy = new FEDBDeploy("2.2.2");
         FEDBInfo fedbInfo = deploy.deployFEDB(2,3);
