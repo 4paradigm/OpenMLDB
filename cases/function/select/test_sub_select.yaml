@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: []
+debugs: ["last join 子查询和副表, 子查询包含window"]
 cases:
   -
     id: 0
