@@ -1057,6 +1057,79 @@ TEST_F(SqlCaseTest, InitCasesTest) {
     }
 }
 
+// dataProvider size = 1
+TEST_F(SqlCaseTest, DataProviderSize1Test) {
+    std::string case_path = "/cases/yaml/demo_data_provider_sz1.yaml";
+    auto cases = InitCases(case_path);
+    ASSERT_EQ(5u, cases.size());
+    auto& case2 = cases.at(1);
+    // second case is MOD
+    EXPECT_STREQ("select t1.c2 MOD t2.c2 as b2 from t1 last join t2 ORDER BY t2.c7 on t1.id=t2.id;",
+                 case2.sql_str().c_str());
+
+    ASSERT_EQ(1u, case2.expect().rows_.size());
+    ASSERT_EQ(1u, case2.expect().rows_.at(0).size());
+    EXPECT_STREQ("1", case2.expect().rows_.at(0).at(0).c_str());
+}
+
+// dataProvider size > 1
+TEST_F(SqlCaseTest, DataProviderSize2Test) {
+    std::string case_path = "/cases/yaml/demo_data_provider_sz2.yaml";
+    auto cases = InitCases(case_path);
+    ASSERT_EQ(6u, cases.size());
+
+    auto& case2 = cases.at(1);
+    EXPECT_STREQ("select 1 NOT IN (1, 10) as col1 from t1;", case2.sql_str().c_str());
+    ASSERT_EQ(1u, case2.expect().rows_.size());
+    ASSERT_EQ(1u, case2.expect().rows_.at(0).size());
+    EXPECT_STREQ("false", case2.expect().rows_.at(0).at(0).c_str());
+
+    auto& case5 = cases.at(4);
+    EXPECT_STREQ("select NULL IN (1, 10) as col1 from t1;", case5.sql_str().c_str());
+    ASSERT_EQ(1u, case5.expect().rows_.size());
+    ASSERT_EQ(1u, case5.expect().rows_.at(0).size());
+    // NOTE: we parse NULL as 'null'
+    EXPECT_STRCASEEQ("NULL", case5.expect().rows_.at(0).at(0).c_str());
+}
+
+// dataProvider is two dimension sequence
+TEST_F(SqlCaseTest, DataProviderSize2SeqTest) {
+    std::string case_path = "/cases/yaml/demo_data_provider_sz2_sequence.yaml";
+    auto cases = InitCases(case_path);
+    ASSERT_EQ(6u, cases.size());
+
+    auto& case2 = cases.at(1);
+    EXPECT_STREQ("select 1 NOT IN (1, 10) as col1 from t1;", case2.sql_str().c_str());
+    ASSERT_EQ(1u, case2.expect().rows_.size());
+    ASSERT_EQ(1u, case2.expect().rows_.at(0).size());
+    EXPECT_STREQ("false", case2.expect().rows_.at(0).at(0).c_str());
+
+    auto& case5 = cases.at(4);
+    EXPECT_STREQ("select NULL IN (1, 10) as col1 from t1;", case5.sql_str().c_str());
+    ASSERT_EQ(1u, case5.expect().rows_.size());
+    ASSERT_EQ(1u, case5.expect().rows_.at(0).size());
+    EXPECT_STREQ("wrong_answer", case5.expect().rows_.at(0).at(0).c_str());
+}
+
+// dataProvider is 3 dimension map mixed of map and sequence
+TEST_F(SqlCaseTest, DataProviderSize3MixedTest) {
+    std::string case_path = "/cases/yaml/demo_data_provider_sz3_mixed.yaml";
+    auto cases = InitCases(case_path);
+    ASSERT_EQ(8u, cases.size());
+
+    auto& case2 = cases.at(1);
+    EXPECT_STREQ("select 1 IN (1, 10) as col1 from t1;", case2.sql_str().c_str());
+    ASSERT_EQ(1u, case2.expect().rows_.size());
+    ASSERT_EQ(1u, case2.expect().rows_.at(0).size());
+    EXPECT_STREQ("true", case2.expect().rows_.at(0).at(0).c_str());
+
+    auto& case5 = cases.at(4);
+    EXPECT_STREQ("select 2 IN (1, 9) as col1 from t1;", case5.sql_str().c_str());
+    ASSERT_EQ(1u, case5.expect().rows_.size());
+    ASSERT_EQ(2u, case5.expect().rows_.at(0).size());
+    EXPECT_STREQ("hello", case5.expect().rows_.at(0).at(0).c_str());
+}
+
 }  // namespace sqlcase
 }  // namespace hybridse
 
