@@ -84,13 +84,13 @@ object SkewDataFrameUtils {
   }
 
   def genUnionDf(addColumnsDf: DataFrame, quantile: Int, partColName: String,
-                 originalPartIdColName: String, minCount: Long, rowsWindowSize: Long, rowsRangeWindowSize: Long): DataFrame = {
+                 originalPartIdColName: String, minBlockSize: Long, rowsWindowSize: Long,
+                 rowsRangeWindowSize: Long): DataFrame = {
 
     // True By default
     var isClibing = true
 
-    // PS: minCout / quantile is the min rowsWindowSize
-    if (rowsRangeWindowSize == 0 && rowsWindowSize > 0 && minCount / quantile > rowsWindowSize) {
+    if (rowsRangeWindowSize == 0 && rowsWindowSize > 0 && minBlockSize >= rowsWindowSize) {
       isClibing = false
     }
     // Filter expandWindowColumns and union
@@ -100,7 +100,7 @@ object SkewDataFrameUtils {
         var filterStr = ""
         for (explode <- 1 until i) {
           filterStr += originalPartIdColName + s" = ${explode}"
-          if(explode != i - 1) {
+          if (explode != i - 1) {
             filterStr += " or "
           }
         }
@@ -108,7 +108,8 @@ object SkewDataFrameUtils {
       }
       else {
         // When the min rowsWindowSize > rowsWindowSize, means that only need one next part of quantile
-        unionDf = unionDf.union(addColumnsDf.filter(originalPartIdColName + s" = ${i - 1}").withColumn(partColName, lit(i)))
+        unionDf = unionDf.union(addColumnsDf.filter(originalPartIdColName + s" = ${i - 1}")
+          .withColumn(partColName, lit(i)))
       }
     }
 

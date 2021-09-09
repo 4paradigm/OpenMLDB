@@ -24,7 +24,7 @@ import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.types.{BooleanType, IntegerType, LongType, StructType, TimestampType}
+import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
@@ -157,9 +157,6 @@ object WindowAggPlan {
     val greaterFlagColName = "_GREATER_FLAG_" + uniqueNamePostfix
     val countColName = "_COUNT_" + uniqueNamePostfix
 
-    // For the optimization in the third step
-    var minCount = Long.MaxValue
-
     val quantile = math.pow(2, ctx.getConf.skewLevel.toDouble)
 
     // 1. Analyze the data distribution
@@ -185,7 +182,9 @@ object WindowAggPlan {
     }
 
     // Judge whether to turn on window skew optimization
+    var minCount = Long.MaxValue
     val rows = distributionDf.select(distributionDf(greaterFlagColName), distributionDf(countColName)).collect()
+
     for (row <- rows) {
       val greaterFlag = row.getBoolean(0)
       val count = row.getLong(1)
@@ -200,6 +199,8 @@ object WindowAggPlan {
         minCount = math.min(minCount, count)
       }
     }
+    // For optimization in 3 step
+    val minBlockSize = (minCount / quantile).toInt
     // The count column and flag column is useless
     val distributionDropColumnDf = distributionDf.drop(greaterFlagColName).drop(countColName)
 
@@ -218,7 +219,7 @@ object WindowAggPlan {
 
     // 3. Expand the table data by union
     val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, originalPartIdColName,
-      minCount, windowAggConfig.rowPreceding, windowAggConfig.startOffset)
+      minBlockSize, windowAggConfig.rowPreceding, windowAggConfig.startOffset)
     logger.info("Generate union dataframe")
 
     // 4. Repartition and order by
