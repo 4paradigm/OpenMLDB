@@ -35,7 +35,6 @@
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
-#include "replica/memtable_replicate_node.h"
 
 namespace openmldb {
 namespace replica {
@@ -81,6 +80,8 @@ class LogReplicator {
     int AddReplicateNode(const std::map<std::string, std::string>& real_ep_map);
     // add replication with tid
     int AddReplicateNode(const std::map<std::string, std::string>& real_ep_map, uint32_t tid);
+
+    int AddConsumer(const std::string& endpoint);
 
     int DelReplicateNode(const std::string& endpoint);
 

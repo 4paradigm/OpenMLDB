@@ -32,6 +32,8 @@
 #include "base/strings.h"
 #include "codec/message_codec.h"
 #include "log/log_format.h"
+#include "replica/memtable_replicate_node.h"
+#include "replica/msgtable_replicate_node.h"
 
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_name_length);
@@ -328,9 +330,8 @@ int LogReplicator::AddReplicateNode(const std::map<std::string, std::string>& re
     }
     for (const auto& kv : real_ep_map) {
         const std::string& endpoint = kv.first;
-        std::vector<std::shared_ptr<ReplicateNode>>::iterator it = nodes_.begin();
-        for (; it != nodes_.end(); ++it) {
-            std::string ep = (*it)->GetEndPoint();
+        for (auto it = nodes_.begin(); it != nodes_.end(); ++it) {
+            const std::string& ep = (*it)->GetEndPoint();
             if (ep.compare(endpoint) == 0) {
                 PDLOG(WARNING, "replica endpoint %s does exist", ep.c_str());
                 return 1;
@@ -361,6 +362,38 @@ int LogReplicator::AddReplicateNode(const std::map<std::string, std::string>& re
         }
         PDLOG(INFO, "add ReplicateNode with endpoint %s ok. tid[%u] pid[%u]", endpoint.c_str(), tid_, pid_);
     }
+    return 0;
+}
+
+int LogReplicator::AddConsumer(const std::string& endpoint) {
+    if (endpoint.empty()) {
+        return -1;
+    }
+    auto replicate_node = std::make_shared<MsgTableReplicateNode>(tid_, pid_, endpoint, logs_, log_path_,
+            &log_offset_, &mu_, &cv_);
+    if (replicate_node->Init() < 0) {
+        PDLOG(WARNING, "init replicate node %s error", endpoint.c_str());
+        return -1;
+    }
+    if (replicate_node->Start() != 0) {
+        PDLOG(WARNING, "fail to start sync thread for table #tid %u, #pid %u", tid_, pid_);
+        return -1;
+    }
+    std::lock_guard<bthread::Mutex> lock(mu_);
+    if (role_ != kLeaderNode) {
+        PDLOG(WARNING, "cur table is not leader, cannot add replicate");
+        return -1;
+    }
+    for (auto it = nodes_.begin(); it != nodes_.end(); ++it) {
+        const std::string& ep = (*it)->GetEndPoint();
+        if (ep.compare(endpoint) == 0) {
+            PDLOG(WARNING, "replica endpoint %s does exist", ep.c_str());
+            replicate_node->Stop();
+            return 1;
+        }
+    }
+    nodes_.push_back(replicate_node);
+    PDLOG(INFO, "add ReplicateNode with endpoint %s ok. tid[%u] pid[%u]", endpoint.c_str(), tid_, pid_);
     return 0;
 }
 

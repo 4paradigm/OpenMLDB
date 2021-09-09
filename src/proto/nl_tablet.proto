@@ -11,8 +11,9 @@ option cc_generic_services = true;
 message CreateTableRequest {
     optional string db_name = 1;
     optional string table_name = 2;
-    repeated openmldb.common.ColumnDesc column_desc = 3;
-    optional string partition_key = 4;
+    optional string tid = 3;
+    repeated openmldb.common.ColumnDesc column_desc = 4;
+    optional string partition_key = 5;
 };
 
 message CreateTableResponse {
@@ -20,6 +21,16 @@ message CreateTableResponse {
     optional string msg = 2;
 };
 
+message ConsumeMessageRequest {
+    optional uint32 tid = 1;
+}
+
+message ConsumeMessageResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+};
+
 service NLTabletServer {
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+    rpc ConsumeMessage(ConsumeMessageRequest) returns (ConsumeMessageResponse);
 };

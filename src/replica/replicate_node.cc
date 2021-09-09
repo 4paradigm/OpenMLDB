@@ -41,7 +41,7 @@ ReplicateNode::ReplicateNode(uint32_t tid, uint32_t pid, const std::string& endp
       endpoint_(endpoint),
       last_sync_offset_(0),
       log_matched_(false),
-      worker_(),
+      worker_(0),
       is_running_(false) {}
 
 int ReplicateNode::Start() {
@@ -59,7 +59,7 @@ int ReplicateNode::Start() {
     return ok;
 }
 
-void ReplicateNode::MatchLogOffset() {}
+void ReplicateNode::MatchLogOffset() { }
 
 int ReplicateNode::GetLogIndex() { return log_reader_.GetLogIndex(); }
 

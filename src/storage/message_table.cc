@@ -41,6 +41,9 @@ bool MessageTable::AddMessage(const ::butil::IOBuf& message) {
 }
 
 bool MessageTable::AddConsumer(const std::string& endpoint) {
+    if (replicator_->AddConsumer(endpoint) < 0) {
+        return false;
+    }
     return true;
 }
 
