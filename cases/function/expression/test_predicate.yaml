@@ -446,7 +446,7 @@ cases:
       FROM {0}
       WINDOW w1 AS (PARTITION BY col1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);
     inputs:
-      - columns: ["id:bigint", "col1:int32", "std_ts:timestamp"]
+      - columns: ["id bigint", "col1 int32", "std_ts timestamp"]
         indexs: ["index1:id:std_ts", "index2:col1:std_ts"]
         rows:
           - [1, 1, 1590115420000]
@@ -455,7 +455,7 @@ cases:
           - [7, 1, 1590115450000]
           - [9, 1, 1590115460000]
     expect:
-      columns: ["id:bigint", "col1:int32", "std_ts:timestamp", "w1_id:bool"]
+      columns: ["id bigint", "col1 int32", "std_ts timestamp", "w1_id bool"]
       rows:
           - [1, 1, 1590115420000, false]
           - [3, 1, 1590115430000, true]
