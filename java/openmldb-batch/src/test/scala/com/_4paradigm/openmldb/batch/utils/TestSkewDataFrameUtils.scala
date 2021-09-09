@@ -76,7 +76,7 @@ class TestSkewDataFrameUtils extends SparkTestSuite {
     val distributionDf = genDistributionDf(inputDf, quantile, repartitionColIndex, percentileColIndex,
       partitionKeyColName, greaterFlagColName, countColName)
     val resultDf = genAddColumnsDf(inputDf, distributionDf, quantile, repartitionColIndex,
-      percentileColIndex, partIdColName, originalPartIdColName, countColName)
+      percentileColIndex, partIdColName, originalPartIdColName)
 
     val compareData = Seq(
       Row(550, 5, 2, 2),
@@ -105,7 +105,7 @@ class TestSkewDataFrameUtils extends SparkTestSuite {
     val distributionDf = genDistributionDf(inputDf, quantile, repartitionColIndex, percentileColIndex,
       partitionKeyColName, greaterFlagColName, countColName)
     val addColumnDf = genAddColumnsDf(inputDf, distributionDf, quantile, repartitionColIndex,
-      percentileColIndex, partIdColName, originalPartIdColName, countColName)
+      percentileColIndex, partIdColName, originalPartIdColName)
     val resultDf = genUnionDf(addColumnDf, quantile, partIdColName, originalPartIdColName, 0, 0, 0)
 
     val compareData = Seq(

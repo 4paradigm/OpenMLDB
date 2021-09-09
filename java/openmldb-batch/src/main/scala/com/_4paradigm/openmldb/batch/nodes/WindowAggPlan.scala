@@ -185,10 +185,10 @@ object WindowAggPlan {
     }
 
     // Judge whether to turn on window skew optimization
-    val flags = distributionDf.select(distributionDf(greaterFlagColName), distributionDf(countColName)).collect()
-    for (flag <- flags) {
-      val greaterFlag = flag.getBoolean(0)
-      val count = flag.getLong(1)
+    val rows = distributionDf.select(distributionDf(greaterFlagColName), distributionDf(countColName)).collect()
+    for (row <- rows) {
+      val greaterFlag = row.getBoolean(0)
+      val count = row.getLong(1)
       // When greaterFlag == false, quantile can not be divided equally
       if (!greaterFlag) {
         logger.info("Unnecessary to open skew optimization")
@@ -196,13 +196,16 @@ object WindowAggPlan {
         ctx.getConf.enableWindowSkewOpt = false
         return windowPartition(ctx, windowAggNode, inputDf)
       } else {
+        // Get the min count
         minCount = math.min(minCount, count)
       }
     }
+    // The count column and flag column is useless
+    val distributionDropColumnDf = distributionDf.drop(greaterFlagColName).drop(countColName)
 
     // 2. Add "part" column and "expand" column by joining the distribution table
-    val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-      repartitionColIndexes, orderByColIndex, partIdColName, originalPartIdColName, countColName)
+    val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDropColumnDf, quantile.intValue(),
+      repartitionColIndexes, orderByColIndex, partIdColName, originalPartIdColName)
     logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {

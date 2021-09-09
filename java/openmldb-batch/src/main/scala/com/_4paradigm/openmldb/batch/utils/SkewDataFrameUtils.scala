@@ -48,17 +48,14 @@ object SkewDataFrameUtils {
 
   def genAddColumnsDf(inputDf: DataFrame, distributionDf: DataFrame, quantile: Int,
                       repartitionColIndex: mutable.ArrayBuffer[Int], percentileColIndex: Int,
-                      partColName: String, expandColName: String, countColName: String): DataFrame = {
-
-    // The count column is useless
-    val distributionDropCountDf = distributionDf.drop(countColName)
+                      partColName: String, expandColName: String): DataFrame = {
 
     // Input dataframe left join distribution dataframe
     // TODO: Support multiple repartition keys
     val inputDfJoinCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
-    val distributionDfJoinCol = SparkColumnUtil.getColumnFromIndex(distributionDropCountDf, 0)
+    val distributionDfJoinCol = SparkColumnUtil.getColumnFromIndex(distributionDf, 0)
 
-    var joinDf = inputDf.join(distributionDropCountDf.hint("broadcast"),
+    var joinDf = inputDf.join(distributionDf.hint("broadcast"),
       inputDfJoinCol === distributionDfJoinCol, "left")
 
     // Select * and case when(...) from joinDf
@@ -77,9 +74,9 @@ object SkewDataFrameUtils {
     }
     joinDf = joinDf.withColumn(partColName, part).withColumn(expandColName, part)
 
-    // Drop _PARTITION_, _GREATER_FLAG_, percentile_*
+    // Drop _PARTITION_, percentile_*
     // PS: When quantile is 2, the num of percentile_* columns is 1
-    for (i <- 0 until 2 + (quantile - 1)) {
+    for (_ <- 0 until 1 + (quantile - 1)) {
       joinDf = joinDf.drop(SparkColumnUtil.getColumnFromIndex(joinDf, inputDf.schema.length))
     }
 
@@ -87,7 +84,7 @@ object SkewDataFrameUtils {
   }
 
   def genUnionDf(addColumnsDf: DataFrame, quantile: Int, partColName: String,
-                 expandColName: String, minCount: Long, rowsWindowSize: Long, rowsRangeWindowSize: Long): DataFrame = {
+                 originalPartIdColName: String, minCount: Long, rowsWindowSize: Long, rowsRangeWindowSize: Long): DataFrame = {
 
     // True By default
     var isClibing = true
@@ -100,15 +97,18 @@ object SkewDataFrameUtils {
     var unionDf = addColumnsDf
     for (i <- 2 to quantile) {
       if (isClibing) {
-        val temDf = addColumnsDf.withColumn(partColName, lit(i))
+        var filterStr = ""
         for (explode <- 1 until i) {
-          unionDf = unionDf.union(temDf.filter(expandColName + s" = ${explode}"))
+          filterStr += originalPartIdColName + s" = ${explode}"
+          if(explode != i - 1) {
+            filterStr += " or "
+          }
         }
+        unionDf = unionDf.union(addColumnsDf.filter(filterStr).withColumn(partColName, lit(i)))
       }
       else {
         // When the min rowsWindowSize > rowsWindowSize, means that only need one next part of quantile
-        val temDf = addColumnsDf.withColumn(partColName, lit(i))
-        unionDf = unionDf.union(temDf.filter(expandColName + s" = ${i - 1}"))
+        unionDf = unionDf.union(addColumnsDf.filter(originalPartIdColName + s" = ${i - 1}").withColumn(partColName, lit(i)))
       }
     }
 
