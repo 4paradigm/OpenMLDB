@@ -58,7 +58,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(
     SqlTableUdafQueryPlan, SqlCompilerTest,
-    testing::ValuesIn(sqlcase::InitCases("cases/plan/native_udaf_query.yaml", FILTERS)));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/table_aggregation_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_SUITE_P(
     SqlWherePlan, SqlCompilerTest,

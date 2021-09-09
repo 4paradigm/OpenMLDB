@@ -76,7 +76,7 @@ INSTANTIATE_TEST_SUITE_P(SqlSubQueryParse, PlannerV2Test,
 // INSTANTIATE_TEST_SUITE_P(UdfParse, PlannerV2Test,
 //                        testing::ValuesIn(sqlcase::InitCases("cases/plan/udf.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(NativeUdafFunction, PlannerV2Test,
-                         testing::ValuesIn(sqlcase::InitCases("cases/plan/native_udaf_query.yaml", FILTERS)));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/table_aggregation_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_SUITE_P(SQLCreate, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/create.yaml", FILTERS)));

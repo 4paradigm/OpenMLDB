@@ -73,7 +73,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(
     SqlUdafQueryParse, TransformTest,
-    testing::ValuesIn(sqlcase::InitCases("cases/plan/native_udaf_query.yaml", FILTERS)));
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/table_aggregation_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(
     SqlReanmeQueryParse, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/rename_query.yaml", FILTERS)));

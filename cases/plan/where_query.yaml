@@ -25,7 +25,6 @@ cases:
     mode: physical-plan-unsupport
   - id: 4
     desc: SELECT 过滤后分组聚合条数
-    mode: request-unsupport
     sql: SELECT col1, COUNT(COL1) FROM t1 where COL1 > 10 and COL2 = 20 group by col1;
   - id: 5
     desc: SELECT 过滤条件LIKE通配符
@@ -149,7 +148,6 @@ cases:
           +-window_list: []
   - id: 14
     desc: SELECT 过滤后分组聚合条数, 两个占位参数
-    mode: request-unsupport
     sql: SELECT col1, COUNT(COL1) FROM t1 where COL1 = ? and COL2 > ? group by col1;
     parameters:
       columns: [ "1 int", "2 bigint" ]
