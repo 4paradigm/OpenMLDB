@@ -24,7 +24,7 @@ import scala.collection.mutable
 
 object SkewDataFrameUtils {
   def genDistributionDf(inputDf: DataFrame, quantile: Int, repartitionColIndex: mutable.ArrayBuffer[Int],
-                        percentileColIndex: Int, partitionColName: String): DataFrame = {
+                        percentileColIndex: Int, partitionColName: String, countColName: String): DataFrame = {
 
     // TODO: Support multiple repartition keys
     val groupByCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
@@ -38,7 +38,7 @@ object SkewDataFrameUtils {
       columns += percentileApprox(percentileCol, lit(ratio)).as(s"percentile_${i}")
     }
 
-    //columns += count(percentileCol).as(countColName)
+    columns += count(percentileCol).as(countColName)
 
     inputDf.groupBy(groupByCol.as(partitionColName)).agg(columns.head, columns.tail: _*)
   }
@@ -80,16 +80,19 @@ object SkewDataFrameUtils {
     joinDf
   }
 
-  def genUnionDf(addColumnsDf: DataFrame, quantile: Int, partColName: String,
-                 originalPartIdColName: String, rowsWindowSize: Long,
-                 rowsRangeWindowSize: Long): DataFrame = {
+  def genUnionDf(addColumnsDf: DataFrame, quantile: Int, partColName: String, originalPartIdColName: String,
+                 rowsWindowSize: Long, rowsRangeWindowSize: Long, minBlockSize: Long): DataFrame = {
     // True By default
-    val isClibing = true
+    var isClimbing = true
+
+    if(rowsRangeWindowSize == 0) {
+      isClimbing = false
+    }
 
     // Filter expandWindowColumns and union
     var unionDf = addColumnsDf
-    for (i <- 2 to quantile) {
-      if (isClibing) {
+    if (isClimbing) {
+      for (i <- 2 to quantile) {
         var filterStr = ""
         for (explode <- 1 until i) {
           filterStr += originalPartIdColName + s" = ${explode}"
@@ -99,10 +102,20 @@ object SkewDataFrameUtils {
         }
         unionDf = unionDf.union(addColumnsDf.filter(filterStr).withColumn(partColName, lit(i)))
       }
-      else {
-        // When the min rowsWindowSize > rowsWindowSize, means that only need one next part of quantile
-        unionDf = unionDf.union(addColumnsDf.filter(originalPartIdColName + s" = ${i - 1}")
-          .withColumn(partColName, lit(i)))
+    } else {
+      val blockNum = math.ceil(rowsWindowSize / minBlockSize.toDouble).toInt
+
+      for (i <- 2 to quantile) {
+        var filterStr = ""
+        for (explode <- i - blockNum until i) {
+          if (explode > 0) {
+            filterStr += originalPartIdColName + s" = ${explode}"
+            if (explode != i - 1) {
+              filterStr += " or "
+            }
+          }
+        }
+        unionDf = unionDf.union(addColumnsDf.filter(filterStr).withColumn(partColName, lit(i)))
       }
     }
 

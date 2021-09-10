@@ -153,6 +153,7 @@ object WindowAggPlan {
     // Register the input table
     val partIdColName = "_PART_ID_" + uniqueNamePostfix
     val originalPartIdColName = "_ORIGINAL_PART_ID_" + uniqueNamePostfix
+    val countColName = "_COUNT_" + uniqueNamePostfix
 
     val quantile = ctx.getConf.skewedPartitionNum
 
@@ -162,7 +163,7 @@ object WindowAggPlan {
       val partitionKeyColName = "_PARTITION_KEY_" + uniqueNamePostfix
 
       val distributionDf = SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
-        orderByColIndex, partitionKeyColName)
+        orderByColIndex, partitionKeyColName, countColName)
       logger.info("Generate distribution dataframe")
 
       if (ctx.getConf.windowSkewOptCache) {
@@ -177,6 +178,15 @@ object WindowAggPlan {
 
       distributionDf
     }
+
+    var minCount = Long.MaxValue
+    val rows = distributionDf.select(countColName).collect()
+    for(row <- rows) {
+      val count = row.getLong(0)
+      minCount = math.min(minCount,count)
+    }
+
+    val minBlockSize = minCount / quantile
 
     // 2. Add "part" column and "expand" column by joining the distribution table
     val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
@@ -193,7 +203,7 @@ object WindowAggPlan {
 
     // 3. Expand the table data by union
     val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, originalPartIdColName,
-      windowAggConfig.rowPreceding, windowAggConfig.startOffset)
+      windowAggConfig.rowPreceding, windowAggConfig.startOffset, minBlockSize)
     logger.info("Generate union dataframe")
 
     // 4. Repartition and order by
