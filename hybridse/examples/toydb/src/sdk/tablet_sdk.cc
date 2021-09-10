@@ -390,6 +390,10 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
                 ok = rb.AppendNULL();
                 break;
             }
+            case type::kBool: {
+                ok = rb.AppendBool(primary->GetBool());
+                break;
+            }
             case type::kInt16: {
                 ok = rb.AppendInt16(primary->GetAsInt16());
                 break;
