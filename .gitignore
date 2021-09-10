@@ -78,3 +78,7 @@ python/sqlalchemy-test/*.xml
 /openmldb-*
 
 /cmake-*
+
+# test
+logs
+

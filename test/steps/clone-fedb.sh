@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
 
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 count=0     #记录重试次数
 flag=0      # 重试标识，flag=0 表示任务正常，flag 非0 表示需要进行重试
 total=10    #总次数
