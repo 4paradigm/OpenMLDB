@@ -157,7 +157,7 @@ object WindowAggPlan {
     val greaterFlagColName = "_GREATER_FLAG_" + uniqueNamePostfix
     val countColName = "_COUNT_" + uniqueNamePostfix
 
-    val quantile = math.pow(2, ctx.getConf.skewLevel.toDouble)
+    val quantile = ctx.getConf.skewedPartitionNum
 
     // 1. Analyze the data distribution
     val distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
