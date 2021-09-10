@@ -5690,7 +5690,6 @@ TEST_F(TabletImplTest, BulkLoad) {
     }
 
     // TODO(hw): bulk load meaningful data, and get data from the table
-
 }
 
 }  // namespace tablet

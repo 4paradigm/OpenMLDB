@@ -1093,7 +1093,8 @@ base::Status BatchModeTransformer::ExtractGroupKeys(vm::PhysicalOpNode* depend, 
         CHECK_STATUS(ExtractGroupKeys(depend->GetProducer(0), keys))
         return base::Status::OK();
     }
-    CHECK_TRUE(depend->GetOpType() == kPhysicalOpGroupBy, kPlanError, "Fail to extract group keys from op ", vm::PhysicalOpTypeName(depend->GetOpType()))
+    CHECK_TRUE(depend->GetOpType() == kPhysicalOpGroupBy, kPlanError, "Fail to extract group keys from op ",
+               vm::PhysicalOpTypeName(depend->GetOpType()))
     *keys = dynamic_cast<PhysicalGroupNode*>(depend)->group().keys_;
     return base::Status::OK();
 }
