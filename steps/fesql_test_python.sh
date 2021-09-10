@@ -35,7 +35,7 @@ echo "whl_name:${whl_name}"
 python3 -m pip install "${whl_name}" -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # needs: easy_install nose sqlalchemy
-cd "${ROOT_DIR}"/python/test
+cd "${ROOT_DIR}"/python/test || exit 1
 nosetests --with-xunit
 
 cd "${ROOT_DIR}"/onebox && sh stop_all.sh && cd "$ROOT_DIR" || exit
