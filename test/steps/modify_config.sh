@@ -24,11 +24,11 @@ if [[ "${DEPLOY_MODE}" == "" ]]; then
     DEPLOY_MODE="cluster"
 fi
 echo "deploy_mode:${DEPLOY_MODE}"
-ROOT_DIR=`pwd`
+ROOT_DIR=$(pwd)
 source steps/read_properties.sh
 echo "test_version:$test_version"
 cd java/hybridsql-test/fedb-sdk-test
-system_type=`uname`
+system_type=$(uname)
 if [ ${system_type} == "Linux" ] ;then
     sed -i "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${test_version}\"/>#"  test_suite/${CASE_XML}
 else

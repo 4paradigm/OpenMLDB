@@ -21,7 +21,7 @@ FEDB_SDK_VERSION=$3
 BUILD_MODE=$4
 FEDB_SERVER_VERSION=$5
 echo "deploy_mode:${DEPLOY_MODE}"
-ROOT_DIR=`pwd`
+ROOT_DIR=$(pwd)
 echo "test_version:$FEDB_SDK_VERSION"
 cd java/hybridsql-test/fedb-restful-test
 # modify suite_xml

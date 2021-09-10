@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ROOT_DIR=`pwd`
+ROOT_DIR=$(pwd)
 
 source steps/read_properties.sh
 sh steps/download-case.sh ${CASE_BRANCH}

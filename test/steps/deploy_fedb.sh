@@ -19,7 +19,7 @@ DEPLOY_MODE=$2
 echo "SERVER_VERSION:${SERVER_VERSION}"
 echo "DEPLOY_MODE:${DEPLOY_MODE}"
 #IP=`ifconfig | grep 'inet addr' | head -n 1 |awk '{print $2}' | awk -F ':' '{print $2}'`
-IP=`hostname -i`
+IP=$(hostname -i)
 ZK_PORT=6181
 ZK_CLUSTER=$IP:$ZK_PORT
 NS1=$IP:9622
@@ -67,7 +67,7 @@ function deploy_ns() {
 }
 wget http://pkg.4paradigm.com:81/rtidb/test/fedb-${SERVER_VERSION}-linux.tar.gz
 tar -zxvf fedb-${SERVER_VERSION}-linux.tar.gz
-pkg_name=`ls | grep fedb-cluster`
+pkg_name=$(ls | grep fedb-cluster)
 echo "pkg_name:${pkg_name}"
 deploy_ns fedb-ns-1 ${NS1}
 deploy_ns fedb-ns-2 ${NS2}

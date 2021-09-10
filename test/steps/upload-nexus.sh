@@ -15,19 +15,19 @@
 # limitations under the License.
 
 path=$1
-if [[ 'x'$path == 'x' ]]; then
+if [[ $path == '' ]]; then
     echo 'no paths given, exited'
-    exit -1
+    exit 1
 fi
 
 if [[ ! -e $path ]]; then
     echo "path $path not exist, exited"
-    exit -1
+    exit 1
 fi
 
 if [[ ! -r $path ]]; then
     echo "path $path not readable, exited"
-    exit -1
+    exit 1
 fi
 
 if [[ -L $path ]]; then

@@ -15,9 +15,9 @@
 # limitations under the License.
 
 
-ROOT_DIR=`pwd`
+ROOT_DIR=$(pwd)
 
-javaSDKVersion=`cat fedb/src/sdk/java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#'`
+javaSDKVersion=$(more fedb/src/sdk/java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
 echo "javaSDKVersion:${javaSDKVersion}"
 sed -i "s#<sql.version>.*</sql.version>#<sql.version>${javaSDKVersion}</sql.version>#" java/hybridsql-test/fedb-sdk-test/pom.xml
 

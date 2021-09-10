@@ -18,5 +18,5 @@ CASE_BRANCH=$1
 if [[ "${CASE_BRANCH}" == "" ]]; then
     CASE_BRANCH="main"
 fi
-ROOT_DIR=`pwd`
+ROOT_DIR=$(pwd)
 sh ${ROOT_DIR}/steps/retry-command.sh "git clone -b ${CASE_BRANCH} https://github.com/4paradigm/OpenMLDB.git"

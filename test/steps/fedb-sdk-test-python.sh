@@ -52,7 +52,7 @@ fi
 echo "BUILD_MODE:${BUILD_MODE}"
 echo "DEPLOY_MODE:${DEPLOY_MODE}"
 echo "CASE_LEVEL:${CASE_LEVEL}"
-ROOT_DIR=`pwd`
+ROOT_DIR=$(pwd)
 echo "ROOT_DIR:${ROOT_DIR}"
 source steps/read_properties.sh
 sh steps/download-case.sh ${CASE_BRANCH}
@@ -87,16 +87,16 @@ if [[ "${BUILD_MODE}" == "SRC" ]]; then
     sleep 5
     # 安装fedb模块
     cd ${ROOT_DIR}/OpenMLDB/build/python/dist
-    whl_name=`ls | grep *.whl`
+    whl_name=$(ls | grep *.whl)
     echo "whl_name:${whl_name}"
 #    python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
     python3 -m pip --default-timeout=100 install -U ${whl_name}
 else
-    IP=`hostname -i`
+    IP=$(hostname -i)
     sh steps/deploy_fedb.sh ${FEDB_SERVER_VERSION} ${DEPLOY_MODE}
     cd ${ROOT_DIR}
     wget http://pkg.4paradigm.com:81/rtidb/test/fedb-${FEDB_PY_SDK_VERSION}-py3-none-any.whl
-    whl_name=`ls | grep *.whl`
+    whl_name=$(ls | grep *.whl)
 #    python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
     python3 -m pip --default-timeout=100 install -U ${whl_name}
 fi
@@ -115,9 +115,11 @@ python3 -m pip install -r requirements.txt
 # 修改配置
 sed -i "s/env=.*/env=cicd/" conf/fedb.conf
 sed -i "s/levels=.*/levels=${CASE_LEVEL}/" conf/fedb.conf
-echo "cicd_tb_endpoint_0=$IP:9520" >> conf/fedb.conf
-echo "cicd_tb_endpoint_1=$IP:9521" >> conf/fedb.conf
-echo "cicd_tb_endpoint_2=$IP:9522" >> conf/fedb.conf
+{
+  echo "cicd_tb_endpoint_0=$IP:9520"
+  echo "cicd_tb_endpoint_1=$IP:9521"
+  echo "cicd_tb_endpoint_2=$IP:9522"
+} >> conf/fedb.conf
 if [[ "${DEPLOY_MODE}" == "cluster" ]]; then
     sed -i "s#cicd_zk_root_path=.*#cicd_zk_root_path=/cluster#" conf/fedb.conf
 fi

@@ -62,7 +62,7 @@ echo "CASE_XML:${CASE_XML}"
 echo "DEPLOY_MODE:${DEPLOY_MODE}"
 echo "CASE_LEVEL:${CASE_LEVEL}"
 
-ROOT_DIR=`pwd`
+ROOT_DIR=$(pwd)
 # 安装wget
 yum install -y wget
 yum install -y  net-tools
@@ -73,7 +73,7 @@ sh steps/download-case.sh ${CASE_BRANCH}
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
     sh steps/build-fedb.sh
-    FEDB_SDK_VERSION=`cat OpenMLDB/src/sdk/java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#'`
+    FEDB_SDK_VERSION=$(more OpenMLDB/src/sdk/java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
 fi
 echo "FEDB_SDK_VERSION:${FEDB_SDK_VERSION}"
 echo "FEDB_SERVER_VERSION:${FEDB_SERVER_VERSION}"

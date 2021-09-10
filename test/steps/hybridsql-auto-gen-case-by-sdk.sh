@@ -33,7 +33,7 @@ fi
 
 echo "DEPLOY_MODE:${DEPLOY_MODE}"
 
-ROOT_DIR=`pwd`
+ROOT_DIR=$(pwd)
 ulimit -c unlimited
 
 #udf_defs.yaml 一般改动很小 为了节省性能 我们不用每次生成
