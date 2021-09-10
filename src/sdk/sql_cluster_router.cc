@@ -320,24 +320,38 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
             return false;
         }
     }
-    for (int i = 0; i < insert_stmt->values_.size(); i++) {
+    size_t total_rows_size = insert_stmt->values_.size();
+    for (int i = 0; i < total_rows_size; i++) {
         hybridse::node::ExprNode* value = insert_stmt->values_[i];
         if (value->GetExprType() != ::hybridse::node::kExprList) {
-            status->msg =
-                "invalid row expression, expect kExprList but " + hybridse::node::ExprTypeName(value->GetExprType());
+            status->msg = "fail to parse row [" + std::to_string(i) +
+                          "]"
+                          ": invalid row expression, expect kExprList but " +
+                          hybridse::node::ExprTypeName(value->GetExprType());
             LOG(WARNING) << status->msg;
             return false;
         }
         uint32_t str_length = 0;
-        default_maps->push_back(GetDefaultMap(*table_info, column_map,
-                                              dynamic_cast<::hybridse::node::ExprListNode*>(value),
-                                              &str_length));
+        default_maps->push_back(
+            GetDefaultMap(*table_info, column_map, dynamic_cast<::hybridse::node::ExprListNode*>(value), &str_length));
         if (!default_maps->back()) {
-            status->msg = "get default value map of row[" + std::to_string(i) + "] failed";
+            status->msg = "fail to parse row[" + std::to_string(i) + "]: " + value->GetExprString();
             LOG(WARNING) << status->msg;
             return false;
         }
         str_lengths->push_back(str_length);
+    }
+    if (default_maps->empty() || str_lengths->empty()) {
+        status->msg = "default_maps or str_lengths are empty";
+        status->code = 1;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+    if (default_maps->size() != str_lengths->size()) {
+        status->msg = "default maps isn't match with str_lengths";
+        status->code = 1;
+        LOG(WARNING) << status->msg;
+        return false;
     }
     return true;
 }
@@ -948,52 +962,44 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     std::vector<uint32_t> str_lengths;
     if (!GetMultiRowInsertInfo(db, sql, status, &table_info, &default_maps, &str_lengths)) {
         status->code = 1;
-        LOG(WARNING) << "get insert information failed";
+        LOG(WARNING) << "Fail to execute insert statement: " << status->msg;
         return false;
     }
 
-    if (default_maps.empty() || str_lengths.empty() || default_maps.size() != str_lengths.size()) {
-        status->msg = "default maps is empty or str_lengths are empty or default_maps";
-        status->code = 1;
-        LOG(WARNING) << status->msg;
-        return false;
-    }
-    if (default_maps.size() != str_lengths.size()) {
-        status->msg = "default maps isn't match with str_lengths";
-        status->code = 1;
-        LOG(WARNING) << status->msg;
-        return false;
-    }
     std::shared_ptr<::hybridse::sdk::Schema> schema = ::openmldb::sdk::ConvertToSchema(table_info);
-
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
+    bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
+    if (!ret || tablets.empty()) {
+        status->msg = "Fail to execute insert statement: fail to get " + table_info->name() + " tablet";
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+    int cnt = 0;
     for (int i = 0; i < default_maps.size(); i++) {
-        std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i],
-                                                                           str_lengths[i]);
+        std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i]);
         if (!row) {
-            status->msg = "fail to parse row from sql " + sql;
-            LOG(WARNING) << status->msg;
-            return false;
+            LOG(WARNING) << "fail to parse row[" << i << "]";
+            continue;
         }
         if (!row->Init(0)) {
-            status->msg = "fail to encode row for table " + table_info->name();
-            LOG(WARNING) << status->msg;
-            return false;
+            LOG(WARNING) << "fail to encode row[" << i << " for table " << table_info->name();
+            continue;
         }
         if (!row->IsComplete()) {
-            status->msg = "insert value isn't complete";
-            LOG(WARNING) << status->msg;
-            return false;
-        }
-        std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
-        bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
-        if (!ret || tablets.empty()) {
-            status->msg = "fail to get table " + table_info->name() + " tablet";
-            LOG(WARNING) << status->msg;
-            return false;
+            LOG(WARNING) << "fail to build row[" << i << "]";
+            continue;
         }
         if (!PutRow(table_info->tid(), row, tablets, status)) {
-            return false;
+            LOG(WARNING) << "fail to put row[" << i << "] due to: " << status->msg;
+            continue;
         }
+        cnt ++;
+    }
+    if (cnt < default_maps.size()) {
+        status->msg = "Error occur when execute insert, success/total: " + std::to_string(cnt) + "/" +
+                      std::to_string(default_maps.size());
+        status->code = 1;
+        return false;
     }
     return true;
 }
