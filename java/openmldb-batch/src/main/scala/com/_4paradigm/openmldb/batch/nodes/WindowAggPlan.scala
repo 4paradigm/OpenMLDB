@@ -153,9 +153,6 @@ object WindowAggPlan {
     // Register the input table
     val partIdColName = "_PART_ID_" + uniqueNamePostfix
     val originalPartIdColName = "_ORIGINAL_PART_ID_" + uniqueNamePostfix
-    // "_GREATER_FLAG_" is used to determine whether distinct count is greater than quantile
-    val greaterFlagColName = "_GREATER_FLAG_" + uniqueNamePostfix
-    val countColName = "_COUNT_" + uniqueNamePostfix
 
     val quantile = ctx.getConf.skewedPartitionNum
 
@@ -165,7 +162,7 @@ object WindowAggPlan {
       val partitionKeyColName = "_PARTITION_KEY_" + uniqueNamePostfix
 
       val distributionDf = SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
-        orderByColIndex, partitionKeyColName, greaterFlagColName, countColName)
+        orderByColIndex, partitionKeyColName)
       logger.info("Generate distribution dataframe")
 
       if (ctx.getConf.windowSkewOptCache) {
@@ -181,31 +178,8 @@ object WindowAggPlan {
       distributionDf
     }
 
-    // Judge whether to turn on window skew optimization
-    var minCount = Long.MaxValue
-    val rows = distributionDf.select(distributionDf(greaterFlagColName), distributionDf(countColName)).collect()
-
-    for (row <- rows) {
-      val greaterFlag = row.getBoolean(0)
-      val count = row.getLong(1)
-      // When greaterFlag == false, quantile can not be divided equally
-      if (!greaterFlag) {
-        logger.info("Unnecessary to open skew optimization")
-        logger.info("Re-Execute in windowPartition")
-        ctx.getConf.enableWindowSkewOpt = false
-        return windowPartition(ctx, windowAggNode, inputDf)
-      } else {
-        // Get the min count
-        minCount = math.min(minCount, count)
-      }
-    }
-    // For optimization in 3 step
-    val minBlockSize = (minCount / quantile).toInt
-    // The count column and flag column is useless
-    val distributionDropColumnDf = distributionDf.drop(greaterFlagColName).drop(countColName)
-
     // 2. Add "part" column and "expand" column by joining the distribution table
-    val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDropColumnDf, quantile.intValue(),
+    val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
       repartitionColIndexes, orderByColIndex, partIdColName, originalPartIdColName)
     logger.info("Generate percentile_tag dataframe")
 
@@ -219,7 +193,7 @@ object WindowAggPlan {
 
     // 3. Expand the table data by union
     val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, originalPartIdColName,
-      minBlockSize, windowAggConfig.rowPreceding, windowAggConfig.startOffset)
+      windowAggConfig.rowPreceding, windowAggConfig.startOffset)
     logger.info("Generate union dataframe")
 
     // 4. Repartition and order by

@@ -24,8 +24,7 @@ import scala.collection.mutable
 
 object SkewDataFrameUtils {
   def genDistributionDf(inputDf: DataFrame, quantile: Int, repartitionColIndex: mutable.ArrayBuffer[Int],
-                        percentileColIndex: Int, partitionColName: String, greaterFlagColName: String,
-                        countColName: String): DataFrame = {
+                        percentileColIndex: Int, partitionColName: String): DataFrame = {
 
     // TODO: Support multiple repartition keys
     val groupByCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
@@ -39,9 +38,7 @@ object SkewDataFrameUtils {
       columns += percentileApprox(percentileCol, lit(ratio)).as(s"percentile_${i}")
     }
 
-    columns += when(countDistinct(percentileCol) < lit(quantile), false)
-      .otherwise(true).as(greaterFlagColName)
-    columns += count(percentileCol).as(countColName)
+    //columns += count(percentileCol).as(countColName)
 
     inputDf.groupBy(groupByCol.as(partitionColName)).agg(columns.head, columns.tail: _*)
   }
@@ -84,15 +81,11 @@ object SkewDataFrameUtils {
   }
 
   def genUnionDf(addColumnsDf: DataFrame, quantile: Int, partColName: String,
-                 originalPartIdColName: String, minBlockSize: Long, rowsWindowSize: Long,
+                 originalPartIdColName: String, rowsWindowSize: Long,
                  rowsRangeWindowSize: Long): DataFrame = {
-
     // True By default
-    var isClibing = true
+    val isClibing = true
 
-    if (rowsRangeWindowSize == 0 && rowsWindowSize > 0 && minBlockSize >= rowsWindowSize) {
-      isClibing = false
-    }
     // Filter expandWindowColumns and union
     var unionDf = addColumnsDf
     for (i <- 2 to quantile) {

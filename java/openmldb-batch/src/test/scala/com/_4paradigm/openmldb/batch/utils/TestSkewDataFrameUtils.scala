@@ -52,18 +52,16 @@ class TestSkewDataFrameUtils extends SparkTestSuite {
     val spark = getSparkSession
     val inputDf = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
     val resultDf = genDistributionDf(inputDf, quantile, repartitionColIndex, percentileColIndex,
-      partitionKeyColName, greaterFlagColName, countColName)
+      partitionKeyColName)
 
     val compareData = Seq(
-      Row(550, 4, true, 3),
-      Row(50, 1, true, 3)
+      Row(550, 4),
+      Row(50, 1)
     )
 
     val compareSchema = StructType(List(
       StructField(partitionKeyColName, IntegerType),
-      StructField("percentile_1", IntegerType),
-      StructField(greaterFlagColName, BooleanType),
-      StructField(countColName, IntegerType)))
+      StructField("percentile_1", IntegerType)))
 
     val compareDf = spark.createDataFrame(spark.sparkContext.makeRDD(compareData), compareSchema)
 
@@ -74,7 +72,7 @@ class TestSkewDataFrameUtils extends SparkTestSuite {
     val spark = getSparkSession
     val inputDf = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
     val distributionDf = genDistributionDf(inputDf, quantile, repartitionColIndex, percentileColIndex,
-      partitionKeyColName, greaterFlagColName, countColName)
+      partitionKeyColName)
     val distributionDropColumnDf = distributionDf.drop(greaterFlagColName).drop(countColName)
     val resultDf = genAddColumnsDf(inputDf, distributionDropColumnDf, quantile, repartitionColIndex,
       percentileColIndex, partIdColName, originalPartIdColName)
@@ -104,11 +102,11 @@ class TestSkewDataFrameUtils extends SparkTestSuite {
     val spark = getSparkSession
     val inputDf = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
     val distributionDf = genDistributionDf(inputDf, quantile, repartitionColIndex, percentileColIndex,
-      partitionKeyColName, greaterFlagColName, countColName)
+      partitionKeyColName)
     val distributionDropColumnDf = distributionDf.drop(greaterFlagColName).drop(countColName)
     val addColumnDf = genAddColumnsDf(inputDf, distributionDropColumnDf, quantile, repartitionColIndex,
       percentileColIndex, partIdColName, originalPartIdColName)
-    val resultDf = genUnionDf(addColumnDf, quantile, partIdColName, originalPartIdColName, 0, 0, 0)
+    val resultDf = genUnionDf(addColumnDf, quantile, partIdColName, originalPartIdColName, 0, 0)
 
     val compareData = Seq(
       Row(50, 1, 2, 1),
