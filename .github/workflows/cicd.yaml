@@ -154,7 +154,7 @@ jobs:
         with:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
-            python/sqlalchemy-test/nosetests.xml
+            python/test/nosetests.xml
       - name: upload pysdk and whl
         if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v2
