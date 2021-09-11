@@ -181,11 +181,10 @@ object WindowAggPlan {
 
     var minCount = Long.MaxValue
     val rows = distributionDf.select(countColName).collect()
-    for(row <- rows) {
+    for (row <- rows) {
       val count = row.getLong(0)
-      minCount = math.min(minCount,count)
+      minCount = math.min(minCount, count)
     }
-    
     val minBlockSize = minCount / quantile
 
     // 2. Add "part" column and "expand" column by joining the distribution table
