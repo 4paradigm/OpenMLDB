@@ -47,14 +47,15 @@ object SkewDataFrameUtils {
                       repartitionColIndex: mutable.ArrayBuffer[Int], percentileColIndex: Int,
                       partColName: String, originalPartColName: String, countColName: String): DataFrame = {
 
-    val dropDf = distributionDf.drop(countColName)
+    // The Count column is useless
+    val distributionDropColumnDf = distributionDf.drop(countColName)
 
     // Input dataframe left join distribution dataframe
     // TODO: Support multiple repartition keys
     val inputDfJoinCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
-    val distributionDfJoinCol = SparkColumnUtil.getColumnFromIndex(dropDf, 0)
+    val distributionDfJoinCol = SparkColumnUtil.getColumnFromIndex(distributionDropColumnDf, 0)
 
-    var joinDf = inputDf.join(dropDf.hint("broadcast"),
+    var joinDf = inputDf.join(distributionDropColumnDf.hint("broadcast"),
       inputDfJoinCol === distributionDfJoinCol, "left")
 
     // Select * and case when(...) from joinDf
@@ -73,7 +74,7 @@ object SkewDataFrameUtils {
     }
     joinDf = joinDf.withColumn(partColName, part).withColumn(originalPartColName, part)
 
-    // Drop _PARTITION_, percentile_*
+    // Drop "_PARTITION_" column and percentile_* columns
     // PS: When quantile is 2, the num of percentile_* columns is 1
     for (_ <- 0 until 1 + (quantile - 1)) {
       joinDf = joinDf.drop(SparkColumnUtil.getColumnFromIndex(joinDf, inputDf.schema.length))
@@ -87,6 +88,7 @@ object SkewDataFrameUtils {
     // True By default
     var isClimbing = true
 
+    // When compute rows, open the optimization
     if(rowsRangeWindowSize == 0) {
       isClimbing = false
     }
@@ -105,6 +107,7 @@ object SkewDataFrameUtils {
         unionDf = unionDf.union(addColumnsDf.filter(filterStr).withColumn(partColName, lit(i)))
       }
     } else {
+      // The Optimization for computing rows
       val blockNum = math.ceil(rowsWindowSize / minBlockSize.toDouble).toInt
 
       for (i <- 2 to quantile) {
