@@ -185,12 +185,12 @@ object WindowAggPlan {
       val count = row.getLong(0)
       minCount = math.min(minCount,count)
     }
-
+    
     val minBlockSize = minCount / quantile
 
     // 2. Add "part" column and "expand" column by joining the distribution table
     val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-      repartitionColIndexes, orderByColIndex, partIdColName, originalPartIdColName)
+      repartitionColIndexes, orderByColIndex, partIdColName, originalPartIdColName, countColName)
     logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {

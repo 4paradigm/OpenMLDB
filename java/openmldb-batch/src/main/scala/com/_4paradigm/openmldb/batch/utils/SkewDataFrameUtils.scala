@@ -45,14 +45,16 @@ object SkewDataFrameUtils {
 
   def genAddColumnsDf(inputDf: DataFrame, distributionDf: DataFrame, quantile: Int,
                       repartitionColIndex: mutable.ArrayBuffer[Int], percentileColIndex: Int,
-                      partColName: String, expandColName: String): DataFrame = {
+                      partColName: String, originalPartColName: String, countColName: String): DataFrame = {
+
+    val dropDf = distributionDf.drop(countColName)
 
     // Input dataframe left join distribution dataframe
     // TODO: Support multiple repartition keys
     val inputDfJoinCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
-    val distributionDfJoinCol = SparkColumnUtil.getColumnFromIndex(distributionDf, 0)
+    val distributionDfJoinCol = SparkColumnUtil.getColumnFromIndex(dropDf, 0)
 
-    var joinDf = inputDf.join(distributionDf.hint("broadcast"),
+    var joinDf = inputDf.join(dropDf.hint("broadcast"),
       inputDfJoinCol === distributionDfJoinCol, "left")
 
     // Select * and case when(...) from joinDf
@@ -69,7 +71,7 @@ object SkewDataFrameUtils {
         part = part.otherwise(quantile)
       }
     }
-    joinDf = joinDf.withColumn(partColName, part).withColumn(expandColName, part)
+    joinDf = joinDf.withColumn(partColName, part).withColumn(originalPartColName, part)
 
     // Drop _PARTITION_, percentile_*
     // PS: When quantile is 2, the num of percentile_* columns is 1
