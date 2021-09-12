@@ -1130,6 +1130,33 @@ TEST_F(SqlCaseTest, DataProviderSize3MixedTest) {
     EXPECT_STREQ("hello", case5.expect().rows_.at(0).at(0).c_str());
 }
 
+TEST_F(SqlCaseTest, ExpectProviderDefaultTest) {
+    std::string case_path = "/cases/yaml/demo_expect_provider_sz2_default.yaml";
+    auto cases = InitCases(case_path);
+    ASSERT_EQ(6u, cases.size());
+
+    auto& case0 = cases.at(0);
+    ASSERT_EQ(1u, case0.expect().rows_.size());
+    ASSERT_EQ(1u, case0.expect().rows_.at(0).size());
+    EXPECT_STREQ("true", case0.expect().rows_.at(0).at(0).c_str());
+
+    auto& case3 = cases.at(2);
+    ASSERT_EQ(1u, case3.expect().rows_.size());
+    ASSERT_EQ(2u, case3.expect().rows_.at(0).size());
+    EXPECT_STREQ("false", case3.expect().rows_.at(0).at(0).c_str());
+}
+
+TEST_F(SqlCaseTest, EmptyExpectProviderTest) {
+    std::string case_path = "/cases/yaml/demo_empty_expect_provider.yaml";
+    auto cases = InitCases(case_path);
+    ASSERT_EQ(10u, cases.size());
+
+    auto& case3 = cases.at(2);
+    EXPECT_STREQ("select t1.c2 MOD t2.c2 as b2 from t1 last join t2 ORDER BY a on t1.id=t2.id;",
+                 case3.sql_str().c_str());
+    EXPECT_EQ(false, case3.expect().success_);
+}
+
 }  // namespace sqlcase
 }  // namespace hybridse
 
