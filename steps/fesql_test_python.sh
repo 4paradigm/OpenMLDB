@@ -34,7 +34,7 @@ whl_name=$(ls openmldb*.whl)
 echo "whl_name:${whl_name}"
 python3 -m pip install "${whl_name}" -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# needs: easy_install nose sqlalchemy
+# needs: easy_install nose (sqlalchemy is openmldb required)
 cd "${ROOT_DIR}"/python/test || exit
 nosetests --with-xunit || exit
 

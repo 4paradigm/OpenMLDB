@@ -146,7 +146,7 @@ jobs:
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
       - name: test sqlalchemy
         run: |
-          python3 -m easy_install nose sqlalchemy pip
+          python3 -m easy_install nose pip
           bash steps/fesql_test_python.sh
       - name: upload python ut results
         if: always()
