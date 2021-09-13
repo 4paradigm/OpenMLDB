@@ -137,7 +137,6 @@ cases:
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
-
         indexs: ["index1:card_no:trx_time"]
         rows:
           - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="create-data" parallel="false" thread-count="2">
+    <test name="create-data">
+        <classes>
+            <class name="com._4paradigm.openmldb.tool_test.import_tool.data.CreateImportData">
+            </class>
+        </classes>
+    </test>
+</suite>
