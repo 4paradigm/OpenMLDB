@@ -91,17 +91,17 @@ if [[ "${BUILD_MODE}" == "SRC" ]]; then
     # 安装fedb模块
     cd "${ROOT_DIR}"/OpenMLDB/build/python/dist || exit
     # shellcheck disable=SC2010
-    whl_name=$(ls | grep *.whl)
+    whl_name=$(ls | grep .whl)
     echo "whl_name:${whl_name}"
 #    python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
-    python3 -m pip --default-timeout=100 install -U ${whl_name}
+    python3 -m pip --default-timeout=100 install -U "${whl_name}"
 else
     IP=$(hostname -i)
     sh steps/deploy_fedb.sh "${FEDB_SERVER_VERSION}" "${DEPLOY_MODE}"
     cd "$ROOT_DIR" || exit
     wget http://pkg.4paradigm.com:81/rtidb/test/fedb-"${FEDB_PY_SDK_VERSION}"-py3-none-any.whl
-    # shellcheck disable=SC2063
-    whl_name=$(ls | grep *.whl)
+    # shellcheck disable=SC2010
+    whl_name=$(ls | grep .whl)
 #    python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
     python3 -m pip --default-timeout=100 install -U "${whl_name}"
 fi

@@ -70,13 +70,13 @@ tar -zxvf fedb-"${SERVER_VERSION}"-linux.tar.gz
 # shellcheck disable=SC2010
 pkg_name=$(ls | grep fedb-cluster)
 echo "pkg_name:${pkg_name}"
-deploy_ns fedb-ns-1 ${NS1}
-deploy_ns fedb-ns-2 ${NS2}
+deploy_ns fedb-ns-1 "${NS1}"
+deploy_ns fedb-ns-2 "${NS2}"
 # deploy tablet
 function deploy_tablet() {
   local tablet_name=$1
   local tablet_endpoint=$2
-  cp -r fedb-cluster-"${SERVER_VERSION}" ${tablet_name}
+  cp -r fedb-cluster-"${SERVER_VERSION}" "${tablet_name}"
   cd "${tablet_name}" || exit
   sed -i "s#--zk_cluster=.*#--zk_cluster=${ZK_CLUSTER}#" conf/tablet.flags
   sed -i 's@--zk_root_path=.*@--zk_root_path=/fedb@' conf/tablet.flags
@@ -90,9 +90,9 @@ function deploy_tablet() {
   cd ..
   sleep 5
 }
-deploy_tablet fedb-tablet-1 ${TABLET1}
-deploy_tablet fedb-tablet-2 ${TABLET2}
-deploy_tablet fedb-tablet-3 ${TABLET3}
+deploy_tablet fedb-tablet-1 "${TABLET1}"
+deploy_tablet fedb-tablet-2 "${TABLET2}"
+deploy_tablet fedb-tablet-3 "${TABLET3}"
 # deploy api server
 function deploy_api_server() {
   local api_serve_name=$1

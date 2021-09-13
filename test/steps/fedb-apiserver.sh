@@ -69,7 +69,7 @@ yum install -y  net-tools
 ulimit -c unlimited
 echo "ROOT_DIR:${ROOT_DIR}"
 source steps/read_properties.sh
-sh steps/download-case.sh ${CASE_BRANCH}
+sh steps/download-case.sh "${CASE_BRANCH}"
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
     sh steps/build-fedb.sh
@@ -79,7 +79,7 @@ echo "FEDB_SDK_VERSION:${FEDB_SDK_VERSION}"
 echo "FEDB_SERVER_VERSION:${FEDB_SERVER_VERSION}"
 echo "FEDB_VERSIONS:${FEDB_VERSIONS}"
 # modify config
-sh steps/modify_suite_pom_by_restful.sh ${CASE_XML} ${DEPLOY_MODE} ${FEDB_SDK_VERSION} ${BUILD_MODE} ${FEDB_SERVER_VERSION}
+sh steps/modify_suite_pom_by_restful.sh "${CASE_XML}" "${DEPLOY_MODE}" "${FEDB_SDK_VERSION}" "${BUILD_MODE}" "${FEDB_SERVER_VERSION}"
 # install jar
 cd java/hybridsql-test || exit
 mvn clean install -Dmaven.test.skip=true

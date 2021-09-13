@@ -22,6 +22,7 @@ sh "${ROOT_DIR}"/steps/retry-command.sh "bash steps/init_env.sh"
 mkdir -p build
 source /root/.bashrc
 cd build || exit
+# shellcheck disable=SC2046
 cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=ON .. && make -j$(nproc)
 make sqlalchemy_fedb
 cd .. || exit
