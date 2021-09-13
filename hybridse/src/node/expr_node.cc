@@ -780,7 +780,16 @@ InExpr* InExpr::ShadowCopy(NodeManager *nm) const {
     return nm->MakeInExpr(GetLhs(), GetInList(), IsNot());
 }
 
-Status InExpr::InferAttr(ExprAnalysisContext *ctx) {
+Status InExpr::InferAttr(ExprAnalysisContext* ctx) {
+    CHECK_TRUE(kExprList == GetInList()->GetExprType(), kTypeError, "in list must be exprlist");
+    const auto in_list = dynamic_cast<const ExprListNode*>(GetInList());
+    for (const auto& ele : in_list->children_) {
+        const TypeNode* cmp_type = nullptr;
+        CHECK_STATUS(
+            CompareTypeAccept(ctx->node_manager(), GetLhs()->GetOutputType(), ele->GetOutputType(), &cmp_type));
+    }
+    SetOutputType(ctx->node_manager()->MakeTypeNode(kBool));
+    SetNullable(true);
     return Status::OK();
 }
 

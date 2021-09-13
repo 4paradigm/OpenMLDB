@@ -29,6 +29,7 @@ cases:
     dataProvider:
       - ["%","MOD","*","-","/"]
       - ["a", "b"]
-    sql: select t1.c2 d[0] t2.c2 as b2 from t1 last join t2 ORDER BY d[1] on t1.id=t2.id;
+    sql: |
+      select t1.c2 d[0] t2.c2 as b2 from t1 last join t2 ORDER BY d[1] on t1.id=t2.id;
     expect:
       success: false
