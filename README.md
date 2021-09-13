@@ -56,7 +56,7 @@ Comparing with the mainstream databases, OpenMLDB achieves better performance fo
 
 ![Online Benchmark](./images/online_benchmark.png)
 
-Comparing with the popular Spark computation framework, using OpenMLDB for batch data process can achieve better performance and lower TCO especially with optimization for skew window data.
+Comparing with the popular MPP system, using OpenMLDB for batch data process can achieve better performance and lower TCO especially with optimization for skew window data.
 
 ![Offline Benchmark](./images/offline_benchmark.png)
 

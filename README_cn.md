@@ -57,7 +57,7 @@ OpenMLDB是一个开源机器学习数据库，面向机器学习应用提供正
 
 ![Online Benchmark](./images/online_benchmark.png)
 
-在大数据批处理模式下，使用OpenMLDB进行特征抽取，相比业界最流行的Spark社区版，离线性能在窗口数据倾斜优化下有数倍提升，大大降低离线计算的TCO。
+在大数据批处理模式下，使用OpenMLDB进行特征抽取，相比业界最流行的MPP系统，离线性能在窗口数据倾斜优化下有数倍提升，大大降低离线计算的TCO。
 
 ![Offline Benchmark](./images/offline_benchmark.png)
 
