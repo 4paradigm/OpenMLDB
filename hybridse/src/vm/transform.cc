@@ -439,7 +439,7 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
         dynamic_cast<hybridse::node::ProjectListNode*>(
             node->project_list_vec_[0]);
     auto project_list = node_manager_->MakeProjectListPlanNode(
-        first_project_list->w_ptr_, first_project_list->is_agg_);
+        first_project_list->w_ptr_, first_project_list->has_agg_project_);
     uint32_t pos = 0;
     for (auto iter = node->pos_mapping_.cbegin();
          iter != node->pos_mapping_.cend(); iter++) {
@@ -1113,7 +1113,7 @@ Status BatchModeTransformer::TransformProjectOp(
             return CreatePhysicalProjectNode(
                 kGroupAggregation, depend, project_list, append_input, output);
         case kSchemaTypeTable:
-            if (project_list->IsAgg()) {
+            if (project_list->HasAggProject()) {
                 if (project_list->IsWindowProject()) {
                     CHECK_STATUS(
                         CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
@@ -1970,7 +1970,7 @@ Status RequestModeTransformer::TransformProjectOp(
     }
     switch (new_depend->GetOutputType()) {
         case kSchemaTypeRow:
-            CHECK_TRUE(!project_list->is_agg_, kPlanError, "Non-support aggregation project on request row")
+            CHECK_TRUE(!project_list->has_agg_project_, kPlanError, "Non-support aggregation project on request row")
             return CreatePhysicalProjectNode(
                 kRowProject, new_depend, project_list, append_input, output);
         case kSchemaTypeGroup:
@@ -1978,7 +1978,7 @@ Status RequestModeTransformer::TransformProjectOp(
                                              project_list, append_input,
                                              output);
         case kSchemaTypeTable:
-            if (project_list->is_agg_) {
+            if (project_list->has_agg_project_) {
                 return CreatePhysicalProjectNode(kAggregation, new_depend,
                                                  project_list, append_input,
                                                  output);

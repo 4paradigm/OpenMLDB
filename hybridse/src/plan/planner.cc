@@ -137,7 +137,6 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
             if (node::IsAggregationExpression(lib, project_expr)) {
                 table_project_list->AddProject(
                     node_manager_->MakeAggProjectNode(pos, project_name, project_expr, nullptr));
-                table_project_list->SetIsAgg(true);
             } else {
                 table_project_list->AddProject(node_manager_->MakeRowProjectNode(pos, project_name, project_expr));
             }
@@ -153,9 +152,16 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
             node_manager_->MakeAggProjectNode(pos, project_name, project_expr, w_ptr->GetFrame()));
     }
 
+    // Can't support table aggregation and table row project at the same time
+    // e.g.
+    // -- unacceptable sql
+    // SELECT col1, col2, SUM(col3) from t1;
+    CHECK_TRUE(!(table_project_list->HasRowProject() && table_project_list->HasAggProject() &&
+                 nullptr == root->group_clause_ptr_),
+               common::kPlanError, "Can't support table aggregation project and table row project simultaneously")
     // Can't support table aggregation and window aggregation simutaneously
-    CHECK_TRUE(!(table_project_list->IsAgg() && !project_list_map.empty()), common::kPlanError,
-               "Can't support table aggregationg and window aggregation simutanesously")
+    CHECK_TRUE(!(table_project_list->HasAggProject() && !project_list_map.empty()), common::kPlanError,
+               "Can't support table aggregation and window aggregation simultaneously")
     // Add table projects into project map beforehand
     // Thus we can merge project list based on window frame when it is necessary.
     if (!table_project_list->GetProjects().empty()) {

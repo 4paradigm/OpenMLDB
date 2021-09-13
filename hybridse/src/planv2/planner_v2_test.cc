@@ -195,7 +195,7 @@ TEST_F(PlannerV2Test, SelectPlanWithWindowProjectTest) {
     ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
 
     ASSERT_EQ("(COL2)", node::ExprString(project_list->GetW()->GetKeys()));
-    ASSERT_TRUE(project_list->IsAgg());
+    ASSERT_TRUE(project_list->HasAggProject());
 
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
@@ -246,7 +246,7 @@ TEST_F(PlannerV2Test, SelectPlanWithMultiWindowProjectTest) {
     ASSERT_EQ(1u, project_list->GetProjects().size());
     ASSERT_TRUE(nullptr != project_list->GetW());
 
-    ASSERT_TRUE(project_list->IsAgg());
+    ASSERT_TRUE(project_list->HasAggProject());
 
     ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
     ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
@@ -261,7 +261,7 @@ TEST_F(PlannerV2Test, SelectPlanWithMultiWindowProjectTest) {
     ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
 
     ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
-    ASSERT_TRUE(project_list->IsAgg());
+    ASSERT_TRUE(project_list->HasAggProject());
     ASSERT_FALSE(project_list->GetW()->instance_not_in_window());
 
     plan_ptr = plan_ptr->GetChildren()[0];
@@ -306,7 +306,7 @@ TEST_F(PlannerV2Test, WindowWithUnionTest) {
     ASSERT_EQ(3u, project_list->GetProjects().size());
     ASSERT_TRUE(nullptr != project_list->GetW());
 
-    ASSERT_TRUE(project_list->IsAgg());
+    ASSERT_TRUE(project_list->HasAggProject());
 
     ASSERT_EQ(-3, project_list->GetW()->GetStartOffset());
     ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
@@ -423,7 +423,7 @@ TEST_F(PlannerV2Test, MultiProjectListPlanPostTest) {
         ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
         ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
         ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
-        ASSERT_TRUE(project_list->IsAgg());
+        ASSERT_TRUE(project_list->HasAggProject());
 
         // validate w2_col3_sum pos 1
         {
@@ -1671,6 +1671,28 @@ TEST_F(PlannerV2ErrorTest, SqlSyntaxErrorTest) {
                      "Syntax error: Expected keyword ON or keyword USING but got keyword WHEN [at 1:46]\n"
                      "SELECT t1.col1, t2.col2 FROM t1 LAST JOIN t2 when t1.id=t2.id;\n"
                      "                                             ^");
+}
+
+
+TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string &sql, const int code, const std::string &msg) {
+      base::Status status;
+      node::PlanNodeList plan_trees;
+      ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true));
+      ASSERT_EQ(code, status.code) << status;
+      ASSERT_EQ(msg, status.msg) << status;
+      std::cout << msg << std::endl;
+    };
+
+    expect_converted("SELECT COL1, COL2, SUM(COL3) from t1;", common::kPlanError,
+                     "Can't support table aggregation project and table row project simultaneously");
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) over w1,  SUM(COL3) from t1
+        WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
+        )",
+        common::kPlanError, "Can't support table aggregation and window aggregation simultaneously");
 }
 }  // namespace plan
 }  // namespace hybridse

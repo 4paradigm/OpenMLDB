@@ -23,7 +23,7 @@ namespace udf {
 class DefaultUdfLibraryTest : public ::testing::Test {
 };
 
-TEST_F(DefaultUdfLibraryTest, test_check_is_udaf) {
+TEST_F(DefaultUdfLibraryTest, TestCheckIsUDAFByNameAndArgsSize) {
     const udf::UdfLibrary* library = udf::DefaultUdfLibrary::get();
     // sum(arg1) is an udaf
     ASSERT_TRUE(library->IsUdaf("sum", 1));
@@ -52,6 +52,31 @@ TEST_F(DefaultUdfLibraryTest, test_check_is_udaf) {
 }
 
 
+TEST_F(DefaultUdfLibraryTest, TestCheckIsUdafByName) {
+    const udf::UdfLibrary* library = udf::DefaultUdfLibrary::get();
+    // sum(...) is an udaf
+    ASSERT_TRUE(library->IsUdaf("sum"));
+    // sum2(...) isn't an udaf
+    ASSERT_TRUE(!library->IsUdaf("sum2"));
+
+    // max(...) is an udaf
+    ASSERT_TRUE(library->IsUdaf("max"));
+    // min(...) is an udaf
+    ASSERT_TRUE(library->IsUdaf("min"));
+    // count(...) is an udaf
+    ASSERT_TRUE(library->IsUdaf("count"));
+    // avg(...) is an udaf
+    ASSERT_TRUE(library->IsUdaf("avg"));
+
+    // hour(..) isn't an udaf
+    ASSERT_TRUE(!library->IsUdaf("hour"));
+    // minute(..) isn't an udaf
+    ASSERT_TRUE(!library->IsUdaf("minute"));
+    // second(..) isn't an udaf
+    ASSERT_TRUE(!library->IsUdaf("second"));
+    // sin(..) isn't an udaf
+    ASSERT_TRUE(!library->IsUdaf("sin"));
+}
 }  // namespace udf
 }  // namespace hybridse
 
