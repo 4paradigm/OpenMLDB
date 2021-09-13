@@ -6,7 +6,6 @@
 
 
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.2.3</version>
 	<artifactId>openmldb-batch</artifactId>
 	<name>openmldb-batch</name>
         <packaging>jar</packaging>
