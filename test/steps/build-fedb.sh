@@ -20,6 +20,7 @@ cd OpenMLDB || exit
 ls -al
 sh "${ROOT_DIR}"/steps/retry-command.sh "bash steps/init_env.sh"
 mkdir -p build
+# shellcheck disable=SC1091
 source /root/.bashrc
 cd build || exit
 # shellcheck disable=SC2046
