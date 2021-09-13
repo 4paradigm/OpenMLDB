@@ -151,24 +151,19 @@ object WindowAggPlan {
     val orderByColIndex = PhysicalNodeUtil.getOrderbyColumnIndex(windowAggNode, inputDf)
 
     // Register the input table
-    val partIdColName = "_PART_ID_" + uniqueNamePostfix
-    val originalPartIdColName = "_ORIGINAL_PART_ID_" + uniqueNamePostfix
-    val countColName = "_COUNT_" + uniqueNamePostfix
+    val partIdColName = "PART_ID" + uniqueNamePostfix
+    val expandedRowColName = "EXPANDED_ROW" + uniqueNamePostfix
 
     val quantile = ctx.getConf.skewedPartitionNum
 
     // 1. Analyze the data distribution
     val distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
       // Do not use skew config
-      val partitionKeyColName = "_PARTITION_KEY_" + uniqueNamePostfix
+      val partitionKeyColName = "PARTITION_KEY" + uniqueNamePostfix
 
       val distributionDf = SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
-        orderByColIndex, partitionKeyColName, countColName)
+        orderByColIndex, partitionKeyColName)
       logger.info("Generate distribution dataframe")
-
-      if (ctx.getConf.windowSkewOptCache) {
-        distributionDf.cache()
-      }
 
       distributionDf
     } else {
@@ -179,17 +174,9 @@ object WindowAggPlan {
       distributionDf
     }
 
-    var minCount = Long.MaxValue
-    val rows = distributionDf.select(countColName).collect()
-    for (row <- rows) {
-      val count = row.getLong(0)
-      minCount = math.min(minCount, count)
-    }
-    val minBlockSize = minCount / quantile
-
     // 2. Add "part" column and "expand" column by joining the distribution table
     val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-      repartitionColIndexes, orderByColIndex, partIdColName, originalPartIdColName, countColName)
+      repartitionColIndexes, orderByColIndex, partIdColName, expandedRowColName)
     logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {
@@ -197,20 +184,16 @@ object WindowAggPlan {
     }
 
     // Update the column indexes and repartition keys
-    windowAggConfig.skewTagIdx = addColumnsDf.schema.fieldNames.length - 2
-    windowAggConfig.skewPositionIdx = addColumnsDf.schema.fieldNames.length - 1
+    windowAggConfig.expandedFlagIdx = addColumnsDf.schema.fieldNames.length - 1
+    windowAggConfig.partIdIdx = addColumnsDf.schema.fieldNames.length - 2
 
     // 3. Expand the table data by union
-    val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, originalPartIdColName,
-      windowAggConfig.rowPreceding, windowAggConfig.startOffset, minBlockSize)
+    val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, expandedRowColName)
     logger.info("Generate union dataframe")
 
     // 4. Repartition and order by
-    val repartitionCols = mutable.ArrayBuffer[Column]()
-    repartitionCols += addColumnsDf(partIdColName)
-    for (i <- repartitionColIndexes.indices) {
-      repartitionCols += SparkColumnUtil.getColumnFromIndex(addColumnsDf, repartitionColIndexes(i))
-    }
+    var repartitionCols = PhysicalNodeUtil.getRepartitionColumns(windowAggNode, inputDf)
+    repartitionCols = addColumnsDf(partIdColName) +: repartitionCols
 
     val repartitionDf = if (ctx.getConf.groupbyPartitions > 0) {
       unionDf.repartition(ctx.getConf.groupbyPartitions, repartitionCols: _*)
@@ -262,10 +245,9 @@ object WindowAggPlan {
     // Take the iterator if the limit has been set
     val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
 
-    if (config.skewTagIdx != 0) {
-      sqlConfig.enableWindowSkewOpt = true
-      val skewGroups = config.groupIdxs :+ config.skewTagIdx
-      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
+    if (config.partIdIdx != 0) {
+      val skewGroups = config.groupIdxs :+ config.partIdIdx
+      computer.resetGroupKeyComparator(skewGroups)
     }
     if (sqlConfig.print) {
       logger.info(s"windowAggIter mode: ${sqlConfig.enableWindowSkewOpt}")
@@ -283,11 +265,10 @@ object WindowAggPlan {
         lastRow = row
 
         val orderKey = computer.extractKey(row)
-        val tag = row.getInt(config.skewTagIdx)
-        val position = row.getInt(config.skewPositionIdx)
+        val expandedFlag = row.getBoolean(config.expandedFlagIdx)
         if (!isValidOrder(orderKey)) {
           None
-        } else if (tag == position) {
+        } else if (!expandedFlag) {
           Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema))
         } else {
           computer.bufferRowOnly(row, orderKey)
@@ -326,10 +307,9 @@ object WindowAggPlan {
     // Take the iterator if the limit has been set
     val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
 
-    if (config.skewTagIdx != 0) {
-      sqlConfig.enableWindowSkewOpt = true
-      val skewGroups = config.groupIdxs :+ config.skewTagIdx
-      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
+    if (config.partIdIdx != 0) {
+      val skewGroups = config.groupIdxs :+ config.partIdIdx
+      computer.resetGroupKeyComparator(skewGroups)
     }
     if (sqlConfig.print) {
       logger.info(s"windowAggIter mode: ${sqlConfig.enableWindowSkewOpt}")
@@ -344,11 +324,10 @@ object WindowAggPlan {
         lastRow = row
 
         val orderKey = computer.extractKey(row)
-        val tag = row.getInt(config.skewTagIdx)
-        val position = row.getInt(config.skewPositionIdx)
+        val expandedFlag = row.getBoolean(config.expandedFlagIdx)
         if (!isValidOrder(orderKey)) {
           None
-        } else if (tag == position) {
+        } else if (!expandedFlag) {
           Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
         } else {
           computer.bufferRowOnly(row, orderKey)
@@ -381,10 +360,9 @@ object WindowAggPlan {
                                  config: WindowAggConfig): Iterator[Row] = {
     val flagIdx = config.unionFlagIdx
     var lastRow: Row = null
-    if (config.skewTagIdx != 0) {
-      sqlConfig.enableWindowSkewOpt = true
-      val skewGroups = config.groupIdxs :+ config.skewTagIdx
-      computer.resetGroupKeyComparator(skewGroups, config.inputSchema)
+    if (config.partIdIdx != 0) {
+      val skewGroups = config.groupIdxs :+ config.partIdIdx
+      computer.resetGroupKeyComparator(skewGroups)
     }
 
     val resIter = inputIter.flatMap(row => {
@@ -399,9 +377,8 @@ object WindowAggPlan {
         if (unionFlag) {
           // primary
           if (sqlConfig.enableWindowSkewOpt) {
-            val tag = row.getInt(config.skewTagIdx)
-            val position = row.getInt(config.skewPositionIdx)
-            if (tag == position) {
+            val expandedFlag = row.getBoolean(config.expandedFlagIdx)
+            if (!expandedFlag) {
               Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
             } else {
               if (!config.instanceNotInWindow) {
