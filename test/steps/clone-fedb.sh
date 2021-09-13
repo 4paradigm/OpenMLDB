@@ -17,6 +17,7 @@
 count=0     #记录重试次数
 flag=0      # 重试标识，flag=0 表示任务正常，flag 非0 表示需要进行重试
 total=10    #总次数
+# shellcheck disable=SC2050
 while [ 0 -eq 0 ]
 do
     echo ".................. job begin  ..................."

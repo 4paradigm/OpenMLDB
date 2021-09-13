@@ -55,7 +55,7 @@ echo "CASE_LEVEL:${CASE_LEVEL}"
 ROOT_DIR=$(pwd)
 echo "ROOT_DIR:${ROOT_DIR}"
 source steps/read_properties.sh
-sh steps/download-case.sh ${CASE_BRANCH}
+sh steps/download-case.sh "${CASE_BRANCH}"
 echo "FEDB_SERVER_VERSION:${FEDB_SERVER_VERSION}"
 echo "FEDB_PY_SDK_VERSION:${FEDB_PY_SDK_VERSION}"
 
@@ -69,36 +69,41 @@ if [[ "${BUILD_MODE}" == "SRC" ]]; then
     # 下载编译fedb
     sh steps/build-fedb.sh
     # 部署zk
-    cd OpenMLDB
+    cd OpenMLDB || exit
     test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
     cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
-    cd thirdsrc/zookeeper-3.4.14
+    cd thirdsrc/zookeeper-3.4.14 || exit
     netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
-    ./bin/zkServer.sh start && cd $ROOT_DIR
+    ./bin/zkServer.sh start
+    cd "$ROOT_DIR" || exit
     sleep 5
 
     # 部署fedb cluster
-    cd OpenMLDB
+    cd OpenMLDB || exit
     if [[ "${DEPLOY_MODE}" == "cluster" ]]; then
-        cd onebox && sh start_onebox_on_rambuild_cluster.sh && cd $ROOT_DIR
+        cd onebox && sh start_onebox_on_rambuild_cluster.sh
+        cd "$ROOT_DIR" || exit
     else
-        cd onebox && sh start_onebox_on_rambuild.sh && cd $ROOT_DIR
+        cd onebox && sh start_onebox_on_rambuild.sh
+        cd "$ROOT_DIR" || exit
     fi
     sleep 5
     # 安装fedb模块
-    cd ${ROOT_DIR}/OpenMLDB/build/python/dist
+    cd "${ROOT_DIR}"/OpenMLDB/build/python/dist || exit
+    # shellcheck disable=SC2010
     whl_name=$(ls | grep *.whl)
     echo "whl_name:${whl_name}"
 #    python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
     python3 -m pip --default-timeout=100 install -U ${whl_name}
 else
     IP=$(hostname -i)
-    sh steps/deploy_fedb.sh ${FEDB_SERVER_VERSION} ${DEPLOY_MODE}
-    cd ${ROOT_DIR}
-    wget http://pkg.4paradigm.com:81/rtidb/test/fedb-${FEDB_PY_SDK_VERSION}-py3-none-any.whl
+    sh steps/deploy_fedb.sh "${FEDB_SERVER_VERSION}" "${DEPLOY_MODE}"
+    cd "$ROOT_DIR" || exit
+    wget http://pkg.4paradigm.com:81/rtidb/test/fedb-"${FEDB_PY_SDK_VERSION}"-py3-none-any.whl
+    # shellcheck disable=SC2063
     whl_name=$(ls | grep *.whl)
 #    python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
-    python3 -m pip --default-timeout=100 install -U ${whl_name}
+    python3 -m pip --default-timeout=100 install -U "${whl_name}"
 fi
 #sleep 5
 ## 安装fedb模块
@@ -107,8 +112,8 @@ fi
 #echo "whl_name:${whl_name}"
 #python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-cd ${ROOT_DIR}
-cd python/fedb-sdk-test
+cd "$ROOT_DIR" || exit
+cd python/fedb-sdk-test || exit
 # 安装其他模块
 #python3 -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 -m pip install -r requirements.txt
@@ -129,4 +134,4 @@ if [[ "${BUILD_MODE}" == "PKG" ]]; then
 fi
 cat conf/fedb.conf
 
-pytest -s test/ --alluredir ${ROOT_DIR}/python/report/allure-results
+pytest -s test/ --alluredir "${ROOT_DIR}"/python/report/allure-results

@@ -40,19 +40,19 @@ echo "API_SERVER:${API_SERVER}"
 # deploy zk
 wget http://pkg.4paradigm.com:81/rtidb/test/zookeeper-3.4.14.tar.gz
 tar -zxvf zookeeper-3.4.14.tar.gz
-cd zookeeper-3.4.14
-cp conf/zoo_sample.cfg conf/zoo.cfg
+cd zookeeper-3.4.14 || exit
+cp conf/zoo_sample.cfg conf/zoo.cfg || exit
 sed -i 's#dataDir=/tmp/zookeeper#dataDir=./data#' conf/zoo.cfg
 sed -i "s#clientPort=2181#clientPort=${ZK_PORT}#" conf/zoo.cfg
 sh bin/zkServer.sh start
-cd ..
+cd .. || exit
 sleep 5
 # deploy ns
 function deploy_ns() {
   local ns_name=$1
   local ns_endpoint=$2
-  cp -r fedb-cluster-${SERVER_VERSION} ${ns_name}
-  cd ${ns_name}
+  cp -r fedb-cluster-"${SERVER_VERSION}" "${ns_name}"
+  cd "${ns_name}" || exit
   sed -i "s#--zk_cluster=.*#--zk_cluster=${ZK_CLUSTER}#" conf/nameserver.flags
   echo '--request_timeout_ms=60000' >> conf/nameserver.flags
   sed -i "s#--endpoint=.*#--endpoint=${ns_endpoint}#" conf/nameserver.flags
@@ -62,11 +62,12 @@ function deploy_ns() {
     sed -i 's#--enable_distsql=.*#--enable_distsql=false#' conf/nameserver.flags
   fi
   sh bin/start.sh start nameserver
-  cd ..
+  cd .. || exit
   sleep 5
 }
-wget http://pkg.4paradigm.com:81/rtidb/test/fedb-${SERVER_VERSION}-linux.tar.gz
-tar -zxvf fedb-${SERVER_VERSION}-linux.tar.gz
+wget http://pkg.4paradigm.com:81/rtidb/test/fedb-"${SERVER_VERSION}"-linux.tar.gz
+tar -zxvf fedb-"${SERVER_VERSION}"-linux.tar.gz
+# shellcheck disable=SC2010
 pkg_name=$(ls | grep fedb-cluster)
 echo "pkg_name:${pkg_name}"
 deploy_ns fedb-ns-1 ${NS1}
@@ -75,8 +76,8 @@ deploy_ns fedb-ns-2 ${NS2}
 function deploy_tablet() {
   local tablet_name=$1
   local tablet_endpoint=$2
-  cp -r fedb-cluster-${SERVER_VERSION} ${tablet_name}
-  cd ${tablet_name}
+  cp -r fedb-cluster-"${SERVER_VERSION}" ${tablet_name}
+  cd "${tablet_name}" || exit
   sed -i "s#--zk_cluster=.*#--zk_cluster=${ZK_CLUSTER}#" conf/tablet.flags
   sed -i 's@--zk_root_path=.*@--zk_root_path=/fedb@' conf/tablet.flags
   sed -i "s#--endpoint=.*#--endpoint=${tablet_endpoint}#" conf/tablet.flags
@@ -96,8 +97,8 @@ deploy_tablet fedb-tablet-3 ${TABLET3}
 function deploy_api_server() {
   local api_serve_name=$1
   local api_serve_endpoint=$API_SERVER
-  cp -r fedb-cluster-${SERVER_VERSION} ${api_serve_name}
-  cd ${api_serve_name}
+  cp -r fedb-cluster-"${SERVER_VERSION}" "${api_serve_name}"
+  cd "${api_serve_name}" || exit
   sed -i "s#--zk_cluster=.*#--zk_cluster=${ZK_CLUSTER}#" conf/apiserver.flags
   sed -i 's@--zk_root_path=.*@--zk_root_path=/fedb@' conf/apiserver.flags
   sed -i "s#--endpoint=.*#--endpoint=${api_serve_endpoint}#" conf/apiserver.flags

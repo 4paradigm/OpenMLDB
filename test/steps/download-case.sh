@@ -19,4 +19,4 @@ if [[ "${CASE_BRANCH}" == "" ]]; then
     CASE_BRANCH="main"
 fi
 ROOT_DIR=$(pwd)
-sh ${ROOT_DIR}/steps/retry-command.sh "git clone -b ${CASE_BRANCH} https://github.com/4paradigm/OpenMLDB.git"
+sh "${ROOT_DIR}"/stps/retry-command.sh "git clone -b ${CASE_BRANCH} https://github.com/4paradigm/OpenMLDB.git"

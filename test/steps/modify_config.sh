@@ -26,17 +26,18 @@ fi
 echo "deploy_mode:${DEPLOY_MODE}"
 ROOT_DIR=$(pwd)
 source steps/read_properties.sh
+# shellcheck disable=SC2154
 echo "test_version:$test_version"
-cd java/hybridsql-test/fedb-sdk-test
+cd java/hybridsql-test/fedb-sdk-test || exit
 system_type=$(uname)
-if [ ${system_type} == "Linux" ] ;then
-    sed -i "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${test_version}\"/>#"  test_suite/${CASE_XML}
+if [ "${system_type}" == "Linux" ] ;then
+    sed -i "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${test_version}\"/>#"  test_suite/"${CASE_XML}"
 else
-    sed -i "" "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${test_version}\"/>#" test_suite/${CASE_XML}
+    sed -i "" "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${test_version}\"/>#" test_suite/"${CASE_XML}"
 fi
-if [ ${system_type} == "Linux" ] ;then
-    sed -i "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\"${DEPLOY_MODE}\"/>#"  test_suite/${CASE_XML}
+if [ "${system_type}" == "Linux" ] ;then
+    sed -i "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\"${DEPLOY_MODE}\"/>#"  test_suite/"${CASE_XML}"
 else
-    sed -i "" "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\"${DEPLOY_MODE}\"/>#" test_suite/${CASE_XML}
+    sed -i "" "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\"${DEPLOY_MODE}\"/>#" test_suite/"${CASE_XML}"
 fi
-cd ${ROOT_DIR}
+cd "${ROOT_DIR}" || exit

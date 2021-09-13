@@ -20,10 +20,12 @@ file="steps/fedb_sdk_test.properties"
 if [ -f "$file" ]
 then
   echo "$file found."
+  # shellcheck disable=SC2034
   while IFS='=' read -r key value
   do
-    key=$(echo $key | tr '.' '_')
-    eval ${key}=\${value}
+    key=$(echo "$key" | tr '.' '_')
+    # shellcheck disable=SC1083
+    eval "${key}"=\${value}
   done < "$file"
 else
   echo "$file not found."

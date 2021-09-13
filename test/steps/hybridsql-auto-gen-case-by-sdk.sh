@@ -48,8 +48,8 @@ python3 -m ensurepip
 python3 -m pip install numpy
 python3 -m pip install PyYaml
 
-cd python/hybridsql_gen_case
+cd python/hybridsql_gen_case || exit
 sh steps/gen_auto_case.sh
 
-cd ${ROOT_DIR}
-sh steps/fedb-sdk-test-java.sh -b PKG -d ${DEPLOY_MODE} -c test_auto_gen_case.xml -l "0"
+cd "${ROOT_DIR}" || exit
+sh steps/fedb-sdk-test-java.sh -b PKG -d "${DEPLOY_MODE}" -c test_auto_gen_case.xml -l "0"

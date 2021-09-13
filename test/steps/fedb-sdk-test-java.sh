@@ -81,9 +81,9 @@ echo "FEDB_VERSIONS:${FEDB_VERSIONS}"
 # modify config
 sh steps/modify_suite_pom.sh ${CASE_XML} ${DEPLOY_MODE} ${FEDB_SDK_VERSION} ${BUILD_MODE} ${FEDB_SERVER_VERSION}
 # install jar
-cd java/hybridsql-test
+cd java/hybridsql-test || exit
 mvn clean install -Dmaven.test.skip=true
-cd ${ROOT_DIR}
+cd "${ROOT_DIR}" || exit
 # run case
-cd ${ROOT_DIR}/java/hybridsql-test/fedb-sdk-test/
-mvn clean test -DsuiteXmlFile=test_suite/${CASE_XML} -DcaseLevel=$CASE_LEVEL -DfedbVersion=$FEDB_VERSIONS
+cd "${ROOT_DIR}"/java/hybridsql-test/fedb-sdk-test/ || exit
+mvn clean test -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="$CASE_LEVEL" -DfedbVersion="$FEDB_VERSIONS"

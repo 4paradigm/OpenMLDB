@@ -17,8 +17,8 @@
 ROOT_DIR=$(pwd)
 
 source steps/read_properties.sh
-sh steps/download-case.sh ${CASE_BRANCH}
-cd ${ROOT_DIR}/java/hybridsql-test/
+sh steps/download-case.sh "${CASE_BRANCH}"
+cd "${ROOT_DIR}"/java/hybridsql-test/ || exit
 mvn clean install -Dmaven.test.skip=true
-cd ${ROOT_DIR}/java/hybridsql-test/sparkfe_test/
+cd "${ROOT_DIR}"/java/hybridsql-test/sparkfe_test/ || exit
 mvn clean test
