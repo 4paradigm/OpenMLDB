@@ -29,7 +29,7 @@ do
         echo "--------------- job complete ---------------"
         break;
     else                        #执行失败，重试
-        count=$((${count}+1))
+        count=$((count+1))
         if [ ${count} -eq ${total} ]; then     #指定重试次数，重试超过5次即失败
             echo 'timeout,exit.'
             exit 1

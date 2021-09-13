@@ -42,7 +42,7 @@ fi
 
 if [[ -d $path ]]; then
     IFS=$'\n'
-    files=`find $path`
+    files=$(find $path)
     for f in $files
     do
         curl  --user 'deploy:GlW5SRo1TC3q' --upload-file "$f" https://nexus.4pd.io/repository/raw-hosted/"$f"
