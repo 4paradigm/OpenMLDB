@@ -28,16 +28,17 @@ cases:
           col6 string not null,
           col7 timestamp not null,
           col8 date not null,
+          col9 bool not null,
           index(key=(col2), ts=col5)
           );
-        insert: insert into {0} values("hello", 1, 2, 3.3f, 4.4, 5L, "world", 12345678L, "2020-05-21");
+        insert: insert into {0} values("hello", 1, 2, 3.3f, 4.4, 5L, "world", 12345678L, "2020-05-21", true);
     sql: select * from {0};
     output:
       columns: ["col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64",
-          "col6 string", "col7 timestamp", "col8 date"]
+          "col6 string", "col7 timestamp", "col8 date", "col9 bool"]
       order: col1
       rows:
-        - [hello, 1, 2, 3.3, 4.4, 5, world, 12345678, 2020-05-21]
+        - [hello, 1, 2, 3.3, 4.4, 5, world, 12345678, 2020-05-21, true]
   - id: 1
     desc: 简单INSERT 多行
     inputs:
