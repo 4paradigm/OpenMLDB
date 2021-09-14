@@ -1126,7 +1126,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     }
 }
 
-TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
+/* TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
@@ -1443,7 +1443,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         ASSERT_EQ(3, (int64_t)scan_response->count());
         scan_response->Clear();
     }
-}
+} */
 
 TEST_F(NameServerImplTest, ShowCatalogVersion) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
