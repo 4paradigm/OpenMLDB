@@ -23,7 +23,7 @@ FEDB_SERVER_VERSION=$5
 echo "deploy_mode:${DEPLOY_MODE}"
 ROOT_DIR=$(pwd)
 echo "test_version:$FEDB_SDK_VERSION"
-cd java/hybridsql-test/fedb-sdk-test || exit
+cd test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
 # modify suite_xml
 sed -i "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${FEDB_SERVER_VERSION}\"/>#"  test_suite/"${CASE_XML}"
 sed -i "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\"${DEPLOY_MODE}\"/>#"  test_suite/"${CASE_XML}"
