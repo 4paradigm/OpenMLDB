@@ -1435,21 +1435,16 @@ static bool DoExpandProviderCase(const size_t idx, const YAML::Node& sql_case_no
 ///
 /// by convention, a n x m dataProvider's (i, j, k, ...) permutation, it's expect
 ///  result can be found at (i, j, k, ...) th element at expectProvider
-static bool ExpandProviderCase(const YAML::Node& sql_case_node,
-                               const std::string& global_db,
-                               const std::string& cases_dir,
-                               const std::set<std::string>& debugs,
-                               const std::vector<std::string>& filter_modes,
-                               std::vector<SqlCase>* outputs) {
+static bool ExpandProviderCase(const YAML::Node& sql_case_node, const std::string& global_db,
+                               const std::string& cases_dir, const std::set<std::string>& debugs,
+                               const std::vector<std::string>& filter_modes, std::vector<SqlCase>* outputs) {
     YAML::Node providers = sql_case_node["dataProvider"];
     // create data provider as two dimension matrix
     std::vector<std::vector<std::string>> provider_contents;
-    for (auto provider_iter = providers.begin();
-         provider_iter != providers.end(); provider_iter++) {
+    for (auto provider_iter = providers.begin(); provider_iter != providers.end(); provider_iter++) {
         YAML::Node cur = YAML::Node(*provider_iter);
         std::vector<std::string> choices;
-        for (auto choice_iter = cur.begin(); choice_iter != cur.end();
-             ++choice_iter) {
+        for (auto choice_iter = cur.begin(); choice_iter != cur.end(); ++choice_iter) {
             choices.push_back(choice_iter->as<std::string>());
         }
         provider_contents.push_back(choices);
@@ -1463,12 +1458,10 @@ static bool ExpandProviderCase(const YAML::Node& sql_case_node,
     std::vector<size_t> choice_idxs(provider_contents.size());
     if (sql_case_node["expectProvider"]) {
         return DoExpandProviderCase(0, sql_case_node, provider_contents, sql_case_node["expectProvider"], global_db,
-        cases_dir, debugs, filter_modes, &choice_idxs,
-        outputs);
+                                    cases_dir, debugs, filter_modes, &choice_idxs, outputs);
     } else {
-        return DoExpandProviderCase(0, sql_case_node, provider_contents, YAML::Node(), global_db,
-        cases_dir, debugs, filter_modes, &choice_idxs,
-        outputs);
+        return DoExpandProviderCase(0, sql_case_node, provider_contents, YAML::Node(), global_db, cases_dir, debugs,
+                                    filter_modes, &choice_idxs, outputs);
     }
 }
 

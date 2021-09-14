@@ -958,27 +958,24 @@ Status ExprIRBuilder::BuildInExpr(const ::hybridse::node::InExpr* node, NativeVa
     NativeValue lhs_value;
     CHECK_STATUS(Build(node->GetLhs(), &lhs_value), "failed to build lhs in InExpr");
 
-    CHECK_TRUE(::hybridse::node::kExprList == node->GetInList()->GetExprType(),
-                kCodegenError, "InExpr: in list is not list");
-
-    const auto in_list = dynamic_cast<const ::hybridse::node::ExprListNode*>(node->GetInList());
+    NativeValue expr_value_list;
+    CHECK_STATUS(Build(node->GetInList(), &expr_value_list));
 
     PredicateIRBuilder predicate_ir_builder(ctx_->GetCurrentBlock());
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     NativeValue default_value = NativeValue::Create(builder.getInt1(false));
     // PERF: preliminary implementation, expect to be slow
-    for (const auto& expr : in_list->children_) {
-        // ensure expr is constant
-        CHECK_TRUE(::hybridse::node::kExprPrimary == expr->GetExprType(),
-                   kCodegenError, "must be list of constant");
+    if (expr_value_list.IsTuple()) {
+        for (size_t i = 0; i < expr_value_list.GetFieldNum(); ++i) {
+            const auto& expr = expr_value_list.GetField(i);
 
-        NativeValue expr_value;
-        CHECK_STATUS(Build(expr, &expr_value));
+            NativeValue eq_value;
+            CHECK_STATUS(predicate_ir_builder.BuildEqExpr(lhs_value, expr, &eq_value));
 
-        NativeValue eq_value;
-        CHECK_STATUS(predicate_ir_builder.BuildEqExpr(lhs_value, expr_value, &eq_value));
-
-        CHECK_STATUS(predicate_ir_builder.BuildOrExpr(default_value, eq_value, &default_value));
+            CHECK_STATUS(predicate_ir_builder.BuildOrExpr(default_value, eq_value, &default_value));
+        }
+    } else {
+        CHECK_TRUE(false, kCodegenError, "Un-supported: in predicate list is not exprlist");
     }
     if (node->IsNot()) {
         CHECK_STATUS(predicate_ir_builder.BuildNotExpr(default_value, &default_value));
@@ -989,6 +986,14 @@ Status ExprIRBuilder::BuildInExpr(const ::hybridse::node::InExpr* node, NativeVa
 }
 
 Status ExprIRBuilder::BuildExprList(const ::hybridse::node::ExprListNode* node, NativeValue* output) {
+    ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
+    std::vector<NativeValue> expr_value_list;
+    for (const auto& ele : node->children_) {
+        NativeValue ele_value;
+        CHECK_STATUS(Build(ele, &ele_value));
+        expr_value_list.push_back(std::move(ele_value));
+    }
+    *output = NativeValue::CreateTuple(std::move(expr_value_list));
     return Status::OK();
 }
 

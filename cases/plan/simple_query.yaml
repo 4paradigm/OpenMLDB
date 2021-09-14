@@ -317,7 +317,7 @@ cases:
           |      +-table: t1
           |      +-alias: <nil>
           +-window_list: []
-  - id: in_predicate_1
+  - id: in_predicate_normal
     desc: select in expression with in list
     sql: select 'a' IN ('a', 'b', 'c') from t1;
     expect:
@@ -359,6 +359,7 @@ cases:
   - id: in_predicate_subquery
     desc: test_expr in subquery
     sql: select col1 not in (select col2 from t2) as colk from t1;
+    mode: physical-plan-unsupport
     expect:
       node_tree_str: |
         +-node[kQuery]: kQuerySelect

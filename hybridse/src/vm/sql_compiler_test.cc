@@ -72,9 +72,10 @@ INSTANTIATE_TEST_SUITE_P(
     SqlJoinPlan, SqlCompilerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
-void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
+void CompilerCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
                    const Schema& paramter_types, const EngineMode engine_mode,
                    const bool enable_batch_window_paralled) {
+    std::string sql = boost::to_lower_copy(sql_case.sql_str());
     SqlCompiler sql_compiler(catalog, false, true, false);
     SqlContext sql_context;
     sql_context.sql = sql;
@@ -85,7 +86,11 @@ void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     sql_context.parameter_types = paramter_types;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
-    ASSERT_TRUE(ok);
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
+
     ASSERT_TRUE(nullptr != sql_context.physical_plan);
     std::ostringstream oss;
     sql_context.physical_plan->Print(oss, "");
@@ -95,12 +100,13 @@ void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     PrintSchema(oss_schema, sql_context.schema);
     std::cout << "schema:\n" << oss_schema.str();
 }
-void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
+void CompilerCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
                    const Schema& paramter_types, EngineMode engine_mode) {
-    CompilerCheck(catalog, sql, paramter_types, engine_mode, false);
+    CompilerCheck(catalog, sql_case, paramter_types, engine_mode, false);
 }
-void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
+void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
                         const vm::Schema& paramter_types, const type::TableDef& exp_table_def) {
+    std::string sql = boost::to_lower_copy(sql_case.sql_str());
     SqlCompiler sql_compiler(catalog);
     SqlContext sql_context;
     sql_context.sql = sql;
@@ -110,6 +116,11 @@ void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     sql_context.parameter_types = paramter_types;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
+    ASSERT_EQ(sql_case.expect().success_, ok) << compile_status;
+    if (!sql_case.expect().success_) {
+        return;
+    }
+
     ASSERT_TRUE(ok && compile_status.isOK()) << compile_status;
     ASSERT_TRUE(nullptr != sql_context.physical_plan);
     std::ostringstream oss;
@@ -131,19 +142,14 @@ void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     }
 }
 
-TEST_P(SqlCompilerTest, compile_request_mode_test) {
+TEST_P(SqlCompilerTest, CompileRequestModeTest) {
     if (boost::contains(GetParam().mode(), "request-unsupport")) {
         LOG(INFO) << "Skip sql case: request unsupport";
         return;
     }
     auto& sql_case = GetParam();
     std::string sqlstr = GetParam().sql_str();
-    LOG(INFO) << sqlstr;
-
-    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
-    boost::to_lower(sqlstr);
-    LOG(INFO) << sqlstr;
-    std::cout << sqlstr << std::endl;
+    DLOG(INFO) << sqlstr;
 
     hybridse::type::TableDef table_def;
     hybridse::type::TableDef table_def2;
@@ -192,23 +198,19 @@ TEST_P(SqlCompilerTest, compile_request_mode_test) {
     }
     auto catalog = BuildSimpleCatalog(db);
 
-    CompilerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kRequestMode);
-    RequestSchemaCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), table_def);
+    CompilerCheck(catalog, sql_case, sql_case.ExtractParameterTypes(), kRequestMode);
+    RequestSchemaCheck(catalog, sql_case, sql_case.ExtractParameterTypes(), table_def);
 }
 
-TEST_P(SqlCompilerTest, compile_batch_mode_test) {
+TEST_P(SqlCompilerTest, CompileBatchModeTest) {
     if (boost::contains(GetParam().mode(), "batch-unsupport")) {
         LOG(INFO) << "Skip sql case: batch unsupport";
         return;
     }
     auto& sql_case = GetParam();
     std::string sqlstr = sql_case.sql_str();
-    LOG(INFO) << sqlstr;
+    DLOG(INFO) << sqlstr;
 
-    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
-    boost::to_lower(sqlstr);
-    LOG(INFO) << sqlstr;
-    std::cout << sqlstr << std::endl;
 
     hybridse::type::TableDef table_def;
     hybridse::type::TableDef table_def2;
@@ -257,7 +259,7 @@ TEST_P(SqlCompilerTest, compile_batch_mode_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
-    CompilerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode, false);
+    CompilerCheck(catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, false);
     {
         // Check for work with simple catalog
         auto simple_catalog = std::make_shared<SimpleCatalog>();
@@ -306,11 +308,11 @@ TEST_P(SqlCompilerTest, compile_batch_mode_test) {
         }
 
         simple_catalog->AddDatabase(db);
-        CompilerCheck(simple_catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode, false);
+        CompilerCheck(simple_catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, false);
     }
 }
 
-TEST_P(SqlCompilerTest, compile_batch_mode_enable_window_paralled_test) {
+TEST_P(SqlCompilerTest, CompileBatchModeEnableWindowParalledTest) {
     if (boost::contains(GetParam().mode(), "batch-unsupport")) {
         LOG(INFO) << "Skip sql case: batch unsupport";
         return;
@@ -319,11 +321,6 @@ TEST_P(SqlCompilerTest, compile_batch_mode_enable_window_paralled_test) {
     std::string sqlstr = GetParam().sql_str();
     LOG(INFO) << sqlstr;
 
-    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
-    boost::to_lower(sqlstr);
-    LOG(INFO) << sqlstr;
-    std::cout << sqlstr << std::endl;
-
     hybridse::type::TableDef table_def;
     hybridse::type::TableDef table_def2;
     hybridse::type::TableDef table_def3;
@@ -370,7 +367,7 @@ TEST_P(SqlCompilerTest, compile_batch_mode_enable_window_paralled_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
-    CompilerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode, true);
+    CompilerCheck(catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, true);
 
     {
         // Check for work with simple catalog
@@ -420,7 +417,7 @@ TEST_P(SqlCompilerTest, compile_batch_mode_enable_window_paralled_test) {
         }
 
         simple_catalog->AddDatabase(db);
-        CompilerCheck(simple_catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode, true);
+        CompilerCheck(simple_catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, true);
     }
 }
 

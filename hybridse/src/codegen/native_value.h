@@ -81,6 +81,12 @@ class NativeValue {
         return v;
     }
 
+    static NativeValue CreateTuple(std::vector<NativeValue>&& args) {
+        NativeValue v(nullptr, nullptr, nullptr);
+        v.args_ = std::move(args);
+        return v;
+    }
+
     NativeValue Replace(::llvm::Value*) const;
 
     NativeValue WithFlag(::llvm::Value*) const;

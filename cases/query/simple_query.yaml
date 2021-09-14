@@ -22,7 +22,6 @@ cases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
-        index: index2:col2
     expect:
       schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp
       order: col1
@@ -42,7 +41,6 @@ cases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
-        index: index2:col2
     expect:
       schema: col0:string, id:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp
       order: id
@@ -100,7 +98,6 @@ cases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
-        index: index2:col2
     expect:
       schema: id:int32, std_ts:timestamp, inc_sec_ts:timestamp, flag:bool
       order: id
@@ -122,7 +119,6 @@ cases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
-        index: index2:col2
     expect:
       schema: id:int32, std_ts:timestamp, inc_sec_ts:timestamp, flag:bool
       order: id
@@ -165,7 +161,7 @@ cases:
       - name: t1
         schema: id:int32, int16:int16, int32:int32, int64:int64, float:float, double:double,
           ts:timestamp, dt:date, string:string
-        index: index:id
+        indexs: ["index:id"]
         data: |
           1, NULL, NULL, NULL, 1.0, 1.0, 1590115420001, 2020-05-20, x
           2, 1, 1, 1, NULL, NULL, 1590115420002, 2020-05-21, y
@@ -293,7 +289,7 @@ cases:
     inputs:
       - name: t1
         schema: col1:int32, std_ts:timestamp, std_date:date
-        index: index2:col1
+        index: index1:col1:std_ts
         data: |
           1, 1590115420001, 2020-05-20
     sql: |
@@ -335,7 +331,7 @@ cases:
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "std_date:date"]
-        index: index2:col1
+        indexs: ["index1:col1:std_ts"]
         rows:
           - [1, 1590115420001, 2020-05-20]
     sql: |
@@ -372,7 +368,7 @@ cases:
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "std_date:date"]
-        index: index2:col1
+        indexs: ["index1:col1:std_ts"]
         rows:
           - [1, 1590115420001, 2020-05-20]
     sql: |
@@ -386,7 +382,7 @@ cases:
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "std_date:date"]
-        index: index2:col1
+        indexs: ["index1:col1:std_ts"]
         rows:
           - [1, 1590115420001, 2020-05-20]
     sql: |
@@ -400,7 +396,7 @@ cases:
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "std_date:date"]
-        index: index2:col1
+        indexs: ["index1:col1:std_ts"]
         rows:
           - [1, 1590115420001, 2020-05-20]
     sql: |
@@ -414,7 +410,7 @@ cases:
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "std_date:date"]
-        index: index2:col1
+        indexs: ["index1:col1:std_ts"]
         rows:
           - [1, 1590115420001, 2020-05-20]
     sql: |
@@ -428,7 +424,7 @@ cases:
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "std_date:date"]
-        index: index2:col1
+        indexs: ["index1:col1:std_ts"]
         rows:
           - [1, 1590115420001, 2020-05-20]
     sql: |
@@ -443,7 +439,7 @@ cases:
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "std_date:date"]
-        index: index2:col1
+        indexs: ["index1:col1:std_ts"]
         rows:
           - [1, 1590115420001, 2020-05-20]
     sql: |
@@ -458,7 +454,7 @@ cases:
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "std_date:date"]
-        index: index2:col1
+        indexs: ["index1:col1:std_ts"]
         rows:
           - [1, 1590115420001, 2020-05-20]
     sql: |

@@ -529,6 +529,8 @@ class ExprListNode : public ExprNode {
     const bool IsEmpty() const { return children_.empty(); }
     const std::string GetExprString() const;
     ExprListNode *ShadowCopy(NodeManager *) const override;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 };
 
 class FnNode : public SqlNode {

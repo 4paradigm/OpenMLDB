@@ -733,6 +733,18 @@ ExprListNode* ExprListNode::ShadowCopy(NodeManager* nm) const {
     return list;
 }
 
+Status ExprListNode::InferAttr(ExprAnalysisContext* ctx) {
+    for (const auto& ele : children_) {
+        // only support constant list
+        // TODO(aceforeverd): support cast
+        CHECK_TRUE(kExprPrimary == ele->GetExprType(), common::kCodegenError,
+                   "element of expr node list must be constant")
+    }
+    SetOutputType(ctx->node_manager()->MakeTypeNode(kList));
+    SetNullable(false);
+    return Status::OK();
+}
+
 OrderByNode* OrderByNode::ShadowCopy(NodeManager* nm) const {
     return nm->MakeOrderByNode(order_expressions_);
 }
