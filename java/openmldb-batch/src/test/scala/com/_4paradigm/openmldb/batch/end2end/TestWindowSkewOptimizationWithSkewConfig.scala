@@ -53,19 +53,17 @@ class TestWindowSkewOptimizationWithSkewConfig extends SparkTestSuite {
     sess.registerTable("t1", df)
     df.createOrReplaceTempView("t1")
 
-    val partitionColName = "_PARTITION_" + sess.getOpenmldbBatchConfig.windowSkewOptPostfix
-    val greaterFlagColName = "_GREATER_FLAG_" + sess.getOpenmldbBatchConfig.windowSkewOptPostfix
-    val countColName = "_COUNT_" + sess.getOpenmldbBatchConfig.windowSkewOptPostfix
+    val partitionColName = "PARTITION_KEY" + sess.getOpenmldbBatchConfig.windowSkewOptPostfix
+    val distinctCountColName = "DISTINCT_COUNT" + sess.getOpenmldbBatchConfig.windowSkewOptPostfix
 
     // Generate skew config
     val distributionData = Seq(
-      Row("tom", 5, true, 5.toLong),
-      Row("amy", 6, true, 5.toLong))
+      Row("tom", 5, 5.toLong),
+      Row("amy", 6, 5.toLong))
     val distributionSchema = StructType(List(
       StructField(partitionColName, StringType),
-      StructField("percentile_1", IntegerType),
-      StructField(greaterFlagColName, BooleanType),
-      StructField(countColName, LongType)))
+      StructField("PERCENTILE_1", IntegerType),
+      StructField(distinctCountColName, LongType)))
     val distributionDf = spark.createDataFrame(spark.sparkContext.makeRDD(distributionData), distributionSchema)
     distributionDf.write.mode(SaveMode.Overwrite).parquet("file:///tmp/window_skew_opt_config/")
 
@@ -82,9 +80,8 @@ class TestWindowSkewOptimizationWithSkewConfig extends SparkTestSuite {
 
     // Test with SparkSQL
     val sparksqlOutputDf = sess.sparksql(sqlText)
-    // Notice that the sum column type is different for SparkSQL and SparkFE
+
+    // Notice that the sum column type is different for SparkSQL and OpenMLDB Batch
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
-
   }
-
 }

@@ -41,16 +41,17 @@ class TestSkewDataFrameUtils extends SparkTestSuite {
   val quantile = 3
   val repartitionColIndex: mutable.ArrayBuffer[Int] = mutable.ArrayBuffer(0)
   val percentileColIndex = 1
-  val partitionKeyColName = "_PARTITION_KEY_"
-  val originalPartIdColName = "_ORIGINAL_PART_ID_"
-  val partIdColName = "_PART_ID_"
-  val countColName = "_COUNT_"
+  val approxRatio = 0.05
+  val partitionKeyColName = "PARTITION_KEY"
+  val expandedRowColName = "EXPANDED_ROW"
+  val partIdColName = "PART_ID"
+  val distinctCountColName = "DISTINCT_COUNT"
 
   test("Test genDistributionDf") {
     val spark = getSparkSession
     val inputDf = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
     val resultDf = genDistributionDf(inputDf, quantile, repartitionColIndex, percentileColIndex,
-      partitionKeyColName, countColName)
+      partitionKeyColName, distinctCountColName, approxRatio)
 
     val compareData = Seq(
       Row(550, 3, 4, 3),
@@ -59,9 +60,9 @@ class TestSkewDataFrameUtils extends SparkTestSuite {
 
     val compareSchema = StructType(List(
       StructField(partitionKeyColName, IntegerType),
-      StructField("percentile_1", IntegerType),
-      StructField("percentile_2", IntegerType),
-      StructField(countColName, IntegerType)))
+      StructField("PERCENTILE_1", IntegerType),
+      StructField("PERCENTILE_2", IntegerType),
+      StructField(distinctCountColName, IntegerType)))
 
     val compareDf = spark.createDataFrame(spark.sparkContext.makeRDD(compareData), compareSchema)
 
@@ -72,24 +73,25 @@ class TestSkewDataFrameUtils extends SparkTestSuite {
     val spark = getSparkSession
     val inputDf = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
     val distributionDf = genDistributionDf(inputDf, quantile, repartitionColIndex, percentileColIndex,
-      partitionKeyColName, countColName)
+      partitionKeyColName, distinctCountColName, approxRatio)
     val resultDf = genAddColumnsDf(inputDf, distributionDf, quantile, repartitionColIndex,
-      percentileColIndex, partIdColName, originalPartIdColName, countColName)
+      percentileColIndex, partIdColName, expandedRowColName, distinctCountColName)
+    resultDf.show()
 
     val compareData = Seq(
-      Row(550, 3, 1, 1),
-      Row(550, 4, 2, 2),
-      Row(550, 5, 3, 3),
-      Row(50, 0, 1, 1),
-      Row(50, 1, 2, 2),
-      Row(50, 2, 3, 3)
+      Row(550, 3, 1, false),
+      Row(550, 4, 2, false),
+      Row(550, 5, 3, false),
+      Row(50, 0, 1, false),
+      Row(50, 1, 2, false),
+      Row(50, 2, 3, false)
     )
 
     val compareSchema = StructType(List(
       StructField("col0", IntegerType),
       StructField("col1", IntegerType),
       StructField(partIdColName, IntegerType),
-      StructField(originalPartIdColName, IntegerType)
+      StructField(expandedRowColName, BooleanType)
     ))
 
     val compareDf = spark.createDataFrame(spark.sparkContext.makeRDD(compareData), compareSchema)
@@ -101,50 +103,53 @@ class TestSkewDataFrameUtils extends SparkTestSuite {
     val spark = getSparkSession
     val inputDf = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
     val distributionDf = genDistributionDf(inputDf, quantile, repartitionColIndex, percentileColIndex,
-      partitionKeyColName, countColName)
+      partitionKeyColName, distinctCountColName, approxRatio)
     val addColumnDf = genAddColumnsDf(inputDf, distributionDf, quantile, repartitionColIndex,
-      percentileColIndex, partIdColName, originalPartIdColName, countColName)
-    val resultDf = genUnionDf(addColumnDf, quantile, partIdColName, originalPartIdColName, 0, 999, 0)
+      percentileColIndex, partIdColName, expandedRowColName, distinctCountColName)
+
+    // Do not open the optimization for expanding data
+    val resultDf = genUnionDf(addColumnDf, quantile, partIdColName, expandedRowColName, 0, 999, 0)
+
+    val compareData1 = Seq(
+      Row(50, 0, 1, false),
+      Row(50, 0, 2, true),
+      Row(50, 1, 2, false),
+      Row(50, 0, 3, true),
+      Row(50, 1, 3, true),
+      Row(50, 2, 3, false),
+      Row(550, 3, 1, false),
+      Row(550, 3, 2, true),
+      Row(550, 4, 2, false),
+      Row(550, 3, 3, true),
+      Row(550, 4, 3, true),
+      Row(550, 5, 3, false)
+    )
 
     val compareSchema = StructType(List(
       StructField("col0", IntegerType),
       StructField("col1", IntegerType),
       StructField(partIdColName, IntegerType),
-      StructField(originalPartIdColName, IntegerType)
+      StructField(expandedRowColName, BooleanType)
     ))
-
-    val compareData1 = Seq(
-      Row(50, 0, 1, 1),
-      Row(50, 0, 2, 1),
-      Row(50, 1, 2, 2),
-      Row(50, 0, 3, 1),
-      Row(50, 1, 3, 2),
-      Row(50, 2, 3, 3),
-      Row(550, 3, 1, 1),
-      Row(550, 3, 2, 1),
-      Row(550, 4, 2, 2),
-      Row(550, 3, 3, 1),
-      Row(550, 4, 3, 2),
-      Row(550, 5, 3, 3)
-    )
 
     val compareDf1 = spark.createDataFrame(spark.sparkContext.makeRDD(compareData1), compareSchema)
 
     assert(approximateDfEqual(resultDf, compareDf1, false))
 
-    val resultOptDf = genUnionDf(addColumnDf, quantile, partIdColName, originalPartIdColName, 1, 0, 3)
+    // Open the optimization for expanding data
+    val resultOptDf = genUnionDf(addColumnDf, quantile, partIdColName, expandedRowColName, 1, 0, 1)
 
     val compareData2 = Seq(
-      Row(50, 0, 1, 1),
-      Row(50, 0, 2, 1),
-      Row(50, 1, 2, 2),
-      Row(50, 1, 3, 2),
-      Row(50, 2, 3, 3),
-      Row(550, 3, 1, 1),
-      Row(550, 3, 2, 1),
-      Row(550, 4, 2, 2),
-      Row(550, 4, 3, 2),
-      Row(550, 5, 3, 3)
+      Row(50, 0, 1, false),
+      Row(50, 0, 2, true),
+      Row(50, 1, 2, false),
+      Row(50, 1, 3, true),
+      Row(50, 2, 3, false),
+      Row(550, 3, 1, false),
+      Row(550, 3, 2, true),
+      Row(550, 4, 2, false),
+      Row(550, 4, 3, true),
+      Row(550, 5, 3, false)
     )
 
     val compareDf2 = spark.createDataFrame(spark.sparkContext.makeRDD(compareData2), compareSchema)

@@ -48,9 +48,9 @@ class RowDebugger(sqlConfig: OpenmldbBatchConfig, config: WindowAggConfig, isSke
       }
       str.append(" window size = " + computer.getWindow.size())
       if (isSkew) {
-        val tag = row.getInt(config.skewTagIdx)
-        val position = row.getInt(config.skewPositionIdx)
-        logger.info(s"tag : position = $tag : $position, " +
+        val expandedFlag = row.getBoolean(config.expandedFlagIdx)
+        val partId = row.getInt(config.partIdIdx)
+        logger.info(s"expandedFlag : partId = $expandedFlag : $partId, " +
           s"threadId = ${Thread.currentThread().getId}, " +
           s" cnt = $cnt, rowInfo = ${str.toString}")
       } else {
