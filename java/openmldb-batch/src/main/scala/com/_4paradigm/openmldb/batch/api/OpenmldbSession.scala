@@ -63,6 +63,15 @@ class OpenmldbSession {
   }
 
   /**
+   * Get the config of Openmldb session.
+   *
+   * @return
+   */
+  def getOpenmldbBatchConfig: OpenmldbBatchConfig = {
+    this.config
+  }
+
+  /**
    * Get or create the Spark session.
    *
    * @return

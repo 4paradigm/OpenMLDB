@@ -143,7 +143,7 @@ object HybridseUtil {
     }
   }
 
-  def createGroupKeyComparator(keyIdxs: Array[Int], schema: StructType): (Row, Row) => Boolean = {
+  def createGroupKeyComparator(keyIdxs: Array[Int]): (Row, Row) => Boolean = {
     if (keyIdxs.length == 1) {
       val idx = keyIdxs(0)
       (row1, row2) => {

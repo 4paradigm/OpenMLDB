@@ -19,7 +19,7 @@ package com._4paradigm.openmldb.batch.end2end
 import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.utils.SparkUtil
-import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
+import org.apache.spark.sql.types.{BooleanType, IntegerType, LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.{Row, SaveMode}
 
 
@@ -53,13 +53,15 @@ class TestWindowSkewOptimizationWithSkewConfig extends SparkTestSuite {
     sess.registerTable("t1", df)
     df.createOrReplaceTempView("t1")
 
+    val partitionColName = "PARTITION_KEY" + sess.getOpenmldbBatchConfig.windowSkewOptPostfix
+
     // Generate skew config
     val distributionData = Seq(
       Row("tom", 5),
       Row("amy", 6))
     val distributionSchema = StructType(List(
-      StructField("user", StringType),
-      StructField("percentile_1", IntegerType)))
+      StructField(partitionColName, StringType),
+      StructField("PERCENTILE_1", IntegerType)))
     val distributionDf = spark.createDataFrame(spark.sparkContext.makeRDD(distributionData), distributionSchema)
     distributionDf.write.mode(SaveMode.Overwrite).parquet("file:///tmp/window_skew_opt_config/")
 
@@ -78,7 +80,5 @@ class TestWindowSkewOptimizationWithSkewConfig extends SparkTestSuite {
     val sparksqlOutputDf = sess.sparksql(sqlText)
     // Notice that the sum column type is different for SparkSQL and SparkFE
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
-
   }
-
 }
