@@ -15,6 +15,7 @@
  */
 
 #include "node/expr_node.h"
+#include <absl/strings/str_cat.h>
 #include "codec/fe_row_codec.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/type_ir_builder.h"
@@ -781,15 +782,19 @@ InExpr* InExpr::ShadowCopy(NodeManager *nm) const {
 }
 
 Status InExpr::InferAttr(ExprAnalysisContext* ctx) {
-    CHECK_TRUE(kExprList == GetInList()->GetExprType(), kTypeError, "in list must be exprlist");
+    CHECK_TRUE(kExprList == GetInList()->GetExprType(), kTypeError,
+               absl::StrCat("Un-support in_list type in In Expression, expect ExprList, but got ",
+                            ExprTypeName(GetInList()->GetExprType())));
+    bool nullable = GetLhs()->nullable();
     const auto in_list = dynamic_cast<const ExprListNode*>(GetInList());
     for (const auto& ele : in_list->children_) {
         const TypeNode* cmp_type = nullptr;
         CHECK_STATUS(
             CompareTypeAccept(ctx->node_manager(), GetLhs()->GetOutputType(), ele->GetOutputType(), &cmp_type));
+        nullable |= ele->nullable();
     }
     SetOutputType(ctx->node_manager()->MakeTypeNode(kBool));
-    SetNullable(true);
+    SetNullable(nullable);
     return Status::OK();
 }
 

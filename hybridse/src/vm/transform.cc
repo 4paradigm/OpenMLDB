@@ -36,7 +36,6 @@
 #include "passes/physical/limit_optimized.h"
 #include "passes/physical/simple_project_optimized.h"
 #include "passes/physical/window_column_pruning.h"
-#include "passes/resolve_fn_and_attrs.h"
 
 using ::hybridse::base::Status;
 using ::hybridse::common::kPlanError;

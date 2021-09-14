@@ -356,3 +356,69 @@ cases:
           |      +-table: t1
           |      +-alias: <nil>
           +-window_list: []
+  - id: in_predicate_subquery
+    desc: test_expr in subquery
+    sql: select col1 not in (select col2 from t2) as colk from t1;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[in]
+          |      |    +-is_not: true
+          |      |    +-lhs:
+          |      |    |  +-expr[column ref]
+          |      |    |    +-relation_name: <nil>
+          |      |    |    +-column_name: col1
+          |      |    +-query:
+          |      |      +-expr[query]
+          |      |        +-query:
+          |      |          +-node[kQuery]: kQuerySelect
+          |      |            +-distinct_opt: false
+          |      |            +-where_expr: null
+          |      |            +-group_expr_list: null
+          |      |            +-having_expr: null
+          |      |            +-order_expr_list: null
+          |      |            +-limit: null
+          |      |            +-select_list[list]:
+          |      |            |  +-0:
+          |      |            |    +-node[kResTarget]
+          |      |            |      +-val:
+          |      |            |      |  +-expr[column ref]
+          |      |            |      |    +-relation_name: <nil>
+          |      |            |      |    +-column_name: col2
+          |      |            |      +-name: <nil>
+          |      |            +-tableref_list[list]:
+          |      |            |  +-0:
+          |      |            |    +-node[kTableRef]: kTable
+          |      |            |      +-table: t2
+          |      |            |      +-alias: <nil>
+          |      |            +-window_list: []
+          |      +-name: colk
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
+
+  - id: in_predicate_unnest_unsupport
+    desc: unnest expression in in list is not supported
+    sql: |
+      select 1 IN UNNEST([1, 2, 3])
+    expect:
+      success: false
+
+  - id: in_predicate_fail
+    desc: error with empty in list
+    sql: select 'a' in () from t1;
+    expect:
+      success: false
