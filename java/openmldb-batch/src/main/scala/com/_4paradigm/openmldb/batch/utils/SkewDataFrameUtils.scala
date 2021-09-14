@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.batch.utils
 
 import com._4paradigm.openmldb.batch.udf.PercentileApprox.percentileApprox
-import org.apache.spark.sql.functions.{count, countDistinct, lit, when}
+import org.apache.spark.sql.functions.{approx_count_distinct, lit, when}
 import org.apache.spark.sql.{Column, DataFrame}
 
 import scala.collection.mutable
@@ -38,7 +38,7 @@ object SkewDataFrameUtils {
       columns += percentileApprox(percentileCol, lit(ratio)).as(s"percentile_${i}")
     }
 
-    columns += count(percentileCol).as(countColName)
+    columns += approx_count_distinct(percentileCol).as(countColName)
 
     inputDf.groupBy(groupByCol.as(partitionColName)).agg(columns.head, columns.tail: _*)
   }

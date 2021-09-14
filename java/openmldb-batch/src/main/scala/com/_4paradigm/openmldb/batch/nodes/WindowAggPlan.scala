@@ -166,10 +166,6 @@ object WindowAggPlan {
         orderByColIndex, partitionKeyColName, countColName)
       logger.info("Generate distribution dataframe")
 
-      if (ctx.getConf.windowSkewOptCache) {
-        distributionDf.cache()
-      }
-
       distributionDf
     } else {
       // Use skew config
@@ -185,7 +181,7 @@ object WindowAggPlan {
       val count = row.getLong(0)
       minCount = math.min(minCount, count)
     }
-    val minBlockSize = minCount / quantile
+    val minBlockSize = (minCount * 0.9 / quantile).toInt
 
     // 2. Add "part" column and "expand" column by joining the distribution table
     val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
