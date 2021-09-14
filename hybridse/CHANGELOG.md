@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+### Feature
+- Support aggregation function, e.g. `COUNT`, `SUM`, `MIN`, `MAX`, `AVG`, over the whole table [#219](https://github.com/4paradigm/OpenMLDB/issues/219)
+- Enhance plan optimization on `GROUP` and `FILTER` op [#350](https://github.com/4paradigm/OpenMLDB/pull/350)
 
 ## [0.2.3] - 2021-08-31
 ### Feature

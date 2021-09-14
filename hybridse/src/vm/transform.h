@@ -135,7 +135,8 @@ class BatchModeTransformer {
     Status GenSort(Sort* sort, const SchemasContext* schemas_ctx);
     Status GenRange(Range* sort, const SchemasContext* schemas_ctx);
 
-    bool isSourceFromTableProvider(PhysicalOpNode* physical_plan);
+    bool isSourceFromTableOrPartition(PhysicalOpNode* in);
+    bool isSourceFromTable(PhysicalOpNode* in);
     Status ValidateTableProvider(PhysicalOpNode* physical_plan);
     Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
     std::string ExtractSchameName(PhysicalOpNode* physical_plan);
@@ -146,7 +147,7 @@ class BatchModeTransformer {
     Status ValidateRequestJoinIndexOptimization(const Join& join,
                                                 PhysicalOpNode* in);
     Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
-
+    Status ValidateNotAggregationOverTable(PhysicalOpNode* physical_plan);
     PhysicalPlanContext* GetPlanContext() { return &plan_ctx_; }
 
  protected:
@@ -275,8 +276,7 @@ class RequestModeTransformer : public BatchModeTransformer {
                                           PhysicalOpNode** output);
     virtual Status TransformJoinOp(const node::JoinPlanNode* node,
                                    PhysicalOpNode** output);
-    virtual Status TransformScanOp(const node::TablePlanNode* node,
-                                   PhysicalOpNode** output);
+    virtual Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output);
 
  private:
     bool enable_batch_request_opt_;

@@ -126,7 +126,14 @@ bool UdfLibrary::IsUdaf(const std::string& name, size_t args) const {
     auto& arg_num_set = iter->second->udaf_arg_nums;
     return arg_num_set.find(args) != arg_num_set.end();
 }
-
+bool UdfLibrary::IsUdaf(const std::string& name) const {
+    std::string canonical_name = GetCanonicalName(name);
+    auto iter = table_.find(canonical_name);
+    if (iter == table_.end()) {
+        return false;
+    }
+    return !iter->second->udaf_arg_nums.empty();
+}
 void UdfLibrary::SetIsUdaf(const std::string& name, size_t args) {
     std::string canonical_name = GetCanonicalName(name);
     auto iter = table_.find(canonical_name);

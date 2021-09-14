@@ -37,7 +37,6 @@ void InitFunctionLet(const std::string& sql, node::ExprAnalysisContext* ctx,
     node::PlanNodeList trees;
     ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, trees, ctx->node_manager(), status)) << status;
     ASSERT_EQ(1u, trees.size());
-
     auto query_plan = dynamic_cast<node::QueryPlanNode*>(trees[0]);
     ASSERT_TRUE(query_plan != nullptr);
 
