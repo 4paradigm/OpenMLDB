@@ -83,6 +83,7 @@ sh test/steps/modify_suite_pom.sh "${CASE_XML}" "${DEPLOY_MODE}" "${FEDB_SDK_VER
 # install command tool
 cd test/test-tool/command-tool || exit
 mvn clean install -Dmaven.test.skip=true
+cd "${ROOT_DIR}" || exit
 # install jar
 cd test/integration-test/openmldb-test-java || exit
 mvn clean install -Dmaven.test.skip=true
