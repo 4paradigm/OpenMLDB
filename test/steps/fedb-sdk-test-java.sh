@@ -65,11 +65,11 @@ echo "CASE_LEVEL:${CASE_LEVEL}"
 ROOT_DIR=$(pwd)
 # 安装wget
 yum install -y wget
-yum install -y  net-tools
+yum install -y net-tools
 ulimit -c unlimited
 echo "ROOT_DIR:${ROOT_DIR}"
-source steps/read_properties.sh
-sh steps/download-case.sh "${CASE_BRANCH}"
+source test/steps/read_properties.sh
+#sh test/steps/download-case.sh "${CASE_BRANCH}"
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
     sh steps/build-fedb.sh
@@ -79,11 +79,14 @@ echo "FEDB_SDK_VERSION:${FEDB_SDK_VERSION}"
 echo "FEDB_SERVER_VERSION:${FEDB_SERVER_VERSION}"
 echo "FEDB_VERSIONS:${FEDB_VERSIONS}"
 # modify config
-sh steps/modify_suite_pom.sh "${CASE_XML}" "${DEPLOY_MODE}" "${FEDB_SDK_VERSION}" "${BUILD_MODE}" "${FEDB_SERVER_VERSION}"
+sh test/steps/modify_suite_pom.sh "${CASE_XML}" "${DEPLOY_MODE}" "${FEDB_SDK_VERSION}" "${BUILD_MODE}" "${FEDB_SERVER_VERSION}"
+# install command tool
+cd test/test-tool/command-tool || exit
+mvn clean install -Dmaven.test.skip=true
 # install jar
-cd java/hybridsql-test || exit
+cd test/integration-test/openmldb-test-java || exit
 mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # run case
-cd "${ROOT_DIR}"/java/hybridsql-test/fedb-sdk-test/ || exit
+cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
 mvn clean test -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}" -DfedbVersion="${FEDB_VERSIONS}"
