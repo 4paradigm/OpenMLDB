@@ -439,7 +439,7 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
         dynamic_cast<hybridse::node::ProjectListNode*>(
             node->project_list_vec_[0]);
     auto project_list = node_manager_->MakeProjectListPlanNode(
-        first_project_list->w_ptr_, first_project_list->is_window_agg_);
+        first_project_list->w_ptr_, first_project_list->has_agg_project_);
     uint32_t pos = 0;
     for (auto iter = node->pos_mapping_.cbegin();
          iter != node->pos_mapping_.cend(); iter++) {
@@ -1093,7 +1093,8 @@ base::Status BatchModeTransformer::ExtractGroupKeys(vm::PhysicalOpNode* depend, 
         CHECK_STATUS(ExtractGroupKeys(depend->GetProducer(0), keys))
         return base::Status::OK();
     }
-    CHECK_TRUE(depend->GetOpType() == kPhysicalOpGroupBy, kPlanError, "Fail to extract group keys from op ", vm::PhysicalOpTypeName(depend->GetOpType()))
+    CHECK_TRUE(depend->GetOpType() == kPhysicalOpGroupBy, kPlanError, "Fail to extract group keys from op ",
+               vm::PhysicalOpTypeName(depend->GetOpType()))
     *keys = dynamic_cast<PhysicalGroupNode*>(depend)->group().keys_;
     return base::Status::OK();
 }
@@ -1112,12 +1113,19 @@ Status BatchModeTransformer::TransformProjectOp(
             return CreatePhysicalProjectNode(
                 kGroupAggregation, depend, project_list, append_input, output);
         case kSchemaTypeTable:
-            if (project_list->is_window_agg_) {
-                CHECK_STATUS(
-                    CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
-                return CreatePhysicalProjectNode(kWindowAggregation, depend,
-                                                 project_list, append_input,
-                                                 output);
+            if (project_list->HasAggProject()) {
+                if (project_list->IsWindowProject()) {
+                    CHECK_STATUS(
+                        CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
+                    return CreatePhysicalProjectNode(kWindowAggregation, depend,
+                                                     project_list, append_input,
+                                                     output);
+                } else {
+                    return CreatePhysicalProjectNode(kAggregation, depend,
+                                                     project_list, append_input,
+                                                     output);
+                }
+
             } else {
                 return CreatePhysicalProjectNode(
                     kTableProject, depend, project_list, append_input, output);
@@ -1214,14 +1222,14 @@ std::string BatchModeTransformer::ExtractSchameName(PhysicalOpNode* in) {
     }
     return "";
 }
-bool BatchModeTransformer::isSourceFromTableProvider(PhysicalOpNode* in) {
+bool BatchModeTransformer::isSourceFromTableOrPartition(PhysicalOpNode* in) {
     if (nullptr == in) {
         LOG(WARNING) << "Invalid physical node: null";
         return false;
     }
     if (kPhysicalOpSimpleProject == in->GetOpType() ||
         kPhysicalOpRename == in->GetOpType()) {
-        return isSourceFromTableProvider(in->GetProducer(0));
+        return isSourceFromTableOrPartition(in->GetProducer(0));
     } else if (kPhysicalOpDataProvider == in->GetOpType()) {
         return kProviderTypePartition ==
                    dynamic_cast<PhysicalDataProviderNode*>(in)
@@ -1231,9 +1239,23 @@ bool BatchModeTransformer::isSourceFromTableProvider(PhysicalOpNode* in) {
     }
     return false;
 }
+bool BatchModeTransformer::isSourceFromTable(PhysicalOpNode* in) {
+    if (nullptr == in) {
+        LOG(WARNING) << "Invalid physical node: null";
+        return false;
+    }
+    if (kPhysicalOpSimpleProject == in->GetOpType() ||
+        kPhysicalOpRename == in->GetOpType()) {
+        return isSourceFromTableOrPartition(in->GetProducer(0));
+    } else if (kPhysicalOpDataProvider == in->GetOpType()) {
+        return kProviderTypeTable ==
+               dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_;
+    }
+    return false;
+}
 Status BatchModeTransformer::ValidateTableProvider(PhysicalOpNode* in) {
     CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
-    CHECK_TRUE(isSourceFromTableProvider(in), kPlanError,
+    CHECK_TRUE(isSourceFromTableOrPartition(in), kPlanError,
                "Isn't table/partition provider")
     return Status::OK();
 }
@@ -1306,8 +1328,9 @@ Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
     if (performance_sensitive_mode_) {
         CHECK_STATUS(ValidateIndexOptimization(node),
                      "Fail to support physical plan in "
-                     "performance sensitive mode: \n",
-                     node->GetTreeString());
+                     "performance sensitive mode");
+        CHECK_STATUS(ValidateNotAggregationOverTable(node),
+                     "Fail to support aggregation over table in performance sensitive mode")
     }
     return Status::OK();
 }
@@ -1319,6 +1342,27 @@ Status RequestModeTransformer::ValidatePlan(PhysicalOpNode* node) {
     PhysicalOpNode* primary_source = nullptr;
     CHECK_STATUS(ValidatePrimaryPath(node, &primary_source),
                  "Fail to validate physical plan")
+    return Status::OK();
+}
+Status BatchModeTransformer::ValidateNotAggregationOverTable(PhysicalOpNode* in) {
+    CHECK_TRUE(nullptr != in, kPlanError, "Null physical node")
+    switch (in->GetOpType()) {
+        case kPhysicalOpProject: {
+            auto project_op = dynamic_cast<PhysicalProjectNode*>(in);
+            CHECK_TRUE(in->GetProducerCnt() > 0, kPlanError, "Invalid Project Op with no producers")
+            if (kAggregation == project_op->project_type_) {
+               CHECK_TRUE(!isSourceFromTable(in->GetProducer(0)), kPlanError,
+                           "Aggregation over a table source")
+            }
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+    for (uint32_t i = 0; i < in->GetProducerCnt(); i++) {
+        CHECK_STATUS(ValidateNotAggregationOverTable(in->GetProducer(i)));
+    }
     return Status::OK();
 }
 Status BatchModeTransformer::ValidateIndexOptimization(PhysicalOpNode* in) {
@@ -1878,7 +1922,7 @@ Status RequestModeTransformer::ValidatePrimaryPath(
             // binary_node
             //    + Left - PrimarySource
             //    + Right - TableProvider
-            if (isSourceFromTableProvider(node->GetProducer(1))) {
+            if (isSourceFromTableOrPartition(node->GetProducer(1))) {
                 *primary_source = left_primary_source;
                 return Status::OK();
             }
@@ -1926,6 +1970,7 @@ Status RequestModeTransformer::TransformProjectOp(
     }
     switch (new_depend->GetOutputType()) {
         case kSchemaTypeRow:
+            CHECK_TRUE(!project_list->has_agg_project_, kPlanError, "Non-support aggregation project on request row")
             return CreatePhysicalProjectNode(
                 kRowProject, new_depend, project_list, append_input, output);
         case kSchemaTypeGroup:
@@ -1933,7 +1978,7 @@ Status RequestModeTransformer::TransformProjectOp(
                                              project_list, append_input,
                                              output);
         case kSchemaTypeTable:
-            if (project_list->is_window_agg_) {
+            if (project_list->has_agg_project_) {
                 return CreatePhysicalProjectNode(kAggregation, new_depend,
                                                  project_list, append_input,
                                                  output);

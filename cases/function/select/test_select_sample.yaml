@@ -265,3 +265,28 @@ cases:
       columns: ["_c1 int", "_c2_sec bigint"]
       rows:
         - [1, 1590115420]
+  - id: 19
+    desc: 全表聚合
+    mode: rtidb-unsupport
+    db: db1
+    sqlDialect: ["HybridSQL", "MYSQL"]
+    sql: |
+      SELECT SUM(col1) as sum_col1, COUNT(col1) as cnt_col1, MAX(col1) as max_col1, 
+      MIN(col1) as min_col1, AVG(col1) as avg_col1 FROM {0};
+    inputs:
+      - columns: ["col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64", "col6 string"]
+        indexs: ["index1:col2:col5"]
+        rows: 
+          - [0, 1, 5, 1.1, 11.1, 1, 1]
+          - [0, 2, 5, 2.2, 22.2, 2, 22]
+          - [1, 3, 55, 3.3, 33.3, 1, 333]
+          - [1, 4, 55, 4.4, 44.4, 2, 4444]
+          - [2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+    batch_plan: |
+      PROJECT(type=Aggregation)
+        DATA_PROVIDER(table=auto_t0)
+    expect:
+      columns: ["sum_col1 int32", "cnt_col1 int64", "max_col1 int32", "min_col1 int32", "avg_col1 double"]
+      order: sum_col1
+      rows: 
+        - [15, 5, 5, 1, 3]

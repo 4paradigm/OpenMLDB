@@ -99,14 +99,6 @@ INSTANTIATE_TEST_SUITE_P(SqlSimpleQueryParse, TransformRequestModeTest,
 INSTANTIATE_TEST_SUITE_P(SqlWindowQueryParse, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
-// INSTANTIATE_TEST_SUITE_P(
-//    SqlWherePlan, TransformRequestModeTest,
-//    testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
-
-// INSTANTIATE_TEST_SUITE_P(
-//   SqlGroupPlan, TransformRequestModeTest,
-//    testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
-
 INSTANTIATE_TEST_SUITE_P(SqlHavingPlan, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
 

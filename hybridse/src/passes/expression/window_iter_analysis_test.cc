@@ -32,12 +32,12 @@ TEST_F(WindowIterAnalysisTest, Test) {
         {"0", 0},
         {"col_0", 0},
         {"col_1 * col_2", 0},
-        {"sum(col_0 + 1)", 1},
-        {"sum(col_0 + sum(col_1))", 2},
-        {"sum(col_0 + sum(col_1 + sum(col_2)))", 3},
-        {"lag(col_0, 1)", 1},
-        {"lag(col_0, min(col_0))", 1},
-        {"count(fz_window_split(cast(col_0 as string), \",\"))", 1},
+        {"sum(col_0 + 1) over w1", 1},
+        {"sum(col_0 + sum(col_1)) over w1", 2},
+        {"sum(col_0 + sum(col_1 + sum(col_2))) over w1", 3},
+        {"lag(col_0, 1) over w1", 1},
+        {"lag(col_0, min(col_0)) over w1", 1},
+        {"count(fz_window_split(cast(col_0 as string), \",\")) over w1 ", 1},
     };
 
     std::string sql = "select \n";
@@ -47,7 +47,9 @@ TEST_F(WindowIterAnalysisTest, Test) {
             sql.append(",\n");
         }
     }
-    sql.append("from t1;");
+    sql.append(
+        "from t1 window w1 as (partition by col_1 order by col_3 rows between "
+        "3 preceding and current row);");
 
     node::LambdaNode* function_let = nullptr;
     InitFunctionLet(sql, &function_let);

@@ -97,6 +97,7 @@ class UdfLibrary {
         const std::string& name) const;
 
     bool IsUdaf(const std::string& name, size_t args) const;
+    bool IsUdaf(const std::string& name) const;
     void SetIsUdaf(const std::string& name, size_t args);
 
     bool RequireListAt(const std::string& name, size_t index) const;
