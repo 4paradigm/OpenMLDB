@@ -25,7 +25,7 @@ import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types.{LongType, StructType}
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.{DataFrame, Row, functions}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
 
@@ -185,12 +185,8 @@ object WindowAggPlan {
     }
 
     val minBlockSize = if (!ctx.getConf.enableWindowSkewExpandedAllOpt) {
-      var approxMinCount = Long.MaxValue
-      val rows = distributionDf.select(distinctCountColName).collect()
-      for (row <- rows) {
-        val count = row.getLong(0)
-        approxMinCount = math.min(approxMinCount, count)
-      }
+      val approxMinCount = distributionDf.select(functions.min(distinctCountColName)).collect()(0).getLong(0)
+
       // The Count column is useless
       distributionDf = distributionDf.drop(distinctCountColName)
 
