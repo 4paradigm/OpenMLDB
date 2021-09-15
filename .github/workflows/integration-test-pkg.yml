@@ -2,10 +2,12 @@ name: integration-test-pkg
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
+  HYBRIDSE_SOURCE:
 
 jobs:
   java-sdk-test:
