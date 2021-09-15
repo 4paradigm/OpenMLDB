@@ -410,16 +410,3 @@ cases:
           |      +-table: t1
           |      +-alias: <nil>
           +-window_list: []
-
-  - id: in_predicate_unnest_unsupport
-    desc: unnest expression in in list is not supported
-    sql: |
-      select 1 IN UNNEST([1, 2, 3])
-    expect:
-      success: false
-
-  - id: in_predicate_fail
-    desc: error with empty in list
-    sql: select 'a' in () from t1;
-    expect:
-      success: false

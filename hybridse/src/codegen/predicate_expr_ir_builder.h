@@ -75,9 +75,6 @@ class PredicateIRBuilder {
                             ::llvm::Value* right, ::llvm::Value** output,
                             Status& status);  // NOLINT
 
-    Status BuildIsNullExpr(::llvm::BasicBlock*, NativeValue input,
-                           NativeValue* output);
-
  private:
     static bool IsAcceptType(::llvm::Type* type);
     static Status CompareTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
