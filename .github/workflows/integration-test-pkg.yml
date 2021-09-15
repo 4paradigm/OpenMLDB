@@ -1,4 +1,4 @@
-name: integration-test-pkg
+name: INTEGRATION-TEST-PKG
 
 on:
 #  push:
@@ -10,7 +10,7 @@ env:
   HYBRIDSE_SOURCE:
 
 jobs:
-  java-sdk-test:
+  java-sdk-test-standalone:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: test
-        run: source /root/.bashrc && bash test/steps/fedb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "0"
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "0"
       - name: upload unit test results
         if: always()
         uses: actions/upload-artifact@v2
@@ -33,7 +33,7 @@ jobs:
 
   publish-test-results:
     runs-on: ubuntu-latest
-    needs: [ "java-sdk-test" ]
+    needs: [ "ava-sdk-test-standalone" ]
 
     # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
     if: >
@@ -44,7 +44,7 @@ jobs:
       - name: Download Artifacts
         uses: actions/download-artifact@v2
 
-      - name: Publish Linux UT Results
+      - name: Java SDK PKG Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: sdk-test-*/**/*.xml

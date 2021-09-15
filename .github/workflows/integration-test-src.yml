@@ -1,4 +1,4 @@
-name: integration-test-pkg
+name: INTEGRATION-TEST-SRC
 
 on:
   push:
@@ -10,7 +10,7 @@ env:
   HYBRIDSE_SOURCE:
 
 jobs:
-  java-sdk-test:
+  java-sdk-test-standalone:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
@@ -25,35 +25,35 @@ jobs:
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
           ls -al build/bin/
           sh test/steps/build-java-sdk.sh
-#      - name: test
-#        run: source /root/.bashrc && bash test/steps/fedb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "0"
-#      - name: upload unit test results
-#        if: always()
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: sdk-test-java-standalone-${{ github.sha }}
-#          path: |
-#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
-#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
-#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d standalone -l "0"
+      - name: upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: sdk-test-java-standalone-${{ github.sha }}
+          path: |
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
 
-#  publish-test-results:
-#    runs-on: ubuntu-latest
-#    needs: [ "java-sdk-test" ]
-#
-#    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
-#    if: >
-#      always() && github.event_name == 'push' || (
-#      github.event.pull_request.head.repo.full_name == github.repository &&
-#      github.event.sender.login != 'dependabot[bot]' )
-#    steps:
-#      - name: Download Artifacts
-#        uses: actions/download-artifact@v2
-#
-#      - name: Publish Linux UT Results
-#        uses: EnricoMi/publish-unit-test-result-action@v1
-#        with:
-#          files: sdk-test-*/**/*.xml
-#          check_name: SDK Test Report
-#          comment_title: SDK Test Report
+  publish-test-results:
+    runs-on: ubuntu-latest
+    needs: [ "java-sdk-test-standalone" ]
+
+    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
+    if: >
+      always() && github.event_name == 'push' || (
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.sender.login != 'dependabot[bot]' )
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Java SDK SRC Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: sdk-test-*/**/*.xml
+          check_name: SDK Test Report
+          comment_title: SDK Test Report

@@ -28,7 +28,7 @@ cd test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
 sed -i "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${FEDB_SERVER_VERSION}\"/>#"  test_suite/"${CASE_XML}"
 sed -i "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\"${DEPLOY_MODE}\"/>#"  test_suite/"${CASE_XML}"
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
-    sed -i "s#<parameter name=\"fedbPath\" value=\".*\"/>#<parameter name=\"fedbPath\" value=\"${ROOT_DIR}/OpenMLDB/build/bin/openmldb\"/>#" test_suite/"${CASE_XML}"
+    sed -i "s#<parameter name=\"fedbPath\" value=\".*\"/>#<parameter name=\"fedbPath\" value=\"${ROOT_DIR}/build/bin/openmldb\"/>#" test_suite/"${CASE_XML}"
 fi
 # modify pom
 sed -i "s#<openmldb.version>.*</openmldb.version>#<openmldb.version>${FEDB_SDK_VERSION}</openmldb.version>#" pom.xml

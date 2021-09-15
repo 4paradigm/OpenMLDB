@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-#bash fedb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l 0
+#bash openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l 0
 #-b SRC表示从源码进行编译，会从github上下载代码然后进行编译，PKG表示直接从github上下载压缩包部署
 #-c 执行的suite_xml,决定了跑哪些case
 #-d 部署模式，有cluster和standalone两种，默认cluster

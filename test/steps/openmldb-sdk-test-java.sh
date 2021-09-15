@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-#bash fedb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l 0
+#bash openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l 0
 #-b SRC表示从源码进行编译，会从github上下载代码然后进行编译，PKG表示直接从github上下载压缩包部署
 #-c 执行的suite_xml,决定了跑哪些case
 #-d 部署模式，有cluster和standalone两种，默认cluster
@@ -72,8 +72,7 @@ source test/steps/read_properties.sh
 #sh test/steps/download-case.sh "${CASE_BRANCH}"
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
-    sh steps/build-fedb.sh
-    FEDB_SDK_VERSION=$(more OpenMLDB/src/sdk/java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
+    FEDB_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
 fi
 echo "FEDB_SDK_VERSION:${FEDB_SDK_VERSION}"
 echo "FEDB_SERVER_VERSION:${FEDB_SERVER_VERSION}"

@@ -15,6 +15,6 @@
 # limitations under the License.
 
 ROOT_DIR=$(pwd)
-cd src/sdk/java || exit
+cd java || exit
 mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
