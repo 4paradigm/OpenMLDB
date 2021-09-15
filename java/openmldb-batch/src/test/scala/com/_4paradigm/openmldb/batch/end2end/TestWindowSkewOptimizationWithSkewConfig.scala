@@ -54,16 +54,14 @@ class TestWindowSkewOptimizationWithSkewConfig extends SparkTestSuite {
     df.createOrReplaceTempView("t1")
 
     val partitionColName = "PARTITION_KEY" + sess.getOpenmldbBatchConfig.windowSkewOptPostfix
-    val distinctCountColName = "DISTINCT_COUNT" + sess.getOpenmldbBatchConfig.windowSkewOptPostfix
 
     // Generate skew config
     val distributionData = Seq(
-      Row("tom", 5, 5.toLong),
-      Row("amy", 6, 5.toLong))
+      Row("tom", 5),
+      Row("amy", 6))
     val distributionSchema = StructType(List(
       StructField(partitionColName, StringType),
-      StructField("PERCENTILE_1", IntegerType),
-      StructField(distinctCountColName, LongType)))
+      StructField("PERCENTILE_1", IntegerType)))
     val distributionDf = spark.createDataFrame(spark.sparkContext.makeRDD(distributionData), distributionSchema)
     distributionDf.write.mode(SaveMode.Overwrite).parquet("file:///tmp/window_skew_opt_config/")
 

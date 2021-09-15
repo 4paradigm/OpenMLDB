@@ -145,7 +145,7 @@ object WindowAggPlan {
       inputDf.cache()
     }
 
-    // Get repartition keys and orderby key
+    // Get repartition keys and orderBy key
     // TODO: Support multiple repartition keys and orderby keys
     val repartitionColIndexes = PhysicalNodeUtil.getRepartitionColumnIndexes(windowAggNode, inputDf)
     val orderByColIndex = PhysicalNodeUtil.getOrderbyColumnIndex(windowAggNode, inputDf)
@@ -159,12 +159,17 @@ object WindowAggPlan {
     val approxRatio = 0.05
 
     // 1. Analyze the data distribution
-    val distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
+    var distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
       // Do not use skew config
       val partitionKeyColName = "PARTITION_KEY" + uniqueNamePostfix
 
-      val distributionDf = SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
-        orderByColIndex, partitionKeyColName, distinctCountColName, approxRatio)
+      val distributionDf = if (!ctx.getConf.enableWindowSkewExpandedAllOpt) {
+        SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
+          orderByColIndex, partitionKeyColName, distinctCountColName, approxRatio)
+      } else {
+        SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
+          orderByColIndex, partitionKeyColName)
+      }
       logger.info("Generate distribution dataframe")
 
       if (ctx.getConf.windowSkewOptCache) {
@@ -180,19 +185,25 @@ object WindowAggPlan {
       distributionDf
     }
 
-    var approxMinCount = Long.MaxValue
-    val rows = distributionDf.select(distinctCountColName).collect()
-    for (row <- rows) {
-      val count = row.getLong(0)
-      approxMinCount = math.min(approxMinCount, count)
-    }
-    val minCount = approxMinCount / (1 + approxRatio)
+    val minBlockSize = if (!ctx.getConf.enableWindowSkewExpandedAllOpt) {
+      var approxMinCount = Long.MaxValue
+      val rows = distributionDf.select(distinctCountColName).collect()
+      for (row <- rows) {
+        val count = row.getLong(0)
+        approxMinCount = math.min(approxMinCount, count)
+      }
+      // The Count column is useless
+      distributionDf = distributionDf.drop(distinctCountColName)
 
-    val minBlockSize = math.floor(minCount / quantile)
+      val minCount = approxMinCount / (1 + approxRatio)
+      math.floor(minCount / quantile)
+    } else {
+      -1
+    }
 
     // 2. Add "part" column and "expand" column by joining the distribution table
     val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-      repartitionColIndexes, orderByColIndex, partIdColName, expandedRowColName, distinctCountColName)
+      repartitionColIndexes, orderByColIndex, partIdColName, expandedRowColName)
     logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {
@@ -204,8 +215,13 @@ object WindowAggPlan {
     windowAggConfig.partIdIdx = addColumnsDf.schema.fieldNames.length - 2
 
     // 3. Expand the table data by union
-    val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, expandedRowColName,
-      windowAggConfig.rowPreceding, windowAggConfig.startOffset, minBlockSize)
+    val unionDf = if (!ctx.getConf.enableWindowSkewExpandedAllOpt && windowAggConfig.startOffset == 0) {
+      // The Optimization for computing rows
+      SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, expandedRowColName,
+        windowAggConfig.rowPreceding, minBlockSize)
+    } else {
+      SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, expandedRowColName)
+    }
     logger.info("Generate union dataframe")
 
     // 4. Repartition and order by
@@ -222,7 +238,7 @@ object WindowAggPlan {
     val sortedByCols = repartitionCols ++ sortedByCol
 
     val sortedDf = repartitionDf.sortWithinPartitions(sortedByCols: _*)
-    logger.info("Generate repartition and orderby dataframe")
+    logger.info("Generate repartition and orderBy dataframe")
 
     sortedDf
   }
