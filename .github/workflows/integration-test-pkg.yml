@@ -1,8 +1,6 @@
 name: integration-test-pkg
 
 on:
-  push:
-  pull_request:
   workflow_dispatch:
     inputs:
       version:
@@ -28,7 +26,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: java-sdk-test-standalone-${{ github.sha }}
+          name: sdk-test-java-standalone-${{ github.sha }}
           path: |
             test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
             test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
@@ -51,6 +49,6 @@ jobs:
       - name: Publish Linux UT Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
-          files: linux-ut-result-*/**/*.xml
-          check_name: Linux Test Report
-          comment_title: Linux Test Report
+          files: sdk-test-*/**/*.xml
+          check_name: SDK Test Report
+          comment_title: SDK Test Report
