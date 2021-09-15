@@ -18,18 +18,17 @@ package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
 import com._4paradigm.openmldb.batch.utils.{
-  AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SkewDataFrameUtils, SparkColumnUtil, SparkUtil
+  AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SkewDataFrameUtils, SparkUtil
 }
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types.{LongType, StructType}
-import org.apache.spark.sql.{Column, DataFrame, Row}
+import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
 
-import scala.collection.mutable
 
 /** The planner which implements window agg physical node.
  *
