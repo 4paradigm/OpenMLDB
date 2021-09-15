@@ -84,8 +84,10 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SQLSDKTest);
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreate, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/ddl/test_create.yaml")));
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestTest, SQLSDKTest,
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestInsert, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/dml/test_insert.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestMultiRowsInsert, SQLSDKTest,
+                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/dml/multi_insert.yaml")));
 
 class SQLSDKQueryTest : public SQLSDKTest {
  public:
@@ -306,7 +308,7 @@ void SQLSDKTest::InsertTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
             DLOG(INFO) << insert;
             if (!insert.empty()) {
                 for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
-                    ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
+                    ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status)) << status.msg;
                     ASSERT_TRUE(router->RefreshCatalog());
                 }
             }
