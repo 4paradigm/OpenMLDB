@@ -1,12 +1,8 @@
 name: integration-test-pkg
 
 on:
+  push:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'openmldb version'
-        required: true
-        default: '0.2.3'
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
