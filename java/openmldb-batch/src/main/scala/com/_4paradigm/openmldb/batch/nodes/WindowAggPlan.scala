@@ -194,7 +194,7 @@ object WindowAggPlan {
       // The Count column is useless
       distributionDf = distributionDf.drop(distinctCountColName)
 
-      val minCount = approxMinCount / (1 + approxRatio)
+      val minCount = math.floor(approxMinCount / (1 + approxRatio))
       math.floor(minCount / quantile)
     } else {
       -1
