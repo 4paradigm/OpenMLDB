@@ -2,6 +2,11 @@ name: integration-test-pkg
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'openmldb version'
+        required: true
+        default: '0.2.3'
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
@@ -15,38 +20,15 @@ jobs:
       OS: linux
     steps:
       - uses: actions/checkout@v1
-      - name: build
-        run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
-          rm -rf thirdparty
-
-      - name: pack OpenMLDB
-        if: ${{ github.event_name == 'push' }}
-        run: |
-          VERSION="snapshot"
-          if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=$(echo $VERSION | sed -e 's/^v//')
-          fi
-          bash steps/package_openmldb.sh $VERSION ${{ env.OS }}
-
-      - name: upload artifacts
-        if: ${{ github.event_name == 'push' }}
-        uses: actions/upload-artifact@v2
-        with:
-          path: openmldb-*.tar.gz
-          name: release-artifacts
-
-      - name: run cpp
-        run: |
-          bash steps/ut.sh
-
+      - name: test
+        run: source /root/.bashrc && bash test/steps/fedb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "0"
       - name: upload unit test results
         if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: linux-ut-result-cpp-${{ github.sha }}
+          name: java-sdk-test-standalone-${{ github.sha }}
           path: |
-            reports/*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
