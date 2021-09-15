@@ -372,7 +372,7 @@ void HandleSqlScript(const std::string &script,
                 return;
             }
             default: {
-                status.msg = "Fail to execute script with unSuppurt type" + hybridse::node::PlanType(node->GetType());
+                status.msg = "Fail to execute script with unSuppurt type" + node->GetTypeName();
                 status.code = hybridse::common::kUnSupport;
                 return;
             }
