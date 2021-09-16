@@ -110,7 +110,6 @@ struct Status {
     inline bool isRunning() const { return code == common::kRunning; }
 
     const std::string str() const { return msg + "\n" + trace; }
-
     common::StatusCode code;
 
     std::string msg;

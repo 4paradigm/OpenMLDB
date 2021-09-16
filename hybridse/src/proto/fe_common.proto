@@ -22,37 +22,81 @@ option java_outer_classname = "Common";
 enum StatusCode {
     kOk = 0;
     kRunning = 1;
+    // General error
     kRunError = 2;
-    kTypeError = 8;
-    kFileIOError = 9;
-    kUnSupport = 10;
-    kBadRequest = 11;
-    kNameExists = 12;
-    kTableExists = 13;
-    kNoDatabase = 14;
-    kTableNotFound = 15;
-    kTablePutFailed = 16;
-    kNullPointer = 17;
-    kProcedureNotFound = 18;
-    kConnError = 20;
-    kRpcError = 21;
-    kTimeoutError = 22;
-    kResponseError = 23;
-    kSyntaxError = 29;
-    kSqlError = 30;
-    kPlanError = 31;
-    kCallMethodError = 32;
-    kColumnNotFound = 33;
-    kIndexNotFound=34;
-    kFunError = 40;
-    kCodegenError = 50;
-    kOpGenError = 60;
-    kJitError = 70;
-    kSchemaCodecError = 71;
+    kTypeError = 3;
 
+    kNullPointer = 10;
+    kNullInputPointer = 11;
+    kNullOutputPointer = 12;
+
+    kUnSupport = 100;
+    kUnsupportSql = 101;
+    kUnsupportPlan = 102;
+    kUnsupportPerformanceSensitive = 103;
+    kUnsupportDistribution = 104;
+    kUnSupportCommand = 105;
+
+    kPlanError = 1000;
+    kSyntaxError = 1001;
+    kSqlAstError = 1002;
+    kLogicalPlanError = 1003;
+    kPhysicalPlanError = 1004;
+    kExecutionPlanError = 1005;
+    kEngineModeError = 1006;
+    kEngineCacheError = 1007;
+    kCommonIndexError = 1008;
+
+    kCodegenError = 1100;
+    kCodegenLoadValueError = 1101;
+    kCodegenStoreValueError = 1102;
+    kCodegenExpressionError = 1103;
+    kCodegenCallFunctionError = 1104;
+    kCodegenUdfError = 1105;
+    kCodegenUdafError = 1106;
+    kCodegenGetFieldError = 1107;
+    kCodegenEncodeError = 1108;
+    kCodegenDecodeError = 1109;
+
+    kCatalogError = 1200;
+    kNoDatabase = 1201;
+    kTableNotFound = 1202;
+    kProcedureNotFound = 1203;
+    kColumnNotFound = 1204;
+    kIndexNotFound=1205;
+    kDatabaseExists = 1206;
+    kTableExists = 1207;
+    kColumnExists = 1208;
+
+    kCodecError = 1300;
+    kSchemaCodecError = 1301;
+
+    kRuntimeError = 1400;
+    kJitError = 1401;
+    kCoreAPIRuntimeError = 1402;
+    kRunSessionError = 1403;
+
+    kRpcError = 1500;
+    kConnError = 1501;
+    kRequestError = 1502;
+    kResponseError = 1503;
+    kTimeoutError = 1504;
+    kCallRpcMethodError = 1505;
+
+    kStorageError = 1600;
+    kTablePutFailed = 1601;
+
+    kExternalError = 1700;
+    kFileIOError = 1701;
+
+    kTestError = 1800;
+    kTestEngineError = 1801;
+    kSqlCaseError = 1802;
+    kTestRunSessionError = 1803;
 }
 
 message Status {
     optional StatusCode code = 1;
     optional string msg = 2;
+    optional string trace = 3;
 }

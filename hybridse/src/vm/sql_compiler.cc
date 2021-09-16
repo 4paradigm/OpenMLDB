@@ -175,7 +175,9 @@ Status SqlCompiler::BuildRequestModePhysicalPlan(SqlContext* ctx, const ::hybrid
                                            ctx->is_performance_sensitive, ctx->is_cluster_optimized, false,
                                            ctx->enable_expr_optimize);
     transformer.AddDefaultPasses();
-    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output), "Fail to generate physical plan (request mode)");
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
+                 "Fail to transform physical plan on request mode");
+
     ctx->request_schema = transformer.request_schema();
     CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(), &ctx->encoded_request_schema), kPlanError,
                "Fail to encode request schema");
@@ -254,27 +256,30 @@ Status SqlCompiler::BuildPhysicalPlan(
 
     switch (ctx->engine_mode) {
         case kBatchMode: {
-            return BuildBatchModePhysicalPlan(ctx, plan_list, llvm_module,
-                                              library, output);
+            CHECK_STATUS(BuildBatchModePhysicalPlan(ctx, plan_list, llvm_module,
+                                              library, output));
+            break;
         }
         case kRequestMode: {
-            return BuildRequestModePhysicalPlan(ctx, plan_list, llvm_module,
-                                                library, output);
+            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, llvm_module,
+                                                library, output));
+            break;
         }
         case kBatchRequestMode: {
-            return BuildBatchRequestModePhysicalPlan(
-                ctx, plan_list, llvm_module, library, output);
+            CHECK_STATUS(BuildBatchRequestModePhysicalPlan(
+                ctx, plan_list, llvm_module, library, output));
+            break;
         }
         default:
-            return Status(kPlanError, "Unknown engine mode: " +
-                                          EngineModeName(ctx->engine_mode));
+            FAIL_STATUS(common::kEngineModeError, "Unknown engine mode: ", EngineModeName(ctx->engine_mode));
     }
+    return base::Status::OK();
 }
 
 bool SqlCompiler::BuildClusterJob(SqlContext& ctx, Status& status) {  // NOLINT
     if (nullptr == ctx.physical_plan) {
         status.msg = "fail to build cluster job: physical plan is empty";
-        status.code = common::kOpGenError;
+        status.code = common::kExecutionPlanError;
         return false;
     }
     bool is_request_mode = vm::kRequestMode == ctx.engine_mode ||

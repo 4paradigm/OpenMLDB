@@ -212,7 +212,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         ::hybridse::dbms::AddTableResponse response;
         MockClosure closure;
         dbms_->AddTable(NULL, &request, &response, &closure);
-        ASSERT_EQ(hybridse::common::kBadRequest, response.status().code());
+        ASSERT_EQ(hybridse::common::kRequestError, response.status().code());
         ASSERT_EQ("table name is empty", response.status().msg());
     }
 

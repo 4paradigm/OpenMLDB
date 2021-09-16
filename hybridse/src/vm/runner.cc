@@ -70,7 +70,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     auto fail = InvalidTask();
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
-        status.code = common::kOpGenError;
+        status.code = common::kExecutionPlanError;
         LOG(WARNING) << status;
         return fail;
     }
@@ -119,7 +119,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 default: {
                     status.msg = "fail to support data provider type " +
                                  DataProviderTypeName(op->provider_type_);
-                    status.code = common::kOpGenError;
+                    status.code = common::kExecutionPlanError;
                     LOG(WARNING) << status;
                     return RegisterTask(node, fail);
                 }
@@ -130,7 +130,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 Build(node->producers().at(0), status);
             if (!cluster_task.IsValid()) {
                 status.msg = "fail to build input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -165,7 +165,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 Build(node->producers().at(0), status);
             if (!cluster_task.IsValid()) {
                 status.msg = "fail to build runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -176,7 +176,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     if (support_cluster_optimized_) {
                         // 边界检查, 分布式计划暂时不支持表拼接
                         status.msg = "fail to build cluster with table project";
-                        status.code = common::kOpGenError;
+                        status.code = common::kExecutionPlanError;
                         LOG(WARNING) << status;
                         return fail;
                     }
@@ -200,7 +200,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         // 边界检查, 分布式计划暂时不支持表拼接
                         status.msg =
                             "fail to build cluster with group agg project";
-                        status.code = common::kOpGenError;
+                        status.code = common::kExecutionPlanError;
                         LOG(WARNING) << status;
                         return fail;
                     }
@@ -218,7 +218,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         // 边界检查, 分布式计划暂时不支持表滑动窗口聚合
                         status.msg =
                             "fail to build cluster with window agg project";
-                        status.code = common::kOpGenError;
+                        status.code = common::kExecutionPlanError;
                         LOG(WARNING) << status;
                         return fail;
                     }
@@ -273,7 +273,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 default: {
                     status.msg = "fail to support project type " +
                                  ProjectTypeName(op->project_type_);
-                    status.code = common::kOpGenError;
+                    status.code = common::kExecutionPlanError;
                     LOG(WARNING) << status;
                     return RegisterTask(node, fail);
                 }
@@ -283,7 +283,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto left_task = Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
                 status.msg = "fail to build left input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -291,7 +291,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto right = right_task.GetRoot();
             if (!right_task.IsValid()) {
                 status.msg = "fail to build right input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -334,7 +334,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
                 status.msg = "fail to build left input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -343,7 +343,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 Build(node->producers().at(1), status);
             if (!right_task.IsValid()) {
                 status.msg = "fail to build right input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -372,7 +372,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                             Key(), kNoBias));
                 }
                 default: {
-                    status.code = common::kOpGenError;
+                    status.code = common::kExecutionPlanError;
                     status.msg = "can't handle join type " +
                                  node::JoinTypeName(op->join().join_type());
                     LOG(WARNING) << status;
@@ -384,7 +384,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto left_task = Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
                 status.msg = "fail to build left input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -392,7 +392,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto right_task = Build(node->producers().at(1), status);
             if (!right_task.IsValid()) {
                 status.msg = "fail to build right input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -435,7 +435,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                             op->join().index_key(), kNoBias));
                 }
                 default: {
-                    status.code = common::kOpGenError;
+                    status.code = common::kExecutionPlanError;
                     status.msg = "can't handle join type " +
                                  node::JoinTypeName(op->join().join_type());
                     LOG(WARNING) << status;
@@ -447,14 +447,14 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             if (support_cluster_optimized_) {
                 // 边界检查, 分布式计划暂时不支持表分组处理
                 status.msg = "fail to build cluster with group by node";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
             auto cluster_task = Build(node->producers().at(0), status);
             if (!cluster_task.IsValid()) {
                 status.msg = "fail to build input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -469,7 +469,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 Build(node->producers().at(0), status);
             if (!cluster_task.IsValid()) {
                 status.msg = "fail to build input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -484,7 +484,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 Build(node->producers().at(0), status);
             if (!cluster_task.IsValid()) {
                 status.msg = "fail to build input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -504,14 +504,14 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto left_task = Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
                 status.msg = "fail to build left input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
             auto right_task = Build(node->producers().at(1), status);
             if (!right_task.IsValid()) {
                 status.msg = "fail to build right input runner";
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
@@ -523,7 +523,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                                     runner, Key(), kRightBias));
         }
         default: {
-            status.code = common::kOpGenError;
+            status.code = common::kExecutionPlanError;
             status.msg = "can't handle node " +
                          std::to_string(node->GetOpType()) + " " +
                          PhysicalOpTypeName(node->GetOpType());

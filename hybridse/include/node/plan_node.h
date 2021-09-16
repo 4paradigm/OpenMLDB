@@ -213,9 +213,9 @@ class ProjectNode : public LeafPlanNode {
     ProjectNode(int32_t pos, const std::string &name, const bool is_aggregation, node::ExprNode *expression,
                 node::FrameNode *frame)
         : LeafPlanNode(kProjectNode),
-          is_aggregation_(is_aggregation),
           pos_(pos),
           name_(name),
+          is_aggregation_(is_aggregation),
           expression_(expression),
           frame_(frame) {}
 

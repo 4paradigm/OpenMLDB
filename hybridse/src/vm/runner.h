@@ -1367,14 +1367,14 @@ class RunnerBuilder {
         if (task.IsCompletedClusterTask()) {
             auto proxy_task = BuildProxyRunnerForClusterTask(task);
             if (!proxy_task.IsValid()) {
-                status.code = common::kOpGenError;
+                status.code = common::kExecutionPlanError;
                 status.msg = "Fail to build proxy cluster task";
                 LOG(WARNING) << status;
                 return cluster_job_;
             }
             cluster_job_.AddMainTask(proxy_task);
         } else if (task.IsUnCompletedClusterTask()) {
-            status.code = common::kOpGenError;
+            status.code = common::kExecutionPlanError;
             status.msg =
                 "Fail to build main task, can't handler "
                 "uncompleted cluster task";

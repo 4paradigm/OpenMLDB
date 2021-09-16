@@ -143,8 +143,9 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
                                std::shared_ptr<CompileInfo> info,
                                base::Status& status) {  // NOLINT
     if (info->GetEngineMode() != session.engine_mode()) {
-        status = Status(common::kSqlError, "Inconsistent cache, mode expect " + EngineModeName(session.engine_mode()) +
-                                               " but get " + EngineModeName(info->GetEngineMode()));
+        status = Status(common::kEngineCacheError, "Inconsistent cache, mode expect " +
+                                                       EngineModeName(session.engine_mode()) + " but get " +
+                                                       EngineModeName(info->GetEngineMode()));
         return false;
     }
     auto& cache_ctx = std::dynamic_pointer_cast<SqlCompileInfo>(info)->get_sql_context();
@@ -152,12 +153,12 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
     if (session.engine_mode() == kBatchMode) {
         auto batch_sess = dynamic_cast<BatchRunSession*>(&session);
         if (cache_ctx.parameter_types.size() != batch_sess->GetParameterSchema().size()) {
-            status = Status(common::kSqlError, "Inconsistent cache parameter schema size");
+            status = Status(common::kEngineCacheError, "Inconsistent cache parameter schema size");
             return false;
         }
         for (int i = 0; i < batch_sess->GetParameterSchema().size(); i++) {
             if (cache_ctx.parameter_types.Get(i).type() != batch_sess->GetParameterSchema().Get(i).type()) {
-                status = Status(common::kSqlError, "Inconsistent cache parameter type, expect " +
+                status = Status(common::kEngineCacheError, "Inconsistent cache parameter type, expect " +
                                                        batch_sess->GetParameterSchema().Get(i).DebugString() +
                                                        " but get " + cache_ctx.parameter_types.Get(i).DebugString());
                 return false;
@@ -171,7 +172,7 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
         auto& cache_indices = cache_ctx.batch_request_info.common_column_indices;
         auto& sess_indices = batch_req_sess->common_column_indices();
         if (cache_indices != sess_indices) {
-            status = Status(common::kSqlError, "Inconsistent common column config");
+            status = Status(common::kEngineCacheError, "Inconsistent common column config");
             return false;
         }
     }
@@ -190,7 +191,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
         LOG(WARNING) << status;
         status = base::Status::OK();
     }
-    DLOG(INFO) << "Compile HYBRIDSE ...";
+    DLOG(INFO) << "Compile Engine ...";
     status = base::Status::OK();
     std::shared_ptr<SqlCompileInfo> info = std::make_shared<SqlCompileInfo>();
     auto& sql_context = std::dynamic_pointer_cast<SqlCompileInfo>(info)->get_sql_context();
@@ -267,7 +268,6 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true, true);
     bool ok = compiler.Compile(ctx, *status);
     if (!ok || 0 != status->code) {
-        LOG(WARNING) << "fail to compile sql " << sql << " in db " << db << " with error " << *status;
         return false;
     }
     explain_output->input_schema.CopyFrom(ctx.request_schema);
@@ -281,7 +281,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
         base::Status status;
         for (auto iter = ctx.logical_plan.cbegin(); iter != ctx.logical_plan.cend(); iter++) {
             if (!GetDependentTables(*iter, &tables, status)) {
-                LOG(WARNING) << "fail to get dependent tables " << sql << " in db " << db << " with error " << status;
+                DLOG(WARNING) << "Fail to get dependent tables ";
                 break;
             }
         }
@@ -298,7 +298,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
         size_t schema_size = static_cast<size_t>(explain_output->output_schema.size());
         for (size_t idx : output_common_indices) {
             if (idx >= schema_size) {
-                LOG(WARNING) << "Output common column indice out of bound: " << idx;
+                status->msg =  "Output common column index out of bound: " + idx;
+                status->code = common::kCommonIndexError;
                 return false;
             }
             auto* column = explain_output->output_schema.Mutable(idx);
@@ -400,7 +401,7 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row, Row* o
                       sp_name_, is_debug_);
     auto output = task->RunWithCache(ctx);
     if (!output) {
-        LOG(WARNING) << "run request plan output is null";
+        LOG(WARNING) << "Run request plan output is null";
         return -1;
     }
     bool ok = Runner::ExtractRow(output, out_row);
@@ -421,12 +422,12 @@ int32_t BatchRequestRunSession::Run(const uint32_t id, const std::vector<Row>& r
     auto task =
         std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job.GetTask(id).GetRoot();
     if (nullptr == task) {
-        LOG(WARNING) << "fail to run request plan: taskid" << id << " not exist!";
+        LOG(WARNING) << "Fail to run request plan: taskid" << id << " not exist!";
         return -2;
     }
     auto handler = task->BatchRequestRun(ctx);
     if (!handler) {
-        LOG(WARNING) << "run request plan output is null";
+        LOG(WARNING) << "Run request plan output is null";
         return -1;
     }
     bool ok = Runner::ExtractRows(handler, output);
@@ -444,7 +445,7 @@ int32_t BatchRunSession::Run(const Row& parameter_row, std::vector<Row>& rows, u
     RunnerContext ctx(&sql_ctx.cluster_job, parameter_row, is_debug_);
     auto output = sql_ctx.cluster_job.GetTask(0).GetRoot()->RunWithCache(ctx);
     if (!output) {
-        LOG(WARNING) << "run batch plan output is null";
+        LOG(WARNING) << "Run batch plan output is null";
         return -1;
     }
     switch (output->GetHanlderType()) {
@@ -465,7 +466,7 @@ int32_t BatchRunSession::Run(const Row& parameter_row, std::vector<Row>& rows, u
             return 0;
         }
         case kPartitionHandler: {
-            LOG(WARNING) << "partition output is invalid";
+            LOG(WARNING) << "Partition output is invalid";
             return -1;
         }
     }

@@ -70,11 +70,11 @@ Status RowFnLetIRBuilder::Build(
 
     // Bind input function argument
     auto sv = ctx_->GetCurrentScope()->sv();
-    CHECK_TRUE(FillArgs(args, fn, sv), kCodegenError);
+    CHECK_TRUE(FillArgs(args, fn, sv), kCodegenError, "Fail to fill arguments of function let");
 
     // bind row arg
     NativeValue row_arg_value;
-    CHECK_TRUE(sv->FindVar("@row_ptr", &row_arg_value), kCodegenError);
+    CHECK_TRUE(sv->FindVar("@row_ptr", &row_arg_value), kCodegenError, "Fail to find @row_ptr");
     sv->AddVar(compile_func->GetArg(0)->GetExprString(), row_arg_value);
 
     ::llvm::BasicBlock* block = ctx_->GetCurrentBlock();
@@ -130,19 +130,16 @@ Status RowFnLetIRBuilder::Build(
                      "Build expr failed at ", i, ":\n", expr->GetTreeString());
     }
 
-    CHECK_TRUE(EncodeBuf(&outputs, output_schema, variable_ir_builder,
+    CHECK_STATUS(EncodeBuf(&outputs, output_schema, variable_ir_builder,
                          ctx_->GetCurrentBlock(), output_ptr_name),
-               kCodegenError, "Gen encode into output buffer failed");
+               "Gen encode into output buffer failed");
 
     if (!window_agg_builder.empty()) {
-        for (auto iter = window_agg_builder.begin();
-             iter != window_agg_builder.end(); iter++) {
+        for (auto iter = window_agg_builder.begin(); iter != window_agg_builder.end(); iter++) {
             if (!iter->second.empty()) {
-                CHECK_TRUE(iter->second.BuildMulti(
-                               name, &expr_ir_builder, &variable_ir_builder,
-                               ctx_->GetCurrentBlock(), output_ptr_name,
-                               output_schema),
-                           kCodegenError, "Multi column sum codegen failed");
+                CHECK_STATUS(iter->second.BuildMulti(name, &expr_ir_builder, &variable_ir_builder,
+                                                     ctx_->GetCurrentBlock(), output_ptr_name, output_schema),
+                             "Multi column sum codegen failed");
             }
         }
     }
@@ -158,20 +155,18 @@ Status RowFnLetIRBuilder::Build(
     return Status::OK();
 }
 
-bool RowFnLetIRBuilder::EncodeBuf(
+base::Status RowFnLetIRBuilder::EncodeBuf(
     const std::map<uint32_t, NativeValue>* values, const vm::Schema& schema,
     VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
     ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
     base::Status status;
     BufNativeEncoderIRBuilder encoder(values, &schema, block);
     NativeValue row_ptr;
-    bool ok = variable_ir_builder.LoadValue(output_ptr_name, &row_ptr, status);
-    if (!ok) {
-        LOG(WARNING) << "fail to get row ptr";
-        return false;
-    }
+    variable_ir_builder.LoadValue(output_ptr_name, &row_ptr, status);
+    CHECK_STATUS(status)
     ::llvm::IRBuilder<> ir_builder(block);
-    return encoder.BuildEncode(row_ptr.GetValue(&ir_builder));
+    CHECK_STATUS(encoder.BuildEncode(row_ptr.GetValue(&ir_builder)))
+    return base::Status::OK();
 }
 
 bool RowFnLetIRBuilder::BuildFnHeader(

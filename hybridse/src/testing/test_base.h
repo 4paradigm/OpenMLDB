@@ -33,7 +33,7 @@ namespace hybridse {
 namespace vm {
 using hybridse::base::Status;
 using hybridse::codec::Row;
-using hybridse::common::kSqlError;
+using hybridse::common::kTestEngineError;
 using hybridse::sqlcase::SqlCase;
 void BuildTableDef(::hybridse::type::TableDef& table);    // NOLINT
 void BuildTableA(::hybridse::type::TableDef& table);      // NOLINT

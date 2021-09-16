@@ -266,7 +266,7 @@ class ErrorTableHandler : public TableHandler {
     /// Create ErrorTableTable with initializing status_ with
     /// common::kCallMethodError
     ErrorTableHandler()
-        : status_(common::kCallMethodError, "error"),
+        : status_(common::kCallRpcMethodError, "error"),
           table_name_(""),
           db_(""),
           schema_(nullptr),

@@ -72,9 +72,8 @@ class ExprIRBuilder {
     Status BuildCallFn(const ::hybridse::node::CallExprNode* fn,
                        NativeValue* output);
 
-    bool BuildCallFnLegacy(const ::hybridse::node::CallExprNode* call_fn,
-                           NativeValue* output,
-                           ::hybridse::base::Status& status);  // NOLINT
+    Status BuildCallFnLegacy(const ::hybridse::node::CallExprNode* call_fn,
+                           NativeValue* output);
 
     Status BuildCastExpr(const ::hybridse::node::CastExprNode* node,
                          NativeValue* output);
@@ -101,10 +100,8 @@ class ExprIRBuilder {
 
     Status ExtractSliceFromRow(const NativeValue& input_value, const int schema_idx, ::llvm::Value** slice_ptr,
                                ::llvm::Value** slice_size);
-    ::llvm::Function* GetFuncion(
-        const std::string& col,
-        const std::vector<const node::TypeNode*>& generic_types,
-        base::Status& status);  // NOLINT
+    Status GetFunction(const std::string& col, const std::vector<const node::TypeNode*>& generic_types,
+                      ::llvm::Function** output);
 
  private:
     CodeGenContext* ctx_;

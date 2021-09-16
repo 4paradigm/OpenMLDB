@@ -232,7 +232,7 @@ Status ResolveFnAndAttrs::VisitOneStep(node::ExprNode* expr,
                     *output = resolved_result;
                 } else {
                     // fallback to legacy fn gen with warning
-                    LOG(WARNING)
+                    DLOG(WARNING)
                         << "Resolve function '" << external_fn->function_name()
                         << "' failed, fallback to legacy: " << status;
                 }

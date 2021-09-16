@@ -423,7 +423,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlError, status.code);
+        EXPECT_EQ(common::kSqlAstError, status.code);
     }
 }
 
@@ -525,7 +525,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
           SELECT 1 UNION DISTINCT SELECT 2 UNION DISTINCT SELECT 3;
         END;
         )sql",
-                     common::kSqlError, "Un-support templated_parameter or tvf_schema type");
+                     common::kSqlAstError, "Un-support templated_parameter or tvf_schema type");
 
     // unknown param type
     expect_converted(R"sql(
@@ -551,7 +551,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
           SELECT 1 UNION DISTINCT SELECT 2;
         END;
         )sql",
-                     common::kSqlError, "Un-support type: ArrayType");
+                     common::kSqlAstError, "Un-support type: ArrayType");
 
     // unsupport set operation
     expect_converted(R"sql(
@@ -563,7 +563,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
           SELECT 1 EXCEPT DISTINCT SELECT 2;
         END;
         )sql",
-                     common::kSqlError, "Un-support set operation: EXCEPT DISTINCT");
+                     common::kSqlAstError, "Un-support set operation: EXCEPT DISTINCT");
 
     // unsupport statement type
     expect_converted(R"sql(
@@ -572,14 +572,14 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
           DECLARE ABC INTERVAL;
         END;
     )sql",
-                     common::kSqlError, "Un-support statement type inside ASTBeginEndBlock: VariableDeclaration");
+                     common::kSqlAstError, "Un-support statement type inside ASTBeginEndBlock: VariableDeclaration");
     expect_converted(R"sql(
         CREATE PROCEDURE procedure_name()
         BEGIN
             BEGIN select 1; END;
         END;
     )sql",
-                     common::kSqlError, "Un-support statement type inside ASTBeginEndBlock: BeginEndBlock");
+                     common::kSqlAstError, "Un-support statement type inside ASTBeginEndBlock: BeginEndBlock");
     expect_converted(R"sql(
         CREATE PROCEDURE procedure_name()
         BEGIN
@@ -587,7 +587,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
             select 2;
         END;
     )sql",
-                     common::kSqlError, "Un-support multiple statements inside ASTBeginEndBlock");
+                     common::kSqlAstError, "Un-support multiple statements inside ASTBeginEndBlock");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateIndexOKTest) {
@@ -627,14 +627,14 @@ TEST_F(ASTNodeConverterTest, ConvertCreateIndexFailTest) {
         CREATE INDEX index1 ON t1 (col1 ASC, col2 DESC)
         OPTIONS(ts=std_ts, ttl_type=absolute, ttl=30d);
         )sql";
-        expect_converted(sql, common::kSqlError, "Un-support descending index key");
+        expect_converted(sql, common::kSqlAstError, "Un-support descending index key");
     }
     {
         const std::string sql = R"sql(
         CREATE INDEX index1 ON t1 (col1 DESC, col2 DESC)
         OPTIONS(ts=std_ts, ttl_type=absolute, ttl=30d);
         )sql";
-        expect_converted(sql, common::kSqlError, "Un-support descending index key");
+        expect_converted(sql, common::kSqlAstError, "Un-support descending index key");
     }
 }
 
@@ -689,13 +689,13 @@ TEST_F(ASTNodeConverterTest, ConvertInsertStmtFailTest) {
         const std::string sql = R"sql(
         INSERT into t1 values (1, @ a, @ b)
         )sql";
-        expect_converted(sql, common::kSqlError, "Un-support Named Parameter Expression a");
+        expect_converted(sql, common::kSqlAstError, "Un-support Named Parameter Expression a");
     }
     {
         const std::string sql = R"sql(
         INSERT into t1 values (1, 2L, aaa)
         )sql";
-        expect_converted(sql, common::kSqlError, "Un-support insert statement with un-const value");
+        expect_converted(sql, common::kSqlAstError, "Un-support insert statement with un-const value");
     }
 }
 TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
@@ -714,17 +714,17 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
     expect_converted(R"sql(
         ALTER TABLE foo ALTER COLUMN bar SET DATA TYPE STRING;
     )sql",
-                     common::kSqlError, "Un-support statement type: AlterTableStatement");
+                     common::kSqlAstError, "Un-support statement type: AlterTableStatement");
 
     expect_converted(R"sql(
         SHOW procedurxs;
     )sql",
-                     common::kSqlError, "Un-support SHOW: procedurxs");
+                     common::kSqlAstError, "Un-support SHOW: procedurxs");
 
     expect_converted(R"sql(
         SHOW create procedure ab.cd.name;
     )sql",
-                     common::kSqlError, "Invalid name for SHOW CREATE PROCEDURE: ab.cd.name");
+                     common::kSqlAstError, "Invalid name for SHOW CREATE PROCEDURE: ab.cd.name");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
@@ -755,7 +755,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlError, status.code);
+        EXPECT_EQ(common::kSqlAstError, status.code);
     }
     {
         // not supported table element
@@ -769,7 +769,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlError, status.code);
+        EXPECT_EQ(common::kSqlAstError, status.code);
     }
     {
         // not supported index key option value type
@@ -783,7 +783,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlError, status.code);
+        EXPECT_EQ(common::kSqlAstError, status.code);
     }
     {
         // not supported index ttl option value type
@@ -797,7 +797,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlError, status.code);
+        EXPECT_EQ(common::kSqlAstError, status.code);
     }
     {
         // not supported index version option value type
@@ -811,7 +811,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlError, status.code);
+        EXPECT_EQ(common::kSqlAstError, status.code);
     }
     {
         // not supported table option value type
@@ -825,7 +825,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlError, status.code);
+        EXPECT_EQ(common::kSqlAstError, status.code);
     }
 }
 

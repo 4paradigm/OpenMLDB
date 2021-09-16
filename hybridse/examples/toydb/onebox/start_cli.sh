@@ -18,7 +18,7 @@ set -eE
 set -o nounset
 
 cd "$(dirname "$0")"
-PROJECT_ROOT=$(git rev-parse --show-toplevel)
+PROJECT_ROOT=$(git rev-parse --show-toplevel)/hybridse
 cd "$PROJECT_ROOT"
 mkdir -p log/cli
 BUILD_DIR=$PROJECT_ROOT/build/examples/toydb

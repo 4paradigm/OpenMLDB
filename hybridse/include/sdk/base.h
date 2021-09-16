@@ -30,6 +30,7 @@ struct Status {
     Status(int status_code, const std::string& msg_str)
         : code(status_code), msg(msg_str) {}
     int code;
+    std::string trace;
     std::string msg;
 };
 

@@ -240,21 +240,19 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(const std::map<uint32_t, Na
 
 BufNativeEncoderIRBuilder::~BufNativeEncoderIRBuilder() {}
 
-bool BufNativeEncoderIRBuilder::BuildEncodePrimaryField(::llvm::Value* i8_ptr, size_t idx, const NativeValue& val) {
+base::Status BufNativeEncoderIRBuilder::BuildEncodePrimaryField(::llvm::Value* i8_ptr, size_t idx,
+                                                                const NativeValue& val) {
     uint32_t offset = offset_vec_.at(idx);
-    return AppendPrimary(i8_ptr, val, idx, offset);
+    CHECK_STATUS(AppendPrimary(i8_ptr, val, idx, offset), "Fail to encode primary field")
+    return base::Status::OK();
 }
 
-bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
+base::Status BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* i32_ty = builder.getInt32Ty();
     ::llvm::Value* str_addr_space_ptr = CreateAllocaAtHead(&builder, i32_ty, "str_addr_space_alloca");
     ::llvm::Value* row_size = NULL;
-    bool ok = CalcTotalSize(&row_size, str_addr_space_ptr);
-
-    if (!ok) {
-        return false;
-    }
+    CHECK_STATUS(CalcTotalSize(&row_size, str_addr_space_ptr), "Fail to calculate row's size")
 
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Value* i8_ptr =
@@ -267,10 +265,8 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     builder.CreateStore(i8_ptr, output_ptr, false);
     // encode all field to buf
     // append header
-    ok = AppendHeader(i8_ptr, row_size, builder.getInt32(::hybridse::codec::GetBitmapSize(schema_->size())));
-    if (!ok) {
-        return false;
-    }
+    CHECK_STATUS(AppendHeader(i8_ptr, row_size, builder.getInt32(::hybridse::codec::GetBitmapSize(schema_->size()))),
+                 "Fail to encode row header");
 
     ::llvm::Value* str_body_offset = NULL;
     ::llvm::Value* str_addr_space_val = NULL;
@@ -295,60 +291,49 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
             case ::hybridse::type::kDouble: {
                 uint32_t offset = offset_vec_.at(idx);
                 if (val.GetType()->isFloatTy() || val.GetType()->isDoubleTy() || val.GetType()->isIntegerTy()) {
-                    ok = AppendPrimary(i8_ptr, val, idx, offset);
-                    if (!ok) {
-                        LOG(WARNING) << "fail to append number for output col " << column.name();
-                        return false;
-                    }
-                    break;
+                    CHECK_STATUS(AppendPrimary(i8_ptr, val, idx, offset), "Fail to encode number column",
+                                 column.name());
                 } else if (codegen::TypeIRBuilder::IsTimestampPtr(val.GetType())) {
                     if (val.IsConstNull()) {
-                        ok = AppendPrimary(i8_ptr,
-                                           NativeValue::CreateWithFlag(builder.getInt64(0), builder.getInt1(true)), idx,
-                                           offset);
+                        CHECK_STATUS(
+                            AppendPrimary(i8_ptr,
+                                          NativeValue::CreateWithFlag(builder.getInt64(0), builder.getInt1(true)), idx,
+                                          offset),
+                            "Fail to encode timestamp column ", column.name())
                     } else {
                         ::llvm::Value* ts;
                         timestamp_builder.GetTs(block_, val.GetValue(&builder), &ts);
-                        ok = AppendPrimary(i8_ptr, val.Replace(ts), idx, offset);
+                        CHECK_STATUS(AppendPrimary(i8_ptr, val.Replace(ts), idx, offset),
+                                     "Fail to encode timestamp column ", column.name())
                     }
-                    if (!ok) {
-                        LOG(WARNING) << "fail to append timestamp for output col " << column.name();
-                        return false;
-                    }
-                    break;
                 } else if (codegen::TypeIRBuilder::IsDatePtr(val.GetType())) {
                     if (val.IsConstNull()) {
-                        ok = AppendPrimary(i8_ptr,
+                        CHECK_STATUS(AppendPrimary(i8_ptr,
                                            NativeValue::CreateWithFlag(builder.getInt32(0), builder.getInt1(true)), idx,
-                                           offset);
+                                           offset), "Fail to encode date column ", column.name())
                     } else {
                         ::llvm::Value* days;
                         DateIRBuilder date_builder(block_->getModule());
                         date_builder.GetDate(block_, val.GetValue(&builder), &days);
-                        ok = AppendPrimary(i8_ptr, val.Replace(days), idx, offset);
+                        CHECK_STATUS(AppendPrimary(i8_ptr, val.Replace(days), idx, offset),
+                                     "Fail to encode date column ", column.name())
                     }
-                    if (!ok) {
-                        LOG(WARNING) << "fail to append timestamp for output col " << column.name();
-                        return false;
-                    }
-                    break;
                 } else if (TypeIRBuilder::IsNull(val.GetType())) {
-                    ok = AppendPrimary(
-                        i8_ptr, NativeValue::CreateWithFlag(builder.getInt1(true), builder.getInt1(true)), idx, offset);
-                    break;
+                    CHECK_STATUS(AppendPrimary(
+                        i8_ptr, NativeValue::CreateWithFlag(builder.getInt1(true), builder.getInt1(true)), idx, offset),
+                                 "Fail to encode NULL column ", column.name())
                 } else {
-                    LOG(WARNING) << "number/timestamp/date type is required but " << val.GetType()->getTypeID();
-                    return false;
+                    FAIL_STATUS(common::kCodegenEncodeError,
+                                "Invalid column type, number/timestamp/date type is required but ",
+                                val.GetType()->getTypeID())
                 }
                 break;
             }
             case ::hybridse::type::kVarchar: {
                 if (str_body_offset == NULL) {
                     str_addr_space_val = builder.CreateLoad(i32_ty, str_addr_space_ptr, "load_str_space");
-                    ok = CalcStrBodyStart(&str_body_offset, str_addr_space_val);
-                    if (!ok || str_addr_space_val == NULL) {
-                        return false;
-                    }
+                    CHECK_TRUE(CalcStrBodyStart(&str_body_offset, str_addr_space_val) && str_addr_space_val != NULL,
+                               common::kCodegenEncodeError, "Fail to calculate the start offset of string body");
                 }
                 uint32_t field_cnt = offset_vec_.at(idx);
 
@@ -357,40 +342,34 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                     StringIRBuilder string_ir_builder(block_->getModule());
                     ::llvm::Value* empty_str = nullptr;
                     string_ir_builder.NewString(block_, &empty_str);
-                    ok = AppendString(i8_ptr, row_size, idx,
-                                      NativeValue::CreateWithFlag(empty_str, builder.getInt1(true)), str_addr_space_val,
-                                      str_body_offset, field_cnt, &temp_body_size);
+                    CHECK_STATUS(AppendString(i8_ptr, row_size, idx,
+                                              NativeValue::CreateWithFlag(empty_str, builder.getInt1(true)),
+                                              str_addr_space_val, str_body_offset, field_cnt, &temp_body_size),
+                                 "Fail to encode string column ", column.name())
                 } else {
-                    ok = AppendString(i8_ptr, row_size, idx, val, str_addr_space_val, str_body_offset, field_cnt,
-                                      &temp_body_size);
-                }
-                if (!ok) {
-                    LOG(WARNING) << "fail to append string for output col " << column.name();
-                    return false;
+                    CHECK_STATUS(AppendString(i8_ptr, row_size, idx, val, str_addr_space_val, str_body_offset,
+                                              field_cnt, &temp_body_size),
+                                 "Fail to encode string column ", column.name())
                 }
                 str_body_offset = temp_body_size;
                 break;
             }
             default: {
-                LOG(WARNING) << "unsuported type, append val for output col " << Type_Name(column.type());
-                return false;
+                FAIL_STATUS(common::kCodegenEncodeError, "UnSupport encode column with type ", Type_Name(column.type()))
             }
         }
     }
-    return true;
+    return base::Status::OK();
 }
 
-bool BufNativeEncoderIRBuilder::AppendString(::llvm::Value* i8_ptr, ::llvm::Value* buf_size, uint32_t field_idx,
+base::Status BufNativeEncoderIRBuilder::AppendString(::llvm::Value* i8_ptr, ::llvm::Value* buf_size, uint32_t field_idx,
                                              const NativeValue& str_val, ::llvm::Value* str_addr_space,
                                              ::llvm::Value* str_body_offset, uint32_t str_field_idx,
                                              ::llvm::Value** output) {
     ::llvm::IRBuilder<> builder(block_);
     StringIRBuilder string_ir_builder(block_->getModule());
     ::llvm::Type* str_ty = string_ir_builder.GetType();
-    if (str_ty == NULL) {
-        LOG(WARNING) << "fail to get str llvm type";
-        return false;
-    }
+    CHECK_TRUE(str_ty != NULL, common::kCodegenEncodeError, "Fail to get str llvm type")
 
     ::llvm::Type* i8_ty = builder.getInt8Ty();
     ::llvm::Type* size_ty = builder.getInt32Ty();
@@ -433,12 +412,12 @@ bool BufNativeEncoderIRBuilder::AppendString(::llvm::Value* i8_ptr, ::llvm::Valu
                                                      builder.getInt32(str_field_start_offset_),
                                                      builder.getInt32(str_field_idx), str_addr_space, str_body_offset});
     }
-    return true;
+    return base::Status::OK();
 }
 
 bool BufNativeEncoderIRBuilder::CalcStrBodyStart(::llvm::Value** output, ::llvm::Value* str_addr_space) {
     if (output == NULL || str_addr_space == NULL) {
-        LOG(WARNING) << "input ptr is null";
+        LOG(WARNING) << "CalcStrBodyStart#output is null";
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
@@ -449,7 +428,7 @@ bool BufNativeEncoderIRBuilder::CalcStrBodyStart(::llvm::Value** output, ::llvm:
     return true;
 }
 
-bool BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr, const NativeValue& val, size_t field_idx,
+base::Status BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr, const NativeValue& val, size_t field_idx,
                                               uint32_t field_offset) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* offset = builder.getInt32(field_offset);
@@ -463,64 +442,49 @@ bool BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr, const Nativ
         builder.CreateCall(
             callee, {i8_ptr, builder.getInt32(field_idx), builder.CreateIntCast(val.GetIsNull(&builder), i8_ty, true)});
     }
-    return BuildStoreOffset(builder, i8_ptr, offset, val.GetValue(&builder));
+    CHECK_TRUE(BuildStoreOffset(builder, i8_ptr, offset, val.GetValue(&builder)), common::kCodegenEncodeError,
+               "Fail to store value into given offset")
+    return base::Status::OK();
 }
 
-bool BufNativeEncoderIRBuilder::AppendHeader(::llvm::Value* i8_ptr, ::llvm::Value* size, ::llvm::Value* bitmap_size) {
+base::Status BufNativeEncoderIRBuilder::AppendHeader(::llvm::Value* i8_ptr, ::llvm::Value* size,
+                                                     ::llvm::Value* bitmap_size) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* fversion = builder.getInt8(1);
     ::llvm::Value* sversion = builder.getInt8(1);
     ::llvm::Value* fverion_offset = builder.getInt32(0);
     ::llvm::Value* sverion_offset = builder.getInt32(1);
-    bool ok = BuildStoreOffset(builder, i8_ptr, fverion_offset, fversion);
-    if (!ok) {
-        LOG(WARNING) << "fail to add fversion to row";
-        return false;
-    }
+    CHECK_TRUE(BuildStoreOffset(builder, i8_ptr, fverion_offset, fversion), common::kCodegenEncodeError,
+               "fail to encode fversion to row")
 
-    ok = BuildStoreOffset(builder, i8_ptr, sverion_offset, sversion);
-    if (!ok) {
-        LOG(WARNING) << "fail to add sversion to row";
-        return false;
-    }
+    CHECK_TRUE(BuildStoreOffset(builder, i8_ptr, sverion_offset, sversion), common::kCodegenEncodeError,
+               "fail to encode sversion to row")
 
     ::llvm::Value* size_offset = builder.getInt32(2);
-    ok = BuildStoreOffset(builder, i8_ptr, size_offset, size);
-
-    if (!ok) {
-        LOG(WARNING) << "fail to add size to row";
-        return false;
-    }
+    CHECK_TRUE(BuildStoreOffset(builder, i8_ptr, size_offset, size), common::kCodegenEncodeError,
+               "fail to encode size to row");
 
     ::llvm::Value* output = NULL;
-    ok = BuildGetPtrOffset(builder, i8_ptr, builder.getInt32(6), builder.getInt8PtrTy(), &output);
-    if (!ok) {
-        LOG(WARNING) << "fail to get ptr with offset ";
-        return false;
-    }
+    CHECK_TRUE(BuildGetPtrOffset(builder, i8_ptr, builder.getInt32(6), builder.getInt8PtrTy(), &output),
+    common::kCodegenEncodeError, "fail to encode data to row")
     builder.CreateMemSet(output, builder.getInt8(0), bitmap_size, 1u);
-    return true;
+    return base::Status::OK();
 }
 
-bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr, ::llvm::Value* str_addr_space) {
-    if (output_ptr == NULL) {
-        LOG(WARNING) << "input ptr is null";
-        return false;
-    }
+base::Status BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr, ::llvm::Value* str_addr_space) {
+    CHECK_TRUE(output_ptr != NULL, common::kCodegenError, "CalcTotalSize#output_ptr is null")
 
     ::llvm::IRBuilder<> builder(block_);
     if (str_field_cnt_ <= 0 || schema_->size() == 0) {
         *output_ptr = builder.getInt32(str_field_start_offset_);
-        return true;
+        return base::Status::OK();
     }
 
     ::llvm::Value* total_size = NULL;
     StringIRBuilder string_ir_builder(block_->getModule());
     ::llvm::Type* str_ty = string_ir_builder.GetType();
-    if (str_ty == NULL) {
-        LOG(WARNING) << "fail to get str llvm type";
-        return false;
-    }
+
+    CHECK_TRUE(str_ty != NULL, common::kCodegenError, "Fail to get str llvm type")
     // build get string length and call native functon
     ::llvm::Type* size_ty = builder.getInt32Ty();
     for (int32_t idx = 0; idx < schema_->size(); ++idx) {
@@ -529,10 +493,7 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr, ::llvm
         if (column.type() == ::hybridse::type::kVarchar) {
             const NativeValue& fe_str = outputs_->at(idx);
             ::llvm::Value* fe_str_st = fe_str.GetValue(&builder);
-            if (fe_str_st == NULL) {
-                LOG(WARNING) << "str output is null for " << column.name();
-                return false;
-            }
+            CHECK_TRUE(fe_str_st != NULL, common::kCodegenEncodeError, "String output is null for ", column.name())
             ::llvm::Value* fe_str_ptr = builder.CreatePointerCast(fe_str_st, str_ty->getPointerTo());
             ::llvm::Value* size_ptr = builder.CreateStructGEP(str_ty, fe_str_ptr, 0);
             ::llvm::Value* size_i32_ptr = builder.CreatePointerCast(size_ptr, size_ty->getPointerTo());
@@ -553,7 +514,7 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr, ::llvm
     *output_ptr = builder.CreateCall(
         callee, ::llvm::ArrayRef<::llvm::Value*>{builder.getInt32(str_field_start_offset_),
                                                  builder.getInt32(str_field_cnt_), total_size, str_addr_space});
-    return true;
+    return base::Status::OK();
 }
 
 }  // namespace codegen

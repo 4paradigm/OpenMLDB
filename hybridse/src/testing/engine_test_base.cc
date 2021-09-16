@@ -310,7 +310,7 @@ void DoEngineCheckExpect(const SqlCase& sql_case, std::shared_ptr<RunSession> se
 Status EngineTestRunner::ExtractTableInfoFromCreateString(const std::string& create,
                                                           sqlcase::SqlCase::TableInfo* table_info) {
     CHECK_TRUE(table_info != nullptr, common::kNullPointer, "Fail extract with null table info");
-    CHECK_TRUE(!create.empty(), common::kSqlError, "Fail extract with empty create string");
+    CHECK_TRUE(!create.empty(), common::kTestEngineError, "Fail extract with empty create string");
 
     node::NodeManager manager;
     base::Status status;
@@ -346,7 +346,7 @@ Status EngineTestRunner::PrepareParameter() {
         this->parameter_schema_ = sql_case_.ExtractParameterTypes();
         CHECK_TRUE(parameter_schema_.size() > 0, common::kUnSupport, "Invalid parameter schema!")
         CHECK_TRUE(sql_case_.ExtractRows(parameter_schema_, sql_case_.parameters().rows_, this->parameter_rows_),
-                   kSqlError, "Extract case parameters rows failed");
+                   kTestEngineError, "Extract case parameters rows failed");
         CHECK_TRUE(this->parameter_rows_.size() <= 1, common::kUnSupport,
                    "Multiple parameter-rows aren't supported currently");
     }
@@ -367,7 +367,7 @@ void EngineTestRunner::InitSqlCase() {
 }
 
 Status EngineTestRunner::Compile() {
-    CHECK_TRUE(engine_ != nullptr, common::kSqlError, "Engine is not init");
+    CHECK_TRUE(engine_ != nullptr, common::kTestEngineError, "Engine is not init");
     CHECK_STATUS(PrepareParameter())
     std::string sql_str = sql_case_.sql_str();
     for (int j = 0; j < sql_case_.CountInputs(); ++j) {
@@ -375,7 +375,7 @@ Status EngineTestRunner::Compile() {
         boost::replace_all(sql_str, placeholder, sql_case_.inputs_[j].name_);
     }
     LOG(INFO) << "Compile SQL:\n" << sql_str;
-    CHECK_TRUE(session_ != nullptr, common::kSqlError, "Session is not set");
+    CHECK_TRUE(session_ != nullptr, common::kTestEngineError, "Session is not set");
     if (hybridse::sqlcase::SqlCase::IsDebug() || sql_case_.debug()) {
         session_->EnableDebug();
     }
