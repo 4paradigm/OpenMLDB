@@ -69,7 +69,7 @@ function deploy_ns() {
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v"${SERVER_VERSION}"/openmldb-"${SERVER_VERSION}"-linux.tar.gz
 tar -zxvf openmldb-"${SERVER_VERSION}"-linux.tar.gz
 # shellcheck disable=SC2010
-pkg_name=$(ls | grep openmldb)
+pkg_name=$(ls | grep openmldb | grep -v .tar.gz)
 echo "pkg_name:${pkg_name}"
 deploy_ns openmldb-ns-1 "${NS1}" "${pkg_name}"
 deploy_ns openmldb-ns-2 "${NS2}" "${pkg_name}"
