@@ -734,13 +734,11 @@ ExprListNode* ExprListNode::ShadowCopy(NodeManager* nm) const {
 }
 
 Status ExprListNode::InferAttr(ExprAnalysisContext* ctx) {
+    auto top_type = ctx->node_manager()->MakeTypeNode(kTuple);
     for (const auto& ele : children_) {
-        // only support constant list
-        // TODO(aceforeverd): support cast
-        CHECK_TRUE(kExprPrimary == ele->GetExprType(), common::kCodegenError,
-                   "element of expr node list must be constant")
+        top_type->AddGeneric(ele->GetOutputType(), ele->nullable());
     }
-    SetOutputType(ctx->node_manager()->MakeTypeNode(kList));
+    SetOutputType(top_type);
     SetNullable(false);
     return Status::OK();
 }

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "planv2/ast_node_converter.h"
+
 #include <string>
 #include <vector>
 
@@ -464,15 +465,21 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             if (in_expr->in_list() != nullptr) {
                 node::ExprListNode* in_list = nullptr;
                 CHECK_STATUS(ConvertExprNodeList(in_expr->in_list()->list(), node_manager, &in_list));
+                // can't handle large sized in list currently, just stop earlier
+                CHECK_TRUE(in_list->GetChildNum() <= 1000, common::kPlanError,
+                           absl::StrCat("Un-support: IN predicate size should not larger than 1000, but got ",
+                                        in_list->GetChildNum()));
                 *output = node_manager->MakeInExpr(lhs_expr, in_list, is_not);
             } else if (in_expr->query() != nullptr) {
                 node::QueryNode* query_node = nullptr;
                 CHECK_STATUS(ConvertQueryNode(in_expr->query(), node_manager, &query_node));
                 node::QueryExpr* query_expr = node_manager->MakeQueryExprNode(query_node);
                 *output = node_manager->MakeInExpr(lhs_expr, query_expr, is_not);
+                // not support sub query in IN predicate, stop earlier
+                CHECK_TRUE(false, common::kPlanError, "Un-support: IN predicate with sub query as in list");
             } else {
                 // TODO(aceforeverd): support unnest expression
-                return base::Status(common::kSqlError, "Un-supported in expression with unnest expression");
+                return base::Status(common::kSqlError, "Un-supported: IN predicate with unnest expression as in list");
             }
             return base::Status::OK();
         }

@@ -778,7 +778,7 @@ class ConstNode : public ExprNode {
         val_.vstr = strdup(val.c_str());
     }
 
-    explicit ConstNode(const ConstNode &that) : ExprNode(kExprPrimary), data_type_(that.data_type_) {
+    ConstNode(const ConstNode &that) : ExprNode(kExprPrimary), data_type_(that.data_type_) {
         if (kVarchar == that.data_type_) {
             val_.vstr = strdup(that.val_.vstr);
         } else {

@@ -1386,7 +1386,7 @@ static bool DoExpandProviderCase(const size_t idx, const YAML::Node& sql_case_no
         //    expect_element is a map
         //  - expect_element[num]: choice_idxs[idx] th element of expect_element, expect_element is a sequence
         if (expect_element.IsMap()) {
-            if (expect_element[std::to_string(expect_idx)].IsDefined()) {
+            if (expect_element[std::to_string(expect_idx)]) {
                 child_expect_element = expect_element[std::to_string(expect_idx)];
             } else {
                 //  when expect_element is map, pass parent expect to next call, so make it possible to use single
@@ -1410,14 +1410,6 @@ static bool DoExpandProviderCase(const size_t idx, const YAML::Node& sql_case_no
             }
         } else if (expect_element.IsSequence() && expect_element.size() > expect_idx && expect_element[expect_idx]) {
             child_expect_element = expect_element[expect_idx];
-        } else {
-            std::stringstream ss;
-            ss << "[";
-            for (int i = 0; i < idx; ++i) {
-                ss << choice_idxs->at(i) << ", ";
-            }
-            ss << choice_idxs->at(idx) << "]";
-            DLOG(WARNING) << "Missing expect provider for the choice chain: " << ss.str();
         }
 
         if (!DoExpandProviderCase(idx + 1, sql_case_node, provider_contents, child_expect_element, global_db, cases_dir,
