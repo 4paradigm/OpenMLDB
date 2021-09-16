@@ -78,7 +78,8 @@ class TestWindowSkewOptimizationWithSkewConfig extends SparkTestSuite {
 
     // Test with SparkSQL
     val sparksqlOutputDf = sess.sparksql(sqlText)
-    // Notice that the sum column type is different for SparkSQL and SparkFE
+
+    // Notice that the sum column type is different for SparkSQL and OpenMLDB Batch
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 }

@@ -132,8 +132,8 @@ object SparkUtil {
    * @param df2
    * @return
    */
-  def approximateDfEqual(df1: DataFrame, df2: DataFrame, checkScheam: Boolean = true): Boolean = {
-    if (checkScheam) {
+  def approximateDfEqual(df1: DataFrame, df2: DataFrame, checkSchema: Boolean = true): Boolean = {
+    if (checkSchema) {
       if (df1.schema != df2.schema) {
         return false
       }
