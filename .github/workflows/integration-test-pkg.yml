@@ -10,7 +10,87 @@ env:
   HYBRIDSE_SOURCE:
 
 jobs:
-  java-sdk-test-standalone-0:
+#  java-sdk-test-standalone-0:
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.0
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v1
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "0"
+#      - name: upload unit test results
+#        if: always()
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: integration-test-sdk-java-standalone-0-${{ github.sha }}
+#          path: |
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
+#  java-sdk-test-standalone-1:
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.0
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v1
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "1,2,3,4,5"
+#      - name: upload unit test results
+#        if: always()
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: integration-test-sdk-java-standalone-1-${{ github.sha }}
+#          path: |
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
+#  java-sdk-test-cluster-0:
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.0
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v1
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d cluster -l "0"
+#      - name: upload unit test results
+#        if: always()
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: integration-test-sdk-java-cluster-0-${{ github.sha }}
+#          path: |
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
+#  java-sdk-test-cluster-1:
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.0
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v1
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d cluster -l "1,2,3,4,5"
+#      - name: upload unit test results
+#        if: always()
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: integration-test-sdk-java-cluster-1-${{ github.sha }}
+#          path: |
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
+#            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
+  apiserver-test:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
@@ -19,81 +99,21 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "0"
+        run: source /root/.bashrc && bash test/steps/openmldb-apiserver-test.sh -b PKG -c test_all.xml -d standalone -l "0"
       - name: upload unit test results
         if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: sdk-test-java-standalone-0-${{ github.sha }}
+          name: integration-test-apiserver-${{ github.sha }}
           path: |
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
-  java-sdk-test-standalone-1:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
-    env:
-      OS: linux
-    steps:
-      - uses: actions/checkout@v1
-      - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "1,2,3,4,5"
-      - name: upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: sdk-test-java-standalone-1-${{ github.sha }}
-          path: |
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
-  java-sdk-test-cluster-0:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
-    env:
-      OS: linux
-    steps:
-      - uses: actions/checkout@v1
-      - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d cluster -l "0"
-      - name: upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: sdk-test-java-cluster-0-${{ github.sha }}
-          path: |
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
-  java-sdk-test-cluster-1:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
-    env:
-      OS: linux
-    steps:
-      - uses: actions/checkout@v1
-      - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d cluster -l "1,2,3,4,5"
-      - name: upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: sdk-test-java-cluster-1-${{ github.sha }}
-          path: |
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
-
+            test/integration-test/openmldb-test-java/openmldb-http-test/target/surefire-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-http-test/target/surefire-reports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-http-test/target/failsafe-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-http-test/target/failsafe-reports/TEST-*.xml
   publish-test-results:
     runs-on: ubuntu-latest
-    needs: [ "java-sdk-test-standalone-0","java-sdk-test-standalone-1","java-sdk-test-cluster-0","java-sdk-test-cluster-1" ]
+#    needs: [ "java-sdk-test-standalone-0","java-sdk-test-standalone-1","java-sdk-test-cluster-0","java-sdk-test-cluster-1","apiserver-test" ]
+    needs: [ "apiserver-test" ]
 
     # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
     if: >
@@ -104,9 +124,9 @@ jobs:
       - name: Download Artifacts
         uses: actions/download-artifact@v2
 
-      - name: Java SDK PKG Results
+      - name: INTEGRATION TEST PKG Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
-          files: sdk-test-*/**/*.xml
-          check_name: SDK Test Report
-          comment_title: SDK Test Report
+          files: integration-test-*/**/*.xml
+          check_name: INTEGRATION Test Report
+          comment_title: INTEGRATION Test Report
