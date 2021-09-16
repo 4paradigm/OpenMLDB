@@ -91,6 +91,28 @@ jobs:
 #            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
 #            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
 
+  python-sdk-test-standalone-0:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v1
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b PKG -d standalone -l "0"
+
+  python-sdk-test-standalone-1:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v1
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b PKG -d standalone -l "1,2,3,4,5"
+
   apiserver-test:
     runs-on: ubuntu-latest
     container:
@@ -112,29 +134,31 @@ jobs:
             test/integration-test/openmldb-test-java/openmldb-http-test/target/failsafe-reports/junitreports/TEST-*.xml
             test/integration-test/openmldb-test-java/openmldb-http-test/target/failsafe-reports/TEST-*.xml
 
-  batch-test:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
-    env:
-      OS: linux
-    steps:
-      - uses: actions/checkout@v1
-      - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-batch-test.sh
-      - name: upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: integration-test-apiserver-${{ github.sha }}
-          path: |
-            test/batch-test/openmldb-batch-test/target/surefire-reports/junitreports/TEST-*.xml
-            test/batch-test/openmldb-batch-test/target/failsafe-reports/junitreports/TEST-*.xml
+#  batch-test:
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.0
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v1
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-batch-test.sh
+#      - name: upload unit test results
+#        if: always()
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: integration-test-apiserver-${{ github.sha }}
+#          path: |
+#            test/batch-test/openmldb-batch-test/target/surefire-reports/junitreports/TEST-*.xml
+#            test/batch-test/openmldb-batch-test/target/surefire-reports/TEST-*.xml
+#            test/batch-test/openmldb-batch-test/target/failsafe-reports/junitreports/TEST-*.xml
+#            test/batch-test/openmldb-batch-test/target/failsafe-reports/TEST-*.xml
 
   publish-test-results:
     runs-on: ubuntu-latest
-#    needs: [ "java-sdk-test-standalone-0","java-sdk-test-standalone-1","java-sdk-test-cluster-0","java-sdk-test-cluster-1","apiserver-test" ]
-    needs: [ "apiserver-test","batch-test" ]
+#    needs: [ "java-sdk-test-standalone-0","java-sdk-test-standalone-1","java-sdk-test-cluster-0","java-sdk-test-cluster-1","apiserver-test","batch-test" ]
+    needs: [ "apiserver-test" ]
 
     # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
     if: >
