@@ -28,7 +28,7 @@ TABLET1=$IP:9520
 TABLET2=$IP:9521
 TABLET3=$IP:9522
 
-RAMBUILD_PREFIX=/tmp/rambuild
+RAMBUILD_PREFIX=/Users/chenjing/tmp/rambuild
 ../build/bin/openmldb --db_root_path=${RAMBUILD_PREFIX}/tablet0-binlogs \
                    --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin0 \
                    --endpoint=${TABLET1} --role=tablet \

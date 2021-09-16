@@ -155,7 +155,7 @@ void StartClient(char *argv[]) {
             ::hybridse::sdk::Status status;
             HandleSqlScript(cmd_str, status);
             if (0 != status.code) {
-                std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
+                std::cout << "ERROR[" << status.code << "]: " << status.msg << std::endl;
             }
             cmd_str.clear();
             cmd_mode = true;

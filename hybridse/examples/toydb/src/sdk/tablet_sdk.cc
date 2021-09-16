@@ -270,8 +270,7 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
     if (0 != sql_status.code) {
         status.code = sql_status.code;
         status.msg = sql_status.msg;
-        status.trace = sql_status.trace;
-        LOG(WARNING) << status.msg;
+        status.trace = sql_status.GetTraces();
         return;
     }
 }

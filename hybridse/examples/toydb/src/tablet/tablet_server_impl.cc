@@ -163,9 +163,12 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             bool ok = engine_->Get(request->sql(), request->db(), session,
                                    base_status);
             if (!ok) {
-                status->set_msg(base_status.str());
                 status->set_code(base_status.code);
-                LOG(WARNING) << base_status.str();
+                if (FLAGS_enable_trace) {
+                    status->set_msg(base_status.str());
+                } else {
+                    status->set_msg(base_status.GetMsg());
+                }
                 return;
             }
         }
@@ -207,9 +210,12 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             bool ok = engine_->Get(request->sql(), request->db(), session,
                                    base_status);
             if (!ok) {
-                status->set_msg(base_status.str());
                 status->set_code(base_status.code);
-                LOG(WARNING) << base_status.str();
+                if (FLAGS_enable_trace) {
+                    status->set_msg(base_status.str());
+                } else {
+                    status->set_msg(base_status.GetMsg());
+                }
                 return;
             }
         }
@@ -244,8 +250,11 @@ void TabletServerImpl::Explain(RpcController* ctrl,
                                request->parameter_schema(),
                                &output, &base_status);
     if (!ok || base_status.code != 0) {
-        status->set_trace(base_status.trace);
-        status->set_msg(base_status.msg);
+        if (FLAGS_enable_trace) {
+            status->set_msg(base_status.str());
+        } else {
+            status->set_msg(base_status.GetMsg());
+        }
         status->set_code(base_status.code);
         return;
     }

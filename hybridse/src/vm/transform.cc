@@ -1512,7 +1512,7 @@ Status BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan) {
     ::llvm::Function* fn = nullptr;
     Status status;
     bool ok = builder.Build(fn_plan->fn_def_, &fn, status);
-    CHECK_TRUE(ok, kCodegenError, "Fail to codegen function: " + status.str());
+    CHECK_STATUS(status)
 
     type::Type column_type;
     auto header = fn_plan->fn_def_->header_;

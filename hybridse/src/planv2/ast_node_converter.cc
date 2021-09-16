@@ -1357,7 +1357,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                 break;
             }
             default: {
-                return base::Status(common::kSqlAstError,
+                FAIL_STATUS(common::kSqlAstError,
                                     "unsupported ast expression type: ", entry->value()->GetNodeKindString());
             }
         }
@@ -1367,7 +1367,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
     } else if (boost::equals("ttl_type", name)) {
         std::string ttl_type;
         CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == entry->value()->node_kind(), common::kSqlAstError,
-                   "Invaid ttl_type, should be path expression");
+                   "Invalid ttl_type, should be path expression");
         CHECK_STATUS(AstPathExpressionToString(entry->value()->GetAsOrNull<zetasql::ASTPathExpression>(), &ttl_type));
         *output = node_manager->MakeIndexTTLTypeNode(ttl_type);
         return base::Status::OK();
@@ -1376,7 +1376,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
             case zetasql::AST_PATH_EXPRESSION: {
                 std::string version;
                 CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == entry->value()->node_kind(), common::kSqlAstError,
-                           "Invaid index version, should be path expression");
+                           "Invalid index version, should be path expression");
                 CHECK_STATUS(
                     AstPathExpressionToString(entry->value()->GetAsOrNull<zetasql::ASTPathExpression>(), &version));
                 *output = node_manager->MakeIndexVersionNode(version);
