@@ -1,7 +1,6 @@
 name: INTEGRATION-TEST-PKG
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
@@ -118,22 +117,22 @@ jobs:
       - uses: actions/checkout@v1
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b PKG -d standalone -l "0"
-      - name: allure-report
-        uses: simple-elf/allure-report-action@master
-        if: always()
-        id: allure-report
-        with:
-          allure_results: python/report/allure-results
-          gh_pages: gh-pages
-          allure_report: allure-report
-          allure_history: allure-history
-      - name: Deploy report to Github Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v2
-        env:
-          PERSONAL_TOKEN: ${{ secrets.CR_PAT_ZW }}
-          PUBLISH_BRANCH: gh-pages
-          PUBLISH_DIR: allure-history
+#      - name: allure-report
+#        uses: simple-elf/allure-report-action@master
+#        if: always()
+#        id: allure-report
+#        with:
+#          allure_results: python/report/allure-results
+#          gh_pages: gh-pages
+#          allure_report: allure-report
+#          allure_history: allure-history
+#      - name: Deploy report to Github Pages
+#        if: always()
+#        uses: peaceiris/actions-gh-pages@v2
+#        env:
+#          PERSONAL_TOKEN: ${{ secrets.CR_PAT_ZW }}
+#          PUBLISH_BRANCH: gh-pages
+#          PUBLISH_DIR: allure-history
 
   python-sdk-test-standalone-1:
     runs-on: ubuntu-latest
