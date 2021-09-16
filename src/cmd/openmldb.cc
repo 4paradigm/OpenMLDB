@@ -1513,7 +1513,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
             }
         } else {
             int failed_cnt = 0;
-            for (uint32_t cur_pid = 0; cur_pid < (size_t)tables[0].table_partition_size(); cur_pid++) {
+            for (uint32_t cur_pid = 0; cur_pid < static_cast<size_t>(tables[0].table_partition_size()); cur_pid++) {
                 uint64_t cur_ts = 0;
                 std::string cur_value;
                 tb_client = GetTabletClient(tables[0], cur_pid, msg);

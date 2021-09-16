@@ -16,15 +16,34 @@
 
 package com._4paradigm.openmldb.batch.utils
 
-import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
-import com._4paradigm.openmldb.batch.PlanContext
 import com._4paradigm.openmldb.batch.udf.PercentileApprox.percentileApprox
-import org.apache.spark.sql.functions.{lit, when}
+import org.apache.spark.sql.functions.{approx_count_distinct, lit, when}
 import org.apache.spark.sql.{Column, DataFrame}
 
 import scala.collection.mutable
 
 object SkewDataFrameUtils {
+  def genDistributionDf(inputDf: DataFrame, quantile: Int, repartitionColIndex: mutable.ArrayBuffer[Int],
+                        percentileColIndex: Int, partitionColName: String, distinctCountColName: String,
+                        approxRatio: Double): DataFrame = {
+
+    // TODO: Support multiple repartition keys
+    val groupByCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
+    val percentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, percentileColIndex)
+
+    // Add percentile_approx column
+    val columns = mutable.ArrayBuffer[Column]()
+    val factor = 1.0 / quantile.toDouble
+    for (i <- 1 until quantile) {
+      val ratio = i * factor
+      columns += percentileApprox(percentileCol, lit(ratio)).as(s"PERCENTILE_${i}")
+    }
+
+    columns += approx_count_distinct(percentileCol, approxRatio).as(distinctCountColName)
+
+    inputDf.groupBy(groupByCol.as(partitionColName)).agg(columns.head, columns.tail: _*)
+  }
+
   def genDistributionDf(inputDf: DataFrame, quantile: Int, repartitionColIndex: mutable.ArrayBuffer[Int],
                         percentileColIndex: Int, partitionColName: String): DataFrame = {
 
@@ -45,7 +64,7 @@ object SkewDataFrameUtils {
 
   def genAddColumnsDf(inputDf: DataFrame, distributionDf: DataFrame, quantile: Int,
                       repartitionColIndex: mutable.ArrayBuffer[Int], percentileColIndex: Int,
-                      partIDColName: String, expandedRowColName: String): DataFrame = {
+                      partIdColName: String, expandedRowColName: String): DataFrame = {
 
     // Input dataframe left join distribution dataframe
     // TODO: Support multiple repartition keys
@@ -68,7 +87,7 @@ object SkewDataFrameUtils {
         part = part.otherwise(quantile)
       }
     }
-    joinDf = joinDf.withColumn(partIDColName, part).withColumn(expandedRowColName, lit(false))
+    joinDf = joinDf.withColumn(partIdColName, part).withColumn(expandedRowColName, lit(false))
 
     // Drop "PARTITION_KEY" column and PERCENTILE_* columns
     // PS: When quantile is 2, the num of PERCENTILE_* columns is 1
@@ -79,23 +98,38 @@ object SkewDataFrameUtils {
     joinDf
   }
 
-  def genUnionDf(addColumnsDf: DataFrame, quantile: Int, partColName: String,
-                 expandedRowColName: String): DataFrame = {
-
-    // True By default
-    val isClimbing = true
+  def genUnionDf(addColumnsDf: DataFrame, quantile: Int, partIdColName: String, expandedRowColName: String,
+                 rowsWindowSize: Long, minBlockSize: Double): DataFrame = {
 
     // Filter expandWindowColumns and union
     var unionDf = addColumnsDf
-    if (isClimbing) {
-      for (i <- 2 to quantile) {
-        val filterStr = partColName +  s" < ${i}"
-        unionDf = unionDf.union(addColumnsDf.filter(filterStr)
-            .withColumn(partColName, lit(i)).withColumn(expandedRowColName, lit(true))
-        )
-      }
+
+    val blockNum = math.ceil(rowsWindowSize / minBlockSize).toInt
+
+    for (i <- 2 to quantile) {
+      val filterStr = partIdColName + s" >= ${i - blockNum}" + " and " + partIdColName + s" < ${i}"
+      unionDf = unionDf.union(
+        addColumnsDf.filter(filterStr)
+          .withColumn(partIdColName, lit(i)).withColumn(expandedRowColName, lit(true))
+      )
     }
 
+    unionDf
+  }
+
+  def genUnionDf(addColumnsDf: DataFrame, quantile: Int, partIdColName: String,
+                 expandedRowColName: String): DataFrame = {
+
+    // Filter expandWindowColumns and union
+    var unionDf = addColumnsDf
+
+    for (i <- 2 to quantile) {
+      val filterStr = partIdColName + s" < ${i}"
+      unionDf = unionDf.union(
+        addColumnsDf.filter(filterStr)
+          .withColumn(partIdColName, lit(i)).withColumn(expandedRowColName, lit(true))
+      )
+    }
     unionDf
   }
 }
