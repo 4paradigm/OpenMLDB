@@ -1,13 +1,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
     <modelVersion>4.0.0</modelVersion>
+
     <groupId>com.4paradigm.openmldb</groupId>
+    <version>0.2.3</version>
     <artifactId>openmldb-taskmanager</artifactId>
-    <packaging>jar</packaging>
     <name>openmldb-taskmanager</name>
-    <version>0.2.0</version>
+    <packaging>jar</packaging>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -201,6 +201,13 @@
                 <artifactId>maven-scala-plugin</artifactId>
                 <version>2.15.2</version>
                 <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>pre-site</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                    </execution>
                     <execution>
                         <goals>
                             <goal>compile</goal>
