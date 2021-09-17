@@ -11,7 +11,7 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  HYBRIDSE_SOURCE:
+  HYBRIDSE_SOURCE: 
 
 jobs:
   build_and_cpp_ut:
@@ -21,7 +21,7 @@ jobs:
     env:
       OS: linux
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: build
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
@@ -63,7 +63,7 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: build
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
@@ -85,7 +85,7 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: build
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
@@ -138,7 +138,7 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: build pysdk and sqlalchemy
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
@@ -209,8 +209,12 @@ jobs:
     needs: [ "build_and_cpp_ut", "sql_sdk_test", "sql_cluster_test", "java-sdk", "python-sdk" ]
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
+    # java deploy is triggered with a push to main or a tag push
+    # a 'vX.Y.Z' tag push will deploy a release version to maven central,
+    # any other push will deploy a SNAPSHOT version.
+    # see more in 'steps/package_openmldb_javasdk.sh'
     if: >
-      success() && startsWith(github.ref, 'refs/tags/v')
+      success() && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v2
 
@@ -233,8 +237,8 @@ jobs:
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=$(echo $VERSION | sed -e 's/^v//')
-          sh steps/package_openmldb_javasdk.sh $VERSION
+          VERSION=$(echo "$VERSION" | sed -e 's/^v//')
+          ./steps/package_openmldb_javasdk.sh "$VERSION"
         env:
           MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}

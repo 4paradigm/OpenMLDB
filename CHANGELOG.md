@@ -1,7 +1,8 @@
 # Changelog
 
 ## [Unreleased]
-
+### Feature
+- Support insert multiple rows into a table using a single SQL insert statement. [#398](https://github.com/4paradigm/OpenMLDB/issues/398)
 ## [0.2.3] - 2021-08-31
 ### Feature
 - Data importer support bulk load [#250](https://github.com/4paradigm/OpenMLDB/pull/250)

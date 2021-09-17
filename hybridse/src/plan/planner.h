@@ -76,6 +76,7 @@ class Planner {
     base::Status CreateCreateProcedurePlan(const node::SqlNode *root, const PlanNodeList &inner_plan_node_list,
                                            node::PlanNode **output);
     node::NodeManager *node_manager_;
+
     std::string MakeTableName(const PlanNode *node) const;
     base::Status MergeProjectMap(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
                                  std::map<const node::WindowDefNode *, node::ProjectListNode *> *output);

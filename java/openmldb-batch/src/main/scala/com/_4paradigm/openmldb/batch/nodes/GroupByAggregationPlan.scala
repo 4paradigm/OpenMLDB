@@ -76,7 +76,7 @@ object GroupByAggregationPlan {
       outputSchemaSlices = outputSchemaSlices,
       inputSchema = inputSchema
     )
-    val groupKeyComparator = HybridseUtil.createGroupKeyComparator(groupIdxs.toArray, inputSchema)
+    val groupKeyComparator = HybridseUtil.createGroupKeyComparator(groupIdxs.toArray)
 
     val hybridseJsdkLibraryPath = ctx.getConf.hybridseJsdkLibraryPath
 
@@ -84,7 +84,7 @@ object GroupByAggregationPlan {
     val resultRDD = sortedInputDf.rdd.mapPartitions(iter => {
       val resultRowList =  mutable.ArrayBuffer[Row]()
 
-      if (!iter.isEmpty) { // Ignore the empty partition
+      if (iter.nonEmpty) { // Ignore the empty partition
         var currentLimitCnt = 0
 
         // Init JIT

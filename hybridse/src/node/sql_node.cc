@@ -1086,7 +1086,21 @@ void ColumnOfExpression(const ExprNode *node_ptr, std::vector<const node::ExprNo
         }
     }
 }
-
+// Check if given expression is or based on an aggregation expression.
+bool IsAggregationExpression(const udf::UdfLibrary* lib, ExprNode* node_ptr) {
+    if (kExprCall == node_ptr->GetExprType()) {
+        CallExprNode *func_node_ptr = dynamic_cast<CallExprNode *>(node_ptr);
+        if (lib->IsUdaf(func_node_ptr->GetFnDef()->GetName(), func_node_ptr->GetChildNum())) {
+            return true;
+        }
+    }
+    for (auto child : node_ptr->children_) {
+        if (IsAggregationExpression(lib, child)) {
+            return true;
+        }
+    }
+    return false;
+}
 bool WindowOfExpression(const std::map<std::string, const WindowDefNode *>& windows, ExprNode *node_ptr,
                         const WindowDefNode **output) {
     // try to resolved window ptr from expression like: call(args...) over

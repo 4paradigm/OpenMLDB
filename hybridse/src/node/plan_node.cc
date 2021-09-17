@@ -328,13 +328,14 @@ bool ProjectListNode::Equals(const PlanNode *node) const {
         return false;
     }
 
-    return this->is_window_agg_ == that->is_window_agg_ &&
+    return this->has_row_project_ == that->has_row_project_ &&
+           this->has_agg_project_ == that->has_agg_project_ &&
            node::PlanEquals(this->w_ptr_, that->w_ptr_) &&
            PlanListEquals(this->projects, that->projects) &&
            LeafPlanNode::Equals(node);
 }
 bool ProjectListNode::IsSimpleProjectList() {
-    if (is_window_agg_) {
+    if (has_agg_project_) {
         return false;
     }
     if (projects.empty()) {

@@ -84,7 +84,7 @@ bool Reader::SkipToInitialBlock() {
     uint64_t block_start_location = initial_offset_ - offset_in_block;
 
     // Don't search a block if we'd be in the trailer
-    if (offset_in_block > (size_t)(block_size_ - 6)) {
+    if (offset_in_block > static_cast<size_t>(block_size_ - 6)) {
         block_start_location += block_size_;
     }
 

@@ -415,8 +415,10 @@ Status EngineTestRunner::Compile() {
 }
 
 void EngineTestRunner::RunCheck() {
-    if (!InitEngineCatalog()) {
-        LOG(ERROR) << "Engine Test Init Catalog Error";
+    bool ok = InitEngineCatalog();
+    if (!ok) {
+        return_code_ = ENGINE_TEST_INIT_CATALOG_ERROR;
+        FAIL() << "Engine Test Init Catalog Error";
         return;
     }
     auto engine_mode = session_->engine_mode();

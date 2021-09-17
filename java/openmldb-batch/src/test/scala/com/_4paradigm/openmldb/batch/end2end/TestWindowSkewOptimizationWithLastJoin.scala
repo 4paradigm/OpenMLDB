@@ -118,8 +118,8 @@ class TestWindowSkewOptimizationWithLastJoin extends SparkTestSuite {
   test("Test skip windowskew optimization with last join") {
 
     getSparkSession.conf.set("spark.openmldb.window.skew.opt", true)
-    // When quantile is 8 which is greater than the min num of repartition columns--4, will skip windowskew optimization
-    getSparkSession.conf.set("openmldb.skew.level", 3)
+    // When quantile is 8 which is greater than the min num of repartition columns--4, the result is still correct
+    getSparkSession.conf.set("openmldb.skew.partition.num", 8)
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 

@@ -32,13 +32,13 @@ TEST_F(MergeAggregationsTest, Test) {
     std::vector<std::string> non_merge_cases = {"0",
                                                 "col_0",
                                                 "col_1 * col_2",
-                                                "sum(col_0 + sum(col_1))",
-                                                "lag(col_0, 1)",
-                                                "sum(col_0 + lag(col_0, 1))"};
+                                                "sum(col_0 + sum(col_1)) over w1",
+                                                "lag(col_0, 1) over w1",
+                                                "sum(col_0 + lag(col_0, 1)) over w1"};
 
-    std::vector<std::string> merge_cases = {"sum(col_0 + 1)", "sum(col_1 + 1)",
-                                            "distinct_count(col_2)",
-                                            "fz_topn_frequency(col_3, 3)"};
+    std::vector<std::string> merge_cases = {"sum(col_0 + 1) over w1", "sum(col_1 + 1) over w1",
+                                            "distinct_count(col_2) over w1",
+                                            "fz_topn_frequency(col_3, 3) over w1 "};
 
     std::string sql = "select \n";
     for (size_t i = 0; i < non_merge_cases.size(); ++i) {

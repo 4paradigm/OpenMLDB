@@ -228,12 +228,12 @@ class ProjectNode : public LeafPlanNode {
     node::FrameNode *frame() const { return frame_; }
     void set_frame(node::FrameNode *frame) { frame_ = frame; }
     virtual bool Equals(const PlanNode *node) const;
-
-    const bool is_aggregation_;
+    const bool IsAgg() const { return is_aggregation_; }
 
  private:
     uint32_t pos_;
     std::string name_;
+    const bool is_aggregation_;
     node::ExprNode *expression_;
     node::FrameNode *frame_;
 };
@@ -282,23 +282,33 @@ class WindowPlanNode : public LeafPlanNode {
 
 class ProjectListNode : public LeafPlanNode {
  public:
-    ProjectListNode() : LeafPlanNode(kProjectList), is_window_agg_(false), w_ptr_(nullptr), projects({}) {}
-    ProjectListNode(const WindowPlanNode *w_ptr, const bool is_window_agg)
-        : LeafPlanNode(kProjectList), is_window_agg_(is_window_agg), w_ptr_(w_ptr), projects({}) {}
+    ProjectListNode()
+        : LeafPlanNode(kProjectList), has_row_project_(false), has_agg_project_(false), w_ptr_(nullptr), projects({}) {}
+    ProjectListNode(const WindowPlanNode *w_ptr, const bool is_agg)
+        : LeafPlanNode(kProjectList), has_row_project_(false), has_agg_project_(false), w_ptr_(w_ptr), projects({}) {}
     ~ProjectListNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const PlanNodeList &GetProjects() const { return projects; }
-    void AddProject(ProjectNode *project) { projects.push_back(project); }
+    void AddProject(ProjectNode *project) {
+        projects.push_back(project);
+        if (project->IsAgg()) {
+            has_agg_project_ = true;
+        } else {
+            has_row_project_ = true;
+        }
+    }
 
     const WindowPlanNode *GetW() const { return w_ptr_; }
-
-    const bool IsWindowAgg() const { return is_window_agg_; }
+    const bool HasRowProject() const { return has_row_project_; }
+    const bool HasAggProject() const { return has_agg_project_; }
+    const bool IsWindowProject() const { return nullptr != w_ptr_; }
     virtual bool Equals(const PlanNode *node) const;
 
     static bool MergeProjectList(node::ProjectListNode *project_list1, node::ProjectListNode *project_list2,
                                  node::ProjectListNode *merged_project);
-    const bool is_window_agg_;
+    bool has_row_project_;
+    bool has_agg_project_;
     const WindowPlanNode *w_ptr_;
 
     bool IsSimpleProjectList();
