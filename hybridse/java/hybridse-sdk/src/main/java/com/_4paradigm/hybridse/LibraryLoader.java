@@ -41,8 +41,6 @@ public class LibraryLoader {
      */
     public static synchronized void loadLibrary(String libraryPath) {
         logger.info("Try to load the library {}", libraryPath);
-        System.out.print("DYLD_LIBRARY_PATH=");
-        System.out.println(System.getenv("DYLD_LIBRARY_PATH"));
 
         boolean isPath = libraryPath.endsWith(".so") || libraryPath.endsWith(".dylib");
         if (!isPath) {
