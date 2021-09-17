@@ -40,6 +40,7 @@ public class SelectTest extends FedbTest {
     @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
     @Step("{testCase.desc}")
     public void testSelect(SQLCase testCase) throws Exception {
+        System.out.println("testCase = " + testCase);
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
