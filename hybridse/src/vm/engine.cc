@@ -298,7 +298,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
         size_t schema_size = static_cast<size_t>(explain_output->output_schema.size());
         for (size_t idx : output_common_indices) {
             if (idx >= schema_size) {
-                status->msg =  "Output common column index out of bound: " + idx;
+                status->msg =  "Output common column index out of bound: " + std::to_string(idx);
                 status->code = common::kCommonIndexError;
                 return false;
             }

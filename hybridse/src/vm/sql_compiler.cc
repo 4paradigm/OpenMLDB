@@ -163,7 +163,7 @@ Status SqlCompiler::BuildBatchModePhysicalPlan(SqlContext* ctx, const ::hybridse
                                          ctx->is_performance_sensitive, ctx->is_cluster_optimized,
                                          ctx->enable_expr_optimize, ctx->enable_batch_window_parallelization);
     transformer.AddDefaultPasses();
-    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output), "Fail to generate physical plan (batch mode)");
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output), "Fail to generate physical plan batch mode");
     ctx->schema = *(*output)->GetOutputSchema();
     return Status::OK();
 }

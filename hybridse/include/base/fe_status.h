@@ -73,13 +73,14 @@ static inline std::initializer_list<int> __output_literal_args(STREAM& stream,  
         return _status;                                             \
         break;                                                      \
     }
-
+struct Trace {
+    Trace(const std::string& file, const int line, const std::string& msg) : file(file), line(line), msg(msg) {}
+    ~Trace() {}
+    std::string file;
+    int line;
+    std::string msg;
+};
 struct Status {
-    struct Trace {
-        const std::string msg;
-        const std::string file;
-        const int line;
-    };
     Status() : code(common::kOk), msg("ok") {}
 
     explicit Status(common::StatusCode status_code) : code(status_code), msg("") {}
@@ -109,7 +110,7 @@ struct Status {
         if (traces.size() >= MAX_STATUS_TRACE_SIZE) {
             traces.pop_back();
         }
-        traces.emplace_back(Trace{.file = file, .line = line, .msg = msg});
+        traces.emplace_back(Trace(file, line, msg));
     }
     common::StatusCode code;
     std::string msg;

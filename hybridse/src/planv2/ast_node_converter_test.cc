@@ -325,7 +325,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kOk, status.code) << status.msg << status.trace;
+        EXPECT_EQ(common::kOk, status.code) << status;
         EXPECT_STREQ("t1", output->GetTableName().c_str());
         EXPECT_EQ(false, output->GetOpIfNotExist());
         EXPECT_EQ(3, output->GetPartitionNum());
@@ -367,7 +367,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kOk, status.code) << status.msg << status.trace;
+        EXPECT_EQ(common::kOk, status.code) << status;
         EXPECT_STREQ("t1", output->GetTableName().c_str());
         EXPECT_EQ(true, output->GetOpIfNotExist());
         EXPECT_EQ(5, output->GetPartitionNum());
@@ -387,7 +387,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kOk, status.code) << status.msg << status.trace;
+        EXPECT_EQ(common::kOk, status.code) << status;
         EXPECT_STREQ("t3", output->GetTableName().c_str());
         EXPECT_EQ(true, output->GetOpIfNotExist());
         EXPECT_EQ(5, output->GetPartitionNum());
@@ -405,7 +405,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kOk, status.code) << status.msg << status.trace;
+        EXPECT_EQ(common::kOk, status.code) << status;
         EXPECT_STREQ("t4", output->GetTableName().c_str());
     }
 
@@ -708,7 +708,7 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
         node::SqlNode* stmt;
         auto s = ConvertStatement(statement, &node_manager, &stmt);
         EXPECT_EQ(code, s.code);
-        EXPECT_STREQ(msg.c_str(), s.msg.c_str()) << s.msg << s.trace;
+        EXPECT_STREQ(msg.c_str(), s.msg.c_str()) << s;
     };
 
     expect_converted(R"sql(
@@ -946,7 +946,7 @@ TEST_F(ASTNodeConverterTest, ConvertTypeFailTest) {
       node::SqlNode* stmt;
       auto s = ConvertStatement(statement, &node_manager, &stmt);
       EXPECT_EQ(code, s.code);
-      EXPECT_STREQ(msg.c_str(), s.msg.c_str()) << s.msg << s.trace;
+      EXPECT_STREQ(msg.c_str(), s.msg.c_str()) << s;
     };
 
     expect_converted(R"sql(
@@ -965,7 +965,7 @@ TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
     node::SqlNode* output;
     base::Status status;
     status = ConvertStatement(statement, manager_, &output);
-    EXPECT_EQ(common::kOk, status.code) << status.msg << status.trace;
+    EXPECT_EQ(common::kOk, status.code) << status;
     if (status.isOK() && !GetParam().expect().node_tree_str_.empty()) {
         EXPECT_STREQ(GetParam().expect().node_tree_str_.c_str(), output->GetTreeString().c_str())
             << output->GetTreeString().c_str();

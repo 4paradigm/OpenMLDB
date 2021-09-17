@@ -117,6 +117,7 @@ using hybridse::vm::EngineMode;
 using hybridse::vm::EngineOptions;
 using hybridse::base::Iterator;
 using hybridse::base::ConstIterator;
+using hybridse::base::Trace;
 using hybridse::codec::RowIterator;
 using hybridse::codec::Row;
 using hybridse::vm::SchemasContext;
