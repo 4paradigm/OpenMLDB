@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,20 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cases:
-  - id: 1
-    desc: Trim函数
-    sql: SELECT TRIM(COL1) FROM t1;
-  - id: 2
-    desc: Trim函数2
-    sql: SELECT trim(COL1) as trim_col1 FROM t1;
-  - id: 3
-    desc: Min函数
-    sql: SELECT MIN(COL1) FROM t1;
-  - id: 4
-    desc: Max函数
-    sql: SELECT MAX(COL1) FROM t1;
-  - id: 5
-    desc: Sum函数
-    sql: SELECT SUM(COL1) FROM t1;
 
+file="steps/fedb_sdk_test.properties"
+
+if [ -f "$file" ]
+then
+  echo "$file found."
+  # shellcheck disable=SC2034
+  while IFS='=' read -r key value
+  do
+    key=$(echo "$key" | tr '.' '_')
+    # shellcheck disable=SC1083
+    eval "${key}"=\${value}
+  done < "$file"
+else
+  echo "$file not found."
+fi

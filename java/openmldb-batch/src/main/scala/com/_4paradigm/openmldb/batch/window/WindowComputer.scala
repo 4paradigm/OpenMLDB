@@ -58,8 +58,7 @@ class WindowComputer(sqlConfig: OpenmldbBatchConfig,
   // append slices cnt = needAppendInput ? inputSchemaSlices.size : 0
   private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.length else 0
   // group key comparation
-  private var groupKeyComparator = HybridseUtil.createGroupKeyComparator(
-    config.groupIdxs, config.inputSchema)
+  private var groupKeyComparator = HybridseUtil.createGroupKeyComparator(config.groupIdxs)
 
   // native function handle
   private val fn = jit.FindFunction(config.functionName)
@@ -229,8 +228,8 @@ class WindowComputer(sqlConfig: OpenmldbBatchConfig,
     }
   }
 
-  def resetGroupKeyComparator(keyIdxs: Array[Int], schema: StructType): Unit = {
-    groupKeyComparator = HybridseUtil.createGroupKeyComparator(keyIdxs, schema)
+  def resetGroupKeyComparator(keyIdxs: Array[Int]): Unit = {
+    groupKeyComparator = HybridseUtil.createGroupKeyComparator(keyIdxs)
   }
 
 

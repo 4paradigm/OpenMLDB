@@ -46,13 +46,16 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.window.skew.opt", doc="Enable window skew optimization or not")
   var enableWindowSkewOpt: Boolean = false
 
+  // Window skew optimization
+  @ConfigOption(name="openmldb.window.skew.expanded.all.opt",
+    doc="Enable window skew optimization expanded all data")
+  var enableWindowSkewExpandedAllOpt: Boolean = true
+
   @ConfigOption(name="openmldb.window.skew.opt.postfix", doc="The postfix for internal tables and columns")
   var windowSkewOptPostfix = ""
 
-  @ConfigOption(name="openmldb.skew.level", doc="""
-      | 数据倾斜优化级别，默认是1，数据拆分两份分别计算，优化1倍。
-      | 因为数据按照2的n次方拆分。所以不建议level改太大""")
-  var skewLevel: Int = 1
+  @ConfigOption(name="openmldb.skew.partition.num", doc="The num of partition for repartition")
+  var skewedPartitionNum: Int = 2
 
   @ConfigOption(name="openmldb.window.skew.opt.cache", doc="Window skew optimization will cache reused tables")
   var windowSkewOptCache: Boolean = true

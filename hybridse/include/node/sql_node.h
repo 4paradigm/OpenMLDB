@@ -1429,8 +1429,6 @@ class CallExprNode : public ExprNode {
     bool IsListReturn(ExprAnalysisContext *ctx) const override;
 
  private:
-    // bool is_agg_;
-    // const std::string function_name_;
     FnDefNode *fn_def_;
     const WindowDefNode *over_;
 };
@@ -2453,6 +2451,7 @@ bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
 bool TypeEquals(const TypeNode *left, const TypeNode *right);
 bool WindowOfExpression(const std::map<std::string, const WindowDefNode *>& windows, ExprNode *node_ptr,
                         const WindowDefNode **output);
+bool IsAggregationExpression(const udf::UdfLibrary* lib, ExprNode* node_ptr);
 void ColumnOfExpression(const ExprNode *node_ptr,
                         std::vector<const node::ExprNode *> *columns);  // NOLINT
 void FillSqlNodeList2NodeVector(SqlNodeList *node_list_ptr,

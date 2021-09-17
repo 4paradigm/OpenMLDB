@@ -201,6 +201,9 @@ class SQLClusterRouter : public SQLRouter {
     bool GetInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                        std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info, DefaultValueMap* default_map,
                        uint32_t* str_length);
+    bool GetMultiRowInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
+                               std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
+                               std::vector<DefaultValueMap>* default_maps, std::vector<uint32_t>* str_lengths);
 
     std::shared_ptr<hybridse::node::ConstNode> GetDefaultMapValue(const hybridse::node::ConstNode& node,
                                                                   openmldb::type::DataType column_type);
