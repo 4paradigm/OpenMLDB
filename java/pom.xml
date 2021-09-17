@@ -294,7 +294,6 @@
                 <artifactId>versions-maven-plugin</artifactId>
                 <version>2.2</version>
             </plugin>
-            <!--
             <plugin>
                 <groupId>org.scoverage</groupId>
                 <artifactId>scoverage-maven-plugin</artifactId>
@@ -309,7 +308,6 @@
                     </execution>
                 </executions>
             </plugin>
-            -->
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
