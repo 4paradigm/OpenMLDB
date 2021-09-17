@@ -259,12 +259,22 @@ Status SchemasContext::ResolveColumnIndexByID(size_t column_id,
                                               size_t* index) const {
     CHECK_TRUE(this->CheckBuild(), kColumnNotFound,
                "Schemas context is not fully build");
-    auto iter = column_id_map_.find(column_id);
-    CHECK_TRUE(iter != column_id_map_.end(), kColumnNotFound,
+    std::stringstream trace_msg;
+    auto find_iter = column_id_map_.find(column_id);
+    for(auto iter  = column_id_map_.begin(); iter != column_id_map_.end(); iter++) {
+        trace_msg << "(#" << iter->first << ": " << iter->second.first << ", " << iter->second.second << "),";
+    }
+    trace_msg << "\ncolumn_name_map_:";
+    for(auto iter  = column_name_map_.begin(); iter != column_name_map_.end(); iter++) {
+        trace_msg << iter->first << ", ";
+    }
+    trace_msg << "\n";
+
+    CHECK_TRUE(find_iter != column_id_map_.end(), kColumnNotFound,
                "Fail to find column id #", column_id,
-               " in current schema context");
-    *schema_idx = iter->second.first;
-    *index = iter->second.second;
+               " in current schema context", trace_msg.str());
+    *schema_idx = find_iter->second.first;
+    *index = find_iter->second.second;
     return Status::OK();
 }
 

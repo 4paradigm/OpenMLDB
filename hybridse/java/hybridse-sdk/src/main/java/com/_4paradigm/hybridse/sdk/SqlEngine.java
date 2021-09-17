@@ -98,7 +98,7 @@ public class SqlEngine implements AutoCloseable {
         BaseStatus status = new BaseStatus();
         boolean ok = engine.Get(sql, database.getName(), session, status);
         if (!(ok && status.getMsg().equals("ok"))) {
-            throw new UnsupportedHybridSeException("SQL parse error: " + status.getMsg() + "\n" + status.getTrace());
+            throw new UnsupportedHybridSeException("SQL parse error: " + status.str());
         }
         status.delete();
         compileInfo = session.GetCompileInfo();
