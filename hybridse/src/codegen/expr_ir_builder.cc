@@ -191,7 +191,6 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
             break;
         }
         case ::hybridse::node::kExprList: {
-            // TODO(aceforeverd): only support constant expr node list
             CHECK_STATUS(BuildExprList(dynamic_cast<const ::hybridse::node::ExprListNode*>(node), output));
             break;
         }
@@ -986,7 +985,6 @@ Status ExprIRBuilder::BuildInExpr(const ::hybridse::node::InExpr* node, NativeVa
 }
 
 Status ExprIRBuilder::BuildExprList(const ::hybridse::node::ExprListNode* node, NativeValue* output) {
-    ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     std::vector<NativeValue> expr_value_list;
     for (const auto& ele : node->children_) {
         NativeValue ele_value;
