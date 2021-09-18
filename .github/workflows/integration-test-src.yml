@@ -10,7 +10,7 @@ env:
   HYBRIDSE_SOURCE:
 
 jobs:
-  java-sdk-test-standalone:
+  java-sdk-test-standalone-0:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
@@ -31,7 +31,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: sdk-test-java-standalone-${{ github.sha }}
+          name: integration-test-sdk-java-standalone-0-${{ github.sha }}
           path: |
             test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
             test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
@@ -40,8 +40,7 @@ jobs:
 
   publish-test-results:
     runs-on: ubuntu-latest
-    needs: [ "java-sdk-test-standalone" ]
-
+    needs: [ "java-sdk-test-standalone-0" ]
     # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
     if: >
       always() && github.event_name == 'push' || (
@@ -51,9 +50,9 @@ jobs:
       - name: Download Artifacts
         uses: actions/download-artifact@v2
 
-      - name: Java SDK SRC Results
+      - name: INTEGRATION TEST PKG Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
-          files: sdk-test-*/**/*.xml
-          check_name: SDK Test Report
-          comment_title: SDK Test Report
+          files: integration-test-*/**/*.xml
+          check_name: INTEGRATION Test Report
+          comment_title: INTEGRATION Test Report
