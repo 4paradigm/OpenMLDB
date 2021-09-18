@@ -2,6 +2,23 @@ name: INTEGRATION-TEST-PKG
 
 on:
   workflow_dispatch:
+    inputs:
+      OPENMLDB_SERVER_VERSION:
+        description: 'openmldb server version'
+        required: true
+        default: '0.2.3'
+      JAVA_SDK_VERSION:
+        description: 'java sdk version'
+        required: true
+        default: '0.2.3'
+      PYTHON_SDK_VERSION:
+        description: 'python sdk version'
+        required: true
+        default: '0.2.3'
+      DIFF_VERSIONS:
+        description: 'diff versions'
+        required: false
+        default: '0.2.2'
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
