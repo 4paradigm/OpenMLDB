@@ -55,8 +55,8 @@ echo "CASE_LEVEL:${CASE_LEVEL}"
 ROOT_DIR=$(pwd)
 echo "ROOT_DIR:${ROOT_DIR}"
 source test/steps/read_properties.sh
-echo "FEDB_SERVER_VERSION:${FEDB_SERVER_VERSION}"
-echo "FEDB_PY_SDK_VERSION:${FEDB_PY_SDK_VERSION}"
+echo "OPENMLDB_SERVER_VERSION:${OPENMLDB_SERVER_VERSION}"
+echo "PYTHON_SDK_VERSION:${PYTHON_SDK_VERSION}"
 
 # 安装wget
 yum install -y wget
@@ -96,9 +96,9 @@ if [[ "${BUILD_MODE}" == "SRC" ]]; then
     python3 -m pip --default-timeout=100 install -U "${whl_name}"
 else
     IP=$(hostname -i)
-    sh test/steps/deploy_fedb.sh "${FEDB_SERVER_VERSION}" "${DEPLOY_MODE}"
+    sh test/steps/deploy_fedb.sh "${OPENMLDB_SERVER_VERSION}" "${DEPLOY_MODE}"
     cd "$ROOT_DIR" || exit
-    python3 -m pip --default-timeout=100 install -U openmldb=="${FEDB_PY_SDK_VERSION}"
+    python3 -m pip --default-timeout=100 install -U openmldb=="${PYTHON_SDK_VERSION}"
 fi
 
 cd "$ROOT_DIR" || exit

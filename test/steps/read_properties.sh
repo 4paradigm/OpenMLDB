@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-file="test/steps/fedb_sdk_test.properties"
+file="test/steps/openmldb_test.properties"
 
 if [ -f "$file" ]
 then

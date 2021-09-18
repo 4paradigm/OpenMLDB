@@ -22,6 +22,7 @@ cd test/test-tool/command-tool || exit
 mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 
+
 cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java || exit
 mvn clean install -Dmaven.test.skip=true
 
