@@ -1669,8 +1669,6 @@ class InExpr : public ExprNode {
 
  private:
     const bool is_not_ = false;
-    // TODO(aceforeverd): support query
-    // TODO(aceforeverd): support unnest expression
 };
 
 class ResTarget : public SqlNode {

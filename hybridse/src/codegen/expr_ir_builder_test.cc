@@ -966,6 +966,19 @@ TEST_F(ExprIRBuilderTest, TestNotInExprNormal) {
     ExprCheck<bool, int32_t, codec::StringRef, float>(in_expr, true, 2, codec::StringRef("1"), 10.0);
 }
 
+TEST_F(ExprIRBuilderTest, TestInExprWithSubExprInInList) {
+    auto in_expr = [](node::NodeManager *nm, node::ExprNode *lhs, node::ExprNode *first1, node::ExprNode *first2,
+                      node::ExprNode *second) {
+        auto in_list = nm->MakeExprList();
+        auto first = nm->MakeBinaryExprNode(first1, first2, node::FnOperator::kFnOpAdd);
+        in_list->AddChild(first);
+        in_list->AddChild(second);
+        return nm->MakeInExpr(lhs, in_list, false);
+    };
+
+    ExprCheck<bool, int32_t, int32_t, int32_t, int32_t>(in_expr, true, 2, 1, 1, 10);
+}
+
 TEST_F(ExprIRBuilderTest, TestInExprNotSupport) {
     auto in_expr = [](node::NodeManager *nm, node::ExprNode *lhs, node::ExprNode *in_list) {
         return nm->MakeInExpr(lhs, in_list, false);
