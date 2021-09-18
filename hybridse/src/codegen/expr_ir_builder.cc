@@ -961,25 +961,7 @@ Status ExprIRBuilder::BuildInExpr(const ::hybridse::node::InExpr* node, NativeVa
     CHECK_STATUS(Build(node->GetInList(), &expr_value_list));
 
     PredicateIRBuilder predicate_ir_builder(ctx_->GetCurrentBlock());
-    ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-    NativeValue default_value = NativeValue::Create(builder.getInt1(false));
-    // PERF: preliminary implementation, expect to be slow
-    if (expr_value_list.IsTuple()) {
-        for (size_t i = 0; i < expr_value_list.GetFieldNum(); ++i) {
-            const auto& expr = expr_value_list.GetField(i);
-
-            NativeValue eq_value;
-            CHECK_STATUS(predicate_ir_builder.BuildEqExpr(lhs_value, expr, &eq_value));
-
-            CHECK_STATUS(predicate_ir_builder.BuildOrExpr(default_value, eq_value, &default_value));
-        }
-    } else {
-        CHECK_TRUE(false, kCodegenError, "Un-supported: in predicate list is not exprlist");
-    }
-    if (node->IsNot()) {
-        CHECK_STATUS(predicate_ir_builder.BuildNotExpr(default_value, &default_value));
-    }
-    *output = default_value;
+    CHECK_STATUS(predicate_ir_builder.BuildInExpr(lhs_value, expr_value_list, node->IsNot(), output));
 
     return Status::OK();
 }
