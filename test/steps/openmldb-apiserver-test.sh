@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-#bash fedb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l 0
+#bash openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l 0
 #-b SRC表示从源码进行编译，会从github上下载代码然后进行编译，PKG表示直接从github上下载压缩包部署
 #-c 执行的suite_xml,决定了跑哪些case
 #-d 部署模式，有cluster和standalone两种，默认cluster
@@ -68,22 +68,24 @@ yum install -y wget
 yum install -y  net-tools
 ulimit -c unlimited
 echo "ROOT_DIR:${ROOT_DIR}"
-source steps/read_properties.sh
-sh steps/download-case.sh "${CASE_BRANCH}"
+source test/steps/read_properties.sh
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
-    sh steps/build-fedb.sh
-    FEDB_SDK_VERSION=$(more OpenMLDB/src/sdk/java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
+    FEDB_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
 fi
 echo "FEDB_SDK_VERSION:${FEDB_SDK_VERSION}"
 echo "FEDB_SERVER_VERSION:${FEDB_SERVER_VERSION}"
 echo "FEDB_VERSIONS:${FEDB_VERSIONS}"
 # modify config
-sh steps/modify_suite_pom_by_restful.sh "${CASE_XML}" "${DEPLOY_MODE}" "${FEDB_SDK_VERSION}" "${BUILD_MODE}" "${FEDB_SERVER_VERSION}"
+sh test/steps/modify_apiserver_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${FEDB_SDK_VERSION}" "${BUILD_MODE}" "${FEDB_SERVER_VERSION}"
+# install command tool
+cd test/test-tool/command-tool || exit
+mvn clean install -Dmaven.test.skip=true
+cd "${ROOT_DIR}" || exit
 # install jar
-cd java/hybridsql-test || exit
+cd test/integration-test/openmldb-test-java || exit
 mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # run case
-cd "${ROOT_DIR}"/java/hybridsql-test/fedb-restful-test/ || exit
+cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-http-test || exit
 mvn clean test -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel=$CASE_LEVEL

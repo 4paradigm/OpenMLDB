@@ -27,7 +27,7 @@ import org.testng.Assert;
  */
 public class FEDBCommandUtil {
     public static void cpRtidb(String path,String fedbPath){
-        boolean ok = LinuxUtil.cp(fedbPath,path+"/bin",path+"/bin/fedb");
+        boolean ok = LinuxUtil.cp(fedbPath,path+"/bin",path+"/bin/openmldb");
         Assert.assertTrue(ok,"copy conf fail");
     }
     public static void cpConf(String path,String confPath){

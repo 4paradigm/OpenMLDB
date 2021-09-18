@@ -44,6 +44,11 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
 
     @Override
     public boolean verify() {
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("hybridse-only")) {
+            log.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            reportLog.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            return false;
+        }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("batch-unsupport")) {
             log.info("skip case in batch mode: {}", fesqlCase.getDesc());
             reportLog.info("skip case in batch mode: {}", fesqlCase.getDesc());

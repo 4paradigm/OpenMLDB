@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-#bash fedb-sdk-test-python.sh -b SRC -d cluster -l 0
+#bash openmldb-sdk-test-python.sh -b SRC -d cluster -l 0
 #-b SRC表示从源码进行编译，会从github上下载代码然后进行编译，PKG表示直接从github上下载压缩包部署
 #-d 部署模式，有cluster和standalone两种，默认cluster
 #-l 测试的case级别，有0，1，2，3，4，5六个级别，默认为0，也可以同时跑多个级别的case，例如：1,2,3,4,5
@@ -54,8 +54,7 @@ echo "DEPLOY_MODE:${DEPLOY_MODE}"
 echo "CASE_LEVEL:${CASE_LEVEL}"
 ROOT_DIR=$(pwd)
 echo "ROOT_DIR:${ROOT_DIR}"
-source steps/read_properties.sh
-sh steps/download-case.sh "${CASE_BRANCH}"
+source test/steps/read_properties.sh
 echo "FEDB_SERVER_VERSION:${FEDB_SERVER_VERSION}"
 echo "FEDB_PY_SDK_VERSION:${FEDB_PY_SDK_VERSION}"
 
@@ -97,25 +96,14 @@ if [[ "${BUILD_MODE}" == "SRC" ]]; then
     python3 -m pip --default-timeout=100 install -U "${whl_name}"
 else
     IP=$(hostname -i)
-    sh steps/deploy_fedb.sh "${FEDB_SERVER_VERSION}" "${DEPLOY_MODE}"
+    sh test/steps/deploy_fedb.sh "${FEDB_SERVER_VERSION}" "${DEPLOY_MODE}"
     cd "$ROOT_DIR" || exit
-    wget http://pkg.4paradigm.com:81/rtidb/test/fedb-"${FEDB_PY_SDK_VERSION}"-py3-none-any.whl
-    # shellcheck disable=SC2010
-    whl_name=$(ls | grep .whl)
-#    python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
-    python3 -m pip --default-timeout=100 install -U "${whl_name}"
+    python3 -m pip --default-timeout=100 install -U openmldb=="${FEDB_PY_SDK_VERSION}"
 fi
-#sleep 5
-## 安装fedb模块
-#cd ${ROOT_DIR}/fedb/build/python/dist
-#whl_name=`ls | grep *.whl`
-#echo "whl_name:${whl_name}"
-#python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 cd "$ROOT_DIR" || exit
-cd python/fedb-sdk-test || exit
+cd test/integration-test/python-sdk-test || exit
 # 安装其他模块
-#python3 -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 -m pip install -r requirements.txt
 # 修改配置
 sed -i "s/env=.*/env=cicd/" conf/fedb.conf
@@ -130,7 +118,7 @@ if [[ "${DEPLOY_MODE}" == "cluster" ]]; then
 fi
 if [[ "${BUILD_MODE}" == "PKG" ]]; then
     sed -i "s#cicd_zk_cluster=.*#cicd_zk_cluster=$IP:6181#" conf/fedb.conf
-    sed -i "s#cicd_zk_root_path=.*#cicd_zk_root_path=/fedb#" conf/fedb.conf
+    sed -i "s#cicd_zk_root_path=.*#cicd_zk_root_path=/openmldb#" conf/fedb.conf
 fi
 cat conf/fedb.conf
 

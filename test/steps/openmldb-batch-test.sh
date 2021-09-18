@@ -16,9 +16,14 @@
 
 ROOT_DIR=$(pwd)
 
-source steps/read_properties.sh
-sh steps/download-case.sh "${CASE_BRANCH}"
-cd "${ROOT_DIR}"/java/hybridsql-test/ || exit
+source test/steps/read_properties.sh
+# install command tool
+cd test/test-tool/command-tool || exit
 mvn clean install -Dmaven.test.skip=true
-cd "${ROOT_DIR}"/java/hybridsql-test/sparkfe_test/ || exit
+cd "${ROOT_DIR}" || exit
+
+cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java || exit
+mvn clean install -Dmaven.test.skip=true
+
+cd "${ROOT_DIR}"/test/batch-test/openmldb-batch-test/ || exit
 mvn clean test

@@ -135,6 +135,11 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
 
     @Override
     public boolean verify() {
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("hybridse-only")) {
+            log.info("skip case in request mode: {}", fesqlCase.getDesc());
+            reportLog.info("skip request in cli mode: {}", fesqlCase.getDesc());
+            return false;
+        }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("request-unsupport")) {
             log.info("skip case in request mode: {}", fesqlCase.getDesc());
             reportLog.info("skip case in request mode: {}", fesqlCase.getDesc());
