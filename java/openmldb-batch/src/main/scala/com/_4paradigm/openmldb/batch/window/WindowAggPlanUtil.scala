@@ -212,7 +212,7 @@ object WindowAggPlanUtil {
     val jit = JitManager.getJit(tag)
 
     // create stateful computer
-    val computer = new WindowComputer(sqlConfig, config, jit, config.keepIndexColumn)
+    val computer = new WindowComputer(config, jit, config.keepIndexColumn)
 
     // add statistic hooks
     if (sqlConfig.windowSampleMinSize > 0) {

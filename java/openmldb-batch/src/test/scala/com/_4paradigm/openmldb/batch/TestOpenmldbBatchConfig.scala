@@ -23,7 +23,7 @@ import org.scalatest.FunSuite
 
 class TestOpenmldbBatchConfig extends FunSuite {
 
-  test("test make config") {
+  test("Test make config") {
     val sess = SparkSession.builder()
         .config("spark.openmldb.groupby.partitions", 100)
         .config("spark.openmldb.test.print", value=true)
@@ -35,7 +35,7 @@ class TestOpenmldbBatchConfig extends FunSuite {
     sess.close()
   }
 
-  test("test make config from dict") {
+  test("Test make config from dict") {
     val dict = Map(
       "openmldb.groupby.partitions" -> 100,
       "openmldb.test.print" -> true
@@ -45,7 +45,7 @@ class TestOpenmldbBatchConfig extends FunSuite {
     assert(config.print)
   }
 
-  test("test openmldb.disable") {
+  test("Test openmldb.disable") {
     val dict = Map(
       "openmldb.disable" -> true
     )

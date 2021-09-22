@@ -24,12 +24,13 @@ import scala.collection.mutable
 
 object SkewDataFrameUtils {
   def genDistributionDf(inputDf: DataFrame, quantile: Int, repartitionColIndex: mutable.ArrayBuffer[Int],
-                        percentileColIndex: Int, partitionColName: String, distinctCountColName: String,
+                        orderByColIndex: Int, partitionColName: String, distinctCountColName: String,
                         approxRatio: Double): DataFrame = {
 
     // TODO: Support multiple repartition keys
     val groupByCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
-    val percentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, percentileColIndex)
+    // TODO: Support multiple orderBy keys
+    val percentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, orderByColIndex)
 
     // Add percentile_approx column
     val columns = mutable.ArrayBuffer[Column]()
@@ -45,11 +46,12 @@ object SkewDataFrameUtils {
   }
 
   def genDistributionDf(inputDf: DataFrame, quantile: Int, repartitionColIndex: mutable.ArrayBuffer[Int],
-                        percentileColIndex: Int, partitionColName: String): DataFrame = {
+                        orderByColIndex: Int, partitionColName: String): DataFrame = {
 
     // TODO: Support multiple repartition keys
     val groupByCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
-    val percentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, percentileColIndex)
+    // TODO: Support multiple orderBy keys
+    val percentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, orderByColIndex)
 
     // Add percentile_approx column
     val columns = mutable.ArrayBuffer[Column]()
@@ -63,18 +65,19 @@ object SkewDataFrameUtils {
   }
 
   def genAddColumnsDf(inputDf: DataFrame, distributionDf: DataFrame, quantile: Int,
-                      repartitionColIndex: mutable.ArrayBuffer[Int], percentileColIndex: Int,
-                      partIdColName: String, expandedRowColName: String): DataFrame = {
+                      repartitionColIndex: mutable.ArrayBuffer[Int], orderByColIndex: Int,
+                      partitionKeyColName: String, partIdColName: String, expandedRowColName: String): DataFrame = {
 
     // Input dataframe left join distribution dataframe
     // TODO: Support multiple repartition keys
     val inputDfJoinCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
-    val distributionDfJoinCol = SparkColumnUtil.getColumnFromIndex(distributionDf, 0)
+    val distributionDfJoinCol = distributionDf(partitionKeyColName)
 
     var joinDf = inputDf.join(distributionDf.hint("broadcast"), inputDfJoinCol === distributionDfJoinCol, "left")
 
+    // TODO: Support multiple orderBy keys
     // Select * and case when(...) from joinDf
-    val inputDfPercentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, percentileColIndex)
+    val inputDfPercentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, orderByColIndex)
 
     var part: Column = null
 

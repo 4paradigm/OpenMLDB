@@ -25,7 +25,7 @@ import scala.collection.JavaConverters.seqAsJavaListConverter
 
 class TestProjectPlan extends SparkTestSuite {
 
-  test("GroupBy and limit test") {
+  test("Test groupBy and limit") {
     val sess = getSparkSession
 
     val schema = StructType(Seq(
@@ -46,8 +46,5 @@ class TestProjectPlan extends SparkTestSuite {
     val res = planner.plan("select id + 1, id + 2 from t1;", Map("t1" -> t1))
     val output = res.getDf()
     output.show()
-
   }
-
-
 }

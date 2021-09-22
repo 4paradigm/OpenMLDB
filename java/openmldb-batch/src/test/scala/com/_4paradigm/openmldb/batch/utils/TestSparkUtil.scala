@@ -49,12 +49,12 @@ class TestSparkUtil extends SparkTestSuite {
     (0, Timestamp.valueOf("2019-09-11 0:0:0"))
   )
 
-  test("test supportNativeLastJoin") {
+  test("Test supportNativeLastJoin") {
     assert(!supportNativeLastJoin(JoinType.kJoinTypeFull, hasOrderby = true))
     assert(!supportNativeLastJoin(JoinType.kJoinTypeFull, hasOrderby = false))
     assert(!supportNativeLastJoin(JoinType.kJoinTypeLast, hasOrderby = false))
   }
-  test("test addIndexColumn") {
+  test("Test addIndexColumn") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addIndexColumn(Session,table,"Index","zipwithindex")
@@ -67,28 +67,28 @@ class TestSparkUtil extends SparkTestSuite {
       addIndexColumn(Session,table,"Unsupported","Unsupported method")
     }
   }
-  test("test addColumnByZipWithIndex") {
+  test("Test addColumnByZipWithIndex") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addColumnByZipWithIndex(Session,table,"Index")
       .select("Index").distinct().count()==data.length)
   }
 
-  test("test addColumnByZipWithUniqueId") {
+  test("Test addColumnByZipWithUniqueId") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addColumnByZipWithUniqueId(Session,table,"UniqueId")
       .select("UniqueId").distinct().count()==data.length)
   }
 
-  test("test addColumnByMonotonicallyIncreasingId") {
+  test("Test addColumnByMonotonicallyIncreasingId") {
     val Session: SparkSession = getSparkSession
     val table: DataFrame = Session.createDataFrame(data.map(Row.fromTuple(_)).asJava, schemaTest1)
     assert(addColumnByMonotonicallyIncreasingId(Session,table,"IncreasingId")
       .select("IncreasingId").distinct().count()==data.length)
   }
 
-  test("test checkSchemaIgnoreNullable") {
+  test("Test checkSchemaIgnoreNullable") {
     val schemaTest3: StructType = StructType(Seq(
       StructField("id", IntegerType),
       StructField("time", TimestampType)
@@ -103,7 +103,7 @@ class TestSparkUtil extends SparkTestSuite {
     assert(checkSchemaIgnoreNullable(schemaTest1,schemaTest4))
   }
 
-  test("test smallDfEqual") {
+  test("Test smallDfEqual") {
     val dataTest1 = Seq(
       (0, Timestamp.valueOf("1969-01-01 0:0:0")),
       (0, Timestamp.valueOf("2019-09-11 0:0:0"))
@@ -127,7 +127,7 @@ class TestSparkUtil extends SparkTestSuite {
     assert(!smallDfEqual(tableTest1, tableTest3))
   }
 
-  test("test rddInternalRowToDf") {
+  test("Test rddInternalRowToDf") {
     val dataTest1 = Seq(
       (0, Timestamp.valueOf("1969-01-01 0:0:0")),
       (0, Timestamp.valueOf("2019-09-11 0:0:0"))
@@ -138,7 +138,7 @@ class TestSparkUtil extends SparkTestSuite {
     assert(rddInternalRowToDf(Session, internalRow, schemaTest1).collect() sameElements df1.collect())
   }
 
-  test("test approximateDfEqual") {
+  test("Test approximateDfEqual") {
     val dataTest1 = Seq(
       (0, Timestamp.valueOf("1969-01-01 0:0:0")),
       (0, Timestamp.valueOf("2019-09-11 0:0:0"))
