@@ -65,20 +65,16 @@ python3 -m ensurepip
 # 部署fedb
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
     IP=127.0.0.1
-    # 下载编译fedb
-    sh steps/build-fedb.sh
     # 部署zk
-    cd OpenMLDB || exit
     test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
     cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
     cd thirdsrc/zookeeper-3.4.14 || exit
     netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
     ./bin/zkServer.sh start
-    cd "$ROOT_DIR" || exit
+    cd "${ROOT_DIR}" || exit
     sleep 5
 
     # 部署fedb cluster
-    cd OpenMLDB || exit
     if [[ "${DEPLOY_MODE}" == "cluster" ]]; then
         cd onebox && sh start_onebox_on_rambuild_cluster.sh
         cd "$ROOT_DIR" || exit
@@ -88,7 +84,7 @@ if [[ "${BUILD_MODE}" == "SRC" ]]; then
     fi
     sleep 5
     # 安装fedb模块
-    cd "${ROOT_DIR}"/OpenMLDB/build/python/dist || exit
+    cd "${ROOT_DIR}"/build/python/dist || exit
     # shellcheck disable=SC2010
     whl_name=$(ls | grep .whl)
     echo "whl_name:${whl_name}"
