@@ -23,7 +23,6 @@ jobs:
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
-          ls -al build/bin/
           sh test/steps/build-java-sdk.sh
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d standalone -l "0"
@@ -32,6 +31,85 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: integration-test-sdk-java-standalone-0-${{ github.sha }}
+          path: |
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
+  java-sdk-test-standalone-1:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          sh test/steps/build-java-sdk.sh
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d standalone -l "1,2,3,4,5"
+      - name: upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: integration-test-sdk-java-standalone-1-${{ github.sha }}
+          path: |
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
+  java-sdk-test-cluster-0:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          sh test/steps/build-java-sdk.sh
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l "0"
+      - name: upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: integration-test-sdk-java-cluster-0-${{ github.sha }}
+          path: |
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
+            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
+
+  java-sdk-test-cluster-1:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          sh test/steps/build-java-sdk.sh
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l "1,2,3,4,5"
+      - name: upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: integration-test-sdk-java-cluster-1-${{ github.sha }}
           path: |
             test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
             test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
