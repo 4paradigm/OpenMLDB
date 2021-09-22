@@ -17,5 +17,5 @@
 ROOT_DIR=$(pwd)
 cd java || exit
 echo "AAAAAAAAAAAAAAA"
-mvn clean install -Dmaven.test.skip=true -Dgpg.skip=true
+mvn clean install -Dmaven.test.skip=true -Dgpg.skip
 cd "${ROOT_DIR}" || exit
