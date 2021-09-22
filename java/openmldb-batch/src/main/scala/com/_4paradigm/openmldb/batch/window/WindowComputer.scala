@@ -70,7 +70,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     config.windowFrameTypeName,
     config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
 
-  def compute(row: Row, key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int, schemaSize: Int): Row = {
+  def compute(row: Row, key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int, inputSchemaSize: Int): Row = {
     if (hooks.nonEmpty) {
       hooks.foreach(hook => try {
         hook.preCompute(this, row)
@@ -105,10 +105,10 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     if (keepIndexColumn) {
       if (unionFlagIdx == -1) {
         // No union column, use the last one
-        outputArr(outputArr.length - 1) = row.get(schemaSize)
+        outputArr(outputArr.length - 1) = row.get(inputSchemaSize)
       } else {
         // Has union column, use the last but one
-        outputArr(outputArr.length - 1) = row.get(schemaSize)
+        outputArr(outputArr.length - 1) = row.get(inputSchemaSize)
       }
     }
 
