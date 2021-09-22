@@ -110,7 +110,7 @@ struct Status {
         if (traces.size() >= MAX_STATUS_TRACE_SIZE) {
             traces.pop_back();
         }
-        traces.emplace_back(Trace(file, line, msg));
+        traces.emplace_back(file, line, msg);
     }
     common::StatusCode code;
     std::string msg;

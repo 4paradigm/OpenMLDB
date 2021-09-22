@@ -25,7 +25,6 @@ enum StatusCode {
     // General error
     kRunError = 2;
     kTypeError = 3;
-
     kNullPointer = 10;
     kNullInputPointer = 11;
     kNullOutputPointer = 12;
