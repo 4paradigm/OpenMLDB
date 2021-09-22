@@ -29,6 +29,7 @@ object SkewDataFrameUtils {
 
     // TODO: Support multiple repartition keys
     val groupByCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
+    // TODO: Support multiple orderBy keys
     val percentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, percentileColIndex)
 
     // Add percentile_approx column
@@ -49,6 +50,7 @@ object SkewDataFrameUtils {
 
     // TODO: Support multiple repartition keys
     val groupByCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
+    // TODO: Support multiple orderBy keys
     val percentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, percentileColIndex)
 
     // Add percentile_approx column
@@ -64,15 +66,16 @@ object SkewDataFrameUtils {
 
   def genAddColumnsDf(inputDf: DataFrame, distributionDf: DataFrame, quantile: Int,
                       repartitionColIndex: mutable.ArrayBuffer[Int], percentileColIndex: Int,
-                      partIdColName: String, expandedRowColName: String): DataFrame = {
+                      partitionKeyColName: String, partIdColName: String, expandedRowColName: String): DataFrame = {
 
     // Input dataframe left join distribution dataframe
     // TODO: Support multiple repartition keys
     val inputDfJoinCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
-    val distributionDfJoinCol = SparkColumnUtil.getColumnFromIndex(distributionDf, 0)
+    val distributionDfJoinCol = distributionDf(partitionKeyColName)
 
     var joinDf = inputDf.join(distributionDf.hint("broadcast"), inputDfJoinCol === distributionDfJoinCol, "left")
 
+    // TODO: Support multiple orderBy keys
     // Select * and case when(...) from joinDf
     val inputDfPercentileCol = SparkColumnUtil.getColumnFromIndex(inputDf, percentileColIndex)
 
