@@ -129,7 +129,6 @@ jobs:
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
-          ls -al build/python/dist
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "0"
   #      - name: allure-report
@@ -157,6 +156,11 @@ jobs:
       OS: linux
     steps:
       - uses: actions/checkout@v2
+      - name: build pysdk
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "1,2,3,4,5"
 
