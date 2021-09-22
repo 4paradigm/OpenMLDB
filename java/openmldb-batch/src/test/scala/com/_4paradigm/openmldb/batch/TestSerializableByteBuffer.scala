@@ -24,7 +24,7 @@ import org.scalatest.FunSuite
 
 class TestSerializableByteBuffer extends FunSuite {
 
-  test("testSerializableBuffer") {
+  test("Test serializableBuffer") {
     val buf = ByteBuffer.allocate(1024)
     buf.putDouble(3.14)
     buf.putInt(42)
@@ -44,7 +44,7 @@ class TestSerializableByteBuffer extends FunSuite {
     assert(ser2.getBuffer().getInt() == 42)
   }
 
-  test("testSerializableDirectBuffer") {
+  test("Test serializableDirectBuffer") {
     val buf = ByteBuffer.allocateDirect(1024)
     buf.putDouble(3.14)
     buf.putInt(42)
