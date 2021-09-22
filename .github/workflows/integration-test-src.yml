@@ -187,21 +187,21 @@ jobs:
             test/integration-test/openmldb-test-java/openmldb-http-test/target/failsafe-reports/junitreports/TEST-*.xml
             test/integration-test/openmldb-test-java/openmldb-http-test/target/failsafe-reports/TEST-*.xml
 
-  publish-test-results:
-    runs-on: ubuntu-latest
-    needs: [ "java-sdk-test-standalone-0" ]
-    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
-    if: >
-      always() && github.event_name == 'push' || (
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.sender.login != 'dependabot[bot]' )
-    steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v2
-
-      - name: INTEGRATION TEST PKG Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          files: integration-test-*/**/*.xml
-          check_name: INTEGRATION Test Report
-          comment_title: INTEGRATION Test Report
+#  publish-test-results:
+#    runs-on: ubuntu-latest
+#    needs: [ "java-sdk-test-standalone-0" ]
+#    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
+#    if: >
+#      always() && github.event_name == 'push' || (
+#      github.event.pull_request.head.repo.full_name == github.repository &&
+#      github.event.sender.login != 'dependabot[bot]' )
+#    steps:
+#      - name: Download Artifacts
+#        uses: actions/download-artifact@v2
+#
+#      - name: INTEGRATION TEST PKG Results
+#        uses: EnricoMi/publish-unit-test-result-action@v1
+#        with:
+#          files: integration-test-*/**/*.xml
+#          check_name: INTEGRATION Test Report
+#          comment_title: INTEGRATION Test Report
