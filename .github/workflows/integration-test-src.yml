@@ -78,7 +78,7 @@ jobs:
         env:
           PERSONAL_TOKEN: ${{ secrets.CR_PAT_ZW }}
           PUBLISH_BRANCH: gh-pages
-          PUBLISH_DIR: java-standalone-1/allure-history
+          PUBLISH_DIR: allure-history
           DESTINATION_DIR: java-1
 
 #  java-sdk-test-cluster-0:
@@ -166,7 +166,7 @@ jobs:
         env:
           PERSONAL_TOKEN: ${{ secrets.CR_PAT_ZW }}
           PUBLISH_BRANCH: gh-pages
-          PUBLISH_DIR: python-standalone-1
+          PUBLISH_DIR: allure-history
 
 #  python-sdk-test-standalone-1:
 #    runs-on: ubuntu-latest
