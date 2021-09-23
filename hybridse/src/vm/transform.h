@@ -139,7 +139,7 @@ class BatchModeTransformer {
     bool isSourceFromTable(PhysicalOpNode* in);
     Status ValidateTableProvider(PhysicalOpNode* physical_plan);
     Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
-    std::string ExtractSchameName(PhysicalOpNode* physical_plan);
+    std::string ExtractSchemaName(PhysicalOpNode* in);
     Status ValidateRequestDataProvider(PhysicalOpNode* physical_plan);
     Status ValidateWindowIndexOptimization(const WindowOp& window,
                                            PhysicalOpNode* in);

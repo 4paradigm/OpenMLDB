@@ -109,6 +109,7 @@ class TransformUpPysicalPass : public PhysicalPass {
     node::NodeManager* node_manager_;
     const std::string db_;
     std::shared_ptr<Catalog> catalog_;
+    std::unordered_map<int, bool> visited_ids_;
 };
 
 }  // namespace passes

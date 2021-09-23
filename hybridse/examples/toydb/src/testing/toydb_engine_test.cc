@@ -37,8 +37,6 @@ TEST_P(EngineTest, TestRequestEngine) {
 TEST_P(EngineTest, TestBatchEngine) {
     ParamType sql_case = GetParam();
     EngineOptions options;
-    options.set_enable_batch_window_parallelization(true);
-    options.set_performance_sensitive(false);
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "batch-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
