@@ -147,7 +147,7 @@ jobs:
         env:
           PERSONAL_TOKEN: ${{ secrets.CR_PAT_ZW }}
           PUBLISH_BRANCH: gh-pages
-          PUBLISH_DIR: allure-history
+          PUBLISH_DIR: python-standalone-1
 
 #  python-sdk-test-standalone-1:
 #    runs-on: ubuntu-latest
