@@ -71,7 +71,7 @@ echo "ROOT_DIR:${ROOT_DIR}"
 source test/steps/read_properties.sh
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
-    FEDB_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
+    JAVA_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
 fi
 echo "JAVA_SDK_VERSION:${JAVA_SDK_VERSION}"
 echo "OPENMLDB_SERVER_VERSION:${OPENMLDB_SERVER_VERSION}"
