@@ -14,19 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+BATCH_VERSION=$1
+echo "BATCH_VERSION:${BATCH_VERSION}"
 ROOT_DIR=$(pwd)
+cd test/batch-test/openmldb-batch-test || exit
+# modify pom
+sed -i "s#<openmldb.batch.version>.*</openmldb.batch.version>#<openmldb.batch.version>${BATCH_VERSION}</openmldb.batch.version>#" pom.xml
 
-source test/steps/read_properties.sh
-# install command tool
-cd test/test-tool/command-tool || exit
-mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
-
-# modify config
-sh test/steps/modify_batch_config.sh "${BATCH_VERSION}"
-
-cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java || exit
-mvn clean install -Dmaven.test.skip=true
-
-cd "${ROOT_DIR}"/test/batch-test/openmldb-batch-test/ || exit
-mvn clean test
