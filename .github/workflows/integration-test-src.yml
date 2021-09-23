@@ -138,6 +138,7 @@ jobs:
         with:
           allure_results: python/report/allure-results
           gh_pages: gh-pages
+          subfolder: python-standalone-1
           allure_report: allure-report
           allure_history: allure-history
       - name: Deploy report to Github Pages
@@ -148,37 +149,37 @@ jobs:
           PUBLISH_BRANCH: gh-pages
           PUBLISH_DIR: allure-history
 
-  python-sdk-test-standalone-1:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
-    env:
-      OS: linux
-    steps:
-      - uses: actions/checkout@v2
-      - name: build pysdk
-        run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
-      - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "1,2,3,4,5"
-      - name: allure-report
-        uses: simple-elf/allure-report-action@master
-        if: always()
-        id: allure-report
-        with:
-          allure_results: python/report/allure-results
-          gh_pages: python-standalone-1
-          allure_report: allure-report
-          allure_history: allure-history
-      - name: Deploy report to Github Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v2
-        env:
-          PERSONAL_TOKEN: ${{ secrets.CR_PAT_ZW }}
-          PUBLISH_BRANCH: python-standalone-1
-          PUBLISH_DIR: allure-history
+#  python-sdk-test-standalone-1:
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.0
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: build pysdk
+#        run: |
+#          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+#          mkdir -p build
+#          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "1,2,3,4,5"
+#      - name: allure-report
+#        uses: simple-elf/allure-report-action@master
+#        if: always()
+#        id: allure-report
+#        with:
+#          allure_results: python/report/allure-results
+#          gh_pages: python-standalone-1
+#          allure_report: allure-report
+#          allure_history: allure-history
+#      - name: Deploy report to Github Pages
+#        if: always()
+#        uses: peaceiris/actions-gh-pages@v2
+#        env:
+#          PERSONAL_TOKEN: ${{ secrets.CR_PAT_ZW }}
+#          PUBLISH_BRANCH: python-standalone-1
+#          PUBLISH_DIR: allure-history
 
 #  apiserver-test:
 #    runs-on: ubuntu-latest
