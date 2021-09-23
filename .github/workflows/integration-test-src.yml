@@ -192,6 +192,19 @@ jobs:
             test/integration-test/openmldb-test-java/openmldb-http-test/target/failsafe-reports/junitreports/TEST-*.xml
             test/integration-test/openmldb-test-java/openmldb-http-test/target/failsafe-reports/TEST-*.xml
 
+  batch-test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: modify-properties
+        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-batch-test.sh -b SRC
+
   publish-test-results:
     runs-on: ubuntu-latest
     needs: [ "java-sdk-test-standalone-0","java-sdk-test-standalone-1","java-sdk-test-cluster-0","java-sdk-test-cluster-1","apiserver-test" ]

@@ -211,7 +211,7 @@ jobs:
       - name: modify-properties
         run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
       - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-batch-test.sh
+        run: source /root/.bashrc && bash test/steps/openmldb-batch-test.sh -b PKG
 
   publish-test-results:
     runs-on: ubuntu-latest

@@ -14,9 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+while getopts ":b:c:d:l:" opt
+do
+   case $opt in
+        b)
+        echo "参数b的值:$OPTARG"
+        BUILD_MODE=$OPTARG
+        ;;
+        ?) echo "未知参数"
+           exit 1
+        ;;
+   esac
+done
+if [[ "${BUILD_MODE}" == "" ]]; then
+    BUILD_MODE="PKG"
+fi
+echo "BUILD_MODE:${BUILD_MODE}"
 ROOT_DIR=$(pwd)
-
 source test/steps/read_properties.sh
+# 从源码编译
+if [[ "${BUILD_MODE}" == "SRC" ]]; then
+    cd java/openmldb-batch || exit
+    mvn clean install -Dmaven.test.skip=true
+    cd "${ROOT_DIR}" || exit
+fi
 # install command tool
 cd test/test-tool/command-tool || exit
 mvn clean install -Dmaven.test.skip=true
