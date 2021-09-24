@@ -15,18 +15,17 @@
 # limitations under the License.
 
 
-file="test/steps/openmldb_test.properties"
-
-if [ -f "$file" ]
-then
-  echo "$file found."
-  # shellcheck disable=SC2034
-  while IFS='=' read -r key value
-  do
-    key=$(echo "$key" | tr '.' '_')
-    # shellcheck disable=SC1083
-    eval "${key}"=\${value}
-  done < "$file"
-else
-  echo "$file not found."
+BATCH_VERSION=$1
+BUILD_MODE=$2
+ROOT_DIR=$(pwd)
+# 从源码编译
+if [[ "${BUILD_MODE}" == "SRC" ]]; then
+    cd java/openmldb-batch || exit
+    BATCH_VERSION=$(mvn org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.version -q -DforceStdout)
 fi
+echo "BATCH_VERSION:${BATCH_VERSION}"
+cd test/batch-test/openmldb-batch-test || exit
+# modify pom
+sed -i "s#<openmldb.batch.version>.*</openmldb.batch.version>#<openmldb.batch.version>${BATCH_VERSION}</openmldb.batch.version>#" pom.xml
+
+cd "${ROOT_DIR}" || exit
