@@ -733,6 +733,51 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     }
 }
 
+TEST_F(DBMSSdkTest, HandleCmdTest) {
+    usleep(2000 * 1000);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
+    ::hybridse::cmd::
+    {
+        Status status;
+        std::vector<std::string> names = dbms_sdk->GetDatabases(&status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+        ASSERT_EQ(0u, names.size());
+    }
+
+    // create database db1
+    {
+        Status status;
+        std::string name = "db_1";
+        dbms_sdk->CreateDatabase(name, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+    // create database db2
+    {
+        Status status;
+        std::string name = "db_2xxx";
+        dbms_sdk->CreateDatabase(name, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    // create database db3
+    {
+        Status status;
+        std::string name = "db_3";
+        dbms_sdk->CreateDatabase(name, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    {
+        // get databases
+        Status status;
+        std::vector<std::string> names = dbms_sdk->GetDatabases(&status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+        ASSERT_EQ(3u, names.size());
+    }
+}
+
 }  // namespace sdk
 }  // namespace hybridse
 int main(int argc, char *argv[]) {
