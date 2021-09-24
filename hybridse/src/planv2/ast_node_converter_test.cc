@@ -174,7 +174,7 @@ TEST_F(ASTNodeConverterTest, InvalidASTIntervalLiteralTest) {
         node::ExprNode* output = nullptr;
         base::Status status = ConvertExprNode(&expression, &node_manager, &output);
         ASSERT_FALSE(status.isOK());
-        ASSERT_EQ("Invalid interval literal: 1X", status.msg);
+        ASSERT_EQ("Invalid interval literal 1X: invalid interval unit", status.msg);
     }
     {
         zetasql::ASTIntervalLiteral expression;

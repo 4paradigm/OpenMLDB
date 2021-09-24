@@ -370,7 +370,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             CHECK_TRUE(!literal->is_hex(), common::kSqlAstError, "Un-support hex integer literal: ", literal->image());
 
             int64_t int_value;
-            CHECK_STATUS(ASTIntLiteralToNum(ast_expression, &int_value), "Invalid integer literal: ", literal->image());
+            CHECK_STATUS(ASTIntLiteralToNum(ast_expression, &int_value));
 
             if (!literal->is_long() && int_value <= INT_MAX && int_value >= INT_MIN) {
                 *output = node_manager->MakeConstNode(static_cast<int>(int_value));
@@ -392,11 +392,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             hybridse::codec::StringRef str(literal->image().data());
             bool is_null;
             hybridse::udf::v1::string_to_bool(&str, &bool_value, &is_null);
-            if (is_null) {
-                status.msg = "Invalid bool literal: " + std::string(literal->image());
-                status.code = common::kSqlAstError;
-                return status;
-            }
+            CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid bool literal: ", literal->image())
             *output = node_manager->MakeConstNode(bool_value);
             return base::Status::OK();
         }
@@ -408,21 +404,13 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                 float float_value = 0.0;
                 hybridse::codec::StringRef str(std::string(literal->image().substr(0, literal->image().size() - 1)));
                 hybridse::udf::v1::string_to_float(&str, &float_value, &is_null);
-                if (is_null) {
-                    status.msg = "Invalid float literal: " + std::string(literal->image());
-                    status.code = common::kSqlAstError;
-                    return status;
-                }
+                CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid float literal: ", literal->image());
                 *output = node_manager->MakeConstNode(float_value);
             } else {
                 double double_value = 0.0;
                 hybridse::codec::StringRef str(literal->image().data());
                 hybridse::udf::v1::string_to_double(&str, &double_value, &is_null);
-                if (is_null) {
-                    status.msg = "Invalid double literal: " + std::string(literal->image());
-                    status.code = common::kSqlAstError;
-                    return status;
-                }
+                CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid double literal: ", literal->image());
                 *output = node_manager->MakeConstNode(double_value);
             }
             return base::Status::OK();
@@ -431,8 +419,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             int64_t interval_value;
             node::DataType interval_unit;
             CHECK_STATUS(
-                ASTIntervalLIteralToNum(ast_expression, &interval_value, &interval_unit),
-                "Invalid interval literal: ", ast_expression->GetAsOrDie<zetasql::ASTIntervalLiteral>()->image());
+                ASTIntervalLIteralToNum(ast_expression, &interval_value, &interval_unit))
             *output = node_manager->MakeConstNode(interval_value, interval_unit);
             return base::Status::OK();
         }
@@ -449,15 +436,12 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         case zetasql::AST_BIGNUMERIC_LITERAL:
         case zetasql::AST_JSON_LITERAL:
         case zetasql::AST_BYTES_LITERAL: {
-            status.msg = "Un-support literal expression for node kind " + ast_expression->GetNodeKindString();
-            status.code = common::kSqlAstError;
-            return status;
+            FAIL_STATUS(common::kUnsupportSql, "Un-support literal expression for node kind ",
+                        ast_expression->GetNodeKindString());
+            break;
         }
-
         default: {
-            status.msg = "Unsupport ASTExpression " + ast_expression->GetNodeKindString();
-            status.code = common::kSqlAstError;
-            return status;
+            FAIL_STATUS(common::kUnsupportSql, "Unsupport ASTExpression ", ast_expression->GetNodeKindString())
         }
     }
     return status;
@@ -1558,7 +1542,7 @@ base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t*
         codec::StringRef str_ref(std::string(int_literal->image()));
         udf::v1::string_to_bigint(&str_ref, val, &is_null);
     }
-    CHECK_TRUE(!is_null, common::kTypeError, "Invalid int literal: ", int_literal->image());
+    CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid integer literal: ", int_literal->image());
     return base::Status::OK();
 }
 
@@ -1585,7 +1569,8 @@ base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int
             *unit = node::DataType::kSecond;
             break;
         default:
-            return base::Status(common::kTypeError, "unknown interval unit");
+            FAIL_STATUS(common::kTypeError, "Invalid interval literal ", interval_literal->image(),
+                        ": invalid interval unit")
     }
     bool is_null = false;
     const int size = interval_literal->image().size();
