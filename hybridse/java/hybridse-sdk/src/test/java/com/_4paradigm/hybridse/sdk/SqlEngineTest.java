@@ -53,8 +53,8 @@ public class SqlEngineTest {
         }
     }
 
-    @DataProvider(name = "sqlWindowSkewCase")
-    public Object[] sqlWindowSkewCase() {
+    @DataProvider(name = "sqlWindowLastJoinCase")
+    public Object[] sqlWindowLastJoinCase() {
         return new Object[] {"" +
                 " SELECT sum(t1.col1) over w1 as sum_t1_col1, t2.str1 as t2_str1\n" +
                 " FROM t1\n" +
@@ -66,8 +66,8 @@ public class SqlEngineTest {
                 " ) limit 10;",};
     }
 
-    @Test(dataProvider = "sqlWindowSkewCase")
-    public void sqlWindowSkew(String sql) {
+    @Test(dataProvider = "sqlWindowLastJoinCase")
+    public void sqlWindowLastJoin(String sql) {
         TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
         db.setName("db");
 

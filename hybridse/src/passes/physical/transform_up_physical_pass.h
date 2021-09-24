@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include "passes/physical/physical_pass.h"
 
 namespace hybridse {
