@@ -1568,7 +1568,8 @@ base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int
             *unit = node::DataType::kSecond;
             break;
         default:
-            return base::Status(common::kTypeError, "unknown interval unit");
+            FAIL_STATUS(common::kTypeError, "Invalid interval literal ", interval_literal->image(),
+                        ": invalid interval unit")
     }
     bool is_null = false;
     const int size = interval_literal->image().size();
