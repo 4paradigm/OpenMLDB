@@ -20,15 +20,15 @@ ROOT_DIR=$(pwd)
 test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
 cd thirdsrc/zookeeper-3.4.14
-# TODO(hw): macos -p
-netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
+# TODO(hw): macos no -p
+netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
 ./bin/zkServer.sh start && cd "$ROOT_DIR"
 echo "zk started"
 sleep 5
 cd onebox && sh start_onebox.sh && cd "$ROOT_DIR"
 echo "onebox started, check"
 sleep 5
-ps axu | grep openmldb
+pgrep -f openmldb
 echo "ROOT_DIR:${ROOT_DIR}"
 
 cd "${ROOT_DIR}"/build/python/dist/

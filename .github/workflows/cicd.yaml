@@ -147,6 +147,7 @@ jobs:
       - name: test sqlalchemy
         run: |
           python3 -m easy_install nose pip
+          yum install -y net-tools
           bash steps/fesql_test_python.sh
       - name: upload python ut results
         if: always()
