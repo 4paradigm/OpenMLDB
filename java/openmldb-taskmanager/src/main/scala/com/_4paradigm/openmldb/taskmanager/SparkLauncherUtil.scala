@@ -104,6 +104,7 @@ object SparkLauncherUtil {
         // For local mode, return when finished
         if((sparkAppHandle.getState == SparkAppHandle.State.SUBMITTED && sparkAppHandle.getAppId != null) || sparkAppHandle.getState.isFinal) {
           logger.info(s"Get Spark job state: ${sparkAppHandle.getState}")
+          logger.warn(sparkAppHandle.getError.toString)
           lock.countDown()
         }
       }
