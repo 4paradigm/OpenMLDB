@@ -33,13 +33,24 @@ object SparkLauncherUtil {
    * @return the SparkLauncher object
    */
   def createSparkLauncher(mainClass: String): SparkLauncher = {
-    new SparkLauncher()
+
+    val launcher = new SparkLauncher()
       .setAppResource(TaskManagerConfig.BATCHJOB_JAR_PATH)
       .setMainClass(mainClass)
-      .setMaster("yarn")
-      .setDeployMode("cluster")
-      .setConf("spark.yarn.jars", TaskManagerConfig.SPARK_YARN_JARS)
-      .setConf("spark.yarn.maxAppAttempts", "1")
+
+    TaskManagerConfig.SPARK_MASTER.toLowerCase match {
+      case "local" => {
+        launcher.setMaster("local")
+      }
+      case "yarn" => {
+        launcher.setMaster("yarn")
+          .setDeployMode("cluster")
+          .setConf("spark.yarn.jars", TaskManagerConfig.SPARK_YARN_JARS)
+          .setConf("spark.yarn.maxAppAttempts", "1")
+      }
+      case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
+    }
+
   }
 
   /**
