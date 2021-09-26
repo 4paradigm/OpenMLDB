@@ -100,7 +100,10 @@ object SparkLauncherUtil {
 
     val sparkAppHandle = sparkLauncher.startApplication(new SparkAppHandle.Listener() {
       override def stateChanged(sparkAppHandle: SparkAppHandle): Unit = {
-        if(sparkAppHandle.getState == SparkAppHandle.State.SUBMITTED && sparkAppHandle.getAppId != null) {
+        // For yarn-cluster return when get application id
+        // For local mode, return when finished
+        if((sparkAppHandle.getState == SparkAppHandle.State.SUBMITTED && sparkAppHandle.getAppId != null) || sparkAppHandle.getState.isFinal) {
+          logger.info(s"Get Spark job state: ${sparkAppHandle.getState}")
           lock.countDown()
         }
       }
