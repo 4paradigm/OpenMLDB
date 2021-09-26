@@ -48,13 +48,11 @@ jobs:
           name: integration-test-sdk-java-standalone-0-${{ github.sha }}
           path: |
             test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
             test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/junitreports/TEST-*.xml
-            test/integration-test/openmldb-test-java/openmldb-sdk-test/target/failsafe-reports/TEST-*.xml
-      - name: INTEGRATION TEST PKG Results
+      - name: JAVA TEST PKG Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
-          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/**/*.xml
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/junitreports/TEST-*.xml
           check_name: INTEGRATION Test Report
           comment_title: INTEGRATION Test Report
 #      - name: allure-report
