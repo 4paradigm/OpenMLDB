@@ -33,8 +33,8 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          check_name: Java SDK Test Standalone0 PKG Report
-          comment_title: Java SDK Test Standalone0 PKG Report
+          check_name: Java SDK Test Standalone0 SRC Report
+          comment_title: Java SDK Test Standalone0 SRC Report
 
   java-sdk-test-standalone-1:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -58,8 +58,8 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          check_name: Java SDK Test Standalone1 PKG Report
-          comment_title: Java SDK Test Standalone1 PKG Report
+          check_name: Java SDK Test Standalone1 SRC Report
+          comment_title: Java SDK Test Standalone1 SRC Report
 
   java-sdk-test-cluster-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -83,8 +83,8 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          check_name: Java SDK Test Cluster0 PKG Report
-          comment_title: Java SDK Test Cluster0 PKG Report
+          check_name: Java SDK Test Cluster0 SRC Report
+          comment_title: Java SDK Test Cluster0 SRC Report
 
   java-sdk-test-cluster-1:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -108,8 +108,8 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          check_name: Java SDK Test Cluster1 PKG Report
-          comment_title: Java SDK Test Cluster1 PKG Report
+          check_name: Java SDK Test Cluster1 SRC Report
+          comment_title: Java SDK Test Cluster1 SRC Report
 
   python-sdk-test-standalone-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'python' }}
@@ -127,6 +127,13 @@ jobs:
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "0"
+      - name: upload test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: python-sdk-standalone-0-src-${{ github.sha }}
+          path: |
+            python/report/allure-results
 #      - name: allure-report
 #        uses: simple-elf/allure-report-action@master
 #        if: always()
@@ -160,6 +167,13 @@ jobs:
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "1,2,3,4,5"
+      - name: upload test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: python-sdk-standalone-1-src-${{ github.sha }}
+          path: |
+            python/report/allure-results
 
   apiserver-test:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'apiserver' }}
@@ -183,8 +197,8 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-http-test/target/surefire-reports/TEST-*.xml
-          check_name: APIServer PKG Report
-          comment_title: APIServer PKG Report
+          check_name: APIServer SRC Report
+          comment_title: APIServer SRC Report
 
   batch-test:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'batch' }}
@@ -204,5 +218,5 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/batch-test/openmldb-batch-test/target/surefire-reports/TEST-*.xml
-          check_name: Batch Test PKG Report
-          comment_title: Batch Test PKG Report
+          check_name: Batch Test SRC Report
+          comment_title: Batch Test SRC Report

@@ -130,6 +130,13 @@ jobs:
         run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b PKG -d standalone -l "0"
+      - name: upload test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: python-sdk-standalone-0-pkg-${{ github.sha }}
+          path: |
+            python/report/allure-results
 #      - name: allure-report
 #        uses: simple-elf/allure-report-action@master
 #        if: always()
@@ -160,6 +167,13 @@ jobs:
         run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b PKG -d standalone -l "1,2,3,4,5"
+      - name: upload test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: python-sdk-standalone-1-pkg-${{ github.sha }}
+          path: |
+            python/report/allure-results
 
   apiserver-test:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'apiserver' }}
