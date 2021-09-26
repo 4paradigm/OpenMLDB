@@ -23,8 +23,8 @@
 #include "vm/physical_op.h"
 #include "vm/physical_plan_context.h"
 
-#ifndef SRC_PASSES_PHYSICAL_PHYSICAL_PASS_H_
-#define SRC_PASSES_PHYSICAL_PHYSICAL_PASS_H_
+#ifndef HYBRIDSE_SRC_PASSES_PHYSICAL_PHYSICAL_PASS_H_
+#define HYBRIDSE_SRC_PASSES_PHYSICAL_PHYSICAL_PASS_H_
 
 namespace hybridse {
 namespace passes {
@@ -40,4 +40,4 @@ class PhysicalPass : public PassBase<PhysicalOpNode, PhysicalPlanContext> {
 
 }  // namespace passes
 }  // namespace hybridse
-#endif  // SRC_PASSES_PHYSICAL_PHYSICAL_PASS_H_
+#endif  // HYBRIDSE_SRC_PASSES_PHYSICAL_PHYSICAL_PASS_H_

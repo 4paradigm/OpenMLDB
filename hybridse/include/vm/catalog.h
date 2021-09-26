@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_VM_CATALOG_H_
-#define INCLUDE_VM_CATALOG_H_
+#ifndef HYBRIDSE_INCLUDE_VM_CATALOG_H_
+#define HYBRIDSE_INCLUDE_VM_CATALOG_H_
 #include <map>
 #include <memory>
 #include <set>
@@ -495,4 +495,4 @@ class Catalog {
 }  // namespace vm
 }  // namespace hybridse
 
-#endif  // INCLUDE_VM_CATALOG_H_
+#endif  // HYBRIDSE_INCLUDE_VM_CATALOG_H_

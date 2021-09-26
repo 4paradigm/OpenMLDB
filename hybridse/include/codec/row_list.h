@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef INCLUDE_CODEC_ROW_LIST_H_
-#define INCLUDE_CODEC_ROW_LIST_H_
+#ifndef HYBRIDSE_INCLUDE_CODEC_ROW_LIST_H_
+#define HYBRIDSE_INCLUDE_CODEC_ROW_LIST_H_
 #include <memory>
 #include "codec/row_iterator.h"
 namespace hybridse {
@@ -64,4 +64,4 @@ class ListV {
 };
 }  // namespace codec
 }  // namespace hybridse
-#endif  // INCLUDE_CODEC_ROW_LIST_H_
+#endif  // HYBRIDSE_INCLUDE_CODEC_ROW_LIST_H_

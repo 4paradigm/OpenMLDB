@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_VM_LOCAL_TABLET_HANDLER_H_
-#define SRC_VM_LOCAL_TABLET_HANDLER_H_
+#ifndef HYBRIDSE_SRC_VM_LOCAL_TABLET_HANDLER_H_
+#define HYBRIDSE_SRC_VM_LOCAL_TABLET_HANDLER_H_
 #include <memory>
 #include <string>
 #include <vector>
@@ -121,4 +121,4 @@ class LocalTabletTableHandler : public MemTableHandler {
 };
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_VM_LOCAL_TABLET_HANDLER_H_
+#endif  // HYBRIDSE_SRC_VM_LOCAL_TABLET_HANDLER_H_

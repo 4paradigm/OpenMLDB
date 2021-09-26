@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_UDF_UDF_TEST_H_
-#define SRC_UDF_UDF_TEST_H_
+#ifndef HYBRIDSE_SRC_UDF_UDF_TEST_H_
+#define HYBRIDSE_SRC_UDF_UDF_TEST_H_
 
 #include <gtest/gtest.h>
 #include <memory>
@@ -217,4 +217,4 @@ codec::ListRef<bool> MakeBoolList(const std::initializer_list<int>& vec) {
 }  // namespace udf
 }  // namespace hybridse
 
-#endif  // SRC_UDF_UDF_TEST_H_
+#endif  // HYBRIDSE_SRC_UDF_UDF_TEST_H_

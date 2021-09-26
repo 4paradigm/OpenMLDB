@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_PASSES_EXPRESSION_EXPR_PASS_TEST_H_
-#define SRC_PASSES_EXPRESSION_EXPR_PASS_TEST_H_
+#ifndef HYBRIDSE_SRC_PASSES_EXPRESSION_EXPR_PASS_TEST_H_
+#define HYBRIDSE_SRC_PASSES_EXPRESSION_EXPR_PASS_TEST_H_
 
 #include <string>
 #include <vector>
@@ -97,4 +97,4 @@ class ExprPassTestBase : public ::testing::Test {
 
 }  // namespace passes
 }  // namespace hybridse
-#endif  // SRC_PASSES_EXPRESSION_EXPR_PASS_TEST_H_
+#endif  // HYBRIDSE_SRC_PASSES_EXPRESSION_EXPR_PASS_TEST_H_

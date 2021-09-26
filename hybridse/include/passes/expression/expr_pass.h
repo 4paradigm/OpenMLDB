@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_PASSES_EXPRESSION_EXPR_PASS_H_
-#define INCLUDE_PASSES_EXPRESSION_EXPR_PASS_H_
+#ifndef HYBRIDSE_INCLUDE_PASSES_EXPRESSION_EXPR_PASS_H_
+#define HYBRIDSE_INCLUDE_PASSES_EXPRESSION_EXPR_PASS_H_
 
 #include <memory>
 #include <string>
@@ -84,4 +84,4 @@ class ExprReplacer {
 
 }  // namespace passes
 }  // namespace hybridse
-#endif  // INCLUDE_PASSES_EXPRESSION_EXPR_PASS_H_
+#endif  // HYBRIDSE_INCLUDE_PASSES_EXPRESSION_EXPR_PASS_H_

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_
-#define SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_
+#define HYBRIDSE_SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_
 #include "base/fe_status.h"
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/scope_var.h"
@@ -59,4 +59,4 @@ class TimestampIRBuilder : public StructTypeIRBuilder {
 };
 }  // namespace codegen
 }  // namespace hybridse
-#endif  // SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_
+#endif  // HYBRIDSE_SRC_CODEGEN_TIMESTAMP_IR_BUILDER_H_

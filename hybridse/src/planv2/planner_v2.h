@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_PLANV2_PLANNER_V2_H_
-#define SRC_PLANV2_PLANNER_V2_H_
+#ifndef HYBRIDSE_SRC_PLANV2_PLANNER_V2_H_
+#define HYBRIDSE_SRC_PLANV2_PLANNER_V2_H_
 
 #include <map>
 #include <string>
@@ -49,4 +49,4 @@ class SimplePlannerV2 : public SimplePlanner {
 }  // namespace plan
 }  // namespace hybridse
 
-#endif  // SRC_PLANV2_PLANNER_V2_H_
+#endif  // HYBRIDSE_SRC_PLANV2_PLANNER_V2_H_

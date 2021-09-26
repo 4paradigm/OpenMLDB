@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_SDK_BASE_IMPL_H_
-#define INCLUDE_SDK_BASE_IMPL_H_
+#ifndef HYBRIDSE_INCLUDE_SDK_BASE_IMPL_H_
+#define HYBRIDSE_INCLUDE_SDK_BASE_IMPL_H_
 
 #include <memory>
 #include <string>
@@ -77,4 +77,4 @@ class TableSetImpl : public TableSet {
 
 }  // namespace sdk
 }  // namespace hybridse
-#endif  // INCLUDE_SDK_BASE_IMPL_H_
+#endif  // HYBRIDSE_INCLUDE_SDK_BASE_IMPL_H_

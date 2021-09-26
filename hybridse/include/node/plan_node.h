@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_NODE_PLAN_NODE_H_
-#define INCLUDE_NODE_PLAN_NODE_H_
+#ifndef HYBRIDSE_INCLUDE_NODE_PLAN_NODE_H_
+#define HYBRIDSE_INCLUDE_NODE_PLAN_NODE_H_
 
 #include <glog/logging.h>
 #include <list>
@@ -520,4 +520,4 @@ void PrintPlanNode(std::ostream &output, const std::string &org_tab, const PlanN
 }  // namespace node
 }  // namespace hybridse
 
-#endif  // INCLUDE_NODE_PLAN_NODE_H_
+#endif  // HYBRIDSE_INCLUDE_NODE_PLAN_NODE_H_

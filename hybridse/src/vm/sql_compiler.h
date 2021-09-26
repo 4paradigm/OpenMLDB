@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_VM_SQL_COMPILER_H_
-#define SRC_VM_SQL_COMPILER_H_
+#ifndef HYBRIDSE_SRC_VM_SQL_COMPILER_H_
+#define HYBRIDSE_SRC_VM_SQL_COMPILER_H_
 
 #include <memory>
 #include <set>
@@ -185,4 +185,4 @@ class SqlCompiler {
 
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_VM_SQL_COMPILER_H_
+#endif  // HYBRIDSE_SRC_VM_SQL_COMPILER_H_

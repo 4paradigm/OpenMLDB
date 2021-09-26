@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_SDK_RESULT_SET_H_
-#define INCLUDE_SDK_RESULT_SET_H_
+#ifndef HYBRIDSE_INCLUDE_SDK_RESULT_SET_H_
+#define HYBRIDSE_INCLUDE_SDK_RESULT_SET_H_
 
 #include <stdint.h>
 #include <string>
@@ -220,4 +220,4 @@ class ResultSet {
 
 }  // namespace sdk
 }  // namespace hybridse
-#endif  // INCLUDE_SDK_RESULT_SET_H_
+#endif  // HYBRIDSE_INCLUDE_SDK_RESULT_SET_H_

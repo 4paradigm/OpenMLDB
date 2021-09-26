@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_NODE_NODE_BASE_H_
-#define INCLUDE_NODE_NODE_BASE_H_
+#ifndef HYBRIDSE_INCLUDE_NODE_NODE_BASE_H_
+#define HYBRIDSE_INCLUDE_NODE_NODE_BASE_H_
 
 #include <glog/logging.h>
 #include <sstream>
@@ -99,4 +99,4 @@ class NodeBase : public base::FeBaseObject {
 
 }  // namespace node
 }  // namespace hybridse
-#endif  // INCLUDE_NODE_NODE_BASE_H_
+#endif  // HYBRIDSE_INCLUDE_NODE_NODE_BASE_H_
