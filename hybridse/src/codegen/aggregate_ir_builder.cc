@@ -511,7 +511,7 @@ size_t GetTypeByteSize(node::DataType dtype) {
     }
 }
 
-bool ScheduleAggGenerators(
+base::Status ScheduleAggGenerators(
     std::unordered_map<std::string, AggColumnInfo>& agg_col_infos,  // NOLINT
     std::vector<StatisticalAggGenerator>* res) {
     // collect and sort used input columns
@@ -571,8 +571,7 @@ bool ScheduleAggGenerators(
                     } else if (fname == "avg") {
                         agg_gen.RegisterAvg(i, out_idx);
                     } else {
-                        LOG(WARNING) << "Unknown agg function name " << fname;
-                        return false;
+                        FAIL_STATUS(common::kCodegenUdafError, "Unknown agg function name: ", fname)
                     }
                 }
             }
@@ -587,10 +586,10 @@ bool ScheduleAggGenerators(
         }
         idx += 1;
     }
-    return true;
+    return base::Status::OK();
 }
 
-bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
+base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
                                     ExprIRBuilder* expr_ir_builder,
                                     VariableIRBuilder* variable_ir_builder,
                                     ::llvm::BasicBlock* cur_block,
@@ -601,20 +600,14 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     auto void_ty = llvm::Type::getVoidTy(llvm_ctx);
     auto int64_ty = llvm::Type::getInt64Ty(llvm_ctx);
     expr_ir_builder->set_frame(nullptr, frame_node_);
-    base::Status status;
     NativeValue window_ptr;
-    status = expr_ir_builder->BuildWindow(&window_ptr);
-    if (!status.isOK() || window_ptr.GetRaw() == nullptr) {
-        LOG(ERROR) << "fail to find window_ptr: " + status.str();
-        return false;
-    }
+    CHECK_STATUS(expr_ir_builder->BuildWindow(&window_ptr))
+    CHECK_TRUE(nullptr != window_ptr.GetRaw(), common::kCodegenError, "Window ptr is null")
+
+    base::Status status;
     NativeValue output_buf_wrapper;
-    bool ok = variable_ir_builder->LoadValue(output_ptr_name,
-                                             &output_buf_wrapper, status);
-    if (!ok) {
-        LOG(ERROR) << "fail to get output row ptr";
-        return false;
-    }
+    CHECK_TRUE(variable_ir_builder->LoadValue(output_ptr_name, &output_buf_wrapper, status),
+               common::kCodegenLoadValueError, "fail to get output row ptr")
     ::llvm::Value* output_buf = output_buf_wrapper.GetValue(&builder);
 
     std::string fn_name =
@@ -639,10 +632,8 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         ::llvm::BasicBlock::Create(llvm_ctx, "exit_iter", fn);
 
     std::vector<StatisticalAggGenerator> generators;
-    if (!ScheduleAggGenerators(agg_col_infos_, &generators)) {
-        LOG(WARNING) << "Schedule agg ops failed";
-        return false;
-    }
+    CHECK_STATUS(ScheduleAggGenerators(agg_col_infos_, &generators), common::kCodegenUdafError,
+                 "Schedule agg ops failed")
 
     // gen head
     builder.SetInsertPoint(head_block);
@@ -712,11 +703,8 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
                 schema_idx, schema_context_->GetRowFormat(schema_idx),
                 body_block, &dummy_scope_var);
             NativeValue field_value;
-            if (!buf_builder.BuildGetField(info.col_idx, slice_info.first,
-                                           slice_info.second, &field_value)) {
-                LOG(ERROR) << "fail to gen fetch column";
-                return false;
-            }
+            CHECK_TRUE(buf_builder.BuildGetField(info.col_idx, slice_info.first, slice_info.second, &field_value),
+                       common::kCodegenGetFieldError, "fail to gen fetch column")
             cur_row_fields_dict[col_key] = field_value;
         }
     }
@@ -727,10 +715,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         std::vector<::llvm::Value*> fields_is_null;
         for (auto& key : agg_generator.GetColKeys()) {
             auto iter = cur_row_fields_dict.find(key);
-            if (iter == cur_row_fields_dict.end()) {
-                LOG(WARNING) << "Fail to find row field of " << key;
-                return false;
-            }
+            CHECK_TRUE(iter != cur_row_fields_dict.end(), common::kCodegenUdafError, "Fail to find row field of ", key)
             auto& field_value = iter->second;
             fields.push_back(field_value.GetValue(&builder));
             fields_is_null.push_back(field_value.GetIsNull(&builder));
@@ -763,7 +748,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         }
     }
     builder.CreateRetVoid();
-    return true;
+    return base::Status::OK();
 }
 
 }  // namespace codegen

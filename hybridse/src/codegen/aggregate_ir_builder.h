@@ -94,7 +94,7 @@ class AggregateIRBuilder {
         ::llvm::LLVMContext& llvm_ctx,  // NOLINT
         const std::string& fname, const node::DataType& node_type);
 
-    bool BuildMulti(const std::string& base_funcname,
+    base::Status BuildMulti(const std::string& base_funcname,
                     ExprIRBuilder* expr_ir_builder,
                     VariableIRBuilder* variable_ir_builder,
                     ::llvm::BasicBlock* cur_block,

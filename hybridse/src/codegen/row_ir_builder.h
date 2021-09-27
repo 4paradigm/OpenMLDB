@@ -18,6 +18,8 @@
 #define SRC_CODEGEN_ROW_IR_BUILDER_H_
 
 #include <string>
+
+#include "base/fe_status.h"
 #include "codegen/native_value.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/node_enum.h"
@@ -52,7 +54,7 @@ class RowEncodeIRBuilder {
     virtual ~RowEncodeIRBuilder() {}
 
     // build the encode ir, output  the row data to output ptr
-    virtual bool BuildEncode(::llvm::Value* output_ptr) = 0;
+    virtual base::Status BuildEncode(::llvm::Value* output_ptr) = 0;
 };
 
 }  // namespace codegen

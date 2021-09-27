@@ -184,8 +184,7 @@ void RunEncode(::hybridse::type::TableDef& table, // NOLINT
                                                   entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
-    ok = buf_encoder_builder.BuildEncode(arg0);
-    ASSERT_TRUE(ok);
+    ASSERT_TRUE(buf_encoder_builder.BuildEncode(arg0).isOK());
     builder.CreateRetVoid();
     m->print(::llvm::errs(), NULL);
 

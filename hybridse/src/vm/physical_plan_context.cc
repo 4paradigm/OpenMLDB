@@ -76,9 +76,11 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects, const Sche
 
     // expression optimization
     if (enable_expr_opt_) {
-        CHECK_STATUS(
-            OptimizeFunctionLet(projects, &expr_pass_ctx, resolved_func));
-    }
+        base::Status optimized_status = OptimizeFunctionLet(projects, &expr_pass_ctx, resolved_func);
+        if (!optimized_status.isOK()) {
+            DLOG(WARNING) << optimized_status;
+        }
+     }
 
     FnInfo* output_fn = fn_component->mutable_fn_info();
     output_fn->Clear();
@@ -109,13 +111,10 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects, const Sche
             }
         }
 
-        CHECK_TRUE(resolved_expr->GetOutputType() != nullptr, kPlanError, i,
-                   "th output project expression type "
-                   "is unknown: ",
+        CHECK_TRUE(resolved_expr->GetOutputType() != nullptr, kPlanError, "Fail to resolve expression: ",
                    resolved_expr->GetExprString());
-        CHECK_TRUE(codegen::DataType2SchemaType(*resolved_expr->GetOutputType(),
-                                                &column_type),
-                   kPlanError, i, "th output project expression type illegal: ",
+        CHECK_TRUE(codegen::DataType2SchemaType(*resolved_expr->GetOutputType(), &column_type), kPlanError,
+                   "Invalid expression: ", resolved_expr->GetExprString(), " with illegal type ",
                    resolved_expr->GetOutputType()->GetName());
         column_def.set_type(column_type);
 

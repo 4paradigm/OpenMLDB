@@ -22,37 +22,125 @@ option java_outer_classname = "Common";
 enum StatusCode {
     kOk = 0;
     kRunning = 1;
+    // General error
     kRunError = 2;
-    kTypeError = 8;
-    kFileIOError = 9;
-    kUnSupport = 10;
-    kBadRequest = 11;
-    kNameExists = 12;
-    kTableExists = 13;
-    kNoDatabase = 14;
-    kTableNotFound = 15;
-    kTablePutFailed = 16;
-    kNullPointer = 17;
-    kProcedureNotFound = 18;
-    kConnError = 20;
-    kRpcError = 21;
-    kTimeoutError = 22;
-    kResponseError = 23;
-    kSyntaxError = 29;
-    kSqlError = 30;
-    kPlanError = 31;
-    kCallMethodError = 32;
-    kColumnNotFound = 33;
-    kIndexNotFound=34;
-    kFunError = 40;
-    kCodegenError = 50;
-    kOpGenError = 60;
-    kJitError = 70;
-    kSchemaCodecError = 71;
+    // type error, invalid type, unsupported type. etc
+    kTypeError = 3;
 
+    // Null pointer error
+    kNullPointer = 10;
+    // Null pointer error: input parameter is null
+    kNullInputPointer = 11;
+    // Null pointer error: output parameter is null
+    kNullOutputPointer = 12;
+
+    // Support error
+    kUnSupport = 100;
+    kUnsupportSql = 101;
+    kUnsupportPlan = 102;
+    // UnSupport under performance sensitive environment like Online env.
+    kUnsupportPerformanceSensitive = 103;
+    // UnSupport under distributed environment
+    kUnsupportDistribution = 104;
+    // The SQL Cmd isn't supported
+    kUnSupportCommand = 105;
+
+    kPlanError = 1000;
+    // sql syntax error
+    kSyntaxError = 1001;
+    // sql syntax is correct but fail to parse it into a ast tree
+    kSqlAstError = 1002;
+    // fail to generate logical plan
+    kLogicalPlanError = 1003;
+    // fail to generate physical plan
+    kPhysicalPlanError = 1004;
+    // fail to generate execution plan
+    kExecutionPlanError = 1005;
+    // incorrect engine mode
+    kEngineModeError = 1006;
+    // something goes wrong with cache
+    kEngineCacheError = 1007;
+    // invalid common indices config for batch request mode query
+    kCommonIndexError = 1008;
+
+    // error triggered by code gen module
+    kCodegenError = 1100;
+    // error when generate code to load a value
+    kCodegenLoadValueError = 1101;
+    // error when generate code to store a value
+    kCodegenStoreValueError = 1102;
+    // error when generate code for a expression
+    kCodegenExpressionError = 1103;
+    // error when generate code for a function call
+    kCodegenCallFunctionError = 1104;
+    // error when generate code for a user-define function
+    kCodegenUdfError = 1105;
+    // error when generate code for a user-define aggregation function
+    kCodegenUdafError = 1106;
+    // error when generate code to get a field from a row
+    kCodegenGetFieldError = 1107;
+    // error when generate code to encode a row
+    kCodegenEncodeError = 1108;
+    // error when generate code to decode a row
+    kCodegenDecodeError = 1109;
+
+    // error with catalog
+    kCatalogError = 1200;
+    // error with catalog, database not exist in the catalog
+    kNoDatabase = 1201;
+    // error with catalog, table not exist in the catalog
+    kTableNotFound = 1202;
+    // error with catalog, procedure not exist in the catalog
+    kProcedureNotFound = 1203;
+    // error with catalog, column not exist in the given table
+    kColumnNotFound = 1204;
+    // error with catalog, index not exist in the given table
+    kIndexNotFound=1205;
+    // error with catalog, database already exist in the catalog
+    kDatabaseExists = 1206;
+    // error with catalog, table already exist in the catalog
+    kTableExists = 1207;
+    // error with catalog, column already exist in the given table
+    kColumnExists = 1208;
+
+    kCodecError = 1300;
+    kSchemaCodecError = 1301;
+
+    kRuntimeError = 1400;
+    kJitError = 1401;
+    kCoreAPIRuntimeError = 1402;
+    // error with run session
+    kRunSessionError = 1403;
+
+    // error with rpc
+    kRpcError = 1500;
+    // error with rpc, fail to connect with peer
+    kConnError = 1501;
+    // error with rpc, invalid rpc request
+    kRequestError = 1502;
+    // error with rpc, invalid rpc response
+    kResponseError = 1503;
+    // error with rpc, time out
+    kTimeoutError = 1504;
+    // error with rpc, fail to invoke remote call
+    kCallRpcMethodError = 1505;
+
+    // storage error
+    kStorageError = 1600;
+    // fail to put a row into the given tablet
+    kTablePutFailed = 1601;
+
+    kExternalError = 1700;
+    kFileIOError = 1701;
+
+    kTestError = 1800;
+    kTestEngineError = 1801;
+    kSqlCaseError = 1802;
+    kTestRunSessionError = 1803;
 }
 
 message Status {
     optional StatusCode code = 1;
     optional string msg = 2;
+    optional string trace = 3;
 }

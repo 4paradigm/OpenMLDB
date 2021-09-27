@@ -212,7 +212,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         ::hybridse::dbms::AddTableResponse response;
         MockClosure closure;
         dbms_->AddTable(NULL, &request, &response, &closure);
-        ASSERT_EQ(hybridse::common::kBadRequest, response.status().code());
+        ASSERT_EQ(hybridse::common::kRequestError, response.status().code());
         ASSERT_EQ("table name is empty", response.status().msg());
     }
 
@@ -554,6 +554,99 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
     }
 }
 
+
+TEST_F(DBMSServerImplTest, DBMSServerErrorTest) {
+    MockClosure closure;
+    // kRequestError: database name is missing
+    {
+        ::hybridse::dbms::AddDatabaseRequest request;
+        ::hybridse::dbms::AddDatabaseResponse response;
+        request.set_name("");
+        dbms_->AddDatabase(NULL, &request, &response, &closure);
+        ASSERT_EQ(hybridse::common::kRequestError, response.status().code());
+        ASSERT_EQ("database name is empty", response.status().msg());
+    }
+
+    // kDatabaseExists
+    {
+        ::hybridse::dbms::AddDatabaseRequest request;
+        ::hybridse::dbms::AddDatabaseResponse response;
+        request.set_name("db_test");
+        dbms_->AddDatabase(NULL, &request, &response, &closure);
+        ASSERT_EQ(hybridse::common::kOk, response.status().code());
+        dbms_->AddDatabase(NULL, &request, &response, &closure);
+        ASSERT_EQ(hybridse::common::kDatabaseExists, response.status().code());
+        ASSERT_EQ("database name exists", response.status().msg());
+    }
+
+    ::hybridse::type::TableDef table;
+    table.set_name("test");
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_name("column1");
+        column->set_type(hybridse::type::kInt32);
+    }
+
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_name("column2");
+        column->set_type(hybridse::type::kInt64);
+    }
+
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_name("column3");
+        column->set_type(hybridse::type::kTimestamp);
+    }
+
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_name("column4");
+        column->set_type(hybridse::type::kVarchar);
+    }
+
+    {
+        ::hybridse::type::IndexDef* index = table.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("column1");
+        index->add_first_keys("column2");
+        index->set_second_key("column3");
+        index->add_ttl(86400000);
+    }
+
+    // database not exist
+    {
+        ::hybridse::dbms::AddTableRequest request;
+        request.set_db_name("db_not_exist");
+        *(request.mutable_table()) = table;
+        ::hybridse::dbms::AddTableResponse response;
+        dbms_->AddTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(hybridse::common::kNoDatabase, response.status().code());
+        ASSERT_EQ("Database doesn't exist", response.status().msg());
+    }
+
+    // create table with index
+    {
+        ::hybridse::dbms::AddTableRequest request;
+        request.set_db_name("db_test");
+        *(request.mutable_table()) = table;
+        ::hybridse::dbms::AddTableResponse response;
+        dbms_->AddTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(hybridse::common::kOk, response.status().code());
+    }
+
+    // show table test
+    {
+        ::hybridse::dbms::GetSchemaRequest request;
+        request.set_db_name("db_test");
+        ::hybridse::dbms::GetSchemaResponse response;
+        request.set_name("test");
+        MockClosure closure;
+        dbms_->GetSchema(NULL, &request, &response, &closure);
+        ASSERT_EQ(hybridse::common::kOk, response.status().code());
+        ASSERT_EQ(table.DebugString(), response.table().DebugString());
+    }
+}
 }  // namespace dbms
 }  // namespace hybridse
 int main(int argc, char** argv) {

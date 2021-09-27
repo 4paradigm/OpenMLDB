@@ -180,8 +180,7 @@ bool ArithmeticIRBuilder::InferAndCastDoubleTypes(
         if (!cast_expr_ir_builder.UnSafeCastNumber(
                 left, ::llvm::Type::getDoubleTy(block->getContext()),
                 casted_left, status)) {
-            status.msg = "fail to codegen add expr: " + status.str();
-            LOG(WARNING) << status;
+            status.msg = "fail to codegen add expr";
             return false;
         }
     }

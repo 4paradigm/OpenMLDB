@@ -131,8 +131,6 @@ const Schema &DBMSSdkImpl::GetInputSchema(const std::string &catalog,
     std::shared_ptr<ExplainInfo> info =
         tablet_sdk_->Explain(catalog, sql, status);
     if (status->code != 0) {
-        LOG(WARNING) << "fail to get sql input schema for error "
-                     << status->msg;
         return EMPTY;
     }
     {

@@ -20,7 +20,7 @@ namespace hybridse {
 namespace base {
 
 std::ostream& operator<<(std::ostream& os, const Status& status) {  // NOLINT
-    os << status.msg << "\n" << status.trace;
+    os << status.GetMsg() << "\n" << status.GetTraces();
     return os;
 }
 

@@ -42,24 +42,24 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
     ~BufNativeEncoderIRBuilder();
 
     // the output_ptr like int8_t**
-    bool BuildEncode(::llvm::Value* output_ptr);
+    base::Status BuildEncode(::llvm::Value* output_ptr);
 
-    bool BuildEncodePrimaryField(::llvm::Value* buf, size_t idx,
+    base::Status BuildEncodePrimaryField(::llvm::Value* buf, size_t idx,
                                  const NativeValue& val);
 
  private:
-    bool CalcTotalSize(::llvm::Value** output, ::llvm::Value* str_addr_space);
+    base::Status CalcTotalSize(::llvm::Value** output, ::llvm::Value* str_addr_space);
     bool CalcStrBodyStart(::llvm::Value** output, ::llvm::Value* str_add_space);
-    bool AppendPrimary(::llvm::Value* i8_ptr, const NativeValue& val,
+    base::Status AppendPrimary(::llvm::Value* i8_ptr, const NativeValue& val,
                        size_t field_idx, uint32_t field_offset);
 
-    bool AppendString(::llvm::Value* i8_ptr, ::llvm::Value* buf_size,
+    base::Status AppendString(::llvm::Value* i8_ptr, ::llvm::Value* buf_size,
                       uint32_t field_idx, const NativeValue& str_val,
                       ::llvm::Value* str_addr_space,
                       ::llvm::Value* str_body_offset, uint32_t str_field_idx,
                       ::llvm::Value** output);
 
-    bool AppendHeader(::llvm::Value* i8_ptr, ::llvm::Value* size,
+    base::Status AppendHeader(::llvm::Value* i8_ptr, ::llvm::Value* size,
                       ::llvm::Value* bitmap_size);
 
  private:
