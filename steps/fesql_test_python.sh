@@ -41,4 +41,4 @@ cd "${ROOT_DIR}"/python/test
 nosetests --with-xunit
 
 cd "${ROOT_DIR}"/onebox && sh stop_all.sh && cd "$ROOT_DIR"
-cd thirdsrc/zookeeper-3.4.14 || ./bin/zkServer.sh stop && cd "$ROOT_DIR"
+cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh stop && cd "$ROOT_DIR"
