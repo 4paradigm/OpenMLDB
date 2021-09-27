@@ -53,6 +53,8 @@ bool AddTable(hybridse::type::Database& db,  // NOLINT
               const hybridse::type::TableDef& table_def);
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
     const hybridse::type::Database& database);
+std::shared_ptr<SimpleCatalog> BuildSimpleCatalogIndexUnsupport(
+    const hybridse::type::Database& database);
 
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog();
 bool InitSimpleCataLogFromSqlCase(SqlCase& sql_case,  // NOLINT

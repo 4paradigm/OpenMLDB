@@ -410,6 +410,12 @@ bool AddTable(hybridse::type::Database& db,  // NOLINT
 }
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
     const hybridse::type::Database& database) {
+    std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(true));
+    catalog->AddDatabase(database);
+    return catalog;
+}
+std::shared_ptr<SimpleCatalog> BuildSimpleCatalogIndexUnsupport(
+    const hybridse::type::Database& database) {
     std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(false));
     catalog->AddDatabase(database);
     return catalog;

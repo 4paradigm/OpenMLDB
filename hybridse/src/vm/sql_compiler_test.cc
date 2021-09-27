@@ -322,7 +322,7 @@ TEST_F(SqlCompilerTest, TestEnableWindowParalled) {
     db.set_name("db");
     AddTable(db, t1);
     AddTable(db, t2);
-    auto simple_catalog = BuildSimpleCatalog(db);
+    auto simple_catalog = BuildSimpleCatalogIndexUnsupport(db);
     std::string sqlstr = " SELECT sum(t1.col1) over w1 as sum_t1_col1, t2.str1 as t2_str1\n"
                          " FROM t1\n"
                          " last join t2 order by t2.col1\n"
@@ -392,7 +392,7 @@ TEST_P(SqlCompilerTest, compile_batch_mode_enable_window_paralled_test) {
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildSimpleCatalog(db);
+    auto catalog = BuildSimpleCatalogIndexUnsupport(db);
     CompilerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode, true);
 
     {

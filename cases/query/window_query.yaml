@@ -750,8 +750,9 @@ cases:
         13, A, 8, 1590115490000, 15, 21, 26, 11, 9
         14, A, 9, 1590115500000, 17, 24, 30, 13, 11
   - id: 0
-    desc: Window Skew
+    desc: window query after last join with a table, index hasn't been optimized
     db: db1
+    mode: rtidb-unsupport
     sql: |
        SELECT sum(t1.col1) over w1 as sum_t1_col1, str1 as t2_str1
        FROM t1
