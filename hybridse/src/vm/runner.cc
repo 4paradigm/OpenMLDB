@@ -174,7 +174,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             switch (op->project_type_) {
                 case kTableProject: {
                     if (support_cluster_optimized_) {
-                        // 边界检查, 分布式计划暂时不支持表拼接
+                        // Non-support table join under distribution env
                         status.msg = "fail to build cluster with table project";
                         status.code = common::kExecutionPlanError;
                         LOG(WARNING) << status;
@@ -197,7 +197,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
                 case kGroupAggregation: {
                     if (support_cluster_optimized_) {
-                        // 边界检查, 分布式计划暂时不支持表拼接
+                        // Non-support group aggregation under distribution env
                         status.msg =
                             "fail to build cluster with group agg project";
                         status.code = common::kExecutionPlanError;
@@ -215,7 +215,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
                 case kWindowAggregation: {
                     if (support_cluster_optimized_) {
-                        // 边界检查, 分布式计划暂时不支持表滑动窗口聚合
+                        // Non-support table window aggregation join under distribution env
                         status.msg =
                             "fail to build cluster with window agg project";
                         status.code = common::kExecutionPlanError;
@@ -400,7 +400,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalJoinNode*>(node);
             switch (op->join().join_type()) {
                 case node::kJoinTypeLast: {
-                    // 分布式模式下, TableLastJoin convert to
+                    // TableLastJoin convert to
                     // Batch Request RequestLastJoin
                     if (support_cluster_optimized_) {
                         RequestLastJoinRunner* runner = nullptr;
@@ -445,7 +445,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
         case kPhysicalOpGroupBy: {
             if (support_cluster_optimized_) {
-                // 边界检查, 分布式计划暂时不支持表分组处理
+                // Non-support group by under distribution env
                 status.msg = "fail to build cluster with group by node";
                 status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
