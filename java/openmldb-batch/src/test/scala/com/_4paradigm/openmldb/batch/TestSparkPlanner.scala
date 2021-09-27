@@ -23,7 +23,7 @@ import scala.collection.JavaConverters.seqAsJavaListConverter
 
 class TestSparkPlanner extends SparkTestSuite {
 
-  test("Project plan smoke test") {
+  test("Test project plan smoke") {
     val sess = getSparkSession
 
     val table = sess.createDataFrame(Seq(
@@ -38,7 +38,7 @@ class TestSparkPlanner extends SparkTestSuite {
     output.show()
   }
 
-  test("Project plan with simple project test") {
+  test("Test project plan with simple project") {
     val sess = getSparkSession
 
     val schema = StructType(Seq(
@@ -62,7 +62,7 @@ class TestSparkPlanner extends SparkTestSuite {
   }
 
 
-  test("Window plan smoke test") {
+  test("Test window plan smoke") {
     val sess = getSparkSession
 
     val schema = StructType(Seq(
@@ -107,7 +107,7 @@ class TestSparkPlanner extends SparkTestSuite {
   }
 
 
-  test("Join plan smoke test") {
+  test("Test join plan smoke") {
     val sess = getSparkSession
 
     val schemaLeft = StructType(Seq(

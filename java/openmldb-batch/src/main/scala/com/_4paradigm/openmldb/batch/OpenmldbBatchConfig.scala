@@ -46,6 +46,11 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.window.skew.opt", doc="Enable window skew optimization or not")
   var enableWindowSkewOpt: Boolean = false
 
+  // Window skew optimization
+  @ConfigOption(name="openmldb.window.skew.expanded.all.opt",
+    doc="Enable window skew optimization expanded all data")
+  var enableWindowSkewExpandedAllOpt: Boolean = true
+
   @ConfigOption(name="openmldb.window.skew.opt.postfix", doc="The postfix for internal tables and columns")
   var windowSkewOptPostfix = ""
 

@@ -12,7 +12,7 @@
         3. 默认是master分支，如有需要请切换分支
         4. 执行命令，进行测试
         ```shell
-        source /root/.bashrc && bash steps/fedb-sdk-test-java.sh -b SRC -c test_all.xml -d standalone -l "0"
+        source /root/.bashrc && bash steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d standalone -l "0"
         ```
         5. 脚本参数说明
         
@@ -46,7 +46,7 @@
         3. 默认是master分支，如有需要请切换分支
         4. 执行命令，进行测试
         ```shell
-        source /root/.bashrc && bash steps/fedb-sdk-test-python.sh -b SRC -d standalone -l "0"
+        source /root/.bashrc && bash steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "0"
         ```
         5. 脚本参数说明
 

@@ -183,7 +183,7 @@ void DBMSServerImpl::AddDatabase(RpcController* ctr,
         ::hybridse::common::Status* status = response->mutable_status();
         status->set_code(::hybridse::common::kRequestError);
         status->set_msg("database name is empty");
-        LOG(WARNING) << "create database failed for name is empty";
+        DLOG(WARNING) << "create database failed for name is empty";
         return;
     }
 

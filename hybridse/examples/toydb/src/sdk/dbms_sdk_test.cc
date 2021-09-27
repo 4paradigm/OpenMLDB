@@ -732,7 +732,6 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
         CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
     }
 }
-
 }  // namespace sdk
 }  // namespace hybridse
 int main(int argc, char *argv[]) {

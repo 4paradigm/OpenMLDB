@@ -66,6 +66,11 @@ public class CommandExecutor extends BaseExecutor{
 
     @Override
     public boolean verify() {
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("hybridse-only")) {
+            log.info("skip case in cli mode: {}", fesqlCase.getDesc());
+            reportLog.info("skip case in cli mode: {}", fesqlCase.getDesc());
+            return false;
+        }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cli-unsupport")) {
             logger.info("skip case in cli mode: {}", fesqlCase.getDesc());
             return false;

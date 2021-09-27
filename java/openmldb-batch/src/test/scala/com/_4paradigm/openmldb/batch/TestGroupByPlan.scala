@@ -23,7 +23,7 @@ import scala.collection.JavaConverters.seqAsJavaListConverter
 
 class TestGroupByPlan extends SparkTestSuite {
 
-  test("GroupBy test") {
+  test("Test groupBy") {
     val sess = getSparkSession
 
     val schema = StructType(Seq(

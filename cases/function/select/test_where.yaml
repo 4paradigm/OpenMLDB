@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 sqlDialect: ["HybridSQL"]
+debugs: []
 cases:
   - id: 0
     desc: Where条件命中索引
@@ -188,6 +189,7 @@ cases:
         - ["aa","aa",2,3,1590738989000, 100]
   - id: 6-1
     desc: Where条件后全表聚合
+    tags: ["TODO","batch exec failed"]
     mode: request-unsupport
     db: db1
     sql: |

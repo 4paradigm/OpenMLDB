@@ -18,18 +18,17 @@ package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
 import com._4paradigm.openmldb.batch.utils.{
-  AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SkewDataFrameUtils, SparkColumnUtil, SparkUtil
+  AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SkewDataFrameUtils, SparkUtil
 }
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types.{LongType, StructType}
-import org.apache.spark.sql.{Column, DataFrame, Row}
+import org.apache.spark.sql.{DataFrame, Row, functions}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
 
-import scala.collection.mutable
 
 /** The planner which implements window agg physical node.
  *
@@ -145,7 +144,7 @@ object WindowAggPlan {
       inputDf.cache()
     }
 
-    // Get repartition keys and orderby key
+    // Get repartition keys and orderBy key
     // TODO: Support multiple repartition keys and orderby keys
     val repartitionColIndexes = PhysicalNodeUtil.getRepartitionColumnIndexes(windowAggNode, inputDf)
     val orderByColIndex = PhysicalNodeUtil.getOrderbyColumnIndex(windowAggNode, inputDf)
@@ -153,17 +152,28 @@ object WindowAggPlan {
     // Register the input table
     val partIdColName = "PART_ID" + uniqueNamePostfix
     val expandedRowColName = "EXPANDED_ROW" + uniqueNamePostfix
+    val distinctCountColName = "DISTINCT_COUNT" + uniqueNamePostfix
+    val partitionKeyColName = "PARTITION_KEY" + uniqueNamePostfix
 
     val quantile = ctx.getConf.skewedPartitionNum
+    val approxRatio = 0.05
 
     // 1. Analyze the data distribution
-    val distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
+    var distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
       // Do not use skew config
-      val partitionKeyColName = "PARTITION_KEY" + uniqueNamePostfix
 
-      val distributionDf = SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
-        orderByColIndex, partitionKeyColName)
+      val distributionDf = if (!ctx.getConf.enableWindowSkewExpandedAllOpt) {
+        SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
+          orderByColIndex, partitionKeyColName, distinctCountColName, approxRatio)
+      } else {
+        SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
+          orderByColIndex, partitionKeyColName)
+      }
       logger.info("Generate distribution dataframe")
+
+      if (ctx.getConf.windowSkewOptCache) {
+        distributionDf.cache()
+      }
 
       distributionDf
     } else {
@@ -174,9 +184,21 @@ object WindowAggPlan {
       distributionDf
     }
 
+    val minBlockSize = if (!ctx.getConf.enableWindowSkewExpandedAllOpt) {
+      val approxMinCount = distributionDf.select(functions.min(distinctCountColName)).collect()(0).getLong(0)
+
+      // The Count column is useless
+      distributionDf = distributionDf.drop(distinctCountColName)
+
+      val minCount = math.floor(approxMinCount / (1 + approxRatio))
+      math.floor(minCount / quantile)
+    } else {
+      -1
+    }
+
     // 2. Add "part" column and "expand" column by joining the distribution table
     val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-      repartitionColIndexes, orderByColIndex, partIdColName, expandedRowColName)
+      repartitionColIndexes, orderByColIndex, partitionKeyColName, partIdColName, expandedRowColName)
     logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {
@@ -188,7 +210,13 @@ object WindowAggPlan {
     windowAggConfig.partIdIdx = addColumnsDf.schema.fieldNames.length - 2
 
     // 3. Expand the table data by union
-    val unionDf = SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, expandedRowColName)
+    val unionDf = if (!ctx.getConf.enableWindowSkewExpandedAllOpt && windowAggConfig.startOffset == 0) {
+      // The Optimization for computing rows
+      SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, expandedRowColName,
+        windowAggConfig.rowPreceding, minBlockSize)
+    } else {
+      SkewDataFrameUtils.genUnionDf(addColumnsDf, quantile.intValue(), partIdColName, expandedRowColName)
+    }
     logger.info("Generate union dataframe")
 
     // 4. Repartition and order by
@@ -204,8 +232,9 @@ object WindowAggPlan {
     val sortedByCol = PhysicalNodeUtil.getOrderbyColumns(windowAggNode, addColumnsDf)
     val sortedByCols = repartitionCols ++ sortedByCol
 
+    // Notice that we should make sure the keys in the same partition are ordering as well
     val sortedDf = repartitionDf.sortWithinPartitions(sortedByCols: _*)
-    logger.info("Generate repartition and orderby dataframe")
+    logger.info("Generate repartition and orderBy dataframe")
 
     sortedDf
   }
@@ -328,7 +357,7 @@ object WindowAggPlan {
         if (!isValidOrder(orderKey)) {
           None
         } else if (!expandedFlag) {
-          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
+          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx, config.inputSchema.length))
         } else {
           computer.bufferRowOnly(row, orderKey)
           None
@@ -343,7 +372,7 @@ object WindowAggPlan {
         lastRow = row
         val orderKey = computer.extractKey(row)
         if (isValidOrder(orderKey)) {
-          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
+          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx, config.inputSchema.length))
         } else {
           None
         }
@@ -379,7 +408,8 @@ object WindowAggPlan {
           if (sqlConfig.enableWindowSkewOpt) {
             val expandedFlag = row.getBoolean(config.expandedFlagIdx)
             if (!expandedFlag) {
-              Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
+              Some(computer.compute(row, orderKey, config.keepIndexColumn,
+                config.unionFlagIdx, config.inputSchema.length))
             } else {
               if (!config.instanceNotInWindow) {
                 computer.bufferRowOnly(row, orderKey)
@@ -387,7 +417,8 @@ object WindowAggPlan {
               None
             }
           } else {
-            Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
+            Some(computer.compute(row, orderKey, config.keepIndexColumn,
+              config.unionFlagIdx, config.inputSchema.length))
           }
         } else {
           // secondary

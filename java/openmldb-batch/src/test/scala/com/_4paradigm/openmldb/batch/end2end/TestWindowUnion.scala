@@ -61,8 +61,7 @@ class TestWindowUnion extends SparkTestSuite {
     val outputDf = sess.sql(sqlText)
     val count = outputDf.count()
     val expectedCount = data.size
-    // TODO: Fix to mvn test in command-line
-    // assert(count == expectedCount)
+    assert(count == expectedCount)
   }
 
 }

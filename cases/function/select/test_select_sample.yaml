@@ -267,7 +267,7 @@ cases:
         - [1, 1590115420]
   - id: 19
     desc: 全表聚合
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport,offline-unsupport
     db: db1
     sqlDialect: ["HybridSQL", "MYSQL"]
     sql: |
