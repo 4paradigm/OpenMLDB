@@ -23,7 +23,7 @@ import org.apache.spark.sql.{Row, SparkSession}
 
 class TestUnsafeRowWindowProject extends SparkTestSuite {
 
-  test("TestUnsafeRowWindowProject") {
+  test("Test unsafeRow window project") {
 
     val spark = SparkSession
       .builder

@@ -153,6 +153,7 @@ object WindowAggPlan {
     val partIdColName = "PART_ID" + uniqueNamePostfix
     val expandedRowColName = "EXPANDED_ROW" + uniqueNamePostfix
     val distinctCountColName = "DISTINCT_COUNT" + uniqueNamePostfix
+    val partitionKeyColName = "PARTITION_KEY" + uniqueNamePostfix
 
     val quantile = ctx.getConf.skewedPartitionNum
     val approxRatio = 0.05
@@ -160,7 +161,6 @@ object WindowAggPlan {
     // 1. Analyze the data distribution
     var distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
       // Do not use skew config
-      val partitionKeyColName = "PARTITION_KEY" + uniqueNamePostfix
 
       val distributionDf = if (!ctx.getConf.enableWindowSkewExpandedAllOpt) {
         SkewDataFrameUtils.genDistributionDf(inputDf, quantile.intValue(), repartitionColIndexes,
@@ -198,7 +198,7 @@ object WindowAggPlan {
 
     // 2. Add "part" column and "expand" column by joining the distribution table
     val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-      repartitionColIndexes, orderByColIndex, partIdColName, expandedRowColName)
+      repartitionColIndexes, orderByColIndex, partitionKeyColName, partIdColName, expandedRowColName)
     logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {
@@ -357,7 +357,7 @@ object WindowAggPlan {
         if (!isValidOrder(orderKey)) {
           None
         } else if (!expandedFlag) {
-          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
+          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx, config.inputSchema.length))
         } else {
           computer.bufferRowOnly(row, orderKey)
           None
@@ -372,7 +372,7 @@ object WindowAggPlan {
         lastRow = row
         val orderKey = computer.extractKey(row)
         if (isValidOrder(orderKey)) {
-          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
+          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx, config.inputSchema.length))
         } else {
           None
         }
@@ -408,7 +408,8 @@ object WindowAggPlan {
           if (sqlConfig.enableWindowSkewOpt) {
             val expandedFlag = row.getBoolean(config.expandedFlagIdx)
             if (!expandedFlag) {
-              Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
+              Some(computer.compute(row, orderKey, config.keepIndexColumn,
+                config.unionFlagIdx, config.inputSchema.length))
             } else {
               if (!config.instanceNotInWindow) {
                 computer.bufferRowOnly(row, orderKey)
@@ -416,7 +417,8 @@ object WindowAggPlan {
               None
             }
           } else {
-            Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx))
+            Some(computer.compute(row, orderKey, config.keepIndexColumn,
+              config.unionFlagIdx, config.inputSchema.length))
           }
         } else {
           // secondary

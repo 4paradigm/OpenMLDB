@@ -208,7 +208,7 @@ object WindowSampleSupport {
     }
 
     // TODO: Check if we need to support keep index column here
-    private val computer = new WindowComputer(sqlConfig, config, jit, false)
+    private val computer = new WindowComputer(config, jit, false)
 
     private var curRow: Row = _
     private var curNativeRow: NativeRow = _

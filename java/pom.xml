@@ -14,6 +14,9 @@
         <module>openmldb-native</module>
         <module>openmldb-common</module>
         <module>openmldb-nearline-tablet</module>
+        <!-- <module>openmldb-batch</module> -->
+        <module>openmldb-batchjob</module>
+        <!-- <module>openmldb-taskmanager</module> -->
     </modules>
     <description>OpenMLDB is an open-source database that is designed and optimized to enable data integrity and efficiency for machine learning driven applications. In addition to 10x faster ML application landing experience, OpenMLDB provides unified computing and storage engines to reduce the complexity and cost of development and operation.</description>
     <url>https://github.com/4paradigm/OpenMLDB</url>
@@ -300,7 +303,7 @@
                         <id>scoverage-report</id>
                         <phase>prepare-package</phase>
                         <goals>
-                            <goal>report</goal> <!-- or integration-check -->
+                            <goal>report</goal>
                         </goals>
                     </execution>
                 </executions>

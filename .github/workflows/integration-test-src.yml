@@ -1,0 +1,222 @@
+name: INTEGRATION-TEST-SRC
+
+on:
+  workflow_dispatch:
+      EXEC_TEST_TYPE:
+        description: 'Which tests need to be executed? The options are all, python, java, batch and apiserver'
+        required: true
+        default: 'all'
+env:
+  GIT_SUBMODULE_STRATEGY: recursive
+  HYBRIDSE_SOURCE:
+
+jobs:
+  java-sdk-test-standalone-0:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          sh test/steps/build-java-sdk.sh
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d standalone -l "0"
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: Java SDK Test Standalone0 SRC Report
+          comment_title: Java SDK Test Standalone0 SRC Report
+
+  java-sdk-test-standalone-1:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          sh test/steps/build-java-sdk.sh
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d standalone -l "1,2,3,4,5"
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: Java SDK Test Standalone1 SRC Report
+          comment_title: Java SDK Test Standalone1 SRC Report
+
+  java-sdk-test-cluster-0:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          sh test/steps/build-java-sdk.sh
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l "0"
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: Java SDK Test Cluster0 SRC Report
+          comment_title: Java SDK Test Cluster0 SRC Report
+
+  java-sdk-test-cluster-1:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          sh test/steps/build-java-sdk.sh
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l "1,2,3,4,5"
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: Java SDK Test Cluster1 SRC Report
+          comment_title: Java SDK Test Cluster1 SRC Report
+
+  python-sdk-test-standalone-0:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'python' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build pysdk
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "0"
+      - name: upload test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: python-sdk-standalone-0-src-${{ github.sha }}
+          path: |
+            python/report/allure-results
+#      - name: allure-report
+#        uses: simple-elf/allure-report-action@master
+#        if: always()
+#        id: allure-report
+#        with:
+#          allure_results: python/report/allure-results
+#          gh_pages: gh-pages
+#          allure_report: allure-report
+#          allure_history: allure-history
+#      - name: Deploy report to Github Pages
+#        if: always()
+#        uses: peaceiris/actions-gh-pages@v2
+#        env:
+#          PERSONAL_TOKEN: ${{ secrets.CR_PAT_ZW }}
+#          PUBLISH_BRANCH: gh-pages
+#          PUBLISH_DIR: allure-history
+
+  python-sdk-test-standalone-1:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'python' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build pysdk
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "1,2,3,4,5"
+      - name: upload test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: python-sdk-standalone-1-src-${{ github.sha }}
+          path: |
+            python/report/allure-results
+
+  apiserver-test:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'apiserver' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          sh test/steps/build-java-sdk.sh
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-apiserver-test.sh -b SRC -c test_all.xml -d standalone -l "0"
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-http-test/target/surefire-reports/TEST-*.xml
+          check_name: APIServer SRC Report
+          comment_title: APIServer SRC Report
+
+  batch-test:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'batch' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: modify-properties
+        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-batch-test.sh -b SRC
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/batch-test/openmldb-batch-test/target/surefire-reports/TEST-*.xml
+          check_name: Batch Test SRC Report
+          comment_title: Batch Test SRC Report
