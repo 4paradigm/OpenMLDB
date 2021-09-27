@@ -218,12 +218,15 @@ class OpenmldbSession {
   /**
    * Get the version from git commit message.
    */
-  def version(): Unit = {
+  def version(): String = {
+    // Read OpenMLDB git properties which is added by maven plugin
     val stream = this.getClass.getClassLoader.getResourceAsStream("openmldb_git.properties")
     if (stream == null) {
-      logger.warn("Project version is missing")
+      logger.error("OpenMLDB git properties is missing")
+      s"${sparkSession.version}"
     } else {
-      IOUtils.copy(stream, System.out)
+      val gitInfo = IOUtils.toString(stream, "UTF-8")
+      s"${sparkSession.version}\n$gitInfo"
     }
   }
 
