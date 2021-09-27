@@ -76,5 +76,6 @@ class TestString extends SparkTestSuite{
     sess.registerTable("t2", df2)
     val outputDf = sess.sql(sqlText)
     outputDf.show()
+    assert(outputDf.count == 5)
   }
 }
