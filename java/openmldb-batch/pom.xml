@@ -54,6 +54,9 @@
 	<profiles>
 		<profile>
 			<id>default</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
 			<properties>
 				<revision>${default.project.version}-SNAPSHOT</revision>
 				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-SNAPSHOT</hybridseCommonVersionFromProfile>
@@ -61,9 +64,6 @@
 		</profile>
 		<profile>
 			<id>macos</id>
-			<activation>
-				<activeByDefault>true</activeByDefault>
-			</activation>
 			<properties>
 				<revision>${default.project.version}-macos-SNAPSHOT</revision>
 				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-macos-SNAPSHOT</hybridseCommonVersionFromProfile>
