@@ -499,20 +499,14 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
 
 void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node) {
     ::openmldb::common::ColumnKey column_key;
-    column_key.set_index_name(create_index_node->index_name_);
-    for (const auto &key : create_index_node->index_->GetKey()) {
-        column_key.add_col_name(key);
-    }
-    column_key.set_ts_name(create_index_node->index_->GetTs());
-    auto ttl = column_key.mutable_ttl();
-    ::openmldb::type::TTLType ttl_type;
-    if (!::openmldb::client::NsClient::TTLTypeParse(create_index_node->index_->ttl_type(), &ttl_type)) {
-        std::cout << "ttl type " << create_index_node->index_->ttl_type() << " is invalid" << std::endl;
+    hybridse::base::Status status;
+    if (!::openmldb::client::NsClient::TransformToColumnKey(create_index_node->index_, {}, &column_key, &status)) {
+        std::cout << "failed to create index. error msg: " << status.msg << std::endl;
         return;
     }
-    ttl->set_ttl_type(ttl_type);
-    ttl->set_abs_ttl(create_index_node->index_->GetAbsTTL());
-    ttl->set_lat_ttl(create_index_node->index_->GetLatTTL());
+    // `create index` must set the index name.
+    column_key.set_index_name(create_index_node->index_name_);
+    DLOG(INFO) << column_key.DebugString();
 
     std::string error;
     auto ns = cs->GetNsClient();

@@ -213,6 +213,9 @@ class NsClient : public Client {
                     std::string& msg);  // NOLINT
 
     static bool TTLTypeParse(const std::string& type_str, ::openmldb::type::TTLType* type);
+    static bool TransformToColumnKey(hybridse::node::ColumnIndexNode* column_index,
+                                     const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
+                                     common::ColumnKey* index, hybridse::base::Status* status);
 
     bool AddIndex(const std::string& table_name, const ::openmldb::common::ColumnKey& column_key,
                   std::vector<openmldb::common::ColumnDesc>* cols,
