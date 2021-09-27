@@ -27,6 +27,7 @@ public class TaskManagerConfig {
     public static String ZK_ROOTPATH;
     public static int ZK_SESSION_TIMEOUT = 5000;
     public static String HIVE_METASTORE_ENDPOINT;
+    public static String SPARK_MASTER;
     public static String BATCHJOB_JAR_PATH;
     public static String SPARK_YARN_JARS;
 
@@ -42,6 +43,7 @@ public class TaskManagerConfig {
             ZK_CLUSTER = prop.getProperty("zookeeper.cluster");
             ZK_ROOTPATH = prop.getProperty("zookeeper.root_path");
             HIVE_METASTORE_ENDPOINT = prop.getProperty("hive.metastore.endpoint");
+            SPARK_MASTER = prop.getProperty("spark.master", "yarn");
             BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
         } catch (Exception e) {
