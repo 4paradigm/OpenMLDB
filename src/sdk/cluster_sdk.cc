@@ -228,6 +228,9 @@ bool ClusterSDK::InitTabletClient() {
     }
     std::map<std::string, std::string> real_ep_map;
     for (const auto& endpoint : tablets) {
+        if (boost::starts_with(endpoint, ::openmldb::base::NEARLINE_PREFIX)) {
+            continue;
+        }
         std::string cur_endpoint = ::openmldb::base::ExtractEndpoint(endpoint);
         std::string real_endpoint;
         if (!GetRealEndpoint(cur_endpoint, &real_endpoint)) {

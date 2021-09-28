@@ -3970,9 +3970,35 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
                     table_info->column_desc());
         response->set_code(ret.code);
         if (ret.code != 0) {
-          response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
+            response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
+            response->set_msg(ret.msg);
+            return;
         }
-        response->set_msg(ret.msg);
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
+                response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
+                response->set_msg("set zk failed");
+                PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
+                return;
+            }
+            table_index_++;
+        }
+        uint32_t tid = table_index_;
+        ret = CreateMessageTable(table_info->db(), table_info->name(), tid);
+        response->set_code(ret.code);
+        if (ret.code != 0) {
+            response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
+            response->set_msg(ret.msg);
+            return;
+        }
+        ret = AddConsumer(tid);
+        if (ret.code != 0) {
+            response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
+            response->set_msg(ret.msg);
+            return;
+        }
+        response->set_msg("ok");
         return;
     }
     if (CheckTableMeta(*table_info) < 0) {
@@ -4068,8 +4094,60 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         }
         return ret;
     }
-    PDLOG(WARNING, "fail to create table %s", table_name.c_str());
+    PDLOG(WARNING, "fail to create table %s. nearline tablet is not health", table_name.c_str());
     return ::openmldb::base::ResultMsg(-1, "nearline tablet is not health");
+}
+
+::openmldb::base::ResultMsg NameServerImpl::CreateMessageTable(const std::string& db_name,
+        const std::string& table_name, uint32_t tid) {
+    std::shared_ptr<TabletInfo> tablet_ptr;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto iter = tablets_.begin(); iter != tablets_.end(); iter++) {
+            if (iter->second->state_ == ::openmldb::type::EndpointState::kHealthy) {
+                tablet_ptr = iter->second;
+                break;
+            }
+        }
+    }
+    if (tablet_ptr) {
+        auto ret = tablet_ptr->client_->CreateMessageTable(db_name, table_name, tid, 0);
+        if (ret.OK()) {
+            PDLOG(INFO, "create message table %s success", table_name.c_str());
+        } else {
+            PDLOG(WARNING, "fail to create message table %s. error: %s", table_name.c_str(), ret.msg.c_str());
+        }
+        return ret;
+    }
+    PDLOG(WARNING, "fail to find healthy tablet");
+    return ::openmldb::base::ResultMsg(::openmldb::base::ReturnCode::kTabletIsNotHealthy,
+            "fail to find healthy tablet");
+}
+
+::openmldb::base::ResultMsg NameServerImpl::AddConsumer(uint32_t tid) {
+    std::shared_ptr<TabletInfo> tablet_ptr;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto iter = tablets_.begin(); iter != tablets_.end(); iter++) {
+            if (iter->second->state_ == ::openmldb::type::EndpointState::kHealthy) {
+                tablet_ptr = iter->second;
+                break;
+            }
+        }
+    }
+    if (tablet_ptr) {
+        const std::string& endpoint = nearline_tablet_.client_->GetEndpoint();
+        auto ret = tablet_ptr->client_->AddConsumer(tid, 0, endpoint);
+        if (ret.OK()) {
+            PDLOG(INFO, "add consumer %s success", endpoint.c_str());
+        } else {
+            PDLOG(WARNING, "fail to add consumer %s. error: %s", endpoint.c_str(), ret.msg.c_str());
+        }
+        return ret;
+    }
+    PDLOG(WARNING, "fail to find healthy tablet");
+    return ::openmldb::base::ResultMsg(::openmldb::base::ReturnCode::kTabletIsNotHealthy,
+            "fail to find healthy tablet");
 }
 
 bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {

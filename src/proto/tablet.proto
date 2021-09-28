@@ -327,18 +327,6 @@ message CreateTableResponse {
     optional string msg = 2;
 }
 
-message CreateMessageTableRequest {
-    optional string db = 1;
-    optional string table_name = 2;
-    optional uint32 tid = 3;
-    optional uint32 pid = 4;
-}
-
-message CreateMessageTableResponse {
-    optional int32 code = 1;
-    optional string msg = 2;
-}
-
 message LoadTableRequest {
     optional TableMeta table_meta = 1;
     optional TaskInfo task_info = 2;
@@ -826,12 +814,36 @@ message BulkLoadInfoResponse {
     repeated InnerSegments inner_segments = 6; // MemTable::segments_
 }
 
+message CreateMessageTableRequest {
+    optional string db = 1;
+    optional string table_name = 2;
+    optional uint32 tid = 3;
+    optional uint32 pid = 4;
+}
+
+message CreateMessageTableResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 message AddMessageRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
 }
 
 message AddMessageResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message AddConsumerRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    // TODO(dl239): add role
+    optional string endpoint = 3;
+}
+
+message AddConsumerResponse {
     optional int32 code = 1;
     optional string msg = 2;
 }
@@ -853,7 +865,6 @@ service TabletServer {
 
     // table api for nameserver
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
-    rpc CreateMessageTable(CreateMessageTableRequest) returns (CreateMessageTableResponse);
     rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
@@ -908,5 +919,7 @@ service TabletServer {
     rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
     rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
 
+    rpc CreateMessageTable(CreateMessageTableRequest) returns (CreateMessageTableResponse);
     rpc AddMessage(AddMessageRequest) returns (AddMessageResponse);
+    rpc AddConsumer(AddConsumerRequest) returns (AddConsumerResponse);
 }

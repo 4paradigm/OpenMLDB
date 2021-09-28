@@ -1395,5 +1395,60 @@ bool TabletClient::CallSQLBatchRequestProcedure(
                                callback->GetController().get(), &request, callback->GetResponse().get(), callback);
 }
 
+::openmldb::base::ResultMsg TabletClient::CreateMessageTable(const std::string& db_name,
+        const std::string& table_name, uint32_t tid, uint32_t pid) {
+    if (db_name.empty() || table_name.empty()) {
+        return ::openmldb::base::ResultMsg(::openmldb::base::ReturnCode::kInvalidParameter, "empty name");
+    }
+    ::openmldb::api::CreateMessageTableRequest request;
+    ::openmldb::api::CreateMessageTableResponse response;
+    request.set_db(db_name);
+    request.set_table_name(table_name);
+    request.set_tid(tid);
+    request.set_pid(pid);
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateMessageTable, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return ::openmldb::base::ResultMsg(response.code(), response.msg());
+    }
+    return ::openmldb::base::ResultMsg();
+}
+
+::openmldb::base::ResultMsg TabletClient::AddMessage(uint32_t tid, uint32_t pid, const std::string& value) {
+    butil::IOBuf buf;
+    buf.append(value);
+    return AddMessage(tid, pid, buf);
+}
+
+::openmldb::base::ResultMsg TabletClient::AddMessage(uint32_t tid, uint32_t pid, const butil::IOBuf& buf) {
+    ::openmldb::api::AddMessageRequest request;
+    ::openmldb::api::AddMessageResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    bool ok = client_.SendRequestWithAttachment(&::openmldb::api::TabletServer_Stub::AddMessage, &request,
+                                  FLAGS_request_timeout_ms, 1, buf, &response);
+    if (!ok || response.code() != 0) {
+        return ::openmldb::base::ResultMsg(response.code(), response.msg());
+    }
+    return ::openmldb::base::ResultMsg();
+}
+
+::openmldb::base::ResultMsg TabletClient::AddConsumer(uint32_t tid, uint32_t pid, const std::string& endpoint) {
+    if (endpoint.empty()) {
+        return ::openmldb::base::ResultMsg(::openmldb::base::ReturnCode::kInvalidParameter, "empty endpoint");
+    }
+    ::openmldb::api::AddConsumerRequest request;
+    ::openmldb::api::AddConsumerResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_endpoint(endpoint);
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::AddConsumer, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return ::openmldb::base::ResultMsg(response.code(), response.msg());
+    }
+    return ::openmldb::base::ResultMsg();
+}
+
 }  // namespace client
 }  // namespace openmldb

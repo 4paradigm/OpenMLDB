@@ -889,14 +889,15 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
         LOG(WARNING) << status->msg;
         return false;
     }
-    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
+    /*std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
     bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
     if (!ret || tablets.empty()) {
         status->msg = "fail to get table " + table_info->name() + " tablet";
         LOG(WARNING) << status->msg;
         return false;
-    }
-    return PutRow(table_info->tid(), row, tablets, status);
+    }*/
+    //return PutRow(table_info->tid(), row, tablets, status);
+    return AddMessage(366, row, status);
 }
 
 bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>& row,
@@ -938,6 +939,25 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
         status->msg = "fail to get tablet client. pid " + std::to_string(pid);
         LOG(WARNING) << status->msg;
         return false;
+    }
+    return true;
+}
+
+bool SQLClusterRouter::AddMessage(uint32_t tid, const std::shared_ptr<SQLInsertRow>& row,
+                              ::hybridse::sdk::Status* status) {
+    if (status == nullptr) {
+        return false;
+    }
+    auto tablet = cluster_sdk_->GetTablet();
+    if (tablet) {
+        auto client = tablet->GetClient();
+        if (client) {
+            auto  ret = client->AddMessage(tid, 0, row->GetRow());
+            if (!ret.OK()) {
+                status->msg = "fail to make a put message to table. tid " + std::to_string(tid);
+                return false;
+            }
+        }
     }
     return true;
 }

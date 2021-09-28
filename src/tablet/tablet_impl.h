@@ -270,6 +270,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void AddMessage(RpcController* controller, const ::openmldb::api::AddMessageRequest* request,
                   ::openmldb::api::AddMessageResponse* response, Closure* done);
 
+    void AddConsumer(RpcController* controller, const ::openmldb::api::AddConsumerRequest* request,
+                  ::openmldb::api::AddConsumerResponse* response, Closure* done);
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization

@@ -179,6 +179,11 @@ class NameServerImpl : public NameServer {
     ::openmldb::base::ResultMsg CreateOfflineTable(const std::string& db_name, const std::string& table_name,
                 const std::string& partition_key, const Schema& schema);
 
+    ::openmldb::base::ResultMsg CreateMessageTable(const std::string& db_name, const std::string& table_name,
+                uint32_t tid);
+
+    ::openmldb::base::ResultMsg AddConsumer(uint32_t tid);
+
     void RefreshTablet(uint32_t tid);
 
     void CreateTableInfoSimply(RpcController* controller, const CreateTableInfoRequest* request,

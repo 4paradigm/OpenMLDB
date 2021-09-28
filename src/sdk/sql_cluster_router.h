@@ -191,6 +191,8 @@ class SQLClusterRouter : public SQLRouter {
                 const std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>& tablets,
                 ::hybridse::sdk::Status* status);
 
+    bool AddMessage(uint32_t tid, const std::shared_ptr<SQLInsertRow>& row, ::hybridse::sdk::Status* status);
+
     bool IsConstQuery(::hybridse::vm::PhysicalOpNode* node);
     std::shared_ptr<SQLCache> GetCache(const std::string& db, const std::string& sql);
 

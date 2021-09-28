@@ -275,6 +275,14 @@ class TabletClient : public Client {
                                       uint64_t timeout_ms,
                                       openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
 
+    ::openmldb::base::ResultMsg CreateMessageTable(const std::string& db_name,
+            const std::string& table_name, uint32_t tid, uint32_t pid);
+
+    ::openmldb::base::ResultMsg AddMessage(uint32_t tid, uint32_t pid, const butil::IOBuf& buf);
+    ::openmldb::base::ResultMsg AddMessage(uint32_t tid, uint32_t pid, const std::string& value);
+
+    ::openmldb::base::ResultMsg AddConsumer(uint32_t tid, uint32_t pid, const std::string& endpoint);
+
  private:
     ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> client_;
     std::vector<uint64_t> percentile_;

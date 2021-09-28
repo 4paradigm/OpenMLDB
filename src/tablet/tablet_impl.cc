@@ -3007,6 +3007,12 @@ void TabletImpl::CreateMessageTable(RpcController* controller,
             if (pid_it == it->second.end()) {
                 auto message_table = std::make_shared<::openmldb::storage::MessageTable>(request->db(),
                         request->table_name(), tid, pid);
+                if (!message_table->Init()) {
+                    response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
+                    response->set_msg("fail to init message table");
+                    PDLOG(WARNING, "fail to init message table. tid[%u] pid[%u]", tid, pid);
+                    return;
+                }
                 it->second.emplace(pid, message_table);
             } else {
                 break;
@@ -3050,6 +3056,29 @@ void TabletImpl::AddMessage(RpcController* controller, const ::openmldb::api::Ad
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+void TabletImpl::AddConsumer(RpcController* controller, const ::openmldb::api::AddConsumerRequest* request,
+        ::openmldb::api::AddConsumerResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    auto message_table = GetMessageTable(tid, pid);
+    if (!message_table) {
+        PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
+        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
+    }
+    if (!message_table->AddConsumer(request->endpoint())) {
+        response->set_code(::openmldb::base::ReturnCode::kFailToAddReplicaEndpoint);
+        response->set_msg("fail to add consumer");
+        PDLOG(WARNING, "fail to add consumer %s. tid %u pid %u", request->endpoint().c_str(), tid, pid);
+        return;
+    }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+    PDLOG(INFO, "add consumer %s success. tid %u pid %u", request->endpoint().c_str(), tid, pid);
 }
 
 void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::CreateTableRequest* request,
