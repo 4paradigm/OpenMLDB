@@ -2,6 +2,7 @@ name: INTEGRATION-TEST-SRC
 
 on:
   workflow_dispatch:
+    inputs:
       EXEC_TEST_TYPE:
         description: 'Which tests need to be executed? The options are all, python, java, batch and apiserver'
         required: true
