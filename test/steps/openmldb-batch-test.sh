@@ -35,7 +35,7 @@ source test/steps/read_properties.sh
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
     cd java/openmldb-batch || exit
-    mvn clean install -Dmaven.test.skip=true
+    mvn clean install -Dmaven.test.skip=true -Dgpg.skip
     cd "${ROOT_DIR}" || exit
 fi
 # install command tool
