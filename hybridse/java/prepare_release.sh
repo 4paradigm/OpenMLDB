@@ -32,21 +32,36 @@ fi
 cd "$(dirname "$0")"
 
 VERSION=$1
-# rm semVer number from VERSION
+# rm semVer number from VERSION of 3 numbers MAJOR.MINOR.PATCH
 #  0.1.2 -> ''
 #  0.1.2-SNAPSHOT -> '-SNAPSHOT'
 #  0.1.2.beta1    -> '.beta1'
 # shellcheck disable=SC2001
 SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
+
+DEBUG_SUFFIX_VERSION=$(echo $SUFFIX_VERSION | sed -e 's/\.[0-9][0-9]*//')
+
 # get BASE VERSION by rm suffix version
+if [[ -n DEBUG_SUFFIX_VERSION ]] ; then
+  DEBUG_NO=${SUFFIX_VERSION%"$DEBUG_SUFFIX_VERSION"}
+fi
+
 BASE_VERSION=${VERSION%"$SUFFIX_VERSION"}
 if [[ -n $SUFFIX_VERSION ]] ; then
     SUFFIX_VERSION=-SNAPSHOT
 fi
-
-JAVA_VERSION="$BASE_VERSION$SUFFIX_VERSION"
+# VERSION             -> BASE_VERSION    DEBUG_NO    SUFFIX_VERSION
+# 0.1.2               -> 0.1.2
+# 0.1.2-SNAPSHOT      -> 0.1.2                       SNAPSHOT
+# 0.1.2.0928          -> 0.2.1           .0928       SNAPSHOT
+# 0.1.2.0928ABC       -> 0.2.1           .0928       SNAPSHOT
+# 0.1.2.0928-XXXXXXXX -> 0.2.1           .0928       SNAPSHOT
+# 0.1.2.ABC           -> 0.2.1                       SNAPSHOT
+# 0.1.2-0928          -> 0.2.1                       SNAPSHOT
+echo "BASE_VERSION: ${BASE_VERSION}, DEBUG_NO: ${DEBUG_NO}, SUFFIX_VERSION: ${SUFFIX_VERSION}"
+JAVA_VERSION="$BASE_VERSION${DEBUG_NO}$SUFFIX_VERSION"
 
 mvn versions:set -DnewVersion="$JAVA_VERSION"
 
-mvn versions:set-property -Dproperty="project.version.base" -DnewVersion="$BASE_VERSION"
+mvn versions:set-property -Dproperty="project.version.base" -DnewVersion="$BASE_VERSION${DEBUG_NO}"
 mvn versions:set-property -Dproperty="project.version.suffix" -DnewVersion="$SUFFIX_VERSION"
