@@ -7,6 +7,8 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
+
 public class SqlEngineTest {
 
     static {
@@ -21,10 +23,9 @@ public class SqlEngineTest {
                 "select col2+col3 as addcol23 from t1;",};
     }
 
-    @Test(dataProvider = "sqlEngineCase")
-    public void sqlEngineTest(String sql) {
+    public TypeOuterClass.Database createTestDatabase(String dbName) {
         TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
-        db.setName("db");
+        db.setName(dbName);
 
         TypeOuterClass.TableDef.Builder tbl = TypeOuterClass.TableDef.newBuilder();
         tbl.setName("t1")
@@ -41,12 +42,62 @@ public class SqlEngineTest {
                 .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col6").setIsNotNull(true)
                         .setType(TypeOuterClass.Type.kVarchar).build());
         db.addTables(tbl.build());
+
+        return db.build();
+    }
+
+    @Test(dataProvider = "sqlEngineCase")
+    public void sqlEngineTest(String sql) {
+        TypeOuterClass.Database db = createTestDatabase("db");
+
         try {
-            SqlEngine engine = new SqlEngine(sql, db.build());
+            SqlEngine engine = new SqlEngine(sql, db);
             Assert.assertNotNull(engine.getPlan());
         } catch (UnsupportedHybridSeException e) {
             e.printStackTrace();
             Assert.fail("fail to run sql engine");
         }
     }
+
+    @Test(dataProvider = "sqlEngineCase")
+    public void sqlEngineTest2(String sql) {
+        TypeOuterClass.Database db1 = createTestDatabase("db1");
+        TypeOuterClass.Database db2 = createTestDatabase("db2");
+
+        try {
+            SqlEngine engine = new SqlEngine(sql, Arrays.<TypeOuterClass.Database>asList(db1, db2));
+            Assert.assertNotNull(engine.getPlan());
+        } catch (UnsupportedHybridSeException e) {
+            e.printStackTrace();
+            Assert.fail("fail to run sql engine");
+        }
+    }
+
+    @Test(dataProvider = "sqlEngineCase")
+    public void sqlEngineTest3(String sql) {
+        TypeOuterClass.Database db = createTestDatabase("db");
+
+        try {
+            SqlEngine engine = new SqlEngine(sql, db, SqlEngine.createDefaultEngineOptions());
+            Assert.assertNotNull(engine.getPlan());
+        } catch (UnsupportedHybridSeException e) {
+            e.printStackTrace();
+            Assert.fail("fail to run sql engine");
+        }
+    }
+
+    @Test(dataProvider = "sqlEngineCase")
+    public void sqlEngineTest4(String sql) {
+        TypeOuterClass.Database db1 = createTestDatabase("db1");
+        TypeOuterClass.Database db2 = createTestDatabase("db1");
+
+        try {
+            SqlEngine engine = new SqlEngine(sql, Arrays.<TypeOuterClass.Database>asList(db1, db2), SqlEngine.createDefaultEngineOptions());
+            Assert.assertNotNull(engine.getPlan());
+        } catch (UnsupportedHybridSeException e) {
+            e.printStackTrace();
+            Assert.fail("fail to run sql engine");
+        }
+    }
+
 }
