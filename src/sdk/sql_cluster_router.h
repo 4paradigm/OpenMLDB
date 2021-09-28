@@ -184,6 +184,9 @@ class SQLClusterRouter : public SQLRouter {
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row,
         const std::shared_ptr<SQLRequestRow>& parameter_row);
 
+    std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(
+        const std::string& db, const std::string& table_name) override;
+
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 

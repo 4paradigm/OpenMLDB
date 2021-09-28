@@ -225,6 +225,18 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
+    public Schema getTableSchema(String dbName, String tableName) throws SQLException {
+        com._4paradigm.openmldb.Schema schema = sqlRouter.GetTableSchema(dbName, tableName);
+        if (schema == null) {
+            throw new SQLException(String.format("table %s not found in db %s", tableName, dbName));
+        }
+
+        Schema ret = Common.convertSchema(schema);
+        schema.delete();
+        return ret;
+    }
+
+    @Override
     public com._4paradigm.openmldb.sdk.ProcedureInfo showProcedure(String dbName, String proName) throws SQLException {
         Status status = new Status();
         com._4paradigm.openmldb.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, proName, status);
