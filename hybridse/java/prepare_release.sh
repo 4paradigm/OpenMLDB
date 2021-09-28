@@ -36,6 +36,7 @@ VERSION=$1
 #  0.1.2 -> ''
 #  0.1.2-SNAPSHOT -> '-SNAPSHOT'
 #  0.1.2.beta1    -> '.beta1'
+#  0.2.1.0928     -> '.0928'
 # shellcheck disable=SC2001
 SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
 
