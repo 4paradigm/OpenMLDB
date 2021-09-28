@@ -96,7 +96,6 @@ class TestSkewDataFrameUtils extends SparkTestSuite {
       partitionKeyColName)
     val resultDf = genAddColumnsDf(inputDf, distributionDf, quantile, repartitionColIndex,
       orderByColIndex, partitionKeyColName, partIdColName, expandedRowColName)
-    resultDf.show()
 
     val compareData = Seq(
       Row(550, 3, 1, false),
