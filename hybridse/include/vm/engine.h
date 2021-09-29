@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_VM_ENGINE_H_
-#define INCLUDE_VM_ENGINE_H_
+#ifndef HYBRIDSE_INCLUDE_VM_ENGINE_H_
+#define HYBRIDSE_INCLUDE_VM_ENGINE_H_
 
 #include <map>
 #include <memory>
@@ -450,4 +450,4 @@ class LocalTablet : public Tablet {
 
 }  // namespace vm
 }  // namespace hybridse
-#endif  // INCLUDE_VM_ENGINE_H_
+#endif  // HYBRIDSE_INCLUDE_VM_ENGINE_H_

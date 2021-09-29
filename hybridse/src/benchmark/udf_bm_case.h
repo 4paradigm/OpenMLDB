@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BENCHMARK_UDF_BM_CASE_H_
-#define SRC_BENCHMARK_UDF_BM_CASE_H_
+#ifndef HYBRIDSE_SRC_BENCHMARK_UDF_BM_CASE_H_
+#define HYBRIDSE_SRC_BENCHMARK_UDF_BM_CASE_H_
 #include <string>
 #include "benchmark/benchmark.h"
 #include "vm/mem_catalog.h"
@@ -55,4 +55,4 @@ void RequestUnionWindowExcludeCurrentTime(benchmark::State* state, MODE mode,
                                           int64_t data_size);
 }  // namespace bm
 }  // namespace hybridse
-#endif  // SRC_BENCHMARK_UDF_BM_CASE_H_
+#endif  // HYBRIDSE_SRC_BENCHMARK_UDF_BM_CASE_H_

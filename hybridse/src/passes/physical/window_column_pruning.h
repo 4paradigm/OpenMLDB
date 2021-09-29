@@ -19,8 +19,8 @@
 #include "passes/physical/physical_pass.h"
 #include "vm/physical_op.h"
 
-#ifndef SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_
-#define SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_
+#ifndef HYBRIDSE_SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_
+#define HYBRIDSE_SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_
 
 namespace hybridse {
 namespace passes {
@@ -45,4 +45,4 @@ class WindowColumnPruning : public PhysicalPass {
 
 }  // namespace passes
 }  // namespace hybridse
-#endif  // SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_
+#endif  // HYBRIDSE_SRC_PASSES_PHYSICAL_WINDOW_COLUMN_PRUNING_H_

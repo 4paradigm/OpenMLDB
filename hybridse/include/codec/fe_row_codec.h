@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_CODEC_FE_ROW_CODEC_H_
-#define INCLUDE_CODEC_FE_ROW_CODEC_H_
+#ifndef HYBRIDSE_INCLUDE_CODEC_FE_ROW_CODEC_H_
+#define HYBRIDSE_INCLUDE_CODEC_FE_ROW_CODEC_H_
 
 #include <map>
 #include <string>
@@ -219,4 +219,4 @@ class RowFormat {
 
 }  // namespace codec
 }  // namespace hybridse
-#endif  // INCLUDE_CODEC_FE_ROW_CODEC_H_
+#endif  // HYBRIDSE_INCLUDE_CODEC_FE_ROW_CODEC_H_

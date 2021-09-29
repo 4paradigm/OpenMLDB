@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_NODE_EXPR_NODE_H_
-#define INCLUDE_NODE_EXPR_NODE_H_
+#ifndef HYBRIDSE_INCLUDE_NODE_EXPR_NODE_H_
+#define HYBRIDSE_INCLUDE_NODE_EXPR_NODE_H_
 
 #include <string>
 #include <vector>
@@ -82,4 +82,4 @@ class ExprAnalysisContext {
 
 }  // namespace node
 }  // namespace hybridse
-#endif  // INCLUDE_NODE_EXPR_NODE_H_
+#endif  // HYBRIDSE_INCLUDE_NODE_EXPR_NODE_H_

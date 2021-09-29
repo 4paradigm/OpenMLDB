@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_UDF_CONTAINERS_H_
-#define SRC_UDF_CONTAINERS_H_
+#ifndef HYBRIDSE_SRC_UDF_CONTAINERS_H_
+#define HYBRIDSE_SRC_UDF_CONTAINERS_H_
 
 #include <algorithm>
 #include <functional>
@@ -305,4 +305,4 @@ class BoundedGroupByDict {
 }  // namespace udf
 }  // namespace hybridse
 
-#endif  // SRC_UDF_CONTAINERS_H_
+#endif  // HYBRIDSE_SRC_UDF_CONTAINERS_H_

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_UDF_UDF_LIBRARY_H_
-#define SRC_UDF_UDF_LIBRARY_H_
+#ifndef HYBRIDSE_SRC_UDF_UDF_LIBRARY_H_
+#define HYBRIDSE_SRC_UDF_UDF_LIBRARY_H_
 
 #include <memory>
 #include <string>
@@ -164,4 +164,4 @@ const std::string GetArgSignature(const std::vector<node::ExprNode*>& args);
 }  // namespace udf
 }  // namespace hybridse
 
-#endif  // SRC_UDF_UDF_LIBRARY_H_
+#endif  // HYBRIDSE_SRC_UDF_UDF_LIBRARY_H_

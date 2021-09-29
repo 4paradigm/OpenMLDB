@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_VM_PHYSICAL_PLAN_CONTEXT_H_
-#define SRC_VM_PHYSICAL_PLAN_CONTEXT_H_
+#ifndef HYBRIDSE_SRC_VM_PHYSICAL_PLAN_CONTEXT_H_
+#define HYBRIDSE_SRC_VM_PHYSICAL_PLAN_CONTEXT_H_
 
 #include <map>
 #include <memory>
@@ -153,4 +153,4 @@ class PhysicalPlanContext {
 };
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_VM_PHYSICAL_PLAN_CONTEXT_H_
+#endif  // HYBRIDSE_SRC_VM_PHYSICAL_PLAN_CONTEXT_H_

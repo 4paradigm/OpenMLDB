@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BASE_PARQUET_UTIL_H_
-#define SRC_BASE_PARQUET_UTIL_H_
+#ifndef HYBRIDSE_SRC_BASE_PARQUET_UTIL_H_
+#define HYBRIDSE_SRC_BASE_PARQUET_UTIL_H_
 
 #include "glog/logging.h"
 #include "parquet/schema.h"
@@ -116,4 +116,4 @@ inline bool MapParquetType(const parquet::ColumnDescriptor* column_desc,
 
 }  // namespace base
 }  // namespace hybridse
-#endif  // SRC_BASE_PARQUET_UTIL_H_
+#endif  // HYBRIDSE_SRC_BASE_PARQUET_UTIL_H_

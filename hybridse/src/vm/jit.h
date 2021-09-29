@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_VM_JIT_H_
-#define SRC_VM_JIT_H_
+#ifndef HYBRIDSE_SRC_VM_JIT_H_
+#define HYBRIDSE_SRC_VM_JIT_H_
 
 #include <map>
 #include <memory>
@@ -139,4 +139,4 @@ class HybridSeMcJitWrapper : public HybridSeJitWrapper {
 
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_VM_JIT_H_
+#endif  // HYBRIDSE_SRC_VM_JIT_H_

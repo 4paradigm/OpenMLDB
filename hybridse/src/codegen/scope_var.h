@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_SCOPE_VAR_H_
-#define SRC_CODEGEN_SCOPE_VAR_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_SCOPE_VAR_H_
+#define HYBRIDSE_SRC_CODEGEN_SCOPE_VAR_H_
 
 #include <map>
 #include <string>
@@ -54,4 +54,4 @@ class ScopeVar {
 
 }  // namespace codegen
 }  // namespace hybridse
-#endif  // SRC_CODEGEN_SCOPE_VAR_H_
+#endif  // HYBRIDSE_SRC_CODEGEN_SCOPE_VAR_H_

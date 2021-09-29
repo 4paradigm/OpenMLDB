@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_CODEC_ROW_H_
-#define INCLUDE_CODEC_ROW_H_
+#ifndef HYBRIDSE_INCLUDE_CODEC_ROW_H_
+#define HYBRIDSE_INCLUDE_CODEC_ROW_H_
 
 #include <cstdint>
 #include <map>
@@ -97,4 +97,4 @@ class Row {
 
 }  // namespace codec
 }  // namespace hybridse
-#endif  // INCLUDE_CODEC_ROW_H_
+#endif  // HYBRIDSE_INCLUDE_CODEC_ROW_H_

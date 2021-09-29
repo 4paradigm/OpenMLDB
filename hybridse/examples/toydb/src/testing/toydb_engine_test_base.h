@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_
-#define EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_
+#ifndef HYBRIDSE_EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_
+#define HYBRIDSE_EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_
 
 #include <sqlite3.h>
 #include <map>
@@ -220,4 +220,4 @@ class ToydbBatchRequestEngineTestRunner : public BatchRequestEngineTestRunner {
 
 }  // namespace vm
 }  // namespace hybridse
-#endif  // EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_
+#endif  // HYBRIDSE_EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_

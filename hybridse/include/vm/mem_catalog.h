@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_VM_MEM_CATALOG_H_
-#define INCLUDE_VM_MEM_CATALOG_H_
+#ifndef HYBRIDSE_INCLUDE_VM_MEM_CATALOG_H_
+#define HYBRIDSE_INCLUDE_VM_MEM_CATALOG_H_
 
 #include <deque>
 #include <functional>
@@ -774,4 +774,4 @@ int8_t* RowGetSlice(int8_t* row_ptr, size_t idx);
 size_t RowGetSliceSize(int8_t* row_ptr, size_t idx);
 }  // namespace vm
 }  // namespace hybridse
-#endif  // INCLUDE_VM_MEM_CATALOG_H_
+#endif  // HYBRIDSE_INCLUDE_VM_MEM_CATALOG_H_
