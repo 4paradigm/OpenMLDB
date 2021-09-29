@@ -1082,26 +1082,24 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
 
             case hybridse::node::kColumnIndex: {
                 auto* column_index = dynamic_cast<hybridse::node::ColumnIndexNode*>(column_desc);
-                std::string index_name = column_index->GetName();
-                // index in `create table` won't set name, and must have one or more keys
-                DCHECK(index_name.empty());
+                
                 if (column_index->GetKey().empty()) {
                     status->msg = "CREATE common: INDEX KEY empty";
                     status->code = hybridse::common::kSqlError;
                     return false;
                 }
-
-                if (index_name.empty()) {
-                    index_name = PlanAPI::GenerateName("INDEX", table->column_key_size());
-                    column_index->SetName(index_name);
-                }
-
+                
+                std::string index_name = column_index->GetName();
+                // index in `create table` won't set name
+                DCHECK(index_name.empty());
+                index_name = PlanAPI::GenerateName("INDEX", table->column_key_size());
                 if (index_names.find(index_name) != index_names.end()) {
                     status->msg = "CREATE common: INDEX NAME " + index_name + " duplicate";
                     status->code = hybridse::common::kSqlError;
                     return false;
                 }
                 index_names.insert(index_name);
+                column_index->SetName(index_name);
 
                 ::openmldb::common::ColumnKey* index = table->add_column_key();
                 if (!TransformToColumnKey(column_index, column_names, index, status)) {
