@@ -11,6 +11,7 @@ on:
       - .github/workflows/hybridse-ci.yml
       - cases/**/*
       - hybridse/**/*
+      - hybridse/java/**/*
   workflow_dispatch:
 
 defaults:

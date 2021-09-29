@@ -39,7 +39,7 @@ VERSION=$1
 #  0.2.1.0928     -> '.0928'
 # shellcheck disable=SC2001
 SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
-
+# shellcheck disable=SC2001
 DEBUG_SUFFIX_VERSION=$(echo "$SUFFIX_VERSION" | sed -e 's/\.[0-9][0-9]*//')
 # get BASE VERSION by rm suffix version
 if [[ "$DEBUG_SUFFIX_VERSION" != "$SUFFIX_VERSION" ]] ; then
@@ -60,8 +60,8 @@ fi
 # 0.1.2-0928          -> 0.2.1                       SNAPSHOT
 echo "BASE_VERSION: ${BASE_VERSION}, DEBUG_NO: ${DEBUG_NO}, SUFFIX_VERSION: ${SUFFIX_VERSION}"
 JAVA_VERSION="$BASE_VERSION${DEBUG_NO}$SUFFIX_VERSION"
-
-mvn versions:set -DnewVersion="$JAVA_VERSION"
-
-mvn versions:set-property -Dproperty="project.version.base" -DnewVersion="$BASE_VERSION${DEBUG_NO}"
-mvn versions:set-property -Dproperty="project.version.suffix" -DnewVersion="$SUFFIX_VERSION"
+#
+#mvn versions:set -DnewVersion="$JAVA_VERSION"
+#
+#mvn versions:set-property -Dproperty="project.version.base" -DnewVersion="$BASE_VERSION${DEBUG_NO}"
+#mvn versions:set-property -Dproperty="project.version.suffix" -DnewVersion="$SUFFIX_VERSION"
