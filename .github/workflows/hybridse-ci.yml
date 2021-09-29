@@ -229,6 +229,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     needs: ["macos-build"]
+    if: >
+      success() && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v2
         with:
