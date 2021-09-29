@@ -62,3 +62,8 @@ enum EndpointState {
     kOffline = 1;
     kHealthy = 2;
 }
+
+enum StartupMode {
+    kStandalone = 1;
+    kCluster = 2;
+}

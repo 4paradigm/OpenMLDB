@@ -38,6 +38,7 @@
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(tablet);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(get_task_status_interval);
@@ -72,179 +73,6 @@ const std::string OFFLINE_LEADER_ENDPOINT =  // NOLINT
     "OFFLINE_LEADER_ENDPOINT";
 const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
-ClusterInfo::ClusterInfo(const ::openmldb::nameserver::ClusterAddress& cd)
-    : client_(), last_status(), zk_client_(), session_term_() {
-    cluster_add_.CopyFrom(cd);
-    state_ = kClusterOffline;
-    ctime_ = ::baidu::common::timer::get_micros() / 1000;
-}
-
-void ClusterInfo::CheckZkClient() {
-    if (!zk_client_->IsConnected()) {
-        PDLOG(WARNING, "reconnect zk");
-        if (zk_client_->Reconnect()) {
-            PDLOG(INFO, "reconnect zk ok");
-        }
-    }
-    if (session_term_ != zk_client_->GetSessionTerm()) {
-        if (zk_client_->WatchNodes()) {
-            session_term_ = zk_client_->GetSessionTerm();
-            PDLOG(INFO, "watch node ok");
-        } else {
-            PDLOG(WARNING, "watch node failed");
-        }
-    }
-}
-
-void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
-    if (children.empty()) {
-        PDLOG(INFO, "children is empty on UpdateNsClient");
-        return;
-    }
-    std::vector<std::string> tmp_children(children.begin(), children.end());
-    std::sort(tmp_children.begin(), tmp_children.end());
-    std::string endpoint;
-    if (tmp_children[0] == client_->GetEndpoint()) {
-        return;
-    }
-    if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/leader/" + tmp_children[0], endpoint)) {
-        PDLOG(WARNING, "get replica cluster leader ns failed");
-        return;
-    }
-    std::string real_endpoint;
-    if (FLAGS_use_name) {
-        std::vector<std::string> vec;
-        const std::string name_path = cluster_add_.zk_path() + "/map/names/" + endpoint;
-        if (zk_client_->IsExistNode(name_path) != 0) {
-            LOG(WARNING) << endpoint << " not in name vec";
-            return;
-        }
-        if (!zk_client_->GetNodeValue(name_path, real_endpoint)) {
-            LOG(WARNING) << "get real_endpoint failed for name " << endpoint;
-            return;
-        }
-    }
-    std::shared_ptr<::openmldb::client::NsClient> tmp_ptr =
-        std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
-    if (tmp_ptr->Init() < 0) {
-        PDLOG(WARNING, "replica cluster ns client init failed");
-        return;
-    }
-    std::atomic_store_explicit(&client_, tmp_ptr, std::memory_order_relaxed);
-    ctime_ = ::baidu::common::timer::get_micros() / 1000;
-    state_.store(kClusterHealthy, std::memory_order_relaxed);
-}
-
-int ClusterInfo::Init(std::string& msg) {
-    zk_client_ = std::make_shared<ZkClient>(cluster_add_.zk_endpoints(), FLAGS_zk_session_timeout, "",
-                                            cluster_add_.zk_path(), cluster_add_.zk_path() + "/leader");
-    bool ok = zk_client_->Init();
-    for (int i = 1; i < 3; i++) {
-        if (ok) {
-            break;
-        }
-        PDLOG(WARNING, "count %d fail to init zookeeper with cluster %s %s", i, cluster_add_.zk_endpoints().c_str(),
-              cluster_add_.zk_path().c_str());
-        ok = zk_client_->Init();
-    }
-    if (!ok) {
-        msg = "connect relica cluster zk failed";
-        return 401;
-    }
-    session_term_ = zk_client_->GetSessionTerm();
-    std::vector<std::string> children;
-    if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/leader", children) || children.empty()) {
-        msg = "get zk failed";
-        PDLOG(WARNING, "get zk failed, get children");
-        return 451;
-    }
-    std::string endpoint;
-    if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/leader/" + children[0], endpoint)) {
-        msg = "get zk failed";
-        PDLOG(WARNING, "get zk failed, get replica cluster leader ns failed");
-        return 451;
-    }
-    std::string real_endpoint;
-    if (FLAGS_use_name) {
-        std::vector<std::string> vec;
-        const std::string name_path = cluster_add_.zk_path() + "/map/names/" + endpoint;
-        if (zk_client_->IsExistNode(name_path) != 0) {
-            msg = "name not in names_vec";
-            LOG(WARNING) << endpoint << " not in name vec";
-            return -1;
-        }
-        if (!zk_client_->GetNodeValue(name_path, real_endpoint)) {
-            msg = "get zk failed";
-            LOG(WARNING) << "get real_endpoint failed for name " << endpoint;
-            return 451;
-        }
-    }
-    client_ = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
-    if (client_->Init() < 0) {
-        msg = "connect ns failed";
-        PDLOG(WARNING, "connect ns failed, replica cluster ns");
-        return 403;
-    }
-    zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
-    zk_client_->WatchNodes();
-    if (FLAGS_use_name) {
-        UpdateRemoteRealEpMap();
-        bool ok = zk_client_->WatchItem(cluster_add_.zk_path() + "/nodes",
-                                        boost::bind(&ClusterInfo::UpdateRemoteRealEpMap, this));
-        if (!ok) {
-            zk_client_->CloseZK();
-            msg = "zk watch nodes failed";
-            PDLOG(WARNING, "zk watch nodes failed");
-            return -1;
-        }
-    }
-    return 0;
-}
-
-bool ClusterInfo::DropTableRemote(const ::openmldb::api::TaskInfo& task_info, const std::string& name,
-                                  const std::string& db, const ::openmldb::nameserver::ZoneInfo& zone_info) {
-    std::string msg;
-    if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)
-             ->DropTableRemote(task_info, name, db, zone_info, msg)) {
-        PDLOG(WARNING, "drop table for replica cluster failed!, msg is: %s", msg.c_str());
-        return false;
-    }
-    return true;
-}
-
-bool ClusterInfo::CreateTableRemote(const ::openmldb::api::TaskInfo& task_info,
-                                    const ::openmldb::nameserver::TableInfo& table_info,
-                                    const ::openmldb::nameserver::ZoneInfo& zone_info) {
-    std::string msg;
-    if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)
-             ->CreateTableRemote(task_info, table_info, zone_info, msg)) {
-        PDLOG(WARNING, "create table for replica cluster failed!, msg is: %s", msg.c_str());
-        return false;
-    }
-    return true;
-}
-
-bool ClusterInfo::UpdateRemoteRealEpMap() {
-    if (!FLAGS_use_name) {
-        return true;
-    }
-    decltype(remote_real_ep_map_) tmp_map = std::make_shared<std::map<std::string, std::string>>();
-    std::vector<std::string> vec;
-    if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names", vec) || vec.empty()) {
-        PDLOG(WARNING, "get zk failed, get remote children");
-        return false;
-    }
-    for (const auto& ep : vec) {
-        std::string real_endpoint;
-        if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/map/names/" + ep, real_endpoint)) {
-            PDLOG(WARNING, "get zk failed, get real_endpoint failed");
-            continue;
-        }
-        tmp_map->insert(std::make_pair(ep, real_endpoint));
-    }
-    std::atomic_store_explicit(&remote_real_ep_map_, tmp_map, std::memory_order_release);
-    return true;
-}
 
 void NameServerImpl::CheckSyncExistTable(const std::string& alias,
                                          const std::vector<::openmldb::nameserver::TableInfo>& tables_remote,
@@ -678,22 +506,6 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::openmldb::nameserver::
     return true;
 }
 
-bool ClusterInfo::AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term,
-                                        std::string& msg) {
-    if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)
-             ->AddReplicaClusterByNs(alias, zone_name, term, msg)) {
-        PDLOG(WARNING, "send MakeReplicaCluster request failed");
-        return false;
-    }
-    return true;
-}
-
-bool ClusterInfo::RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term,
-                                           int& code, std::string& msg) {
-    return std::atomic_load_explicit(&client_, std::memory_order_relaxed)
-        ->RemoveReplicaClusterByNs(alias, zone_name, term, code, msg);
-}
-
 NameServerImpl::NameServerImpl()
     : mu_(),
       tablets_(),
@@ -707,7 +519,8 @@ NameServerImpl::NameServerImpl()
       task_thread_pool_(FLAGS_name_server_task_pool_size),
       cv_(),
       rand_(0xdeadbeef),
-      session_term_(0) {}
+      session_term_(0),
+      startup_mode_(::openmldb::type::StartupMode::kStandalone) {}
 
 NameServerImpl::~NameServerImpl() {
     running_.store(false, std::memory_order_release);
@@ -722,6 +535,10 @@ NameServerImpl::~NameServerImpl() {
 
 // become name server leader
 bool NameServerImpl::Recover() {
+    if (startup_mode_ == ::openmldb::type::StartupMode::kStandalone) {
+        PDLOG(INFO, "skip recover in standalone mode");
+        return true;
+    }
     std::vector<std::string> endpoints;
     if (!zk_client_->GetNodes(endpoints)) {
         PDLOG(WARNING, "get endpoints node failed!");
@@ -1542,43 +1359,69 @@ void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletReque
 
 bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint,
                           const std::string& real_endpoint) {
-    if (zk_cluster.empty()) {
-        PDLOG(WARNING, "zk cluster disabled");
+    if (zk_cluster.empty() && FLAGS_tablet.empty()) {
+        PDLOG(WARNING, "zk cluster disabled and tablet is empty");
         return false;
     }
-    zk_root_path_ = zk_path;
     endpoint_ = endpoint;
-    std::string zk_table_path = zk_path + "/table";
-    std::string zk_sp_path = zk_path + "/store_procedure";
-    zk_table_index_node_ = zk_table_path + "/table_index";
-    zk_table_data_path_ = zk_table_path + "/table_data";
-    zk_db_path_ = zk_path + "/db";
-    zk_db_table_data_path_ = zk_table_path + "/db_table_data";
-    zk_db_sp_data_path_ = zk_sp_path + "/db_sp_data";
-    zk_term_node_ = zk_table_path + "/term";
-    std::string zk_op_path = zk_path + "/op";
-    zk_op_index_node_ = zk_op_path + "/op_index";
-    zk_op_data_path_ = zk_op_path + "/op_data";
-    zk_op_sync_path_ = zk_op_path + "/op_sync";
-    zk_offline_endpoint_lock_node_ = zk_path + "/offline_endpoint_lock";
-    std::string zk_config_path = zk_path + "/config";
-    zk_zone_data_path_ = zk_path + "/cluster";
-    zk_auto_failover_node_ = zk_config_path + "/auto_failover";
-    zk_table_changed_notify_node_ = zk_table_path + "/notify";
+    if (!zk_cluster.empty()) {
+        startup_mode_ = ::openmldb::type::StartupMode::kCluster;
+        zk_root_path_ = zk_path;
+        std::string zk_table_path = zk_path + "/table";
+        std::string zk_sp_path = zk_path + "/store_procedure";
+        zk_table_index_node_ = zk_table_path + "/table_index";
+        zk_table_data_path_ = zk_table_path + "/table_data";
+        zk_db_path_ = zk_path + "/db";
+        zk_db_table_data_path_ = zk_table_path + "/db_table_data";
+        zk_db_sp_data_path_ = zk_sp_path + "/db_sp_data";
+        zk_term_node_ = zk_table_path + "/term";
+        std::string zk_op_path = zk_path + "/op";
+        zk_op_index_node_ = zk_op_path + "/op_index";
+        zk_op_data_path_ = zk_op_path + "/op_data";
+        zk_op_sync_path_ = zk_op_path + "/op_sync";
+        zk_offline_endpoint_lock_node_ = zk_path + "/offline_endpoint_lock";
+        std::string zk_config_path = zk_path + "/config";
+        zk_zone_data_path_ = zk_path + "/cluster";
+        zk_auto_failover_node_ = zk_config_path + "/auto_failover";
+        zk_table_changed_notify_node_ = zk_table_path + "/notify";
+        zone_info_.set_mode(kNORMAL);
+        zone_info_.set_zone_name(endpoint + zk_path);
+        zone_info_.set_replica_alias("");
+        zone_info_.set_zone_term(1);
+        LOG(INFO) << "zone name " << zone_info_.zone_name();
+        zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
+        if (!zk_client_->Init()) {
+            PDLOG(WARNING, "fail to init zookeeper with cluster[%s]", zk_cluster.c_str());
+            return false;
+        }
+        std::string value;
+        std::vector<std::string> endpoints;
+        if (!zk_client_->GetNodes(endpoints)) {
+            zk_client_->CreateNode(zk_path + "/nodes", "");
+        } else {
+            UpdateTablets(endpoints);
+        }
+        zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
+        bool ok = zk_client_->WatchNodes();
+        if (!ok) {
+            PDLOG(WARNING, "fail to watch nodes");
+            return false;
+        }
+        session_term_ = zk_client_->GetSessionTerm();
+
+        thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
+        dist_lock_ = new DistLock(zk_path + "/leader", zk_client_, boost::bind(&NameServerImpl::OnLocked, this),
+                                  boost::bind(&NameServerImpl::OnLostLock, this), endpoint);
+        dist_lock_->Lock();
+
+    } else {
+        startup_mode_ = ::openmldb::type::StartupMode::kStandalone;
+        OnLocked();
+    }
     running_.store(false, std::memory_order_release);
     mode_.store(kNORMAL, std::memory_order_release);
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
     task_rpc_version_.store(0, std::memory_order_relaxed);
-    zone_info_.set_mode(kNORMAL);
-    zone_info_.set_zone_name(endpoint + zk_path);
-    zone_info_.set_replica_alias("");
-    zone_info_.set_zone_term(1);
-    LOG(INFO) << "zone name " << zone_info_.zone_name();
-    zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
-    if (!zk_client_->Init()) {
-        PDLOG(WARNING, "fail to init zookeeper with cluster[%s]", zk_cluster.c_str());
-        return false;
-    }
     if (FLAGS_use_name) {
         auto n_it = real_ep_map_.find(FLAGS_endpoint);
         if (n_it == real_ep_map_.end()) {
@@ -1588,25 +1431,6 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         }
     }
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
-    std::string value;
-    std::vector<std::string> endpoints;
-    if (!zk_client_->GetNodes(endpoints)) {
-        zk_client_->CreateNode(zk_path + "/nodes", "");
-    } else {
-        UpdateTablets(endpoints);
-    }
-    zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
-    bool ok = zk_client_->WatchNodes();
-    if (!ok) {
-        PDLOG(WARNING, "fail to watch nodes");
-        return false;
-    }
-    session_term_ = zk_client_->GetSessionTerm();
-
-    thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
-    dist_lock_ = new DistLock(zk_path + "/leader", zk_client_, boost::bind(&NameServerImpl::OnLocked, this),
-                              boost::bind(&NameServerImpl::OnLostLock, this), endpoint);
-    dist_lock_->Lock();
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
     return true;
@@ -4011,23 +3835,16 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
     uint32_t tid = 0;
     if (request->has_zone_info()) {
         tid = table_info->tid();
-    }
-    uint64_t cur_term = 0;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        if (!request->has_zone_info()) {
-            if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
-                response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
-                response->set_msg("set zk failed");
-                PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
-                return;
-            }
-            table_index_++;
-            table_info->set_tid(table_index_);
-            tid = table_index_;
+    } else {
+        if (!AllocateTableId(&tid)) {
+            response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
+            response->set_msg("allocate table id failed!");
+            PDLOG(WARNING, "allocate table id failed! table %s", table_info->name().c_str());
+            return;
         }
-        cur_term = term_;
+        table_info->set_tid(tid);
     }
+    uint64_t cur_term = GetTerm();
     if (request->has_zone_info() && request->has_task_info() && request->task_info().IsInitialized()) {
         std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
         {
@@ -10268,6 +10085,26 @@ bool NameServerImpl::RecoverProcedureInfo() {
         }
     }
     return true;
+}
+
+bool NameServerImpl::AllocateTableId(uint32_t* id) {
+    if (id == nullptr) {
+        return false;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    if (IsClusterMode()) {
+        if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
+            PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
+            return false;
+        }
+    }
+    table_index_++;
+    *id = table_index_;
+    return true;
+}
+
+uint64_t NameServerImpl::GetTerm() const {
+    return term_;
 }
 
 }  // namespace nameserver

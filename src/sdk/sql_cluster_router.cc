@@ -321,7 +321,7 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
         }
     }
     size_t total_rows_size = insert_stmt->values_.size();
-    for (int i = 0; i < total_rows_size; i++) {
+    for (size_t i = 0; i < total_rows_size; i++) {
         hybridse::node::ExprNode* value = insert_stmt->values_[i];
         if (value->GetExprType() != ::hybridse::node::kExprList) {
             status->msg = "fail to parse row [" + std::to_string(i) +
@@ -974,8 +974,8 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
         LOG(WARNING) << status->msg;
         return false;
     }
-    int cnt = 0;
-    for (int i = 0; i < default_maps.size(); i++) {
+    size_t cnt = 0;
+    for (size_t i = 0; i < default_maps.size(); i++) {
         std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i]);
         if (!row) {
             LOG(WARNING) << "fail to parse row[" << i << "]";

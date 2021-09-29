@@ -24,6 +24,7 @@ DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of 
 DEFINE_uint32(tablet_offline_check_interval, 1000, "config the check interval of tablet offline");
 DEFINE_string(zk_cluster, "", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
 DEFINE_string(zk_root_path, "/openmldb", "config the root path of zookeeper");
+DEFINE_string(tablet, "", "config the endpoint of tablet");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check");
 DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status");
 DEFINE_uint32(get_table_status_interval, 2000, "config the interval of get table status");
