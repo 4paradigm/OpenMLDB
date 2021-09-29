@@ -19,6 +19,7 @@ defaults:
 
 env:
   HYBRIDSE_PATH: hybridse
+  force_deploy_java_allinone: false
 
 jobs:
   linux-build:
@@ -230,7 +231,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     needs: ["macos-build"]
     if: >
-      success() && github.event_name == 'push'
+      success() && ({{env.force_deploy_java_allinone}} || github.event_name == 'push')
     steps:
       - uses: actions/checkout@v2
         with:
@@ -260,7 +261,7 @@ jobs:
 
       - name: Build Core
         run: |
-          ./tools/hybridse_build.sh
+          ./tools/hybridse_build_jsdk.sh
 
       - name: Copy Dylib
         run: |
