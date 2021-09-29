@@ -19,7 +19,7 @@ defaults:
 
 env:
   HYBRIDSE_PATH: hybridse
-  force_deploy_java_allinone: false
+  force_deploy_java_allinone: true
 
 jobs:
   linux-build:
