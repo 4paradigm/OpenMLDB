@@ -17,11 +17,11 @@
 #ifndef SRC_APISERVER_API_SERVER_IMPL_H_
 #define SRC_APISERVER_API_SERVER_IMPL_H_
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include <algorithm>
 
 #include "apiserver/interface_provider.h"
 #include "apiserver/json_helper.h"
@@ -72,7 +72,7 @@ class APIServerImpl : public APIServer {
     std::shared_ptr<sdk::SQLRouter> sql_router_;
     InterfaceProvider provider_;
     // cluster_sdk_ is not owned by this class.
-    ::openmldb::sdk::ClusterSDK* cluster_sdk_;
+    ::openmldb::sdk::ClusterSDK* cluster_sdk_ = nullptr;
 };
 
 struct PutResp {

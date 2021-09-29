@@ -39,11 +39,13 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_bool(interactive);
 DECLARE_string(cmd);
-
-using ::openmldb::catalog::TTL_TYPE_MAP;
+// stand-alone mode
+DECLARE_string(host);
+DECLARE_int32(port);
 
 namespace openmldb {
 namespace cmd {
+using ::openmldb::catalog::TTL_TYPE_MAP;
 using hybridse::plan::PlanAPI;
 const std::string LOGO =  // NOLINT
 
@@ -60,8 +62,8 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
                             OPENMLDB_COMMIT_ID;
 
 std::string db = "";  // NOLINT
-::openmldb::sdk::ClusterSDK *cs = NULL;
-::openmldb::sdk::SQLClusterRouter *sr = NULL;
+::openmldb::sdk::ClusterSDK *cs = nullptr;
+::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
     if (!result_set || result_set->Size() == 0) {
@@ -613,7 +615,7 @@ void HandleCli() {
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
-    cs = new ::openmldb::sdk::ClusterSDK(copt);
+    cs = new ::openmldb::sdk::NormalClusterSDK(copt);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "Fail to connect to db" << std::endl;
@@ -656,6 +658,156 @@ void HandleCli() {
             multi_line = false;
             display_prefix = ns_endpoint + "/" + db + "> ";
             multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+            sql.clear();
+        } else {
+            sql.append("\n");
+            multi_line = true;
+        }
+        if (!FLAGS_interactive) {
+            return;
+        }
+    }
+}
+
+void HandleSQLInStandAloneMode(const std::string &sql) {
+    hybridse::node::NodeManager node_manager;
+    hybridse::base::Status sql_status;
+    hybridse::node::PlanNodeList plan_trees;
+    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
+
+    if (0 != sql_status.code) {
+        std::cout << sql_status.msg << std::endl;
+        return;
+    }
+    hybridse::node::PlanNode *node = plan_trees[0];
+    switch (node->GetType()) {
+        case hybridse::node::kPlanTypeCmd: {
+            auto *cmd = dynamic_cast<hybridse::node::CmdPlanNode *>(node);
+            HandleCmd(cmd);
+            return;
+        }
+        case hybridse::node::kPlanTypeExplain: {
+            std::string empty;
+            std::string mu_script = sql;
+            mu_script.replace(0u, 7u, empty);
+            ::hybridse::sdk::Status status;
+            auto info = sr->Explain(db, mu_script, &status);
+            if (!info) {
+                std::cout << "fail to get explain info" << std::endl;
+                return;
+            }
+            std::cout << info->GetPhysicalPlan() << std::endl;
+            return;
+        }
+        case hybridse::node::kPlanTypeCreate:
+            case hybridse::node::kPlanTypeCreateSp: {
+                if (db.empty()) {
+                    std::cout << "please use database first" << std::endl;
+                    return;
+                }
+                ::hybridse::sdk::Status status;
+                bool ok = sr->ExecuteDDL(db, sql, &status);
+                if (!ok) {
+                    std::cout << "fail to execute ddl" << std::endl;
+                } else {
+                    sr->RefreshCatalog();
+                }
+                return;
+            }
+            case hybridse::node::kPlanTypeCreateIndex: {
+                if (db.empty()) {
+                    std::cout << "please use database first" << std::endl;
+                    return;
+                }
+                auto *create_index_node = dynamic_cast<hybridse::node::CreateIndexPlanNode *>(node);
+                HandleCreateIndex(create_index_node->create_index_node_);
+                return;
+            }
+            case hybridse::node::kPlanTypeInsert: {
+                if (db.empty()) {
+                    std::cout << "please use database first" << std::endl;
+                    return;
+                }
+                ::hybridse::sdk::Status status;
+                bool ok = sr->ExecuteInsert(db, sql, &status);
+                if (!ok) {
+                    std::cout << "fail to execute insert" << std::endl;
+                }
+                return;
+            }
+            case hybridse::node::kPlanTypeFuncDef:
+                case hybridse::node::kPlanTypeQuery: {
+                    if (db.empty()) {
+                        std::cout << "please use database first" << std::endl;
+                        return;
+                    }
+                    ::hybridse::sdk::Status status;
+                    auto rs = sr->ExecuteSQL(db, sql, &status);
+                    if (!rs) {
+                        std::cout << "fail to execute query" << std::endl;
+                    } else {
+                        PrintResultSet(std::cout, rs.get());
+                    }
+                    return;
+                }
+                default: {
+                }
+    }
+}
+
+void StandAloneSQLClient() {
+    if (FLAGS_interactive) {
+        std::cout << LOGO << std::endl;
+        std::cout << "v" << VERSION << std::endl;
+    }
+    // connect to nameserver
+    if(FLAGS_host.empty()  || FLAGS_port ==0){
+        std::cout << "host or port is missing" << std::endl;
+    }
+    cs = new sdk::StandAloneClusterSDK(FLAGS_host, FLAGS_port);
+    bool ok = cs->Init();
+    if (!ok) {
+        std::cout << "Fail to connect to db" << std::endl;
+        return;
+    }
+    sr = new ::openmldb::sdk::SQLClusterRouter(cs);
+    if (!sr->Init()) {
+        std::cout << "Fail to connect to db" << std::endl;
+        return;
+    }
+    std::string ns_endpoint = cs->GetNsClient()->GetEndpoint();
+    std::string display_prefix = ns_endpoint + "/" + db + "> ";
+    std::string multi_line_prefix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+    std::string sql;
+    bool multi_line = false;
+    while (true) {
+        std::string buffer;
+        if (!FLAGS_interactive) {
+            buffer = FLAGS_cmd;
+            db = FLAGS_database;
+        } else {
+            char *line = ::openmldb::base::linenoise(multi_line ? multi_line_prefix.c_str() : display_prefix.c_str());
+            if (line == nullptr) {
+                return;
+            }
+            if (line[0] != '\0' && line[0] != '/') {
+                buffer.assign(line);
+                if (!buffer.empty()) {
+                    ::openmldb::base::linenoiseHistoryAdd(line);
+                }
+            }
+            ::openmldb::base::linenoiseFree(line);
+            if (buffer.empty()) {
+                continue;
+            }
+        }
+        sql.append(buffer);
+        if (sql.back() == ';') {
+            // TODO(hw): HandleSQL can be an arg
+            HandleSQLInStandAloneMode(sql);
+            multi_line = false;
+            display_prefix = ns_endpoint + "/" + db + "> ";
+            multi_line_prefix = std::string(display_prefix.length() - 3, ' ') + "-> ";
             sql.clear();
         } else {
             sql.append("\n");

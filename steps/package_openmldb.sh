@@ -1,3 +1,4 @@
+#! /bin/sh
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,22 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#! /bin/sh
 #
 # package.sh
 #
 
-WORKDIR=`pwd`
 set -e
 VERSION=${1:-snapshot}
 OS=${2:-linux}
 package=openmldb-${VERSION}-${OS}
 echo "package name: ${package}"
 
-rm -rf ${package} || :
-mkdir ${package} || :
-cp -r release/conf ${package}/conf
-cp -r release/bin ${package}/bin
+rm -rf "${package}" || :
+mkdir "${package}" || :
+cp -r release/conf "${package}"/conf
+cp -r release/bin "${package}"/bin
 IP=127.0.0.1
 
 sed -i"" -e "s/--endpoint=.*/--endpoint=${IP}:6527/g" ${package}/conf/nameserver.flags

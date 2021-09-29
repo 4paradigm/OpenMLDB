@@ -120,6 +120,7 @@ void GetRealEndpoint(std::string* real_endpoint) {
     if (real_endpoint == nullptr) {
         return;
     }
+    // TODO(hw): only endpoint
     if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
         std::string ip;
         if (::openmldb::base::GetLocalIp(&ip)) {
@@ -4903,9 +4904,8 @@ int main(int argc, char* argv[]) {
         StartAPIServer();
 #endif
     } else {
-        std::cout << "Start failed! FLAGS_role must be tablet, client, "
-                     "nameserver, ns_client, apiserver"
-                  << std::endl;
+        std::cout << "client start in stand-alone mode" << std::endl;
+        ::openmldb::cmd::StandAloneSQLClient();
     }
     return 0;
 }

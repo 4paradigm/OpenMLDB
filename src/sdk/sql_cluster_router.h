@@ -103,7 +103,7 @@ class SQLClusterRouter : public SQLRouter {
     explicit SQLClusterRouter(const SQLRouterOptions& options);
     explicit SQLClusterRouter(ClusterSDK* sdk);
 
-    ~SQLClusterRouter();
+    ~SQLClusterRouter() override;
 
     bool Init();
 

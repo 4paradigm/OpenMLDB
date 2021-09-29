@@ -16,30 +16,21 @@
 
 #include "sdk/cluster_sdk.h"
 
-#include <sched.h>
 #include <unistd.h>
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "base/file_util.h"
-#include "base/glog_wapper.h"
-#include "brpc/server.h"
-#include "client/ns_client.h"
 #include "codec/schema_codec.h"
-#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "rpc/rpc_client.h"
 #include "sdk/mini_cluster.h"
 
-namespace openmldb {
-namespace sdk {
+namespace openmldb::sdk {
 
 using ::openmldb::codec::SchemaCodec;
 
@@ -51,20 +42,20 @@ inline std::string GenRand() {
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
-    MockClosure() {}
-    ~MockClosure() {}
-    void Run() {}
+    MockClosure() = default;
+    ~MockClosure() override = default;
+    void Run() override {}
 };
 
 class ClusterSDKTest : public ::testing::Test {
  public:
     ClusterSDKTest() : mc_(new MiniCluster(6181)) {}
-    ~ClusterSDKTest() { delete mc_; }
-    void SetUp() {
+    ~ClusterSDKTest() override { delete mc_; }
+    void SetUp() override {
         bool ok = mc_->SetUp();
         ASSERT_TRUE(ok);
     }
-    void TearDown() { mc_->Close(); }
+    void TearDown() override { mc_->Close(); }
 
  public:
     MiniCluster* mc_;
@@ -74,7 +65,7 @@ TEST_F(ClusterSDKTest, smoke_empty_cluster) {
     ClusterOptions option;
     option.zk_cluster = mc_->GetZkCluster();
     option.zk_path = mc_->GetZkPath();
-    ClusterSDK sdk(option);
+    NormalClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
 }
 
@@ -82,7 +73,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     ClusterOptions option;
     option.zk_cluster = mc_->GetZkCluster();
     option.zk_path = mc_->GetZkPath();
-    ClusterSDK sdk(option);
+    NormalClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
@@ -117,13 +108,25 @@ TEST_F(ClusterSDKTest, smoketest) {
     ASSERT_TRUE(sdk.Refresh());
 }
 
-}  // namespace sdk
-}  // namespace openmldb
+TEST_F(ClusterSDKTest, standAloneMode) {
+    // mini cluster endpoints' ports are random, so we get the ns first
+    auto ns = mc_->GetNsClient()->GetRealEndpoint();
+    LOG(INFO) << "nameserver address: " << ns;
+    auto sep = ns.find(':');
+    ASSERT_TRUE(sep != std::string::npos);
+    auto host = ns.substr(0, sep);
+    auto port = ns.substr(sep + 1);
+    StandAloneClusterSDK sdk(host, std::stoi(port));
+    // TODO(hw):
+    ASSERT_FALSE(sdk.Init());
+}
+
+}  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
-    srand(time(NULL));
+    srand(time(nullptr));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();
 }
