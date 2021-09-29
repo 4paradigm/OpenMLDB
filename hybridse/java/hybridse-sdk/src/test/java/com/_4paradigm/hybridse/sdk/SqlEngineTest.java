@@ -65,7 +65,7 @@ public class SqlEngineTest {
         TypeOuterClass.Database db2 = createTestDatabase("db2");
 
         try {
-            SqlEngine engine = new SqlEngine(sql, Arrays.<TypeOuterClass.Database>asList(db1, db2));
+            SqlEngine engine = new SqlEngine(sql, Arrays.<TypeOuterClass.Database>asList(db1, db2), "db1");
             Assert.assertNotNull(engine.getPlan());
         } catch (UnsupportedHybridSeException e) {
             e.printStackTrace();
@@ -89,10 +89,11 @@ public class SqlEngineTest {
     @Test(dataProvider = "sqlEngineCase")
     public void sqlEngineTest4(String sql) {
         TypeOuterClass.Database db1 = createTestDatabase("db1");
-        TypeOuterClass.Database db2 = createTestDatabase("db1");
+        TypeOuterClass.Database db2 = createTestDatabase("db2");
 
         try {
-            SqlEngine engine = new SqlEngine(sql, Arrays.<TypeOuterClass.Database>asList(db1, db2), SqlEngine.createDefaultEngineOptions());
+            SqlEngine engine = new SqlEngine(sql, Arrays.<TypeOuterClass.Database>asList(db1, db2),
+                    SqlEngine.createDefaultEngineOptions(), "db2");
             Assert.assertNotNull(engine.getPlan());
         } catch (UnsupportedHybridSeException e) {
             e.printStackTrace();
