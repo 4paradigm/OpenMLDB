@@ -28,14 +28,14 @@ jobs:
       image: maven:3.6-jdk-8
     steps:
       - uses: actions/checkout@v2
-      - name: Run unit tests for all-in-one
-        working-directory: java/openmldb-batch
-        run: |
-          mvn clean compile test -Pallinone
       - name: Run unit tests for Linux
         working-directory: java/openmldb-batch
         run: |
           mvn clean compile test
+      - name: Run unit tests for all-in-one
+        working-directory: java/openmldb-batch
+        run: |
+          mvn clean compile test -Pallinone
   macos-unit-test:
     name: Compile and test in MacOS
     runs-on: macos-latest
@@ -46,11 +46,11 @@ jobs:
         with:
           java-version: '8'
           distribution: 'adopt'
-      - name: Run unit tests for all-in-one
-        working-directory: java/openmldb-batch
-        run: |
-          mvn clean compile test -Pallinone
       - name: Run unit tests for MacOS
         working-directory: java/openmldb-batch
         run: |
           mvn clean compile test -Pmacos
+      - name: Run unit tests for all-in-one
+        working-directory: java/openmldb-batch
+        run: |
+          mvn clean compile test -Pallinone
