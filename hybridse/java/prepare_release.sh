@@ -41,9 +41,8 @@ VERSION=$1
 SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
 
 DEBUG_SUFFIX_VERSION=$(echo "$SUFFIX_VERSION" | sed -e 's/\.[0-9][0-9]*//')
-
 # get BASE VERSION by rm suffix version
-if [[ -n ${DEBUG_SUFFIX_VERSION} ]] ; then
+if [[ "$DEBUG_SUFFIX_VERSION" != "$SUFFIX_VERSION" ]] ; then
   DEBUG_NO=${SUFFIX_VERSION%"$DEBUG_SUFFIX_VERSION"}
 fi
 
