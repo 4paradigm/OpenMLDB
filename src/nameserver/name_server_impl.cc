@@ -16,10 +16,6 @@
 
 #include "nameserver/name_server_impl.h"
 
-#include <base/strings.h>
-#include <gflags/gflags.h>
-#include <strings.h>
-
 #include <algorithm>
 #include <set>
 #ifdef DISALLOW_COPY_AND_ASSIGN
@@ -31,9 +27,10 @@
 
 #include "base/glog_wapper.h"
 #include "base/status.h"
+#include "base/strings.h"
+#include "gflags/gflags.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
-#include "common/timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -806,143 +803,124 @@ bool NameServerImpl::RecoverOPTask() {
             DEBUGLOG("op status is kCanceled. op_id[%lu]", op_data->op_info_.op_id());
             continue;
         }
+        std::string op_type_str = ::openmldb::api::OPType_Name(op_data->op_info_.op_type());
         switch (op_data->op_info_.op_type()) {
             case ::openmldb::api::OPType::kMakeSnapshotOP:
                 if (CreateMakeSnapshotOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kAddReplicaOP:
                 if (CreateAddReplicaOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kChangeLeaderOP:
                 if (CreateChangeLeaderOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kMigrateOP:
                 if (CreateMigrateTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kRecoverTableOP:
                 if (CreateRecoverTableOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kOfflineReplicaOP:
                 if (CreateOfflineReplicaTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kDelReplicaOP:
                 if (CreateDelReplicaOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kReAddReplicaOP:
                 if (CreateReAddReplicaTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kReAddReplicaNoSendOP:
                 if (CreateReAddReplicaNoSendTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kReAddReplicaWithDropOP:
                 if (CreateReAddReplicaWithDropTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kReAddReplicaSimplifyOP:
                 if (CreateReAddReplicaSimplifyTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kReLoadTableOP:
                 if (CreateReLoadTableTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kUpdatePartitionStatusOP:
                 if (CreateUpdatePartitionStatusOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kCreateTableRemoteOP:
                 if (CreateTableRemoteTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kDropTableRemoteOP:
                 if (DropTableRemoteTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kDelReplicaRemoteOP:
                 if (CreateDelReplicaRemoteOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kAddReplicaSimplyRemoteOP:
                 if (CreateAddReplicaSimplyRemoteOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kAddReplicaRemoteOP:
                 if (CreateAddReplicaRemoteOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             case ::openmldb::api::OPType::kAddIndexOP:
                 if (CreateAddIndexOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
-                          ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", op_type_str.c_str(), op_id);
                     continue;
                 }
                 break;
             default:
-                PDLOG(WARNING, "unsupport recover op[%s]! op_id[%lu]",
-                      ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
+                PDLOG(WARNING, "unsupport recover op[%s]! op_id[%lu]", op_type_str.c_str(), op_id);
                 continue;
         }
         if (!SkipDoneTask(op_data)) {
@@ -1364,6 +1342,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         return false;
     }
     endpoint_ = endpoint;
+    running_.store(false, std::memory_order_release);
     if (!zk_cluster.empty()) {
         startup_mode_ = ::openmldb::type::StartupMode::kCluster;
         zk_root_path_ = zk_path;
@@ -1415,10 +1394,19 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         dist_lock_->Lock();
 
     } else {
+        const std::string& tablet_endpoint = FLAGS_tablet;
         startup_mode_ = ::openmldb::type::StartupMode::kStandalone;
+        std::shared_ptr<TabletInfo> tablet = std::make_shared<TabletInfo>();
+        tablet->state_ = ::openmldb::type::EndpointState::kHealthy;
+        tablet->client_ = std::make_shared<::openmldb::client::TabletClient>(tablet_endpoint, "", true);
+        if (tablet->client_->Init() != 0) {
+            PDLOG(WARNING, "tablet client init error. endpoint[%s]", tablet_endpoint.c_str());
+        }
+        tablet->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+        tablets_.insert(std::make_pair(tablet_endpoint, tablet));
+        PDLOG(INFO, "add tablet client. endpoint[%s]", tablet_endpoint.c_str());
         OnLocked();
     }
-    running_.store(false, std::memory_order_release);
     mode_.store(kNORMAL, std::memory_order_release);
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
     task_rpc_version_.store(0, std::memory_order_relaxed);
@@ -3743,12 +3731,8 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(::openmldb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
-            response->set_msg(
-                "nameserver is for follower cluster, and request has no zone "
-                "info");
-            PDLOG(WARNING,
-                  "nameserver is for follower cluster, and request has no zone "
-                  "info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                    request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -3939,58 +3923,64 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
             PDLOG(WARNING, "create table failed. name[%s] tid[%u]", table_info->name().c_str(), tid);
             break;
         }
-        if (SetTableInfo(table_info)) {
-            if (task_ptr) {
-                task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
-                PDLOG(INFO,
-                      "set task type success, op_id [%lu] task_tpye [%s] "
-                      "task_status [%s]",
-                      task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
-                      ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
+        if (!IsClusterMode()) {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (!table_info->db().empty()) {
+                db_table_info_[table_info->db()].insert(std::make_pair(table_info->name(), table_info));
+            } else {
+                table_info_.insert(std::make_pair(table_info->name(), table_info));
             }
         } else {
-            response.set_code(::openmldb::base::ReturnCode::kSetZkFailed);
-            response.set_msg("set zk failed");
-            break;
-        }
-        RefreshTablet(table_info->tid());
-        if (mode_.load(std::memory_order_acquire) == kLEADER) {
-            decltype(nsc_) tmp_nsc;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                tmp_nsc = nsc_;
-            }
-            for (const auto& kv : tmp_nsc) {
-                if (kv.second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
-                    PDLOG(INFO, "cluster[%s] is not Healthy", kv.first.c_str());
-                    continue;
+            if (SetTableInfo(table_info)) {
+                if (task_ptr) {
+                    task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
+                    PDLOG(INFO,
+                          "set task type success, op_id [%lu] task_tpye [%s] "
+                          "task_status [%s]",
+                          task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
+                          ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
                 }
-                ::openmldb::nameserver::TableInfo remote_table_info(*table_info);
-                std::string msg;
-                if (!std::atomic_load_explicit(&kv.second->client_, std::memory_order_relaxed)
-                         ->CreateRemoteTableInfoSimply(zone_info_, remote_table_info, msg)) {
-                    PDLOG(WARNING, "create remote table_info erro, wrong msg is [%s]", msg.c_str());
-                    response.set_code(::openmldb::base::ReturnCode::kCreateRemoteTableInfoFailed);
-                    response.set_msg("create remote table info failed");
-                    break;
-                }
-                std::lock_guard<std::mutex> lock(mu_);
-                if (CreateTableRemoteOP(*table_info, remote_table_info, kv.first, INVALID_PARENT_ID,
-                                        FLAGS_name_server_task_concurrency_for_replica_cluster) <  // NOLINT
-                    0) {
-                    PDLOG(WARNING,
-                          "create CreateTableRemoteOP for replica cluster "
-                          "failed, table_name: %s, alias: %s",
-                          table_info->name().c_str(), kv.first.c_str());
-                    response.set_code(::openmldb::base::ReturnCode::kCreateCreatetableremoteopForReplicaClusterFailed);
-                    response.set_msg(
-                        "create CreateTableRemoteOP for replica cluster "
-                        "failed");
-                    break;
-                }
-            }
-            if (response.code() != 0) {
+            } else {
+                response.set_code(::openmldb::base::ReturnCode::kSetZkFailed);
+                response.set_msg("set zk failed");
                 break;
+            }
+            RefreshTablet(table_info->tid());
+            if (mode_.load(std::memory_order_acquire) == kLEADER) {
+                decltype(nsc_) tmp_nsc;
+                {
+                    std::lock_guard<std::mutex> lock(mu_);
+                    tmp_nsc = nsc_;
+                }
+                for (const auto& kv : tmp_nsc) {
+                    if (kv.second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+                        PDLOG(INFO, "cluster[%s] is not Healthy", kv.first.c_str());
+                        continue;
+                    }
+                    ::openmldb::nameserver::TableInfo remote_table_info(*table_info);
+                    std::string msg;
+                    if (!std::atomic_load_explicit(&kv.second->client_, std::memory_order_relaxed)
+                             ->CreateRemoteTableInfoSimply(zone_info_, remote_table_info, msg)) {
+                        PDLOG(WARNING, "create remote table_info erro, wrong msg is [%s]", msg.c_str());
+                        response.set_code(::openmldb::base::ReturnCode::kCreateRemoteTableInfoFailed);
+                        response.set_msg("create remote table info failed");
+                        break;
+                    }
+                    std::lock_guard<std::mutex> lock(mu_);
+                    if (CreateTableRemoteOP(*table_info, remote_table_info, kv.first, INVALID_PARENT_ID,
+                                            FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
+                        PDLOG(WARNING,
+                              "create CreateTableRemoteOP for replica cluster "
+                              "failed, table_name: %s, alias: %s",
+                              table_info->name().c_str(), kv.first.c_str());
+                        response.set_code(::openmldb::base::ReturnCode::kCreateTableForReplicaClusterFailed);
+                        response.set_msg("create CreateTableRemoteOP for replica cluster failed");
+                        break;
+                    }
+                }
+                if (response.code() != 0) {
+                    break;
+                }
             }
         }
         response.set_code(::openmldb::base::ReturnCode::kOk);
@@ -9504,16 +9494,21 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    bool ok = false;
+    const std::string& db_name = request->db();
+    bool is_exists = true;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        ok = databases_.find(request->db()) == databases_.end();
-        if (ok) {
-            databases_.insert(request->db());
+        if (databases_.find(db_name) == databases_.end()) {
+            is_exists = false;
+            databases_.insert(db_name);
         }
     }
-    if (ok) {
-        if (!zk_client_->CreateNode(zk_db_path_ + "/" + request->db(), "")) {
+    if (is_exists) {
+        response->set_code(::openmldb::base::ReturnCode::kDatabaseAlreadyExists);
+        response->set_msg("database already exists");
+        PDLOG(INFO, "database %s already exists", db_name.c_str());
+    } else {
+        if (IsClusterMode() && !zk_client_->CreateNode(zk_db_path_ + "/" + request->db(), "")) {
             PDLOG(WARNING, "create db node[%s/%s] failed!", zk_db_path_.c_str(), request->db().c_str());
             response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
@@ -9521,10 +9516,8 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         }
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_msg("ok");
-        return;
+        PDLOG(INFO, "create database %s success", db_name.c_str());
     }
-    response->set_code(::openmldb::base::ReturnCode::kDatabaseAlreadyExists);
-    response->set_msg("database already exists");
 }
 
 void NameServerImpl::UseDatabase(RpcController* controller, const UseDatabaseRequest* request,

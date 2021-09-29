@@ -239,7 +239,7 @@ enum ReturnCode {
     kShowtableErrorWhenAddReplicaCluster = 455,
     kNameserverIsFollowerAndRequestHasNoZoneInfo = 501,
     kZoneInfoMismathch = 502,
-    kCreateCreatetableremoteopForReplicaClusterFailed = 503,
+    kCreateTableForReplicaClusterFailed = 503,
     kAddTaskInReplicaClusterNsFailed = 504,
     kCreateDroptableremoteopForReplicaClusterFailed = 505,
     kNameserverIsNotReplicaCluster = 506,

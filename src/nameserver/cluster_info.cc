@@ -15,10 +15,13 @@
  */
 
 #include "nameserver/cluster_info.h"
-#include <gflags/gflags.h>
+
+#include <algorithm>
+#include <utility>
 #include "base/glog_wapper.h"
 #include "boost/bind.hpp"
 #include "common/timer.h"
+#include "gflags/gflags.h"
 
 DECLARE_int32(zk_session_timeout);
 DECLARE_bool(use_name);

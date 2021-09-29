@@ -18,6 +18,7 @@
 #define SRC_NAMESERVER_CLUSTER_INFO_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 #include "client/ns_client.h"

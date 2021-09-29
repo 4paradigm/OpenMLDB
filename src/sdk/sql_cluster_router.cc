@@ -976,7 +976,8 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     }
     size_t cnt = 0;
     for (size_t i = 0; i < default_maps.size(); i++) {
-        std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i]);
+        std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(table_info, schema,
+                default_maps[i], str_lengths[i]);
         if (!row) {
             LOG(WARNING) << "fail to parse row[" << i << "]";
             continue;
@@ -993,7 +994,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
             LOG(WARNING) << "fail to put row[" << i << "] due to: " << status->msg;
             continue;
         }
-        cnt ++;
+        cnt++;
     }
     if (cnt < default_maps.size()) {
         status->msg = "Error occur when execute insert, success/total: " + std::to_string(cnt) + "/" +
