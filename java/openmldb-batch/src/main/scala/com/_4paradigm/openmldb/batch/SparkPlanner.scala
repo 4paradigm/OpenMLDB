@@ -128,7 +128,9 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
 
     logger.info("Visit physical plan to find the dest node which should add the index column")
     val visitedNodeSet = mutable.HashSet[Long]()
-    val destNodeId = findLowestCommonAncestorNode(concatJoinNode, visitedNodeSet)
+    val nodeSet = mutable.HashSet[PhysicalOpNode]()
+    nodeSet.add(concatJoinNode)
+    val destNodeId = findLowestCommonAncestorNode(nodeSet, visitedNodeSet)
 
     logger.info("Bind the node index info for all suitable integration")
     if (processedConcatJoinNodeIds.contains(concatJoinNodeId)) {
@@ -141,25 +143,29 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     ctx.getIndexInfo(concatJoinNodeId).nodeIndexType = NodeIndexType.SourceConcatJoinNode
   }
 
-  def findLowestCommonAncestorNode(root: PhysicalOpNode, visitedNodeSet: mutable.HashSet[Long]): Long = {
-    // If node has been visited again, return the node as common ancestor
-    if (visitedNodeSet.contains(root.GetNodeId())) {
-      return root.GetNodeId()
+  def findLowestCommonAncestorNode(NodeSet: mutable.HashSet[PhysicalOpNode],
+                                   visitedNodeSet: mutable.HashSet[Long]): Long = {
+    if (NodeSet.isEmpty) {
+      return 0
     }
 
-    // Add current node to visited set
-    visitedNodeSet.add(root.GetNodeId())
+    val producerNodeSet = mutable.HashSet[PhysicalOpNode]()
+    // If node has been visited again, return the node as common ancestor
 
-    for (i <- 0 until root.GetProducerCnt().toInt) {
-      // Find the common node in child integration, return if found
-      val result = findLowestCommonAncestorNode(root.GetProducer(i), visitedNodeSet)
-      if (result != 0) {
-        return result
+    for (root <- NodeSet) {
+      for (i <- 0 until root.GetProducerCnt().toInt) {
+        val producerNode = root.GetProducer(i)
+        // Find the common node in child integration, return if found
+        if (visitedNodeSet.contains(producerNode.GetNodeId())) {
+          return producerNode.GetNodeId()
+        } else {
+          // Add current node to visited set
+          visitedNodeSet.add(producerNode.GetNodeId())
+          producerNodeSet.add(producerNode)
+        }
       }
     }
-
-    // Return 0 if the node without input is not match
-    return 0
+    findLowestCommonAncestorNode(producerNodeSet, visitedNodeSet)
   }
 
   def visitAndBindNodeIndexInfo(ctx: PlanContext,
