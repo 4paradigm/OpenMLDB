@@ -231,7 +231,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     needs: ["macos-build"]
     if: >
-      success() && (${{ env.force_deploy_java_allinone }} || github.event_name == 'push')
+      success() && ( github.env.force_deploy_java_allinone == true || github.event_name == 'push')
     steps:
       - uses: actions/checkout@v2
         with:
