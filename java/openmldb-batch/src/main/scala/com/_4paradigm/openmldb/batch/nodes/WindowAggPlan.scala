@@ -171,10 +171,6 @@ object WindowAggPlan {
       }
       logger.info("Generate distribution dataframe")
 
-      if (ctx.getConf.windowSkewOptCache) {
-        distributionDf.cache()
-      }
-
       distributionDf
     } else {
       // Use skew config
@@ -194,6 +190,11 @@ object WindowAggPlan {
       math.floor(minCount / quantile)
     } else {
       -1
+    }
+
+    if (ctx.getConf.windowSkewOptCache) {
+      distributionDf.cache()
+      distributionDf.collect()
     }
 
     // 2. Add "part" column and "expand" column by joining the distribution table
