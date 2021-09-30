@@ -1082,13 +1082,13 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
 
             case hybridse::node::kColumnIndex: {
                 auto* column_index = dynamic_cast<hybridse::node::ColumnIndexNode*>(column_desc);
-                
+
                 if (column_index->GetKey().empty()) {
                     status->msg = "CREATE common: INDEX KEY empty";
                     status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
-                
+
                 std::string index_name = column_index->GetName();
                 // index in `create table` won't set name
                 DCHECK(index_name.empty());
