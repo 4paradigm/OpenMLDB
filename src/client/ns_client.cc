@@ -1085,7 +1085,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
                 
                 if (column_index->GetKey().empty()) {
                     status->msg = "CREATE common: INDEX KEY empty";
-                    status->code = hybridse::common::kSqlError;
+                    status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
                 
@@ -1215,7 +1215,7 @@ bool NsClient::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_inde
         if (!column_names.empty()) {
             if (column_names.find(key) == column_names.end()) {
                 status->msg = "column " + key + " does not exist";
-                status->code = hybridse::common::kSqlError;
+                status->code = hybridse::common::kUnsupportSql;
                 return false;
             }
         }
@@ -1229,7 +1229,7 @@ bool NsClient::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_inde
         openmldb::type::TTLType type;
         if (!TTLTypeParse(ttl_type, &type)) {
             status->msg = "CREATE common: ttl_type " + column_index->ttl_type() + " not support";
-            status->code = hybridse::common::kSqlError;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         ttl_st->set_ttl_type(type);
@@ -1239,7 +1239,7 @@ bool NsClient::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_inde
     if (ttl_st->ttl_type() == openmldb::type::kAbsoluteTime) {
         if (column_index->GetAbsTTL() == -1 || column_index->GetLatTTL() != -2) {
             status->msg = "CREATE common: abs ttl format error";
-            status->code = hybridse::common::kSqlError;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         if (column_index->GetAbsTTL() == -2) {
@@ -1250,7 +1250,7 @@ bool NsClient::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_inde
     } else if (ttl_st->ttl_type() == openmldb::type::kLatestTime) {
         if (column_index->GetLatTTL() == -1 || column_index->GetAbsTTL() != -2) {
             status->msg = "CREATE common: lat ttl format error";
-            status->code = hybridse::common::kSqlError;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         if (column_index->GetLatTTL() == -2) {
@@ -1261,7 +1261,7 @@ bool NsClient::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_inde
     } else {
         if (column_index->GetAbsTTL() == -1) {
             status->msg = "CREATE common: abs ttl format error for " + type::TTLType_Name(ttl_st->ttl_type());
-            status->code = hybridse::common::kSqlError;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         if (column_index->GetAbsTTL() == -2) {
@@ -1271,7 +1271,7 @@ bool NsClient::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_inde
         }
         if (column_index->GetLatTTL() == -1) {
             status->msg = "CREATE common: lat ttl format error for " + type::TTLType_Name(ttl_st->ttl_type());
-            status->code = hybridse::common::kSqlError;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         if (column_index->GetLatTTL() == -2) {
@@ -1286,7 +1286,7 @@ bool NsClient::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_inde
             auto it = column_names.find(column_index->GetTs());
             if (it == column_names.end()) {
                 status->msg = "CREATE common: TS NAME " + column_index->GetTs() + " not exists";
-                status->code = hybridse::common::kSqlError;
+                status->code = hybridse::common::kUnsupportSql;
                 return false;
             }
         }
