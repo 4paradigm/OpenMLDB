@@ -38,6 +38,7 @@ base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager*
     }
     return base::Status::OK();
 }
+/// Used to convert zetasql ASTExpression Node into our ExprNode
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
                              node::ExprNode** output) {
     if (nullptr == ast_expression) {
@@ -45,7 +46,6 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         return base::Status::OK();
     }
     base::Status status;
-    // TODO(chenjing): support case when value and case when without value
     switch (ast_expression->node_kind()) {
         case zetasql::AST_STAR: {
             *output = node_manager->MakeAllNode("");
@@ -359,6 +359,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             const zetasql::ASTParameterExpr* parameter_expr = ast_expression->GetAsOrNull<zetasql::ASTParameterExpr>();
             CHECK_TRUE(nullptr != parameter_expr, common::kSqlAstError, "not an ASTParameterExpr")
 
+            // Only support anonymous parameter (e.g, ?) so far.
             CHECK_TRUE(nullptr == parameter_expr->name(), common::kSqlAstError,
                        "Un-support Named Parameter Expression ", parameter_expr->name()->GetAsString());
             *output = node_manager->MakeParameterExpr(parameter_expr->position());

@@ -749,5 +749,34 @@ cases:
         12, A, 7, 1590115480000, 13, 18, 22, 9, 7
         13, A, 8, 1590115490000, 15, 21, 26, 11, 9
         14, A, 9, 1590115500000, 17, 24, 30, 13, 11
-
-
+  - id: 0
+    desc: window query after last join with a table, index hasn't been optimized
+    db: db1
+    mode: rtidb-unsupport
+    tags: ["TODO", "@tobe @zekai",
+        "Failed to merge fields 'col0' and 'col0'. Failed to merge incompatible data types string and int"]
+    sql: |
+       SELECT sum(t1.col1) over w1 as sum_t1_col1, str1 as t2_str1
+       FROM t1
+       last join t2 order by t2.col1
+       on t1.col1 = t2.col1 and t1.col2 = t2.col0
+       WINDOW w1 AS (
+        PARTITION BY t1.col2 ORDER BY t1.col1
+        ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW
+       ) limit 10;
+    inputs:
+      - name: t1
+        columns: ["col0 string", "col1 bigint", "col2 int"]
+        indexs: ["index1:col0:col1"]
+        rows:
+          - ["0", 1, 5]
+          - ["0", 2, 5]
+      - name: t2
+        columns: ["str0 string", "str1 string", "col0 int", "col1 bigint"]
+        indexs: ["index2:str0:col1"]
+        rows:
+          - ["2", "EEEEE", 55, 5]
+          - ["1", "DDDD", 55, 4]
+          - ["1", "CCC", 55, 3]
+    expect:
+      success: true

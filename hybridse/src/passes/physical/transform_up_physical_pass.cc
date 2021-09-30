@@ -27,11 +27,17 @@ bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
         LOG(WARNING) << "fail to apply pass: input or output is null";
         return false;
     }
+    if (visited_ids_.find(in->GetNodeId()) != visited_ids_.end()) {
+        DLOG(INFO) << "Apply " << in->GetTypeName() << " node #" << in->GetNodeId() << " has been visited already.";
+        *out = in;
+        return visited_ids_[in->GetNodeId()];
+    }
     auto producer = in->producers();
     for (size_t j = 0; j < producer.size(); ++j) {
         PhysicalOpNode* output = nullptr;
         if (Apply(producer[j], &output)) {
             if (!ResetProducer(plan_ctx_, in, j, output)) {
+                visited_ids_[in->GetNodeId()] = false;
                 return false;
             }
         }
@@ -40,10 +46,12 @@ bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
     Status status = in->InitSchema(plan_ctx_);
     if (!status.isOK()) {
         LOG(WARNING) << "Reset schema failed: " << status;
+        visited_ids_[in->GetNodeId()] = false;
         return false;
     }
     in->FinishSchema();
-    return Transform(in, out);
+    visited_ids_[in->GetNodeId()] = Transform(in, out);
+    return visited_ids_[in->GetNodeId()];
 }
 
 bool ResetProducer(PhysicalPlanContext* plan_ctx, PhysicalOpNode* op,
