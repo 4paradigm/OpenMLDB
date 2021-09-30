@@ -1016,14 +1016,14 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
     int replica_num = create_node->GetReplicaNum();
     if (replica_num <= 0) {
         status->msg = "CREATE common: replica_num should be bigger than 0";
-        status->code = hybridse::common::kSqlError;
+        status->code = hybridse::common::kUnsupportSql;
         return false;
     }
     table->set_replica_num(static_cast<uint32_t>(replica_num));
     int partition_num = create_node->GetPartitionNum();
     if (partition_num <= 0) {
         status->msg = "CREATE common: partition_num should be greater than 0";
-        status->code = hybridse::common::kSqlError;
+        status->code = hybridse::common::kUnsupportSql;
         return false;
     }
     table->set_partition_num(create_node->GetPartitionNum());
@@ -1036,7 +1036,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
                 ::openmldb::common::ColumnDesc* column_desc = table->add_column_desc();
                 if (column_names.find(column_desc->name()) != column_names.end()) {
                     status->msg = "CREATE common: COLUMN NAME " + column_def->GetColumnName() + " duplicate";
-                    status->code = hybridse::common::kSqlError;
+                    status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
                 column_desc->set_name(column_def->GetColumnName());
@@ -1073,7 +1073,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
                     default: {
                         status->msg = "CREATE common: column type " +
                                       hybridse::node::DataTypeName(column_def->GetColumnType()) + " is not supported";
-                        status->code = hybridse::common::kSqlError;
+                        status->code = hybridse::common::kUnsupportSql;
                         return false;
                     }
                 }
@@ -1095,9 +1095,10 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
                 index_name = PlanAPI::GenerateName("INDEX", table->column_key_size());
                 if (index_names.find(index_name) != index_names.end()) {
                     status->msg = "CREATE common: INDEX NAME " + index_name + " duplicate";
-                    status->code = hybridse::common::kSqlError;
+                    status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
+
                 index_names.insert(index_name);
                 column_index->SetName(index_name);
 
@@ -1114,14 +1115,14 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
             default: {
                 status->msg = "can not support " + hybridse::node::NameOfSqlNodeType(column_desc->GetType()) +
                               " when CREATE TABLE";
-                status->code = hybridse::common::kSqlError;
+                status->code = hybridse::common::kUnsupportSql;
                 return false;
             }
         }
     }
     if (no_ts_cnt > 0 && no_ts_cnt != table->column_key_size()) {
         status->msg = "CREATE common: need to set ts col";
-        status->code = hybridse::common::kSqlError;
+        status->code = hybridse::common::kUnsupportSql;
         return false;
     }
     if (!distribution_list.empty()) {
@@ -1129,7 +1130,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
             status->msg =
                 "CREATE common: "
                 "replica_num should equal to partition meta size";
-            status->code = hybridse::common::kSqlError;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         ::openmldb::nameserver::TablePartition* table_partition = table->add_table_partition();
@@ -1144,7 +1145,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
                         status->msg =
                             "CREATE common: "
                             "partition meta endpoint duplicate";
-                        status->code = hybridse::common::kSqlError;
+                        status->code = hybridse::common::kUnsupportSql;
                         return false;
                     }
                     ep_vec.push_back(ep);
@@ -1157,7 +1158,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
                     } else {
                         status->msg = "CREATE common: role_type " +
                                       hybridse::node::RoleTypeName(p_meta_node->GetRoleType()) + " not support";
-                        status->code = hybridse::common::kSqlError;
+                        status->code = hybridse::common::kUnsupportSql;
                         return false;
                     }
                     break;
@@ -1165,7 +1166,7 @@ bool NsClient::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node
                 default: {
                     status->msg = "can not support " + hybridse::node::NameOfSqlNodeType(partition_meta->GetType()) +
                                   " when CREATE TABLE 2";
-                    status->code = hybridse::common::kSqlError;
+                    status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
             }

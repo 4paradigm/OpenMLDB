@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_VM_JIT_RUNTIME_H_
-#define SRC_VM_JIT_RUNTIME_H_
+#ifndef HYBRIDSE_SRC_VM_JIT_RUNTIME_H_
+#define HYBRIDSE_SRC_VM_JIT_RUNTIME_H_
 
 #include <list>
 
@@ -65,4 +65,4 @@ class JitRuntime {
 
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_VM_JIT_RUNTIME_H_
+#endif  // HYBRIDSE_SRC_VM_JIT_RUNTIME_H_

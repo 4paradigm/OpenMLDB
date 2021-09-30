@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_PASSES_RESOLVE_FN_AND_ATTRS_H_
-#define SRC_PASSES_RESOLVE_FN_AND_ATTRS_H_
+#ifndef HYBRIDSE_SRC_PASSES_RESOLVE_FN_AND_ATTRS_H_
+#define HYBRIDSE_SRC_PASSES_RESOLVE_FN_AND_ATTRS_H_
 
 #include <string>
 #include <unordered_map>
@@ -70,4 +70,4 @@ class ResolveFnAndAttrs : public ExprPass {
 
 }  // namespace passes
 }  // namespace hybridse
-#endif  // SRC_PASSES_RESOLVE_FN_AND_ATTRS_H_
+#endif  // HYBRIDSE_SRC_PASSES_RESOLVE_FN_AND_ATTRS_H_

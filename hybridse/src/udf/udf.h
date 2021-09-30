@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_UDF_UDF_H_
-#define SRC_UDF_UDF_H_
+#ifndef HYBRIDSE_SRC_UDF_UDF_H_
+#define HYBRIDSE_SRC_UDF_UDF_H_
 #include <stdint.h>
 #include <string>
 #include <tuple>
@@ -281,4 +281,4 @@ void RegisterNativeUdfToModule();
 }  // namespace udf
 }  // namespace hybridse
 
-#endif  // SRC_UDF_UDF_H_
+#endif  // HYBRIDSE_SRC_UDF_UDF_H_

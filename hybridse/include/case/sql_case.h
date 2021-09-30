@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_CASE_SQL_CASE_H_
-#define INCLUDE_CASE_SQL_CASE_H_
+#ifndef HYBRIDSE_INCLUDE_CASE_SQL_CASE_H_
+#define HYBRIDSE_INCLUDE_CASE_SQL_CASE_H_
 #include <vm/catalog.h>
 #include <yaml-cpp/node/node.h>
 #include <yaml-cpp/yaml.h>
@@ -321,4 +321,4 @@ void InitCases(std::string yaml_path, std::vector<SqlCase>& cases, // NOLINT
                const std::vector<std::string>& filters);
 }  // namespace sqlcase
 }  // namespace hybridse
-#endif  // INCLUDE_CASE_SQL_CASE_H_
+#endif  // HYBRIDSE_INCLUDE_CASE_SQL_CASE_H_

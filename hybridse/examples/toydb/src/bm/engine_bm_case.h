@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef EXAMPLES_TOYDB_SRC_BM_ENGINE_BM_CASE_H_
-#define EXAMPLES_TOYDB_SRC_BM_ENGINE_BM_CASE_H_
+#ifndef HYBRIDSE_EXAMPLES_TOYDB_SRC_BM_ENGINE_BM_CASE_H_
+#define HYBRIDSE_EXAMPLES_TOYDB_SRC_BM_ENGINE_BM_CASE_H_
 #include <string>
 #include "benchmark/benchmark.h"
 #include "case/sql_case.h"
@@ -117,4 +117,4 @@ void EngineBenchmarkOnCase(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
 
 }  // namespace bm
 }  // namespace hybridse
-#endif  // EXAMPLES_TOYDB_SRC_BM_ENGINE_BM_CASE_H_
+#endif  // HYBRIDSE_EXAMPLES_TOYDB_SRC_BM_ENGINE_BM_CASE_H_

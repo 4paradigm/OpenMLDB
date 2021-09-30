@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_PASSES_EXPRESSION_SIMPLIFY_H_
-#define SRC_PASSES_EXPRESSION_SIMPLIFY_H_
+#ifndef HYBRIDSE_SRC_PASSES_EXPRESSION_SIMPLIFY_H_
+#define HYBRIDSE_SRC_PASSES_EXPRESSION_SIMPLIFY_H_
 
 #include <map>
 #include <string>
@@ -70,4 +70,4 @@ class ExprSimplifier : public ExprInplaceTransformUp {
 
 }  // namespace passes
 }  // namespace hybridse
-#endif  // SRC_PASSES_EXPRESSION_SIMPLIFY_H_
+#endif  // HYBRIDSE_SRC_PASSES_EXPRESSION_SIMPLIFY_H_

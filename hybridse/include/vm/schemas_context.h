@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_VM_SCHEMAS_CONTEXT_H_
-#define INCLUDE_VM_SCHEMAS_CONTEXT_H_
+#ifndef HYBRIDSE_INCLUDE_VM_SCHEMAS_CONTEXT_H_
+#define HYBRIDSE_INCLUDE_VM_SCHEMAS_CONTEXT_H_
 #include <map>
 #include <set>
 #include <string>
@@ -247,4 +247,4 @@ class SchemasContext {
 }  // namespace vm
 }  // namespace hybridse
 
-#endif  // INCLUDE_VM_SCHEMAS_CONTEXT_H_
+#endif  // HYBRIDSE_INCLUDE_VM_SCHEMAS_CONTEXT_H_

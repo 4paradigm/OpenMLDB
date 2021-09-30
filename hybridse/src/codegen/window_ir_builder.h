@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_WINDOW_IR_BUILDER_H_
-#define SRC_CODEGEN_WINDOW_IR_BUILDER_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_WINDOW_IR_BUILDER_H_
+#define HYBRIDSE_SRC_CODEGEN_WINDOW_IR_BUILDER_H_
 
 #include <map>
 #include <string>
@@ -80,4 +80,4 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
 
 }  // namespace codegen
 }  // namespace hybridse
-#endif  // SRC_CODEGEN_WINDOW_IR_BUILDER_H_
+#endif  // HYBRIDSE_SRC_CODEGEN_WINDOW_IR_BUILDER_H_

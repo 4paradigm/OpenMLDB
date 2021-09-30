@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef EXAMPLES_TOYDB_SRC_STORAGE_TABLE_ITERATOR_H_
-#define EXAMPLES_TOYDB_SRC_STORAGE_TABLE_ITERATOR_H_
+#ifndef HYBRIDSE_EXAMPLES_TOYDB_SRC_STORAGE_TABLE_ITERATOR_H_
+#define HYBRIDSE_EXAMPLES_TOYDB_SRC_STORAGE_TABLE_ITERATOR_H_
 
 #include <memory>
 #include <string>
@@ -155,4 +155,4 @@ class FullTableIterator : public ConstIterator<uint64_t, Row> {
 }  // namespace storage
 }  // namespace hybridse
 
-#endif  // EXAMPLES_TOYDB_SRC_STORAGE_TABLE_ITERATOR_H_
+#endif  // HYBRIDSE_EXAMPLES_TOYDB_SRC_STORAGE_TABLE_ITERATOR_H_

@@ -17,8 +17,8 @@
 #include "base/fe_object.h"
 #include "base/fe_status.h"
 
-#ifndef INCLUDE_PASSES_PASS_BASE_H_
-#define INCLUDE_PASSES_PASS_BASE_H_
+#ifndef HYBRIDSE_INCLUDE_PASSES_PASS_BASE_H_
+#define HYBRIDSE_INCLUDE_PASSES_PASS_BASE_H_
 
 namespace hybridse {
 namespace passes {
@@ -34,4 +34,4 @@ class PassBase : public base::FeBaseObject {
 
 }  // namespace passes
 }  // namespace hybridse
-#endif  // INCLUDE_PASSES_PASS_BASE_H_
+#endif  // HYBRIDSE_INCLUDE_PASSES_PASS_BASE_H_

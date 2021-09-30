@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef INCLUDE_CODEC_ROW_ITERATOR_H_
-#define INCLUDE_CODEC_ROW_ITERATOR_H_
+#ifndef HYBRIDSE_INCLUDE_CODEC_ROW_ITERATOR_H_
+#define HYBRIDSE_INCLUDE_CODEC_ROW_ITERATOR_H_
 
 #include <memory>
 #include <string>
@@ -82,4 +82,4 @@ class WindowIterator {
 }  // namespace codec
 }  // namespace hybridse
 
-#endif  // INCLUDE_CODEC_ROW_ITERATOR_H_
+#endif  // HYBRIDSE_INCLUDE_CODEC_ROW_ITERATOR_H_

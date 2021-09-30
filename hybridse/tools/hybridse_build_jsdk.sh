@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/bash
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#
-# micro_bench.sh
-PWD=$(pwd)
-export JAVA_HOME="${PWD}/thirdparty/jdk1.8.0_141"
-export PATH="${PWD}/thirdparty/bin:$JAVA_HOME/bin:${PWD}/thirdparty/apache-maven-3.6.3/bin:$PATH"
+set -eE
 
-mkdir -p build && cd build || exit
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCOVERAGE_ENABLE=OFF -DTESTING_ENABLE=OFF -DBENCHMARK_ENABLE=ON
-make -j16 toydb_bm
+# goto toplevel directory
+cd "$(dirname "$0")/.."
 
+# install thirdparty hybrise
+HYBRIDSE_THIRDPARTY="$(pwd)/thirdparty"
+../steps/setup_thirdparty.sh "${HYBRIDSE_THIRDPARTY}"
 
+if uname -a | grep -q Darwin; then
+    # in case coreutils not install on mac
+    alias nproc='sysctl -n hw.logicalcpu'
+fi
+
+rm -rf build
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DJAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF -DPYSDK_ENABLE=OFF -DEXAMPLES_ENABLE=OFF
+make -j"$(nproc)"

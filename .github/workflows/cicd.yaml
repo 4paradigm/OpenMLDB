@@ -11,7 +11,7 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  HYBRIDSE_SOURCE: 
+  HYBRIDSE_SOURCE:
 
 jobs:
   build_and_cpp_ut:
@@ -115,12 +115,12 @@ jobs:
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
 
-      - name: run jdbc smoke test
+      - name: run java modules smoke test
         run: |
           sh steps/ut_zookeeper.sh start
           cd onebox && sh start_onebox.sh && cd -
           cd java
-          mvn test -Dscalatest.skip=true
+          mvn test
           cd -
           cd onebox && sh stop_all.sh && cd -
           sh steps/ut_zookeeper.sh stop
