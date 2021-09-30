@@ -29,7 +29,8 @@ object ConcatJoinPlan {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def gen(ctx: PlanContext, physicalNode: PhysicalJoinNode, left: SparkInstance, right: SparkInstance): SparkInstance = {
+  def gen(ctx: PlanContext, physicalNode: PhysicalJoinNode, left: SparkInstance,
+          right: SparkInstance): SparkInstance = {
     // Check join type
     val joinType = physicalNode.join().join_type()
     if (joinType != JoinType.kJoinTypeConcat) {

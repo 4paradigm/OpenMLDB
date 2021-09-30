@@ -90,8 +90,10 @@ object JoinPlan {
 
       val keyNum = leftKeys.GetChildNum
       for (i <- 0 until keyNum) {
-        val leftColumn = SparkColumnUtil.resolveExprNodeToColumn(leftKeys.GetChild(i), physicalNode.GetProducer(0), leftDf)
-        val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), physicalNode.GetProducer(1), rightDf)
+        val leftColumn = SparkColumnUtil.
+          resolveExprNodeToColumn(leftKeys.GetChild(i), physicalNode.GetProducer(0), leftDf)
+        val rightColumn = SparkColumnUtil.
+          resolveExprNodeToColumn(rightKeys.GetChild(i), physicalNode.GetProducer(1), rightDf)
         joinConditions += (leftColumn === rightColumn)
       }
     }

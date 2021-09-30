@@ -41,8 +41,10 @@ object FilterPlan {
 
       val keyNum = leftKeys.GetChildNum
       for (i <- 0 until keyNum) {
-        val leftColumn = SparkColumnUtil.resolveExprNodeToColumn(leftKeys.GetChild(i), physicalNode.GetProducer(0), inputDf)
-        val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), physicalNode.GetProducer(0), inputDf)
+        val leftColumn = SparkColumnUtil
+          .resolveExprNodeToColumn(leftKeys.GetChild(i), physicalNode.GetProducer(0), inputDf)
+        val rightColumn = SparkColumnUtil
+          .resolveExprNodeToColumn(rightKeys.GetChild(i), physicalNode.GetProducer(0), inputDf)
         // TODO: Add tests to check null equality in Spark and HybridSE core
         outputDf = outputDf.where(leftColumn === rightColumn)
       }
