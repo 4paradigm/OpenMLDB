@@ -16,17 +16,18 @@
 
 package com._4paradigm.openmldb.batch.nodes
 
-import com._4paradigm.hybridse.vm.PhysicalRenameNode
+import com._4paradigm.hybridse.vm.{PhysicalOpNode, PhysicalRenameNode}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 
 
 object RenamePlan {
 
-  def gen(ctx: PlanContext, node: PhysicalRenameNode, input: SparkInstance): SparkInstance = {
+  def gen(ctx: PlanContext, physicalNode: PhysicalRenameNode,
+          input: SparkInstance, physicalOpNode: PhysicalOpNode): SparkInstance = {
     // Return the same dataframe for child node
-    val outputDf = input.getDfConsideringIndex(ctx, node.GetNodeId())
+    val outputDf = input.getDfConsideringIndex(ctx, physicalNode.GetNodeId())
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), outputDf, physicalOpNode)
   }
 
 }

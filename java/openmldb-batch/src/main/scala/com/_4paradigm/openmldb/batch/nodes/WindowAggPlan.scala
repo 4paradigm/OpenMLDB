@@ -16,10 +16,9 @@
 
 package com._4paradigm.openmldb.batch.nodes
 
-import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
-import com._4paradigm.openmldb.batch.utils.{
-  AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SkewDataFrameUtils, SparkUtil
-}
+import com._4paradigm.hybridse.vm.{PhysicalOpNode, PhysicalWindowAggrerationNode}
+import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil,
+  PhysicalNodeUtil, SkewDataFrameUtils, SparkUtil}
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
@@ -48,7 +47,8 @@ object WindowAggPlan {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   /** The entrance function to generate Spark dataframe from window agg physical node. */
-  def gen(ctx: PlanContext, physicalNode: PhysicalWindowAggrerationNode, inputTable: SparkInstance): SparkInstance = {
+  def gen(ctx: PlanContext, physicalNode: PhysicalWindowAggrerationNode,
+          inputTable: SparkInstance, physicalOpNode: PhysicalOpNode): SparkInstance = {
     // Check if we should support window with union or not
     val isWindowWithUnion = physicalNode.window_unions().GetSize().toInt > 0
     // Check if we should keep the index column
@@ -120,7 +120,7 @@ object WindowAggPlan {
       ctx.getSparkSession.createDataFrame(outputRdd, outputSchema)
     }
 
-    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), outputDf, physicalOpNode)
   }
 
 

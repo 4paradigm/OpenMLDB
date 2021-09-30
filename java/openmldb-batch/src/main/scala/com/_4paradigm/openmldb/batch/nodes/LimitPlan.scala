@@ -16,16 +16,17 @@
 
 package com._4paradigm.openmldb.batch.nodes
 
-import com._4paradigm.hybridse.vm.PhysicalLimitNode
+import com._4paradigm.hybridse.vm.{PhysicalLimitNode, PhysicalOpNode}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 
 
 object LimitPlan {
 
-  def gen(ctx: PlanContext, node: PhysicalLimitNode, input: SparkInstance): SparkInstance = {
-    val outputDf = input.getDfConsideringIndex(ctx, node.GetNodeId()).limit(node.GetLimitCnt())
+  def gen(ctx: PlanContext, physicalNode: PhysicalLimitNode,
+          input: SparkInstance, physicalOpNode: PhysicalOpNode): SparkInstance = {
+    val outputDf = input.getDfConsideringIndex(ctx, physicalNode.GetNodeId()).limit(physicalNode.GetLimitCnt())
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), outputDf, physicalOpNode)
   }
 
 }

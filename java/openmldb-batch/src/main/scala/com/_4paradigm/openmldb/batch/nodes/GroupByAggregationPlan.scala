@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.codec.{Row => NativeRow}
 import com._4paradigm.hybridse.sdk.JitManager
-import com._4paradigm.hybridse.vm.{CoreAPI, GroupbyInterface, PhysicalGroupAggrerationNode}
+import com._4paradigm.hybridse.vm.{CoreAPI, GroupbyInterface, PhysicalGroupAggrerationNode, PhysicalOpNode}
 import com._4paradigm.openmldb.batch.nodes.RowProjectPlan.ProjectConfig
 import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
@@ -33,19 +33,20 @@ object GroupByAggregationPlan {
 
   val logger = LoggerFactory.getLogger(this.getClass)
 
-  def gen(ctx: PlanContext, node: PhysicalGroupAggrerationNode, input: SparkInstance): SparkInstance = {
-    val inputDf = input.getDfConsideringIndex(ctx, node.GetNodeId())
+  def gen(ctx: PlanContext, physicalNode: PhysicalGroupAggrerationNode,
+          input: SparkInstance, physicalOpNode: PhysicalOpNode): SparkInstance = {
+    val inputDf = input.getDfConsideringIndex(ctx, physicalNode.GetNodeId())
 
     // Check if we should keep the index column
-    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
+    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, physicalNode.GetNodeId())
 
     // Get parition keys
-    val groupByExprs = node.getGroup_.keys()
+    val groupByExprs = physicalNode.getGroup_.keys()
     val groupByCols = mutable.ArrayBuffer[Column]()
     val groupIdxs = mutable.ArrayBuffer[Int]()
     for (i <- 0 until groupByExprs.GetChildNum()) {
       val expr = groupByExprs.GetChild(i)
-      val colIdx = SparkColumnUtil.resolveColumnIndex(expr, node.GetProducer(0))
+      val colIdx = SparkColumnUtil.resolveColumnIndex(expr, physicalNode.GetProducer(0))
       groupIdxs += colIdx
       groupByCols += SparkColumnUtil.getColumnFromIndex(inputDf, colIdx)
     }
@@ -54,21 +55,21 @@ object GroupByAggregationPlan {
     val sortedInputDf = inputDf.sortWithinPartitions(groupByCols:_*)
 
     // Get schema info
-    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node.GetProducer(0))
-    val inputSchema = HybridseUtil.getSparkSchema(node.GetProducer(0).GetOutputSchema())
-    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node)
+    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(physicalNode.GetProducer(0))
+    val inputSchema = HybridseUtil.getSparkSchema(physicalNode.GetProducer(0).GetOutputSchema())
+    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(physicalNode)
 
     val outputSchema = if (keepIndexColumn) {
-      HybridseUtil.getSparkSchema(node.GetOutputSchema())
-        .add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)
+      HybridseUtil.getSparkSchema(physicalNode.GetOutputSchema())
+        .add(ctx.getIndexInfo(physicalNode.GetNodeId()).indexColumnName, LongType)
     } else {
-      HybridseUtil.getSparkSchema(node.GetOutputSchema())
+      HybridseUtil.getSparkSchema(physicalNode.GetOutputSchema())
     }
 
     // Wrap Spark closure
-    val limitCnt = node.GetLimitCnt
+    val limitCnt = physicalNode.GetLimitCnt
     val projectConfig = ProjectConfig(
-      functionName = node.project().fn_info().fn_name(),
+      functionName = physicalNode.project().fn_info().fn_name(),
       moduleTag = ctx.getTag,
       moduleNoneBroadcast = ctx.getSerializableModuleBuffer,
       inputSchemaSlices = inputSchemaSlices,
@@ -160,7 +161,7 @@ object GroupByAggregationPlan {
         }
 
         groupbyInterface.delete()
-        grouopNativeRows.map(nativeRow => nativeRow.delete())
+        grouopNativeRows.foreach(nativeRow => nativeRow.delete())
         grouopNativeRows.clear()
       }
 
@@ -169,7 +170,7 @@ object GroupByAggregationPlan {
 
     val outputDf = ctx.getSparkSession.createDataFrame(resultRDD, outputSchema)
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), outputDf, physicalOpNode)
   }
 
 }

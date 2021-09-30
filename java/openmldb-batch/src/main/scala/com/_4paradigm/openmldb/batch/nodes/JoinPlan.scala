@@ -21,7 +21,7 @@ import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.codec.RowView
 import com._4paradigm.hybridse.sdk.{HybridSeException, JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.node.{ExprListNode, JoinType}
-import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper, PhysicalJoinNode}
+import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper, PhysicalJoinNode, PhysicalOpNode}
 import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkRowUtil, SparkUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
@@ -36,8 +36,9 @@ object JoinPlan {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def gen(ctx: PlanContext, node: PhysicalJoinNode, left: SparkInstance, right: SparkInstance): SparkInstance = {
-    val joinType = node.join().join_type()
+  def gen(ctx: PlanContext, physicalNode: PhysicalJoinNode, left: SparkInstance,
+          right: SparkInstance, physicalOpNode: PhysicalOpNode): SparkInstance = {
+    val joinType = physicalNode.join().join_type()
     if (joinType != JoinType.kJoinTypeLeft &&
       joinType != JoinType.kJoinTypeLast && joinType != JoinType.kJoinTypeConcat) {
       throw new HybridSeException(s"Join type $joinType not supported")
@@ -45,7 +46,7 @@ object JoinPlan {
 
     // Handle concat join
     if (joinType == JoinType.kJoinTypeConcat) {
-      return ConcatJoinPlan.gen(ctx, node, left, right)
+      return ConcatJoinPlan.gen(ctx, physicalNode, left, right)
     }
 
     val spark = ctx.getSparkSession
@@ -53,12 +54,12 @@ object JoinPlan {
     // TODO: Do not handle dataframe with index because ConcatJoin will not include LastJoin or LeftJoin node
     val rightDf = right.getDf()
 
-    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node)
+    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(physicalNode)
 
     val hasOrderby =
-      ((node.join.right_sort != null) && (node.join.right_sort.orders != null)
-        && (node.join.right_sort.orders.getOrder_expressions_ != null)
-        && (node.join.right_sort.orders.getOrder_expressions_.GetChildNum() != 0))
+      ((physicalNode.join.right_sort != null) && (physicalNode.join.right_sort.orders != null)
+        && (physicalNode.join.right_sort.orders.getOrder_expressions_ != null)
+        && (physicalNode.join.right_sort.orders.getOrder_expressions_.GetChildNum() != 0))
 
     // Check if we can use native last join
     val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, hasOrderby)
@@ -83,14 +84,14 @@ object JoinPlan {
     val joinConditions = mutable.ArrayBuffer[Column]()
 
     // Handle equal condiction
-    if (node.join().left_key() != null && node.join().left_key().getKeys_ != null) {
-      val leftKeys: ExprListNode = node.join().left_key().getKeys_
-      val rightKeys: ExprListNode = node.join().right_key().getKeys_
+    if (physicalNode.join().left_key() != null && physicalNode.join().left_key().getKeys_ != null) {
+      val leftKeys: ExprListNode = physicalNode.join().left_key().getKeys_
+      val rightKeys: ExprListNode = physicalNode.join().right_key().getKeys_
 
       val keyNum = leftKeys.GetChildNum
       for (i <- 0 until keyNum) {
-        val leftColumn = SparkColumnUtil.resolveExprNodeToColumn(leftKeys.GetChild(i), node.GetProducer(0), leftDf)
-        val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), node.GetProducer(1), rightDf)
+        val leftColumn = SparkColumnUtil.resolveExprNodeToColumn(leftKeys.GetChild(i), physicalNode.GetProducer(0), leftDf)
+        val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), physicalNode.GetProducer(1), rightDf)
         joinConditions += (leftColumn === rightColumn)
       }
     }
@@ -103,7 +104,7 @@ object JoinPlan {
       leftDf.schema.size
     }
 
-    val filter = node.join().condition()
+    val filter = physicalNode.join().condition()
     // extra conditions
     if (filter.condition() != null) {
       val regName = "SPARKFE_JOIN_CONDITION_" + filter.fn_info().fn_name()
@@ -143,16 +144,16 @@ object JoinPlan {
     } else if (joinType == JoinType.kJoinTypeLast) {
       // Resolve order by column index
       if (hasOrderby) {
-        val orderExpr = node.join.right_sort.orders.GetOrderExpression(0)
-        val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
+        val orderExpr = physicalNode.join.right_sort.orders.GetOrderExpression(0)
+        val planLeftSize = physicalNode.GetProducer(0).GetOutputSchema().size()
         // Get the time column index from right table
-        val timeColIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, node.GetProducer(1))
+        val timeColIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, physicalNode.GetProducer(1))
         assert(timeColIdx >= 0)
 
         val timeIdxInJoined = timeColIdx + leftDf.schema.size
         val timeColType = rightDf.schema(timeColIdx).dataType
 
-        val isAsc = node.join.right_sort.is_asc
+        val isAsc = physicalNode.join.right_sort.is_asc
 
         // Disable scalastyle for importing Spark implicits
         // scalastyle:off
@@ -197,7 +198,7 @@ object JoinPlan {
       null
     }
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), result, physicalOpNode)
   }
 
 

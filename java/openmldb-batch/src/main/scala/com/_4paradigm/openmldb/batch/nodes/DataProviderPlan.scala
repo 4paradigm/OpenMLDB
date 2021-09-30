@@ -17,22 +17,22 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.sdk.HybridSeException
-import com._4paradigm.hybridse.vm.PhysicalDataProviderNode
+import com._4paradigm.hybridse.vm.{PhysicalDataProviderNode, PhysicalOpNode}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 
 
 object DataProviderPlan {
 
-  def gen(ctx: PlanContext, node: PhysicalDataProviderNode, inputs: Seq[SparkInstance]): SparkInstance = {
-    val tableName = node.GetName()
+  def gen(ctx: PlanContext, physicalNode: PhysicalDataProviderNode, physicalOpNode: PhysicalOpNode): SparkInstance = {
+    val tableName = physicalNode.GetName()
     val df = ctx.getDataFrame(tableName).getOrElse {
       throw new HybridSeException(s"Input table $tableName not found")
     }
 
     // If limit has been set
-    val outputDf = if (node.GetLimitCnt() > 0) df.limit(node.GetLimitCnt()) else df
+    val outputDf = if (physicalNode.GetLimitCnt() > 0) df.limit(physicalNode.GetLimitCnt()) else df
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), outputDf, physicalOpNode)
   }
 
 }

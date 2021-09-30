@@ -78,7 +78,6 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
 
       val root = engine.getPlan
       logger.info("Get HybridSE physical plan: ")
-      root.Print()
 
       if (!config.physicalPlanGraphvizPath.equals("")) {
         logger.info("Draw the physical plan and save to " + config.physicalPlanGraphvizPath)
@@ -211,33 +210,33 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     val opType = root.GetOpType()
     val outputSpatkInstance = opType match {
       case PhysicalOpType.kPhysicalOpDataProvider =>
-        DataProviderPlan.gen(ctx, PhysicalDataProviderNode.CastFrom(root), children)
+        DataProviderPlan.gen(ctx, PhysicalDataProviderNode.CastFrom(root), root)
       case PhysicalOpType.kPhysicalOpSimpleProject =>
-        SimpleProjectPlan.gen(ctx, PhysicalSimpleProjectNode.CastFrom(root), children)
+        SimpleProjectPlan.gen(ctx, PhysicalSimpleProjectNode.CastFrom(root), children, root)
       case PhysicalOpType.kPhysicalOpConstProject =>
-        ConstProjectPlan.gen(ctx, PhysicalConstProjectNode.CastFrom(root))
+        ConstProjectPlan.gen(ctx, PhysicalConstProjectNode.CastFrom(root), root)
       case PhysicalOpType.kPhysicalOpProject =>
         val projectNode = PhysicalProjectNode.CastFrom(root)
         projectNode.getProject_type_ match {
           case ProjectType.kTableProject =>
-            RowProjectPlan.gen(ctx, PhysicalTableProjectNode.CastFrom(projectNode), children.head)
+            RowProjectPlan.gen(ctx, PhysicalTableProjectNode.CastFrom(projectNode), children.head, root)
           case ProjectType.kWindowAggregation =>
-            WindowAggPlan.gen(ctx, PhysicalWindowAggrerationNode.CastFrom(projectNode), children.head)
+            WindowAggPlan.gen(ctx, PhysicalWindowAggrerationNode.CastFrom(projectNode), children.head, root)
           case ProjectType.kGroupAggregation =>
-            GroupByAggregationPlan.gen(ctx, PhysicalGroupAggrerationNode.CastFrom(projectNode), children.head)
+            GroupByAggregationPlan.gen(ctx, PhysicalGroupAggrerationNode.CastFrom(projectNode), children.head, root)
           case _ => throw new UnsupportedHybridSeException(
             s"Project type ${projectNode.getProject_type_} not supported")
         }
       case PhysicalOpType.kPhysicalOpGroupBy =>
-        GroupByPlan.gen(ctx, PhysicalGroupNode.CastFrom(root), children.head)
+        GroupByPlan.gen(ctx, PhysicalGroupNode.CastFrom(root), children.head, root)
       case PhysicalOpType.kPhysicalOpJoin =>
-        JoinPlan.gen(ctx, PhysicalJoinNode.CastFrom(root), children.head, children.last)
+        JoinPlan.gen(ctx, PhysicalJoinNode.CastFrom(root), children.head, children.last, root)
       case PhysicalOpType.kPhysicalOpLimit =>
-        LimitPlan.gen(ctx, PhysicalLimitNode.CastFrom(root), children.head)
+        LimitPlan.gen(ctx, PhysicalLimitNode.CastFrom(root), children.head, root)
       case PhysicalOpType.kPhysicalOpRename =>
-        RenamePlan.gen(ctx, PhysicalRenameNode.CastFrom(root), children.head)
+        RenamePlan.gen(ctx, PhysicalRenameNode.CastFrom(root), children.head, root)
       case PhysicalOpType.kPhysicalOpSortBy =>
-        SortByPlan.gen(ctx, PhysicalSortNode.CastFrom(root), children.head)
+        SortByPlan.gen(ctx, PhysicalSortNode.CastFrom(root), children.head, root)
       //case PhysicalOpType.kPhysicalOpFilter =>
       //  FilterPlan.gen(ctx, PhysicalFilterNode.CastFrom(root), children.head)
       case _ =>
@@ -271,7 +270,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
         fileSystem.exists(new Path(cacheDataPath + "/_SUCCESS"))
       val childResult = if (existCache) {
         logger.info(s"Load cached $key: $cacheDataPath")
-        SparkInstance.fromDataFrame(sess.read.parquet(cacheDataPath))
+        SparkInstance.fromDataFrame(sess.read.parquet(cacheDataPath), root)
       } else if (child.GetOpType() == PhysicalOpType.kPhysicalOpDataProvider) {
         visitNode(child, ctx, Array())
       } else {
@@ -289,7 +288,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     rootResult.getDf().write.parquet(cacheDataPath)
 
     logger.info(s"Reload $rootKey: $cacheDataPath")
-    SparkInstance.fromDataFrame(sess.read.parquet(cacheDataPath))
+    SparkInstance.fromDataFrame(sess.read.parquet(cacheDataPath), root)
   }
 
   private def withSQLEngine[T](sql: String, db: Database, config: OpenmldbBatchConfig)(body: SqlEngine => T): T = {
@@ -312,10 +311,6 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
       engine = new SqlEngine(sql, db, engineOptions)
       val res = body(engine)
       res
-    } finally {
-      if (engine != null) {
-        engine.close()
-      }
     }
   }
 }

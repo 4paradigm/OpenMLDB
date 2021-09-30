@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.batch.nodes
 
-import com._4paradigm.hybridse.vm.PhysicalGroupNode
+import com._4paradigm.hybridse.vm.{PhysicalGroupNode, PhysicalOpNode}
 import com._4paradigm.openmldb.batch.utils.SparkColumnUtil
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import org.apache.spark.sql.Column
@@ -26,15 +26,16 @@ import scala.collection.mutable
 
 object GroupByPlan {
 
-  def gen(ctx: PlanContext, node: PhysicalGroupNode, input: SparkInstance): SparkInstance = {
-    val inputDf = input.getDfConsideringIndex(ctx, node.GetNodeId())
+  def gen(ctx: PlanContext, physicalNode: PhysicalGroupNode,
+          input: SparkInstance, physicalOpNode: PhysicalOpNode): SparkInstance = {
+    val inputDf = input.getDfConsideringIndex(ctx, physicalNode.GetNodeId())
 
-    val groupByExprs = node.group().keys()
+    val groupByExprs = physicalNode.group().keys()
     val groupByCols = mutable.ArrayBuffer[Column]()
     for (i <- 0 until groupByExprs.GetChildNum()) {
       val expr = groupByExprs.GetChild(i)
 
-      val colIdx = SparkColumnUtil.resolveColumnIndex(expr, node.GetProducer(0))
+      val colIdx = SparkColumnUtil.resolveColumnIndex(expr, physicalNode.GetProducer(0))
       groupByCols += SparkColumnUtil.getColumnFromIndex(inputDf, colIdx)
     }
 
@@ -45,7 +46,7 @@ object GroupByPlan {
       inputDf.repartition(groupByCols: _*)
     }
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), groupedDf)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), groupedDf, physicalOpNode)
   }
 
 }

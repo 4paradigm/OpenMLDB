@@ -29,14 +29,14 @@ object ConcatJoinPlan {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def gen(ctx: PlanContext, node: PhysicalJoinNode, left: SparkInstance, right: SparkInstance): SparkInstance = {
+  def gen(ctx: PlanContext, physicalNode: PhysicalJoinNode, left: SparkInstance, right: SparkInstance): SparkInstance = {
     // Check join type
-    val joinType = node.join().join_type()
+    val joinType = physicalNode.join().join_type()
     if (joinType != JoinType.kJoinTypeConcat) {
       throw new HybridSeException(s"Concat join type $joinType not supported")
     }
 
-    val indexName = ctx.getIndexInfo(node.GetNodeId()).indexColumnName
+    val indexName = ctx.getIndexInfo(physicalNode.GetNodeId()).indexColumnName
 
     // Note that this is exception to use "getDfWithIndex" instead of "getSparkDfConsideringIndex"
     // because ConcatJoin has not index flag but request input dataframe with index
@@ -60,7 +60,7 @@ object ConcatJoinPlan {
       case _ => throw new HybridSeException("Unsupported concat join join type: " + joinType)
     }
 
-    val nodeIndexType = ctx.getIndexInfo(node.GetNodeId()).nodeIndexType
+    val nodeIndexType = ctx.getIndexInfo(physicalNode.GetNodeId()).nodeIndexType
 
     // Drop the index column, this will drop two columns with the same index name
     val outputDf = nodeIndexType match {
@@ -75,7 +75,7 @@ object ConcatJoinPlan {
       case _ => throw new HybridSeException("Handle unsupported concat join node index type: %s".format(nodeIndexType))
     }
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), outputDf, physicalNode)
   }
 
 }

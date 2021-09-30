@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.node.{ConstNode, ExprType, DataType => HybridseDataType}
-import com._4paradigm.hybridse.vm.PhysicalConstProjectNode
+import com._4paradigm.hybridse.vm.{PhysicalConstProjectNode, PhysicalOpNode}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.batch.utils.HybridseUtil
 import org.apache.spark.sql.Column
@@ -31,20 +31,20 @@ import scala.collection.JavaConverters.asScalaBufferConverter
 
 object ConstProjectPlan {
 
-  def gen(ctx: PlanContext, node: PhysicalConstProjectNode): SparkInstance = {
+  def gen(ctx: PlanContext, physicalNode: PhysicalConstProjectNode, physicalOpNode: PhysicalOpNode): SparkInstance = {
 
     // Get the output column names from output schema
-    val outputColNameList = node.GetOutputSchema().asScala.map(col =>
+    val outputColNameList = physicalNode.GetOutputSchema().asScala.map(col =>
       col.getName
     ).toList
 
-    val outputColTypeList = node.GetOutputSchema().asScala.map(col =>
+    val outputColTypeList = physicalNode.GetOutputSchema().asScala.map(col =>
       HybridseUtil.getInnerTypeFromSchemaType(col.getType)
     ).toList
 
     // Get the select columns
-    val selectColList = (0 until node.project().size.toInt).map(i => {
-      val expr = node.project().GetExpr(i)
+    val selectColList = (0 until physicalNode.project().size.toInt).map(i => {
+      val expr = physicalNode.project().GetExpr(i)
       expr.GetExprType() match {
         case ExprType.kExprPrimary =>
           val constNode = ConstNode.CastFrom(expr)
@@ -65,7 +65,7 @@ object ConstProjectPlan {
     // Use Spark DataFrame to select columns
     val result = ctx.getSparkSession.emptyDataFrame.select(selectColList: _*)
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), result, physicalOpNode)
   }
 
   // Generate Spark column from const value

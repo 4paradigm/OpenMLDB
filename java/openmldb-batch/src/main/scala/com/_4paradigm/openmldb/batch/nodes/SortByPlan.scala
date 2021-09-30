@@ -16,16 +16,17 @@
 
 package com._4paradigm.openmldb.batch.nodes
 
-import com._4paradigm.hybridse.vm.PhysicalSortNode
+import com._4paradigm.hybridse.vm.{PhysicalOpNode, PhysicalSortNode}
 import com._4paradigm.openmldb.batch.utils.PhysicalNodeUtil
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 
 object SortByPlan {
-  def gen(ctx: PlanContext, node: PhysicalSortNode, input: SparkInstance): SparkInstance = {
+  def gen(ctx: PlanContext, physicalNode: PhysicalSortNode,
+          input: SparkInstance, physicalOpNode: PhysicalOpNode): SparkInstance = {
 
-    val dfWithIndex = input.getDfConsideringIndex(ctx, node.GetNodeId())
-    val outputDf = dfWithIndex.sort(PhysicalNodeUtil.getOrderbyColumns(node, dfWithIndex): _*)
+    val dfWithIndex = input.getDfConsideringIndex(ctx, physicalNode.GetNodeId())
+    val outputDf = dfWithIndex.sort(PhysicalNodeUtil.getOrderbyColumns(physicalNode, dfWithIndex): _*)
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), outputDf, physicalOpNode)
   }
 }

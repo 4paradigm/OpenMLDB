@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.sdk.{JitManager, SerializableByteBuffer}
-import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalTableProjectNode}
+import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalOpNode, PhysicalTableProjectNode}
 import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, SparkUtil, UnsafeRowUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
 import org.apache.spark.sql.Row
@@ -35,17 +35,18 @@ object RowProjectPlan {
    *
    * There is one input table and output one table after window aggregation.
    */
-  def gen(ctx: PlanContext, node: PhysicalTableProjectNode, inputTable: SparkInstance): SparkInstance = {
+  def gen(ctx: PlanContext, physicalNode: PhysicalTableProjectNode,
+          inputTable: SparkInstance, physicalOpNode: PhysicalOpNode): SparkInstance = {
 
     // Check if we should keep the index column
-    val isKeepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
+    val isKeepIndexColumn = SparkInstance.keepIndexColumn(ctx, physicalNode.GetNodeId())
 
     // Get schema info from physical node
-    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node.GetProducer(0))
-    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node)
+    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(physicalNode.GetProducer(0))
+    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(physicalNode)
 
     val projectConfig = ProjectConfig(
-      functionName = node.project().fn_info().fn_name(),
+      functionName = physicalNode.project().fn_info().fn_name(),
       moduleTag = ctx.getTag,
       moduleNoneBroadcast = ctx.getSerializableModuleBuffer,
       keepIndexColumn = isKeepIndexColumn,
@@ -54,18 +55,18 @@ object RowProjectPlan {
     )
 
     val outputSchema = if (isKeepIndexColumn) {
-      HybridseUtil.getSparkSchema(node.GetOutputSchema())
-        .add(ctx.getIndexInfo(node.GetNodeId()).indexColumnName, LongType)
+      HybridseUtil.getSparkSchema(physicalNode.GetOutputSchema())
+        .add(ctx.getIndexInfo(physicalNode.GetNodeId()).indexColumnName, LongType)
     } else {
-      HybridseUtil.getSparkSchema(node.GetOutputSchema())
+      HybridseUtil.getSparkSchema(physicalNode.GetOutputSchema())
     }
 
     // Get Spark DataFrame and limit the number of rows
-    val inputDf = if (node.GetLimitCnt > 0) {
-      inputTable.getDfConsideringIndex(ctx, node.GetNodeId())
-        .limit(node.GetLimitCnt())
+    val inputDf = if (physicalNode.GetLimitCnt > 0) {
+      inputTable.getDfConsideringIndex(ctx, physicalNode.GetNodeId())
+        .limit(physicalNode.GetLimitCnt())
     } else {
-      inputTable.getDfConsideringIndex(ctx, node.GetNodeId())
+      inputTable.getDfConsideringIndex(ctx, physicalNode.GetNodeId())
     }
 
     val hybridseJsdkLibraryPath = ctx.getConf.hybridseJsdkLibraryPath
@@ -166,7 +167,7 @@ object RowProjectPlan {
     }
 
     // Create Spark instance from Spark DataFrame
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), outputDf, physicalOpNode)
   }
 
 

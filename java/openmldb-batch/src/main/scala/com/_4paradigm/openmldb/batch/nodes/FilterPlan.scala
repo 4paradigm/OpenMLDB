@@ -26,23 +26,23 @@ import org.apache.spark.sql.functions
 
 object FilterPlan {
 
-  def gen(ctx: PlanContext, node: PhysicalFilterNode, input: SparkInstance): SparkInstance = {
-    val inputDf = input.getDfConsideringIndex(ctx, node.GetNodeId())
+  def gen(ctx: PlanContext, physicalNode: PhysicalFilterNode, input: SparkInstance): SparkInstance = {
+    val inputDf = input.getDfConsideringIndex(ctx, physicalNode.GetNodeId())
 
     var outputDf = inputDf
 
-    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node)
-    val filter = node.filter().condition()
+    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(physicalNode)
+    val filter = physicalNode.filter().condition()
 
     // Handle equal condiction
-    if (node.filter().left_key() != null && node.filter().left_key().getKeys_ != null) {
-      val leftKeys: ExprListNode = node.filter().left_key().getKeys_
-      val rightKeys: ExprListNode = node.filter().right_key().getKeys_
+    if (physicalNode.filter().left_key() != null && physicalNode.filter().left_key().getKeys_ != null) {
+      val leftKeys: ExprListNode = physicalNode.filter().left_key().getKeys_
+      val rightKeys: ExprListNode = physicalNode.filter().right_key().getKeys_
 
       val keyNum = leftKeys.GetChildNum
       for (i <- 0 until keyNum) {
-        val leftColumn = SparkColumnUtil.resolveExprNodeToColumn(leftKeys.GetChild(i), node.GetProducer(0), inputDf)
-        val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), node.GetProducer(0), inputDf)
+        val leftColumn = SparkColumnUtil.resolveExprNodeToColumn(leftKeys.GetChild(i), physicalNode.GetProducer(0), inputDf)
+        val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), physicalNode.GetProducer(0), inputDf)
         // TODO: Add tests to check null equality in Spark and HybridSE core
         outputDf = outputDf.where(leftColumn === rightColumn)
       }
@@ -50,7 +50,7 @@ object FilterPlan {
 
     // Handle non-equal condiction
     if (filter.condition() != null) {
-      val regName = "SPARKFE_FILTER_CONDITION_" + node.filter().condition().fn_info().fn_name()
+      val regName = "SPARKFE_FILTER_CONDITION_" + physicalNode.filter().condition().fn_info().fn_name()
       val conditionUDF = new JoinConditionUDF(
         functionName = filter.fn_info().fn_name(),
         inputSchemaSlices = inputSchemaSlices,
@@ -68,7 +68,7 @@ object FilterPlan {
       outputDf = outputDf.where(condictionCol)
     }
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), outputDf, physicalNode)
   }
 
 }

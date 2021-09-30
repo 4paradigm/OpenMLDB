@@ -17,12 +17,15 @@
 package com._4paradigm.openmldb.batch
 
 import com._4paradigm.hybridse.sdk.HybridSeException
+import com._4paradigm.hybridse.vm.PhysicalOpNode
 import com._4paradigm.openmldb.batch.utils.{NodeIndexType, SparkColumnUtil, SparkUtil}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.StructType
 
 
 class SparkInstance {
+
+  private var physicalOpNode: PhysicalOpNode = _
 
   private var df: DataFrame = _
 
@@ -35,21 +38,23 @@ class SparkInstance {
 
   private var schemaWithIndex: StructType = _
 
-  def this(df: DataFrame) = {
+  def this(df: DataFrame, physicalOpNode: PhysicalOpNode) = {
     this()
     this.df = df
     this.schema = df.schema
+    this.physicalOpNode = physicalOpNode
   }
 
-  def this(df: DataFrame, dfWithIndex: DataFrame) {
+  def this(df: DataFrame, dfWithIndex: DataFrame, physicalOpNode: PhysicalOpNode) {
     this()
     this.df = df
     this.schema = df.schema
     this.dfWithIndex = dfWithIndex
     this.schemaWithIndex = dfWithIndex.schema
+    this.physicalOpNode = physicalOpNode
   }
 
-  def this(df: DataFrame, hasIndex: Boolean) {
+  def this(df: DataFrame, physicalOpNode: PhysicalOpNode, hasIndex: Boolean) {
     this()
     if (hasIndex) {
       this.dfWithIndex = df
@@ -58,6 +63,7 @@ class SparkInstance {
       this.df = df
       this.schema = df.schema
     }
+    this.physicalOpNode = physicalOpNode
   }
 
   def getDf(): DataFrame = {
@@ -100,6 +106,10 @@ class SparkInstance {
     }
   }
 
+  def explain(): Unit= {
+    this.physicalOpNode.Print()
+  }
+
 }
 
 /** The wrapper of Spark dataframe and rdd.
@@ -107,35 +117,36 @@ class SparkInstance {
  * This is useful if want to avoid converting from dataframe to rdd in internal integration.
  */
 object SparkInstance {
-  def fromDataFrame(df: DataFrame): SparkInstance = {
-    new SparkInstance(df)
+  def fromDataFrame(df: DataFrame, physicalOpNode: PhysicalOpNode): SparkInstance = {
+    new SparkInstance(df, physicalOpNode)
   }
 
-  def fromDfWithIndex(dfWithIndex: DataFrame): SparkInstance = {
-    new SparkInstance(dfWithIndex, true)
+  def fromDfWithIndex(dfWithIndex: DataFrame, physicalOpNode: PhysicalOpNode): SparkInstance = {
+    new SparkInstance(dfWithIndex, physicalOpNode, true)
   }
 
-  def fromDfAndIndexedDf(df: DataFrame, dfWithIndex: DataFrame): SparkInstance = {
-    new SparkInstance(df, dfWithIndex)
+  def fromDfAndIndexedDf(df: DataFrame, dfWithIndex: DataFrame, physicalOpNode: PhysicalOpNode): SparkInstance = {
+    new SparkInstance(df, dfWithIndex, physicalOpNode)
   }
 
   // Consider node index info to create SparkInstance
-  def createConsideringIndex(ctx: PlanContext, nodeId: Long, sparkDf: DataFrame): SparkInstance = {
+  def createConsideringIndex(ctx: PlanContext, nodeId: Long, sparkDf: DataFrame,
+                             physicalOpNode: PhysicalOpNode): SparkInstance = {
     if (ctx.hasIndexInfo(nodeId)) {
       val nodeIndexType = ctx.getIndexInfo(nodeId).nodeIndexType
       nodeIndexType match {
-        case NodeIndexType.SourceConcatJoinNode => SparkInstance.fromDataFrame(sparkDf)
-        case NodeIndexType.InternalConcatJoinNode => SparkInstance.fromDfWithIndex(sparkDf)
-        case NodeIndexType.InternalComputeNode => SparkInstance.fromDfWithIndex(sparkDf)
+        case NodeIndexType.SourceConcatJoinNode => SparkInstance.fromDataFrame(sparkDf, physicalOpNode)
+        case NodeIndexType.InternalConcatJoinNode => SparkInstance.fromDfWithIndex(sparkDf, physicalOpNode)
+        case NodeIndexType.InternalComputeNode => SparkInstance.fromDfWithIndex(sparkDf, physicalOpNode)
         case NodeIndexType.DestNode => {
           val outputDfWithIndex = SparkUtil.addIndexColumn(ctx.getSparkSession,
             sparkDf, ctx.getIndexInfo(nodeId).indexColumnName, ctx.getConf.addIndexColumnMethod)
-          SparkInstance.fromDfAndIndexedDf(sparkDf, outputDfWithIndex)
+          SparkInstance.fromDfAndIndexedDf(sparkDf, outputDfWithIndex, physicalOpNode)
         }
         case _ => throw new HybridSeException("Handle unsupported node index type: %s".format(nodeIndexType))
       }
     } else {
-      SparkInstance.fromDataFrame(sparkDf)
+      SparkInstance.fromDataFrame(sparkDf, physicalOpNode)
     }
   }
 

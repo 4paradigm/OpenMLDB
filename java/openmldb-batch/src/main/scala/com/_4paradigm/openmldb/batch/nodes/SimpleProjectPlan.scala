@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.node.{CastExprNode, ConstNode, ExprNode, ExprType, DataType => HybridseDataType}
-import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalSimpleProjectNode}
+import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalOpNode, PhysicalSimpleProjectNode}
 import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import org.apache.spark.sql.{Column, DataFrame}
@@ -32,15 +32,16 @@ object SimpleProjectPlan {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def gen(ctx: PlanContext, node: PhysicalSimpleProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
+  def gen(ctx: PlanContext, physicalNode: PhysicalSimpleProjectNode,
+          inputs: Seq[SparkInstance], physicalOpNode: PhysicalOpNode): SparkInstance = {
     val inputInstance = inputs.head
 
-    val inputDf = inputInstance.getDfConsideringIndex(ctx, node.GetNodeId())
+    val inputDf = inputInstance.getDfConsideringIndex(ctx, physicalNode.GetNodeId())
 
     // Check if we should keep the index column
-    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
+    val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, physicalNode.GetNodeId())
 
-    val outputSchema = node.GetOutputSchema()
+    val outputSchema = physicalNode.GetOutputSchema()
 
     // Get the output column names from output schema
     val outputColNameList = outputSchema.asScala.map(col =>
@@ -53,9 +54,9 @@ object SimpleProjectPlan {
 
     val selectColList = mutable.ArrayBuffer[Column]()
 
-    for (i <- 0 until node.project().size.toInt) {
-      val expr = node.project().GetExpr(i)
-      val (col, innerType) = createSparkColumn(inputDf, node, expr)
+    for (i <- 0 until physicalNode.project().size.toInt) {
+      val expr = physicalNode.project().GetExpr(i)
+      val (col, innerType) = createSparkColumn(inputDf, physicalNode, expr)
       val castOutputCol = ConstProjectPlan.castSparkOutputCol(
         col, outputColTypeList(i), innerType)
       castOutputCol.alias(outputColNameList(i))
@@ -64,13 +65,13 @@ object SimpleProjectPlan {
     }
 
     if (keepIndexColumn) {
-      selectColList.append(inputDf(ctx.getIndexInfo(node.GetNodeId()).indexColumnName))
+      selectColList.append(inputDf(ctx.getIndexInfo(physicalNode.GetNodeId()).indexColumnName))
     }
 
     // Use Spark DataFrame to select columns
     val result = inputDf.select(selectColList: _*)
 
-    SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
+    SparkInstance.createConsideringIndex(ctx, physicalNode.GetNodeId(), result, physicalOpNode)
   }
 
   /**
