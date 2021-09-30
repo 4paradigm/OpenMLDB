@@ -260,7 +260,7 @@ jobs:
 
       - name: Build Core
         run: |
-          ./tools/hybridse_build.sh
+          ./tools/hybridse_build_jsdk.sh
 
       - name: Copy Dylib
         run: |

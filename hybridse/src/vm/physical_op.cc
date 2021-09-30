@@ -1081,9 +1081,9 @@ void PhysicalOpNode::PrintSchema() const {
     std::cout << SchemaToString() << std::endl;
 }
 
-std::string PhysicalOpNode::SchemaToString() const {
+std::string PhysicalOpNode::SchemaToString(const std::string& tab) const {
     std::stringstream ss;
-    ss << "[";
+    ss << tab << "[";
     if (!schemas_ctx_.GetName().empty()) {
         ss << "name=" << schemas_ctx_.GetName() << ", ";
     }
@@ -1093,11 +1093,11 @@ std::string PhysicalOpNode::SchemaToString() const {
     ss << "]\n";
 
     for (size_t i = 0; i < GetOutputSchemaSourceSize(); ++i) {
-        ss << "{\n";
+        ss << tab << "{\n";
         const SchemaSource* schema_source = GetOutputSchemaSource(i);
         const auto* schema = schema_source->GetSchema();
         for (int32_t j = 0; j < schema->size(); j++) {
-            ss << "    ";
+            ss << tab << "    ";
             const type::ColumnDef& column = schema->Get(j);
             ss << "#" << schema_source->GetColumnID(j) << " " << column.name()
                << " " << type::Type_Name(column.type());
@@ -1107,7 +1107,7 @@ std::string PhysicalOpNode::SchemaToString() const {
             }
             ss << "\n";
         }
-        ss << "} ";
+        ss << tab << "} ";
     }
     return ss.str();
 }
@@ -1237,7 +1237,7 @@ base::Status PhysicalRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {
 }
 
 base::Status PhysicalRenameNode::InitSchema(PhysicalPlanContext* ctx) {
-    CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty request union");
+    CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty procedures");
     schemas_ctx_.Clear();
     schemas_ctx_.SetName(name_);
     schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());

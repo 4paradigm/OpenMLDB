@@ -14,14 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef HYBRIDSE_VERSION_H_
-#define HYBRIDSE_VERSION_H_
+#ifndef HYBRIDSE_HYBRIDSE_VERSION_H_
+#define HYBRIDSE_HYBRIDSE_VERSION_H_
 
 #define HYBRIDSE_VERSION_MAJOR @HYBRIDSE_VERSION_MAJOR@
 #define HYBRIDSE_VERSION_MEDIUM @HYBRIDSE_VERSION_MEDIUM@
 #define HYBRIDSE_VERSION_MINOR @HYBRIDSE_VERSION_MINOR@
 #define HYBRIDSE_VERSION_BUG @HYBRIDSE_VERSION_BUG@
 
-#endif /* !HYBRIDSE_VERSION_H_ */
+#endif /* !HYBRIDSE_HYBRIDSE_VERSION_H_ */
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

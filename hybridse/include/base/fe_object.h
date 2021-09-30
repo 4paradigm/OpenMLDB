@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_BASE_FE_OBJECT_H_
-#define INCLUDE_BASE_FE_OBJECT_H_
+#ifndef HYBRIDSE_INCLUDE_BASE_FE_OBJECT_H_
+#define HYBRIDSE_INCLUDE_BASE_FE_OBJECT_H_
 
 namespace hybridse {
 namespace base {
@@ -27,4 +27,4 @@ class FeBaseObject {
 
 }  // namespace base
 }  // namespace hybridse
-#endif  // INCLUDE_BASE_FE_OBJECT_H_
+#endif  // HYBRIDSE_INCLUDE_BASE_FE_OBJECT_H_

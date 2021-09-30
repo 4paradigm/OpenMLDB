@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_PASSES_LAMBDAFY_PROJECTS_H_
-#define SRC_PASSES_LAMBDAFY_PROJECTS_H_
+#ifndef HYBRIDSE_SRC_PASSES_LAMBDAFY_PROJECTS_H_
+#define HYBRIDSE_SRC_PASSES_LAMBDAFY_PROJECTS_H_
 
 #include <map>
 #include <string>
@@ -89,4 +89,4 @@ class LambdafyProjects {
 
 }  // namespace passes
 }  // namespace hybridse
-#endif  // SRC_PASSES_LAMBDAFY_PROJECTS_H_
+#endif  // HYBRIDSE_SRC_PASSES_LAMBDAFY_PROJECTS_H_

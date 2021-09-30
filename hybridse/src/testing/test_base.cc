@@ -414,6 +414,12 @@ std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
     catalog->AddDatabase(database);
     return catalog;
 }
+std::shared_ptr<SimpleCatalog> BuildSimpleCatalogIndexUnsupport(
+    const hybridse::type::Database& database) {
+    std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(false));
+    catalog->AddDatabase(database);
+    return catalog;
+}
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog() {
     return std::make_shared<SimpleCatalog>(true);
 }

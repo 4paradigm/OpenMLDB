@@ -61,16 +61,6 @@ public class SqlEngine implements AutoCloseable {
      *
      * @throws UnsupportedHybridSeException throws exception when fail to compile queries
      */
-    public SqlEngine(String sql, List<TypeOuterClass.Database> databases) throws UnsupportedHybridSeException {
-        // Create the default engine options
-        this.initilize(sql, databases, createDefaultEngineOptions(), null);
-    }
-
-    /**
-     * Construct SQL engine for specific sql and databases.
-     *
-     * @throws UnsupportedHybridSeException throws exception when fail to compile queries
-     */
     public SqlEngine(String sql, List<TypeOuterClass.Database> databases, String defaultDbname)
             throws UnsupportedHybridSeException {
         // Create the default engine options
@@ -85,16 +75,6 @@ public class SqlEngine implements AutoCloseable {
     public SqlEngine(String sql, TypeOuterClass.Database database, EngineOptions engineOptions)
             throws UnsupportedHybridSeException {
         this.initilize(sql, Arrays.<TypeOuterClass.Database>asList(database), engineOptions, database.getName());
-    }
-
-    /**
-     * Construct SQL engine for specific sql, databases and EngineOptions.
-     *
-     * @throws UnsupportedHybridSeException throws exception when fail to compile queries
-     */
-    public SqlEngine(String sql, List<TypeOuterClass.Database> databases, EngineOptions engineOptions)
-            throws UnsupportedHybridSeException {
-        this.initilize(sql, databases, engineOptions, null);
     }
 
     /**

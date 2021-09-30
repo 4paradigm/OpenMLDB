@@ -286,7 +286,7 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
         } else {
             size_t common_slice_size = 0;
             if (!codec::EncodeRpcRow(rows[0], &io_buf, &common_slice_size)) {
-                return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
+                return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kRequestError,
                                                                            "encode common row buf failed");
             }
             request.add_row_sizes(common_slice_size);
@@ -295,7 +295,7 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
             // TODO(baoxinqi): opt request is common, need no uncommon slices
             size_t uncommon_slice_size = 0;
             if (!codec::EncodeRpcRow(rows[0], &io_buf, &uncommon_slice_size)) {
-                return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
+                return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kRequestError,
                                                                            "encode uncommon row buf failed");
             }
             request.add_row_sizes(uncommon_slice_size);
@@ -306,7 +306,7 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
         for (const auto& row : rows) {
             size_t uncommon_slice_size = 0;
             if (!codec::EncodeRpcRow(row, &io_buf, &uncommon_slice_size)) {
-                return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kBadRequest,
+                return std::make_shared<::hybridse::vm::ErrorTableHandler>(::hybridse::common::kRequestError,
                                                                            "encode uncommon row buf failed");
             }
             request.add_row_sizes(uncommon_slice_size);

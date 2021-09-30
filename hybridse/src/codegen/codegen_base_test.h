@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_CODEGEN_BASE_TEST_H_
-#define SRC_CODEGEN_CODEGEN_BASE_TEST_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_CODEGEN_BASE_TEST_H_
+#define HYBRIDSE_SRC_CODEGEN_CODEGEN_BASE_TEST_H_
 
 #include <cstdint>
 #include <string>
@@ -107,4 +107,4 @@ bool BuildT2Buf(type::TableDef& table_def, int8_t** buf,  // NOLINT
 }  // namespace codegen
 }  // namespace hybridse
 
-#endif  // SRC_CODEGEN_CODEGEN_BASE_TEST_H_
+#endif  // HYBRIDSE_SRC_CODEGEN_CODEGEN_BASE_TEST_H_

@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_NULL_IR_BUILDER_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_NULL_IR_BUILDER_H_
 
-#define SRC_CODEGEN_NULL_IR_BUILDER_H_
+#define HYBRIDSE_SRC_CODEGEN_NULL_IR_BUILDER_H_
 #include "base/fe_status.h"
 #include "codegen/native_value.h"
 namespace hybridse {
@@ -52,4 +52,4 @@ class NullIRBuilder {
 };
 }  // namespace codegen
 }  // namespace hybridse
-#endif  // SRC_CODEGEN_NULL_IR_BUILDER_H_
+#endif  // HYBRIDSE_SRC_CODEGEN_NULL_IR_BUILDER_H_
