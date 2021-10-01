@@ -204,7 +204,7 @@ object WindowAggPlan {
 
     if (ctx.getConf.windowSkewOptCache) {
       distributionDf.unpersist()
-      addColumnsDf.cache()
+      addColumnsDf = addColumnsDf.cache()
     }
 
     // Update the column indexes and repartition keys
