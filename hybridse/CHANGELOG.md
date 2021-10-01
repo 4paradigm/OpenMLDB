@@ -4,14 +4,21 @@
 ### Feature
 - Support aggregation function, e.g. `COUNT`, `SUM`, `MIN`, `MAX`, `AVG`, over the whole table [#219](https://github.com/4paradigm/OpenMLDB/issues/219)
 - Enhance plan optimization on `GROUP` and `FILTER` op [#350](https://github.com/4paradigm/OpenMLDB/pull/350)
+- Refactor status code and status macro. Save first message (root message) in `status.msg`. [#430](https://github.com/4paradigm/OpenMLDB/issues/430)
+
+### Bug Fix
+- Fix plan error triggered by optimize the same plan node repeatedly. [#437](https://github.com/4paradigm/OpenMLDB/issues/437)
+
 
 ## [0.2.3] - 2021-08-31
 ### Feature
 - Support parameterized query under BatchMode [#262](https://github.com/4paradigm/OpenMLDB/issues/262)
+
 ### SQL Syntax
 - `nvl` & `nvl2`:  [#238](https://github.com/4paradigm/OpenMLDB/issues/238)
 - bitwise operators: `&`, `|`, `^`, `~` [#244](https://github.com/4paradigm/OpenMLDB/pull/244)
 - between predicate: [#277](https://github.com/4paradigm/OpenMLDB/pull/277)
+
 
 ## [0.2.1] - 2021-08-06
 ### Feature

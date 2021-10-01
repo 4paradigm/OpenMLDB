@@ -86,7 +86,7 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
                "Node or output is null");
     std::string cache_key = "@expr(#" + std::to_string(node->node_id()) + ")";
     if (frame_ != nullptr) {
-        cache_key.append("over " + frame_->GetExprString());
+        cache_key.append(" over " + frame_->GetExprString());
     }
     if (ctx_->GetCurrentScope()->sv()->FindVar(cache_key, output)) {
         return Status::OK();

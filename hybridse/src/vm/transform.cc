@@ -1202,12 +1202,12 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
     }
 }
 
-std::string BatchModeTransformer::ExtractSchameName(PhysicalOpNode* in) {
+std::string BatchModeTransformer::ExtractSchemaName(PhysicalOpNode* in) {
     if (nullptr == in) {
         return "";
     }
     if (kPhysicalOpSimpleProject == in->GetOpType()) {
-        return ExtractSchameName(in->GetProducer(0));
+        return ExtractSchemaName(in->GetProducer(0));
     } else if (kPhysicalOpRename == in->GetOpType()) {
         return dynamic_cast<PhysicalRenameNode*>(in)->name_;
     } else if (kPhysicalOpDataProvider == in->GetOpType()) {
