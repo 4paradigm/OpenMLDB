@@ -26,6 +26,7 @@
 #include "base/linenoise.h"
 #include "base/texttable.h"
 #include "catalog/schema_adapter.h"
+#include "cmd/split.h"
 #include "gflags/gflags.h"
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
@@ -532,6 +533,221 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     }
 }
 
+bool SetOption(const std::shared_ptr<hybridse::node::OptionsMap> &options, const std::string &option_name,
+               hybridse::node::DataType option_type,
+               std::function<bool(const hybridse::node::ConstNode *node)> const &f) {
+    auto it = options->find(option_name);
+    if (it == options->end()) {
+        // won't set option, but no error
+        return true;
+    }
+    auto node = it->second;
+    if (node->GetDataType() != option_type) {
+        std::cout << "wrong type " << hybridse::node::DataTypeName(node->GetDataType()) << " for option " << option_name
+                  << std::endl;
+        return false;
+    }
+    if (!f(node)) {
+        std::cout << "parse option " << option_name << " failed" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+template <typename T>
+bool AppendColumnValue(const std::string &v, hybridse::sdk::DataType type, bool is_not_null,
+                       const std::string &nullValue, T row) {
+    // check if null
+    if (v == nullValue) {
+        if (is_not_null) {
+            return false;
+        }
+        return row->AppendNULL();
+    }
+    try {
+        switch (type) {
+            case hybridse::sdk::kTypeBool: {
+                bool ok = false;
+                std::string b_val = v;
+                std::transform(b_val.begin(), b_val.end(), b_val.begin(), ::tolower);
+                if (b_val == "true") {
+                    ok = row->AppendBool(true);
+                } else if (b_val == "false") {
+                    ok = row->AppendBool(false);
+                }
+                return ok;
+            }
+            case hybridse::sdk::kTypeInt16: {
+                return row->AppendInt16(boost::lexical_cast<int16_t>(v));
+            }
+            case hybridse::sdk::kTypeInt32: {
+                return row->AppendInt32(boost::lexical_cast<int32_t>(v));
+            }
+            case hybridse::sdk::kTypeInt64: {
+                return row->AppendInt64(boost::lexical_cast<int64_t>(v));
+            }
+            case hybridse::sdk::kTypeFloat: {
+                return row->AppendFloat(boost::lexical_cast<float>(v));
+            }
+            case hybridse::sdk::kTypeDouble: {
+                return row->AppendDouble(boost::lexical_cast<double>(v));
+            }
+            case hybridse::sdk::kTypeString: {
+                return row->AppendString(v);
+            }
+            case hybridse::sdk::kTypeDate: {
+                std::vector<std::string> parts;
+                ::openmldb::base::SplitString(v, "-", parts);
+                if (parts.size() != 3) {
+                    return false;
+                }
+                auto year = boost::lexical_cast<int32_t>(parts[0]);
+                auto mon = boost::lexical_cast<int32_t>(parts[1]);
+                auto day = boost::lexical_cast<int32_t>(parts[2]);
+                return row->AppendDate(year, mon, day);
+            }
+            case hybridse::sdk::kTypeTimestamp: {
+                return row->AppendTimestamp(boost::lexical_cast<int64_t>(v));
+            }
+            default:
+                return false;
+        }
+    } catch (std::exception const &e) {
+        return false;
+    }
+}
+
+bool InsertOneRow(const std::string &insert_placeholder, const std::vector<std::string> &cols,
+                  const std::string &nullValue, std::string *error) {
+    if (cols.empty()) {
+        return false;
+    }
+
+    hybridse::sdk::Status status;
+    auto row = sr->GetInsertRow(db, insert_placeholder, &status);
+    if (!row) {
+        *error = status.msg;
+        return false;
+    }
+    // build row from cols
+    auto &schema = row->GetSchema();
+    auto cnt = schema->GetColumnCnt();
+    if (cnt != cols.size()) {
+        *error = "col size mismatch";
+        return false;
+    }
+    // scan all strings , calc the sum, to init SQLInsertRow's string length
+    std::string::size_type str_len_sum = 0;
+    for (int i = 0; i < cnt; ++i) {
+        if (schema->GetColumnType(i) == hybridse::sdk::kTypeString && cols[i] != nullValue) {
+            str_len_sum += cols[i].length();
+        }
+    }
+    row->Init(static_cast<int>(str_len_sum));
+
+    for (int i = 0; i < cnt; ++i) {
+        if (!AppendColumnValue(cols[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), nullValue, row)) {
+            *error = "translate to insert row failed";
+            return false;
+        }
+    }
+
+    bool ok = sr->ExecuteInsert(db, insert_placeholder, row, &status);
+    if (!ok) {
+        *error = "insert row failed";
+        return false;
+    }
+    return true;
+}
+
+// Only csv format
+bool HandleLoadDataInfile(const std::string &database, const std::string &table, const std::string &file_path,
+                          const std::shared_ptr<hybridse::node::OptionsMap> &options, std::string *error) {
+    DCHECK(error);
+
+    // options, value is ConstNode
+    char delimiter = ',';
+    bool header = true;
+    // TODO(hw): nullValue?
+    std::string nullValues{"null"}, format{"csv"};
+
+    if (!SetOption(options, "delimiter", hybridse::node::kVarchar,
+                   [&delimiter, error](const hybridse::node::ConstNode *node) {
+                       auto &s = node->GetAsString();
+                       if (s.size() != 1) {
+                           *error = "invalid delimiter " + s;
+                           return false;
+                       }
+                       delimiter = s[0];
+                       return true;
+                   }) ||
+        !SetOption(options, "header", hybridse::node::kBool,
+                   [&header](const hybridse::node::ConstNode *node) {
+                       header = node->GetBool();
+                       return true;
+                   }) ||
+        !SetOption(options, "nullValues", hybridse::node::kVarchar,
+                   [&nullValues](const hybridse::node::ConstNode *node) {
+                       nullValues = node->GetAsString();
+                       return true;
+                   }) ||
+        !SetOption(options, "format", hybridse::node::kVarchar,
+                   [&format, error](const hybridse::node::ConstNode *node) {
+                       if (node->GetAsString() != "csv") {
+                           *error = "only support csv";
+                           return false;
+                       }
+                       return true;
+                   })) {
+        return false;
+    }
+    std::cout << "options: delimiter [" << delimiter << "], has header[" << header << "], nullValue[" << nullValues
+              << "], format[" << format << "]" << std::endl;
+    // read csv
+    if (!base::IsExists(file_path)) {
+        *error = "file not exist";
+        return false;
+    }
+    std::ifstream file(file_path);
+    if (!file.is_open()) {
+        *error = "open failed";
+        return false;
+    }
+
+    std::string line;
+    if (!std::getline(file, line)) {
+        *error = "read from file failed";
+        return false;
+    }
+    std::vector<std::string> cols;
+    SplitCSVLineWithDelimiterForStrings(line, delimiter, &cols);
+    // build placeholder
+    std::string holders;
+    for (auto i = 0; i < cols.size(); ++i) {
+        holders += ((i == 0) ? "?" : ",?");
+    }
+    hybridse::sdk::Status status;
+    std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
+
+    if (header) {
+        // the first line is the column names
+        // TODO(hw): check column names or build a name->idx map?
+
+        // then read the first row of data
+        std::getline(file, line);
+    }
+
+    do {
+        cols.clear();
+        SplitCSVLineWithDelimiterForStrings(line, delimiter, &cols);
+        if (!InsertOneRow(insert_placeholder, cols, nullValues, error)) {
+            *error = "line [" + line + "] insert failed, " + *error;
+            return false;
+        }
+    } while (std::getline(file, line));
+    return true;
+}
+
 void HandleSQL(const std::string &sql) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
@@ -611,6 +827,16 @@ void HandleSQL(const std::string &sql) {
             } else {
                 PrintResultSet(std::cout, rs.get());
             }
+            return;
+        }
+        case hybridse::node::kPlanTypeLoadData: {
+            auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode *>(node);
+            std::string error;
+            if (!HandleLoadDataInfile(plan->Db(), plan->Table(), plan->File(), plan->Options(), &error)) {
+                std::cout << "load data failed, err: " << error << std::endl;
+                return;
+            }
+            std::cout << "load data succeed" << std::endl;
             return;
         }
         default: {
