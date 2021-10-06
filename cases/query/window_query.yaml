@@ -753,8 +753,6 @@ cases:
     desc: window query after last join with a table, index hasn't been optimized
     db: db1
     mode: rtidb-unsupport
-    tags: ["TODO", "@tobe @zekai",
-        "Failed to merge fields 'col0' and 'col0'. Failed to merge incompatible data types string and int"]
     sql: |
        SELECT sum(t1.col1) over w1 as sum_t1_col1, str1 as t2_str1
        FROM t1
