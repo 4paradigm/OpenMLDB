@@ -194,7 +194,6 @@ object WindowAggPlan {
 
     if (ctx.getConf.windowSkewOptCache) {
       distributionDf = distributionDf.cache()
-      distributionDf.collect()
     }
 
     // 2. Add "part" column and "expand" column by joining the distribution table

@@ -73,7 +73,7 @@ object SkewDataFrameUtils {
     val inputDfJoinCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
     val distributionDfJoinCol = distributionDf(partitionKeyColName)
 
-    var joinDf = inputDf.join(distributionDf, inputDfJoinCol === distributionDfJoinCol, "left")
+    var joinDf = inputDf.join(distributionDf.hint("broadcast"), inputDfJoinCol === distributionDfJoinCol, "left")
 
     // TODO: Support multiple orderBy keys
     // Select * and case when(...) from joinDf
