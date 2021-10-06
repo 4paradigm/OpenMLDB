@@ -22,14 +22,12 @@ import com._4paradigm.hybridse.codec.RowView
 import com._4paradigm.hybridse.sdk.{HybridSeException, JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.node.{ExprListNode, JoinType}
 import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper, PhysicalJoinNode}
-import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkUtil}
+import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkRowUtil, SparkUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
-import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.row_number
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
 
 
@@ -129,7 +127,7 @@ object JoinPlan {
         allColumns += SparkColumnUtil.getColumnFromIndex(rightDf, i)
       }
 
-      val allColWrap = functions.struct(allColumns:_*)
+      val allColWrap = functions.struct(allColumns: _*)
       joinConditions += functions.callUDF(regName, allColWrap)
     }
 
@@ -137,7 +135,7 @@ object JoinPlan {
       throw new HybridSeException("No join conditions specified")
     }
 
-    val joined = leftDf.join(rightDf, joinConditions.reduce(_ && _),  "left")
+    var joined = leftDf.join(rightDf, joinConditions.reduce(_ && _), "left")
 
     val result = if (joinType == JoinType.kJoinTypeLeft) {
       joined
@@ -155,28 +153,67 @@ object JoinPlan {
 
         val isAsc = node.join.right_sort.is_asc
 
-        val indexCol = SparkColumnUtil.getColumnFromIndex(joined, indexColIdx)
-        val timeColJoined = SparkColumnUtil.getColumnFromIndex(joined, timeIdxInJoined)
+        // TODO: Remove rename columns when spark bug is resolved
+        // Rename columns
+        val joinedCols = SparkColumnUtil.getColumnsFromDataFrame(joined)
 
-        val cols = mutable.ArrayBuffer[Column]()
-        for(i <- joined.schema.indices) {
+        for (i <- joined.schema.indices) {
           if (i != indexColIdx) {
-            cols += SparkColumnUtil.getColumnFromIndex(joined, i)
+            if (i < leftDf.schema.size) {
+              joinedCols(i) = joinedCols(i).as("#" + joinedCols(i).toString())
+            } else {
+              joinedCols(i) = joinedCols(i).as("*" + joinedCols(i).toString())
+            }
           }
         }
 
-        val window = Window.partitionBy(indexCol).orderBy(
-          if (isAsc) {
-            timeColJoined.asc
-          } else {
-            timeColJoined.desc
-          })
-        val distinct = joined.withColumn("rank", row_number.over(window)).filter("rank = 1").drop("rank").drop(indexCol)
+        joined = joined.select(joinedCols: _*)
 
-        distinct
+        // Disable scalastyle for importing Spark implicits
+        // scalastyle:off
+        import spark.implicits._
+        // scalastyle:on
+        val distinct = joined
+          .groupByKey {
+            row => row.getLong(indexColIdx)
+          }
+          .mapGroups {
+            case (_, iter) =>
+              val timeExtractor = SparkRowUtil.createOrderKeyExtractor(
+                timeIdxInJoined, timeColType, nullable = false)
+
+              if (isAsc) {
+                iter.maxBy(row => {
+                  if (row.isNullAt(timeIdxInJoined)) {
+                    Long.MinValue
+                  } else {
+                    timeExtractor.apply(row)
+                  }
+                })
+              } else {
+                iter.minBy(row => {
+                  if (row.isNullAt(timeIdxInJoined)) {
+                    Long.MaxValue
+                  } else {
+                    timeExtractor.apply(row)
+                  }
+                })
+              }
+          }(RowEncoder(joined.schema))
+        // TODO: Remove rename columns when spark bug is resolved
+        // Rename columns
+        val distinctCols = SparkColumnUtil.getColumnsFromDataFrame(distinct)
+
+        for (i <- distinct.schema.indices) {
+          if (i != indexColIdx) {
+            distinctCols(i) = distinctCols(i).as(distinctCols(i).toString().tail)
+          }
+        }
+
+        distinct.select(distinctCols: _*).drop(indexName)
       } else {
         if (supportNativeLastJoin && ctx.getConf.enableNativeLastJoin) {
-          leftDf.join(rightDf, joinConditions.reduce(_ && _),  "last")
+          leftDf.join(rightDf, joinConditions.reduce(_ && _), "last")
         } else {
           joined.dropDuplicates(indexName).drop(indexName)
         }
