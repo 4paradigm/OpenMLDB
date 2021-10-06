@@ -237,7 +237,10 @@ enum CmdType {
     kCmdShowProcedures,
     kCmdDropSp,
     kCmdDropDatabase,
-    kCmdExit
+    kCmdExit,
+    kCmdShowDeployment,
+    kCmdShowDeployments,
+    kCmdUnknown = -1
 };
 enum ExplainType {
     kExplainLogical,

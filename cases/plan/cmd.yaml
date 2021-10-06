@@ -140,4 +140,19 @@ cases:
         +-node[CMD]
           +-cmd_type: drop database
           +-args: [db1]
-
+  - id: show_deployments
+    desc: show deployments
+    sql: SHOW DEPLOYMENTS;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show deployments
+          +-args: []
+  - id: shwo_deployment
+    desc: show deployment foo
+    sql: SHOW DEPLOYMENT foo;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show deployment
+          +-args: [foo]

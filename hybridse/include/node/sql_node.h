@@ -72,6 +72,10 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "exit";
         case kCmdCreateIndex:
             return "create index";
+        case kCmdShowDeployment:
+            return "show deployment";
+        case kCmdShowDeployments:
+            return "show deployments";
         default:
             return "unknown cmd type";
     }

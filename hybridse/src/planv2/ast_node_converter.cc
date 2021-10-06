@@ -418,8 +418,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         case zetasql::AST_INTERVAL_LITERAL: {
             int64_t interval_value;
             node::DataType interval_unit;
-            CHECK_STATUS(
-                ASTIntervalLIteralToNum(ast_expression, &interval_value, &interval_unit))
+            CHECK_STATUS(ASTIntervalLIteralToNum(ast_expression, &interval_value, &interval_unit))
             *output = node_manager->MakeConstNode(interval_value, interval_unit);
             return base::Status::OK();
         }
@@ -502,28 +501,34 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         case zetasql::AST_SHOW_STATEMENT: {
             const zetasql::ASTShowStatement* show_statement = statement->GetAsOrNull<zetasql::ASTShowStatement>();
             CHECK_TRUE(nullptr != show_statement->identifier(), common::kSqlAstError, "not an ASTShowStatement")
-            std::string show_id = show_statement->identifier()->GetAsString();
-            boost::to_lower(show_id);
-            if (show_id == "databases") {
+            auto show_id = show_statement->identifier()->GetAsStringView();
+
+            if (boost::iequals(show_id, "DATABASES")) {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowDatabases));
-            } else if (show_id == "tables") {
+            } else if (boost::iequals(show_id, "TABLES")) {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowTables));
-            } else if (show_id == "procedures" || show_id == "procedure status") {
+            } else if (boost::iequals(show_id, "PROCEDURES") || boost::iequals(show_id, "PROCEDURE STATUS")) {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowProcedures));
-            } else if (show_id == "create procedure") {
-                CHECK_TRUE(show_statement->optional_name() != nullptr, common::kSqlAstError,
-                           "show create procedure without a procedure name");
-                const auto names = show_statement->optional_name();
+            } else if (boost::iequals(show_id, "DEPLOYMENTS")) {
+                *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowDeployments));
+            } else if (show_statement->optional_target_name() != nullptr) {
+                const auto names = show_statement->optional_target_name()->target();
+                node::CmdType cmd_type = node::CmdType::kCmdUnknown;
+                if (boost::iequals(show_id, "CREATE PROCEDURE")) {
+                    cmd_type = node::CmdType::kCmdShowCreateSp;
+                } else if (boost::iequals(show_id, "DEPLOYMENT")) {
+                    cmd_type = node::CmdType::kCmdShowDeployment;
+                }
+
                 if (names->num_names() == 1) {
                     *output = dynamic_cast<node::CmdNode*>(
-                        node_manager->MakeCmdNode(node::CmdType::kCmdShowCreateSp, names->first_name()->GetAsString()));
+                        node_manager->MakeCmdNode(cmd_type, names->first_name()->GetAsString()));
                 } else if (names->num_names() == 2) {
-                    *output = dynamic_cast<node::CmdNode*>(
-                        node_manager->MakeCmdNode(node::CmdType::kCmdShowCreateSp, names->first_name()->GetAsString(),
-                                                  names->last_name()->GetAsString()));
+                    *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(
+                        cmd_type, names->first_name()->GetAsString(), names->last_name()->GetAsString()));
                 } else {
-                    FAIL_STATUS(common::kSqlAstError,
-                                "Invalid name for SHOW CREATE PROCEDURE: ", names->ToIdentifierPathString());
+                    FAIL_STATUS(common::kSqlAstError, "Invalid target name for SHOW ", show_id, ": ",
+                                names->ToIdentifierPathString());
                 }
             } else {
                 FAIL_STATUS(common::kSqlAstError, "Un-support SHOW: ", show_id)
@@ -1343,7 +1348,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
             }
             default: {
                 FAIL_STATUS(common::kSqlAstError,
-                                    "unsupported ast expression type: ", entry->value()->GetNodeKindString());
+                            "unsupported ast expression type: ", entry->value()->GetNodeKindString());
             }
         }
 

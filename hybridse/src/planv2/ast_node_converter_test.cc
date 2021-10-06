@@ -724,7 +724,7 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
     expect_converted(R"sql(
         SHOW create procedure ab.cd.name;
     )sql",
-                     common::kSqlAstError, "Invalid name for SHOW CREATE PROCEDURE: ab.cd.name");
+                     common::kSqlAstError, "Invalid target name for SHOW CREATE PROCEDURE: ab.cd.name");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
