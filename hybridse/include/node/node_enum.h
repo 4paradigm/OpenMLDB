@@ -240,6 +240,7 @@ enum CmdType {
     kCmdExit,
     kCmdShowDeployment,
     kCmdShowDeployments,
+    kCmdDropDeployment,
     kCmdUnknown = -1
 };
 enum ExplainType {
