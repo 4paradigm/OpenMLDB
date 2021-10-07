@@ -153,17 +153,16 @@ object JoinPlan {
 
         val isAsc = node.join.right_sort.is_asc
 
-        // TODO: Remove rename columns when spark bug is resolved
+        // TODO: Remove this rename columns method when spark bug is resolved
         // Rename columns
         val joinedCols = SparkColumnUtil.getColumnsFromDataFrame(joined)
 
         for (i <- joined.schema.indices) {
           if (i != indexColIdx) {
-            if (i < leftDf.schema.size) {
-              joinedCols(i) = joinedCols(i).as("#" + joinedCols(i).toString())
-            } else {
-              joinedCols(i) = joinedCols(i).as("*" + joinedCols(i).toString())
-            }
+            // In ascii 33 is '!' and 33 + 93 = 126 is '~'.
+            // Add a prefix for each column
+            val char: Char = (33 + i % 93).toChar
+            joinedCols(i) = joinedCols(i).as(char + joinedCols(i).toString())
           }
         }
 
@@ -200,7 +199,7 @@ object JoinPlan {
                 })
               }
           }(RowEncoder(joined.schema))
-        // TODO: Remove rename columns when spark bug is resolved
+        // TODO: Remove this rename columns method when spark bug is resolved
         // Rename columns
         val distinctCols = SparkColumnUtil.getColumnsFromDataFrame(distinct)
 
