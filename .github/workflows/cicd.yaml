@@ -92,7 +92,7 @@ jobs:
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_cluster_test && cd ../ || exit
-      - name: run sql_sdk_test
+      - name: run sql_cluster_test
         run: |
           bash steps/ut.sh sql_cluster_test 0
       - name: upload unit test results
