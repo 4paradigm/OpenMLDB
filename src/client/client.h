@@ -57,6 +57,6 @@ class Client {
     std::string real_endpoint_;
 };
 
-}  // namespace openmldb
+}  // namespace openmldb::client
 
 #endif  // SRC_CLIENT_CLIENT_H_

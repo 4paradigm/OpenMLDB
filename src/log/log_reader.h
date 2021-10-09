@@ -33,12 +33,9 @@
 using ::openmldb::base::Slice;
 
 namespace openmldb {
-
-namespace base {
-class Status;
-}
-
 namespace log {
+
+class Status;
 
 class Reader {
  public:
@@ -49,7 +46,7 @@ class Reader {
 
         // Some corruption was detected.  "size" is the approximate number
         // of bytes dropped due to the corruption.
-        virtual void Corruption(size_t bytes, const base::Status& status) = 0;
+        virtual void Corruption(size_t bytes, const Status& status) = 0;
     };
 
     // Create a reader that will return log records from "*file".
@@ -72,7 +69,7 @@ class Reader {
     // "*scratch" as temporary storage.  The contents filled in *record
     // will only be valid until the next mutating operation on this
     // reader or the next mutation to *scratch.
-    ::openmldb::base::Status ReadRecord(Slice* record, std::string* scratch);
+    Status ReadRecord(Slice* record, std::string* scratch);
 
     // Returns the physical offset of the last record returned by ReadRecord.
     //
@@ -143,7 +140,7 @@ class Reader {
     // Reports dropped bytes to the reporter.
     // buffer_ must be updated to remove the dropped bytes prior to invocation.
     void ReportCorruption(uint64_t bytes, const char* reason);
-    void ReportDrop(uint64_t bytes, const base::Status& reason);
+    void ReportDrop(uint64_t bytes, const Status& reason);
 
     // No copying allowed
     Reader(const Reader&);
@@ -156,7 +153,7 @@ class LogReader {
  public:
     LogReader(LogParts* logs, const std::string& log_path, bool compressed);
     virtual ~LogReader();
-    ::openmldb::base::Status ReadNextRecord(::openmldb::base::Slice* record, std::string* buffer);
+    Status ReadNextRecord(::openmldb::base::Slice* record, std::string* buffer);
     int RollRLogFile();
     int OpenSeqFile(const std::string& path);
     void GoBackToLastBlock();
