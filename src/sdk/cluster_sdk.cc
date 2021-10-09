@@ -91,7 +91,7 @@ void NormalClusterSDK::WatchNotify() {
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
 }
 
-bool NormalClusterSDK::CreateNsClient() {
+bool NormalClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint) {
     std::string ns_node = options_.zk_path + "/leader";
     std::vector<std::string> children;
     if (!zk_client_->GetChildren(ns_node, children) || children.empty()) {
@@ -100,14 +100,17 @@ bool NormalClusterSDK::CreateNsClient() {
     }
     std::sort(children.begin(), children.end());
     std::string real_path = ns_node + "/" + children[0];
-    std::string endpoint;
-    if (!zk_client_->GetNodeValue(real_path, endpoint)) {
+
+    if (!zk_client_->GetNodeValue(real_path, *endpoint)) {
         LOG(WARNING) << "fail to get zk value with path " << real_path;
         return false;
     }
     DLOG(INFO) << "leader path " << real_path << " with value " << endpoint;
 
-    return SetNsClient(endpoint);
+    if (!GetRealEndpointFromZk(*endpoint, real_endpoint)) {
+        return false;
+    }
+    return true;
 }
 
 // TODO(hw): refactor
@@ -205,7 +208,7 @@ bool NormalClusterSDK::InitTabletClient() {
     for (const auto& endpoint : tablets) {
         std::string cur_endpoint = ::openmldb::base::ExtractEndpoint(endpoint);
         std::string real_endpoint;
-        if (!GetRealEndpoint(cur_endpoint, &real_endpoint)) {
+        if (!GetRealEndpointFromZk(cur_endpoint, &real_endpoint)) {
             return false;
         }
         real_ep_map.emplace(cur_endpoint, real_endpoint);
@@ -278,7 +281,7 @@ std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> ClusterSDK::GetT
     return tables;
 }
 
-bool NormalClusterSDK::GetRealEndpoint(const std::string& endpoint, std::string* real_endpoint) {
+bool NormalClusterSDK::GetRealEndpointFromZk(const std::string& endpoint, std::string* real_endpoint) {
     if (real_endpoint == nullptr) {
         return false;
     }
@@ -299,23 +302,6 @@ bool NormalClusterSDK::GetRealEndpoint(const std::string& endpoint, std::string*
         }
     }
     return true;
-}
-
-bool ClusterSDK::SetNsClient(const std::string& endpoint) {
-    std::string real_endpoint;
-    if (!GetRealEndpoint(endpoint, &real_endpoint)) {
-        return false;
-    }
-    auto ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
-    int ret = ns_client->Init();
-    if (ret != 0) {
-        LOG(WARNING) << "fail to init ns client with endpoint " << endpoint;
-        return false;
-    } else {
-        LOG(INFO) << "init ns client with endpoint " << endpoint << " done";
-        std::atomic_store_explicit(&ns_client_, ns_client, std::memory_order_relaxed);
-        return true;
-    }
 }
 
 std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet() { return GetCatalog()->GetTablet(); }
@@ -423,6 +409,56 @@ bool StandAloneClusterSDK::Init() {
     opt.set_compile_only(true);
     opt.set_plan_only(true);
     engine_ = new ::hybridse::vm::Engine(catalog_, opt);
-    return BuildCatalog();
+    return PeriodicRefresh();
+}
+
+bool StandAloneClusterSDK::BuildCatalog() {
+    // InitTabletClients
+    std::vector<client::TabletInfo> tablets;
+    std::string msg;
+    if (!GetNsClient()->ShowTablet(tablets, msg)) {
+        LOG(WARNING) << msg;
+        return false;
+    }
+    std::map<std::string, std::string> real_ep_map;
+    for (const auto& tablet : tablets) {
+        std::string cur_endpoint = ::openmldb::base::ExtractEndpoint(tablet.endpoint);
+        std::string real_endpoint = tablet.real_endpoint;
+        // TODO(hw): if real_endpoint may be empty
+        //            if (!GetRealEndpoint(cur_endpoint, &real_endpoint)) {
+        //                return false;
+        //            }
+        real_ep_map.emplace(cur_endpoint, real_endpoint);
+    }
+    client_manager_->UpdateClient(real_ep_map);
+
+    // tables
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    if (!GetNsClient()->ShowAllTable(tables, msg)) {
+        LOG(WARNING) << msg;
+        return false;
+    }
+    // table_to_tablets_
+    std::map<std::string, std::map<std::string, std::shared_ptr<nameserver::TableInfo>>> mapping;
+    auto new_catalog = std::make_shared<catalog::SDKCatalog>(client_manager_);
+    for (const auto& table : tables) {
+        auto& db_map = mapping[table.db()];
+        db_map[table.name()] = std::make_shared<nameserver::TableInfo>(table);
+        DLOG(INFO) << "load table info with name " << table.name() << " in db " << table.db();
+    }
+    // TODO(hw): no show procedure api, can't build dp_sp_map
+
+    // TODO(hw): use tables and sp map(no sp map now) to init a new catalog
+    if (!new_catalog->Init(tables, {})) {
+        LOG(WARNING) << "fail to init catalog";
+        return false;
+    }
+    {
+        std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+        table_to_tablets_ = mapping;
+        catalog_ = new_catalog;
+    }
+    engine_->UpdateCatalog(new_catalog);
+    return true;
 }
 }  // namespace openmldb::sdk

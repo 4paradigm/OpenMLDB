@@ -45,7 +45,8 @@ struct ClusterOptions {
 class ClusterSDK {
  public:
     virtual ~ClusterSDK() { delete engine_; }
-    // bind catalog and engine, then build the catalog
+    // create engine, then build the catalog
+    // TODO(hw): should prevent double init
     virtual bool Init() = 0;
     bool Refresh() { return BuildCatalog(); }
 
@@ -57,13 +58,26 @@ class ClusterSDK {
     }
     inline ::hybridse::vm::Engine* GetEngine() { return engine_; }
 
-    inline std::shared_ptr<::openmldb::client::NsClient> GetNsClient() {
+    std::shared_ptr<::openmldb::client::NsClient> GetNsClient() {
         auto ns_client = std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
         if (ns_client) return ns_client;
-        CreateNsClient();
+
+        std::string endpoint, real_endpoint;
+        if (!GetNsAddress(&endpoint, &real_endpoint)) {
+            LOG(DFATAL) << "fail to get ns address";
+            return {};
+        }
+        ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
+        int ret = ns_client->Init();
+        if (ret != 0) {
+            // We GetNsClient and use it without checking not null. It's intolerable.
+            LOG(DFATAL) << "fail to init ns client with endpoint " << endpoint;
+            return {};
+        }
+        LOG(INFO) << "init ns client with endpoint " << endpoint << " done";
+        std::atomic_store_explicit(&ns_client_, ns_client, std::memory_order_relaxed);
         return std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
     }
-    virtual bool GetRealEndpoint(const std::string& endpoint, std::string* real_endpoint) = 0;
 
     uint32_t GetTableId(const std::string& db, const std::string& tname);
     std::shared_ptr<::openmldb::nameserver::TableInfo> GetTableInfo(const std::string& db, const std::string& tname);
@@ -82,14 +96,11 @@ class ClusterSDK {
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
 
  protected:
+    virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
     // build client_manager, then create a new catalog, replace the catalog in engine
-    // TODO(hw): recreate is more readable?
     virtual bool BuildCatalog() = 0;
-    virtual bool CreateNsClient() = 0;
 
     ClusterSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
-
-    bool SetNsClient(const std::string& endpoint);
 
  protected:
     std::atomic<uint64_t> cluster_version_{0};
@@ -103,6 +114,7 @@ class ClusterSDK {
     ::hybridse::vm::Engine* engine_ = nullptr;
 
  private:
+    // get/set op should be atomic(actually no reset now)
     std::shared_ptr<::openmldb::client::NsClient> ns_client_;
 };
 
@@ -112,13 +124,13 @@ class NormalClusterSDK : public ClusterSDK {
 
     ~NormalClusterSDK() override;
     bool Init() override;
-    bool GetRealEndpoint(const std::string& endpoint, std::string* real_endpoint) override;
 
  protected:
     bool BuildCatalog() override;
-    bool CreateNsClient() override;
+    bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override;
 
  private:
+    bool GetRealEndpointFromZk(const std::string& endpoint, std::string* real_endpoint);
     bool UpdateCatalog(const std::vector<std::string>& table_datas, const std::vector<std::string>& sp_datas);
     bool InitTabletClient();
     void WatchNotify();
@@ -138,9 +150,24 @@ class StandAloneClusterSDK : public ClusterSDK {
  public:
     StandAloneClusterSDK(std::string host, int port) : host_(std::move(host)), port_(port) {}
 
-    ~StandAloneClusterSDK() override = default;
+    ~StandAloneClusterSDK() override { pool_.Stop(false); }
     bool Init() override;
-    bool GetRealEndpoint(const std::string& endpoint, std::string* real_endpoint) override {
+
+ protected:
+    // Before connecting to ns, we only have the host&port
+    // NOTICE: when we call this method, we do not have the correct ns client, do not GetNsClient.
+    bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override {
+        std::stringstream ss;
+        ss << host_ << ":" << port_;
+        *endpoint = ss.str();
+        *real_endpoint = ss.str();
+        return true;
+    }
+
+    bool BuildCatalog() override;
+
+ private:
+    bool GetRealEndpoint(const std::string& endpoint, std::string* real_endpoint) {
         std::vector<client::TabletInfo> tablets;
         std::string msg;
         if (!GetNsClient()->ShowSdkEndpoint(tablets, msg)) {
@@ -153,71 +180,23 @@ class StandAloneClusterSDK : public ClusterSDK {
                 return true;
             }
         }
+        // If no real endpoint in /sdkendpoints, should try get it from /names
         // TODO(hw): RegisterName /map/names, how to get it from ns?
-
+        LOG(DFATAL) << "unfinished";
         return false;
     }
 
- protected:
-    bool BuildCatalog() override {
-        // InitTabletClients
-        std::vector<client::TabletInfo> tablets;
-        std::string msg;
-        if (!GetNsClient()->ShowTablet(tablets, msg)) {
-            LOG(WARNING) << msg;
-            return false;
-        }
-        std::map<std::string, std::string> real_ep_map;
-        for (const auto& tablet : tablets) {
-            std::string cur_endpoint = ::openmldb::base::ExtractEndpoint(tablet.endpoint);
-            // TODO(hw): use tablet.real_endpoint?
-            std::string real_endpoint;
-            if (!GetRealEndpoint(cur_endpoint, &real_endpoint)) {
-                return false;
-            }
-            real_ep_map.emplace(cur_endpoint, real_endpoint);
-        }
-        client_manager_->UpdateClient(real_ep_map);
-
-        // tables
-        std::vector<::openmldb::nameserver::TableInfo> tables;
-        if (!GetNsClient()->ShowAllTable(tables, msg)) {
-            LOG(WARNING) << msg;
-            return false;
-        }
-        // table_to_tablets_
-        std::map<std::string, std::map<std::string, std::shared_ptr<nameserver::TableInfo>>> mapping;
-        auto new_catalog = std::make_shared<catalog::SDKCatalog>(client_manager_);
-        for (const auto& table : tables) {
-            auto& db_map = mapping[table.db()];
-            db_map[table.name()] = std::make_shared<nameserver::TableInfo>(table);
-            DLOG(INFO) << "load table info with name " << table.name() << " in db " << table.db();
-        }
-        // TODO(hw): no show procedure api
-
-        // TODO(hw): use tables and sp map(no sp map now) to init a new catalog
-        if (!new_catalog->Init(tables, {})) {
-            LOG(WARNING) << "fail to init catalog";
-            return false;
-        }
-        {
-            std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
-            table_to_tablets_ = mapping;
-            catalog_ = new_catalog;
-        }
-        engine_->UpdateCatalog(new_catalog);
-
-        return true;
-    }
-    bool CreateNsClient() override {
-        std::stringstream ss;
-        ss << host_ << ":" << port_;
-        return SetNsClient(ss.str());
+    bool PeriodicRefresh() {
+        auto ok = BuildCatalog();
+        // periodic refreshing
+        pool_.DelayTask(2000, [this] { PeriodicRefresh(); });
+        return ok;
     }
 
  private:
     std::string host_;
     int port_;
+    ::baidu::common::ThreadPool pool_{1};
 };
 
 }  // namespace openmldb::sdk

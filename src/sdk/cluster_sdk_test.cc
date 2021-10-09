@@ -117,8 +117,7 @@ TEST_F(ClusterSDKTest, standAloneMode) {
     auto host = ns.substr(0, sep);
     auto port = ns.substr(sep + 1);
     StandAloneClusterSDK sdk(host, std::stoi(port));
-    // TODO(hw):
-    ASSERT_FALSE(sdk.Init());
+    ASSERT_TRUE(sdk.Init());
 }
 
 }  // namespace openmldb::sdk
