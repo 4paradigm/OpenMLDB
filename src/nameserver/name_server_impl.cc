@@ -1351,8 +1351,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     }
     // handle offline tablet
     for (Tablets::iterator tit = tablets_.begin(); tit != tablets_.end(); ++tit) {
-        if (alive.find(tit->first) == alive.end() &&
-            tit->second->state_ == ::openmldb::type::EndpointState::kHealthy) {
+        if (alive.find(tit->first) == alive.end() && tit->second->state_ == ::openmldb::type::EndpointState::kHealthy) {
             // tablet offline
             PDLOG(INFO, "offline tablet with endpoint[%s]", tit->first.c_str());
             tit->second->state_ = ::openmldb::type::EndpointState::kOffline;
@@ -2328,11 +2327,10 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller, const MakeSnapsho
 
 int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
     std::map<std::string, ::openmldb::type::DataType> column_map;
-    if (table_info.column_desc_size() > 0) {
-        for (const auto& column_desc : table_info.column_desc()) {
-            column_map.insert(std::make_pair(column_desc.name(), column_desc.data_type()));
-        }
+    for (const auto& column_desc : table_info.column_desc()) {
+        column_map.insert(std::make_pair(column_desc.name(), column_desc.data_type()));
     }
+
     if (table_info.column_key_size() > 0) {
         for (const auto& column_key : table_info.column_key()) {
             bool has_iter = false;
@@ -3964,17 +3962,31 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             return;
         }
     }
-    if (table_info->column_key_size() == 1 && table_info->column_key(0).index_name().empty()
-            && table_info->column_key(0).col_name_size() == 0) {
+
+    // if `create table xx (xx, index()) xx;` or `create table xx (xx, index(ts=xx)) xx;`
+    if (table_info->column_key_size() == 1 && table_info->column_key(0).index_name().empty() &&
+        table_info->column_key(0).col_name_size() == 0) {
         auto ret = CreateOfflineTable(table_info->db(), table_info->name(), table_info->column_key(0).ts_name(),
-                    table_info->column_desc());
+                                      table_info->column_desc());
         response->set_code(ret.code);
         if (ret.code != 0) {
-          response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
+            response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
         }
         response->set_msg(ret.msg);
         return;
     }
+
+    // if no column_key, add one which key is the first column
+    if (table_info->column_key_size() == 0) {
+        if (table_info->column_desc_size() == 0) {
+            response->set_code(::openmldb::base::ReturnCode::kInvalidParameter);
+            response->set_msg("can't be no column");
+            return;
+        }
+        auto add = table_info->add_column_key();
+        add->add_col_name(table_info->column_desc(0).name());
+    }
+
     if (CheckTableMeta(*table_info) < 0) {
         response->set_code(::openmldb::base::ReturnCode::kInvalidParameter);
         response->set_msg("check TableMeta failed");
@@ -4058,7 +4070,8 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
 }
 
 ::openmldb::base::ResultMsg NameServerImpl::CreateOfflineTable(const std::string& db_name,
-        const std::string& table_name, const std::string& partition_key, const Schema& schema) {
+                                                               const std::string& table_name,
+                                                               const std::string& partition_key, const Schema& schema) {
     if (nearline_tablet_.client_ && nearline_tablet_.Health()) {
         auto ret = nearline_tablet_.client_->CreateTable(db_name, table_name, partition_key, schema);
         if (ret.OK()) {
