@@ -3137,7 +3137,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request.db().empty()) {
-            if (!zk_client_->DeleteNode(zk_db_table_data_path_ + "/" + std::to_string(tid))) {
+            if (IsClusterMode() && !zk_client_->DeleteNode(zk_db_table_data_path_ + "/" + std::to_string(tid))) {
                 PDLOG(WARNING, "delete db table node[%s/%u] failed!", zk_db_table_data_path_.c_str(), tid);
                 code = 304;
             } else {
@@ -3145,7 +3145,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                 db_table_info_[request.db()].erase(name);
             }
         } else {
-            if (!zk_client_->DeleteNode(zk_table_data_path_ + "/" + name)) {
+            if (IsClusterMode() && !zk_client_->DeleteNode(zk_table_data_path_ + "/" + name)) {
                 PDLOG(WARNING, "delete table node[%s/%s] failed!", zk_table_data_path_.c_str(), name.c_str());
                 code = 304;
             } else {
@@ -3180,6 +3180,8 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                 task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
             }
         }
+    }
+    if (IsClusterMode()) {
         NotifyTableChanged();
     }
 }
@@ -7947,6 +7949,9 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::openmldb::api::TaskInfo>
 }
 
 void NameServerImpl::NotifyTableChanged() {
+    if (!IsClusterMode()) {
+        return;
+    }
     bool ok = zk_client_->Increment(zk_table_changed_notify_node_);
     if (!ok) {
         PDLOG(WARNING, "increment failed. node is %s", zk_table_changed_notify_node_.c_str());
@@ -9569,27 +9574,27 @@ void NameServerImpl::DropDatabase(RpcController* controller, const DropDatabaseR
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        if (databases_.find(request->db()) == databases_.end()) {
-            response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
-            response->set_msg("database not found");
-            return;
-        }
-        auto db_it = db_table_info_.find(request->db());
-        if (db_it != db_table_info_.end() && db_it->second.size() != 0) {
-            response->set_code(::openmldb::base::ReturnCode::kDatabaseNotEmpty);
-            response->set_msg("database not empty");
-            return;
-        }
-        databases_.erase(request->db());
-    }
-    if (!zk_client_->DeleteNode(zk_db_path_ + "/" + request->db())) {
-        PDLOG(WARNING, "drop db node[%s/%s] failed!", zk_db_path_.c_str(), request->db().c_str());
-        response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
-        response->set_msg("set zk failed");
+    std::lock_guard<std::mutex> lock(mu_);
+    if (databases_.find(request->db()) == databases_.end()) {
+        response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
+        response->set_msg("database not found");
         return;
     }
+    auto db_it = db_table_info_.find(request->db());
+    if (db_it != db_table_info_.end() && db_it->second.size() != 0) {
+        response->set_code(::openmldb::base::ReturnCode::kDatabaseNotEmpty);
+        response->set_msg("database not empty");
+        return;
+    }
+    if (IsClusterMode()) {
+        if (!zk_client_->DeleteNode(zk_db_path_ + "/" + request->db())) {
+            PDLOG(WARNING, "drop db node[%s/%s] failed!", zk_db_path_.c_str(), request->db().c_str());
+            response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
+            response->set_msg("set zk failed");
+            return;
+        }
+    }
+    databases_.erase(request->db());
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }

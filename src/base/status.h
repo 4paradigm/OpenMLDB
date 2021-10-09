@@ -29,6 +29,7 @@ struct ResultMsg {
     ResultMsg() : code(0), msg("ok") {}
     inline bool OK() const { return code == 0; }
     inline const std::string& GetMsg() const { return msg; }
+    inline int GetCode() const { return code; }
     int code;
     std::string msg;
 };
