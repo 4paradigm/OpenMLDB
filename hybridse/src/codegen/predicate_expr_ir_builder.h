@@ -56,6 +56,8 @@ class PredicateIRBuilder {
     Status BuildBetweenExpr(const NativeValue& expr, const NativeValue& left, const NativeValue& right,
                             bool is_not_between, NativeValue* output);
 
+    Status BuildInExpr(const NativeValue& lhs, const NativeValue& in_list, bool is_not, NativeValue* output);
+
     static bool BuildEqExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                             ::llvm::Value* right, ::llvm::Value** output,
                             Status& status);  // NOLINT
@@ -74,9 +76,6 @@ class PredicateIRBuilder {
     static bool BuildLeExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                             ::llvm::Value* right, ::llvm::Value** output,
                             Status& status);  // NOLINT
-
-    Status BuildIsNullExpr(::llvm::BasicBlock*, NativeValue input,
-                           NativeValue* output);
 
  private:
     static bool IsAcceptType(::llvm::Type* type);

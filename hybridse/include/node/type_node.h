@@ -75,9 +75,6 @@ class TypeNode : public SqlNode {
         generics_nullable_.push_back(nullable);
     }
 
-    hybridse::node::DataType base_;
-    std::vector<const hybridse::node::TypeNode *> generics_;
-    std::vector<int> generics_nullable_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const SqlNode *node) const;
     TypeNode *ShadowCopy(NodeManager *) const override;
@@ -98,6 +95,10 @@ class TypeNode : public SqlNode {
     bool IsFloating() const;
     static Status CheckTypeNodeNotNull(const TypeNode *left_type);
     bool IsGeneric() const;
+
+    hybridse::node::DataType base_;
+    std::vector<const hybridse::node::TypeNode *> generics_;
+    std::vector<int> generics_nullable_;
 };
 
 class OpaqueTypeNode : public TypeNode {
