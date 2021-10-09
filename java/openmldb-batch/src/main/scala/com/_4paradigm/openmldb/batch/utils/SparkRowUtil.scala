@@ -52,8 +52,9 @@ object SparkRowUtil {
     while (iterator.hasNext) {
       val row = iterator.next()
       val currentPartitionKey = row.getAs[Long](groupByColIndex)
-      // Determine whether it is a partition
+      // Determine whether it is in the same partition
       if (lastRowPartitionKey != null && currentPartitionKey != lastRowPartitionKey) {
+        // Add the row
         resultRows += maxRow
         first = true
       }
@@ -70,7 +71,7 @@ object SparkRowUtil {
       lastRowPartitionKey = currentPartitionKey
     }
 
-    // Add the row in last group
+    // Add the row in last partition
     if (!iterator.hasNext) {
       resultRows += maxRow
     }
@@ -94,8 +95,9 @@ object SparkRowUtil {
     while (iterator.hasNext) {
       val row = iterator.next()
       val currentPartitionKey = row.getAs[Long](groupByColIndex)
-      // Determine whether it is a partition
+      // Determine whether it is in the same partition
       if (lastRowPartitionKey != null && currentPartitionKey != lastRowPartitionKey) {
+        // Add the row
         resultRows += minRow
         first = true
       }
@@ -112,7 +114,7 @@ object SparkRowUtil {
       lastRowPartitionKey = currentPartitionKey
     }
 
-    // Add the row in last group
+    // Add the row in last partition
     if (!iterator.hasNext) {
       resultRows += minRow
     }
