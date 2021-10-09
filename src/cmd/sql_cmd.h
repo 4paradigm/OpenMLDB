@@ -394,16 +394,18 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
                 return;
             }
             std::string name = cmd_node->GetArgs()[0];
-            std::string error;
-            printf("Drop table %s? yes/no\n", name.c_str());
-            std::string input;
-            std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-            if (input != "yes") {
-                printf("'drop %s' cmd is canceled!\n", name.c_str());
-                return;
+            if (FLAGS_interactive) {
+                printf("Drop table %s? yes/no\n", name.c_str());
+                std::string input;
+                std::cin >> input;
+                std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+                if (input != "yes") {
+                    printf("'drop %s' cmd is canceled!\n", name.c_str());
+                    return;
+                }
             }
             auto ns = cs->GetNsClient();
+            std::string error;
             bool ok = ns->DropTable(name, error);
             if (ok) {
                 std::cout << "drop ok" << std::endl;
@@ -634,6 +636,9 @@ void HandleCli() {
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
             db = FLAGS_database;
+            auto ns = cs->GetNsClient();
+            std::string error;
+            ns->Use(db, error);
         } else {
             char *line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
             if (line == NULL) {
