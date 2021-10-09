@@ -20,18 +20,101 @@ import com._4paradigm.hybridse.sdk.HybridSeException
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{DataType, DateType, IntegerType, LongType, ShortType, TimestampType}
 
+import scala.collection.mutable
 
 object SparkRowUtil {
 
-  def createOrderKeyExtractor(keyIdx: Int, sparkType: DataType, nullable: Boolean): Row => Long = {
+  def getLongFromIndex(keyIdx: Int, sparkType: DataType, row: Row): Long = {
     sparkType match {
-      case ShortType => row: Row => row.getShort(keyIdx).toLong
-      case IntegerType => row: Row => row.getInt(keyIdx).toLong
-      case LongType => row: Row => row.getLong(keyIdx)
-      case TimestampType => row: Row => row.getTimestamp(keyIdx).getTime
-      case DateType => row: Row=>row.getDate(keyIdx).getTime
+      case ShortType => row.getShort(keyIdx).toLong
+      case IntegerType => row.getInt(keyIdx).toLong
+      case LongType => row.getLong(keyIdx)
+      case TimestampType => row.getTimestamp(keyIdx).getTime
+      case DateType => row.getDate(keyIdx).getTime
       case _ =>
         throw new HybridSeException(s"Illegal window key type: $sparkType")
     }
+  }
+
+  def maxRows(iterator: Iterator[Row], groupByColIndex: Int, orderByColIndex: Int, orderByColType: DataType)
+  : mutable.ArrayBuffer[Row] = {
+    if (iterator.isEmpty)
+      throw new UnsupportedOperationException("empty.maxBy")
+
+    val resultRows = new mutable.ArrayBuffer[Row]()
+    var lastRowPartitionKey: Long = null.asInstanceOf[Long]
+
+    var maxValue: Long = null.asInstanceOf[Long]
+    var maxRow: Row = null
+    var first = true
+
+    while (iterator.hasNext) {
+      val row = iterator.next()
+      val currentPartitionKey = row.getAs[Long](groupByColIndex)
+      // Determine whether it is a partition
+      if (lastRowPartitionKey != null && currentPartitionKey != lastRowPartitionKey) {
+        resultRows += maxRow
+        first = true
+      }
+      val value = if (row.isNullAt(orderByColIndex)) {
+        Long.MinValue
+      } else {
+        SparkRowUtil.getLongFromIndex(orderByColIndex, orderByColType, row)
+      }
+      if (first || value > maxValue) {
+        maxRow = row
+        maxValue = value
+        first = false
+      }
+      lastRowPartitionKey = currentPartitionKey
+    }
+
+    // Add the row in last group
+    if (!iterator.hasNext) {
+      resultRows += maxRow
+    }
+
+    resultRows
+  }
+
+  def minRows(iterator: Iterator[Row], groupByColIndex: Int, orderByColIndex: Int, orderByColType: DataType)
+  : mutable.ArrayBuffer[Row] = {
+    if (iterator.isEmpty)
+      throw new UnsupportedOperationException("empty.minBy")
+
+    val resultRows = new mutable.ArrayBuffer[Row]()
+    var lastRowPartitionKey: Long = null.asInstanceOf[Long]
+
+    var minValue: Long = null.asInstanceOf[Long]
+    var minRow: Row = null
+    var first = true
+
+    while (iterator.hasNext) {
+      val row = iterator.next()
+      val currentPartitionKey = row.getAs[Long](groupByColIndex)
+      // Determine whether it is a partition
+      if (lastRowPartitionKey != null && currentPartitionKey != lastRowPartitionKey) {
+        resultRows += minRow
+        first = true
+      }
+      val value = if (row.isNullAt(orderByColIndex)) {
+        Long.MaxValue
+      } else {
+        SparkRowUtil.getLongFromIndex(orderByColIndex, orderByColType, row)
+      }
+      if (first || value < minValue) {
+        minRow = row
+        minValue = value
+        first = false
+      }
+      lastRowPartitionKey = currentPartitionKey
+    }
+
+    // Add the row in last group
+    if (!iterator.hasNext) {
+      resultRows += minRow
+    }
+
+    resultRows
   }
 }

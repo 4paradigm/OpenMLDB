@@ -135,7 +135,7 @@ object JoinPlan {
       throw new HybridSeException("No join conditions specified")
     }
 
-    var joined = leftDf.join(rightDf, joinConditions.reduce(_ && _), "left")
+    val joined = leftDf.join(rightDf, joinConditions.reduce(_ && _), "left")
 
     val result = if (joinType == JoinType.kJoinTypeLeft) {
       joined
@@ -153,63 +153,19 @@ object JoinPlan {
 
         val isAsc = node.join.right_sort.is_asc
 
-        // TODO: Remove this rename columns method when spark bug is resolved
-        // Rename columns
-        val joinedCols = SparkColumnUtil.getColumnsFromDataFrame(joined)
+        val indexCol = SparkColumnUtil.getColumnFromIndex(joined, indexColIdx)
 
-        for (i <- joined.schema.indices) {
-          if (i != indexColIdx) {
-            // In ascii 33 is '!' and 33 + 93 = 126 is '~'.
-            // Add a prefix for each column
-            val char: Char = (33 + i % 93).toChar
-            joinedCols(i) = joinedCols(i).as(char + joinedCols(i).toString())
+        val distinctRdd = joined.repartition(indexCol).rdd.mapPartitions(
+          partitionIter => {
+            if (isAsc) {
+              SparkRowUtil.maxRows(partitionIter, indexColIdx,  timeIdxInJoined, timeColType).toIterator
+            } else {
+              SparkRowUtil.minRows(partitionIter, indexColIdx, timeIdxInJoined, timeColType).toIterator
+            }
           }
-        }
-
-        joined = joined.select(joinedCols: _*)
-
-        // Disable scalastyle for importing Spark implicits
-        // scalastyle:off
-        import spark.implicits._
-        // scalastyle:on
-        val distinct = joined
-          .groupByKey {
-            row => row.getLong(indexColIdx)
-          }
-          .mapGroups {
-            case (_, iter) =>
-              val timeExtractor = SparkRowUtil.createOrderKeyExtractor(
-                timeIdxInJoined, timeColType, nullable = false)
-
-              if (isAsc) {
-                iter.maxBy(row => {
-                  if (row.isNullAt(timeIdxInJoined)) {
-                    Long.MinValue
-                  } else {
-                    timeExtractor.apply(row)
-                  }
-                })
-              } else {
-                iter.minBy(row => {
-                  if (row.isNullAt(timeIdxInJoined)) {
-                    Long.MaxValue
-                  } else {
-                    timeExtractor.apply(row)
-                  }
-                })
-              }
-          }(RowEncoder(joined.schema))
-        // TODO: Remove this rename columns method when spark bug is resolved
-        // Rename columns
-        val distinctCols = SparkColumnUtil.getColumnsFromDataFrame(distinct)
-
-        for (i <- distinct.schema.indices) {
-          if (i != indexColIdx) {
-            distinctCols(i) = distinctCols(i).as(distinctCols(i).toString().tail)
-          }
-        }
-
-        distinct.select(distinctCols: _*).drop(indexName)
+        )
+        val distinctDf = ctx.getSparkSession.createDataFrame(distinctRdd, joined.schema)
+        distinctDf.drop(indexName)
       } else {
         if (supportNativeLastJoin && ctx.getConf.enableNativeLastJoin) {
           leftDf.join(rightDf, joinConditions.reduce(_ && _), "last")
