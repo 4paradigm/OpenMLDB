@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_UDF_LITERAL_TRAITS_H_
-#define SRC_UDF_LITERAL_TRAITS_H_
+#ifndef HYBRIDSE_SRC_UDF_LITERAL_TRAITS_H_
+#define HYBRIDSE_SRC_UDF_LITERAL_TRAITS_H_
 
 #include <limits>
 #include <memory>
@@ -482,4 +482,4 @@ codec::Schema DataTypeTrait<LiteralTypedRow<LiteralArgTypes...>>::schema =
 }  // namespace udf
 }  // namespace hybridse
 
-#endif  // SRC_UDF_LITERAL_TRAITS_H_
+#endif  // HYBRIDSE_SRC_UDF_LITERAL_TRAITS_H_

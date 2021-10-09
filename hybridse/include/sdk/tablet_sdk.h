@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_SDK_TABLET_SDK_H_
-#define INCLUDE_SDK_TABLET_SDK_H_
+#ifndef HYBRIDSE_INCLUDE_SDK_TABLET_SDK_H_
+#define HYBRIDSE_INCLUDE_SDK_TABLET_SDK_H_
 
 #include <memory>
 #include <string>
@@ -63,4 +63,4 @@ std::shared_ptr<TabletSdk> CreateTabletSdk(const std::string& endpoint);
 
 }  // namespace sdk
 }  // namespace hybridse
-#endif  // INCLUDE_SDK_TABLET_SDK_H_
+#endif  // HYBRIDSE_INCLUDE_SDK_TABLET_SDK_H_

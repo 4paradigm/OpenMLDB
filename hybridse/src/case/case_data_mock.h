@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CASE_CASE_DATA_MOCK_H_
-#define SRC_CASE_CASE_DATA_MOCK_H_
+#ifndef HYBRIDSE_SRC_CASE_CASE_DATA_MOCK_H_
+#define HYBRIDSE_SRC_CASE_CASE_DATA_MOCK_H_
 
 #include <memory>
 #include <random>
@@ -103,4 +103,4 @@ class CaseSchemaMock {
 }  // namespace sqlcase
 }  // namespace hybridse
 
-#endif  // SRC_CASE_CASE_DATA_MOCK_H_
+#endif  // HYBRIDSE_SRC_CASE_CASE_DATA_MOCK_H_

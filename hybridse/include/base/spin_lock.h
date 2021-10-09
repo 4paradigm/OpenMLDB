@@ -12,8 +12,8 @@
 //  are chosen so you can use std::unique_lock or std::lock_guard with it.
 //
 
-#ifndef INCLUDE_BASE_SPIN_LOCK_H_
-#define INCLUDE_BASE_SPIN_LOCK_H_
+#ifndef HYBRIDSE_INCLUDE_BASE_SPIN_LOCK_H_
+#define HYBRIDSE_INCLUDE_BASE_SPIN_LOCK_H_
 
 #include <atomic>
 #include <memory>
@@ -67,4 +67,4 @@ class SpinMutex {
 }  // namespace base
 }  // namespace hybridse
 
-#endif  // INCLUDE_BASE_SPIN_LOCK_H_
+#endif  // HYBRIDSE_INCLUDE_BASE_SPIN_LOCK_H_

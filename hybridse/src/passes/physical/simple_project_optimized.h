@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_PASSES_PHYSICAL_SIMPLE_PROJECT_OPTIMIZED_H_
-#define SRC_PASSES_PHYSICAL_SIMPLE_PROJECT_OPTIMIZED_H_
+#ifndef HYBRIDSE_SRC_PASSES_PHYSICAL_SIMPLE_PROJECT_OPTIMIZED_H_
+#define HYBRIDSE_SRC_PASSES_PHYSICAL_SIMPLE_PROJECT_OPTIMIZED_H_
 
 #include "passes/physical/transform_up_physical_pass.h"
 
@@ -34,4 +34,4 @@ class SimpleProjectOptimized : public TransformUpPysicalPass {
 }  // namespace passes
 }  // namespace hybridse
 
-#endif  // SRC_PASSES_PHYSICAL_SIMPLE_PROJECT_OPTIMIZED_H_
+#endif  // HYBRIDSE_SRC_PASSES_PHYSICAL_SIMPLE_PROJECT_OPTIMIZED_H_

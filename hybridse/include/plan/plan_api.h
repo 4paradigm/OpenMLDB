@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef INCLUDE_PLAN_PLAN_API_H_
-#define INCLUDE_PLAN_PLAN_API_H_
+#ifndef HYBRIDSE_INCLUDE_PLAN_PLAN_API_H_
+#define HYBRIDSE_INCLUDE_PLAN_PLAN_API_H_
 #include <string>
 #include "node/node_manager.h"
 namespace hybridse {
@@ -37,4 +37,4 @@ class PlanAPI {
 
 }  // namespace plan
 }  // namespace hybridse
-#endif  // INCLUDE_PLAN_PLAN_API_H_
+#endif  // HYBRIDSE_INCLUDE_PLAN_PLAN_API_H_

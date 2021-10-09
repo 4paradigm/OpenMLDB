@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_LLVM_EXT_SYMBOL_RESOLVE_H_
-#define SRC_LLVM_EXT_SYMBOL_RESOLVE_H_
+#ifndef HYBRIDSE_SRC_LLVM_EXT_SYMBOL_RESOLVE_H_
+#define HYBRIDSE_SRC_LLVM_EXT_SYMBOL_RESOLVE_H_
 
 #include <map>
 #include <string>
@@ -56,4 +56,4 @@ class HybridSeSymbolResolver : public ::llvm::LegacyJITSymbolResolver {
 }  // namespace vm
 }  // namespace hybridse
 
-#endif  // SRC_LLVM_EXT_SYMBOL_RESOLVE_H_
+#endif  // HYBRIDSE_SRC_LLVM_EXT_SYMBOL_RESOLVE_H_

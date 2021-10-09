@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef INCLUDE_VM_ENGINE_CONTEXT_H_
-#define INCLUDE_VM_ENGINE_CONTEXT_H_
+#ifndef HYBRIDSE_INCLUDE_VM_ENGINE_CONTEXT_H_
+#define HYBRIDSE_INCLUDE_VM_ENGINE_CONTEXT_H_
 #include <map>
 #include <memory>
 #include <set>
@@ -102,4 +102,4 @@ class JitOptions {
 };
 }  // namespace vm
 }  // namespace hybridse
-#endif  // INCLUDE_VM_ENGINE_CONTEXT_H_
+#endif  // HYBRIDSE_INCLUDE_VM_ENGINE_CONTEXT_H_

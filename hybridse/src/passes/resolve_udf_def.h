@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_PASSES_RESOLVE_UDF_DEF_H_
-#define SRC_PASSES_RESOLVE_UDF_DEF_H_
+#ifndef HYBRIDSE_SRC_PASSES_RESOLVE_UDF_DEF_H_
+#define HYBRIDSE_SRC_PASSES_RESOLVE_UDF_DEF_H_
 
 #include <string>
 #include <unordered_map>
@@ -97,4 +97,4 @@ class FnScopeInfoGuard {
 
 }  // namespace passes
 }  // namespace hybridse
-#endif  // SRC_PASSES_RESOLVE_UDF_DEF_H_
+#endif  // HYBRIDSE_SRC_PASSES_RESOLVE_UDF_DEF_H_

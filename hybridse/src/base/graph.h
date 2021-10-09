@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BASE_GRAPH_H_
-#define SRC_BASE_GRAPH_H_
+#ifndef HYBRIDSE_SRC_BASE_GRAPH_H_
+#define HYBRIDSE_SRC_BASE_GRAPH_H_
 #include <iostream>
 #include <unordered_map>
 #include <utility>
@@ -141,4 +141,4 @@ int Graph<V, H, E>::VertexSize() {
 }  // namespace base
 }  // namespace hybridse
 
-#endif  // SRC_BASE_GRAPH_H_
+#endif  // HYBRIDSE_SRC_BASE_GRAPH_H_

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef EXAMPLES_TOYDB_SRC_DBMS_DBMS_SERVER_IMPL_H_
-#define EXAMPLES_TOYDB_SRC_DBMS_DBMS_SERVER_IMPL_H_
+#ifndef HYBRIDSE_EXAMPLES_TOYDB_SRC_DBMS_DBMS_SERVER_IMPL_H_
+#define HYBRIDSE_EXAMPLES_TOYDB_SRC_DBMS_DBMS_SERVER_IMPL_H_
 
 #include <map>
 #include <mutex>  // NOLINT (build/c++11)
@@ -78,4 +78,4 @@ class DBMSServerImpl : public DBMSServer {
 
 }  // namespace dbms
 }  // namespace hybridse
-#endif  // EXAMPLES_TOYDB_SRC_DBMS_DBMS_SERVER_IMPL_H_
+#endif  // HYBRIDSE_EXAMPLES_TOYDB_SRC_DBMS_DBMS_SERVER_IMPL_H_

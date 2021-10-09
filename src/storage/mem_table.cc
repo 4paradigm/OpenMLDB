@@ -405,12 +405,7 @@ bool MemTable::CheckLatest(uint32_t index_id, const std::string& key, uint64_t t
     return true;
 }
 
-inline bool MemTable::CheckAbsolute(const TTLSt& ttl_st, uint64_t ts) {
-    if (ts >= GetExpireTime(ttl_st)) {
-        return false;
-    }
-    return true;
-}
+inline bool MemTable::CheckAbsolute(const TTLSt& ttl_st, uint64_t ts) { return ts < GetExpireTime(ttl_st); }
 
 bool MemTable::IsExpire(const LogEntry& entry) {
     if (!enable_gc_.load(std::memory_order_relaxed)) {

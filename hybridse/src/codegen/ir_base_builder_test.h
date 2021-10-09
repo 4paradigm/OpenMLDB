@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_IR_BASE_BUILDER_TEST_H_
-#define SRC_CODEGEN_IR_BASE_BUILDER_TEST_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_IR_BASE_BUILDER_TEST_H_
+#define HYBRIDSE_SRC_CODEGEN_IR_BASE_BUILDER_TEST_H_
 
 #include <memory>
 #include <string>
@@ -655,4 +655,4 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
 
 }  // namespace codegen
 }  // namespace hybridse
-#endif  // SRC_CODEGEN_IR_BASE_BUILDER_TEST_H_
+#endif  // HYBRIDSE_SRC_CODEGEN_IR_BASE_BUILDER_TEST_H_
