@@ -49,7 +49,7 @@ clientPort="6181"
 #modify zookeeper config
 sed -i "s:dataDir=[a-zA-Z0-9//]*:dataDir=${dataDir}:" conf/zoo.cfg
 sed -i "s:clientPort=[0-9]*:clientPort=${clientPort}:" conf/zoo.cfg
-PID=`lsof -i :${clientPort}|grep -v "PID" | awk '{print $2}'`
+PID=$(lsof -i :${clientPort}|grep -v "PID" | awk '{print $2}')
 echo $PID
 if [ "$PID" != "" ]; then
    echo "zk port is unavailable"
@@ -61,17 +61,17 @@ echo 'zookeeper OK'
 
 echo 'starting nameserver'
 cd openmldb-ns-0.2.2
-IP=`hostname -i`
+IP=$(hostname -i)
 #get available port
 ns_port=6527
-PID=`lsof -i :${ns_port}|grep -v "PID" | awk '{print $2}'`
+PID=$(lsof -i :${ns_port}|grep -v "PID" | awk '{print $2}')
 if [ "$PID" != "" ]; then
    echo "ns port is unavailable; try to get another port!"
    templ=0
    ns_port=0
    while [ "$ns_port" -eq 0 ]; do
-      temp1=`shuf -i 1024-10000 -n1`
-      PID=`lsof -i :${temp1}|grep -v "PID" | awk '{print $2}'`
+      temp1=$(shuf -i 1024-10000 -n1)
+      PID=$(lsof -i :${temp1}|grep -v "PID" | awk '{print $2}')
       if [ "$PID" != "" ] ; then
          echo "try to get another port!"
       else
@@ -92,17 +92,17 @@ echo 'nameserver Ok'
  
 echo 'starting tabnet'
 cd openmldb-tablet-2.2.0
-IP=`hostname -i`
+IP=$(hostname -i)
 #get available port
 ns_port=9527
-PID=`lsof -i :${ns_port}|grep -v "PID" | awk '{print $2}'`
+PID=$(lsof -i :${ns_port}|grep -v "PID" | awk '{print $2}')
 if [ "$PID" != "" ]; then
    echo "ns port is unavailable; try to get another port!"
    templ=0
    ns_port=0
    while [ "$ns_port" -eq 0 ]; do
-      temp1=`shuf -i 1024-10000 -n1`
-      PID=`lsof -i :${temp1}|grep -v "PID" | awk '{print $2}'`
+      temp1=$(shuf -i 1024-10000 -n1)
+      PID=$(lsof -i :${temp1}|grep -v "PID" | awk '{print $2}')
       if [ "$PID" != "" ] ; then
          echo "try to get another port!"
       else
@@ -122,5 +122,6 @@ cd ..
 echo 'tabnet Ok'
 
 echo 'employ complete'
+
 
 
