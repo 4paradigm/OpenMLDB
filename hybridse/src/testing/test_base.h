@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_TESTING_TEST_BASE_H_
-#define SRC_TESTING_TEST_BASE_H_
+#ifndef HYBRIDSE_SRC_TESTING_TEST_BASE_H_
+#define HYBRIDSE_SRC_TESTING_TEST_BASE_H_
 
 #include <memory>
 #include <sstream>
@@ -33,7 +33,7 @@ namespace hybridse {
 namespace vm {
 using hybridse::base::Status;
 using hybridse::codec::Row;
-using hybridse::common::kSqlError;
+using hybridse::common::kTestEngineError;
 using hybridse::sqlcase::SqlCase;
 void BuildTableDef(::hybridse::type::TableDef& table);    // NOLINT
 void BuildTableA(::hybridse::type::TableDef& table);      // NOLINT
@@ -53,6 +53,8 @@ bool AddTable(hybridse::type::Database& db,  // NOLINT
               const hybridse::type::TableDef& table_def);
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog(
     const hybridse::type::Database& database);
+std::shared_ptr<SimpleCatalog> BuildSimpleCatalogIndexUnsupport(
+    const hybridse::type::Database& database);
 
 std::shared_ptr<SimpleCatalog> BuildSimpleCatalog();
 bool InitSimpleCataLogFromSqlCase(SqlCase& sql_case,  // NOLINT
@@ -63,4 +65,4 @@ void PrintSchema(const Schema& schema);
 }  // namespace vm
 }  // namespace hybridse
 
-#endif  // SRC_TESTING_TEST_BASE_H_
+#endif  // HYBRIDSE_SRC_TESTING_TEST_BASE_H_

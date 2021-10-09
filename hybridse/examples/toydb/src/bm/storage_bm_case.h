@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_
-#define EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_
+#ifndef HYBRIDSE_EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_
+#define HYBRIDSE_EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_
 #include <string>
 #include "benchmark/benchmark.h"
 #include "testing/toydb_engine_test_base.h"
@@ -32,4 +32,4 @@ void TabletWindowIterate(benchmark::State* state, MODE mode, int64_t data_size);
 void ArrayListIterate(benchmark::State* state, MODE mode, int64_t data_size);
 }  // namespace bm
 }  // namespace hybridse
-#endif  // EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_
+#endif  // HYBRIDSE_EXAMPLES_TOYDB_SRC_BM_STORAGE_BM_CASE_H_

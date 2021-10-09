@@ -26,3 +26,4 @@ DEFINE_string(tablet_endpoint, "",
 // for tablet
 DEFINE_string(dbms_endpoint, "", "config the ip and port that toydb dbms for");
 DEFINE_bool(enable_keep_alive, true, "config if tablet keep alive with dbms");
+DEFINE_bool(enable_trace, false, "config if enable backtrace");

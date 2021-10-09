@@ -228,7 +228,8 @@ TEST_F(DBMSSdkTest, GetInputSchema_ns_not_exist) {
         // select
         std::string sql = "select column1 from test3;";
         dbms_sdk->GetInputSchema(name, sql, &status);
-        ASSERT_EQ(31, static_cast<int>(status.code));
+        ASSERT_EQ(common::kTableNotFound, static_cast<int>(status.code));
+        LOG(INFO) << status.msg << "\n" << status.trace;
     }
 }
 
@@ -308,7 +309,7 @@ TEST_F(DBMSSdkTest, GetInputSchema_table_not_exist) {
         // select
         std::string sql = "select column1 from test3;";
         dbms_sdk->GetInputSchema(name, sql, &status);
-        ASSERT_EQ(31, static_cast<int>(status.code));
+        ASSERT_EQ(common::kTableNotFound, static_cast<int>(status.code));
     }
 }
 
@@ -731,7 +732,6 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
         CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
     }
 }
-
 }  // namespace sdk
 }  // namespace hybridse
 int main(int argc, char *argv[]) {

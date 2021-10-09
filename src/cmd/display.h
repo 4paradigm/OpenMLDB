@@ -127,8 +127,7 @@ __attribute__((unused)) static void PrintColumnKey(
         if (column_key.has_ttl()) {
             std::ostringstream oss;
             auto& ttl = column_key.ttl();
-            // TODO(hw): it's better to construct from common::TTLSt, but the abs will be measured in minutes. Needs fix
-            storage::TTLSt ttl_st(ttl.abs_ttl(), ttl.lat_ttl(), storage::TTLSt::ConvertTTLType(ttl.ttl_type()));
+            storage::TTLSt ttl_st(ttl);
             t.add(ttl_st.ToString());
             t.add(TTLType_Name(ttl_st.GetProtoTTLType()));
         } else {

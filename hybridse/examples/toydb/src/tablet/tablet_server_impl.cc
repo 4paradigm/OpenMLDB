@@ -31,6 +31,7 @@ DECLARE_string(dbms_endpoint);
 DECLARE_string(toydb_endpoint);
 DECLARE_int32(toydb_port);
 DECLARE_bool(enable_keep_alive);
+DECLARE_bool(enable_trace);
 
 namespace hybridse {
 namespace tablet {
@@ -78,12 +79,12 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
     brpc::ClosureGuard done_guard(done);
     ::hybridse::common::Status* status = response->mutable_status();
     if (request->pids_size() == 0) {
-        status->set_code(common::kBadRequest);
+        status->set_code(common::kRequestError);
         status->set_msg("create table without pid");
         return;
     }
     if (request->tid() <= 0) {
-        status->set_code(common::kBadRequest);
+        status->set_code(common::kRequestError);
         status->set_msg("create table with invalid tid " +
                         std::to_string(request->tid()));
         return;
@@ -96,7 +97,7 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
         if (!ok) {
             LOG(WARNING) << "fail to init table storage for table "
                          << request->table().name();
-            status->set_code(common::kBadRequest);
+            status->set_code(common::kRequestError);
             status->set_msg("fail to init table storage");
             return;
         }
@@ -121,7 +122,7 @@ void TabletServerImpl::Insert(RpcController* ctrl, const InsertRequest* request,
     brpc::ClosureGuard done_guard(done);
     ::hybridse::common::Status* status = response->mutable_status();
     if (request->db().empty() || request->table().empty()) {
-        status->set_code(common::kBadRequest);
+        status->set_code(common::kRequestError);
         status->set_msg("db or table name is empty");
         return;
     }
@@ -162,9 +163,12 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             bool ok = engine_->Get(request->sql(), request->db(), session,
                                    base_status);
             if (!ok) {
-                status->set_msg(base_status.str());
                 status->set_code(base_status.code);
-                LOG(WARNING) << base_status.str();
+                if (FLAGS_enable_trace) {
+                    status->set_msg(base_status.str());
+                } else {
+                    status->set_msg(base_status.GetMsg());
+                }
                 return;
             }
         }
@@ -178,7 +182,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
 
         if (0 != ret) {
             LOG(WARNING) << "fail to run sql " << request->sql();
-            status->set_code(common::kSqlError);
+            status->set_code(common::kRunSessionError);
             status->set_msg("fail to run sql");
             return;
         }
@@ -196,7 +200,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         status->set_code(common::kOk);
     } else {
         if (request->row().empty()) {
-            status->set_code(common::kBadRequest);
+            status->set_code(common::kRequestError);
             status->set_msg("input row is empty");
             return;
         }
@@ -206,9 +210,12 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             bool ok = engine_->Get(request->sql(), request->db(), session,
                                    base_status);
             if (!ok) {
-                status->set_msg(base_status.str());
                 status->set_code(base_status.code);
-                LOG(WARNING) << base_status.str();
+                if (FLAGS_enable_trace) {
+                    status->set_msg(base_status.str());
+                } else {
+                    status->set_msg(base_status.GetMsg());
+                }
                 return;
             }
         }
@@ -220,7 +227,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         int32_t ret = session.Run(request->task_id(), row, &output);
         if (ret != 0) {
             LOG(WARNING) << "fail to run sql " << request->sql();
-            status->set_code(common::kSqlError);
+            status->set_code(common::kRunSessionError);
             status->set_msg("fail to run sql");
             return;
         }
@@ -243,22 +250,25 @@ void TabletServerImpl::Explain(RpcController* ctrl,
                                request->parameter_schema(),
                                &output, &base_status);
     if (!ok || base_status.code != 0) {
-        status->set_msg(base_status.str());
+        if (FLAGS_enable_trace) {
+            status->set_msg(base_status.str());
+        } else {
+            status->set_msg(base_status.GetMsg());
+        }
         status->set_code(base_status.code);
-        LOG(WARNING) << base_status.str();
         return;
     }
     ok = codec::SchemaCodec::Encode(output.input_schema,
                                     response->mutable_input_schema());
     if (!ok) {
-        status->set_msg("fail encode schema");
+        status->set_msg("Fail encode input schema");
         status->set_code(common::kSchemaCodecError);
         return;
     }
     ok = codec::SchemaCodec::Encode(output.output_schema,
                                     response->mutable_output_schema());
     if (!ok) {
-        status->set_msg("fail encode schema");
+        status->set_msg("fail encode output schema");
         status->set_code(common::kSchemaCodecError);
         return;
     }

@@ -3,6 +3,13 @@
 ## [Unreleased]
 ### Feature
 - Support insert multiple rows into a table using a single SQL insert statement. [#398](https://github.com/4paradigm/OpenMLDB/issues/398)
+- Support aggregation function, e.g. `COUNT`, `SUM`, `MIN`, `MAX`, `AVG`, over the whole table [#219](https://github.com/4paradigm/OpenMLDB/issues/219)
+- Enhance plan optimization on `GROUP` and `FILTER` op [#350](https://github.com/4paradigm/OpenMLDB/pull/350)
+- Refactor status code and status macro. Save first message (root message) in `status.msg`. [#430](https://github.com/4paradigm/OpenMLDB/issues/430)
+
+### Bug Fix
+- Fix plan error triggered by optimize the same plan node repeatedly. [#437](https://github.com/4paradigm/OpenMLDB/issues/437)
+
 ## [0.2.3] - 2021-08-31
 ### Feature
 - Data importer support bulk load [#250](https://github.com/4paradigm/OpenMLDB/pull/250)

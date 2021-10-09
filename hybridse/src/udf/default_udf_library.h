@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_UDF_DEFAULT_UDF_LIBRARY_H_
-#define SRC_UDF_DEFAULT_UDF_LIBRARY_H_
+#ifndef HYBRIDSE_SRC_UDF_DEFAULT_UDF_LIBRARY_H_
+#define HYBRIDSE_SRC_UDF_DEFAULT_UDF_LIBRARY_H_
 #include "udf/udf_library.h"
 
 namespace hybridse {
@@ -51,4 +51,4 @@ class DefaultUdfLibrary : public UdfLibrary {
 }  // namespace udf
 }  // namespace hybridse
 
-#endif  // SRC_UDF_DEFAULT_UDF_LIBRARY_H_
+#endif  // HYBRIDSE_SRC_UDF_DEFAULT_UDF_LIBRARY_H_

@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_TESTING_ENGINE_TEST_BASE_H_
-#define SRC_TESTING_ENGINE_TEST_BASE_H_
+#ifndef HYBRIDSE_SRC_TESTING_ENGINE_TEST_BASE_H_
+#define HYBRIDSE_SRC_TESTING_ENGINE_TEST_BASE_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,7 +67,7 @@ namespace hybridse {
 namespace vm {
 using hybridse::base::Status;
 using hybridse::codec::Row;
-using hybridse::common::kSqlError;
+using hybridse::common::kTestEngineError;
 using hybridse::sqlcase::SqlCase;
 enum EngineRunMode { RUNBATCH, RUNONE };
 
@@ -173,7 +173,7 @@ class BatchEngineTestRunner : public EngineTestRunner {
             if (!rows.empty()) {
                 std::string table_name = sql_case_.inputs_[i].name_;
                 CHECK_TRUE(AddRowsIntoTable(table_name, rows),
-                           common::kSqlError, "Fail to add rows into table ",
+                           common::kTablePutFailed, "Fail to add rows into table ",
                            table_name);
             }
         }
@@ -183,13 +183,13 @@ class BatchEngineTestRunner : public EngineTestRunner {
     Status Compute(std::vector<Row>* outputs) override {
         auto batch_session =
             std::dynamic_pointer_cast<BatchRunSession>(session_);
-        CHECK_TRUE(batch_session != nullptr, common::kSqlError);
+        CHECK_TRUE(batch_session != nullptr, common::kNullPointer);
         Row parameter = parameter_rows_.empty() ? Row() : parameter_rows_[0];
         int run_ret = batch_session->Run(parameter, *outputs);
         if (run_ret != 0) {
             return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
         }
-        CHECK_TRUE(run_ret == 0, common::kSqlError, "Run batch session failed");
+        CHECK_TRUE(run_ret == 0, common::kRunError, "Run batch session failed");
         return Status::OK();
     }
 };
@@ -208,28 +208,28 @@ class RequestEngineTestRunner : public EngineTestRunner {
             !sql_case_.batch_request_.columns_.empty();
         auto request_session =
             std::dynamic_pointer_cast<RequestRunSession>(session_);
-        CHECK_TRUE(request_session != nullptr, common::kSqlError);
+        CHECK_TRUE(request_session != nullptr, common::kNullPointer);
         std::string request_name = request_session->GetRequestName();
 
         if (has_batch_request) {
-            CHECK_TRUE(1 <= sql_case_.batch_request_.rows_.size(), kSqlError,
+            CHECK_TRUE(1 <= sql_case_.batch_request_.rows_.size(), common::kSqlCaseError,
                        "RequestEngine can't handler emtpy rows batch requests");
             CHECK_TRUE(sql_case_.ExtractInputData(sql_case_.batch_request_,
                                                   request_rows_),
-                       kSqlError, "Extract case request rows failed");
+                       common::kSqlCaseError, "Extract case request rows failed");
         }
         for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
             std::string input_name = sql_case_.inputs_[i].name_;
 
             if (input_name == request_name && !has_batch_request) {
                 CHECK_TRUE(sql_case_.ExtractInputData(request_rows_, i),
-                           kSqlError, "Extract case request rows failed");
+                           common::kSqlCaseError, "Extract case request rows failed");
                 continue;
             } else {
                 std::vector<Row> rows;
                 if (!sql_case_.inputs_[i].rows_.empty() ||
                     !sql_case_.inputs_[i].data_.empty()) {
-                    CHECK_TRUE(sql_case_.ExtractInputData(rows, i), kSqlError,
+                    CHECK_TRUE(sql_case_.ExtractInputData(rows, i), common::kSqlCaseError,
                                "Extract case request rows failed");
                 }
 
@@ -242,12 +242,12 @@ class RequestEngineTestRunner : public EngineTestRunner {
                         }
                     }
                     CHECK_TRUE(AddRowsIntoTable(input_name, store_rows),
-                               common::kSqlError,
+                               common::kTablePutFailed,
                                "Fail to add rows into table ", input_name);
 
                 } else {
                     CHECK_TRUE(AddRowsIntoTable(input_name, rows),
-                               common::kSqlError,
+                               common::kTablePutFailed,
                                "Fail to add rows into table ", input_name);
                 }
             }
@@ -272,7 +272,7 @@ class RequestEngineTestRunner : public EngineTestRunner {
                 return Status(common::kRunError, "Run request session failed");
             }
             if (!has_batch_request) {
-                CHECK_TRUE(AddRowIntoTable(request_name, in_row), kSqlError,
+                CHECK_TRUE(AddRowIntoTable(request_name, in_row), common::kTablePutFailed,
                            "Fail add row into table ", request_name);
             }
             outputs->push_back(out_row);
@@ -301,7 +301,7 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
         request_rows_.clear();
         auto request_session =
             std::dynamic_pointer_cast<BatchRequestRunSession>(session_);
-        CHECK_TRUE(request_session != nullptr, common::kSqlError);
+        CHECK_TRUE(request_session != nullptr, common::kNullPointer);
 
         bool has_batch_request = !sql_case_.batch_request().columns_.empty();
         if (!has_batch_request) {
@@ -335,7 +335,7 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
                     }
                 }
                 CHECK_TRUE(AddRowsIntoTable(table_name, rows),
-                           common::kSqlError, "Fail to add rows into table ",
+                           common::kTablePutFailed, "Fail to add rows into table ",
                            table_name);
             }
         }
@@ -417,14 +417,14 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
     Status Compute(std::vector<Row>* outputs) override {
         auto request_session =
             std::dynamic_pointer_cast<BatchRequestRunSession>(session_);
-        CHECK_TRUE(request_session != nullptr, common::kSqlError);
+        CHECK_TRUE(request_session != nullptr, common::kNullPointer);
         // Currently parameterized query un-support currently
         CHECK_TRUE(parameter_rows_.empty(), common::kUnSupport,
                    "Batch request do not support parameterized query currently")
         int run_ret = request_session->Run(request_rows_, *outputs);
         if (run_ret != 0) {
             return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
-            return Status(kSqlError, "Run batch request session failed");
+            return Status(common::kTestRunSessionError, "Run batch request session failed");
         }
         return Status::OK();
     }
@@ -435,4 +435,4 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
 
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_TESTING_ENGINE_TEST_BASE_H_
+#endif  // HYBRIDSE_SRC_TESTING_ENGINE_TEST_BASE_H_

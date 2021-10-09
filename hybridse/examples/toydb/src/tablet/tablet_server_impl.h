@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef EXAMPLES_TOYDB_SRC_TABLET_TABLET_SERVER_IMPL_H_
-#define EXAMPLES_TOYDB_SRC_TABLET_TABLET_SERVER_IMPL_H_
+#ifndef HYBRIDSE_EXAMPLES_TOYDB_SRC_TABLET_TABLET_SERVER_IMPL_H_
+#define HYBRIDSE_EXAMPLES_TOYDB_SRC_TABLET_TABLET_SERVER_IMPL_H_
 
 #include <map>
 #include <memory>
@@ -99,4 +99,4 @@ class TabletServerImpl : public TabletServer {
 
 }  // namespace tablet
 }  // namespace hybridse
-#endif  // EXAMPLES_TOYDB_SRC_TABLET_TABLET_SERVER_IMPL_H_
+#endif  // HYBRIDSE_EXAMPLES_TOYDB_SRC_TABLET_TABLET_SERVER_IMPL_H_

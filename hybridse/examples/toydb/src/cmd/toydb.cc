@@ -56,7 +56,7 @@ void HandleSqlScript(const std::string &script,
                      hybridse::sdk::Status &status);  // NOLINT (runtime/references)
 
 void HandleEnterDatabase(const std::string &db_name);
-void HandleCmd(const hybridse::node::CmdNode *cmd_node,
+void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node,
                hybridse::sdk::Status &status);  // NOLINT (runtime/references)
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
 
@@ -155,7 +155,7 @@ void StartClient(char *argv[]) {
             ::hybridse::sdk::Status status;
             HandleSqlScript(cmd_str, status);
             if (0 != status.code) {
-                std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
+                std::cout << "ERROR[" << status.code << "]: " << status.msg << std::endl;
             }
             cmd_str.clear();
             cmd_mode = true;
@@ -312,12 +312,12 @@ void HandleSqlScript(const std::string &script,
         }
 
         switch (node->GetType()) {
-            case hybridse::node::kPlanTypeCreate: {
-                hybridse::node::CmdNode *cmd = dynamic_cast<hybridse::node::CmdNode *>(node);
+            case hybridse::node::kPlanTypeCmd: {
+                hybridse::node::CmdPlanNode *cmd = dynamic_cast<hybridse::node::CmdPlanNode *>(node);
                 HandleCmd(cmd, status);
                 return;
             }
-            case hybridse::node::kPlanTypeCmd: {
+            case hybridse::node::kPlanTypeCreate: {
                 dbms_sdk->ExecuteQuery(cmd_client_db.name, script, &status);
                 return;
             }
@@ -364,22 +364,21 @@ void HandleSqlScript(const std::string &script,
                     return;
                 }
                 std::shared_ptr<::hybridse::sdk::ResultSet> rs = table_sdk->Query(cmd_client_db.name, script, &status);
-                if (!rs) {
-                    std::cout << "Fail to query sql: " << status.msg << std::endl;
-                } else {
+                if (rs) {
                     PrintResultSet(std::cout, rs.get());
                 }
                 return;
             }
             default: {
-                status.msg = "Fail to execute script with unSuppurt type" + node->GetTypeName();
+                status.msg =
+                    "Fail to execute script with un-support type" + hybridse::node::NameOfPlanNodeType(node->GetType());
                 status.code = hybridse::common::kUnSupport;
                 return;
             }
         }
     }
 }
-void HandleCmd(const hybridse::node::CmdNode *cmd_node,
+void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node,
                hybridse::sdk::Status &status) {  // NOLINT (runtime/references)
     if (dbms_sdk == NULL) {
         dbms_sdk = ::hybridse::sdk::CreateDBMSSdk(FLAGS_toydb_endpoint);

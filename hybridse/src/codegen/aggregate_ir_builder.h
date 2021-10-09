@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_AGGREGATE_IR_BUILDER_H_
-#define SRC_CODEGEN_AGGREGATE_IR_BUILDER_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_AGGREGATE_IR_BUILDER_H_
+#define HYBRIDSE_SRC_CODEGEN_AGGREGATE_IR_BUILDER_H_
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -94,7 +94,7 @@ class AggregateIRBuilder {
         ::llvm::LLVMContext& llvm_ctx,  // NOLINT
         const std::string& fname, const node::DataType& node_type);
 
-    bool BuildMulti(const std::string& base_funcname,
+    base::Status BuildMulti(const std::string& base_funcname,
                     ExprIRBuilder* expr_ir_builder,
                     VariableIRBuilder* variable_ir_builder,
                     ::llvm::BasicBlock* cur_block,
@@ -114,4 +114,4 @@ class AggregateIRBuilder {
 
 }  // namespace codegen
 }  // namespace hybridse
-#endif  // SRC_CODEGEN_AGGREGATE_IR_BUILDER_H_
+#endif  // HYBRIDSE_SRC_CODEGEN_AGGREGATE_IR_BUILDER_H_

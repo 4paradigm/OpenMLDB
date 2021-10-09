@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_PASSES_PHYSICAL_TRANSFORM_UP_PHYSICAL_PASS_H_
-#define SRC_PASSES_PHYSICAL_TRANSFORM_UP_PHYSICAL_PASS_H_
+#ifndef HYBRIDSE_SRC_PASSES_PHYSICAL_TRANSFORM_UP_PHYSICAL_PASS_H_
+#define HYBRIDSE_SRC_PASSES_PHYSICAL_TRANSFORM_UP_PHYSICAL_PASS_H_
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include "passes/physical/physical_pass.h"
 
 namespace hybridse {
@@ -109,9 +110,10 @@ class TransformUpPysicalPass : public PhysicalPass {
     node::NodeManager* node_manager_;
     const std::string db_;
     std::shared_ptr<Catalog> catalog_;
+    std::unordered_map<int, bool> visited_ids_;
 };
 
 }  // namespace passes
 }  // namespace hybridse
 
-#endif  // SRC_PASSES_PHYSICAL_TRANSFORM_UP_PHYSICAL_PASS_H_
+#endif  // HYBRIDSE_SRC_PASSES_PHYSICAL_TRANSFORM_UP_PHYSICAL_PASS_H_

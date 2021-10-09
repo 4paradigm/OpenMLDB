@@ -311,7 +311,32 @@ TEST_P(SqlCompilerTest, CompileBatchModeTest) {
         CompilerCheck(simple_catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, false);
     }
 }
-
+TEST_F(SqlCompilerTest, TestEnableWindowParalled) {
+    hybridse::type::TableDef t1;
+    hybridse::type::TableDef t2;
+    SqlCase::ExtractTableDef(
+        {"col0 string", "col1 int", "col2 int"}, {}, t1);
+    t1.set_name("t1");
+    SqlCase::ExtractTableDef(
+        {"str0 string", "str1 string", "col0 int", "col1 int"}, {}, t2);
+    t2.set_name("t2");
+    hybridse::type::Database db;
+    db.set_name("db");
+    AddTable(db, t1);
+    AddTable(db, t2);
+    auto simple_catalog = BuildSimpleCatalogIndexUnsupport(db);
+    std::string sqlstr = " SELECT sum(t1.col1) over w1 as sum_t1_col1, t2.str1 as t2_str1\n"
+                         " FROM t1\n"
+                         " last join t2 order by t2.col1\n"
+                         " on t1.col1 = t2.col1 and t1.col2 = t2.col0\n"
+                         " WINDOW w1 AS (\n"
+                         "  PARTITION BY t1.col2 ORDER BY t1.col1\n"
+                         "  ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW\n"
+                         " ) limit 10;";
+    SqlCase sql_case;
+    sql_case.sql_str_ = sqlstr;
+    CompilerCheck(simple_catalog, sql_case, {}, kBatchMode, true);
+}
 TEST_P(SqlCompilerTest, CompileBatchModeEnableWindowParalledTest) {
     if (boost::contains(GetParam().mode(), "batch-unsupport")) {
         LOG(INFO) << "Skip sql case: batch unsupport";
@@ -366,7 +391,7 @@ TEST_P(SqlCompilerTest, CompileBatchModeEnableWindowParalledTest) {
         table_def.set_name("tc");
         AddTable(db, table_def);
     }
-    auto catalog = BuildSimpleCatalog(db);
+    auto catalog = BuildSimpleCatalogIndexUnsupport(db);
     CompilerCheck(catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, true);
 
     {

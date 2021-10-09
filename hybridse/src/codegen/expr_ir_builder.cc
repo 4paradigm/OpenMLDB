@@ -45,10 +45,8 @@ ExprIRBuilder::ExprIRBuilder(CodeGenContext* ctx) : ctx_(ctx) {}
 ExprIRBuilder::~ExprIRBuilder() {}
 
 // TODO(chenjing): 修改GetFunction, 直接根据参数生成signature
-::llvm::Function* ExprIRBuilder::GetFuncion(
-    const std::string& name,
-    const std::vector<const node::TypeNode*>& args_types,
-    base::Status& status) {
+base::Status ExprIRBuilder::GetFunction(const std::string& name, const std::vector<const node::TypeNode*>& args_types,
+                                       ::llvm::Function** output) {
     std::string fn_name = name;
     if (!args_types.empty()) {
         for (const node::TypeNode* type_node : args_types) {
@@ -59,7 +57,8 @@ ExprIRBuilder::~ExprIRBuilder() {}
     auto module = ctx_->GetModule();
     ::llvm::Function* fn = module->getFunction(::llvm::StringRef(fn_name));
     if (nullptr != fn) {
-        return fn;
+        *output = fn;
+        return base::Status::OK();
     }
 
     if (!args_types.empty() && !args_types[0]->generics_.empty()) {
@@ -76,13 +75,9 @@ ExprIRBuilder::~ExprIRBuilder() {}
             }
         }
     }
-    if (nullptr == fn) {
-        status.code = common::kCallMethodError;
-        status.msg = "fail to find func with name " + fn_name;
-        LOG(WARNING) << status;
-        return fn;
-    }
-    return fn;
+    *output = fn;
+    CHECK_TRUE(nullptr != fn, common::kCodegenCallFunctionError, "Fail to find function named ", fn_name)
+    return base::Status::OK();
 }
 
 Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
@@ -91,7 +86,7 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
                "Node or output is null");
     std::string cache_key = "@expr(#" + std::to_string(node->node_id()) + ")";
     if (frame_ != nullptr) {
-        cache_key.append("over " + frame_->GetExprString());
+        cache_key.append(" over " + frame_->GetExprString());
     }
     if (ctx_->GetCurrentScope()->sv()->FindVar(cache_key, output)) {
         return Status::OK();
@@ -295,9 +290,7 @@ Status ExprIRBuilder::BuildCallFn(const ::hybridse::node::CallExprNode* call,
     if (fn_def->GetType() == node::kExternalFnDef) {
         auto extern_fn = dynamic_cast<const node::ExternalFnDefNode*>(fn_def);
         if (!extern_fn->IsResolved()) {
-            Status status;
-            BuildCallFnLegacy(call, output, status);
-            return status;
+            CHECK_STATUS(BuildCallFnLegacy(call, output))
         }
     }
 
@@ -314,20 +307,16 @@ Status ExprIRBuilder::BuildCallFn(const ::hybridse::node::CallExprNode* call,
         arg_types.push_back(arg_expr->GetOutputType());
     }
     UdfIRBuilder udf_builder(ctx_, frame_arg_, frame_);
-    return udf_builder.BuildCall(fn_def, arg_types, arg_values, output);
+    CHECK_STATUS(udf_builder.BuildCall(fn_def, arg_types, arg_values, output));
+    return base::Status::OK();
 }
 
-bool ExprIRBuilder::BuildCallFnLegacy(
-    const ::hybridse::node::CallExprNode* call_fn, NativeValue* output,
-    ::hybridse::base::Status& status) {  // NOLINT
+Status ExprIRBuilder::BuildCallFnLegacy(
+    const ::hybridse::node::CallExprNode* call_fn, NativeValue* output) {
 
     // TODO(chenjing): return status;
-    if (call_fn == NULL || output == NULL) {
-        status.code = common::kNullPointer;
-        status.msg = "call fn or output is null";
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    CHECK_TRUE(call_fn != NULL, common::kCodegenError, "BuildCallFnLegacy#call_fn is null")
+    CHECK_TRUE(output != NULL, common::kCodegenError, "BuildCallFnLegacy#output is null")
     auto named_fn =
         dynamic_cast<const node::ExternalFnDefNode*>(call_fn->GetFnDef());
     std::string function_name = named_fn->function_name();
@@ -347,59 +336,38 @@ bool ExprIRBuilder::BuildCallFnLegacy(
             dynamic_cast<node::ExprNode*>(*it);
         NativeValue llvm_arg_wrapper;
         // TODO(chenjing): remove out_name
-        status = Build(arg, &llvm_arg_wrapper);
-        if (status.isOK()) {
-            const ::hybridse::node::TypeNode* value_type = nullptr;
-            if (false == GetFullType(ctx_->node_manager(),
-                                     llvm_arg_wrapper.GetType(), &value_type)) {
-                status.msg = "fail to handle arg type ";
-                status.code = common::kCodegenError;
-                return false;
-            }
-            args_types.push_back(value_type);
-            // TODO(chenjing): 直接使用list TypeNode
-            // handle list type
-            // 泛型类型还需要优化，目前是hard
-            // code识别list或者迭代器类型，然后取generic type
-            if (hybridse::node::kList == value_type->base() ||
-                hybridse::node::kIterator == value_type->base()) {
-                generics_types.push_back(value_type);
-            }
-            ::llvm::Value* llvm_arg = llvm_arg_wrapper.GetValue(&builder);
-            llvm_args.push_back(llvm_arg);
-        } else {
-            LOG(WARNING) << "fail to build arg for " << status.msg;
-            std::ostringstream oss;
-            oss << "faild to build args: " << *call_fn;
-            status.msg = oss.str();
-            status.code = common::kCodegenError;
-            return false;
+        CHECK_STATUS(Build(arg, &llvm_arg_wrapper), "Fail to build arguments")
+        const ::hybridse::node::TypeNode* value_type = nullptr;
+        CHECK_TRUE(GetFullType(ctx_->node_manager(), llvm_arg_wrapper.GetType(), &value_type), kCodegenError,
+                   "Fail to handler argument type")
+
+        args_types.push_back(value_type);
+        // TODO(chenjing): 直接使用list TypeNode
+        // handle list type
+        // 泛型类型还需要优化，目前是hard
+        // code识别list或者迭代器类型，然后取generic type
+        if (hybridse::node::kList == value_type->base() ||
+            hybridse::node::kIterator == value_type->base()) {
+            generics_types.push_back(value_type);
         }
+        ::llvm::Value* llvm_arg = llvm_arg_wrapper.GetValue(&builder);
+        llvm_args.push_back(llvm_arg);
     }
 
-    ::llvm::Function* fn = GetFuncion(function_name, args_types, status);
-
-    if (common::kOk != status.code) {
-        return false;
-    }
-
+    ::llvm::Function* fn = nullptr;
+    CHECK_STATUS(GetFunction(function_name, args_types, &fn));
     if (call_fn->children_.size() == fn->arg_size()) {
         ::llvm::ArrayRef<::llvm::Value*> array_ref(llvm_args);
         *output = NativeValue::Create(
             builder.CreateCall(fn->getFunctionType(), fn, array_ref));
-        return true;
+        return base::Status::OK();
     } else if (call_fn->children_.size() == fn->arg_size() - 1) {
         auto it = fn->arg_end();
         it--;
         ::llvm::Argument* last_arg = &*it;
-        if (!TypeIRBuilder::IsStructPtr(last_arg->getType())) {
-            status.msg = ("Incorrect arguments passed");
-            status.code = (common::kCallMethodError);
-            LOG(WARNING) << status.msg;
-            return false;
-        }
-        ::llvm::Type* struct_type =
-            reinterpret_cast<::llvm::PointerType*>(last_arg->getType())
+        CHECK_TRUE(TypeIRBuilder::IsStructPtr(last_arg->getType()), common::kCodegenCallFunctionError,
+                   "Incorrect arguments passed")
+        ::llvm::Type* struct_type = reinterpret_cast<::llvm::PointerType*>(last_arg->getType())
                 ->getElementType();
         ::llvm::Value* struct_value =
             CreateAllocaAtHead(&builder, struct_type, "struct_alloca");
@@ -407,22 +375,15 @@ bool ExprIRBuilder::BuildCallFnLegacy(
         ::llvm::Value* ret =
             builder.CreateCall(fn->getFunctionType(), fn,
                                ::llvm::ArrayRef<::llvm::Value*>(llvm_args));
-        if (nullptr == ret) {
-            status.code = common::kCallMethodError;
-            status.msg = "Fail to Call Function";
-            LOG(WARNING) << status.msg;
-            return false;
-        }
+        CHECK_TRUE(nullptr != ret, common::kCodegenCallFunctionError, "Fail to codegen Call Function")
+
         *output = NativeValue::Create(struct_value);
-        return true;
+        return base::Status::OK();
 
     } else {
-        status.msg = ("Incorrect arguments passed");
-        status.code = (common::kCallMethodError);
-        LOG(WARNING) << status.msg;
-        return false;
+        FAIL_STATUS(common::kCodegenCallFunctionError, "Incorrect arguments passed")
     }
-    return false;
+    return base::Status::OK();
 }
 
 // Build Struct Expr IR:

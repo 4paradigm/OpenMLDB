@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_NODE_SQL_NODE_H_
-#define INCLUDE_NODE_SQL_NODE_H_
+#ifndef HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_
+#define HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_
 
 #include <glog/logging.h>
 
@@ -2507,4 +2507,4 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const std::str
                 const std::string &item_name, bool last_child);
 }  // namespace node
 }  // namespace hybridse
-#endif  // INCLUDE_NODE_SQL_NODE_H_
+#endif  // HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_

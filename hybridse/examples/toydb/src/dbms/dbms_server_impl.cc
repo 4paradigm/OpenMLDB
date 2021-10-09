@@ -29,7 +29,7 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
     brpc::ClosureGuard done_guard(done);
     if (request->table().name().empty()) {
         ::hybridse::common::Status* status = response->mutable_status();
-        status->set_code(::hybridse::common::kBadRequest);
+        status->set_code(::hybridse::common::kRequestError);
         status->set_msg("table name is empty");
         LOG(WARNING) << "create table failed for table name is empty";
         return;
@@ -134,7 +134,7 @@ void DBMSServerImpl::GetSchema(RpcController* ctr,
     brpc::ClosureGuard done_guard(done);
     if (request->name().empty()) {
         ::hybridse::common::Status* status = response->mutable_status();
-        status->set_code(::hybridse::common::kBadRequest);
+        status->set_code(::hybridse::common::kRequestError);
         status->set_msg("table name is empty");
         LOG(WARNING) << "create table failed for table name is empty";
         return;
@@ -181,9 +181,9 @@ void DBMSServerImpl::AddDatabase(RpcController* ctr,
     brpc::ClosureGuard done_guard(done);
     if (request->name().empty()) {
         ::hybridse::common::Status* status = response->mutable_status();
-        status->set_code(::hybridse::common::kBadRequest);
+        status->set_code(::hybridse::common::kRequestError);
         status->set_msg("database name is empty");
-        LOG(WARNING) << "create database failed for name is empty";
+        DLOG(WARNING) << "create database failed for name is empty";
         return;
     }
 
@@ -191,7 +191,7 @@ void DBMSServerImpl::AddDatabase(RpcController* ctr,
     Databases::iterator it = databases_.find(request->name());
     if (it != databases_.end()) {
         ::hybridse::common::Status* status = response->mutable_status();
-        status->set_code(::hybridse::common::kNameExists);
+        status->set_code(::hybridse::common::kDatabaseExists);
         status->set_msg("database name exists");
         LOG(WARNING) << "create database failed for name existing";
         return;
@@ -269,7 +269,7 @@ type::Database* DBMSServerImpl::GetDatabase(const std::string db_name,
     std::lock_guard<std::mutex> lock(mu_);
     Databases::iterator it = databases_.find(db_name);
     if (it == databases_.end()) {
-        status.set_code(::hybridse::common::kNameExists);
+        status.set_code(::hybridse::common::kNoDatabase);
         status.set_msg("Database doesn't exist");
         LOG(WARNING) << "get database failed for database doesn't exist";
         return nullptr;

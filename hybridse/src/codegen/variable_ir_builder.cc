@@ -155,8 +155,8 @@ bool VariableIRBuilder::LoadParameter(NativeValue* output, base::Status& status)
 }
 base::Status VariableIRBuilder::LoadMemoryPool(NativeValue* output) {
     base::Status status;
-    CHECK_TRUE(LoadValue("@mem_pool", output, status), kCodegenError,
-               "fail to load memory pool", status.str());
+    LoadValue("@mem_pool", output, status);
+    CHECK_STATUS(status, "fail to load memory pool")
     return status;
 }
 bool hybridse::codegen::VariableIRBuilder::LoadWindow(

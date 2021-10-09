@@ -109,81 +109,77 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
     ::hybridse::vm::PhysicalOpNode* op = nullptr;
     switch (node->type_) {
         case node::kPlanTypeLimit: {
-            status = TransformLimitOp(
+            CHECK_STATUS(TransformLimitOp(
                 dynamic_cast<const ::hybridse::node::LimitPlanNode*>(node),
-                &op);
+                &op));
             break;
         }
         case node::kPlanTypeProject: {
-            status = TransformProjectPlanOp(
+            CHECK_STATUS(TransformProjectPlanOp(
                 dynamic_cast<const ::hybridse::node::ProjectPlanNode*>(node),
-                &op);
+                &op));
             break;
         }
         case node::kPlanTypeJoin: {
-            status = TransformJoinOp(
-                dynamic_cast<const ::hybridse::node::JoinPlanNode*>(node), &op);
+            CHECK_STATUS(TransformJoinOp(
+                dynamic_cast<const ::hybridse::node::JoinPlanNode*>(node), &op));
             break;
         }
         case node::kPlanTypeUnion: {
-            status = TransformUnionOp(
-                dynamic_cast<const ::hybridse::node::UnionPlanNode*>(node),
-                &op);
+            CHECK_STATUS(TransformUnionOp(dynamic_cast<const ::hybridse::node::UnionPlanNode*>(node), &op));
             break;
         }
         case node::kPlanTypeGroup: {
-            status = TransformGroupOp(
+            CHECK_STATUS(TransformGroupOp(
                 dynamic_cast<const ::hybridse::node::GroupPlanNode*>(node),
-                &op);
+                &op));
             break;
         }
         case node::kPlanTypeSort: {
-            status = TransformSortOp(
-                dynamic_cast<const ::hybridse::node::SortPlanNode*>(node), &op);
+            CHECK_STATUS(TransformSortOp(
+                dynamic_cast<const ::hybridse::node::SortPlanNode*>(node), &op));
             break;
         }
         case node::kPlanTypeFilter: {
-            status = TransformFilterOp(
+            CHECK_STATUS(TransformFilterOp(
                 dynamic_cast<const ::hybridse::node::FilterPlanNode*>(node),
-                &op);
+                &op));
             break;
         }
         case node::kPlanTypeTable: {
-            status = TransformScanOp(
+            CHECK_STATUS(TransformScanOp(
                 dynamic_cast<const ::hybridse::node::TablePlanNode*>(node),
-                &op);
+                &op));
             break;
         }
         case node::kPlanTypeQuery: {
-            status = TransformQueryPlan(
+            CHECK_STATUS(TransformQueryPlan(
                 dynamic_cast<const ::hybridse::node::QueryPlanNode*>(node),
-                &op);
+                &op));
             break;
         }
         case node::kPlanTypeRename: {
-            status = TransformRenameOp(
+            CHECK_STATUS(TransformRenameOp(
                 dynamic_cast<const ::hybridse::node::RenamePlanNode*>(node),
-                &op);
+                &op));
             break;
         }
         case node::kPlanTypeDistinct: {
-            status = TransformDistinctOp(
+            CHECK_STATUS(TransformDistinctOp(
                 dynamic_cast<const ::hybridse::node::DistinctPlanNode*>(node),
-                &op);
+                &op));
             break;
         }
         default: {
-            return Status(kPlanError,
-                          "Fail to transform physical plan: "
-                          "can't handle type " +
-                              node::NameOfPlanNodeType(node->type_));
+            FAIL_STATUS(kPlanError,
+                        "Fail to transform physical plan: "
+                        "can't handle type ",
+                        node::NameOfPlanNodeType(node->type_));
         }
     }
-    CHECK_STATUS(status, "Fail to tranform physical plan: fail at:\n" +
-                             node->GetTreeString());
     op_map_[logical_op] = op;
     *output = op;
-    return status;
+    return base::Status::OK();
 }
 
 Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
@@ -799,7 +795,7 @@ Status BatchModeTransformer::TransformSortOp(const node::SortPlanNode* node,
     PhysicalOpNode* left = nullptr;
     CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &left));
     if (nullptr == node->order_by_ || node::ExprListNullOrEmpty(node->order_by_->order_expressions_)) {
-        LOG(WARNING) << "Skip transform sort op when order is null or empty";
+        DLOG(INFO) << "Skip transform sort op when order is null or empty";
         *output = left;
         return Status::OK();
     }
@@ -1178,7 +1174,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
                 break;
             }
             default: {
-                LOG(WARNING) << "can't not handle pass: "
+                DLOG(WARNING) << "Invalid pass: "
                              << PhysicalPlanPassTypeName(type);
             }
         }
@@ -1189,7 +1185,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
     if (cur_op != nullptr) {
         *output = cur_op;
     } else {
-        LOG(WARNING) << "Final transformed result is null";
+        DLOG(WARNING) << "Final transformed result is null";
     }
 
     if (enable_batch_window_parallelization_) {
@@ -1198,19 +1194,19 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
         PhysicalOpNode* pruned_op = nullptr;
         Status status = pass.Apply(&plan_ctx_, *output, &pruned_op);
         if (!status.isOK()) {
-            LOG(WARNING) << status;
+            DLOG(WARNING) << status;
             return;
         }
         *output = pruned_op;
     }
 }
 
-std::string BatchModeTransformer::ExtractSchameName(PhysicalOpNode* in) {
+std::string BatchModeTransformer::ExtractSchemaName(PhysicalOpNode* in) {
     if (nullptr == in) {
         return "";
     }
     if (kPhysicalOpSimpleProject == in->GetOpType()) {
-        return ExtractSchameName(in->GetProducer(0));
+        return ExtractSchemaName(in->GetProducer(0));
     } else if (kPhysicalOpRename == in->GetOpType()) {
         return dynamic_cast<PhysicalRenameNode*>(in)->name_;
     } else if (kPhysicalOpDataProvider == in->GetOpType()) {
@@ -1223,7 +1219,7 @@ std::string BatchModeTransformer::ExtractSchameName(PhysicalOpNode* in) {
 }
 bool BatchModeTransformer::isSourceFromTableOrPartition(PhysicalOpNode* in) {
     if (nullptr == in) {
-        LOG(WARNING) << "Invalid physical node: null";
+        DLOG(WARNING) << "Invalid physical node: null";
         return false;
     }
     if (kPhysicalOpSimpleProject == in->GetOpType() ||
@@ -1240,7 +1236,7 @@ bool BatchModeTransformer::isSourceFromTableOrPartition(PhysicalOpNode* in) {
 }
 bool BatchModeTransformer::isSourceFromTable(PhysicalOpNode* in) {
     if (nullptr == in) {
-        LOG(WARNING) << "Invalid physical node: null";
+        DLOG(WARNING) << "Invalid physical node: null";
         return false;
     }
     if (kPhysicalOpSimpleProject == in->GetOpType() ||
@@ -1471,7 +1467,8 @@ Status BatchModeTransformer::TransformPhysicalPlan(
             case ::hybridse::node::kPlanTypeQuery: {
                 PhysicalOpNode* physical_plan = nullptr;
                 CHECK_STATUS(TransformQueryPlan(node, &physical_plan),
-                             "Fail to transform query plan to physical plan");
+                             "Fail to transform query statement");
+
                 DLOG(INFO) << "Before optimization: \n"
                            << physical_plan->GetTreeString();
 
@@ -1514,7 +1511,7 @@ Status BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan) {
     ::llvm::Function* fn = nullptr;
     Status status;
     bool ok = builder.Build(fn_plan->fn_def_, &fn, status);
-    CHECK_TRUE(ok, kCodegenError, "Fail to codegen function: " + status.str());
+    CHECK_STATUS(status)
 
     type::Type column_type;
     auto header = fn_plan->fn_def_->header_;
@@ -1877,7 +1874,7 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
 
     if (node->IsPrimary()) {
         auto table = catalog_->GetTable(db_, node->table_);
-        CHECK_TRUE(table != nullptr, kPlanError,
+        CHECK_TRUE(table != nullptr, common::kTableNotFound,
                    "Fail to transform data_provider op: table " + db_ + "." +
                        node->table_ + " not exist!");
 
@@ -2012,7 +2009,7 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
     Status status = batch_request_optimizer.Apply(
         this->GetPlanContext(), optimized, &batch_request_plan);
     if (!status.isOK()) {
-        LOG(WARNING) << "Fail to perform batch request optimization: "
+        DLOG(WARNING) << "Fail to perform batch request optimization: "
                      << status;
         *output = optimized;
         return;

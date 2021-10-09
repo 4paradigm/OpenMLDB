@@ -21,23 +21,24 @@
 namespace hybridse {
 namespace plan {
 base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager* node_manager, node::DataType* output) {
-    CHECK_TRUE(nullptr != ast_type, common::kSqlError, "Un-support null ast type");
-    CHECK_TRUE(ast_type->IsType(), common::kSqlError, "Un-support ast node ", ast_type->DebugString());
+    CHECK_TRUE(nullptr != ast_type, common::kSqlAstError, "Un-support null ast type");
+    CHECK_TRUE(ast_type->IsType(), common::kSqlAstError, "Un-support ast node ", ast_type->DebugString());
     switch (ast_type->node_kind()) {
         case zetasql::AST_SIMPLE_TYPE: {
             const zetasql::ASTSimpleType* simple_type = ast_type->GetAsOrDie<zetasql::ASTSimpleType>();
-            CHECK_TRUE(nullptr != simple_type, common::kSqlError, "Un-support nullptr simple type");
+            CHECK_TRUE(nullptr != simple_type, common::kSqlAstError, "Un-support nullptr simple type");
             std::string type_name;
             CHECK_STATUS(AstPathExpressionToString(simple_type->type_name(), &type_name));
             CHECK_STATUS(node::StringToDataType(type_name, output))
             return base::Status::OK();
         }
         default: {
-            return base::Status(common::kSqlError, "Un-support type: " + ast_type->GetNodeKindString());
+            return base::Status(common::kSqlAstError, "Un-support type: " + ast_type->GetNodeKindString());
         }
     }
     return base::Status::OK();
 }
+/// Used to convert zetasql ASTExpression Node into our ExprNode
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
                              node::ExprNode** output) {
     if (nullptr == ast_expression) {
@@ -45,7 +46,6 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         return base::Status::OK();
     }
     base::Status status;
-    // TODO(chenjing): support case when value and case when without value
     switch (ast_expression->node_kind()) {
         case zetasql::AST_STAR: {
             *output = node_manager->MakeAllNode("");
@@ -81,7 +81,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                                                           path_expression->name(1)->GetAsString(),
                                                           path_expression->name(0)->GetAsString());
             } else {
-                status.code = common::kSqlError;
+                status.code = common::kSqlAstError;
                 status.msg = "Invalid column path expression " + path_expression->ToIdentifierPathString();
                 return status;
             }
@@ -90,7 +90,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         case zetasql::AST_CASE_VALUE_EXPRESSION: {
             auto* case_expression = ast_expression->GetAsOrDie<zetasql::ASTCaseValueExpression>();
             auto& arguments = case_expression->arguments();
-            CHECK_TRUE(arguments.size() >= 3, common::kSqlError,
+            CHECK_TRUE(arguments.size() >= 3, common::kSqlAstError,
                        "Un-support case value expression with illegal argument size")
             node::ExprNode* value = nullptr;
             node::ExprListNode* when_list_expr = node_manager->MakeExprList();
@@ -116,7 +116,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         case zetasql::AST_CASE_NO_VALUE_EXPRESSION: {
             auto* case_expression = ast_expression->GetAsOrDie<zetasql::ASTCaseNoValueExpression>();
             auto& arguments = case_expression->arguments();
-            CHECK_TRUE(arguments.size() >= 2, common::kSqlError,
+            CHECK_TRUE(arguments.size() >= 2, common::kSqlAstError,
                        "Un-support case value expression with ilegal argument size")
             node::ExprListNode* when_list_expr = node_manager->MakeExprList();
             node::ExprNode* else_expr = nullptr;
@@ -217,7 +217,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                 }
                 default: {
                     status.msg = absl::StrCat("Unsupport binary operator: ", binary_expression->GetSQLForOperator());
-                    status.code = common::kSqlError;
+                    status.code = common::kSqlAstError;
                     return status;
                 }
             }
@@ -234,7 +234,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     op = node::FnOperator::kFnOpMinus;
                     if (node::kExprPrimary == operand->expr_type_) {
                         node::ConstNode* const_node = dynamic_cast<node::ConstNode*>(operand);
-                        CHECK_TRUE(const_node->ConvertNegative(), common::kSqlError, "Un-support negative ",
+                        CHECK_TRUE(const_node->ConvertNegative(), common::kSqlAstError, "Un-support negative ",
                                    node::DataTypeName(const_node->GetDataType()))
                         *output = const_node;
                         return base::Status::OK();
@@ -255,7 +255,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                 }
                 default: {
                     status.msg = absl::StrCat("Un-support unary operator: ", unary_expression->GetSQLForOperator());
-                    status.code = common::kSqlError;
+                    status.code = common::kSqlAstError;
                     return status;
                 }
             }
@@ -267,12 +267,12 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             auto* and_expression = ast_expression->GetAsOrDie<zetasql::ASTAndExpr>();
             node::ExprNode* lhs = nullptr;
             CHECK_STATUS(ConvertExprNode(and_expression->conjuncts(0), node_manager, &lhs))
-            CHECK_TRUE(nullptr != lhs, common::kSqlError, "Invalid AND expression")
+            CHECK_TRUE(nullptr != lhs, common::kSqlAstError, "Invalid AND expression")
 
             for (size_t i = 1; i < and_expression->conjuncts().size(); i++) {
                 node::ExprNode* rhs = nullptr;
                 CHECK_STATUS(ConvertExprNode(and_expression->conjuncts(i), node_manager, &rhs))
-                CHECK_TRUE(nullptr != rhs, common::kSqlError, "Invalid AND expression")
+                CHECK_TRUE(nullptr != rhs, common::kSqlAstError, "Invalid AND expression")
                 lhs = node_manager->MakeBinaryExprNode(lhs, rhs, node::FnOperator::kFnOpAnd);
             }
             *output = lhs;
@@ -284,11 +284,11 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             auto* or_expression = ast_expression->GetAsOrDie<zetasql::ASTOrExpr>();
             node::ExprNode* lhs = nullptr;
             CHECK_STATUS(ConvertExprNode(or_expression->disjuncts()[0], node_manager, &lhs))
-            CHECK_TRUE(nullptr != lhs, common::kSqlError, "Invalid OR expression")
+            CHECK_TRUE(nullptr != lhs, common::kSqlAstError, "Invalid OR expression")
             for (size_t i = 1; i < or_expression->disjuncts().size(); i++) {
                 node::ExprNode* rhs = nullptr;
                 CHECK_STATUS(ConvertExprNode(or_expression->disjuncts()[i], node_manager, &rhs))
-                CHECK_TRUE(nullptr != rhs, common::kSqlError, "Invalid OR expression")
+                CHECK_TRUE(nullptr != rhs, common::kSqlAstError, "Invalid OR expression")
                 lhs = node_manager->MakeBinaryExprNode(lhs, rhs, node::FnOperator::kFnOpOr);
             }
             *output = lhs;
@@ -308,7 +308,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         }
         case zetasql::AST_FUNCTION_CALL: {
             auto* function_call = ast_expression->GetAsOrDie<zetasql::ASTFunctionCall>();
-            CHECK_TRUE(false == function_call->HasModifiers(), common::kSqlError,
+            CHECK_TRUE(false == function_call->HasModifiers(), common::kSqlAstError,
                        "Un-support Modifiers for function call")
             std::string function_name = "";
             CHECK_STATUS(AstPathExpressionToString(function_call->function(), &function_name))
@@ -345,8 +345,8 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         case zetasql::AST_CAST_EXPRESSION: {
             const zetasql::ASTCastExpression* cast_expression =
                 ast_expression->GetAsOrDie<zetasql::ASTCastExpression>();
-            CHECK_TRUE(nullptr != cast_expression->expr(), common::kSqlError, "Invalid cast with null expr")
-            CHECK_TRUE(nullptr != cast_expression->type(), common::kSqlError, "Invalid cast with null type")
+            CHECK_TRUE(nullptr != cast_expression->expr(), common::kSqlAstError, "Invalid cast with null expr")
+            CHECK_TRUE(nullptr != cast_expression->type(), common::kSqlAstError, "Invalid cast with null type")
 
             node::ExprNode* expr_node;
             CHECK_STATUS(ConvertExprNode(cast_expression->expr(), node_manager, &expr_node))
@@ -357,19 +357,20 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         }
         case zetasql::AST_PARAMETER_EXPR: {
             const zetasql::ASTParameterExpr* parameter_expr = ast_expression->GetAsOrNull<zetasql::ASTParameterExpr>();
-            CHECK_TRUE(nullptr != parameter_expr, common::kSqlError, "not an ASTParameterExpr")
+            CHECK_TRUE(nullptr != parameter_expr, common::kSqlAstError, "not an ASTParameterExpr")
 
-            CHECK_TRUE(nullptr == parameter_expr->name(), common::kSqlError, "Un-support Named Parameter Expression ",
-                       parameter_expr->name()->GetAsString());
+            // Only support anonymous parameter (e.g, ?) so far.
+            CHECK_TRUE(nullptr == parameter_expr->name(), common::kSqlAstError,
+                       "Un-support Named Parameter Expression ", parameter_expr->name()->GetAsString());
             *output = node_manager->MakeParameterExpr(parameter_expr->position());
             return base::Status::OK();
         }
         case zetasql::AST_INT_LITERAL: {
             const zetasql::ASTIntLiteral* literal = ast_expression->GetAsOrDie<zetasql::ASTIntLiteral>();
-            CHECK_TRUE(!literal->is_hex(), common::kSqlError, "Un-support hex integer literal: ", literal->image());
+            CHECK_TRUE(!literal->is_hex(), common::kSqlAstError, "Un-support hex integer literal: ", literal->image());
 
             int64_t int_value;
-            CHECK_STATUS(ASTIntLiteralToNum(ast_expression, &int_value), "Invalid integer literal: ", literal->image());
+            CHECK_STATUS(ASTIntLiteralToNum(ast_expression, &int_value));
 
             if (!literal->is_long() && int_value <= INT_MAX && int_value >= INT_MIN) {
                 *output = node_manager->MakeConstNode(static_cast<int>(int_value));
@@ -391,11 +392,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             hybridse::codec::StringRef str(literal->image().data());
             bool is_null;
             hybridse::udf::v1::string_to_bool(&str, &bool_value, &is_null);
-            if (is_null) {
-                status.msg = "Invalid bool literal: " + std::string(literal->image());
-                status.code = common::kSqlError;
-                return status;
-            }
+            CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid bool literal: ", literal->image())
             *output = node_manager->MakeConstNode(bool_value);
             return base::Status::OK();
         }
@@ -407,21 +404,13 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                 float float_value = 0.0;
                 hybridse::codec::StringRef str(std::string(literal->image().substr(0, literal->image().size() - 1)));
                 hybridse::udf::v1::string_to_float(&str, &float_value, &is_null);
-                if (is_null) {
-                    status.msg = "Invalid float literal: " + std::string(literal->image());
-                    status.code = common::kSqlError;
-                    return status;
-                }
+                CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid float literal: ", literal->image());
                 *output = node_manager->MakeConstNode(float_value);
             } else {
                 double double_value = 0.0;
                 hybridse::codec::StringRef str(literal->image().data());
                 hybridse::udf::v1::string_to_double(&str, &double_value, &is_null);
-                if (is_null) {
-                    status.msg = "Invalid double literal: " + std::string(literal->image());
-                    status.code = common::kSqlError;
-                    return status;
-                }
+                CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid double literal: ", literal->image());
                 *output = node_manager->MakeConstNode(double_value);
             }
             return base::Status::OK();
@@ -430,8 +419,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             int64_t interval_value;
             node::DataType interval_unit;
             CHECK_STATUS(
-                ASTIntervalLIteralToNum(ast_expression, &interval_value, &interval_unit),
-                "Invalid interval literal: ", ast_expression->GetAsOrDie<zetasql::ASTIntervalLiteral>()->image());
+                ASTIntervalLIteralToNum(ast_expression, &interval_value, &interval_unit))
             *output = node_manager->MakeConstNode(interval_value, interval_unit);
             return base::Status::OK();
         }
@@ -448,14 +436,14 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         case zetasql::AST_BIGNUMERIC_LITERAL:
         case zetasql::AST_JSON_LITERAL:
         case zetasql::AST_BYTES_LITERAL: {
-            status.msg = "Un-support literal expression for node kind " + ast_expression->GetNodeKindString();
-            status.code = common::kSqlError;
-            return status;
+            FAIL_STATUS(common::kUnsupportSql, "Un-support literal expression for node kind ",
+                        ast_expression->GetNodeKindString());
+            break;
         }
 
         case zetasql::AST_IN_EXPRESSION: {
             auto in_expr = ast_expression->GetAsOrNull<zetasql::ASTInExpression>();
-            CHECK_TRUE(in_expr != nullptr, common::kSqlError, "not an ASTInExpression");
+            CHECK_TRUE(in_expr != nullptr, common::kUnsupportSql, "not an ASTInExpression");
 
             node::ExprNode* lhs_expr = nullptr;
             CHECK_STATUS(ConvertExprNode(in_expr->lhs(), node_manager, &lhs_expr));
@@ -479,15 +467,14 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                 CHECK_TRUE(false, common::kPlanError, "Un-support: IN predicate with sub query as in list");
             } else {
                 // TODO(aceforeverd): support unnest expression
-                return base::Status(common::kSqlError, "Un-supported: IN predicate with unnest expression as in list");
+                return base::Status(common::kUnsupportSql,
+                                    "Un-supported: IN predicate with unnest expression as in list");
             }
             return base::Status::OK();
         }
 
         default: {
-            status.msg = absl::StrCat("Unsupport ASTExpression ", ast_expression->GetNodeKindString());
-            status.code = common::kSqlError;
-            return status;
+            FAIL_STATUS(common::kUnsupportSql, "Unsupport ASTExpression ", ast_expression->GetNodeKindString())
         }
     }
     return status;
@@ -497,7 +484,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
     switch (statement->node_kind()) {
         case zetasql::AST_QUERY_STATEMENT: {
             auto const query_stmt = statement->GetAsOrNull<zetasql::ASTQueryStatement>();
-            CHECK_TRUE(query_stmt != nullptr, common::kSqlError, "not an ASTQueryStatement");
+            CHECK_TRUE(query_stmt != nullptr, common::kSqlAstError, "not an ASTQueryStatement");
             node::QueryNode* query_node = nullptr;
             CHECK_STATUS(ConvertQueryNode(query_stmt->query(), node_manager, &query_node));
             *output = query_node;
@@ -505,12 +492,12 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         }
         case zetasql::AST_BEGIN_END_BLOCK: {
             auto const begin_end_block = statement->GetAsOrNull<zetasql::ASTBeginEndBlock>();
-            CHECK_TRUE(begin_end_block != nullptr, common::kSqlError, "not and ASTBeginEndBlock");
-            CHECK_TRUE(begin_end_block->statement_list().size() <= 1, common::kSqlError,
+            CHECK_TRUE(begin_end_block != nullptr, common::kSqlAstError, "not and ASTBeginEndBlock");
+            CHECK_TRUE(begin_end_block->statement_list().size() <= 1, common::kSqlAstError,
                        "Un-support multiple statements inside ASTBeginEndBlock");
             node::SqlNodeList* stmt_node_list = node_manager->MakeNodeList();
             for (const auto sub_stmt : begin_end_block->statement_list()) {
-                CHECK_TRUE(sub_stmt->node_kind() == zetasql::AST_QUERY_STATEMENT, common::kSqlError,
+                CHECK_TRUE(sub_stmt->node_kind() == zetasql::AST_QUERY_STATEMENT, common::kSqlAstError,
                            "Un-support statement type inside ASTBeginEndBlock: ", sub_stmt->GetNodeKindString())
                 node::SqlNode* stmt_node = nullptr;
                 CHECK_STATUS(ConvertStatement(sub_stmt, node_manager, &stmt_node));
@@ -522,7 +509,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         case zetasql::AST_CREATE_TABLE_STATEMENT: {
             const zetasql::ASTCreateTableStatement* create_statement =
                 statement->GetAsOrNull<zetasql::ASTCreateTableStatement>();
-            CHECK_TRUE(nullptr != create_statement, common::kSqlError, "not an ASTCreateTableStatement")
+            CHECK_TRUE(nullptr != create_statement, common::kSqlAstError, "not an ASTCreateTableStatement")
             node::CreateStmt* create_node;
             CHECK_STATUS(ConvertCreateTableNode(create_statement, node_manager, &create_node))
             *output = create_node;
@@ -531,7 +518,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         case zetasql::AST_CREATE_PROCEDURE_STATEMENT: {
             const zetasql::ASTCreateProcedureStatement* procedure_statement =
                 statement->GetAsOrNull<zetasql::ASTCreateProcedureStatement>();
-            CHECK_TRUE(nullptr != procedure_statement, common::kSqlError, "not an ASTCreateProcedureStatement");
+            CHECK_TRUE(nullptr != procedure_statement, common::kSqlAstError, "not an ASTCreateProcedureStatement");
             node::CreateSpStmt* create_sp_tree = nullptr;
             CHECK_STATUS(ConvertCreateProcedureNode(procedure_statement, node_manager, &create_sp_tree))
             *output = create_sp_tree;
@@ -539,7 +526,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         }
         case zetasql::AST_INSERT_STATEMENT: {
             const zetasql::ASTInsertStatement* insert_statement = statement->GetAsOrNull<zetasql::ASTInsertStatement>();
-            CHECK_TRUE(nullptr != insert_statement, common::kSqlError, "not and ASTInsertStatement")
+            CHECK_TRUE(nullptr != insert_statement, common::kSqlAstError, "not and ASTInsertStatement")
             node::InsertStmt* insert_node;
             CHECK_STATUS(ConvertInsertStatement(insert_statement, node_manager, &insert_node))
             *output = insert_node;
@@ -547,7 +534,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         }
         case zetasql::AST_SHOW_STATEMENT: {
             const zetasql::ASTShowStatement* show_statement = statement->GetAsOrNull<zetasql::ASTShowStatement>();
-            CHECK_TRUE(nullptr != show_statement->identifier(), common::kSqlError, "not an ASTShowStatement")
+            CHECK_TRUE(nullptr != show_statement->identifier(), common::kSqlAstError, "not an ASTShowStatement")
             std::string show_id = show_statement->identifier()->GetAsString();
             boost::to_lower(show_id);
             if (show_id == "databases") {
@@ -557,7 +544,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             } else if (show_id == "procedures" || show_id == "procedure status") {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowProcedures));
             } else if (show_id == "create procedure") {
-                CHECK_TRUE(show_statement->optional_name() != nullptr, common::kSqlError,
+                CHECK_TRUE(show_statement->optional_name() != nullptr, common::kSqlAstError,
                            "show create procedure without a procedure name");
                 const auto names = show_statement->optional_name();
                 if (names->num_names() == 1) {
@@ -568,23 +555,23 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                         node_manager->MakeCmdNode(node::CmdType::kCmdShowCreateSp, names->first_name()->GetAsString(),
                                                   names->last_name()->GetAsString()));
                 } else {
-                    FAIL_STATUS(common::kSqlError,
+                    FAIL_STATUS(common::kSqlAstError,
                                 "Invalid name for SHOW CREATE PROCEDURE: ", names->ToIdentifierPathString());
                 }
             } else {
-                FAIL_STATUS(common::kSqlError, "Un-support SHOW: ", show_id)
+                FAIL_STATUS(common::kSqlAstError, "Un-support SHOW: ", show_id)
             }
             break;
         }
         case zetasql::AST_CREATE_DATABASE_STATEMENT: {
             const zetasql::ASTCreateDatabaseStatement* create_database_statement =
                 statement->GetAsOrNull<zetasql::ASTCreateDatabaseStatement>();
-            CHECK_TRUE(nullptr != create_database_statement->name(), common::kSqlError,
+            CHECK_TRUE(nullptr != create_database_statement->name(), common::kSqlAstError,
                        "not an AST_CREATE_DATABASE_STATEMENT")
 
             std::vector<std::string> names;
             CHECK_STATUS(AstPathExpressionToStringList(create_database_statement->name(), names))
-            CHECK_TRUE(1 == names.size(), common::kSqlError, "Invalid database path expression ",
+            CHECK_TRUE(1 == names.size(), common::kSqlAstError, "Invalid database path expression ",
                        create_database_statement->name()->ToIdentifierPathString())
             *output =
                 dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdCreateDatabase, names[0]));
@@ -593,7 +580,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         case zetasql::AST_DESCRIBE_STATEMENT: {
             const zetasql::ASTDescribeStatement* describe_statement =
                 statement->GetAsOrNull<zetasql::ASTDescribeStatement>();
-            CHECK_TRUE(nullptr != describe_statement->name(), common::kSqlError,
+            CHECK_TRUE(nullptr != describe_statement->name(), common::kSqlAstError,
                        "can't create plan for desc with null name")
             std::vector<std::string> names;
             CHECK_STATUS(AstPathExpressionToStringList(describe_statement->name(), names))
@@ -603,7 +590,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         }
         case zetasql::AST_DROP_STATEMENT: {
             const zetasql::ASTDropStatement* drop_statement = statement->GetAsOrNull<zetasql::ASTDropStatement>();
-            CHECK_TRUE(nullptr != drop_statement->name(), common::kSqlError, "not an ASTDropStatement")
+            CHECK_TRUE(nullptr != drop_statement->name(), common::kSqlAstError, "not an ASTDropStatement")
             node::CmdNode* cmd_node;
             CHECK_STATUS(ConvertDropStatement(drop_statement, node_manager, &cmd_node));
             *output = cmd_node;
@@ -612,10 +599,11 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         case zetasql::AST_EXPLAIN_STATEMENT: {
             const zetasql::ASTExplainStatement* explain_statement =
                 statement->GetAsOrNull<zetasql::ASTExplainStatement>();
-            CHECK_TRUE(nullptr != explain_statement, common::kSqlError, "not an ASTExplainStatement")
-            CHECK_TRUE(nullptr != explain_statement->statement(), common::kSqlError, "can't explan null statement")
-            CHECK_TRUE(zetasql::AST_QUERY_STATEMENT == explain_statement->statement()->node_kind(), common::kSqlError,
-                       "Un-support explain statement with type ", explain_statement->statement()->GetNodeKindString())
+            CHECK_TRUE(nullptr != explain_statement, common::kSqlAstError, "not an ASTExplainStatement")
+            CHECK_TRUE(nullptr != explain_statement->statement(), common::kSqlAstError, "can't explan null statement")
+            CHECK_TRUE(zetasql::AST_QUERY_STATEMENT == explain_statement->statement()->node_kind(),
+                       common::kSqlAstError, "Un-support explain statement with type ",
+                       explain_statement->statement()->GetNodeKindString())
             node::SqlNode* query_node = nullptr;
             CHECK_STATUS(ConvertStatement(explain_statement->statement(), node_manager, &query_node))
             *output = node_manager->MakeExplainNode(dynamic_cast<node::QueryNode*>(query_node),
@@ -632,13 +620,13 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         }
         case zetasql::AST_USE_STATEMENT: {
             const auto use_stmt = statement->GetAsOrNull<zetasql::ASTUseStatement>();
-            CHECK_TRUE(nullptr != use_stmt, common::kSqlError, "not an ASTUseStatement");
+            CHECK_TRUE(nullptr != use_stmt, common::kSqlAstError, "not an ASTUseStatement");
             const std::string db_name = use_stmt->db_name()->GetAsString();
             *output = node_manager->MakeCmdNode(node::CmdType::kCmdUseDatabase, db_name);
             break;
         }
         default: {
-            FAIL_STATUS(common::kSqlError, "Un-support statement type: ", statement->GetNodeKindString());
+            FAIL_STATUS(common::kSqlAstError, "Un-support statement type: ", statement->GetNodeKindString());
         }
     }
     return base::Status::OK();
@@ -682,14 +670,14 @@ base::Status ConvertDotStart(const zetasql::ASTDotStar* dot_start_expression, no
                 *output = node_manager->MakeAllNode(path_expression->name(0)->GetAsString(),
                                                     path_expression->name(1)->GetAsString());
             } else {
-                status.code = common::kSqlError;
+                status.code = common::kSqlAstError;
                 status.msg = "Invalid column path expression " + path_expression->ToIdentifierPathString();
                 return status;
             }
             break;
         }
         default: {
-            status.code = common::kSqlError;
+            status.code = common::kSqlAstError;
             status.msg = "Un-support dot star expression " + dot_start_expression->expr()->GetNodeKindString();
             return status;
         }
@@ -745,7 +733,7 @@ base::Status ConvertFrameBound(const zetasql::ASTWindowFrameExpr* window_frame_e
         }
         default: {
             status.msg = "Un-support boundary type " + window_frame_expr->GetBoundaryTypeString();
-            status.code = common::kSqlError;
+            status.code = common::kSqlAstError;
             return status;
         }
     }
@@ -780,14 +768,14 @@ base::Status ConvertFrameNode(const zetasql::ASTWindowFrame* window_frame, node:
         }
         default: {
             status.msg = "Un-support frame type " + window_frame->GetFrameUnitString();
-            status.code = common::kSqlError;
+            status.code = common::kSqlAstError;
             return status;
         }
     }
     node::FrameBound* start = nullptr;
     node::FrameBound* end = nullptr;
-    CHECK_TRUE(nullptr != window_frame->start_expr(), common::kSqlError, "Un-support window frame with null start")
-    CHECK_TRUE(nullptr != window_frame->end_expr(), common::kSqlError, "Un-support window frame with null end")
+    CHECK_TRUE(nullptr != window_frame->start_expr(), common::kSqlAstError, "Un-support window frame with null start")
+    CHECK_TRUE(nullptr != window_frame->end_expr(), common::kSqlAstError, "Un-support window frame with null end")
     CHECK_STATUS(ConvertFrameBound(window_frame->start_expr(), node_manager, &start))
     CHECK_STATUS(ConvertFrameBound(window_frame->end_expr(), node_manager, &end))
     node::ExprNode* frame_size = nullptr;
@@ -874,17 +862,19 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
         case zetasql::AST_TABLE_PATH_EXPRESSION: {
             auto table_path_expression = root->GetAsOrDie<zetasql::ASTTablePathExpression>();
 
-            CHECK_TRUE(nullptr == table_path_expression->pivot_clause(), common::kSqlError, "Un-support pivot clause")
-            CHECK_TRUE(nullptr == table_path_expression->unpivot_clause(), common::kSqlError,
+            CHECK_TRUE(nullptr == table_path_expression->pivot_clause(), common::kSqlAstError,
+                       "Un-support pivot clause")
+            CHECK_TRUE(nullptr == table_path_expression->unpivot_clause(), common::kSqlAstError,
                        "Un-support unpivot clause")
-            CHECK_TRUE(nullptr == table_path_expression->for_system_time(), common::kSqlError, "Un-support system time")
-            CHECK_TRUE(nullptr == table_path_expression->with_offset(), common::kSqlError,
+            CHECK_TRUE(nullptr == table_path_expression->for_system_time(), common::kSqlAstError,
+                       "Un-support system time")
+            CHECK_TRUE(nullptr == table_path_expression->with_offset(), common::kSqlAstError,
                        "Un-support scan WITH OFFSET")
-            CHECK_TRUE(nullptr == table_path_expression->sample_clause(), common::kSqlError,
+            CHECK_TRUE(nullptr == table_path_expression->sample_clause(), common::kSqlAstError,
                        "Un-support tablesample clause")
-            CHECK_TRUE(nullptr == table_path_expression->hint(), common::kSqlError, "Un-support hint")
+            CHECK_TRUE(nullptr == table_path_expression->hint(), common::kSqlAstError, "Un-support hint")
 
-            CHECK_TRUE(table_path_expression->path_expr()->num_names() <= 2, common::kSqlError,
+            CHECK_TRUE(table_path_expression->path_expr()->num_names() <= 2, common::kSqlAstError,
                        "Invalid table path expression ", table_path_expression->path_expr()->ToIdentifierPathString());
             std::string alias_name =
                 nullptr != table_path_expression->alias() ? table_path_expression->alias()->GetAsString() : "";
@@ -894,12 +884,12 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
         }
         case zetasql::AST_JOIN: {
             auto join = root->GetAsOrDie<zetasql::ASTJoin>();
-            CHECK_TRUE(nullptr == join->hint(), common::kSqlError, "Un-support hint with join")
+            CHECK_TRUE(nullptr == join->hint(), common::kSqlAstError, "Un-support hint with join")
 
-            CHECK_TRUE(zetasql::ASTJoin::JoinHint::NO_JOIN_HINT == join->join_hint(), common::kSqlError,
+            CHECK_TRUE(zetasql::ASTJoin::JoinHint::NO_JOIN_HINT == join->join_hint(), common::kSqlAstError,
                        "Un-support join hint with join ", join->GetSQLForJoinHint())
-            CHECK_TRUE(nullptr == join->using_clause(), common::kSqlError, "Un-support USING clause with join ")
-            CHECK_TRUE(false == join->natural(), common::kSqlError, "Un-support natural with join ")
+            CHECK_TRUE(nullptr == join->using_clause(), common::kSqlAstError, "Un-support USING clause with join ")
+            CHECK_TRUE(false == join->natural(), common::kSqlAstError, "Un-support natural with join ")
             node::TableRefNode* left = nullptr;
             node::TableRefNode* right = nullptr;
             node::OrderByNode* order_by = nullptr;
@@ -938,7 +928,7 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
                 }
                 default: {
                     status.msg = "Un-support join type " + join->GetSQLForJoinType();
-                    status.code = common::kSqlError;
+                    status.code = common::kSqlAstError;
                     *output = nullptr;
                     return status;
                 }
@@ -961,7 +951,7 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
         }
         default: {
             status.msg = "fail to convert table expression, unrecognized type " + root->GetNodeKindString();
-            status.code = common::kSqlError;
+            status.code = common::kSqlAstError;
             LOG(WARNING) << status;
             return status;
         }
@@ -1007,13 +997,13 @@ base::Status ConvertLimitOffsetNode(const zetasql::ASTLimitOffset* limit_offset,
         return base::Status::OK();
     }
 
-    CHECK_TRUE(nullptr == limit_offset->offset(), common::kSqlError, "Un-support OFFSET")
-    CHECK_TRUE(nullptr != limit_offset->limit(), common::kSqlError, "Un-support LIMIT with null expression")
+    CHECK_TRUE(nullptr == limit_offset->offset(), common::kSqlAstError, "Un-support OFFSET")
+    CHECK_TRUE(nullptr != limit_offset->limit(), common::kSqlAstError, "Un-support LIMIT with null expression")
 
     node::ExprNode* limit = nullptr;
     CHECK_STATUS(ConvertExprNode(limit_offset->limit(), node_manager, &limit))
-    CHECK_TRUE(node::kExprPrimary == limit->GetExprType(), common::kSqlError, "Un-support LIMIT with expression type ",
-               limit_offset->GetNodeKindString())
+    CHECK_TRUE(node::kExprPrimary == limit->GetExprType(), common::kSqlAstError,
+               "Un-support LIMIT with expression type ", limit_offset->GetNodeKindString())
     node::ConstNode* value = dynamic_cast<node::ConstNode*>(limit);
     switch (value->GetDataType()) {
         case node::kInt16:
@@ -1023,7 +1013,7 @@ base::Status ConvertLimitOffsetNode(const zetasql::ASTLimitOffset* limit_offset,
             return base::Status::OK();
         }
         default: {
-            status.code = common::kSqlError;
+            status.code = common::kSqlAstError;
             status.msg = "Un-support LIMIT with expression type " + limit_offset->GetNodeKindString();
             return status;
         }
@@ -1100,10 +1090,10 @@ base::Status ConvertQueryExpr(const zetasql::ASTQueryExpression* query_expressio
         }
         case zetasql::AST_SET_OPERATION: {
             const auto set_op = query_expression->GetAsOrNull<zetasql::ASTSetOperation>();
-            CHECK_TRUE(set_op != nullptr, common::kSqlError, "not an ASTSetOperation");
+            CHECK_TRUE(set_op != nullptr, common::kSqlAstError, "not an ASTSetOperation");
             switch (set_op->op_type()) {
                 case zetasql::ASTSetOperation::OperationType::UNION: {
-                    CHECK_TRUE(set_op->inputs().size() >= 2, common::kSqlError,
+                    CHECK_TRUE(set_op->inputs().size() >= 2, common::kSqlAstError,
                                "Union Set Operation have inputs size less than 2");
                     bool is_distinct = set_op->distinct();
                     node::QueryNode* left = nullptr;
@@ -1121,14 +1111,14 @@ base::Status ConvertQueryExpr(const zetasql::ASTQueryExpression* query_expressio
                     return base::Status::OK();
                 }
                 default: {
-                    return base::Status(common::kSqlError,
+                    return base::Status(common::kSqlAstError,
                                         absl::StrCat("Un-support set operation: ", set_op->GetSQLForOperation()));
                 }
             }
         }
         default: {
             // NOTE: code basically won't reach here unless inner error
-            return base::Status(common::kSqlError,
+            return base::Status(common::kSqlAstError,
                                 absl::StrCat("can not create query plan node with invalid query type ",
                                              query_expression->GetNodeKindString()));
         }
@@ -1221,7 +1211,7 @@ base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::
     switch (element->node_kind()) {
         case zetasql::AST_COLUMN_DEFINITION: {
             auto column_def = element->GetAsOrNull<zetasql::ASTColumnDefinition>();
-            CHECK_TRUE(column_def != nullptr, common::kSqlError, "not an ASTColumnDefinition");
+            CHECK_TRUE(column_def != nullptr, common::kSqlAstError, "not an ASTColumnDefinition");
 
             auto not_null_columns = column_def->schema()->FindAttributes<zetasql::ASTNotNullColumnAttribute>(
                 zetasql::AST_NOT_NULL_COLUMN_ATTRIBUTE);
@@ -1234,7 +1224,7 @@ base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::
                 case zetasql::AST_SIMPLE_COLUMN_SCHEMA: {
                     // only simple column schema is supported
                     auto simple_column_schema = column_def->schema()->GetAsOrNull<zetasql::ASTSimpleColumnSchema>();
-                    CHECK_TRUE(simple_column_schema != nullptr, common::kSqlError, "not and ASTSimpleColumnSchema");
+                    CHECK_TRUE(simple_column_schema != nullptr, common::kSqlAstError, "not and ASTSimpleColumnSchema");
 
                     std::string type_name = "";
                     CHECK_STATUS(AstPathExpressionToString(simple_column_schema->type_name(), &type_name))
@@ -1245,8 +1235,8 @@ base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::
                     return base::Status::OK();
                 }
                 default: {
-                    return base::Status(common::kSqlError, absl::StrCat("unsupported column schema type: ",
-                                                                        zetasql::ASTNode::NodeKindToString(kind)));
+                    return base::Status(common::kSqlAstError, absl::StrCat("unsupported column schema type: ",
+                                                                           zetasql::ASTNode::NodeKindToString(kind)));
                 }
             }
             break;
@@ -1259,7 +1249,7 @@ base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::
             return base::Status::OK();
         }
         default: {
-            return base::Status(common::kSqlError,
+            return base::Status(common::kSqlAstError,
                                 absl::StrCat("unsupported table column elemnt: ", element->GetNodeKindString()));
         }
     }
@@ -1304,14 +1294,15 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
             }
             case zetasql::AST_STRUCT_CONSTRUCTOR_WITH_PARENS: {
                 auto ast_struct_expr = entry->value()->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
-                CHECK_TRUE(ast_struct_expr != nullptr, common::kSqlError, "not a ASTStructConstructorWithParens");
+                CHECK_TRUE(ast_struct_expr != nullptr, common::kSqlAstError, "not a ASTStructConstructorWithParens");
 
-                CHECK_TRUE(!ast_struct_expr->field_expressions().empty(), common::kSqlError, "index key list is empty");
+                CHECK_TRUE(!ast_struct_expr->field_expressions().empty(), common::kSqlAstError,
+                           "index key list is empty");
 
                 int field_expr_len = ast_struct_expr->field_expressions().size();
                 std::string key_str;
                 CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == ast_struct_expr->field_expression(0)->node_kind(),
-                           common::kSqlError, "Invaid index key, should be path expression");
+                           common::kSqlAstError, "Invaid index key, should be path expression");
                 CHECK_STATUS(AstPathExpressionToString(
                     ast_struct_expr->field_expression(0)->GetAsOrNull<zetasql::ASTPathExpression>(), &key_str));
 
@@ -1321,7 +1312,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                 for (int i = 1; i < field_expr_len; ++i) {
                     std::string key;
                     CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == ast_struct_expr->field_expression(i)->node_kind(),
-                               common::kSqlError, "Invaid index key, should be path expression");
+                               common::kSqlAstError, "Invaid index key, should be path expression");
                     CHECK_STATUS(AstPathExpressionToString(
                         ast_struct_expr->field_expression(i)->GetAsOrNull<zetasql::ASTPathExpression>(), &key));
                     index_keys->AddKey(key);
@@ -1331,13 +1322,13 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                 return base::Status::OK();
             }
             default: {
-                return base::Status(common::kSqlError, absl::StrCat("unsupported key option value, type: ",
-                                                                    entry->value()->GetNodeKindString()));
+                return base::Status(common::kSqlAstError, absl::StrCat("unsupported key option value, type: ",
+                                                                       entry->value()->GetNodeKindString()));
             }
         }
     } else if (boost::equals("ts", name)) {
         std::string column_name;
-        CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == entry->value()->node_kind(), common::kSqlError,
+        CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == entry->value()->node_kind(), common::kSqlAstError,
                    "Invaid index ts, should be path expression");
         CHECK_STATUS(
             AstPathExpressionToString(entry->value()->GetAsOrNull<zetasql::ASTPathExpression>(), &column_name));
@@ -1367,8 +1358,8 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
             }
             case zetasql::AST_STRUCT_CONSTRUCTOR_WITH_PARENS: {
                 const auto struct_parens = entry->value()->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
-                CHECK_TRUE(struct_parens != nullptr, common::kSqlError, "not an ASTStructConstructorWithParens");
-                CHECK_TRUE(struct_parens->field_expressions().size() == 2, common::kSqlError,
+                CHECK_TRUE(struct_parens != nullptr, common::kSqlAstError, "not an ASTStructConstructorWithParens");
+                CHECK_TRUE(struct_parens->field_expressions().size() == 2, common::kSqlAstError,
                            "ASTStructConstructorWithParens size != 2");
 
                 int64_t value = 0;
@@ -1384,7 +1375,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                 break;
             }
             default: {
-                return base::Status(common::kSqlError,
+                FAIL_STATUS(common::kSqlAstError,
                                     "unsupported ast expression type: ", entry->value()->GetNodeKindString());
             }
         }
@@ -1393,8 +1384,8 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
         return base::Status::OK();
     } else if (boost::equals("ttl_type", name)) {
         std::string ttl_type;
-        CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == entry->value()->node_kind(), common::kSqlError,
-                   "Invaid ttl_type, should be path expression");
+        CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == entry->value()->node_kind(), common::kSqlAstError,
+                   "Invalid ttl_type, should be path expression");
         CHECK_STATUS(AstPathExpressionToString(entry->value()->GetAsOrNull<zetasql::ASTPathExpression>(), &ttl_type));
         *output = node_manager->MakeIndexTTLTypeNode(ttl_type);
         return base::Status::OK();
@@ -1402,8 +1393,8 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
         switch (entry->value()->node_kind()) {
             case zetasql::AST_PATH_EXPRESSION: {
                 std::string version;
-                CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == entry->value()->node_kind(), common::kSqlError,
-                           "Invaid index version, should be path expression");
+                CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == entry->value()->node_kind(), common::kSqlAstError,
+                           "Invalid index version, should be path expression");
                 CHECK_STATUS(
                     AstPathExpressionToString(entry->value()->GetAsOrNull<zetasql::ASTPathExpression>(), &version));
                 *output = node_manager->MakeIndexVersionNode(version);
@@ -1413,12 +1404,12 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                 // value is ( column_name, int_literal ), int_literal can be int or long number
                 std::string column_name;
                 const auto parens_struct = entry->value()->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
-                CHECK_TRUE(parens_struct != nullptr, common::kSqlError, "not an ASTStructConstructorWithParens");
+                CHECK_TRUE(parens_struct != nullptr, common::kSqlAstError, "not an ASTStructConstructorWithParens");
                 CHECK_TRUE(
-                    parens_struct->field_expressions().size() == 2, common::kSqlError,
+                    parens_struct->field_expressions().size() == 2, common::kSqlAstError,
                     "ASTStructConstructorWithParens has expression size = ", parens_struct->field_expressions().size());
                 CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == parens_struct->field_expression(0)->node_kind(),
-                           common::kSqlError, "Invaid index version, should be path expression");
+                           common::kSqlAstError, "Invaid index version, should be path expression");
                 CHECK_STATUS(AstPathExpressionToString(
                     parens_struct->field_expression(0)->GetAsOrNull<zetasql::ASTPathExpression>(), &column_name));
                 int64_t val;
@@ -1428,8 +1419,8 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                 return base::Status::OK();
             }
             default: {
-                return base::Status(common::kSqlError, absl::StrCat("unsupported node kind for index version: ",
-                                                                    entry->value()->GetNodeKindString()));
+                return base::Status(common::kSqlAstError, absl::StrCat("unsupported node kind for index version: ",
+                                                                       entry->value()->GetNodeKindString()));
             }
         }
     }
@@ -1455,13 +1446,16 @@ base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::Nod
         *output = node_manager->MakeReplicaNumNode(value);
     } else if (boost::equals("distribution", identifier)) {
         const auto arry_expr = entry->value()->GetAsOrNull<zetasql::ASTArrayConstructor>();
-        CHECK_TRUE(arry_expr != nullptr, common::kSqlError, "distribution not and ASTArrayConstructor");
-        CHECK_TRUE(!arry_expr->elements().empty(), common::kSqlError, "Un-support empty distributions currently")
-        CHECK_TRUE(1 == arry_expr->elements().size(), common::kSqlError, "Un-support multiple distributions currently")
+        CHECK_TRUE(arry_expr != nullptr, common::kSqlAstError, "distribution not and ASTArrayConstructor");
+        CHECK_TRUE(!arry_expr->elements().empty(), common::kSqlAstError, "Un-support empty distributions currently")
+        CHECK_TRUE(1 == arry_expr->elements().size(), common::kSqlAstError,
+                   "Un-support multiple distributions currently")
         for (const auto e : arry_expr->elements()) {
             const auto ele = e->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
-            CHECK_TRUE(ele != nullptr, common::kSqlError, "distribution element is not ASTStructConstructorWithParens");
-            CHECK_TRUE(ele->field_expressions().size() == 2, common::kSqlError, "distribution element has size != 2");
+            CHECK_TRUE(ele != nullptr, common::kSqlAstError,
+                       "distribution element is not ASTStructConstructorWithParens");
+            CHECK_TRUE(ele->field_expressions().size() == 2, common::kSqlAstError,
+                       "distribution element has size != 2");
 
             node::SqlNodeList* partition_mata_nodes = node_manager->MakeNodeList();
             std::string leader;
@@ -1493,9 +1487,9 @@ base::Status ConvertParamter(const zetasql::ASTFunctionParameter* param, node::N
 
     node::DataType data_type;
 
-    CHECK_TRUE(nullptr == param->templated_parameter_type() && nullptr == param->tvf_schema(), common::kSqlError,
+    CHECK_TRUE(nullptr == param->templated_parameter_type() && nullptr == param->tvf_schema(), common::kSqlAstError,
                "Un-support templated_parameter or tvf_schema type")
-    CHECK_TRUE(nullptr == param->alias(), common::kSqlError, "Un-support alias for parameter");
+    CHECK_TRUE(nullptr == param->alias(), common::kSqlAstError, "Un-support alias for parameter");
 
     // NOTE: only handle <type_> in ASTFunctionParameter here.
     //   consider handle <templated_parameter_type_>, <tvf_schema_>, <alias_> in the future,
@@ -1516,10 +1510,10 @@ base::Status ConvertProcedureBody(const zetasql::ASTScript* body, node::NodeMana
     // HACK: for Procedure Body, there is only one statement which is BeginEndBlock
     CHECK_TRUE(
         body->statement_list().size() == 1 && zetasql::AST_BEGIN_END_BLOCK == body->statement_list()[0]->node_kind(),
-        common::kSqlError, "procedure body must have one BeginEndBlock");
+        common::kSqlAstError, "procedure body must have one BeginEndBlock");
     node::SqlNode* body_node = nullptr;
     CHECK_STATUS(ConvertStatement(body->statement_list()[0], node_manager, &body_node));
-    CHECK_TRUE(body_node->GetType() == node::kNodeList, common::kSqlError,
+    CHECK_TRUE(body_node->GetType() == node::kNodeList, common::kSqlAstError,
                "Inner error: procedure body is not converted to SqlNodeList");
     *output = dynamic_cast<node::SqlNodeList*>(body_node);
     return base::Status::OK();
@@ -1527,10 +1521,10 @@ base::Status ConvertProcedureBody(const zetasql::ASTScript* body, node::NodeMana
 
 base::Status ConvertASTScript(const zetasql::ASTScript* script, node::NodeManager* node_manager,
                               node::SqlNodeList** output) {
-    CHECK_TRUE(nullptr != script, common::kSqlError, "Fail to convert ASTScript, script is null")
+    CHECK_TRUE(nullptr != script, common::kSqlAstError, "Fail to convert ASTScript, script is null")
     *output = node_manager->MakeNodeList();
     for (auto statement : script->statement_list()) {
-        CHECK_TRUE(nullptr != statement && statement->IsSqlStatement(), common::kSqlError, "not an SQL Statement")
+        CHECK_TRUE(nullptr != statement && statement->IsSqlStatement(), common::kSqlAstError, "not an SQL Statement")
         node::SqlNode* stmt;
         CHECK_STATUS(ConvertStatement(statement, node_manager, &stmt));
         (*output)->PushBack(stmt);
@@ -1540,7 +1534,7 @@ base::Status ConvertASTScript(const zetasql::ASTScript* script, node::NodeManage
 // transform zetasql::ASTStringLiteral into string
 base::Status AstStringLiteralToString(const zetasql::ASTExpression* ast_expr, std::string* str) {
     auto string_literal = ast_expr->GetAsOrNull<zetasql::ASTStringLiteral>();
-    CHECK_TRUE(string_literal != nullptr, common::kSqlError, "not an ASTStringLiteral");
+    CHECK_TRUE(string_literal != nullptr, common::kSqlAstError, "not an ASTStringLiteral");
 
     *str = string_literal->string_value();
     return base::Status::OK();
@@ -1549,18 +1543,18 @@ base::Status AstStringLiteralToString(const zetasql::ASTExpression* ast_expr, st
 // transform zetasql::ASTPathExpression into single string
 // fail if path with multiple paths
 base::Status AstPathExpressionToString(const zetasql::ASTPathExpression* path_expr, std::string* str) {
-    CHECK_TRUE(path_expr != nullptr, common::kSqlError, "not an ASTPathExpression");
-    CHECK_TRUE(path_expr->num_names() <= 1, common::kSqlError, "fail to convert multiple paths into a single string")
+    CHECK_TRUE(path_expr != nullptr, common::kSqlAstError, "not an ASTPathExpression");
+    CHECK_TRUE(path_expr->num_names() <= 1, common::kSqlAstError, "fail to convert multiple paths into a single string")
     *str = path_expr->num_names() == 0 ? "" : path_expr->name(0)->GetAsString();
     return base::Status::OK();
 }
 // transform zetasql::ASTPathExpression into string
 base::Status AstPathExpressionToStringList(const zetasql::ASTPathExpression* path_expr,
                                            std::vector<std::string>& strs) {  // NOLINT
-    CHECK_TRUE(path_expr != nullptr, common::kSqlError, "not an ASTPathExpression");
+    CHECK_TRUE(path_expr != nullptr, common::kSqlAstError, "not an ASTPathExpression");
     for (int i = 0; i < path_expr->num_names(); i++) {
-        CHECK_TRUE(nullptr != path_expr->name(i), common::kSqlError, "fail to convert path expression to string: name[",
-                   i, "] is nullptr")
+        CHECK_TRUE(nullptr != path_expr->name(i), common::kSqlAstError,
+                   "fail to convert path expression to string: name[", i, "] is nullptr")
         strs.push_back(path_expr->name(i)->GetAsString());
     }
     return base::Status::OK();
@@ -1571,7 +1565,7 @@ base::Status AstPathExpressionToStringList(const zetasql::ASTPathExpression* pat
 // {hex literal} -> number
 base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val) {
     const auto int_literal = ast_expr->GetAsOrNull<zetasql::ASTIntLiteral>();
-    CHECK_TRUE(int_literal != nullptr, common::kSqlError, "not an ASTIntLiteral");
+    CHECK_TRUE(int_literal != nullptr, common::kSqlAstError, "not an ASTIntLiteral");
     bool is_null = false;
     if (int_literal->is_long()) {
         const int size = int_literal->image().size();
@@ -1581,14 +1575,14 @@ base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t*
         codec::StringRef str_ref(std::string(int_literal->image()));
         udf::v1::string_to_bigint(&str_ref, val, &is_null);
     }
-    CHECK_TRUE(!is_null, common::kTypeError, "Invalid int literal: ", int_literal->image());
+    CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid integer literal: ", int_literal->image());
     return base::Status::OK();
 }
 
 // transform zetasql::ASTIntervalLiteral into (number, unit)
 base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val, node::DataType* unit) {
     const auto interval_literal = ast_expr->GetAsOrNull<zetasql::ASTIntervalLiteral>();
-    CHECK_TRUE(interval_literal != nullptr, common::kSqlError, "not an ASTIntervalLiteral");
+    CHECK_TRUE(interval_literal != nullptr, common::kSqlAstError, "not an ASTIntervalLiteral");
 
     switch (interval_literal->image().back()) {
         case 'd':
@@ -1608,7 +1602,8 @@ base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int
             *unit = node::DataType::kSecond;
             break;
         default:
-            return base::Status(common::kTypeError, "unknown interval unit");
+            FAIL_STATUS(common::kTypeError, "Invalid interval literal ", interval_literal->image(),
+                        ": invalid interval unit")
     }
     bool is_null = false;
     const int size = interval_literal->image().size();
@@ -1627,13 +1622,13 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
         *output = nullptr;
         return base::Status::OK();
     }
-    CHECK_TRUE(nullptr == root->query(), common::kSqlError, "Un-support insert statement with query");
+    CHECK_TRUE(nullptr == root->query(), common::kSqlAstError, "Un-support insert statement with query");
 
-    CHECK_TRUE(zetasql::ASTInsertStatement::InsertMode::DEFAULT_MODE == root->insert_mode(), common::kSqlError,
+    CHECK_TRUE(zetasql::ASTInsertStatement::InsertMode::DEFAULT_MODE == root->insert_mode(), common::kSqlAstError,
                "Un-support insert mode ", root->GetSQLForInsertMode());
-    CHECK_TRUE(nullptr == root->returning(), common::kSqlError,
+    CHECK_TRUE(nullptr == root->returning(), common::kSqlAstError,
                "Un-support insert statement with return clause currently", root->GetSQLForInsertMode());
-    CHECK_TRUE(nullptr == root->assert_rows_modified(), common::kSqlError,
+    CHECK_TRUE(nullptr == root->assert_rows_modified(), common::kSqlAstError,
                "Un-support insert statement with assert_rows_modified currently", root->GetSQLForInsertMode());
 
     node::ExprListNode* column_list = node_manager->MakeExprList();
@@ -1643,18 +1638,18 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
         }
     }
 
-    CHECK_TRUE(root->GetTargetPathForNonNested().ok(), common::kSqlError,
+    CHECK_TRUE(root->GetTargetPathForNonNested().ok(), common::kSqlAstError,
                "Un-support insert statement with illegal target table path")
-    CHECK_TRUE(nullptr != root->rows(), common::kSqlError, "Un-support insert statement with empty values")
+    CHECK_TRUE(nullptr != root->rows(), common::kSqlAstError, "Un-support insert statement with empty values")
     node::ExprListNode* rows = node_manager->MakeExprList();
     for (auto row : root->rows()->rows()) {
-        CHECK_TRUE(nullptr != row, common::kSqlError, "Un-support insert statement with null row")
+        CHECK_TRUE(nullptr != row, common::kSqlAstError, "Un-support insert statement with null row")
         node::ExprListNode* row_values;
         CHECK_STATUS(ConvertExprNodeList(row->values(), node_manager, &row_values))
         for (auto expr : row_values->children_) {
             CHECK_TRUE(nullptr != expr &&
                            (node::kExprPrimary == expr->GetExprType() || node::kExprParameter == expr->GetExprType()),
-                       common::kSqlError, "Un-support insert statement with un-const value")
+                       common::kSqlAstError, "Un-support insert statement with un-const value")
         }
         rows->AddChild(row_values);
     }
@@ -1675,62 +1670,62 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
     CHECK_STATUS(AstPathExpressionToStringList(root->name(), names))
     switch (root->schema_object_kind()) {
         case zetasql::SchemaObjectKind::kTable: {
-            CHECK_TRUE(2 >= names.size(), common::kSqlError, "Invalid table path expression ",
+            CHECK_TRUE(2 >= names.size(), common::kSqlAstError, "Invalid table path expression ",
                        root->name()->ToIdentifierPathString())
             *output =
                 dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropTable, names.back()));
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kDatabase: {
-            CHECK_TRUE(1 == names.size(), common::kSqlError, "Invalid database path expression ",
+            CHECK_TRUE(1 == names.size(), common::kSqlAstError, "Invalid database path expression ",
                        root->name()->ToIdentifierPathString())
             *output =
                 dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropDatabase, names[0]));
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kIndex: {
-            CHECK_TRUE(3 >= names.size() && names.size() >= 2, common::kSqlError, "Invalid index path expression ",
+            CHECK_TRUE(3 >= names.size() && names.size() >= 2, common::kSqlAstError, "Invalid index path expression ",
                        root->name()->ToIdentifierPathString())
             *output = dynamic_cast<node::CmdNode*>(
                 node_manager->MakeCmdNode(node::CmdType::kCmdDropIndex, names[names.size() - 2], names.back()));
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kProcedure: {
-            CHECK_TRUE(2 >= names.size(), common::kSqlError, "Invalid table path expression ",
+            CHECK_TRUE(2 >= names.size(), common::kSqlAstError, "Invalid table path expression ",
                        root->name()->ToIdentifierPathString())
             *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropSp, names.back()));
             return base::Status::OK();
         }
         default: {
-            FAIL_STATUS(common::kSqlError, "Un-support DROP ", root->GetNodeKindString());
+            FAIL_STATUS(common::kSqlAstError, "Un-support DROP ", root->GetNodeKindString());
         }
     }
     return base::Status::OK();
 }
 base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement* root, node::NodeManager* node_manager,
                                          node::CreateIndexNode** output) {
-    CHECK_TRUE(nullptr != root, common::kSqlError, "not an ASTCreateIndexStatement")
+    CHECK_TRUE(nullptr != root, common::kSqlAstError, "not an ASTCreateIndexStatement")
     std::string index_name = "";
-    CHECK_TRUE(nullptr != root->name(), common::kSqlError, "can't create index without index name");
+    CHECK_TRUE(nullptr != root->name(), common::kSqlAstError, "can't create index without index name");
     CHECK_STATUS(AstPathExpressionToString(root->name(), &index_name));
 
     std::vector<std::string> table_path;
-    CHECK_TRUE(nullptr != root->table_name(), common::kSqlError, "can't create index without table");
+    CHECK_TRUE(nullptr != root->table_name(), common::kSqlAstError, "can't create index without table");
     CHECK_STATUS(AstPathExpressionToStringList(root->table_name(), table_path));
-    CHECK_TRUE(table_path.size() >= 1 && table_path.size() <= 2, common::kSqlError,
+    CHECK_TRUE(table_path.size() >= 1 && table_path.size() <= 2, common::kSqlAstError,
                "can't crete index with invalid table path")
 
-    CHECK_TRUE(nullptr != root->index_item_list(), common::kSqlError, "can't create index with empty index items");
+    CHECK_TRUE(nullptr != root->index_item_list(), common::kSqlAstError, "can't create index with empty index items");
 
     std::vector<std::string> keys;
     for (const auto ordering_expression : root->index_item_list()->ordering_expressions()) {
-        CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == ordering_expression->expression()->node_kind(), common::kSqlError,
+        CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == ordering_expression->expression()->node_kind(), common::kSqlAstError,
                    "Un-support index key type ", ordering_expression->expression()->GetNodeKindString())
-        CHECK_TRUE(!ordering_expression->descending(), common::kSqlError, "Un-support descending index key")
+        CHECK_TRUE(!ordering_expression->descending(), common::kSqlAstError, "Un-support descending index key")
         std::vector<std::string> path;
         CHECK_STATUS(AstPathExpressionToStringList(
             ordering_expression->expression()->GetAsOrNull<zetasql::ASTPathExpression>(), path));
-        CHECK_TRUE(path.size() == 1, common::kSqlError, "Un-support index key path size = ", path.size());
+        CHECK_TRUE(path.size() == 1, common::kSqlAstError, "Un-support index key path size = ", path.size());
         keys.push_back(path.back());
     }
     node::SqlNodeList* index_node_list = node_manager->MakeNodeList();

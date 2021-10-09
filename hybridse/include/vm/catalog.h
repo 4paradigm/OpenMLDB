@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_VM_CATALOG_H_
-#define INCLUDE_VM_CATALOG_H_
+#ifndef HYBRIDSE_INCLUDE_VM_CATALOG_H_
+#define HYBRIDSE_INCLUDE_VM_CATALOG_H_
 #include <map>
 #include <memory>
 #include <set>
@@ -266,7 +266,7 @@ class ErrorTableHandler : public TableHandler {
     /// Create ErrorTableTable with initializing status_ with
     /// common::kCallMethodError
     ErrorTableHandler()
-        : status_(common::kCallMethodError, "error"),
+        : status_(common::kCallRpcMethodError, "error"),
           table_name_(""),
           db_(""),
           schema_(nullptr),
@@ -495,4 +495,4 @@ class Catalog {
 }  // namespace vm
 }  // namespace hybridse
 
-#endif  // INCLUDE_VM_CATALOG_H_
+#endif  // HYBRIDSE_INCLUDE_VM_CATALOG_H_

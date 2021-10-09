@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_
-#define INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_
+#ifndef HYBRIDSE_INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_
+#define HYBRIDSE_INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_
 #include <cstdint>
 #include <iostream>
 #include <memory>
@@ -489,4 +489,4 @@ class ColumnIterator : public ConstIterator<uint64_t, V> {
 }  // namespace codec
 }  // namespace hybridse
 
-#endif  // INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_
+#endif  // HYBRIDSE_INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_

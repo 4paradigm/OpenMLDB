@@ -25,7 +25,6 @@ jobs:
           level: info
           reporter: github-pr-review
           flags: --linelength=120
-          filter: -build/header_guard
 
   detect-secrets:
     runs-on: ubuntu-latest

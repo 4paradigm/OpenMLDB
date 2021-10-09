@@ -1440,6 +1440,73 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
     }
 }
 
+
+TEST_F(TabletSdkTest, TabletErrorTest) {
+    usleep(4000 * 1000);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
+    std::shared_ptr<::hybridse::sdk::DBMSSdk> dbms_sdk =
+        ::hybridse::sdk::CreateDBMSSdk(endpoint);
+    // create database db1
+    std::string name = "db_6";
+    {
+        hybridse::sdk::Status status;
+        dbms_sdk->CreateDatabase(name, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    {
+        // create table db1
+        std::string sql =
+            "create table t1(\n"
+            "    column1 int NOT NULL,\n"
+            "    column2 int NOT NULL,\n"
+            "    column3 float NOT NULL,\n"
+            "    column4 bigint NOT NULL,\n"
+            "    column5 int NOT NULL,\n"
+            "    column6 string,\n"
+            "    index(key=column1, ts=column4)\n"
+            ");";
+        hybridse::sdk::Status status;
+        dbms_sdk->ExecuteQuery(name, sql, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    std::shared_ptr<TabletSdk> sdk =
+        CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
+    if (sdk) {
+        ASSERT_TRUE(true);
+    } else {
+        ASSERT_FALSE(true);
+    }
+
+    // CompileError during generating plan
+    {
+        sdk::Status query_status;
+        std::string sql =
+            "select "
+            "udf_not_exist(column1) OVER w1 as w1_col1_sum, "
+            "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 "
+            "ROWS_RANGE "
+            "BETWEEN 2s "
+            "PRECEDING AND CURRENT ROW) limit 10;";
+        std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
+        ASSERT_EQ(common::kPlanError, query_status.code);
+    }
+    // kRequestError with empty row
+    {
+        sdk::Status query_status;
+        std::string sql =
+            "select "
+            "udf_not_exist(column1) OVER w1 as w1_col1_sum, "
+            "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 "
+            "ROWS_RANGE "
+            "BETWEEN 2s "
+            "PRECEDING AND CURRENT ROW) limit 10;";
+        std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, "", &query_status);
+        ASSERT_EQ(common::kRequestError, query_status.code);
+        ASSERT_EQ("input row is empty", query_status.msg);
+    }
+}
 }  // namespace sdk
 }  // namespace hybridse
 

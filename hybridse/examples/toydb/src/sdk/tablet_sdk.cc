@@ -231,6 +231,7 @@ std::shared_ptr<ExplainInfo> TabletSdkImpl::Explain(const std::string& db,
     if (response.status().code() != common::kOk) {
         status->code = response.status().code();
         status->msg = response.status().msg();
+        status->trace = response.status().trace();
         return std::shared_ptr<ExplainInfo>();
     }
 
@@ -268,8 +269,8 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
 
     if (0 != sql_status.code) {
         status.code = sql_status.code;
-        status.msg = sql_status.str();
-        LOG(WARNING) << status.msg;
+        status.msg = sql_status.msg;
+        status.trace = sql_status.GetTraces();
         return;
     }
 }
@@ -378,7 +379,6 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
             if (it->is_not_null()) {
                 status->code = common::kTypeError;
                 status->msg = "Un-support insert null into NOT NULL column " + it->name();
-                LOG(WARNING) << status->msg;
                 return;
             }
             rb.AppendNULL();
@@ -436,15 +436,12 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
             default: {
                 status->code = common::kTypeError;
                 status->msg = "can not handle data type " + node::DataTypeName(primary->GetDataType());
-                LOG(WARNING) << status->msg;
                 return;
             }
         }
         if (!ok) {
             status->code = common::kTypeError;
             status->msg = "can not handle data type " + node::DataTypeName(primary->GetDataType());
-
-            LOG(WARNING) << status->msg;
             return;
         }
     }
@@ -465,7 +462,6 @@ void TabletSdkImpl::Insert(const std::string& db, const std::string& sql, sdk::S
     if (plan_trees.empty() || nullptr == plan_trees[0]) {
         status->msg = "fail to execute plan : plan tree is empty or null";
         status->code = common::kPlanError;
-        LOG(WARNING) << status->msg;
         return;
     }
     node::PlanNode* plan = plan_trees[0];

@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_PLANV2_AST_NODE_CONVERTER_H_
-#define SRC_PLANV2_AST_NODE_CONVERTER_H_
+#ifndef HYBRIDSE_SRC_PLANV2_AST_NODE_CONVERTER_H_
+#define HYBRIDSE_SRC_PLANV2_AST_NODE_CONVERTER_H_
 #include <string>
 
 #include "node/node_manager.h"
@@ -107,4 +107,4 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
                                          node::CreateIndexNode** output);
 }  // namespace plan
 }  // namespace hybridse
-#endif  // SRC_PLANV2_AST_NODE_CONVERTER_H_
+#endif  // HYBRIDSE_SRC_PLANV2_AST_NODE_CONVERTER_H_

@@ -103,7 +103,6 @@ class SQLBaseSuite extends SparkTestSuite {
       } else {
         val df = spark.sql(sql).sparkDf
         df.cache()
-        df.show()
         if (sqlCase.getExpect != null) {
           checkOutput(df, sqlCase.getExpect)
         }

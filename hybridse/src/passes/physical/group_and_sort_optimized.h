@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
-#define SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
+#ifndef HYBRIDSE_SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
+#define HYBRIDSE_SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
 
 #include <memory>
 #include <string>
@@ -94,4 +94,4 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
 };
 }  // namespace passes
 }  // namespace hybridse
-#endif  // SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
+#endif  // HYBRIDSE_SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_

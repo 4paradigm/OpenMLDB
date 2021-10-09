@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef EXAMPLES_TOYDB_SRC_TABLET_TABLET_CATALOG_H_
-#define EXAMPLES_TOYDB_SRC_TABLET_TABLET_CATALOG_H_
+#ifndef HYBRIDSE_EXAMPLES_TOYDB_SRC_TABLET_TABLET_CATALOG_H_
+#define HYBRIDSE_EXAMPLES_TOYDB_SRC_TABLET_TABLET_CATALOG_H_
 
 #include <map>
 #include <memory>
@@ -234,4 +234,4 @@ class TabletCatalog : public vm::Catalog {
 
 }  // namespace tablet
 }  // namespace hybridse
-#endif  // EXAMPLES_TOYDB_SRC_TABLET_TABLET_CATALOG_H_
+#endif  // HYBRIDSE_EXAMPLES_TOYDB_SRC_TABLET_TABLET_CATALOG_H_

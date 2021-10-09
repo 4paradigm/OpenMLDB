@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_FN_LET_IR_BUILDER_H_
-#define SRC_CODEGEN_FN_LET_IR_BUILDER_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_FN_LET_IR_BUILDER_H_
+#define HYBRIDSE_SRC_CODEGEN_FN_LET_IR_BUILDER_H_
 #include <map>
 #include <string>
 #include <utility>
@@ -53,7 +53,7 @@ class RowFnLetIRBuilder {
     bool FillArgs(const std::vector<std::string>& args, ::llvm::Function* fn,
                   ScopeVar* sv);
 
-    bool EncodeBuf(
+    Status EncodeBuf(
         const std::map<uint32_t, NativeValue>* values, const vm::Schema& schema,
         VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
         ::llvm::BasicBlock* block, const std::string& output_ptr_name);
@@ -73,4 +73,4 @@ class RowFnLetIRBuilder {
 
 }  // namespace codegen
 }  // namespace hybridse
-#endif  // SRC_CODEGEN_FN_LET_IR_BUILDER_H_
+#endif  // HYBRIDSE_SRC_CODEGEN_FN_LET_IR_BUILDER_H_

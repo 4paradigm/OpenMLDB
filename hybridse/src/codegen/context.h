@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_CONTEXT_H_
-#define SRC_CODEGEN_CONTEXT_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_CONTEXT_H_
+#define HYBRIDSE_SRC_CODEGEN_CONTEXT_H_
 
 #include <string>
 #include <unordered_map>
@@ -181,4 +181,4 @@ class CodeGenContext {
 
 }  // namespace codegen
 }  // namespace hybridse
-#endif  // SRC_CODEGEN_CONTEXT_H_
+#endif  // HYBRIDSE_SRC_CODEGEN_CONTEXT_H_

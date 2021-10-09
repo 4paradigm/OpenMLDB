@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_BASE_TEXTTABLE_H_
-#define INCLUDE_BASE_TEXTTABLE_H_
+#ifndef HYBRIDSE_INCLUDE_BASE_TEXTTABLE_H_
+#define HYBRIDSE_INCLUDE_BASE_TEXTTABLE_H_
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -75,4 +75,4 @@ class TextTable {
 
 }  // namespace base
 }  // namespace hybridse
-#endif  // INCLUDE_BASE_TEXTTABLE_H_
+#endif  // HYBRIDSE_INCLUDE_BASE_TEXTTABLE_H_

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_EXPR_IR_BUILDER_H_
-#define SRC_CODEGEN_EXPR_IR_BUILDER_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_EXPR_IR_BUILDER_H_
+#define HYBRIDSE_SRC_CODEGEN_EXPR_IR_BUILDER_H_
 
 #include <map>
 #include <memory>
@@ -72,9 +72,8 @@ class ExprIRBuilder {
     Status BuildCallFn(const ::hybridse::node::CallExprNode* fn,
                        NativeValue* output);
 
-    bool BuildCallFnLegacy(const ::hybridse::node::CallExprNode* call_fn,
-                           NativeValue* output,
-                           ::hybridse::base::Status& status);  // NOLINT
+    Status BuildCallFnLegacy(const ::hybridse::node::CallExprNode* call_fn,
+                           NativeValue* output);
 
     Status BuildCastExpr(const ::hybridse::node::CastExprNode* node,
                          NativeValue* output);
@@ -105,10 +104,8 @@ class ExprIRBuilder {
 
     Status ExtractSliceFromRow(const NativeValue& input_value, const int schema_idx, ::llvm::Value** slice_ptr,
                                ::llvm::Value** slice_size);
-    ::llvm::Function* GetFuncion(
-        const std::string& col,
-        const std::vector<const node::TypeNode*>& generic_types,
-        base::Status& status);  // NOLINT
+    Status GetFunction(const std::string& col, const std::vector<const node::TypeNode*>& generic_types,
+                      ::llvm::Function** output);
 
  private:
     CodeGenContext* ctx_;
@@ -117,4 +114,4 @@ class ExprIRBuilder {
 };
 }  // namespace codegen
 }  // namespace hybridse
-#endif  // SRC_CODEGEN_EXPR_IR_BUILDER_H_
+#endif  // HYBRIDSE_SRC_CODEGEN_EXPR_IR_BUILDER_H_

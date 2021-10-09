@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_VM_ROUTER_H_
-#define INCLUDE_VM_ROUTER_H_
+#ifndef HYBRIDSE_INCLUDE_VM_ROUTER_H_
+#define HYBRIDSE_INCLUDE_VM_ROUTER_H_
 
 #include <string>
 #include "vm/physical_op.h"
@@ -45,4 +45,4 @@ class Router {
 
 }  // namespace vm
 }  // namespace hybridse
-#endif  // INCLUDE_VM_ROUTER_H_
+#endif  // HYBRIDSE_INCLUDE_VM_ROUTER_H_

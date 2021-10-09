@@ -52,7 +52,7 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         node::PlanNode *table_ref_plan = nullptr;
         CHECK_TRUE(nullptr != node, common::kPlanError,
                    "can not create select plan node: table reference node is null");
-        CHECK_TRUE(node::kTableRef == node->GetType(), common::kSqlError,
+        CHECK_TRUE(node::kTableRef == node->GetType(), common::kPlanError,
                    "can not create select plan node: table reference node type is invalid ",
                    node::NameOfSqlNodeType(node->GetType()))
         CHECK_STATUS(CreateTableReferencePlanNode(dynamic_cast<node::TableRefNode *>(node), &table_ref_plan))
@@ -391,7 +391,6 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                     ::hybridse::node::PlanNode *primary_node;
                     CHECK_STATUS(ValidatePrimaryPath(query_plan, &primary_node))
                     dynamic_cast<node::TablePlanNode *>(primary_node)->SetIsPrimary(true);
-                    DLOG(INFO) << "plan after primary check:\n" << *query_plan;
                 }
 
                 plan_trees.push_back(query_plan);
@@ -464,8 +463,8 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
 base::Status Planner::CreateFuncDefPlan(const SqlNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create func def plan node: query tree node it null")
 
-    CHECK_TRUE(root->GetType() == node::kFnDef, common::kSqlError,
-               "fail to create cmd plan node: query tree node it not function def type")
+    CHECK_TRUE(root->GetType() == node::kFnDef, common::kPlanError,
+               "fail to create function plan node: query tree node it not function def type")
     *output = node_manager_->MakeFuncPlanNode(dynamic_cast<node::FnNodeFnDef *>(const_cast<SqlNode *>(root)));
     return base::Status::OK();
 }

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef EXAMPLES_TOYDB_SRC_TABLET_TABLET_INTERNAL_SDK_H_
-#define EXAMPLES_TOYDB_SRC_TABLET_TABLET_INTERNAL_SDK_H_
+#ifndef HYBRIDSE_EXAMPLES_TOYDB_SRC_TABLET_TABLET_INTERNAL_SDK_H_
+#define HYBRIDSE_EXAMPLES_TOYDB_SRC_TABLET_TABLET_INTERNAL_SDK_H_
 
 #include <string>
 #include "brpc/channel.h"
@@ -39,4 +39,4 @@ class TabletInternalSDK {
 
 }  // namespace tablet
 }  // namespace hybridse
-#endif  // EXAMPLES_TOYDB_SRC_TABLET_TABLET_INTERNAL_SDK_H_
+#endif  // HYBRIDSE_EXAMPLES_TOYDB_SRC_TABLET_TABLET_INTERNAL_SDK_H_

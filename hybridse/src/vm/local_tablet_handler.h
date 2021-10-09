@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_VM_LOCAL_TABLET_HANDLER_H_
-#define SRC_VM_LOCAL_TABLET_HANDLER_H_
+#ifndef HYBRIDSE_SRC_VM_LOCAL_TABLET_HANDLER_H_
+#define HYBRIDSE_SRC_VM_LOCAL_TABLET_HANDLER_H_
 #include <memory>
 #include <string>
 #include <vector>
@@ -48,7 +48,7 @@ class LocalTabletRowHandler : public RowHandler {
         DLOG(INFO) << "Sync Value ... local tablet SubQuery request: task id "
                    << task_id_;
         if (0 != session_.Run(task_id_, request_, &value_)) {
-            return base::Status(common::kCallMethodError,
+            return base::Status(common::kCallRpcMethodError,
                                 "sub query fail: session run fail");
         }
         return base::Status::OK();
@@ -108,7 +108,7 @@ class LocalTabletTableHandler : public MemTableHandler {
         DLOG(INFO) << "Local tablet SubQuery batch request: task id "
                    << task_id_;
         if (0 != session_.Run(task_id_, requests_, table_)) {
-            return base::Status(common::kCallMethodError,
+            return base::Status(common::kCallRpcMethodError,
                                 "sub query fail: session run fail");
         }
         return base::Status::OK();
@@ -121,4 +121,4 @@ class LocalTabletTableHandler : public MemTableHandler {
 };
 }  // namespace vm
 }  // namespace hybridse
-#endif  // SRC_VM_LOCAL_TABLET_HANDLER_H_
+#endif  // HYBRIDSE_SRC_VM_LOCAL_TABLET_HANDLER_H_
