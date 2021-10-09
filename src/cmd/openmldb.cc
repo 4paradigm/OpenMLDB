@@ -2131,7 +2131,6 @@ void HandleNSPut(const std::vector<std::string>& parts, ::openmldb::client::NsCl
     int modify_index = in_size - start_index - base_size;
     if (modify_index - add_size > 0 || modify_index < 0) {
         printf("put format error! input value does not match the schema\n");
-        printf("base size %d start_index %d\n", base_size, start_index);
         return;
     }
     std::vector<std::string> input_value(parts.begin() + start_index, parts.end());
