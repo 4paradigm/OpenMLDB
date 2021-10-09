@@ -38,8 +38,9 @@ object SparkRowUtil {
 
   def maxRows(iterator: Iterator[Row], groupByColIndex: Int, orderByColIndex: Int, orderByColType: DataType)
   : mutable.ArrayBuffer[Row] = {
-    if (iterator.isEmpty)
+    if (iterator.isEmpty) {
       throw new UnsupportedOperationException("empty.maxBy")
+    }
 
     val resultRows = new mutable.ArrayBuffer[Row]()
     var lastRowPartitionKey: Long = null.asInstanceOf[Long]
@@ -79,8 +80,9 @@ object SparkRowUtil {
 
   def minRows(iterator: Iterator[Row], groupByColIndex: Int, orderByColIndex: Int, orderByColType: DataType)
   : mutable.ArrayBuffer[Row] = {
-    if (iterator.isEmpty)
+    if (iterator.isEmpty) {
       throw new UnsupportedOperationException("empty.minBy")
+    }
 
     val resultRows = new mutable.ArrayBuffer[Row]()
     var lastRowPartitionKey: Long = null.asInstanceOf[Long]
