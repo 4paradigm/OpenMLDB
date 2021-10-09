@@ -28,6 +28,8 @@
 #include "gflags/gflags.h"
 
 DECLARE_string(endpoint);
+DECLARE_string(tablet);
+DECLARE_string(zk_cluster);
 
 namespace openmldb {
 namespace test {
@@ -72,6 +74,27 @@ bool StartNS(const std::string& endpoint, brpc::Server* server) {
     return true;
 }
 
+bool StartNS(const std::string& endpoint, const std::string& tb_endpoint, brpc::Server* server) {
+    FLAGS_endpoint = endpoint;
+    FLAGS_tablet = tb_endpoint;
+    FLAGS_zk_cluster = "";
+    auto nameserver = new ::openmldb::nameserver::NameServerImpl();
+    if (!nameserver->Init("")) {
+        return false;
+    }
+    if (server->AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    brpc::ServerOptions option;
+    if (server->Start(endpoint.c_str(), &option) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    sleep(2);
+    return true;
+}
+
 bool StartTablet(const std::string& endpoint, brpc::Server* server) {
     FLAGS_endpoint = endpoint;
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
@@ -82,8 +105,8 @@ bool StartTablet(const std::string& endpoint, brpc::Server* server) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    brpc::ServerOptions options;
-    if (server->Start(endpoint.c_str(), &options) != 0) {
+    brpc::ServerOptions option;
+    if (server->Start(endpoint.c_str(), &option) != 0) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }

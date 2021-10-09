@@ -19,10 +19,8 @@
 #include <sched.h>
 #include <unistd.h>
 
-#include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "client/ns_client.h"
-#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
@@ -30,6 +28,7 @@
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -54,7 +53,6 @@ using std::vector;
 namespace openmldb {
 namespace nameserver {
 
-
 class MockClosure : public ::google::protobuf::Closure {
  public:
     MockClosure() {}
@@ -65,175 +63,24 @@ class StandaloneTest : public ::testing::Test {
  public:
     StandaloneTest() {}
     ~StandaloneTest() {}
-    void Start(NameServerImpl* nameserver) { nameserver->running_ = true; }
-    std::vector<std::list<std::shared_ptr<OPData>>>& GetTaskVec(NameServerImpl* nameserver) {
-        return nameserver->task_vec_;
-    }
-    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>& GetTableInfo(
-        NameServerImpl* nameserver) {
-        return nameserver->table_info_;
-    }
 };
 
+TEST_F(StandaloneTest, smoketest) {
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
+    brpc::Server tablet;
+    ASSERT_TRUE(::openmldb::test::StartTablet("127.0.0.1:9530", &tablet));
 
-bool CreateDB(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client,  // NOLINT
-              const std::string& db_name) {
-    ::openmldb::nameserver::CreateDatabaseRequest request;
-    request.set_db(db_name);
-    ::openmldb::nameserver::GeneralResponse response;
-    bool ret = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateDatabase, &request,
-                                              &response, FLAGS_request_timeout_ms, 1);
-    return ret;
-}
-
-TEST_F(StandaloneTest, MakesnapshotTask) {
-    FLAGS_zk_cluster = "127.0.0.1:6181";
-    int32_t old_offset = FLAGS_make_snapshot_threshold_offset;
-    FLAGS_make_snapshot_threshold_offset = 0;
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
-
-    brpc::ServerOptions options;
     brpc::Server server;
-    ASSERT_TRUE(StartNS("127.0.0.1:9631", &server, &options));
-    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client("127.0.0.1:9631", "");
-    name_server_client.Init();
+    ASSERT_TRUE(::openmldb::test::StartNS("127.0.0.1:9631", "127.0.0.1:9530", &server));
+    ::openmldb::client::NsClient client("127.0.0.1:9631", "");
+    ASSERT_EQ(client.Init(), 0);
 
-    brpc::ServerOptions options1;
-    brpc::Server server1;
-    ASSERT_TRUE(StartTablet("127.0.0.1:9530", &server1, &options1));
-
-    CreateTableRequest request;
-    GeneralResponse response;
-    TableInfo* table_info = request.mutable_table_info();
-    std::string name = "test" + GenRand();
-    table_info->set_name(name);
-    TablePartition* partion = table_info->add_table_partition();
-    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
-    partion->set_pid(0);
-    PartitionMeta* meta = partion->add_partition_meta();
-    meta->set_endpoint("127.0.0.1:9530");
-    meta->set_is_leader(true);
-    bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-                                             FLAGS_request_timeout_ms, 1);
-    ASSERT_TRUE(ok);
-    ASSERT_EQ(0, response.code());
-
-    MakeSnapshotNSRequest m_request;
-    m_request.set_name(name);
-    m_request.set_pid(0);
-    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::MakeSnapshotNS, &m_request, &response,
-                                        FLAGS_request_timeout_ms, 1);
-    ASSERT_TRUE(ok);
-
-    sleep(5);
-
-    ZkClient zk_client(FLAGS_zk_cluster, "", 1000, FLAGS_endpoint, FLAGS_zk_root_path);
-    ok = zk_client.Init();
-    ASSERT_TRUE(ok);
-    std::string op_index_node = FLAGS_zk_root_path + "/op/op_index";
-    std::string value;
-    ok = zk_client.GetNodeValue(op_index_node, value);
-    ASSERT_TRUE(ok);
-    std::string op_node = FLAGS_zk_root_path + "/op/op_data/" + value;
-    ok = zk_client.GetNodeValue(op_node, value);
-    ASSERT_FALSE(ok);
-
-    value.clear();
-    std::string table_index_node = FLAGS_zk_root_path + "/table/table_index";
-    ok = zk_client.GetNodeValue(table_index_node, value);
-    ASSERT_TRUE(ok);
-    std::string snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
-    std::vector<std::string> vec;
-    int cnt = ::openmldb::base::GetFileName(snapshot_path, vec);
-    ASSERT_EQ(0, cnt);
-    ASSERT_EQ(2, (int64_t)vec.size());
-
-    std::string table_data_node = FLAGS_zk_root_path + "/table/table_data/" + name;
-    ok = zk_client.GetNodeValue(table_data_node, value);
-    ASSERT_TRUE(ok);
-    ::openmldb::nameserver::TableInfo table_info1;
-    table_info1.ParseFromString(value);
-    ASSERT_STREQ(table_info->name().c_str(), table_info1.name().c_str());
-    ASSERT_EQ(table_info->table_partition_size(), table_info1.table_partition_size());
-
-    // check drop table
-    DropTableRequest drop_request;
-    drop_request.set_name(name);
-    response.Clear();
-    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropTable, &drop_request, &response,
-                                        FLAGS_request_timeout_ms, 1);
-    ASSERT_TRUE(ok);
-    ASSERT_EQ(0, response.code());
-    ok = zk_client.GetNodeValue(table_data_node, value);
-    ASSERT_FALSE(ok);
-
-    // snapshot with db
-    std::string db = "db" + GenRand();
-    CreateDatabaseRequest db_request;
-    db_request.set_db(db);
-    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateDatabase, &db_request,
-                                        &response, FLAGS_request_timeout_ms, 1);
-    ASSERT_TRUE(ok);
-    ASSERT_EQ(0, response.code());
-
-    table_info->set_db(db);
-    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
-                                        FLAGS_request_timeout_ms, 1);
-    ASSERT_TRUE(ok);
-    ASSERT_EQ(0, response.code());
-
-    m_request.set_db(db);
-    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::MakeSnapshotNS, &m_request, &response,
-                                        FLAGS_request_timeout_ms, 1);
-    ASSERT_TRUE(ok);
-
-    sleep(5);
-
-    ShowTableRequest sr_request;
-    ShowTableResponse sr_response;
-    sr_request.set_name(name);
-    sr_request.set_db(db);
-    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &sr_request, &sr_response,
-                                        FLAGS_request_timeout_ms, 1);
-    ASSERT_TRUE(ok);
-    ASSERT_EQ(1, sr_response.table_info_size());
-    const TableInfo& table = sr_response.table_info(0);
-
-    op_index_node = FLAGS_zk_root_path + "/op/op_index";
-    value.clear();
-    ok = zk_client.GetNodeValue(op_index_node, value);
-    ASSERT_TRUE(ok);
-    op_node = FLAGS_zk_root_path + "/op/op_data/" + value;
-    ok = zk_client.GetNodeValue(op_node, value);
-    ASSERT_FALSE(ok);
-
-    value.clear();
-    table_index_node = FLAGS_zk_root_path + "/table/table_index";
-    ok = zk_client.GetNodeValue(table_index_node, value);
-    ASSERT_TRUE(ok);
-    snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
-    vec.clear();
-    cnt = ::openmldb::base::GetFileName(snapshot_path, vec);
-    ASSERT_EQ(0, cnt);
-    ASSERT_EQ(2, (int64_t)vec.size());
-
-    table_data_node = FLAGS_zk_root_path + "/table/db_table_data/" + std::to_string(table.tid());
-    ok = zk_client.GetNodeValue(table_data_node, value);
-    ASSERT_TRUE(ok);
-    table_info1.ParseFromString(value);
-    ASSERT_STREQ(table_info->name().c_str(), table_info1.name().c_str());
-    ASSERT_EQ(table_info->table_partition_size(), table_info1.table_partition_size());
-
-    drop_request.set_db(db);
-    response.Clear();
-    ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropTable, &drop_request, &response,
-                                        FLAGS_request_timeout_ms, 1);
-    ASSERT_TRUE(ok);
-    ASSERT_EQ(0, response.code());
-    ok = zk_client.GetNodeValue(table_data_node, value);
-    ASSERT_FALSE(ok);
-
-    FLAGS_make_snapshot_threshold_offset = old_offset;
+    TableInfo table_info;
+    std::string name = "test" + ::openmldb::test::GenRand();
+    table_info.set_name(name);
+    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, &table_info);
+    std::string msg;
+    ASSERT_TRUE(client.CreateTable(table_info, msg));
 }
 
 
@@ -246,6 +93,6 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
     return RUN_ALL_TESTS();
 }

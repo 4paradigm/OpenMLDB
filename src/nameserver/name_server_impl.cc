@@ -3932,13 +3932,13 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
             } else {
                 table_info_.insert(std::make_pair(table_info->name(), table_info));
             }
+            PDLOG(INFO, "create table %s success", table_info->name().c_str());
         } else {
             if (SetTableInfo(table_info)) {
                 if (task_ptr) {
                     task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
                     PDLOG(INFO,
-                          "set task type success, op_id [%lu] task_tpye [%s] "
-                          "task_status [%s]",
+                          "set task type success, op_id [%lu] task_tpye [%s] task_status [%s]",
                           task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                           ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
                 }
