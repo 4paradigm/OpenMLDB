@@ -47,21 +47,27 @@ using hybridse::vm::Sort;
 using IndexMap = std::map<std::string, std::vector<::openmldb::common::ColumnKey>>;
 std::ostream& operator<<(std::ostream& os, IndexMap& index_map);
 
+// Ref hybridse/src/passes/physical/group_and_sort_optimized.cc:651
+// TODO(hw): hybridse should open this method
+static bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
+                                            std::string* source_name);
+
 class IndexMapBuilder {
  public:
     explicit IndexMapBuilder(std::shared_ptr<Catalog> cl) : cl_(std::move(cl)) {}
     // create the index with unset TTLSt, return false if the index(same table, same keys, same ts) existed
     bool CreateIndex(const std::string& table, const hybridse::node::ExprListNode* keys,
-                     const hybridse::node::OrderByNode* ts);
+                     const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
     bool UpdateIndex(const hybridse::vm::Range& range);
     IndexMap ToMap();
 
  private:
     static std::vector<std::string> NormalizeColumns(const std::string& table,
-                                                     const std::vector<hybridse::node::ExprNode*>& nodes);
+                                                     const std::vector<hybridse::node::ExprNode*>& nodes,
+                                                     const SchemasContext* ctx);
     // table, keys and ts -> table:key1,key2,...;ts
-    std::string Encode(const std::string& table, const hybridse::node::ExprListNode* keys,
-                       const hybridse::node::OrderByNode* ts, bool ts_complete);
+    static std::string Encode(const std::string& table, const hybridse::node::ExprListNode* keys,
+                       const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
 
     static std::pair<std::string, common::ColumnKey> Decode(const std::string& index_str);
 

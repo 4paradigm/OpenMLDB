@@ -17,15 +17,14 @@
 #include "base/ddl_parser.h"
 
 #include <algorithm>
-#include <string>
 #include <vector>
 
 namespace openmldb::base {
 
 bool IndexMapBuilder::CreateIndex(const std::string& table, const hybridse::node::ExprListNode* keys,
-                                  const hybridse::node::OrderByNode* ts) {
+                                  const hybridse::node::OrderByNode* ts, const SchemasContext* ctx) {
     // we encode table, keys and ts to one string
-    auto index = Encode(table, keys, ts, false);
+    auto index = Encode(table, keys, ts, ctx);
     if (index.empty()) {
         LOG(WARNING) << "index encode failed for table " << table;
         return false;
@@ -50,16 +49,12 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
         LOG(DFATAL) << "want to update ttl status, but index is not created before";
         return false;
     }
-    auto ts_col = GetTsCol(latest_record_);
+    // TODO(hw): it's better to check the ts col name
+    //  but range's column names may be renamed, needs schema context
 
     if (!range.Valid()) {
         LOG(INFO) << "range is invalid, can't update ttl, still use the default ttl";
         return true;
-    }
-    if (range.range_key()->GetExprString() != ts_col) {
-        LOG(ERROR) << "want " << (ts_col.empty() ? "NO TS" : ts_col) << " as ts column, but get "
-                   << range.range_key()->GetExprString();
-        return false;
     }
 
     auto frame = range.frame();
@@ -108,9 +103,9 @@ IndexMap IndexMapBuilder::ToMap() {
 }
 
 std::string IndexMapBuilder::Encode(const std::string& table, const hybridse::node::ExprListNode* keys,
-                                    const hybridse::node::OrderByNode* ts, bool ts_complete) {
+                                    const hybridse::node::OrderByNode* ts, const SchemasContext* ctx) {
     // children are ColumnRefNode
-    auto cols = NormalizeColumns(table, keys->children_);
+    auto cols = NormalizeColumns(table, keys->children_, ctx);
     if (cols.empty()) {
         return {};
     }
@@ -129,47 +124,31 @@ std::string IndexMapBuilder::Encode(const std::string& table, const hybridse::no
         for (auto order : ts->order_expressions_->children_) {
             auto cast = dynamic_cast<hybridse::node::OrderExpression*>(order);
             if (cast->expr() != nullptr) {
-                auto res = NormalizeColumns(table, {const_cast<hybridse::node::ExprNode*>(cast->expr())});
+                auto res = NormalizeColumns(table, {const_cast<hybridse::node::ExprNode*>(cast->expr())}, ctx);
                 if (res.size() != 1 || res[0].empty()) {
                     LOG(DFATAL) << "parse ts col from order node failed, " << cast->GetExprString();
                 }
                 ss << res[0];
             }
         }
-    } else if (ts_complete) {
-        // If no ts, we should find one column which type is int64/timestamp
-        auto schema = cl_->GetTable(DDLParser::DB_NAME, table)->GetSchema();
-        bool find_ts = false;
-        for (auto& col : *schema) {
-            // key cols can be ts too, no need to check
-            // ts col type == ::openmldb::type::kBigInt || type == ::openmldb::type::kTimestamp
-            if (col.type() == hybridse::type::kInt64 || col.type() == hybridse::type::kTimestamp) {
-                ss << col.name();
-                find_ts = true;
-                break;
-            }
-        }
-        if (!find_ts) {
-            LOG(ERROR) << "can't find one col to be ts col";
-            return {};
-        }
     }
     return ss.str();
 }
 
 std::vector<std::string> IndexMapBuilder::NormalizeColumns(const std::string& table,
-                                                           const std::vector<hybridse::node::ExprNode*>& nodes) {
+                                                           const std::vector<hybridse::node::ExprNode*>& nodes,
+                                                           const SchemasContext* ctx) {
     if (table.empty() || nodes.empty()) {
         return {};
     }
     std::vector<std::string> result;
     for (auto& node : nodes) {
         auto cast = hybridse::node::ColumnRefNode::CastFrom(node);
-        if (!cast->GetRelationName().empty() && cast->GetRelationName() != table) {
-            LOG(WARNING) << "col is from table " << cast->GetRelationName() << ", not from " << table;
+        std::string name;
+        if (!ResolveColumnToSourceColumnName(cast, ctx, &name)) {
             return {};
         }
-        result.emplace_back(cast->GetColumnName());
+        result.emplace_back(name);
     }
     // sort to avoid dup index
     std::sort(result.begin(), result.end());
@@ -238,7 +217,9 @@ bool GroupAndSortOptimizedParser::KeysOptimizedParse(const SchemasContext* root_
                            << ", order=" << (order == nullptr ? "null" : hybridse::node::ExprString(order))
                            << " for table " << scan_op->table_handler_->GetName();
 
-                index_map_builder_.CreateIndex(scan_op->table_handler_->GetName(), groups, order);
+                // columns in groups or order, may be renamed
+
+                index_map_builder_.CreateIndex(scan_op->table_handler_->GetName(), groups, order, root_schemas_ctx);
                 // parser won't create partition_op
                 return true;
             } else {
@@ -295,6 +276,7 @@ void GroupAndSortOptimizedParser::TransformParse(PhysicalOpNode* in) {
             auto project_op = dynamic_cast<hybridse::vm::PhysicalProjectNode*>(in);
             if (hybridse::vm::ProjectType::kWindowAggregation == project_op->project_type_) {
                 auto window_agg_op = dynamic_cast<hybridse::vm::PhysicalWindowAggrerationNode*>(project_op);
+                CHECK_NOTNULL(window_agg_op);
                 PhysicalOpNode* input = window_agg_op->GetProducer(0);
 
                 PhysicalOpNode* new_producer;
@@ -413,5 +395,40 @@ std::ostream& operator<<(std::ostream& os, IndexMap& index_map) {
         os << "]} ";
     }
     return os;
+}
+
+bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
+                                     std::string* source_name) {
+    // use detailed column resolve utility
+    size_t column_id;
+    int path_idx;
+    size_t child_column_id;
+    size_t source_column_id;
+    const PhysicalOpNode* source;
+    hybridse::base::Status status =
+        schemas_ctx->ResolveColumnID(col->GetRelationName(), col->GetColumnName(), &column_id, &path_idx,
+                                     &child_column_id, &source_column_id, &source);
+
+    // try loose the relation
+    if (!status.isOK() && !col->GetRelationName().empty()) {
+        status = schemas_ctx->ResolveColumnID("", col->GetColumnName(), &column_id, &path_idx, &child_column_id,
+                                              &source_column_id, &source);
+    }
+
+    if (!status.isOK()) {
+        LOG(WARNING) << "Illegal index column: " << col->GetExprString();
+        return false;
+    }
+    if (source == nullptr || source->GetOpType() != PhysicalOpType::kPhysicalOpDataProvider) {
+        LOG(WARNING) << "Index column is not from any source table: " << col->GetExprString();
+        return false;
+    }
+    status = source->schemas_ctx()->ResolveColumnNameByID(source_column_id, source_name);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Illegal source column id #" << source_column_id << " for index column "
+                     << col->GetExprString();
+        return false;
+    }
+    return true;
 }
 }  // namespace openmldb::base
