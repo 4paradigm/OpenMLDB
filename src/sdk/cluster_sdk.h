@@ -167,25 +167,6 @@ class StandAloneClusterSDK : public ClusterSDK {
     bool BuildCatalog() override;
 
  private:
-    bool GetRealEndpoint(const std::string& endpoint, std::string* real_endpoint) {
-        std::vector<client::TabletInfo> tablets;
-        std::string msg;
-        if (!GetNsClient()->ShowSdkEndpoint(tablets, msg)) {
-            LOG(WARNING) << msg;
-            return false;
-        }
-        for (const auto& tablet : tablets) {
-            if (tablet.endpoint == endpoint) {
-                *real_endpoint = tablet.real_endpoint;
-                return true;
-            }
-        }
-        // If no real endpoint in /sdkendpoints, should try get it from /names
-        // TODO(hw): RegisterName /map/names, how to get it from ns?
-        LOG(DFATAL) << "unfinished";
-        return false;
-    }
-
     bool PeriodicRefresh() {
         auto ok = BuildCatalog();
         // periodic refreshing
