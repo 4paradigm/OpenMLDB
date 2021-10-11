@@ -217,6 +217,10 @@ class SQLClusterRouter : public SQLRouter {
             std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
             hybridse::node::NodeManager* node_manager, std::string* msg);
 
+    bool HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
+            std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
+            hybridse::node::NodeManager* node_manager, std::string* msg);
+
     inline bool CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema);
 
     inline bool CheckSQLSyntax(const std::string& sql);

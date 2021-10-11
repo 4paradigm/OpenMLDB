@@ -30,6 +30,7 @@
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 #include "sdk/batch_request_result_set_sql.h"
+#include "sdk/node_adapter.h"
 #include "sdk/result_set_sql.h"
 
 DECLARE_int32(request_timeout_ms);
@@ -644,7 +645,7 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
         ok = HandleSQLCreateProcedure(dynamic_cast<hybridse::node::CreateProcedurePlanNode*>(node), db, sql, ns_ptr,
                                       &node_manager, &err);
     } else {
-        ok = ns_ptr->ExecuteSQL(db, sql, err);
+        ok = HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), db, ns_ptr, &node_manager, &err);
     }
     if (!ok) {
         status->msg = "fail to execute sql " + sql + " for error " + err;
@@ -1226,6 +1227,29 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(co
         return nullptr;
     }
     return sp_info;
+}
+
+bool SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node,
+                                                const std::string& db,
+                                                std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
+                                                hybridse::node::NodeManager* node_manager, std::string* msg) {
+    if (create_node == nullptr) {
+        *msg = "fail to execute plan : create plan null";
+        return false;
+    }
+    ::openmldb::nameserver::TableInfo table_info;
+    table_info.set_db(db);
+    hybridse::base::Status sql_status;
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, &sql_status);
+    if (sql_status.code != 0) {
+        *msg = sql_status.msg;
+        return false;
+    }
+    if (!ns_ptr->CreateTable(table_info, *msg)) {
+        *msg = "create table failed, msg: " + *msg;
+        return false;
+    }
+    return true;
 }
 
 bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* create_sp,
