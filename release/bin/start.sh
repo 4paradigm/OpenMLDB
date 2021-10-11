@@ -36,7 +36,10 @@ do
   fi
 done
 
-"$HAS_COMPONENT" == "false" || { echo "No component named $COMPONENT in [$COMPONENTS]"; exit 1; }
+if [ "$HAS_COMPONENT" = "false" ]; then
+    echo "No component named $COMPONENT in [$COMPONENTS]";
+    exit 1;
+fi
 
 OPENMLDB_PID_FILE="./bin/$COMPONENT.pid"
 mkdir -p "$(dirname "$OPENMLDB_PID_FILE")"
