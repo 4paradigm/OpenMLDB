@@ -424,10 +424,6 @@ bool StandAloneClusterSDK::BuildCatalog() {
     for (const auto& tablet : tablets) {
         std::string cur_endpoint = ::openmldb::base::ExtractEndpoint(tablet.endpoint);
         std::string real_endpoint = tablet.real_endpoint;
-        // TODO(hw): if real_endpoint may be empty
-        //            if (!GetRealEndpoint(cur_endpoint, &real_endpoint)) {
-        //                return false;
-        //            }
         real_ep_map.emplace(cur_endpoint, real_endpoint);
     }
     client_manager_->UpdateClient(real_ep_map);
