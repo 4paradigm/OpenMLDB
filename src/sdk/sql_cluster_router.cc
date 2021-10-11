@@ -1263,7 +1263,7 @@ bool SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* crea
                                                 const std::string& db,
                                                 std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
                                                 std::string* msg) {
-    if (cmd_node == nullptr || ns_ptr == nullptr || msg == nullptr) {
+    if (create_node == nullptr || ns_ptr == nullptr || msg == nullptr) {
         *msg = "fail to execute plan : null pointer";
         return false;
     }
