@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-arr=("tablet" "nameserver")
-for COMPONENT in ${arr[@]};do
+export COMPONENTS="tablet nameserver"
+for COMPONENT in $COMPONENTS; do
     PID_FILE="./bin/$COMPONENT.pid"
     if [ ! -f "$PID_FILE" ]
     then

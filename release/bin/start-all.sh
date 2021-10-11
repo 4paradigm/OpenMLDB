@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-arr=("tablet" "nameserver")
-for COMPONENT in ${arr[@]};do
+export COMPONENTS="tablet nameserver"
+for COMPONENT in $COMPONENTS; do
     PID_FILE="./bin/$COMPONENT.pid"
     mkdir -p "$(dirname "$PID_FILE")"
     LOG_DIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
@@ -24,7 +24,7 @@ for COMPONENT in ${arr[@]};do
     mkdir -p "$LOG_DIR"
     if [ -f "$PID_FILE" ]; then
         if kill -0 "$(cat "$PID_FILE")" > /dev/null 2>&1; then
-            echo $COMPONENT already running as process "$(cat "$PID_FILE")".
+            echo "$COMPONENT already running as process $(cat "$PID_FILE")"
             exit 0
         fi
     fi
@@ -32,7 +32,7 @@ for COMPONENT in ${arr[@]};do
     then
         sleep 1
     else
-        echo $COMPONENT start failed
+        echo "$COMPONENT start failed"
         exit 1
     fi
 done    
