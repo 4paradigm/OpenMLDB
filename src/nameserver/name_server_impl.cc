@@ -3976,15 +3976,15 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         return;
     }
 
-    // if no column_key, add one which key is the first column
+    // if no column_key, add one which key is the first column which is not float or double
     if (table_info->column_key_size() == 0) {
-        if (table_info->column_desc_size() == 0) {
-            response->set_code(::openmldb::base::ReturnCode::kInvalidParameter);
-            response->set_msg("can't be no column");
-            return;
+        for (const auto& column : table_info->column_desc()) {
+            if (column.data_type() != type::kFloat && column.data_type() != type::kDouble) {
+                auto add = table_info->add_column_key();
+                add->add_col_name(column.name());
+                break;
+            }
         }
-        auto add = table_info->add_column_key();
-        add->add_col_name(table_info->column_desc(0).name());
     }
 
     if (CheckTableMeta(*table_info) < 0) {
