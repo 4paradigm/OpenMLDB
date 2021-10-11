@@ -24,7 +24,7 @@ DEFINE_uint32(tablet_offline_check_interval, 1000, "config the check interval of
 DEFINE_string(zk_cluster, "", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
 DEFINE_string(zk_root_path, "/openmldb", "config the root path of zookeeper");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check");
-DEFINE_string(host,"", "used in stand-alone mode, config the name server ip");
+DEFINE_string(host, "", "used in stand-alone mode, config the name server ip");
 DEFINE_int32(port, 0, "used in stand-alone mode, config the name server port");
 DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status");
 DEFINE_uint32(get_table_status_interval, 2000, "config the interval of get table status");
