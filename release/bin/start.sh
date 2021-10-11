@@ -28,15 +28,15 @@ cd "$(dirname "$0")"/../ || exit 1
 
 OP=$1
 COMPONENT=$2
-HAS_COMPONENT=false
+HAS_COMPONENT="false"
 for ITEM in $COMPONENTS;
 do
   if [ "$COMPONENT" = "$ITEM" ]; then
-    HAS_COMPONENT=true
+    HAS_COMPONENT="true"
   fi
 done
 
-"$HAS_COMPONENT" == false || { echo "No component named $COMPONENT in [$COMPONENTS]"; exit 1; }
+"$HAS_COMPONENT" == "false" || { echo "No component named $COMPONENT in [$COMPONENTS]"; exit 1; }
 
 OPENMLDB_PID_FILE="./bin/$COMPONENT.pid"
 mkdir -p "$(dirname "$OPENMLDB_PID_FILE")"
