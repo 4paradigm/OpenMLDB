@@ -168,7 +168,7 @@ PhysicalOpNode* GetTestSqlPlan(SqlCase& sql_case,  // NOLINT
     std::map<size_t, std::string> idx_to_table_dict;
     auto catalog = std::make_shared<SimpleCatalog>();
     EngineOptions options;
-    options.set_plan_only(true);
+    options.SetPlanOnly(true);
     auto engine = std::make_shared<vm::Engine>(catalog, options);
     InitSimpleCataLogFromSqlCase(sql_case, catalog);
 

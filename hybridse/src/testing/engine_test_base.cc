@@ -433,9 +433,9 @@ void EngineTestRunner::RunCheck() {
     if (!sql_case_.batch_plan().empty() && engine_mode == kBatchMode) {
         ASSERT_EQ(oss.str(), sql_case_.batch_plan());
     } else if (!sql_case_.cluster_request_plan().empty() && engine_mode == kRequestMode &&
-               options_.is_cluster_optimzied()) {
+               options_.IsClusterOptimzied()) {
         ASSERT_EQ(oss.str(), sql_case_.cluster_request_plan());
-    } else if (!sql_case_.request_plan().empty() && engine_mode == kRequestMode && !options_.is_cluster_optimzied()) {
+    } else if (!sql_case_.request_plan().empty() && engine_mode == kRequestMode && !options_.IsClusterOptimzied()) {
         ASSERT_EQ(oss.str(), sql_case_.request_plan());
     }
     status = PrepareData();

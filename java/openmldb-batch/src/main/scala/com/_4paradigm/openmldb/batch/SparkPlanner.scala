@@ -299,13 +299,13 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
 
     if (config.enableWindowParallelization) {
       logger.info("Enable window parallelization optimization")
-      engineOptions.set_enable_batch_window_parallelization(true)
+      engineOptions.SetEnableBatchWindowParallelization(true)
     } else {
       logger.info("Disable window parallelization optimization, enable by setting openmldb.window.parallelization")
     }
 
     if (config.enableUnsafeRowOptimization) {
-      engineOptions.set_enable_spark_unsaferow_format(true)
+      engineOptions.SetEnableSparkUnsaferowFormat(true)
     }
 
     try {

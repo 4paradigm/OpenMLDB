@@ -61,7 +61,7 @@ TEST_P(EngineTest, TestBatchRequestEngineForLastRow) {
 TEST_P(EngineTest, TestClusterRequestEngine) {
     ParamType sql_case = GetParam();
     EngineOptions options;
-    options.set_cluster_optimized(true);
+    options.SetClusterOptimized(true);
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
@@ -74,7 +74,7 @@ TEST_P(EngineTest, TestClusterRequestEngine) {
 TEST_P(EngineTest, TestClusterBatchRequestEngine) {
     ParamType sql_case = GetParam();
     EngineOptions options;
-    options.set_cluster_optimized(true);
+    options.SetClusterOptimized(true);
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
@@ -90,7 +90,7 @@ TEST_P(BatchRequestEngineTest, TestBatchRequestEngine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     EngineOptions options;
-    options.set_cluster_optimized(false);
+    options.SetClusterOptimized(false);
     if (!boost::contains(sql_case.mode(), "batch-request-unsupport")) {
         EngineCheck(sql_case, options, kBatchRequestMode);
     } else {
@@ -101,7 +101,7 @@ TEST_P(BatchRequestEngineTest, TestClusterBatchRequestEngine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     EngineOptions options;
-    options.set_cluster_optimized(true);
+    options.SetClusterOptimized(true);
     if (!boost::contains(sql_case.mode(), "batch-request-unsupport") &&
         !boost::contains(sql_case.mode(), "cluster-unsupport")) {
         EngineCheck(sql_case, options, kBatchRequestMode);

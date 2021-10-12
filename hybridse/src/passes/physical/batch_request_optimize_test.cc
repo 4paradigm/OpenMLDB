@@ -145,7 +145,7 @@ void CheckOptimizePlan(const SqlCase& sql_case_org,
     auto catalog = std::make_shared<SimpleCatalog>();
     InitSimpleCataLogFromSqlCase(sql_case, catalog);
     EngineOptions options;
-    options.set_compile_only(true);
+    options.SetCompileOnly(true);
     auto engine = std::make_shared<vm::Engine>(catalog, options);
     std::string sql_str = sql_case.sql_str();
     for (int j = 0; j < sql_case.CountInputs(); ++j) {

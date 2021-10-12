@@ -86,8 +86,8 @@ bool ClusterSDK::Init() {
               << ",session timeout " << options_.session_timeout << " and session id " << zk_client_->GetSessionTerm();
 
     ::hybridse::vm::EngineOptions eopt;
-    eopt.set_compile_only(true);
-    eopt.set_plan_only(true);
+    eopt.SetCompileOnly(true);
+    eopt.SetPlanOnly(true);
     engine_ = new ::hybridse::vm::Engine(catalog_, eopt);
 
     ok = InitCatalog();
