@@ -47,7 +47,7 @@ if [[ "$OSTYPE" = "darwin"* ]]; then
 elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
     if [[ $ARCH = 'x86_64' ]]; then
         curl -SLo thirdparty.tar.gz "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz"
-        curl -SLo libzetasql.tar.gz "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-x86_64.tar.gz"
+        curl -SLo libzetasql.tar.gz "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-x86_64.tar.gz"
     elif [[ $ARCH = 'aarch64' ]]; then
         curl -SLo thirdparty.tar.gz "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz"
         curl -SLo libzetasql.tar.gz "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-aarch64.tar.gz"
