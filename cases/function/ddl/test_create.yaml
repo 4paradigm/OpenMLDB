@@ -482,7 +482,7 @@ cases:
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date);
     expect:
-      success: false
+      success: true
   -
     id: 44
     desc: bool-insert-1
