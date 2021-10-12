@@ -86,7 +86,7 @@ bool InitToydbEngineCatalog(
             return false;
         }
         name_table_map[table_def.name()] = table;
-        if (engine_options.is_cluster_optimzied()) {
+        if (engine_options.IsClusterOptimzied()) {
             // add table with local tablet
             if (!AddTable(catalog, table_def, table, engine.get())) {
                 return false;

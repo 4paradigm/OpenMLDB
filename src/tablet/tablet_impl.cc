@@ -149,7 +149,7 @@ bool TabletImpl::Init(const std::string& real_endpoint) {
 bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint,
                       const std::string& real_endpoint) {
     ::hybridse::vm::EngineOptions options;
-    options.set_cluster_optimized(FLAGS_enable_distsql);
+    options.SetClusterOptimized(FLAGS_enable_distsql);
     engine_ = std::unique_ptr<::hybridse::vm::Engine>(new ::hybridse::vm::Engine(catalog_, options));
     catalog_->SetLocalTablet(
         std::shared_ptr<::hybridse::vm::Tablet>(new ::hybridse::vm::LocalTablet(engine_.get(), sp_cache_)));

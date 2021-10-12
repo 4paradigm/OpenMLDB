@@ -149,7 +149,7 @@ public class SqlEngineTest {
         }
         try {
             EngineOptions options = createDefaultEngineOptions();
-            options.set_enable_batch_window_parallelization(true);
+            options.SetEnableBatchWindowParallelization(true);
             SqlEngine engine = new SqlEngine(sql, db.build(), options);
             Assert.assertNotNull(engine.getPlan());
         } catch (UnsupportedHybridSeException e) {
