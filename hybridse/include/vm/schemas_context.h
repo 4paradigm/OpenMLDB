@@ -181,10 +181,19 @@ class SchemasContext {
     size_t GetSchemaSourceSize() const;
 
     /**
-     * Set the relation name for this schema context.
+     * Check database name and relation name match with current context
      */
-    void SetName(const std::string& db_name, const std::string& relation_name);
+    bool CheckDatabaseAndRelation(const std::string& db, const std::string& table) const;
 
+    /**
+     * Set the database name and relation name for this schema context.
+     */
+    void SetDBAndRelationName(const std::string& db, const std::string& relation_name);
+
+    /**
+     * Set the defautl database name
+     */
+    void SetDefaultDBName(const std::string& default_db_name);
     /**
      * Add new schema source and return the mutable instance of added source.
      */
@@ -219,7 +228,7 @@ class SchemasContext {
      * Helper method to init schemas context with trival schema sources
      * this can be commonly used when no plan node is provided.
      */
-    void BuildTrivial(const std::string& default_db, const std::vector<const codec::Schema*>& schemas);
+    void BuildTrivial(const std::vector<const codec::Schema*>& schemas);
     void BuildTrivial(const std::string& default_db, const std::vector<const type::TableDef*>& tables);
 
  private:
@@ -229,7 +238,8 @@ class SchemasContext {
 
     // root node to search column id, can be null
     const PhysicalOpNode* root_ = nullptr;
-    std::string root_db_name = "";
+    std::string default_db_name_ = "";
+    std::string root_db_name_ = "";
     std::string root_relation_name_ = "";
 
     // column id -> (schema idx, column idx) mapping

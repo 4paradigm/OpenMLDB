@@ -213,4 +213,76 @@ public class SqlEngineTest {
             Assert.fail("fail to run sql engine");
         }
     }
+
+    @DataProvider(name = "sqlMultipleDBErrorCase")
+    public Object[][] sqlMultipleDBErrorCase() {
+        return new Object[][] {
+                new Object[]{
+                        // t2.str1 should be db2.t2.str1
+                        "SELECT t2.str1 as t2_str1\n" +
+                                " FROM t1\n" +
+                                " last join db2.t2 order by db2.t2.col1\n" +
+                                " on t1.col1 = db2.t2.col1 and t1.col2 = db2.t2.col0;\n",
+                        "SQL parse error: Column Not found: db1.t2.str1"
+                },
+                new Object[]{
+                        // db1.t2.str1 should be db2.t2.str1
+                        "SELECT db1.t2.str1 as t2_str1\n" +
+                                " FROM t1\n" +
+                                " last join db2.t2 order by db2.t2.col1\n" +
+                                " on t1.col1 = db2.t2.col1 and t1.col2 = db2.t2.col0;\n",
+                        "SQL parse error: Column Not found: db1.t2.str1"},
+                new Object[]{
+                        // t1.col1 = t2.col1 should be t1.col1 = db2.t2.col1
+                        "SELECT db2.t2.str1 as t2_str1\n" +
+                                " FROM t1\n" +
+                                " last join db2.t2 order by db2.t2.col1\n" +
+                                " on t1.col1 = t2.col1 and t1.col2 = db2.t2.col0;\n",
+                        "SQL parse error: Column Not found: db1.t2.col1"}
+
+        };
+    }
+    @Test(dataProvider = "sqlMultipleDBErrorCase")
+    public void sqlMultipleDBErrorTest(String sql, String errorMsg) {
+        TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
+        db.setName("db1");
+
+        {
+            TypeOuterClass.TableDef.Builder tbl = TypeOuterClass.TableDef.newBuilder();
+            tbl.setName("t1")
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col0").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kVarchar).build())
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col1").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kInt32).build())
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col2").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kInt32).build());
+            db.addTables(tbl.build());
+        }
+        TypeOuterClass.Database.Builder db2 = TypeOuterClass.Database.newBuilder();
+        db2.setName("db2");
+        {
+            TypeOuterClass.TableDef.Builder tbl = TypeOuterClass.TableDef.newBuilder();
+            tbl.setName("t2")
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("str0").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kVarchar).build())
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("str1").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kVarchar).build())
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col0").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kInt32).build())
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col1").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kInt32).build());
+            db2.addTables(tbl.build());
+        }
+        try {
+            EngineOptions options = createDefaultEngineOptions();
+            options.set_enable_batch_window_parallelization(true);
+            SqlEngine engine = new SqlEngine(sql,
+                    Lists.newArrayList(db.build(), db2.build()), options, db.getName());
+            Assert.assertNull(engine.getPlan());
+            Assert.fail("Expect getPlan fail");
+        } catch (UnsupportedHybridSeException e) {
+            e.printStackTrace();
+            Assert.assertTrue(e.getMessage().contains(errorMsg));
+        }
+    }
 }

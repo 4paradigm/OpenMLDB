@@ -236,6 +236,7 @@ TEST_F(SchemasContextTest, NewSchemasContextTest) {
     };
 
     vm::SchemasContext schemas_context;
+    schemas_context.SetDefaultDBName("db1");
     auto source1 = schemas_context.AddSource();
     init_source(source1, t1, 0);
     auto source2 = schemas_context.AddSource();

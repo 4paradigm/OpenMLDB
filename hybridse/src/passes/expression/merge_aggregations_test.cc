@@ -27,7 +27,7 @@ class MergeAggregationsTest : public ExprPassTestBase {};
 
 TEST_F(MergeAggregationsTest, Test) {
     auto schema = udf::MakeLiteralSchema<int32_t, float, double, int64_t>();
-    schemas_ctx_.BuildTrivial("", {&schema});
+    schemas_ctx_.BuildTrivial({&schema});
 
     std::vector<std::string> non_merge_cases = {"0",
                                                 "col_0",

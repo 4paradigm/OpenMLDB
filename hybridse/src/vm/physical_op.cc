@@ -78,8 +78,9 @@ void PhysicalUnaryNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-Status PhysicalUnaryNode::InitSchema(PhysicalPlanContext*) {
+Status PhysicalUnaryNode::InitSchema(PhysicalPlanContext* ctx) {
     schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     schemas_ctx_.Merge(0, GetProducer(0)->schemas_ctx());
     return Status::OK();
 }
@@ -272,6 +273,7 @@ Status PhysicalProjectNode::InitSchema(PhysicalPlanContext* ctx) {
 
     // init project schema
     schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     SchemaSource* project_source = schemas_ctx_.AddSource();
     return InitProjectSchemaSource(project_, input_schemas_ctx, ctx,
                                    project_source);
@@ -290,6 +292,7 @@ Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_STATUS(ctx->InitFnDef(project_, &empty_ctx, true, &project_),
                  "Fail to initialize function def of const project node");
     schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     SchemaSource* project_source = schemas_ctx_.AddSource();
 
     SchemasContext empty_schemas_ctx;
@@ -349,6 +352,7 @@ Status PhysicalSimpleProjectNode::InitSchema(PhysicalPlanContext* ctx) {
 
     // init project schema
     schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     SchemaSource* project_source = schemas_ctx_.AddSource();
     return InitProjectSchemaSource(project_, input_schemas_ctx, ctx,
                                    project_source);
@@ -714,6 +718,7 @@ Status PhysicalWindowAggrerationNode::InitSchema(PhysicalPlanContext* ctx) {
 
     // init output schema
     schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     auto project_source = schemas_ctx_.AddSource();
     CHECK_STATUS(InitProjectSchemaSource(project_, input_schemas_ctx, ctx,
                                          project_source));
@@ -770,6 +775,7 @@ Status PhysicalJoinNode::InitSchema(PhysicalPlanContext* ctx) {
                "InitSchema fail: producers size isn't 2 or left/right "
                "producer is null");
     schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     if (!output_right_only_) {
         schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
     }
@@ -781,6 +787,7 @@ Status PhysicalJoinNode::InitSchema(PhysicalPlanContext* ctx) {
 
     // join input schema context
     joined_schemas_ctx_.Clear();
+    joined_schemas_ctx_.SetDefaultDBName(ctx->db());
     joined_schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
     joined_schemas_ctx_.Merge(1, producers_[1]->schemas_ctx());
     joined_schemas_ctx_.Build();
@@ -947,7 +954,8 @@ Status PhysicalDataProviderNode::InitSchema(PhysicalPlanContext* ctx) {
                "InitSchema fail: table schema of ", table_name, " is null");
 
     schemas_ctx_.Clear();
-    schemas_ctx_.SetName(db_name, table_name);
+    schemas_ctx_.SetDefaultDBName(ctx->db());
+    schemas_ctx_.SetDBAndRelationName(db_name, table_name);
     auto table_source = schemas_ctx_.AddSource();
 
     // set table source
@@ -972,7 +980,8 @@ Status PhysicalRequestProviderNode::InitSchema(PhysicalPlanContext* ctx) {
                "InitSchema fail: table schema of", request_name, " is null");
 
     schemas_ctx_.Clear();
-    schemas_ctx_.SetName(table_handler_->GetDatabase(), request_name);
+    schemas_ctx_.SetDefaultDBName(ctx->db());
+    schemas_ctx_.SetDBAndRelationName(table_handler_->GetDatabase(), request_name);
     auto request_source = schemas_ctx_.AddSource();
 
     // set request source
@@ -1000,7 +1009,8 @@ Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
                "InitSchema fail: table schema of", request_name, " is null");
 
     schemas_ctx_.Clear();
-    schemas_ctx_.SetName(table_handler_->GetDatabase(), request_name);
+    schemas_ctx_.SetDefaultDBName(ctx->db());
+    schemas_ctx_.SetDBAndRelationName(table_handler_->GetDatabase(), request_name);
 
     std::vector<size_t> column_ids(schema_size);
     for (size_t i = 0; i < schema_size; ++i) {
@@ -1116,6 +1126,7 @@ std::string PhysicalOpNode::SchemaToString(const std::string& tab) const {
 Status PhysicalUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty union");
     schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     schemas_ctx_.MergeWithNewID(0, producers_[0]->schemas_ctx(), ctx);
     return Status::OK();
 }
@@ -1139,6 +1150,7 @@ void PhysicalUnionNode::Print(std::ostream& output,
 Status PhysicalPostRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty union");
     schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     schemas_ctx_.MergeWithNewID(0, producers_[0]->schemas_ctx(), ctx);
     return Status::OK();
 }
@@ -1229,6 +1241,7 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
 base::Status PhysicalRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty request union");
     schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     if (output_request_row()) {
         schemas_ctx_.MergeWithNewID(0, producers_[0]->schemas_ctx(), ctx);
     } else {
@@ -1240,7 +1253,8 @@ base::Status PhysicalRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {
 base::Status PhysicalRenameNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty procedures");
     schemas_ctx_.Clear();
-    schemas_ctx_.SetName(producers_[0]->schemas_ctx()->GetDBName(), name_);
+    schemas_ctx_.SetDefaultDBName(ctx->db());
+    schemas_ctx_.SetDBAndRelationName(ctx->db(), name_);
     schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
     return Status::OK();
 }
@@ -1310,6 +1324,7 @@ Status PhysicalRequestJoinNode::InitSchema(PhysicalPlanContext* ctx) {
                "InitSchema fail: producers size isn't 2 or left/right "
                "producer is null");
     schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     if (!output_right_only_) {
         schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
     }
@@ -1321,6 +1336,7 @@ Status PhysicalRequestJoinNode::InitSchema(PhysicalPlanContext* ctx) {
 
     // join input schema context
     joined_schemas_ctx_.Clear();
+    joined_schemas_ctx_.SetDefaultDBName(ctx->db());
     joined_schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
     joined_schemas_ctx_.Merge(1, producers_[1]->schemas_ctx());
     joined_schemas_ctx_.Build();

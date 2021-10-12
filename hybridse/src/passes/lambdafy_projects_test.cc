@@ -28,7 +28,7 @@ class LambdafyProjectsTest : public ::testing::Test {};
 TEST_F(LambdafyProjectsTest, Test) {
     auto schema = udf::MakeLiteralSchema<int32_t, float, double>();
     vm::SchemasContext schemas_ctx;
-    schemas_ctx.BuildTrivial("", {&schema});
+    schemas_ctx.BuildTrivial({&schema});
 
     Status status;
     node::NodeManager nm;
