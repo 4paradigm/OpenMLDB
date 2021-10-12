@@ -396,7 +396,7 @@ class NameServerImpl : public NameServer {
 
     void AddDataType(std::shared_ptr<TableInfo> table_info);
 
-    int CheckTableMeta(const TableInfo& table_info);
+    static int CheckTableMeta(const TableInfo& table_info);
 
     int FillColumnKey(TableInfo& table_info);  // NOLINT
 
