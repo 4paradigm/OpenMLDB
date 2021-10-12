@@ -172,7 +172,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     list_table_ref.list = reinterpret_cast<int8_t*>(&list_table);
 
     vm::SchemasContext schemas_context;
-    schemas_context.BuildTrivial({&table_def});
+    schemas_context.BuildTrivial(table_def.catalog(), {&table_def});
     size_t schema_idx;
     size_t col_idx;
     ASSERT_TRUE(
@@ -282,7 +282,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
 void DoSumTableCol(vm::TableHandler* window, benchmark::State* state, MODE mode,
                    int64_t data_size, const std::string& col_name) {
     vm::SchemasContext schemas_context;
-    schemas_context.BuildTrivial({window->GetSchema()});
+    schemas_context.BuildTrivial(window->GetDatabase(), {window->GetSchema()});
     codegen::MemoryWindowDecodeIRBuilder builder(&schemas_context, nullptr);
 
     size_t schema_idx;

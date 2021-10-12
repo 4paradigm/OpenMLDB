@@ -102,6 +102,7 @@ std::string CoreAPI::ResolveSourceColumnName(
     size_t source_column_id;
     const PhysicalOpNode* source_node = nullptr;
     auto status = schemas_ctx->ResolveColumnID(
+        column_expr->GetDBName(),
         column_expr->GetRelationName(), column_expr->GetColumnName(),
         &column_id, &child_path_idx, &child_column_id, &source_column_id,
         &source_node);
@@ -120,14 +121,16 @@ std::string CoreAPI::ResolveSourceColumnName(
 }
 
 ColumnSourceInfo CoreAPI::ResolveSourceColumn(
-    hybridse::vm::PhysicalOpNode* node, const std::string& relation_name,
+    hybridse::vm::PhysicalOpNode* node,
+    const std::string& db_name,
+    const std::string& relation_name,
     const std::string& column_name) {
     ColumnSourceInfo result;
     if (node == nullptr) {
         return result;
     }
     auto& status = result.status_;
-    status = node->schemas_ctx()->ResolveColumnID(
+    status = node->schemas_ctx()->ResolveColumnID(db_name,
         relation_name, column_name, &result.column_id_, &result.child_path_idx_,
         &result.child_column_id_, &result.source_column_id_,
         &result.source_node_);

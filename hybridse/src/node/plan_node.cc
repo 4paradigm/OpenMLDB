@@ -457,9 +457,7 @@ void TablePlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-
-    PrintValue(output, org_tab + "\t", table_,
-               is_primary_ ? "primary_table" : "table", true);
+    PrintValue(output, org_tab + "\t", GetPathString(), is_primary_ ? "primary_table" : "table", true);
 }
 bool TablePlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {

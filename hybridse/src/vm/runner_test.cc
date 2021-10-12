@@ -159,6 +159,16 @@ TEST_P(RunnerTest, request_mode_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
+    hybridse::type::Database db2;
+    db2.set_name("db2");
+    {
+        hybridse::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_catalog("db2");
+        table_def.set_name("table2");
+        AddTable(db2, table_def);
+    }
+    catalog->AddDatabase(db2);
     RunnerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kRequestMode);
 }
 
@@ -219,6 +229,16 @@ TEST_P(RunnerTest, batch_mode_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
+    hybridse::type::Database db2;
+    db2.set_name("db2");
+    {
+        hybridse::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_catalog("db2");
+        table_def.set_name("table2");
+        AddTable(db2, table_def);
+    }
+    catalog->AddDatabase(db2);
     RunnerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode);
 }
 
@@ -256,6 +276,16 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     db.set_name("db");
     AddTable(db, table_def);
     auto catalog = BuildSimpleCatalog(db);
+    hybridse::type::Database db2;
+    db2.set_name("db2");
+    {
+        hybridse::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_catalog("db2");
+        table_def.set_name("table2");
+        AddTable(db2, table_def);
+    }
+    catalog->AddDatabase(db2);
     codec::Schema empty_schema;
     RunnerCheck(catalog, sqlstr, empty_schema, kBatchMode);
 
@@ -298,13 +328,23 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
     db.set_name("db");
     AddTable(db, table_def);
     auto catalog = BuildSimpleCatalog(db);
+    hybridse::type::Database db2;
+    db2.set_name("db2");
+    {
+        hybridse::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_catalog("db2");
+        table_def.set_name("table2");
+        AddTable(db2, table_def);
+    }
+    catalog->AddDatabase(db2);
     std::vector<Row> rows;
     hybridse::type::TableDef temp_table;
     BuildRows(temp_table, rows);
 
     SchemasContext schemas_ctx;
     auto source = schemas_ctx.AddSource();
-    source->SetSourceName("t1");
+    source->SetSourceName("", "t1");
     source->SetSchema(&table_def.columns());
 
     // Print Empty Set
@@ -361,13 +401,23 @@ TEST_F(RunnerTest, RunnerPrintDataMemTimeTableTest) {
     db.set_name("db");
     AddTable(db, table_def);
     auto catalog = BuildSimpleCatalog(db);
+    hybridse::type::Database db2;
+    db2.set_name("db2");
+    {
+        hybridse::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_catalog("db2");
+        table_def.set_name("table2");
+        AddTable(db2, table_def);
+    }
+    catalog->AddDatabase(db2);
     std::vector<Row> rows;
     hybridse::type::TableDef temp_table;
     BuildRows(temp_table, rows);
 
     SchemasContext schemas_ctx;
     auto source = schemas_ctx.AddSource();
-    source->SetSourceName("t1");
+    source->SetSourceName("", "t1");
     source->SetSchema(&table_def.columns());
 
     // Print Empty Set

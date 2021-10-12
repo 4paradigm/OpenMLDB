@@ -86,7 +86,7 @@ RowTypeNode::RowTypeNode(const std::vector<const codec::Schema *> &schemas)
       schemas_ctx_(new vm::SchemasContext()),
       is_own_schema_ctx_(true) {
     auto schemas_ctx = const_cast<vm::SchemasContext *>(schemas_ctx_);
-    schemas_ctx->BuildTrivial(schemas);
+    schemas_ctx->BuildTrivial("", schemas);
 }
 
 RowTypeNode::~RowTypeNode() {

@@ -191,6 +191,16 @@ TEST_P(SqlCompilerTest, compile_request_mode_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
+    hybridse::type::Database db2;
+    db2.set_name("db2");
+    {
+        hybridse::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_catalog("db2");
+        table_def.set_name("table2");
+        AddTable(db2, table_def);
+    }
+    catalog->AddDatabase(db2);
 
     CompilerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kRequestMode);
     RequestSchemaCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), table_def);
@@ -257,6 +267,16 @@ TEST_P(SqlCompilerTest, compile_batch_mode_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
+    hybridse::type::Database db2;
+    db2.set_name("db2");
+    {
+        hybridse::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_catalog("db2");
+        table_def.set_name("table2");
+        AddTable(db2, table_def);
+    }
+    catalog->AddDatabase(db2);
     CompilerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode, false);
     {
         // Check for work with simple catalog
@@ -306,6 +326,16 @@ TEST_P(SqlCompilerTest, compile_batch_mode_test) {
         }
 
         simple_catalog->AddDatabase(db);
+        hybridse::type::Database db2;
+        db2.set_name("db2");
+        {
+            hybridse::type::TableDef table_def;
+            BuildTableDef(table_def);
+            table_def.set_catalog("db2");
+            table_def.set_name("table2");
+            AddTable(db2, table_def);
+        }
+        simple_catalog->AddDatabase(db2);
         CompilerCheck(simple_catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode, false);
     }
 }
@@ -393,6 +423,16 @@ TEST_P(SqlCompilerTest, compile_batch_mode_enable_window_paralled_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalogIndexUnsupport(db);
+    hybridse::type::Database db2;
+    db2.set_name("db2");
+    {
+        hybridse::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_catalog("db2");
+        table_def.set_name("table2");
+        AddTable(db2, table_def);
+    }
+    catalog->AddDatabase(db2);
     CompilerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode, true);
 
     {
@@ -443,6 +483,16 @@ TEST_P(SqlCompilerTest, compile_batch_mode_enable_window_paralled_test) {
         }
 
         simple_catalog->AddDatabase(db);
+        hybridse::type::Database db2;
+        db2.set_name("db2");
+        {
+            hybridse::type::TableDef table_def;
+            BuildTableDef(table_def);
+            table_def.set_catalog("db2");
+            table_def.set_name("table2");
+            AddTable(db2, table_def);
+        }
+        simple_catalog->AddDatabase(db2);
         CompilerCheck(simple_catalog, sqlstr, sql_case.ExtractParameterTypes(), kBatchMode, true);
     }
 }

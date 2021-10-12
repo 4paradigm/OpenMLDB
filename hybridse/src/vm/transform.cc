@@ -575,7 +575,8 @@ Status BatchModeTransformer::TransformWindowOp(
                        "Do not support window on non-request input");
 
             auto name = data_op->table_handler_->GetName();
-            auto table = catalog_->GetTable(db_, name);
+            auto db_name = data_op->table_handler_->GetDatabase();
+            auto table = catalog_->GetTable(db_name, name);
             CHECK_TRUE(table != nullptr, kPlanError,
                        "Fail to transform data provider op: table " + name +
                            "not exists");
@@ -592,7 +593,10 @@ Status BatchModeTransformer::TransformWindowOp(
                      iter != w_ptr->union_tables().cend(); iter++) {
                     PhysicalOpNode* union_table_op;
                     CHECK_STATUS(TransformPlanOp(*iter, &union_table_op));
-                    CHECK_TRUE(request_union_op->AddWindowUnion(union_table_op),
+                    PhysicalRenameNode* rename_union_op = nullptr;
+                    CHECK_STATUS(CreateOp<PhysicalRenameNode>(&rename_union_op, union_table_op,
+                                                              depend->schemas_ctx()->GetName()));
+                    CHECK_TRUE(request_union_op->AddWindowUnion(rename_union_op),
                                kPlanError,
                                "Fail to add request window union table");
                 }
@@ -628,7 +632,11 @@ Status BatchModeTransformer::TransformWindowOp(
                     auto request_op = dynamic_cast<PhysicalDataProviderNode*>(
                         join_op->producers()[0]);
                     auto name = request_op->table_handler_->GetName();
-                    auto table = catalog_->GetTable(db_, name);
+                    auto db_name = request_op->table_handler_->GetDatabase();
+                    if (db_name.empty()) {
+                        db_name = db_;
+                    }
+                    auto table = catalog_->GetTable(db_name, name);
                     CHECK_TRUE(table != nullptr, kPlanError,
                                "Fail to transform data provider op: table " +
                                    name + "not exists");
@@ -646,9 +654,12 @@ Status BatchModeTransformer::TransformWindowOp(
                             PhysicalOpNode* union_table_op;
                             CHECK_STATUS(
                                 TransformPlanOp(*iter, &union_table_op));
+                            PhysicalRenameNode* rename_union_op = nullptr;
+                            CHECK_STATUS(CreateOp<PhysicalRenameNode>(&rename_union_op, union_table_op,
+                                                                      depend->schemas_ctx()->GetName()));
                             CHECK_TRUE(
                                 request_union_op->AddWindowUnion(
-                                    union_table_op),
+                                    rename_union_op),
                                 kPlanError,
                                 "Fail to add request window union table");
                         }
@@ -680,7 +691,9 @@ Status BatchModeTransformer::TransformWindowOp(
                        "Do not support window on non-request input");
 
             auto name = data_op->table_handler_->GetName();
-            auto table = catalog_->GetTable(db_, name);
+            auto db_name = data_op->table_handler_->GetDatabase();
+            db_name = db_name.empty() ? db_ : db_name;
+            auto table = catalog_->GetTable(db_name, name);
             CHECK_TRUE(table != nullptr, kPlanError,
                        "Fail to transform data provider op: table " + name +
                            "not exists");
@@ -703,7 +716,10 @@ Status BatchModeTransformer::TransformWindowOp(
                      iter != w_ptr->union_tables().cend(); iter++) {
                     PhysicalOpNode* union_table_op;
                     CHECK_STATUS(TransformPlanOp(*iter, &union_table_op));
-                    CHECK_TRUE(request_union_op->AddWindowUnion(union_table_op),
+                    PhysicalRenameNode* rename_union_op = nullptr;
+                    CHECK_STATUS(CreateOp<PhysicalRenameNode>(&rename_union_op, union_table_op,
+                                                              depend->schemas_ctx()->GetName()));
+                    CHECK_TRUE(request_union_op->AddWindowUnion(rename_union_op),
                                kPlanError,
                                "Fail to add request window union table");
                 }
@@ -767,7 +783,9 @@ Status BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
         auto data_op = dynamic_cast<PhysicalDataProviderNode*>(left);
         if (kProviderTypeRequest == data_op->provider_type_) {
             auto name = data_op->table_handler_->GetName();
-            auto table = catalog_->GetTable(db_, name);
+            auto db_name = data_op->table_handler_->GetDatabase();
+            db_name = db_name.empty() ? db_ : db_name;
+            auto table = catalog_->GetTable(db_name, name);
             CHECK_TRUE(table != nullptr, kPlanError,
                        "Fail to transform data provider op: table " + name +
                            "not exists");
@@ -825,10 +843,10 @@ Status BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
                                              PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
-    auto table = catalog_->GetTable(db_, node->table_);
+    auto table = catalog_->GetTable(node->db_.empty() ? db_ : node->db_, node->table_);
     CHECK_TRUE(table != nullptr, kPlanError,
-               "Fail to transform data provider op: table " + node->table_ +
-                   "not exists");
+               "Fail to transform data provider op: table " + node->GetPathString() +
+                   " not exists");
 
     PhysicalTableProviderNode* table_op = nullptr;
     CHECK_STATUS(CreateOp<PhysicalTableProviderNode>(&table_op, table));
@@ -1070,8 +1088,11 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
                      iter++) {
                     PhysicalOpNode* union_table_op;
                     CHECK_STATUS(TransformPlanOp(*iter, &union_table_op));
-                    CHECK_TRUE(window_agg_op->AddWindowUnion(union_table_op),
-                               kPlanError, "Fail to add window union table");
+                    PhysicalRenameNode* rename_union_op = nullptr;
+                    CHECK_STATUS(CreateOp<PhysicalRenameNode>(&rename_union_op, union_table_op,
+                                                              depend->schemas_ctx()->GetName()));
+                    CHECK_TRUE(window_agg_op->AddWindowUnion(rename_union_op), kPlanError,
+                               "Fail to add window union table");
                 }
             }
             *output = window_agg_op;
@@ -1874,10 +1895,9 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
                "Input node or output node is null");
 
     if (node->IsPrimary()) {
-        auto table = catalog_->GetTable(db_, node->table_);
-        CHECK_TRUE(table != nullptr, common::kTableNotFound,
-                   "Fail to transform data_provider op: table " + db_ + "." +
-                       node->table_ + " not exist!");
+        auto table = catalog_->GetTable(node->db_.empty() ? db_ : node->db_, node->table_);
+        CHECK_TRUE(table != nullptr, common::kTableNotFound, "Fail to transform data_provider op: table ",
+                   (node->db_.empty() ? db_ : node->db_), ".", node->table_, " not exist!");
 
         PhysicalRequestProviderNode* provider = nullptr;
         CHECK_STATUS(CreateOp<PhysicalRequestProviderNode>(&provider, table));

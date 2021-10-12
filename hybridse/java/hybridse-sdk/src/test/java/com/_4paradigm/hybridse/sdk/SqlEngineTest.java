@@ -105,4 +105,54 @@ public class SqlEngineTest {
             Assert.fail("fail to run sql engine");
         }
     }
+
+    @Test
+    public void sqlLastJoinWithMultipleDB() {
+        String sql = " SELECT sum(t1.col1) over w1 as sum_t1_col1, t2.str1 as t2_str1\n" +
+                " FROM t1\n" +
+                " last join db2.t2 order by db2.t2.col1\n" +
+                " on t1.col1 = db2.t2.col1 and t1.col2 = db2.t2.col0\n" +
+                " WINDOW w1 AS (\n" +
+                "  PARTITION BY t1.col2 ORDER BY t1.col1\n" +
+                "  ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW\n" +
+                " ) limit 10;";
+        TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
+        db.setName("db");
+
+        {
+            TypeOuterClass.TableDef.Builder tbl = TypeOuterClass.TableDef.newBuilder();
+            tbl.setName("t1")
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col0").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kVarchar).build())
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col1").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kInt32).build())
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col2").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kInt32).build());
+            db.addTables(tbl.build());
+        }
+        TypeOuterClass.Database.Builder db2 = TypeOuterClass.Database.newBuilder();
+        db2.setName("db");
+        {
+            TypeOuterClass.TableDef.Builder tbl = TypeOuterClass.TableDef.newBuilder();
+            tbl.setName("t2")
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("str0").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kVarchar).build())
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("str1").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kVarchar).build())
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col0").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kInt32).build())
+                    .addColumns(TypeOuterClass.ColumnDef.newBuilder().setName("col1").setIsNotNull(true)
+                            .setType(TypeOuterClass.Type.kInt32).build());
+            db2.addTables(tbl.build());
+        }
+        try {
+            EngineOptions options = createDefaultEngineOptions();
+            options.set_enable_batch_window_parallelization(true);
+            SqlEngine engine = new SqlEngine(sql, db.build(), options);
+            Assert.assertNotNull(engine.getPlan());
+        } catch (UnsupportedHybridSeException e) {
+            e.printStackTrace();
+            Assert.fail("fail to run sql engine");
+        }
+    }
 }

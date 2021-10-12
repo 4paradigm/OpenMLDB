@@ -26,7 +26,7 @@ class WindowIterAnalysisTest : public ExprPassTestBase {};
 
 TEST_F(WindowIterAnalysisTest, Test) {
     auto schema = udf::MakeLiteralSchema<int32_t, float, double>();
-    schemas_ctx_.BuildTrivial({&schema});
+    schemas_ctx_.BuildTrivial("", {&schema});
 
     std::vector<std::tuple<std::string, size_t>> cases = {
         {"0", 0},

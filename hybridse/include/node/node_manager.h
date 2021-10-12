@@ -66,7 +66,7 @@ class NodeManager {
     ProjectNode *MakeAggProjectNode(const int32_t pos, const std::string &name,
                                     node::ExprNode *expression,
                                     node::FrameNode *frame);
-    PlanNode *MakeTablePlanNode(const std::string &node);
+    PlanNode *MakeTablePlanNode(const std::string& db, const std::string &table_name);
     PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
                            const OrderByNode *order_by,
                            const ExprNode *condition);
@@ -80,6 +80,9 @@ class NodeManager {
     QueryNode *MakeUnionQueryNode(QueryNode *left, QueryNode *right,
                                   bool is_all);
     TableRefNode *MakeTableNode(const std::string &name,
+                                const std::string &alias);
+    TableRefNode *MakeTableNode(const std::string& db,
+                                const std::string &name,
                                 const std::string &alias);
     TableRefNode *MakeJoinNode(const TableRefNode *left,
                                const TableRefNode *right, const JoinType type,

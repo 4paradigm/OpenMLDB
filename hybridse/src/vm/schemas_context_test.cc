@@ -53,7 +53,8 @@ class SchemasContextResolveTest : public ::testing::TestWithParam<SqlCase> {
     SchemasContextResolveTest() {}
 };
 
-void CheckColumnResolveCase(const std::string& relation_name,
+void CheckColumnResolveCase(const std::string& db_name,
+                            const std::string& relation_name,
                             const std::string& column_name,
                             PhysicalOpNode* node,
                             const ColumnNameResolveResult& expect) {
@@ -63,7 +64,7 @@ void CheckColumnResolveCase(const std::string& relation_name,
     // check simple resolve
     size_t schema_idx;
     size_t col_idx;
-    status = schemas_context->ResolveColumnIndexByName(
+    status = schemas_context->ResolveColumnIndexByName(db_name,
         relation_name, column_name, &schema_idx, &col_idx);
     if (expect.is_error) {
         LOG(INFO) << status;
@@ -85,7 +86,7 @@ void CheckColumnResolveCase(const std::string& relation_name,
     size_t child_column_id;
     size_t source_column_id;
     const PhysicalOpNode* source_node = nullptr;
-    status = schemas_context->ResolveColumnID(
+    status = schemas_context->ResolveColumnID(db_name,
         relation_name, column_name, &column_id, &child_path_idx,
         &child_column_id, &source_column_id, &source_node);
     ASSERT_TRUE(status.isOK()) << status;
@@ -113,6 +114,10 @@ void CheckColumnResolveCase(const std::string& relation_name,
 void CheckColumnResolveCase(const YAML::Node& resolve_case,
                             PhysicalOpNode* node) {
     ColumnNameResolveResult expect;
+    std::string db_name = "";
+    if (resolve_case["db"]) {
+        db_name = resolve_case["db"].as<std::string>();
+    }
     std::string relation_name = "";
     if (resolve_case["relation_name"]) {
         relation_name = resolve_case["relation_name"].as<std::string>();
@@ -143,7 +148,7 @@ void CheckColumnResolveCase(const YAML::Node& resolve_case,
     if (resolve_case["source_name"]) {
         expect.source_name = resolve_case["source_name"].as<std::string>();
     }
-    CheckColumnResolveCase(relation_name, column_name, node, expect);
+    CheckColumnResolveCase(db_name, relation_name, column_name, node, expect);
 }
 
 void CheckColumnResolveCases(const SqlCase& sql_case, PhysicalOpNode* node) {
@@ -213,14 +218,16 @@ TEST_F(SchemasContextTest, NewSchemasContextTest) {
     type::TableDef t1;
     BuildTableDef(t1);
     t1.set_name("t1");
+    t1.set_catalog("db1");
 
     type::TableDef t2;
     BuildTableDef(t2);
     t2.set_name("t2");
+    t2.set_catalog("db2");
 
     auto init_source = [](SchemaSource* source, const type::TableDef& table,
                           size_t offset) {
-        source->SetSourceName(table.name());
+        source->SetSourceName(table.catalog(), table.name());
         source->SetSchema(&table.columns());
         for (int i = 0; i < table.columns_size(); ++i) {
             source->SetColumnID(i, offset);
@@ -237,11 +244,11 @@ TEST_F(SchemasContextTest, NewSchemasContextTest) {
 
     size_t column_id;
     Status status;
-    status = schemas_context.ResolveColumnID("t1", "col1", &column_id);
+    status = schemas_context.ResolveColumnID("db1", "t1", "col1", &column_id);
     ASSERT_TRUE(status.isOK()) << status;
     ASSERT_EQ(1u, column_id);
 
-    status = schemas_context.ResolveColumnID("t2", "col1", &column_id);
+    status = schemas_context.ResolveColumnID("db2", "t2", "col1", &column_id);
     ASSERT_TRUE(status.isOK()) << status;
     ASSERT_EQ(8u, column_id);
 }
