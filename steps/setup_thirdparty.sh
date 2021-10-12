@@ -21,6 +21,10 @@ ROOT=$(pwd)
 
 ARCH=$(arch)
 
+THIRDPARTY_HOME=https://github.com/jingchen2222/hybridsql-asserts
+ZETASQL_HOME=https://github.com/aceforeverd/zetasql
+ZETASQL_VERSION=0.2.1-beta7
+
 echo "Install thirdparty ... for $(uname -a)"
 
 # on local machine, one can tweak thirdparty path by passing extra argument
@@ -38,15 +42,15 @@ mkdir -p "$THIRDSRC_PATH"
 pushd "${THIRDSRC_PATH}"
 
 if [[ "$OSTYPE" = "darwin"* ]]; then
-    curl -SLo thirdparty.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz
-    curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-darwin-x86_64.tar.gz
+    curl -SLo thirdparty.tar.gz "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz"
+    curl -SLo libzetasql.tar.gz "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-darwin-x86_64.tar.gz"
 elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
     if [[ $ARCH = 'x86_64' ]]; then
-        curl -SLo thirdparty.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz
-        curl -SLo libzetasql.tar.gz https://github.com/jingchen2222/zetasql/releases/download/v0.2.0/libzetasql-0.2.0-linux-x86_64.tar.gz
+        curl -SLo thirdparty.tar.gz "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz"
+        curl -SLo libzetasql.tar.gz "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-x86_64.tar.gz"
     elif [[ $ARCH = 'aarch64' ]]; then
-        curl -SLo thirdparty.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz
-        curl -SLo libzetasql.tar.gz https://github.com/aceforeverd/zetasql/releases/download/v0.2.1-beta5/libzetasql-0.2.1-beta5-linux-gnu-aarch64.tar.gz
+        curl -SLo thirdparty.tar.gz "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz"
+        curl -SLo libzetasql.tar.gz "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-aarch64.tar.gz"
     fi
 fi
 
