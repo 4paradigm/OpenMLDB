@@ -25,6 +25,9 @@ import com._4paradigm.hybridse.vm.EngineOptions;
 import com._4paradigm.hybridse.vm.PhysicalOpNode;
 import com._4paradigm.hybridse.vm.SimpleCatalog;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +52,19 @@ public class SqlEngine implements AutoCloseable {
      */
     public SqlEngine(String sql, TypeOuterClass.Database database) throws UnsupportedHybridSeException {
         // Create the default engine options
-        this.initilize(sql, database, createDefaultEngineOptions());
+        this.initilize(sql, Arrays.<TypeOuterClass.Database>asList(database), createDefaultEngineOptions(),
+                database.getName());
+    }
+
+    /**
+     * Construct SQL engine for specific sql and databases.
+     *
+     * @throws UnsupportedHybridSeException throws exception when fail to compile queries
+     */
+    public SqlEngine(String sql, List<TypeOuterClass.Database> databases, String defaultDbname)
+            throws UnsupportedHybridSeException {
+        // Create the default engine options
+        this.initilize(sql, databases, createDefaultEngineOptions(), defaultDbname);
     }
 
     /**
@@ -59,7 +74,17 @@ public class SqlEngine implements AutoCloseable {
      */
     public SqlEngine(String sql, TypeOuterClass.Database database, EngineOptions engineOptions)
             throws UnsupportedHybridSeException {
-        this.initilize(sql, database, engineOptions);
+        this.initilize(sql, Arrays.<TypeOuterClass.Database>asList(database), engineOptions, database.getName());
+    }
+
+    /**
+     * Construct SQL engine for specific sql, databases and EngineOptions.
+     *
+     * @throws UnsupportedHybridSeException throws exception when fail to compile queries
+     */
+    public SqlEngine(String sql, List<TypeOuterClass.Database> databases, EngineOptions engineOptions,
+                     String defaultDbName) throws UnsupportedHybridSeException {
+        this.initilize(sql, databases, engineOptions, defaultDbName);
     }
 
     /**
@@ -83,20 +108,25 @@ public class SqlEngine implements AutoCloseable {
      * Initialize engine with given sql, database and specified engine options.
      *
      * @param sql query sql string
-     * @param database query on the database
+     * @param databases query on the databases
      * @param engineOptions query engine options
+     * @param defaultDbName default database name
      * @throws UnsupportedHybridSeException throw when query unsupported or has syntax error
      */
-    public void initilize(String sql, TypeOuterClass.Database database, EngineOptions engineOptions)
+    public void initilize(String sql, List<TypeOuterClass.Database> databases, EngineOptions engineOptions,
+                          String defaultDbName)
             throws UnsupportedHybridSeException {
         options = engineOptions;
         catalog = new SimpleCatalog();
         session = new BatchRunSession();
-        catalog.AddDatabase(database);
+        for (TypeOuterClass.Database database: databases) {
+            catalog.AddDatabase(database);
+        }
         engine = new Engine(catalog, options);
 
         BaseStatus status = new BaseStatus();
-        boolean ok = engine.Get(sql, database.getName(), session, status);
+        // TODO(chenjing): Support passing null default database name for core API
+        boolean ok = engine.Get(sql, defaultDbName, session, status);
         if (!(ok && status.getMsg().equals("ok"))) {
             throw new UnsupportedHybridSeException("SQL parse error: " + status.GetMsg() + "\n" + status.GetTraces());
         }

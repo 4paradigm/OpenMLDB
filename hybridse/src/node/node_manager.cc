@@ -918,6 +918,10 @@ BetweenExpr *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNo
     node->set_is_not_between(is_not);
     return RegisterNode(node);
 }
+InExpr *NodeManager::MakeInExpr(ExprNode* lhs, ExprNode* in_list, bool is_not) {
+    InExpr* in_expr = new InExpr(lhs, in_list, is_not);
+    return RegisterNode(in_expr);
+}
 ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
     if (node::ExprListNullOrEmpty(expr_list)) {
         return nullptr;

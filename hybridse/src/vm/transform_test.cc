@@ -109,7 +109,7 @@ INSTANTIATE_TEST_SUITE_P(
     SqlSubQueryPlan, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/sub_query.yaml", FILTERS)));
 
-TEST_P(TransformTest, transform_physical_plan) {
+TEST_P(TransformTest, TransformPhysicalPlan) {
     auto sql_case = GetParam();
     std::string sqlstr = sql_case.sql_str();
     std::cout << sqlstr << std::endl;
@@ -187,6 +187,8 @@ TEST_P(TransformTest, transform_physical_plan) {
             LOG(INFO) << "\n" << *(plan_trees[0]) << std::endl;
         } else {
             LOG(INFO) << base_status.str();
+            EXPECT_EQ(false, sql_case.expect().success_);
+            return;
         }
         ASSERT_EQ(0, base_status.code);
     }
@@ -200,15 +202,10 @@ TEST_P(TransformTest, transform_physical_plan) {
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
     base::Status status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
-    ASSERT_TRUE(status.isOK()) << status;
-    std::ostringstream oss;
-
-    physical_plan->Print(oss, "");
-    LOG(INFO) << "physical plan:\n" << oss.str() << "\n";
-    //    m->print(::llvm::errs(), NULL);
+    EXPECT_EQ(sql_case.expect().success_, status.isOK()) << status;
 }
 
-TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
+TEST_P(TransformTest, TransformPhysicalPlanEnableWindowParalled) {
     auto& sql_case = GetParam();
     std::string sqlstr = sql_case.sql_str();
     std::cout << sqlstr << std::endl;
@@ -286,8 +283,10 @@ TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
             LOG(INFO) << "\n" << *(plan_trees[0]) << std::endl;
         } else {
             LOG(INFO) << base_status.str();
+            EXPECT_EQ(false, sql_case.expect().success_);
+            return;
         }
-        ASSERT_EQ(0, base_status.code);
+        ASSERT_EQ(common::kOk, base_status.code);
     }
 
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -298,12 +297,7 @@ TEST_P(TransformTest, transform_physical_plan_enable_window_paralled) {
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
-    std::ostringstream oss;
-
-    physical_plan->Print(oss, "");
-    LOG(INFO) << "physical plan:\n" << oss.str() << "\n";
-    //    m->print(::llvm::errs(), NULL);
+    EXPECT_EQ(sql_case.expect().success_, transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
 }
 
 void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
@@ -471,7 +465,7 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
     }
 }
 
-TEST_P(TransformTest, window_merge_opt_test) {
+TEST_P(TransformTest, WindowMergeOptTest) {
     auto& sql_case = GetParam();
     std::string sqlstr = sql_case.sql_str();
     std::cout << sqlstr << std::endl;
@@ -550,6 +544,8 @@ TEST_P(TransformTest, window_merge_opt_test) {
             LOG(INFO) << "\n" << *(plan_trees[0]) << std::endl;
         } else {
             LOG(INFO) << base_status.str();
+            EXPECT_EQ(false, sql_case.expect().success_);
+            return;
         }
 
         ASSERT_EQ(0, base_status.code);
@@ -1043,7 +1039,7 @@ INSTANTIATE_TEST_SUITE_P(
             "            DATA_PROVIDER(type=Partition, table=tc, "
             "index=index12_tc)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
-TEST_P(TransformPassOptimizedTest, pass_optimized_test) {
+TEST_P(TransformPassOptimizedTest, PassOptimizedTest) {
     hybridse::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
@@ -1161,7 +1157,7 @@ INSTANTIATE_TEST_SUITE_P(
             "right_keys=(t2.col1), index_keys=)\n"
             "      DATA_PROVIDER(table=t1)\n"
             "      DATA_PROVIDER(table=t2)")));
-TEST_P(SimpleCataLogTransformPassOptimizedTest, pass_optimized_test) {
+TEST_P(SimpleCataLogTransformPassOptimizedTest, PassOptimizedTest) {
     // Check for work with simple catalog
     auto simple_catalog = std::make_shared<vm::SimpleCatalog>();
     hybridse::type::Database db;

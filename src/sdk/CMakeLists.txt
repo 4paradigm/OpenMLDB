@@ -19,10 +19,10 @@ if(TESTING_ENABLE)
     set(HYBRIDSE_CASE_LIBS base_test hybridse_core hybridse_flags yaml-cpp)
 
     add_executable(cluster_sdk_test cluster_sdk_test.cc)
-    target_link_libraries(cluster_sdk_test gtest ${BIN_LIBS})
+    target_link_libraries(cluster_sdk_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)
 
     add_executable(sql_router_test sql_router_test.cc)
-    target_link_libraries(sql_router_test gtest ${BIN_LIBS})
+    target_link_libraries(sql_router_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)
 
     add_executable(sql_sdk_test sql_sdk_test.cc)
     target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
@@ -31,7 +31,7 @@ if(TESTING_ENABLE)
     target_link_libraries(sql_cluster_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(sql_request_row_test sql_request_row_test.cc)
-    target_link_libraries(sql_request_row_test gtest ${BIN_LIBS})
+    target_link_libraries(sql_request_row_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} ${ZETASQL_LIBS} benchmark_main benchmark gtest)
 
     add_executable(mini_cluster_bm mini_cluster_microbenchmark.cc)
     target_link_libraries(mini_cluster_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})

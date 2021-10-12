@@ -1336,39 +1336,39 @@ static bool ParseSqlCaseNode(const YAML::Node& sql_case_node,
     return true;
 }
 
-static bool DoExpandProviderCase(
-    size_t idx, const YAML::Node& sql_case_node,
-    const std::vector<std::vector<std::string>>& provider_contents,
-    const std::string& global_db, const std::string& cases_dir,
-    const std::set<std::string>& debugs,
-    const std::vector<std::string>& filter_modes,
-    std::vector<size_t>* choice_idxs, std::vector<SqlCase>* outputs) {
+/// \brief DoExpandProviderCase()
+///
+/// \param[in] idx current        processing level of provider_contents
+/// \param[in] sql_case_node      original sql case node
+/// \param[in] provider_contents  extracted dataProvider node from sql_case_node
+/// \param[in] expect_element     extracted (n-idx) level expectProvider node from sql_case_node
+/// \param[in] global_db          global db
+/// \param[in] cases_dir          case directory
+/// \param[in] debugs             debug
+/// \param[in] filter_modes       case filter modes
+/// \param[in] choice_idxs        helper state vector store current choices in provider_contents
+/// \param[out] outputs           extracted sql cases
+///
+/// Returns bool: ___
+static bool DoExpandProviderCase(const size_t idx, const YAML::Node& sql_case_node,
+                                 const std::vector<std::vector<std::string>>& provider_contents,
+                                 const YAML::Node& expect_element, const std::string& global_db,
+                                 const std::string& cases_dir, const std::set<std::string>& debugs,
+                                 const std::vector<std::string>& filter_modes, std::vector<size_t>* choice_idxs,
+                                 std::vector<SqlCase>* outputs) {
     if (idx == provider_contents.size()) {
+        // reach the end of one choice chain
         SqlCase sql_case;
-        YAML::Node expect_provider;
-        if (sql_case_node["expectProvider"]) {
-            YAML::Node expect = sql_case_node["expectProvider"];
-            size_t expect_idx = (*choice_idxs)[0];
-            if (expect[std::to_string(expect_idx)]) {
-                expect_provider = expect[std::to_string(expect_idx)];
-            } else if (expect["0"] && expect.size() == 1) {
-                expect_provider = expect["0"];
-            } else {
-                LOG(WARNING) << "Missing expect provider at " << expect_idx;
-                return false;
-            }
-        }
         bool is_skip = false;
-        bool parse_success = ParseSqlCaseNode(
-            sql_case_node, expect_provider, global_db, cases_dir, debugs,
-            filter_modes, &sql_case, &is_skip);
+        bool parse_success = ParseSqlCaseNode(sql_case_node, expect_element, global_db, cases_dir, debugs, filter_modes,
+                                              &sql_case, &is_skip);
         if (!parse_success) {
             LOG(WARNING) << "Parse sql node failed";
             return false;
         }
         std::string sql = sql_case.sql_str_;
         for (size_t i = 0; i < choice_idxs->size(); ++i) {
-            std::string repl = provider_contents[i][(*choice_idxs)[i]];
+            std::string repl = provider_contents[i][choice_idxs->at(i)];
             std::string ph = "d\\[";
             ph.append(std::to_string(i));
             ph.append("\\]");
@@ -1381,36 +1381,69 @@ static bool DoExpandProviderCase(
         return true;
     }
 
-    const auto& choices = provider_contents[idx];
-    for (size_t i = 0; i < choices.size(); ++i) {
-        if (idx == 0 || (*choice_idxs)[idx - 1] != i) {
-            // d[] only choose content at same index
-            // continue;
+    auto current_choices_num = provider_contents.at(idx).size();
+    for (size_t i = 0; i < current_choices_num; ++i) {
+        choice_idxs->at(idx) = i;
+
+        YAML::Node child_expect_element;
+
+        size_t expect_idx = choice_idxs->at(idx);
+        // support two schema to find expect node
+        //  - expect_element["n"]: yaml object in expect_element whose key is string(choice_idxs[idx]),
+        //    expect_element is a map
+        //  - expect_element[num]: choice_idxs[idx] th element of expect_element, expect_element is a sequence
+        if (expect_element.IsMap()) {
+            if (expect_element[std::to_string(expect_idx)]) {
+                child_expect_element = expect_element[std::to_string(expect_idx)];
+            } else {
+                //  when expect_element is map, pass parent expect to next call, so make it possible to use single
+                //  expect result for all related test cases
+                //  e.g. the rows:-["r1"] become the expect result for both "1 & 'a'" and "1 & 'b'"
+                //   dataProvider:
+                //     - [1, 2]
+                //     - ['a', 'b']
+                //   expectProvider:
+                //     0:
+                //       rows:
+                //         - ['r1']
+                //     1:
+                //       0:
+                //         rows:
+                //           - ['r3']
+                //       1:
+                //         rows:
+                //           - ['r4']
+                child_expect_element = expect_element;
+            }
+        } else if (expect_element.IsSequence() && expect_element.size() > expect_idx && expect_element[expect_idx]) {
+            child_expect_element = expect_element[expect_idx];
         }
-        (*choice_idxs)[idx] = i;
-        if (!DoExpandProviderCase(idx + 1, sql_case_node, provider_contents,
-                                  global_db, cases_dir, debugs, filter_modes,
-                                  choice_idxs, outputs)) {
+
+        if (!DoExpandProviderCase(idx + 1, sql_case_node, provider_contents, child_expect_element, global_db, cases_dir,
+                                  debugs, filter_modes, choice_idxs, outputs)) {
             return false;
         }
     }
     return true;
 }
 
-static bool ExpandProviderCase(const YAML::Node& sql_case_node,
-                               const std::string& global_db,
-                               const std::string& cases_dir,
-                               const std::set<std::string>& debugs,
-                               const std::vector<std::string>& filter_modes,
-                               std::vector<SqlCase>* outputs) {
+/// expand sql case from 'dataProvider' section
+/// a sql case is generated if
+/// - successful sql_str replace occur by one permutation from dataProvider
+/// - optionally, a corresponding expect result found from 'expectProvider'
+///
+/// by convention, a n x m dataProvider's (i, j, k, ...) permutation, it's expect
+///  result can be found at (i, j, k, ...) th element at expectProvider
+static bool ExpandProviderCase(const YAML::Node& sql_case_node, const std::string& global_db,
+                               const std::string& cases_dir, const std::set<std::string>& debugs,
+                               const std::vector<std::string>& filter_modes, std::vector<SqlCase>* outputs) {
     YAML::Node providers = sql_case_node["dataProvider"];
+    // create data provider as two dimension matrix
     std::vector<std::vector<std::string>> provider_contents;
-    for (auto provider_iter = providers.begin();
-         provider_iter != providers.end(); provider_iter++) {
+    for (auto provider_iter = providers.begin(); provider_iter != providers.end(); provider_iter++) {
         YAML::Node cur = YAML::Node(*provider_iter);
         std::vector<std::string> choices;
-        for (auto choice_iter = cur.begin(); choice_iter != cur.end();
-             ++choice_iter) {
+        for (auto choice_iter = cur.begin(); choice_iter != cur.end(); ++choice_iter) {
             choices.push_back(choice_iter->as<std::string>());
         }
         provider_contents.push_back(choices);
@@ -1419,10 +1452,16 @@ static bool ExpandProviderCase(const YAML::Node& sql_case_node,
         LOG(WARNING) << "Empty provider";
         return false;
     }
+
+    // choice_idxs is a state vector remember choices before idx
     std::vector<size_t> choice_idxs(provider_contents.size());
-    return DoExpandProviderCase(0, sql_case_node, provider_contents, global_db,
-                                cases_dir, debugs, filter_modes, &choice_idxs,
-                                outputs);
+    if (sql_case_node["expectProvider"]) {
+        return DoExpandProviderCase(0, sql_case_node, provider_contents, sql_case_node["expectProvider"], global_db,
+                                    cases_dir, debugs, filter_modes, &choice_idxs, outputs);
+    } else {
+        return DoExpandProviderCase(0, sql_case_node, provider_contents, YAML::Node(), global_db, cases_dir, debugs,
+                                    filter_modes, &choice_idxs, outputs);
+    }
 }
 
 bool SqlCase::CreateSqlCasesFromYaml(

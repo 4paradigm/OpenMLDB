@@ -23,10 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: build
+        # -e can't catch the error when the command is a port of list-constructs, so we should add `|| exit`
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../ || exit
           rm -rf thirdparty
 
       - name: pack OpenMLDB
@@ -68,7 +69,7 @@ jobs:
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_sdk_test && cd ../
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_sdk_test && cd ../ || exit
       - name: run sql_sdk_test
         run: |
           bash steps/ut.sh sql_sdk_test 0
@@ -90,8 +91,8 @@ jobs:
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_cluster_test && cd ../
-      - name: run sql_sdk_test
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_cluster_test && cd ../ || exit
+      - name: run sql_cluster_test
         run: |
           bash steps/ut.sh sql_cluster_test 0
       - name: upload unit test results
@@ -113,16 +114,15 @@ jobs:
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
-
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../ || exit
       - name: run java modules smoke test
         run: |
           sh steps/ut_zookeeper.sh start
-          cd onebox && sh start_onebox.sh && cd -
+          cd onebox && sh start_onebox.sh && cd - || exit
           cd java
           mvn test
           cd -
-          cd onebox && sh stop_all.sh && cd -
+          cd onebox && sh stop_all.sh && cd - || exit
           sh steps/ut_zookeeper.sh stop
 
       - name: upload java ut results
@@ -143,7 +143,7 @@ jobs:
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
           mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../ || exit
       - name: test sqlalchemy
         run: |
           python3 -m easy_install nose pip
@@ -265,7 +265,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: python-artifacts
-      # download only one file, openmldb-*.whl
+      # download only one file, so no dir, just openmldb-*.whl
       - name: upload to pypi
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
