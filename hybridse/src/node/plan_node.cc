@@ -211,11 +211,20 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return std::string("kProjectNode");
         case kPlanTypeFuncDef:
             return "kPlanTypeFuncDef";
+        case kPlanTypeExplain:
+            return "kPlanTypeExplain";
+        case kPlanTypeDeploy:
+            return "kPlanTypeDeploy";
+        case kPlanTypeLoadData:
+            return "kPlanTypeLoadData";
+        case kPlanTypeCreateIndex:
+            return "kPlanTypeCreateIndex";
+        case kPlanTypeCreateSp:
+            return "kPlanTypeCreateSp";
         case kUnknowPlan:
             return std::string("kUnknow");
-        default:
-            return std::string("unknow");
     }
+    return "undefined";
 }
 
 std::ostream &operator<<(std::ostream &output, const PlanNode &thiz) {
@@ -666,6 +675,16 @@ void CreatePlanNode::Print(std::ostream &output, const std::string &org_tab) con
     PrintValue(output, tab, std::to_string(partition_num_), "partition_num", false);
     output << "\n";
     PrintSqlVector(output, tab, distribution_list_, "distribution", false);
+}
+void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {
+    PlanNode::Print(output, tab);
+    output << "\n";
+    std::string new_tab = tab + INDENT;
+    PrintValue(output, new_tab, if_not_exist_ ? "true": "false", "if_not_exists", false);
+    output << "\n";
+    PrintValue(output, new_tab, name_, "name", false);
+    output << "\n";
+    PrintSqlNode(output, new_tab, stmt(), "stmt", true);
 }
 }  // namespace node
 }  // namespace hybridse

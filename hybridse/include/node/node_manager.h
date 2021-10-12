@@ -247,6 +247,8 @@ class NodeManager {
                                  const std::string &table_name,
                                  ColumnIndexNode *index);
 
+    SqlNode *MakeDeployStmt(const std::string& name, const SqlNode* stmt, bool if_not_exist);
+    PlanNode *MakeDeployPlanNode(const std::string& name, const SqlNode* stmt, bool if_not_exist);
     // Make NodeList
     SqlNode *MakeExplainNode(const QueryNode *query,
                              node::ExplainType explain_type);

@@ -739,6 +739,17 @@ SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name, const s
     CreateIndexNode *node_ptr = new CreateIndexNode(index_name, table_name, index);
     return RegisterNode(node_ptr);
 }
+
+SqlNode *NodeManager::MakeDeployStmt(const std::string& name, const SqlNode* stmt, bool if_not_exist) {
+    DeployNode* node = new DeployNode(name, stmt, if_not_exist);
+    return RegisterNode(node);
+}
+
+PlanNode *NodeManager::MakeDeployPlanNode(const std::string& name, const SqlNode* stmt, bool if_not_exist) {
+    DeployPlanNode* node = new DeployPlanNode(name, stmt, if_not_exist);
+    return RegisterNode(node);
+}
+
 AllNode *NodeManager::MakeAllNode(const std::string &relation_name) { return MakeAllNode(relation_name, ""); }
 
 AllNode *NodeManager::MakeAllNode(const std::string &relation_name, const std::string &db_name) {

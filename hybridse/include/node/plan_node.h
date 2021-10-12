@@ -435,6 +435,24 @@ class CmdPlanNode : public LeafPlanNode {
     std::vector<std::string> args_;
 };
 
+class DeployPlanNode : public LeafPlanNode {
+ public:
+    explicit DeployPlanNode(const std::string& name, const SqlNode* stmt, bool if_not_exist)
+        : LeafPlanNode(kPlanTypeDeploy), name_(name), stmt_(stmt), if_not_exist_(if_not_exist) {}
+    ~DeployPlanNode() {}
+
+    const std::string& name() const { return name_; }
+    const SqlNode* stmt() const { return stmt_; }
+    bool is_if_not_exists() const { return if_not_exist_; }
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+
+ private:
+    const std::string name_;
+    const SqlNode* stmt_ = nullptr;
+    const bool if_not_exist_ = false;
+};
+
 class InsertPlanNode : public LeafPlanNode {
  public:
     explicit InsertPlanNode(const InsertStmt *insert_node) : LeafPlanNode(kPlanTypeInsert), insert_node_(insert_node) {}

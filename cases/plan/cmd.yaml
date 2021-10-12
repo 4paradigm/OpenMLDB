@@ -164,3 +164,63 @@ cases:
         +-node[CMD]
           +-cmd_type: drop deployment
           +-args: [foo]
+  - id: deploy_stmt_1
+    desc: deploy query task
+    sql: DEPLOY foo SELECT col1 from t1;
+    expect:
+      node_tree_str: |
+        +-node[kDeployStmt]
+          +-if_not_exists: false
+          +-name: foo
+          +-stmt:
+            +-node[kQuery]: kQuerySelect
+              +-distinct_opt: false
+              +-where_expr: null
+              +-group_expr_list: null
+              +-having_expr: null
+              +-order_expr_list: null
+              +-limit: null
+              +-select_list[list]:
+              |  +-0:
+              |    +-node[kResTarget]
+              |      +-val:
+              |      |  +-expr[column ref]
+              |      |    +-relation_name: <nil>
+              |      |    +-column_name: col1
+              |      +-name: <nil>
+              +-tableref_list[list]:
+              |  +-0:
+              |    +-node[kTableRef]: kTable
+              |      +-table: t1
+              |      +-alias: <nil>
+              +-window_list: []
+  - id: deploy_stmt_2
+    desc: deploy query task if not exists
+    sql: DEPLOY IF NOT EXISTS foo2 SELECT col1 from t1;
+    expect:
+      node_tree_str: |
+        +-node[kDeployStmt]
+          +-if_not_exists: true
+          +-name: foo2
+          +-stmt:
+            +-node[kQuery]: kQuerySelect
+              +-distinct_opt: false
+              +-where_expr: null
+              +-group_expr_list: null
+              +-having_expr: null
+              +-order_expr_list: null
+              +-limit: null
+              +-select_list[list]:
+              |  +-0:
+              |    +-node[kResTarget]
+              |      +-val:
+              |      |  +-expr[column ref]
+              |      |    +-relation_name: <nil>
+              |      |    +-column_name: col1
+              |      +-name: <nil>
+              +-tableref_list[list]:
+              |  +-0:
+              |    +-node[kTableRef]: kTable
+              |      +-table: t1
+              |      +-alias: <nil>
+              +-window_list: []

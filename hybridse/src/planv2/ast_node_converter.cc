@@ -597,6 +597,20 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node_manager->MakeCmdNode(node::CmdType::kCmdUseDatabase, db_name);
             break;
         }
+        case zetasql::AST_LOAD_DATA_STATEMENT: {
+            const auto ast_import_stmt = statement->GetAsOrNull<zetasql::ASTLoadDataStatement>();
+            CHECK_TRUE(ast_import_stmt != nullptr, common::kSqlAstError, "not an ASTLoadDataStatement");
+            break;
+        }
+        case zetasql::AST_DEPLOY_STATEMENT: {
+            const auto ast_deploy_stmt = statement->GetAsOrNull<zetasql::ASTDeployStatement>();
+            CHECK_TRUE(ast_deploy_stmt != nullptr, common::kSqlAstError, "not an ASTDeployStatement");
+            node::SqlNode* deploy_stmt = nullptr;
+            CHECK_STATUS(ConvertStatement(ast_deploy_stmt->stmt(), node_manager, &deploy_stmt));
+            *output = node_manager->MakeDeployStmt(ast_deploy_stmt->name()->GetAsString(), deploy_stmt,
+                                                   ast_deploy_stmt->is_if_not_exists());
+            break;
+        }
         default: {
             FAIL_STATUS(common::kSqlAstError, "Un-support statement type: ", statement->GetNodeKindString());
         }
