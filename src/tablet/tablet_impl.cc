@@ -279,6 +279,9 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
 
 bool TabletImpl::RegisterZK() {
     if (IsClusterMode()) {
+        if (zk_client_ = nullptr) {
+            return false;
+        }
         if (FLAGS_use_name) {
             if (!zk_client_->RegisterName()) {
                 return false;
@@ -3790,8 +3793,8 @@ void TabletImpl::CheckZkClient() {
                 PDLOG(INFO, "registe zk ok");
             }
         }
+        keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
     }
-    keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
 }
 
 bool TabletImpl::RefreshSingleTable(uint32_t tid) {
