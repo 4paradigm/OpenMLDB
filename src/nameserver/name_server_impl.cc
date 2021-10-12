@@ -3977,11 +3977,17 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
     }
 
     // if no column_key, add one which key is the first column which is not float or double
+    // the logic should be the same as 'create table xx(xx,index(key=<auto_selected_col>)) xx;'
+    // Ref NsClient::TransformToTableDef
     if (table_info->column_key_size() == 0) {
         for (const auto& column : table_info->column_desc()) {
             if (column.data_type() != type::kFloat && column.data_type() != type::kDouble) {
                 auto add = table_info->add_column_key();
                 add->add_col_name(column.name());
+                // Ref hybridse::plan::PlanAPI::GenerateName
+                add->set_index_name("INDEX_0_" + std::to_string(::baidu::common::timer::now_time()));
+                // use the default ttl
+                add->mutable_ttl();
                 break;
             }
         }
