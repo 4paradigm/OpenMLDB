@@ -145,7 +145,6 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     if (!window.BufferData(key, nativeInputRow)) {
       logger.error(s"BufferData Fail, please check order key: $key")
     }
-    nativeInputRow.delete()
 
     // release swig jni objects
     nativeInputRow.delete()
