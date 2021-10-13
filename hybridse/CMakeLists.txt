@@ -160,6 +160,8 @@ link_directories(${CMAKE_PREFIX_PATH}/lib64)
 
 
 find_package(absl REQUIRED)
+# modify absl::time_zone INTERFACE_LINK_LIBRARIES
+set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$<PLATFORM_ID:Darwin>:-framework CoreFoundation>")
 
 find_package(GTest REQUIRED)
 
@@ -183,7 +185,8 @@ list(
         absl::strings_internal
         absl::synchronization
         absl::time
-        absl::status)
+        absl::status
+)
 
 list(APPEND ICU_LIBS icui18n icuio icuuc icudata)
 set(ZETASQL_LIBS
