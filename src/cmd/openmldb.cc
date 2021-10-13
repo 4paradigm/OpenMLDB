@@ -2066,12 +2066,12 @@ void HandleShowReplicaCluster(const std::vector<std::string>& parts, ::openmldb:
     tp.Print(true);
 }
 
-bool HasIsTsCol(const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& list) {
+bool HasTsCol(const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& list) {
     if (list.empty()) {
         return false;
     }
     for (auto it = list.begin(); it != list.end(); it++) {
-        if (it->has_ttl()) {
+        if (!it->ts_name().empty()) {
             return true;
         }
     }
@@ -2114,7 +2114,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::openmldb::client::NsCl
     }
     uint64_t ts = 0;
     uint32_t start_index = 0;
-    if (!HasIsTsCol(tables[0].column_key())) {
+    if (!HasTsCol(tables[0].column_key())) {
         try {
             ts = boost::lexical_cast<uint64_t>(parts[2]);
         } catch (std::exception const& e) {
@@ -2481,6 +2481,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::openmldb::clie
         return;
     }
     ns_table_info.set_db(client->GetDb());
+    ns_table_info.set_format_version(1);
     std::string msg;
     if (!client->CreateTable(ns_table_info, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;

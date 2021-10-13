@@ -29,6 +29,7 @@ struct ResultMsg {
     ResultMsg() : code(0), msg("ok") {}
     inline bool OK() const { return code == 0; }
     inline const std::string& GetMsg() const { return msg; }
+    inline int GetCode() const { return code; }
     int code;
     std::string msg;
 };
@@ -144,7 +145,7 @@ enum ReturnCode {
     kShowtableErrorWhenAddReplicaCluster = 455,
     kNameserverIsFollowerAndRequestHasNoZoneInfo = 501,
     kZoneInfoMismathch = 502,
-    kCreateCreatetableremoteopForReplicaClusterFailed = 503,
+    kCreateTableForReplicaClusterFailed = 503,
     kAddTaskInReplicaClusterNsFailed = 504,
     kCreateDroptableremoteopForReplicaClusterFailed = 505,
     kNameserverIsNotReplicaCluster = 506,

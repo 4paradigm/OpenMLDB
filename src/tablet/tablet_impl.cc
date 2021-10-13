@@ -130,7 +130,8 @@ TabletImpl::TabletImpl()
       zk_path_(),
       endpoint_(),
       sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
-      notify_path_() {}
+      notify_path_(),
+      startup_mode_(::openmldb::type::StartupMode::kStandalone) {}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -167,7 +168,6 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     endpoint_ = endpoint;
     notify_path_ = zk_path + "/table/notify";
     sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
-    std::lock_guard<std::mutex> lock(mu_);
     ::openmldb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_);
 
     ::openmldb::base::SplitString(FLAGS_recycle_bin_root_path, ",", mode_recycle_root_paths_);
@@ -178,8 +178,10 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
             PDLOG(WARNING, "fail to init zookeeper with cluster %s", zk_cluster.c_str());
             return false;
         }
+        startup_mode_ = ::openmldb::type::StartupMode::kCluster;
     } else {
-        PDLOG(INFO, "zk cluster disabled");
+        PDLOG(INFO, "start with standalone mode");
+        startup_mode_ = ::openmldb::type::StartupMode::kStandalone;
     }
 
     if (FLAGS_make_snapshot_time < 0 || FLAGS_make_snapshot_time > 23) {
@@ -276,7 +278,10 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
 }
 
 bool TabletImpl::RegisterZK() {
-    if (!zk_cluster_.empty()) {
+    if (IsClusterMode()) {
+        if (zk_client_ == nullptr) {
+            return false;
+        }
         if (FLAGS_use_name) {
             if (!zk_client_->RegisterName()) {
                 return false;
@@ -445,7 +450,9 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
 void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::RefreshRequest* request,
                          ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    RefreshSingleTable(request->tid());
+    if (IsClusterMode()) {
+        RefreshSingleTable(request->tid());
+    }
 }
 
 void TabletImpl::Get(RpcController* controller, const ::openmldb::api::GetRequest* request,
@@ -3574,7 +3581,7 @@ void TabletImpl::DeleteOPTask(RpcController* controller, const ::openmldb::api::
 void TabletImpl::ConnectZK(RpcController* controller, const ::openmldb::api::ConnectZKRequest* request,
                            ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (zk_client_->Reconnect() && zk_client_->Register()) {
+    if (zk_client_ && zk_client_->Reconnect() && zk_client_->Register()) {
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_msg("ok");
         PDLOG(INFO, "connect zk ok");
@@ -3587,7 +3594,9 @@ void TabletImpl::ConnectZK(RpcController* controller, const ::openmldb::api::Con
 void TabletImpl::DisConnectZK(RpcController* controller, const ::openmldb::api::DisConnectZKRequest* request,
                               ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    zk_client_->CloseZK();
+    if (zk_client_) {
+        zk_client_->CloseZK();
+    }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
     PDLOG(INFO, "disconnect zk ok");
@@ -3772,24 +3781,26 @@ void TabletImpl::ShowMemPool(RpcController* controller, const ::openmldb::api::H
 }
 
 void TabletImpl::CheckZkClient() {
-    if (!zk_client_->IsConnected()) {
-        PDLOG(WARNING, "reconnect zk");
-        if (zk_client_->Reconnect() && zk_client_->Register()) {
-            PDLOG(INFO, "reconnect zk ok");
+    if (zk_client_) {
+        if (!zk_client_->IsConnected()) {
+            PDLOG(WARNING, "reconnect zk");
+            if (zk_client_->Reconnect() && zk_client_->Register()) {
+                PDLOG(INFO, "reconnect zk ok");
+            }
+        } else if (!zk_client_->IsRegisted()) {
+            PDLOG(WARNING, "registe zk");
+            if (zk_client_->Register()) {
+                PDLOG(INFO, "registe zk ok");
+            }
         }
-    } else if (!zk_client_->IsRegisted()) {
-        PDLOG(WARNING, "registe zk");
-        if (zk_client_->Register()) {
-            PDLOG(INFO, "registe zk ok");
-        }
+        keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
     }
-    keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
 }
 
 bool TabletImpl::RefreshSingleTable(uint32_t tid) {
     std::string value;
     std::string node = zk_path_ + "/table/db_table_data/" + std::to_string(tid);
-    if (!zk_client_->GetNodeValue(node, value)) {
+    if (zk_client_ && !zk_client_->GetNodeValue(node, value)) {
         LOG(WARNING) << "fail to get table data. node: " << node;
         return false;
     }
@@ -3802,6 +3813,9 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
 }
 
 void TabletImpl::RefreshTableInfo() {
+    if (!zk_client_) {
+        return;
+    }
     std::string db_table_notify_path = zk_path_ + "/table/notify";
     std::string value;
     if (!zk_client_->GetNodeValue(db_table_notify_path, value)) {
