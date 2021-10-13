@@ -101,6 +101,22 @@ class SchemaCodec {
         desc->set_data_type(type);
     }
 
+    static bool TTLTypeParse(const std::string& type_str, ::openmldb::type::TTLType* type) {
+        if (type_str == "absolute") {
+            *type = openmldb::type::kAbsoluteTime;
+        } else if (type_str == "latest") {
+            *type = openmldb::type::kLatestTime;
+        } else if (type_str == "absorlat") {
+            *type = openmldb::type::kAbsOrLat;
+        } else if (type_str == "absandlat") {
+            *type = openmldb::type::kAbsAndLat;
+        } else {
+            return false;
+        }
+
+        return true;
+    }
+
     static void SetIndex(::openmldb::common::ColumnKey* index, const std::string& name, const std::string& col_name,
                          const std::string& ts_name, ::openmldb::type::TTLType ttl_type, uint64_t abs_ttl,
                          uint64_t lat_ttl) {

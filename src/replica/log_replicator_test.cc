@@ -27,6 +27,7 @@
 #include <utility>
 
 #include "base/glog_wapper.h"
+#include "base/status.h"
 #include "common/thread_pool.h"
 #include "common/timer.h"
 #include "proto/tablet.pb.h"

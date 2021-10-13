@@ -2217,7 +2217,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -2240,7 +2240,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -2258,7 +2258,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();

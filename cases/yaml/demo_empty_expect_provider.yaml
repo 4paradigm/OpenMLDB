@@ -1,0 +1,35 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 0
+    desc: expect provider is a one-dimension map
+    inputs:
+      - name: t1
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      - name: t2
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["%","MOD","*","-","/"]
+      - ["a", "b"]
+    sql: |
+      select t1.c2 d[0] t2.c2 as b2 from t1 last join t2 ORDER BY d[1] on t1.id=t2.id;
+    expect:
+      success: false

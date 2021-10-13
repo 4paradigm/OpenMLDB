@@ -462,3 +462,130 @@ cases:
           - [5, 1, 1590115440000, false]
           - [7, 1, 1590115450000, false]
           - [9, 1, 1590115460000, false]
+  - id: in_predicate_normal
+    desc: normal in predicates
+    mode: hybridse-only
+    sql: |
+      SELECT {0}.id, {0}.name, {0}.code, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts
+      ON {0}.id = {1}.id AND {0}.code d[0] ('A', 'B');
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1633265330000, 2021-10-3]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    dataProvider:
+      - ["in", "not in"]
+    expect:
+      columns: ["id:bigint", "name:string", "code:string", "score:int"]
+    expectProvider:
+      - rows:
+          - [1, Lucy, A, 10]
+          - [2, Zoey, B, 100]
+      - rows:
+          - [1, Lucy, A, NULL]
+          - [2, Zoey, B, NULL]
+  - id: in_predicate_type_conversion
+    desc: type conversion occurred between lhs and in_list
+    mode: hybridse-only
+    sql: |
+      SELECT {0}.id, {0}.name, {0}.code, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts
+      ON {0}.id = {1}.id AND {0}.id d[0] ('1', 3.0);
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1633265330000, 2021-10-3]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    dataProvider:
+      - ["in", "not in"]
+    expect:
+      columns: ["id:bigint", "name:string", "code:string", "score:int"]
+    expectProvider:
+      - rows:
+          - [1, Lucy, A, 10]
+          - [2, Zoey, B, NULL]
+      - rows:
+          - [1, Lucy, A, NULL]
+          - [2, Zoey, B, 100]
+  - id: in_predicate_subexpr
+    desc: sub expr in in list
+    mode: hybridse-only
+    sql: |
+      SELECT {0}.id, {0}.name, {0}.code, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts
+      ON {0}.id = {1}.id AND {0}.id d[0] ( {1}.score / 10, {1}.score );
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1633265330000, 2021-10-3]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    dataProvider:
+      - ["in", "not in"]
+    expect:
+      columns: ["id:bigint", "name:string", "code:string", "score:int"]
+    expectProvider:
+      - rows:
+          - [1, Lucy, A, 10]
+          - [2, Zoey, B, NULL]
+      - rows:
+          - [1, Lucy, A, NULL]
+          - [2, Zoey, B, 100]
+  - id: in_predicate_with_window
+    desc: test_expresion refers window
+    mode: hybridse-only
+    sql: |
+      SELECT id, col1, std_ts,
+      sum(id) OVER w1 d[0] ( 4, 8, 12 ) as w1_id
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY col1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);
+    dataProvider:
+      - ["in", "not in"]
+    inputs:
+      - columns: ["id bigint", "col1 int32", "std_ts timestamp"]
+        indexs: ["index1:id:std_ts", "index2:col1:std_ts"]
+        rows:
+          - [1, 1, 1590115420000]
+          - [3, 1, 1590115430000]
+          - [5, 1, 1590115440000]
+          - [7, 1, 1590115450000]
+          - [9, 1, 1590115460000]
+    expect:
+      columns: ["id bigint", "col1 int32", "std_ts timestamp", "w1_id bool"]
+    expectProvider:
+      - rows:
+          - [1, 1, 1590115420000, false]
+          - [3, 1, 1590115430000, true]
+          - [5, 1, 1590115440000, true]
+          - [7, 1, 1590115450000, true]
+          - [9, 1, 1590115460000, false]
+      - rows:
+          - [1, 1, 1590115420000, true]
+          - [3, 1, 1590115430000, false]
+          - [5, 1, 1590115440000, false]
+          - [7, 1, 1590115450000, false]
+          - [9, 1, 1590115460000, true]

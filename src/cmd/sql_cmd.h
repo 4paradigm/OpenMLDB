@@ -31,6 +31,7 @@
 #include "plan/plan_api.h"
 #include "proto/fe_type.pb.h"
 #include "sdk/cluster_sdk.h"
+#include "sdk/node_adapter.h"
 #include "sdk/sql_cluster_router.h"
 #include "version.h"  // NOLINT
 
@@ -502,7 +503,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
 void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node) {
     ::openmldb::common::ColumnKey column_key;
     hybridse::base::Status status;
-    if (!::openmldb::client::NsClient::TransformToColumnKey(create_index_node->index_, {}, &column_key, &status)) {
+    if (!::openmldb::sdk::NodeAdapter::TransformToColumnKey(create_index_node->index_, {}, &column_key, &status)) {
         std::cout << "failed to create index. error msg: " << status.msg << std::endl;
         return;
     }

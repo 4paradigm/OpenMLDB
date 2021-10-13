@@ -18,6 +18,7 @@
 #define HYBRIDSE_SRC_CODEGEN_NATIVE_VALUE_H_
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "glog/logging.h"
@@ -78,6 +79,12 @@ class NativeValue {
     static NativeValue CreateTuple(const std::vector<NativeValue>& args) {
         NativeValue v(nullptr, nullptr, nullptr);
         v.args_ = args;
+        return v;
+    }
+
+    static NativeValue CreateTuple(std::vector<NativeValue>&& args) {
+        NativeValue v(nullptr, nullptr, nullptr);
+        v.args_ = std::move(args);
         return v;
     }
 

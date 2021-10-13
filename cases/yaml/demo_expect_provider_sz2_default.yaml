@@ -1,0 +1,40 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: in_predicate_normal
+    desc: can't not find '0->0', so '0->0' and '0->1' default to '0'
+    inputs:
+      - resource: cases/resource/simple_t1_ts.yaml
+    sql: |
+      select d[0] d[1] (1, 10) as col1 from t1;
+    dataProvider:
+      - ["1", "2", "NULL"]
+      - ["IN", "NOT IN"]
+    expect:
+      columns: ["col1:bool"]
+    expectProvider:
+      0:
+        rows:
+          - [true]
+      1:
+        rows:
+          - [false, "hello"]
+      2:
+        0:
+          rows:
+            - [NULL]
+        1:
+          rows:
+            - [NULL]
