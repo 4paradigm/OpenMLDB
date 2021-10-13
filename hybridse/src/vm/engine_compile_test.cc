@@ -198,7 +198,6 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
             "order by t2.col5 on t1.col1 = t2.col2;"};
         EngineOptions options;
         options.set_compile_only(true);
-        options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
@@ -220,7 +219,6 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
             "on "
             "t1.col1 = t2.col2;"};
         EngineOptions options;
-        options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
@@ -345,7 +343,6 @@ TEST_F(EngineCompileTest, RouterTest) {
             "order by col5 rows between 3 preceding and current row);";
         EngineOptions options;
         options.set_compile_only(true);
-        options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         ExplainOutput explain_output;
         codec::Schema empty_parameter_schema;
@@ -390,7 +387,6 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
         "order by col5 rows between 3 preceding and current row);";
     EngineOptions options;
     options.set_compile_only(true);
-    options.set_performance_sensitive(false);
     Engine engine(catalog, options);
     ExplainOutput explain_output;
     base::Status status;

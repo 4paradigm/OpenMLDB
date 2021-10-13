@@ -73,7 +73,6 @@ int RunSingle(const std::string& yaml_path) {
     EngineOptions options;
     options.set_cluster_optimized(FLAGS_cluster_mode == "cluster");
     options.set_batch_request_optimized(FLAGS_enable_batch_request_opt);
-    options.set_performance_sensitive(FLAGS_performance_sensitive);
     options.set_enable_expr_optimize(FLAGS_enable_expr_opt);
     options.set_enable_batch_window_parallelization(
         FLAGS_enable_batch_window_parallelization);

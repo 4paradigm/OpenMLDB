@@ -120,7 +120,6 @@ TEST_F(JitWrapperTest, test_mcjit) {
 TEST_F(JitWrapperTest, test_window) {
     EngineOptions options;
     options.set_keep_ir(true);
-    options.set_performance_sensitive(false);
     auto catalog = GetTestCatalog();
     auto compile_info = Compile(
         "select col_1, sum(col_2) over w, "
