@@ -1514,8 +1514,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
         }
         session.SetParameterSchema(parameter_schema);
         {
-            bool ok = engine_->Get(request->sql(), request->db(), session, status,
-                request->is_performance_sensitive());
+            bool ok = engine_->Get(request->sql(), request->db(), session, status);
             if (!ok) {
                 response->set_msg(status.msg);
                 response->set_code(::openmldb::base::kSQLCompileError);
