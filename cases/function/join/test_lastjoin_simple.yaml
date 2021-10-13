@@ -994,6 +994,7 @@ cases:
         - ["bb",false,31,1590738992000]
   - id: 32
     desc: 异库表拼接1
+    mode: hybridse-only
     db: db1
     inputs:
       - db: db1
@@ -1020,6 +1021,7 @@ cases:
         - [ "cc",41,151,1590738992000 ]
   - id: 33
     desc: 异库表拼接2
+    mode: hybridse-only
     db: db1
     inputs:
       - db: db1
@@ -1047,6 +1049,7 @@ cases:
         - [ "cc",41,151,1590738992000 ]
   - id: 34
     desc: 异库表拼接失败1
+    mode: hybridse-only
     db: db1
     inputs:
       - db: db1
@@ -1069,6 +1072,7 @@ cases:
       success: false
   - id: 34
     desc: 异库表拼接失败2
+    mode: hybridse-only
     db: db1
     inputs:
       - db: db1
