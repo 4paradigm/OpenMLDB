@@ -558,9 +558,9 @@ INSTANTIATE_TEST_SUITE_P(EngineTestWindowMaxSize, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_maxsize.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestMultipleDatabases, EngineTest,
-                         testing::ValuesIn(sqlcase::InitCases("/cases/function/multiple_databases/test_multiple_databases.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("/cases/function/multiple_databases/test_multiple_databases.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestLastJoinSimple, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/join/test_lastjoin_simple.yaml")));
+                         testing::ValuesIn(sqlcase::InitCases("/cases/function/join/test_lastjoin_simple.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestLastJoinComplex, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/function/join/test_lastjoin_complex.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestArithmetic, EngineTest,

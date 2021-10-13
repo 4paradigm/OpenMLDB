@@ -191,10 +191,12 @@ TEST_F(EngineCompileTest, EngineEmptyDefaultDBLRUCacheTest) {
     EngineOptions options;
     options.set_performance_sensitive(false);
     Engine engine(catalog, options);
-    std::string sql = "select db1.t1.col1, db1.t1.col2,db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
-                      "on db1.t1.col1=db2.t2.col1;";
-    std::string sql2 = "select db1.t1.col1, db1.t1.col3, db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
-                      "on db1.t1.col1=db2.t2.col1;";
+    std::string sql =
+        "select db1.t1.col1, db1.t1.col2,db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
+        "on db1.t1.col1=db2.t2.col1;";
+    std::string sql2 =
+        "select db1.t1.col1, db1.t1.col3, db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
+        "on db1.t1.col1=db2.t2.col1;";
     {
         base::Status get_status;
         BatchRunSession bsession1;

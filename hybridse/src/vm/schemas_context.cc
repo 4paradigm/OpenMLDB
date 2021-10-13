@@ -145,7 +145,7 @@ void SchemasContext::Clear() {
     owned_concat_output_schema_.Clear();
 }
 
-void SchemasContext::SetDBAndRelationName( const std::string& db, const std::string& relation_name) {
+void SchemasContext::SetDBAndRelationName(const std::string& db, const std::string& relation_name) {
     root_db_name_ = db.empty() ? default_db_name_ : db;
     root_relation_name_ = relation_name;
 }
