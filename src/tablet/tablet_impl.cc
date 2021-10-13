@@ -279,7 +279,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
 
 bool TabletImpl::RegisterZK() {
     if (IsClusterMode()) {
-        if (zk_client_ = nullptr) {
+        if (zk_client_ == nullptr) {
             return false;
         }
         if (FLAGS_use_name) {
