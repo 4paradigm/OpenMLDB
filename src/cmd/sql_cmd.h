@@ -63,6 +63,105 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::ClusterSDK *cs = NULL;
 ::openmldb::sdk::SQLClusterRouter *sr = NULL;
 
+void SaveResultSet(::hybridse::sdk::ResultSet *result_set) {
+    std::ofstream stream;
+    stream.open("/Users/kane/Desktop/data.csv");
+    if (!result_set || result_set->Size() == 0) {
+        return;
+    }
+    auto *schema = result_set->GetSchema();
+    // Add Header
+    std::string schemaString = "";
+    for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
+        schemaString.append(schema->GetColumnName(i));
+        if(i != schema->GetColumnCnt()-1) {
+            schemaString.append(",");
+        } else {
+            stream << schemaString << std::endl;
+        }
+    }
+    while (result_set->Next()) {
+        std::string rowString = "";
+        for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
+            if (result_set->IsNULL(i)) {
+                rowString.append("NULL");
+            } else {
+                auto data_type = schema->GetColumnType(i);
+                switch (data_type) {
+                    case hybridse::sdk::kTypeInt16: {
+                        int16_t value = 0;
+                        result_set->GetInt16(i, &value);
+                        rowString.append(std::to_string(value));
+                        break;
+                    }
+                    case hybridse::sdk::kTypeInt32: {
+                        int32_t value = 0;
+                        result_set->GetInt32(i, &value);
+                        rowString.append(std::to_string(value));
+                        break;
+                    }
+                    case hybridse::sdk::kTypeInt64: {
+                        int64_t value = 0;
+                        result_set->GetInt64(i, &value);
+                        rowString.append(std::to_string(value));
+                        break;
+                    }
+                    case hybridse::sdk::kTypeFloat: {
+                        float value = 0;
+                        result_set->GetFloat(i, &value);
+                        rowString.append(std::to_string(value));
+                        break;
+                    }
+                    case hybridse::sdk::kTypeDouble: {
+                        double value = 0;
+                        result_set->GetDouble(i, &value);
+                        rowString.append(std::to_string(value));
+                        break;
+                    }
+                    case hybridse::sdk::kTypeString: {
+                        std::string val;
+                        result_set->GetString(i, &val);
+                        rowString.append(val);
+                        break;
+                    }
+                    case hybridse::sdk::kTypeTimestamp: {
+                        int64_t ts = 0;
+                        result_set->GetTime(i, &ts);
+                        rowString.append(std::to_string(ts));
+                        break;
+                    }
+                    case hybridse::sdk::kTypeDate: {
+                        int32_t year = 0;
+                        int32_t month = 0;
+                        int32_t day = 0;
+                        std::stringstream ss;
+                        result_set->GetDate(i, &year, &month, &day);
+                        ss << year << "-" << month << "-" << day;
+                        rowString.append(ss.str());
+                        break;
+                    }
+                    case hybridse::sdk::kTypeBool: {
+                        bool value = false;
+                        result_set->GetBool(i, &value);
+                        rowString.append(value ? "true" : "false");
+                        break;
+                    }
+                    default: {
+                        rowString.append("NA");
+                    }
+                }
+                if(i != schema->GetColumnCnt()-1) {
+                    rowString.append(",");
+                } else {
+                    stream << rowString << std::endl;
+                }
+            }
+            
+        }
+    }
+    stream.close();
+}
+
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
     if (!result_set || result_set->Size() == 0) {
         stream << "Empty set" << std::endl;
