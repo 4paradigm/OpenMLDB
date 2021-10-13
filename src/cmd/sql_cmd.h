@@ -31,6 +31,7 @@
 #include "plan/plan_api.h"
 #include "proto/fe_type.pb.h"
 #include "sdk/db_sdk.h"
+#include "sdk/node_adapter.h"
 #include "sdk/sql_cluster_router.h"
 #include "version.h"  // NOLINT
 
