@@ -198,11 +198,11 @@ object WindowAggPlan {
 
     // 2. Add "part" column and "expand" column by joining the distribution table
     val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-      repartitionColIndexes, orderByColIndex, partitionKeyColName, partIdColName, expandedRowColName)
+      repartitionColIndexes, orderByColIndex, partitionKeyColName, partIdColName, expandedRowColName,
+      ctx.getConf.windowSkewOptBroadcastJoin)
     logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {
-      distributionDf.unpersist()
       addColumnsDf.cache()
     }
 
@@ -232,10 +232,6 @@ object WindowAggPlan {
 
     val sortedByCol = PhysicalNodeUtil.getOrderbyColumns(windowAggNode, addColumnsDf)
     val sortedByCols = repartitionCols ++ sortedByCol
-
-    if (ctx.getConf.windowSkewOptCache) {
-      addColumnsDf.unpersist()
-    }
 
     // Notice that we should make sure the keys in the same partition are ordering as well
     val sortedDf = repartitionDf.sortWithinPartitions(sortedByCols: _*)
