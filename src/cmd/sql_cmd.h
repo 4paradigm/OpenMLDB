@@ -30,7 +30,7 @@
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
 #include "proto/fe_type.pb.h"
-#include "sdk/cluster_sdk.h"
+#include "sdk/db_sdk.h"
 #include "sdk/sql_cluster_router.h"
 #include "version.h"  // NOLINT
 
@@ -61,7 +61,7 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
                             OPENMLDB_COMMIT_ID;
 
 std::string db = "";  // NOLINT
-::openmldb::sdk::ClusterSDK *cs = nullptr;
+::openmldb::sdk::DBSDK *cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
@@ -663,7 +663,7 @@ void ClusterSQLClient() {
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
-    cs = new ::openmldb::sdk::NormalClusterSDK(copt);
+    cs = new ::openmldb::sdk::ClusterSDK(copt);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "Fail to connect to db" << std::endl;
@@ -682,7 +682,7 @@ void StandAloneSQLClient() {
     if (FLAGS_host.empty() || FLAGS_port == 0) {
         std::cout << "host or port is missing" << std::endl;
     }
-    cs = new ::openmldb::sdk::StandAloneClusterSDK(FLAGS_host, FLAGS_port);
+    cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "Fail to connect to db" << std::endl;

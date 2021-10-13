@@ -89,7 +89,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     ::openmldb::sdk::ClusterOptions option;
     option.zk_cluster = mc->GetZkCluster();
     option.zk_path = mc->GetZkPath();
-    ::openmldb::sdk::NormalClusterSDK sdk(option);
+    ::openmldb::sdk::ClusterSDK sdk(option);
     sdk.Init();
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablet;
     ok = sdk.GetTablet(db, name, &tablet);

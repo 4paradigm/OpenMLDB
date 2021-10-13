@@ -42,9 +42,9 @@ struct ClusterOptions {
     int32_t session_timeout = 2000;
 };
 
-class ClusterSDK {
+class DBSDK {
  public:
-    virtual ~ClusterSDK() { delete engine_; }
+    virtual ~DBSDK() { delete engine_; }
     // create engine, then build the catalog
     // TODO(hw): should prevent double init
     virtual bool Init() = 0;
@@ -76,7 +76,7 @@ class ClusterSDK {
         }
         LOG(INFO) << "init ns client with endpoint " << endpoint << " done";
         std::atomic_store_explicit(&ns_client_, ns_client, std::memory_order_relaxed);
-        return std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
+        return ns_client;
     }
 
     uint32_t GetTableId(const std::string& db, const std::string& tname);
@@ -100,7 +100,7 @@ class ClusterSDK {
     // build client_manager, then create a new catalog, replace the catalog in engine
     virtual bool BuildCatalog() = 0;
 
-    ClusterSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
+    DBSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
 
  protected:
     std::atomic<uint64_t> cluster_version_{0};
@@ -118,11 +118,11 @@ class ClusterSDK {
     std::shared_ptr<::openmldb::client::NsClient> ns_client_;
 };
 
-class NormalClusterSDK : public ClusterSDK {
+class ClusterSDK : public DBSDK {
  public:
-    explicit NormalClusterSDK(const ClusterOptions& options);
+    explicit ClusterSDK(const ClusterOptions& options);
 
-    ~NormalClusterSDK() override;
+    ~ClusterSDK() override;
     bool Init() override;
 
  protected:
@@ -146,11 +146,11 @@ class NormalClusterSDK : public ClusterSDK {
     ::baidu::common::ThreadPool pool_;
 };
 
-class StandAloneClusterSDK : public ClusterSDK {
+class StandAloneSDK : public DBSDK {
  public:
-    StandAloneClusterSDK(std::string host, int port) : host_(std::move(host)), port_(port) {}
+    StandAloneSDK(std::string host, int port) : host_(std::move(host)), port_(port) {}
 
-    ~StandAloneClusterSDK() override { pool_.Stop(false); }
+    ~StandAloneSDK() override { pool_.Stop(false); }
     bool Init() override;
 
  protected:

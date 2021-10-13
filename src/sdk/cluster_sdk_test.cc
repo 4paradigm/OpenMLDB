@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include "sdk/cluster_sdk.h"
-
 #include <unistd.h>
 
 #include <memory>
@@ -28,6 +26,7 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
+#include "sdk/db_sdk.h"
 #include "sdk/mini_cluster.h"
 
 namespace openmldb::sdk {
@@ -65,7 +64,7 @@ TEST_F(ClusterSDKTest, smoke_empty_cluster) {
     ClusterOptions option;
     option.zk_cluster = mc_->GetZkCluster();
     option.zk_path = mc_->GetZkPath();
-    NormalClusterSDK sdk(option);
+    ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
 }
 
@@ -73,7 +72,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     ClusterOptions option;
     option.zk_cluster = mc_->GetZkCluster();
     option.zk_path = mc_->GetZkPath();
-    NormalClusterSDK sdk(option);
+    ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
@@ -116,7 +115,7 @@ TEST_F(ClusterSDKTest, standAloneMode) {
     ASSERT_TRUE(sep != std::string::npos);
     auto host = ns.substr(0, sep);
     auto port = ns.substr(sep + 1);
-    StandAloneClusterSDK sdk(host, std::stoi(port));
+    StandAloneSDK sdk(host, std::stoi(port));
     ASSERT_TRUE(sdk.Init());
 }
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "sdk/cluster_sdk.h"
+#include "sdk/db_sdk.h"
 
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
@@ -34,7 +34,7 @@
 
 namespace openmldb::sdk {
 
-NormalClusterSDK::NormalClusterSDK(const ClusterOptions& options)
+ClusterSDK::ClusterSDK(const ClusterOptions& options)
     : options_(options),
       session_id_(0),
       table_root_path_(options.zk_path + "/table/db_table_data"),
@@ -43,7 +43,7 @@ NormalClusterSDK::NormalClusterSDK(const ClusterOptions& options)
       zk_client_(nullptr),
       pool_(1) {}
 
-NormalClusterSDK::~NormalClusterSDK() {
+ClusterSDK::~ClusterSDK() {
     pool_.Stop(false);
     if (zk_client_ != nullptr) {
         zk_client_->CloseZK();
@@ -52,7 +52,7 @@ NormalClusterSDK::~NormalClusterSDK() {
     }
 }
 
-void NormalClusterSDK::CheckZk() {
+void ClusterSDK::CheckZk() {
     if (session_id_ == 0) {
         WatchNotify();
     } else if (session_id_ != zk_client_->GetSessionTerm()) {
@@ -62,7 +62,7 @@ void NormalClusterSDK::CheckZk() {
     pool_.DelayTask(2000, [this] { CheckZk(); });
 }
 
-bool NormalClusterSDK::Init() {
+bool ClusterSDK::Init() {
     zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "", options_.session_timeout, "", options_.zk_path);
     bool ok = zk_client_->Init();
     if (!ok) {
@@ -84,14 +84,14 @@ bool NormalClusterSDK::Init() {
     return true;
 }
 
-void NormalClusterSDK::WatchNotify() {
+void ClusterSDK::WatchNotify() {
     LOG(INFO) << "start to watch table notify";
     session_id_ = zk_client_->GetSessionTerm();
     zk_client_->CancelWatchItem(notify_path_);
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
 }
 
-bool NormalClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint) {
+bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint) {
     std::string ns_node = options_.zk_path + "/leader";
     std::vector<std::string> children;
     if (!zk_client_->GetChildren(ns_node, children) || children.empty()) {
@@ -114,7 +114,7 @@ bool NormalClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_end
 }
 
 // TODO(hw): refactor
-bool NormalClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas,
+bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas,
                                      const std::vector<std::string>& sp_datas) {
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::map<std::string, std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>> mapping;
@@ -197,7 +197,7 @@ bool NormalClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas
     return true;
 }
 
-bool NormalClusterSDK::InitTabletClient() {
+bool ClusterSDK::InitTabletClient() {
     std::vector<std::string> tablets;
     bool ok = zk_client_->GetNodes(tablets);
     if (!ok) {
@@ -218,7 +218,7 @@ bool NormalClusterSDK::InitTabletClient() {
     return true;
 }
 
-bool NormalClusterSDK::BuildCatalog() {
+bool ClusterSDK::BuildCatalog() {
     if (!InitTabletClient()) {
         return false;
     }
@@ -246,13 +246,13 @@ bool NormalClusterSDK::BuildCatalog() {
     return UpdateCatalog(table_datas, sp_datas);
 }
 
-uint32_t ClusterSDK::GetTableId(const std::string& db, const std::string& tname) {
+uint32_t DBSDK::GetTableId(const std::string& db, const std::string& tname) {
     auto table_handler = GetCatalog()->GetTable(db, tname);
     auto* sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
     return sdk_table_handler->GetTid();
 }
 
-std::shared_ptr<::openmldb::nameserver::TableInfo> ClusterSDK::GetTableInfo(const std::string& db,
+std::shared_ptr<::openmldb::nameserver::TableInfo> DBSDK::GetTableInfo(const std::string& db,
                                                                             const std::string& tname) {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = table_to_tablets_.find(db);
@@ -267,7 +267,7 @@ std::shared_ptr<::openmldb::nameserver::TableInfo> ClusterSDK::GetTableInfo(cons
     return table_info;
 }
 
-std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> ClusterSDK::GetTables(const std::string& db) {
+std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> DBSDK::GetTables(const std::string& db) {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> tables;
     auto it = table_to_tablets_.find(db);
@@ -281,7 +281,7 @@ std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> ClusterSDK::GetT
     return tables;
 }
 
-bool NormalClusterSDK::GetRealEndpointFromZk(const std::string& endpoint, std::string* real_endpoint) {
+bool ClusterSDK::GetRealEndpointFromZk(const std::string& endpoint, std::string* real_endpoint) {
     if (real_endpoint == nullptr) {
         return false;
     }
@@ -304,9 +304,9 @@ bool NormalClusterSDK::GetRealEndpointFromZk(const std::string& endpoint, std::s
     return true;
 }
 
-std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet() { return GetCatalog()->GetTablet(); }
+std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet() { return GetCatalog()->GetTablet(); }
 
-std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
+std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db,
                                                                            const std::string& name) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
@@ -323,7 +323,7 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const
     return {};
 }
 
-bool ClusterSDK::GetTablet(const std::string& db, const std::string& name,
+bool DBSDK::GetTablet(const std::string& db, const std::string& name,
                            std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>* tablets) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
@@ -335,7 +335,7 @@ bool ClusterSDK::GetTablet(const std::string& db, const std::string& name,
     return false;
 }
 
-std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
+std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db,
                                                                            const std::string& name, uint32_t pid) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
@@ -347,7 +347,7 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const
     return {};
 }
 
-std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
+std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db,
                                                                            const std::string& name,
                                                                            const std::string& pk) {
     auto table_handler = GetCatalog()->GetTable(db, name);
@@ -365,7 +365,7 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> ClusterSDK::GetTablet(const
     return {};
 }
 
-std::shared_ptr<hybridse::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(const std::string& db,
+std::shared_ptr<hybridse::sdk::ProcedureInfo> DBSDK::GetProcedureInfo(const std::string& db,
                                                                            const std::string& sp_name,
                                                                            std::string* msg) {
     if (msg == nullptr) {
@@ -385,7 +385,7 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(const
     }
 }
 
-std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> ClusterSDK::GetProcedureInfo(std::string* msg) {
+std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> DBSDK::GetProcedureInfo(std::string* msg) {
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos;
     if (msg == nullptr) {
         return std::move(sp_infos);
@@ -404,7 +404,7 @@ std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> ClusterSDK::GetProced
     return std::move(sp_infos);
 }
 
-bool StandAloneClusterSDK::Init() {
+bool StandAloneSDK::Init() {
     ::hybridse::vm::EngineOptions opt;
     opt.set_compile_only(true);
     opt.set_plan_only(true);
@@ -412,7 +412,7 @@ bool StandAloneClusterSDK::Init() {
     return PeriodicRefresh();
 }
 
-bool StandAloneClusterSDK::BuildCatalog() {
+bool StandAloneSDK::BuildCatalog() {
     // InitTabletClients
     std::vector<client::TabletInfo> tablets;
     std::string msg;

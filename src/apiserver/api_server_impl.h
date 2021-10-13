@@ -46,7 +46,7 @@ class APIServerImpl : public APIServer {
     APIServerImpl() = default;
     ~APIServerImpl() override;
     bool Init(const sdk::ClusterOptions& options);
-    bool Init(::openmldb::sdk::ClusterSDK* cluster);
+    bool Init(::openmldb::sdk::DBSDK* cluster);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;
     static std::string InnerTypeTransform(const std::string& s);
@@ -72,7 +72,7 @@ class APIServerImpl : public APIServer {
     std::shared_ptr<sdk::SQLRouter> sql_router_;
     InterfaceProvider provider_;
     // cluster_sdk_ is not owned by this class.
-    ::openmldb::sdk::ClusterSDK* cluster_sdk_ = nullptr;
+    ::openmldb::sdk::DBSDK* cluster_sdk_ = nullptr;
 };
 
 struct PutResp {

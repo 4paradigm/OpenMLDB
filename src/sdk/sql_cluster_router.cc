@@ -168,7 +168,7 @@ class BatchQueryFutureImpl : public QueryFuture {
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(options), cluster_sdk_(nullptr), input_lru_cache_(), mu_(), rand_(::baidu::common::timer::now_time()) {}
 
-SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
+SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
     : options_(), cluster_sdk_(sdk), input_lru_cache_(), mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
@@ -179,7 +179,7 @@ bool SQLClusterRouter::Init() {
         coptions.zk_cluster = options_.zk_cluster;
         coptions.zk_path = options_.zk_path;
         coptions.session_timeout = options_.session_timeout;
-        cluster_sdk_ = new NormalClusterSDK(coptions);
+        cluster_sdk_ = new ClusterSDK(coptions);
         bool ok = cluster_sdk_->Init();
         if (!ok) {
             LOG(WARNING) << "fail to init cluster sdk";

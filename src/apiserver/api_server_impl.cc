@@ -30,7 +30,7 @@ APIServerImpl::~APIServerImpl() = default;
 
 bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
     // If cluster sdk is needed, use ptr, don't own it. SQLClusterRouter owns it.
-    auto cluster_sdk = new ::openmldb::sdk::NormalClusterSDK(options);
+    auto cluster_sdk = new ::openmldb::sdk::ClusterSDK(options);
     bool ok = cluster_sdk->Init();
     if (!ok) {
         LOG(ERROR) << "Fail to connect to db";
@@ -39,7 +39,7 @@ bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
     return Init(cluster_sdk);
 }
 
-bool APIServerImpl::Init(::openmldb::sdk::ClusterSDK* cluster) {
+bool APIServerImpl::Init(::openmldb::sdk::DBSDK* cluster) {
     // If cluster sdk is needed, use ptr, don't own it. SQLClusterRouter owns it.
     cluster_sdk_ = cluster;
     auto router = std::make_shared<::openmldb::sdk::SQLClusterRouter>(cluster_sdk_);
