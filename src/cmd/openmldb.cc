@@ -2850,13 +2850,6 @@ void HandleNSClientSetTablePartition(const std::vector<std::string>& parts, ::op
     std::cout << "set table partition ok" << std::endl;
 }
 
-void HandleNsClientSQL(const std::string sql, ::openmldb::client::NsClient* client) {
-    std::string msg;
-    if (!client->ExecuteSQL(sql, msg)) {
-        std::cout << "execute sql failed, sql:" << sql << " , msg: " << msg << std::endl;
-    }
-}
-
 void HandleNSClientGetTablePartition(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
@@ -4695,7 +4688,6 @@ void StartNsClient() {
     std::string display_prefix = endpoint + " " + client.GetDb() + "> ";
     std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
-    bool use_sql = false;
     bool multi_line = false;
     while (true) {
         std::string buffer;
@@ -4720,23 +4712,6 @@ void StartNsClient() {
             if (buffer.empty()) {
                 continue;
             }
-        }
-        if (use_sql) {
-            sql.append(buffer);
-            if (sql == "exit" || sql == "quit") {
-                use_sql = false;
-                display_prefix = endpoint + " " + client.GetDb() + "> ";
-                multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
-                ::openmldb::base::linenoiseSetMultiLine(0);
-            } else if (sql.back() == ';') {
-                HandleNsClientSQL(sql, &client);
-                multi_line = false;
-                sql.clear();
-            } else {
-                sql.append("\n");
-                multi_line = true;
-            }
-            continue;
         }
         std::vector<std::string> parts;
         ::openmldb::base::SplitString(buffer, " ", parts);
@@ -4832,12 +4807,6 @@ void StartNsClient() {
             HandleNsUseDb(parts, &client);
         } else if (parts[0] == "dropdb") {
             HandleNsDropDb(parts, &client);
-        } else if (parts[0] == "sql") {
-            use_sql = true;
-            display_prefix = endpoint + " " + client.GetDb() + " sql> ";
-            multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
-            ::openmldb::base::linenoiseSetMultiLine(1);
-            sql.clear();
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
