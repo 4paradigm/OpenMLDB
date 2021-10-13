@@ -960,7 +960,7 @@ Status PhysicalDataProviderNode::InitSchema(PhysicalPlanContext* ctx) {
 
     // set table source
     table_source->SetSchema(schema);
-    table_source->SetSourceName(db_name, table_name);
+    table_source->SetSourceDBAndTableName(db_name, table_name);
     for (auto i = 0; i < schema->size(); ++i) {
         size_t column_id;
         CHECK_STATUS(
@@ -975,21 +975,22 @@ Status PhysicalRequestProviderNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(table_handler_ != nullptr, common::kPlanError,
                "InitSchema fail: table handler is null");
     const std::string request_name = table_handler_->GetName();
+    const std::string db_name = table_handler_->GetDatabase();
     auto schema = table_handler_->GetSchema();
     CHECK_TRUE(schema != nullptr, common::kPlanError,
                "InitSchema fail: table schema of", request_name, " is null");
 
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
-    schemas_ctx_.SetDBAndRelationName(table_handler_->GetDatabase(), request_name);
+    schemas_ctx_.SetDBAndRelationName(db_name, request_name);
     auto request_source = schemas_ctx_.AddSource();
 
     // set request source
     request_source->SetSchema(schema);
-    request_source->SetSourceName(table_handler_->GetDatabase(), request_name);
+    request_source->SetSourceDBAndTableName(db_name, request_name);
     for (auto i = 0; i < schema->size(); ++i) {
         size_t column_id;
-        CHECK_STATUS(ctx->GetRequestSourceID(request_name,
+        CHECK_STATUS(ctx->GetRequestSourceID(db_name, request_name,
                                              schema->Get(i).name(), &column_id),
                      "Get source column id from table \"", request_name,
                      "\" failed");
@@ -1003,6 +1004,7 @@ Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
     CHECK_TRUE(table_handler_ != nullptr, common::kPlanError,
                "InitSchema fail: table handler is null");
     const std::string request_name = table_handler_->GetName();
+    const std::string db_name = table_handler_->GetDatabase();
     auto schema = table_handler_->GetSchema();
     size_t schema_size = static_cast<size_t>(schema->size());
     CHECK_TRUE(schema != nullptr, common::kPlanError,
@@ -1010,11 +1012,11 @@ Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
 
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
-    schemas_ctx_.SetDBAndRelationName(table_handler_->GetDatabase(), request_name);
+    schemas_ctx_.SetDBAndRelationName(db_name, request_name);
 
     std::vector<size_t> column_ids(schema_size);
     for (size_t i = 0; i < schema_size; ++i) {
-        CHECK_STATUS(ctx->GetRequestSourceID(
+        CHECK_STATUS(ctx->GetRequestSourceID(db_name,
                          request_name, schema->Get(i).name(), &column_ids[i]),
                      "Get column id from ", request_name, " failed");
     }
@@ -1024,8 +1026,8 @@ Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
     if (share_common) {
         auto common_source = schemas_ctx_.AddSource();
         auto non_common_source = schemas_ctx_.AddSource();
-        common_source->SetSourceName(table_handler_->GetDatabase(), request_name);
-        non_common_source->SetSourceName(table_handler_->GetDatabase(), request_name);
+        common_source->SetSourceDBAndTableName(db_name, request_name);
+        non_common_source->SetSourceDBAndTableName(db_name, request_name);
 
         common_schema_.Clear();
         non_common_schema_.Clear();
@@ -1054,7 +1056,7 @@ Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
         }
     } else {
         auto request_source = schemas_ctx_.AddSource();
-        request_source->SetSourceName(table_handler_->GetDatabase(), request_name);
+        request_source->SetSourceDBAndTableName(db_name, request_name);
         request_source->SetSchema(schema);
         for (size_t i = 0; i < schema_size; ++i) {
             request_source->SetColumnID(i, column_ids[i]);

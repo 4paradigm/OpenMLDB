@@ -52,7 +52,8 @@ class PhysicalPlanContext {
     Status GetSourceID(const std::string& db_name,
                        const std::string& table_name,
                        const std::string& column_name, size_t* column_id);
-    Status GetRequestSourceID(const std::string& table_name,
+    Status GetRequestSourceID(const std::string& db_name,
+                              const std::string& table_name,
                               const std::string& column_name,
                               size_t* column_id);
 

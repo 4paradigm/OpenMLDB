@@ -151,10 +151,11 @@ Status PhysicalPlanContext::GetSourceID(const std::string& db_name,
     return Status::OK();
 }
 
-Status PhysicalPlanContext::GetRequestSourceID(const std::string& table_name,
+Status PhysicalPlanContext::GetRequestSourceID(const std::string& db_name,
+                                               const std::string& table_name,
                                                const std::string& column_name,
                                                size_t* column_id) {
-    CHECK_STATUS(InitializeSourceIdMappings(db(), table_name));
+    CHECK_STATUS(InitializeSourceIdMappings(db_name.empty() ? db() : db_name, table_name));
     auto tbl_iter = request_column_id_map_.find(table_name);
     CHECK_TRUE(tbl_iter != request_column_id_map_.end(), kPlanError,
                "Fail to find source table name ", table_name);

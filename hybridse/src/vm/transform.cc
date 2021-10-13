@@ -498,6 +498,7 @@ static bool CheckUnionAvailable(const PhysicalOpNode* left,
 
 Status BatchModeTransformer::CreateRequestUnionNode(
     PhysicalOpNode* request, PhysicalOpNode* right,
+    const std::string& db_name,
     const std::string& primary_name, const codec::Schema* primary_schema,
     const node::ExprListNode* partition,
     const node::WindowPlanNode* window_plan,
@@ -516,7 +517,7 @@ Status BatchModeTransformer::CreateRequestUnionNode(
         for (int i = 0; i < primary_schema->size(); ++i) {
             const std::string& col_name = primary_schema->Get(i).name();
             size_t column_id;
-            CHECK_STATUS(plan_ctx_.GetRequestSourceID(primary_name, col_name,
+            CHECK_STATUS(plan_ctx_.GetRequestSourceID(db_name, primary_name, col_name,
                                                       &column_id),
                          "Fail to get request column id for ", primary_name,
                          ".", col_name);
@@ -584,7 +585,7 @@ Status BatchModeTransformer::TransformWindowOp(
 
             PhysicalRequestUnionNode* request_union_op = nullptr;
             CHECK_STATUS(CreateRequestUnionNode(
-                data_op, right, table->GetName(), table->GetSchema(), nullptr,
+                data_op, right, table->GetDatabase(), table->GetName(), table->GetSchema(), nullptr,
                 w_ptr, &request_union_op));
 
             if (!w_ptr->union_tables().empty()) {
@@ -645,7 +646,7 @@ Status BatchModeTransformer::TransformWindowOp(
 
                     PhysicalRequestUnionNode* request_union_op = nullptr;
                     CHECK_STATUS(CreateRequestUnionNode(
-                        request_op, right, name, table->GetSchema(), nullptr,
+                        request_op, right, db_name, name, table->GetSchema(), nullptr,
                         w_ptr, &request_union_op));
                     if (!w_ptr->union_tables().empty()) {
                         for (auto iter = w_ptr->union_tables().cbegin();
@@ -708,7 +709,7 @@ Status BatchModeTransformer::TransformWindowOp(
             // request union
             PhysicalRequestUnionNode* request_union_op = nullptr;
             CHECK_STATUS(CreateRequestUnionNode(
-                depend, right_simple_project, table->GetName(),
+                depend, right_simple_project, table->GetDatabase(), table->GetName(),
                 table->GetSchema(), nullptr, w_ptr, &request_union_op));
             if (!w_ptr->union_tables().empty()) {
                 for (auto iter = w_ptr->union_tables().cbegin();
@@ -794,7 +795,7 @@ Status BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
 
             PhysicalRequestUnionNode* request_union_op = nullptr;
             CHECK_STATUS(CreateRequestUnionNode(
-                data_op, right, table->GetName(), table->GetSchema(),
+                data_op, right, table->GetDatabase(), table->GetName(), table->GetSchema(),
                 node->by_list_, nullptr, &request_union_op));
             *output = request_union_op;
             return Status::OK();
@@ -842,10 +843,11 @@ Status BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
                                              PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
-    auto table = catalog_->GetTable(node->db_.empty() ? db_ : node->db_, node->table_);
+    std::string db_name = node->db_.empty() ? db_ : node->db_;
+    auto table = catalog_->GetTable(db_name, node->table_);
     CHECK_TRUE(table != nullptr, kPlanError,
-               "Fail to transform data provider op: table " + node->GetPathString() +
-                   " not exists");
+               "Fail to transform data provider op: table ", node->GetPathString(),
+                   " not exists in database [", db_name, "]");
 
     PhysicalTableProviderNode* table_op = nullptr;
     CHECK_STATUS(CreateOp<PhysicalTableProviderNode>(&table_op, table));

@@ -43,7 +43,7 @@ class SchemaSource {
 
     // build utility
     void SetSchema(const codec::Schema* schema);
-    void SetSourceName(const std::string& db, const std::string& name);
+    void SetSourceDBAndTableName(const std::string& db, const std::string& name);
     void SetColumnID(size_t idx, size_t column_id);
     void SetSource(size_t idx, size_t child_idx, size_t child_column_id);
     void SetNonSource(size_t idx);

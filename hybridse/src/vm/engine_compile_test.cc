@@ -144,20 +144,80 @@ TEST_F(EngineCompileTest, EngineWithParameterizedLRUCacheTest) {
         bsession3.SetParameterSchema(parameter_schema);
         ASSERT_TRUE(engine.Get(sql2, "simple_db", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession2, get_status));
-        ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
+        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
 
         BatchRunSession bsession4;
         bsession4.SetParameterSchema(parameter_schema2);
         ASSERT_TRUE(engine.Get(sql, "simple_db", bsession4, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession2, get_status));
-        ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
+        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession4.GetCompileInfo().get());
     }
 }
 
+
+TEST_F(EngineCompileTest, EngineEmptyDefaultDBLRUCacheTest) {
+    // Build Simple Catalog
+    auto catalog = BuildSimpleCatalog();
+
+    {
+        // database simple_db
+        hybridse::type::Database db;
+        db.set_name("db1");
+
+        // table t1
+        hybridse::type::TableDef table_def;
+        sqlcase::CaseSchemaMock::BuildTableDef(table_def);
+        table_def.set_name("t1");
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+        AddTable(db, table_def);
+        catalog->AddDatabase(db);
+    }
+    {
+        // database simple_db
+        hybridse::type::Database db;
+        db.set_name("db2");
+        // table t2
+        hybridse::type::TableDef table_def2;
+        sqlcase::CaseSchemaMock::BuildTableDef(table_def2);
+        table_def2.set_name("t2");
+        AddTable(db, table_def2);
+        catalog->AddDatabase(db);
+    }
+
+    EngineOptions options;
+    options.set_performance_sensitive(false);
+    Engine engine(catalog, options);
+    std::string sql = "select db1.t1.col1, db1.t1.col2,db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
+                      "on db1.t1.col1=db2.t2.col1;";
+    std::string sql2 = "select db1.t1.col1, db1.t1.col3, db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
+                      "on db1.t1.col1=db2.t2.col1;";
+    {
+        base::Status get_status;
+        BatchRunSession bsession1;
+        ASSERT_TRUE(engine.Get(sql, "", bsession1, get_status)) << get_status;
+        ASSERT_EQ(get_status.code, common::kOk);
+        BatchRunSession bsession2;
+        ASSERT_TRUE(engine.Get(sql, "", bsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_EQ(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
+
+        // cache compile info is different under different default db
+        BatchRunSession bsession3;
+        ASSERT_TRUE(engine.Get(sql, "default_db", bsession3, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
+
+        // cache compile info is different under different default db
+        BatchRunSession bsession4;
+        ASSERT_TRUE(engine.Get(sql2, "", bsession3, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession4.GetCompileInfo().get());
+    }
+}
 TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
     // Build Simple Catalog
     auto catalog = BuildSimpleCatalog();
@@ -407,6 +467,58 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
     ASSERT_EQ(true, output_schema.Get(5).is_constant());
 }
 
+
+
+TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
+    // Build Simple Catalog
+    auto catalog = BuildSimpleCatalog();
+
+    {
+        // database simple_db
+        hybridse::type::Database db;
+        db.set_name("db1");
+
+        // table t1
+        hybridse::type::TableDef table_def;
+        sqlcase::CaseSchemaMock::BuildTableDef(table_def);
+        table_def.set_name("t1");
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+        AddTable(db, table_def);
+        catalog->AddDatabase(db);
+    }
+    {
+        // database simple_db
+        hybridse::type::Database db;
+        db.set_name("db2");
+        // table t2
+        hybridse::type::TableDef table_def2;
+        sqlcase::CaseSchemaMock::BuildTableDef(table_def2);
+        table_def2.set_name("t2");
+        AddTable(db, table_def2);
+        catalog->AddDatabase(db);
+    }
+
+    {
+        std::vector<std::string> sql_str_list = {
+            "select db1.t1.col1, db1.t1.col2,db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
+            "on db1.t1.col1=db2.t2.col1;"};
+        EngineOptions options;
+        options.set_performance_sensitive(false);
+        Engine engine(catalog, options);
+        base::Status get_status;
+        for (auto sqlstr : sql_str_list) {
+            boost::to_lower(sqlstr);
+            LOG(INFO) << sqlstr;
+            std::cout << sqlstr << std::endl;
+            BatchRunSession session;
+            ASSERT_TRUE(engine.Get(sqlstr, "", session, get_status)) << get_status;
+        }
+    }
+}
 }  // namespace vm
 }  // namespace hybridse
 

@@ -344,7 +344,7 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
 
     SchemasContext schemas_ctx;
     auto source = schemas_ctx.AddSource();
-    source->SetSourceName("", "t1");
+    source->SetSourceDBAndTableName("", "t1");
     source->SetSchema(&table_def.columns());
 
     // Print Empty Set
@@ -417,7 +417,7 @@ TEST_F(RunnerTest, RunnerPrintDataMemTimeTableTest) {
 
     SchemasContext schemas_ctx;
     auto source = schemas_ctx.AddSource();
-    source->SetSourceName("", "t1");
+    source->SetSourceDBAndTableName("", "t1");
     source->SetSchema(&table_def.columns());
 
     // Print Empty Set

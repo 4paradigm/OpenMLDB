@@ -159,7 +159,7 @@ void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
                                        vm::Schema* output_schema, int8_t** output) {
     vm::SchemasContext schemas_ctx;
     auto source = schemas_ctx.AddSource();
-    source->SetSourceName(table.catalog(), table.name());
+    source->SetSourceDBAndTableName(table.catalog(), table.name());
     source->SetSchema(&table.columns());
     for (int i = 0; i < table.columns().size(); ++i) {
         source->SetColumnID(i, i);

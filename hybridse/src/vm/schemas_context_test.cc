@@ -227,7 +227,7 @@ TEST_F(SchemasContextTest, NewSchemasContextTest) {
 
     auto init_source = [](SchemaSource* source, const type::TableDef& table,
                           size_t offset) {
-        source->SetSourceName(table.catalog(), table.name());
+        source->SetSourceDBAndTableName(table.catalog(), table.name());
         source->SetSchema(&table.columns());
         for (int i = 0; i < table.columns_size(); ++i) {
             source->SetColumnID(i, offset);

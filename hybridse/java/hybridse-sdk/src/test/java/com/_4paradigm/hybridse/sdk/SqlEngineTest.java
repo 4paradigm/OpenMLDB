@@ -159,20 +159,47 @@ public class SqlEngineTest {
     }
 
     @DataProvider(name = "sqlLastJoinWithMultipleDBCase")
-    public Object[] sqlLastJoinWithMultipleDBCase() {
-        return new Object[] {
-                " SELECT sum(t1.col1) over w1 as sum_t1_col1, db2.t2.str1 as t2_str1\n" +
-                " FROM t1\n" +
-                " last join db2.t2 order by db2.t2.col1\n" +
-                " on t1.col1 = db2.t2.col1 and t1.col2 = db2.t2.col0\n" +
-                " WINDOW w1 AS (\n" +
-                "  PARTITION BY t1.col2 ORDER BY t1.col1\n" +
-                "  ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW\n" +
-                " ) limit 10;"
+    public Object[][] sqlLastJoinWithMultipleDBCase() {
+        return new Object[][] {
+                new Object[]{
+                        "db1",
+                        " SELECT sum(t1.col1) over w1 as sum_t1_col1, db2.t2.str1 as t2_str1\n" +
+                                " FROM t1\n" +
+                                " last join db2.t2 order by db2.t2.col1\n" +
+                                " on t1.col1 = db2.t2.col1 and t1.col2 = db2.t2.col0\n" +
+                                " WINDOW w1 AS (\n" +
+                                "  PARTITION BY t1.col2 ORDER BY t1.col1\n" +
+                                "  ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW\n" +
+                                " ) limit 10;"
+                },
+                // default database is empty string
+                new Object[]{
+                        "",
+                        " SELECT sum(db1.t1.col1) over w1 as sum_t1_col1, db2.t2.str1 as t2_str1\n" +
+                                " FROM db1.t1\n" +
+                                " last join db2.t2 order by db2.t2.col1\n" +
+                                " on db1.t1.col1 = db2.t2.col1 and db1.t1.col2 = db2.t2.col0\n" +
+                                " WINDOW w1 AS (\n" +
+                                "  PARTITION BY db1.t1.col2 ORDER BY db1.t1.col1\n" +
+                                "  ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW\n" +
+                                " ) limit 10;"
+                },
+                // default database is null string
+                new Object[]{
+                        null,
+                        " SELECT sum(db1.t1.col1) over w1 as sum_t1_col1, db2.t2.str1 as t2_str1\n" +
+                                " FROM db1.t1\n" +
+                                " last join db2.t2 order by db2.t2.col1\n" +
+                                " on db1.t1.col1 = db2.t2.col1 and db1.t1.col2 = db2.t2.col0\n" +
+                                " WINDOW w1 AS (\n" +
+                                "  PARTITION BY db1.t1.col2 ORDER BY db1.t1.col1\n" +
+                                "  ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW\n" +
+                                " ) limit 10;"
+                }
         };
     }
     @Test(dataProvider = "sqlLastJoinWithMultipleDBCase")
-    public void sqlLastJoinWithMultipleDB(String sql) {
+    public void sqlLastJoinWithMultipleDB(String defaultDbName, String sql) {
         TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
         db.setName("db1");
 
@@ -205,8 +232,8 @@ public class SqlEngineTest {
         try {
             EngineOptions options = createDefaultEngineOptions();
             options.set_enable_batch_window_parallelization(true);
-            SqlEngine engine = new SqlEngine(sql,
-                    Lists.newArrayList(db.build(), db2.build()), options, db.getName());
+            SqlEngine engine = new SqlEngine(sql, Lists.newArrayList(db.build(), db2.build()),
+                    options, defaultDbName);
             Assert.assertNotNull(engine.getPlan());
         } catch (UnsupportedHybridSeException e) {
             e.printStackTrace();
@@ -218,14 +245,16 @@ public class SqlEngineTest {
     public Object[][] sqlMultipleDBErrorCase() {
         return new Object[][] {
                 new Object[]{
+                        "db1",
                         // t2.str1 should be db2.t2.str1
                         "SELECT t2.str1 as t2_str1\n" +
                                 " FROM t1\n" +
                                 " last join db2.t2 order by db2.t2.col1\n" +
                                 " on t1.col1 = db2.t2.col1 and t1.col2 = db2.t2.col0;\n",
-                        "SQL parse error: Column Not found: db1.t2.str1"
+                        "SQL parse error: Column Not found: .t2.str1"
                 },
                 new Object[]{
+                        "db1",
                         // db1.t2.str1 should be db2.t2.str1
                         "SELECT db1.t2.str1 as t2_str1\n" +
                                 " FROM t1\n" +
@@ -233,17 +262,37 @@ public class SqlEngineTest {
                                 " on t1.col1 = db2.t2.col1 and t1.col2 = db2.t2.col0;\n",
                         "SQL parse error: Column Not found: db1.t2.str1"},
                 new Object[]{
+                        "db1",
                         // t1.col1 = t2.col1 should be t1.col1 = db2.t2.col1
                         "SELECT db2.t2.str1 as t2_str1\n" +
                                 " FROM t1\n" +
                                 " last join db2.t2 order by db2.t2.col1\n" +
                                 " on t1.col1 = t2.col1 and t1.col2 = db2.t2.col0;\n",
-                        "SQL parse error: Column Not found: db1.t2.col1"}
+                        "SQL parse error: Column Not found: .t2.col1"},
+                new Object[]{
+                        // default database is empty string
+                        "",
+                        // t1.col1 = db2.t2.col1 should be db1.t1.col1 = db2.t2.col1
+                        "SELECT db2.t2.str1 as t2_str1\n" +
+                                " FROM t1\n" +
+                                " last join db2.t2 order by db2.t2.col1\n" +
+                                " on t1.col1 = db2.t2.col1 and t1.col2 = db2.t2.col0;\n",
+                        "SQL parse error: Fail to transform data provider op: table t1 not exists in database []"},
+                new Object[]{
+                        // default database is null string
+                        null,
+                        // t1.col1 = t2.col1 should be t1.col1 = db2.t2.col1
+                        "SELECT db2.t2.str1 as t2_str1\n" +
+                                " FROM t1\n" +
+                                " last join db2.t2 order by db2.t2.col1\n" +
+                                " on t1.col1 = db2.t2.col1 and t1.col2 = db2.t2.col0;\n",
+                        "SQL parse error: Fail to transform data provider op: table t1 not exists in database []"}
+
 
         };
     }
     @Test(dataProvider = "sqlMultipleDBErrorCase")
-    public void sqlMultipleDBErrorTest(String sql, String errorMsg) {
+    public void sqlMultipleDBErrorTest(String defaultDbName, String sql, String errorMsg) {
         TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
         db.setName("db1");
 
@@ -277,7 +326,7 @@ public class SqlEngineTest {
             EngineOptions options = createDefaultEngineOptions();
             options.set_enable_batch_window_parallelization(true);
             SqlEngine engine = new SqlEngine(sql,
-                    Lists.newArrayList(db.build(), db2.build()), options, db.getName());
+                    Lists.newArrayList(db.build(), db2.build()), options, defaultDbName);
             Assert.assertNull(engine.getPlan());
             Assert.fail("Expect getPlan fail");
         } catch (UnsupportedHybridSeException e) {
