@@ -66,10 +66,8 @@ using ::openmldb::base::ReturnCode;
 namespace openmldb {
 namespace nameserver {
 
-const std::string OFFLINE_LEADER_ENDPOINT =  // NOLINT
-    "OFFLINE_LEADER_ENDPOINT";
-const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
-
+const std::string OFFLINE_LEADER_ENDPOINT =  "OFFLINE_LEADER_ENDPOINT"; // NOLINT
+constexpr uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
 void NameServerImpl::CheckSyncExistTable(const std::string& alias,
                                          const std::vector<::openmldb::nameserver::TableInfo>& tables_remote,
@@ -511,6 +509,7 @@ NameServerImpl::NameServerImpl()
       nsc_(),
       zone_info_(),
       zk_client_(NULL),
+      zk_path_(),
       dist_lock_(NULL),
       thread_pool_(1),
       task_thread_pool_(FLAGS_name_server_task_pool_size),
@@ -545,15 +544,15 @@ bool NameServerImpl::Recover() {
         std::lock_guard<std::mutex> lock(mu_);
 
         std::string value;
-        if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/follower", value)) {
+        if (zk_client_->GetNodeValue(zk_path_.zone_data_path_ + "/follower", value)) {
             zone_info_.ParseFromString(value);
             mode_.store(zone_info_.mode(), std::memory_order_release);
             PDLOG(WARNING, "recover zone info : %s", value.c_str());
         }
         UpdateTablets(endpoints);
         value.clear();
-        if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
-            if (!zk_client_->CreateNode(zk_table_index_node_, "1")) {
+        if (!zk_client_->GetNodeValue(zk_path_.table_index_node_, value)) {
+            if (!zk_client_->CreateNode(zk_path_.table_index_node_, "1")) {
                 PDLOG(WARNING, "create table index node failed!");
                 return false;
             }
@@ -564,8 +563,8 @@ bool NameServerImpl::Recover() {
             PDLOG(INFO, "recover table_index[%u]", table_index_);
         }
         value.clear();
-        if (!zk_client_->GetNodeValue(zk_term_node_, value)) {
-            if (!zk_client_->CreateNode(zk_term_node_, "1")) {
+        if (!zk_client_->GetNodeValue(zk_path_.term_node_, value)) {
+            if (!zk_client_->CreateNode(zk_path_.term_node_, "1")) {
                 PDLOG(WARNING, "create term node failed!");
                 return false;
             }
@@ -576,8 +575,8 @@ bool NameServerImpl::Recover() {
             PDLOG(INFO, "recover term[%u]", term_);
         }
         value.clear();
-        if (!zk_client_->GetNodeValue(zk_op_index_node_, value)) {
-            if (!zk_client_->CreateNode(zk_op_index_node_, "1")) {
+        if (!zk_client_->GetNodeValue(zk_path_.op_index_node_, value)) {
+            if (!zk_client_->CreateNode(zk_path_.op_index_node_, "1")) {
                 PDLOG(WARNING, "create op index node failed!");
                 return false;
             }
@@ -588,16 +587,16 @@ bool NameServerImpl::Recover() {
             PDLOG(INFO, "recover op_index[%u]", op_index_);
         }
         value.clear();
-        if (!zk_client_->GetNodeValue(zk_table_changed_notify_node_, value)) {
-            if (!zk_client_->CreateNode(zk_table_changed_notify_node_, "1")) {
+        if (!zk_client_->GetNodeValue(zk_path_.table_changed_notify_node_, value)) {
+            if (!zk_client_->CreateNode(zk_path_.table_changed_notify_node_, "1")) {
                 PDLOG(WARNING, "create zk table changed notify node failed");
                 return false;
             }
         }
         value.clear();
-        if (!zk_client_->GetNodeValue(zk_auto_failover_node_, value)) {
+        if (!zk_client_->GetNodeValue(zk_path_.auto_failover_node_, value)) {
             auto_failover_.load(std::memory_order_acquire) ? value = "true" : value = "false";
-            if (!zk_client_->CreateNode(zk_auto_failover_node_, value)) {
+            if (!zk_client_->CreateNode(zk_path_.auto_failover_node_, value)) {
                 PDLOG(WARNING, "create auto failover node failed!");
                 return false;
             }
@@ -641,8 +640,8 @@ bool NameServerImpl::Recover() {
 bool NameServerImpl::RecoverDb() {
     databases_.clear();
     std::vector<std::string> db_vec;
-    if (!zk_client_->GetChildren(zk_db_path_, db_vec)) {
-        if (zk_client_->IsExistNode(zk_db_path_) > 0) {
+    if (!zk_client_->GetChildren(zk_path_.db_path_, db_vec)) {
+        if (zk_client_->IsExistNode(zk_path_.db_path_) > 0) {
             PDLOG(WARNING, "db node is not exist");
             return true;
         }
@@ -669,8 +668,8 @@ void NameServerImpl::RecoverOfflineTablet() {
 void NameServerImpl::RecoverClusterInfo() {
     nsc_.clear();
     std::vector<std::string> cluster_vec;
-    if (!zk_client_->GetChildren(zk_zone_data_path_ + "/replica", cluster_vec)) {
-        if (zk_client_->IsExistNode(zk_zone_data_path_ + "/replica") > 0) {
+    if (!zk_client_->GetChildren(zk_path_.zone_data_path_ + "/replica", cluster_vec)) {
+        if (zk_client_->IsExistNode(zk_path_.zone_data_path_ + "/replica") > 0) {
             PDLOG(WARNING, "cluster info node is not exist");
             return;
         }
@@ -682,7 +681,7 @@ void NameServerImpl::RecoverClusterInfo() {
     std::string value, rpc_msg;
     for (const auto& alias : cluster_vec) {
         value.clear();
-        if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/replica/" + alias, value)) {
+        if (!zk_client_->GetNodeValue(zk_path_.zone_data_path_ + "/replica/" + alias, value)) {
             PDLOG(WARNING, "get cluster info failed! name[%s]", alias.c_str());
             continue;
         }
@@ -708,8 +707,8 @@ bool NameServerImpl::RecoverTableInfo() {
     db_table_info_.clear();
     std::vector<std::string> table_vec;
     std::vector<std::string> db_table_vec;
-    if (!zk_client_->GetChildren(zk_table_data_path_, table_vec)) {
-        if (zk_client_->IsExistNode(zk_table_data_path_) > 0) {
+    if (!zk_client_->GetChildren(zk_path_.table_data_path_, table_vec)) {
+        if (zk_client_->IsExistNode(zk_path_.table_data_path_) > 0) {
             PDLOG(WARNING, "table data node is not exist");
         } else {
             PDLOG(WARNING, "get table name failed!");
@@ -718,7 +717,7 @@ bool NameServerImpl::RecoverTableInfo() {
     }
     PDLOG(INFO, "need to recover default table num[%d]", table_vec.size());
     for (const auto& table_name : table_vec) {
-        std::string table_name_node = zk_table_data_path_ + "/" + table_name;
+        std::string table_name_node = zk_path_.table_data_path_ + "/" + table_name;
         std::string value;
         if (!zk_client_->GetNodeValue(table_name_node, value)) {
             PDLOG(WARNING, "get table info failed! name[%s] table node[%s]", table_name.c_str(),
@@ -735,8 +734,8 @@ bool NameServerImpl::RecoverTableInfo() {
         table_info_.insert(std::make_pair(table_name, table_info));
         PDLOG(INFO, "recover table[%s] success", table_name.c_str());
     }
-    if (!zk_client_->GetChildren(zk_db_table_data_path_, db_table_vec)) {
-        if (zk_client_->IsExistNode(zk_db_table_data_path_) > 0) {
+    if (!zk_client_->GetChildren(zk_path_.db_table_data_path_, db_table_vec)) {
+        if (zk_client_->IsExistNode(zk_path_.db_table_data_path_) > 0) {
             PDLOG(WARNING, "db table data node is not exist");
         } else {
             PDLOG(WARNING, "get db table id failed!");
@@ -745,7 +744,7 @@ bool NameServerImpl::RecoverTableInfo() {
     }
     PDLOG(INFO, "need to recover db table num[%d]", db_table_vec.size());
     for (const auto& tid : db_table_vec) {
-        std::string tid_node = zk_db_table_data_path_ + "/" + tid;
+        std::string tid_node = zk_path_.db_table_data_path_ + "/" + tid;
         std::string value;
         if (!zk_client_->GetNodeValue(tid_node, value)) {
             PDLOG(WARNING, "get db table info failed! tid[%s] table node[%s]", tid.c_str(), tid_node.c_str());
@@ -774,8 +773,8 @@ bool NameServerImpl::RecoverOPTask() {
         op_list.clear();
     }
     std::vector<std::string> op_vec;
-    if (!zk_client_->GetChildren(zk_op_data_path_, op_vec)) {
-        if (zk_client_->IsExistNode(zk_op_data_path_) > 0) {
+    if (!zk_client_->GetChildren(zk_path_.op_data_path_, op_vec)) {
+        if (zk_client_->IsExistNode(zk_path_.op_data_path_) > 0) {
             PDLOG(WARNING, "op data node is not exist");
             return true;
         }
@@ -784,7 +783,7 @@ bool NameServerImpl::RecoverOPTask() {
     }
     PDLOG(INFO, "need to recover op num[%d]", op_vec.size());
     for (const auto& op_id : op_vec) {
-        std::string op_node = zk_op_data_path_ + "/" + op_id;
+        std::string op_node = zk_path_.op_data_path_ + "/" + op_id;
         std::string value;
         if (!zk_client_->GetNodeValue(op_node, value)) {
             PDLOG(WARNING, "get table info failed! table node[%s]", op_node.c_str());
@@ -1226,7 +1225,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
                   endpoint.c_str());
             return;
         }
-        if (!zk_client_->GetNodeValue(zk_root_path_ + "/nodes/" + endpoint, value)) {
+        if (!zk_client_->GetNodeValue(zk_path_.root_path_ + "/nodes/" + endpoint, value)) {
             PDLOG(WARNING, "get tablet node value failed");
             offline_endpoint_map_.erase(iter);
             return;
@@ -1344,24 +1343,24 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     running_.store(false, std::memory_order_release);
     if (!zk_cluster.empty()) {
         startup_mode_ = ::openmldb::type::StartupMode::kCluster;
-        zk_root_path_ = zk_path;
+        zk_path_.root_path_ = zk_path;
         std::string zk_table_path = zk_path + "/table";
         std::string zk_sp_path = zk_path + "/store_procedure";
-        zk_table_index_node_ = zk_table_path + "/table_index";
-        zk_table_data_path_ = zk_table_path + "/table_data";
-        zk_db_path_ = zk_path + "/db";
-        zk_db_table_data_path_ = zk_table_path + "/db_table_data";
-        zk_db_sp_data_path_ = zk_sp_path + "/db_sp_data";
-        zk_term_node_ = zk_table_path + "/term";
+        zk_path_.table_index_node_ = zk_table_path + "/table_index";
+        zk_path_.table_data_path_ = zk_table_path + "/table_data";
+        zk_path_.db_path_ = zk_path + "/db";
+        zk_path_.db_table_data_path_ = zk_table_path + "/db_table_data";
+        zk_path_.db_sp_data_path_ = zk_sp_path + "/db_sp_data";
+        zk_path_.term_node_ = zk_table_path + "/term";
         std::string zk_op_path = zk_path + "/op";
-        zk_op_index_node_ = zk_op_path + "/op_index";
-        zk_op_data_path_ = zk_op_path + "/op_data";
-        zk_op_sync_path_ = zk_op_path + "/op_sync";
-        zk_offline_endpoint_lock_node_ = zk_path + "/offline_endpoint_lock";
+        zk_path_.op_index_node_ = zk_op_path + "/op_index";
+        zk_path_.op_data_path_ = zk_op_path + "/op_data";
+        zk_path_.op_sync_path_ = zk_op_path + "/op_sync";
+        zk_path_.offline_endpoint_lock_node_ = zk_path + "/offline_endpoint_lock";
         std::string zk_config_path = zk_path + "/config";
-        zk_zone_data_path_ = zk_path + "/cluster";
-        zk_auto_failover_node_ = zk_config_path + "/auto_failover";
-        zk_table_changed_notify_node_ = zk_table_path + "/notify";
+        zk_path_.zone_data_path_ = zk_path + "/cluster";
+        zk_path_.auto_failover_node_ = zk_config_path + "/auto_failover";
+        zk_path_.table_changed_notify_node_ = zk_table_path + "/notify";
         zone_info_.set_mode(kNORMAL);
         zone_info_.set_zone_name(endpoint + zk_path);
         zone_info_.set_replica_alias("");
@@ -1698,7 +1697,7 @@ int NameServerImpl::UpdateZKTaskStatus() {
             op_data->op_info_.set_task_index(cur_task_index + 1);
             std::string value;
             op_data->op_info_.SerializeToString(&value);
-            std::string node = zk_op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
+            std::string node = zk_path_.op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
             if (zk_client_->SetNodeValue(node, value)) {
                 DEBUGLOG("set zk status value success. node[%s] value[%s]", node.c_str(), value.c_str());
                 op_data->task_list_.pop_front();
@@ -1872,7 +1871,7 @@ void NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
             PDLOG(WARNING, "has not found op[%lu] in running op", op_id);
             continue;
         }
-        std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
+        std::string node = zk_path_.op_data_path_ + "/" + std::to_string(op_id);
         if (!op_data->task_list_.empty() &&
             op_data->task_list_.front()->task_info_->status() == ::openmldb::api::kFailed) {
             op_data->op_info_.set_task_status(::openmldb::api::kFailed);
@@ -1938,7 +1937,7 @@ void NameServerImpl::ProcessTask() {
                     op_data->op_info_.set_task_status(::openmldb::api::kDoing);
                     std::string value;
                     op_data->op_info_.SerializeToString(&value);
-                    std::string node = zk_op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
+                    std::string node = zk_path_.op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
                     if (!zk_client_->SetNodeValue(node, value)) {
                         PDLOG(WARNING, "set zk op status value failed. node[%s] value[%s]", node.c_str(),
                               value.c_str());
@@ -2462,7 +2461,7 @@ void NameServerImpl::ConfSet(RpcController* controller, const ConfSetRequest* re
         return;
     }
     if (key == "auto_failover") {
-        if (!zk_client_->SetNodeValue(zk_auto_failover_node_, value)) {
+        if (!zk_client_->SetNodeValue(zk_path_.auto_failover_node_, value)) {
             PDLOG(WARNING, "set auto_failover_node failed!");
             response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
@@ -3135,19 +3134,19 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request.db().empty()) {
-            if (IsClusterMode() && !zk_client_->DeleteNode(zk_db_table_data_path_ + "/" + std::to_string(tid))) {
-                PDLOG(WARNING, "delete db table node[%s/%u] failed!", zk_db_table_data_path_.c_str(), tid);
+            if (IsClusterMode() && !zk_client_->DeleteNode(zk_path_.db_table_data_path_ + "/" + std::to_string(tid))) {
+                PDLOG(WARNING, "delete db table node[%s/%u] failed!", zk_path_.db_table_data_path_.c_str(), tid);
                 code = 304;
             } else {
-                PDLOG(INFO, "delete table node[%s/%u]", zk_db_table_data_path_.c_str(), tid);
+                PDLOG(INFO, "delete table node[%s/%u]", zk_path_.db_table_data_path_.c_str(), tid);
                 db_table_info_[request.db()].erase(name);
             }
         } else {
-            if (IsClusterMode() && !zk_client_->DeleteNode(zk_table_data_path_ + "/" + name)) {
-                PDLOG(WARNING, "delete table node[%s/%s] failed!", zk_table_data_path_.c_str(), name.c_str());
+            if (IsClusterMode() && !zk_client_->DeleteNode(zk_path_.table_data_path_ + "/" + name)) {
+                PDLOG(WARNING, "delete table node[%s/%s] failed!", zk_path_.table_data_path_.c_str(), name.c_str());
                 code = 304;
             } else {
-                PDLOG(INFO, "delete table node[%s/%s]", zk_table_data_path_.c_str(), name.c_str());
+                PDLOG(INFO, "delete table node[%s/%s]", zk_path_.table_data_path_.c_str(), name.c_str());
                 table_info_.erase(name);
             }
         }
@@ -3526,7 +3525,7 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller, const Crea
 
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
+        if (!zk_client_->SetNodeValue(zk_path_.table_index_node_, std::to_string(table_index_ + 1))) {
             response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
@@ -3633,7 +3632,7 @@ void NameServerImpl::CreateTableInfo(RpcController* controller, const CreateTabl
     uint64_t cur_term = 0;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
+        if (!zk_client_->SetNodeValue(zk_path_.table_index_node_, std::to_string(table_index_ + 1))) {
             response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
@@ -3688,26 +3687,28 @@ bool NameServerImpl::SetTableInfo(std::shared_ptr<::openmldb::nameserver::TableI
     std::string table_value;
     table_info->SerializeToString(&table_value);
     if (!table_info->db().empty()) {
-        if (!zk_client_->CreateNode(zk_db_table_data_path_ + "/" + std::to_string(table_info->tid()), table_value)) {
+        if (!zk_client_->CreateNode(zk_path_.db_table_data_path_ + "/" +
+                    std::to_string(table_info->tid()), table_value)) {
             PDLOG(WARNING, "create db table node[%s/%u] failed! value[%s] value_size[%u]",
-                  zk_db_table_data_path_.c_str(), table_info->tid(), table_value.c_str(), table_value.length());
+                  zk_path_.db_table_data_path_.c_str(), table_info->tid(), table_value.c_str(), table_value.length());
             return false;
         }
-        PDLOG(INFO, "create db table node[%s/%u] success! value[%s] value_size[%u]", zk_db_table_data_path_.c_str(),
-              table_info->tid(), table_value.c_str(), table_value.length());
+        PDLOG(INFO, "create db table node[%s/%u] success! value[%s] value_size[%u]",
+                zk_path_.db_table_data_path_.c_str(),
+                table_info->tid(), table_value.c_str(), table_value.length());
         {
             std::lock_guard<std::mutex> lock(mu_);
             db_table_info_[table_info->db()].insert(std::make_pair(table_info->name(), table_info));
             NotifyTableChanged();
         }
     } else {
-        if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
-            PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]", zk_table_data_path_.c_str(),
-                  table_info->name().c_str(), table_value.c_str(), table_value.length());
-
+        if (!zk_client_->CreateNode(zk_path_.table_data_path_ + "/" + table_info->name(), table_value)) {
+            PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]",
+                    zk_path_.table_data_path_.c_str(),
+                    table_info->name().c_str(), table_value.c_str(), table_value.length());
             return false;
         }
-        PDLOG(INFO, "create table node[%s/%s] success! value[%s] value_size[%u]", zk_table_data_path_.c_str(),
+        PDLOG(INFO, "create table node[%s/%s] success! value[%s] value_size[%u]", zk_path_.table_data_path_.c_str(),
               table_info->name().c_str(), table_value.c_str(), table_value.length());
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -3898,21 +3899,22 @@ bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
     std::string table_value;
     table_info->SerializeToString(&table_value);
     if (table_info->db().empty()) {
-        if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
-            PDLOG(WARNING, "create object table node[%s/%s] failed!", zk_table_data_path_.c_str(),
+        if (!zk_client_->CreateNode(zk_path_.table_data_path_ + "/" + table_info->name(), table_value)) {
+            PDLOG(WARNING, "create object table node[%s/%s] failed!", zk_path_.table_data_path_.c_str(),
                   table_info->name().c_str());
             return false;
         }
-        PDLOG(INFO, "create table node[%s/%s] success!", zk_table_data_path_.c_str(), table_info->name().c_str());
+        PDLOG(INFO, "create table node[%s/%s] success!", zk_path_.table_data_path_.c_str(), table_info->name().c_str());
     } else {
-        if (!zk_client_->CreateNode(zk_db_table_data_path_ + "/" + std::to_string(table_info->tid()), table_value)) {
-            PDLOG(WARNING, "create object db table node[%s/%s] failed!", zk_db_table_data_path_.c_str(),
-                  table_info->name().c_str());
+        if (!zk_client_->CreateNode(zk_path_.db_table_data_path_ + "/" +
+                    std::to_string(table_info->tid()), table_value)) {
+            PDLOG(WARNING, "create object db table node[%s/%s] failed!",
+                    zk_path_.db_table_data_path_.c_str(), table_info->name().c_str());
             return false;
         }
-        PDLOG(INFO, "create db table node[%s/%s] success!", zk_db_table_data_path_.c_str(), table_info->name().c_str());
+        PDLOG(INFO, "create db table node[%s/%s] success!",
+                zk_path_.db_table_data_path_.c_str(), table_info->name().c_str());
     }
-
     return true;
 }
 
@@ -4972,7 +4974,7 @@ std::shared_ptr<openmldb::nameserver::ClusterInfo> NameServerImpl::GetHealthClus
 int NameServerImpl::CreateOPData(::openmldb::api::OPType op_type, const std::string& value,
                                  std::shared_ptr<OPData>& op_data, const std::string& name, const std::string& db,
                                  uint32_t pid, uint64_t parent_id, uint64_t remote_op_id) {
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
+    if (!zk_client_->SetNodeValue(zk_path_.op_index_node_, std::to_string(op_index_ + 1))) {
         PDLOG(WARNING, "set op index node failed! op_index[%lu]", op_index_);
         return -1;
     }
@@ -5011,7 +5013,7 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t c
     op_data->op_info_.set_vec_idx(idx);
     std::string value;
     op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
+    std::string node = zk_path_.op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
     if (!zk_client_->CreateNode(node, value)) {
         PDLOG(WARNING, "create op node[%s] failed. op_index[%lu] op_type[%s]", node.c_str(), op_data->op_info_.op_id(),
               ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
@@ -5051,7 +5053,7 @@ void NameServerImpl::DeleteDoneOP() {
     while (done_op_list_.size() > (uint32_t)FLAGS_max_op_num) {
         std::shared_ptr<OPData> op_data = done_op_list_.front();
         if (op_data->op_info_.task_status() == ::openmldb::api::TaskStatus::kFailed) {
-            std::string node = zk_op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
+            std::string node = zk_path_.op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
             if (zk_client_->DeleteNode(node)) {
                 PDLOG(INFO, "delete zk op node[%s] success.", node.c_str());
                 op_data->task_list_.clear();
@@ -7682,7 +7684,7 @@ void NameServerImpl::SelectLeader(const std::string& name, const std::string& db
                 break;
             }
         }
-        if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 2))) {
+        if (!zk_client_->SetNodeValue(zk_path_.term_node_, std::to_string(term_ + 2))) {
             PDLOG(WARNING,
                   "update leader id  node failed. table name[%s] pid[%u] "
                   "op_id[%lu]",
@@ -7971,9 +7973,9 @@ void NameServerImpl::NotifyTableChanged() {
     if (!IsClusterMode()) {
         return;
     }
-    bool ok = zk_client_->Increment(zk_table_changed_notify_node_);
+    bool ok = zk_client_->Increment(zk_path_.table_changed_notify_node_);
     if (!ok) {
-        PDLOG(WARNING, "increment failed. node is %s", zk_table_changed_notify_node_.c_str());
+        PDLOG(WARNING, "increment failed. node is %s", zk_path_.table_changed_notify_node_.c_str());
         return;
     }
     PDLOG(INFO, "notify table changed ok");
@@ -8137,15 +8139,15 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller, const ClusterA
         }
         std::string cluster_value, value;
         request->SerializeToString(&cluster_value);
-        if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), value)) {
-            if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
+        if (zk_client_->GetNodeValue(zk_path_.zone_data_path_ + "/replica/" + request->alias(), value)) {
+            if (!zk_client_->SetNodeValue(zk_path_.zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
                 PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
                 code = 304;
                 rpc_msg = "set zk failed";
                 break;
             }
         } else {
-            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
+            if (!zk_client_->CreateNode(zk_path_.zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
                 PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
                 code = 450;
                 rpc_msg = "create zk failed";
@@ -8217,15 +8219,15 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
         }
         std::string zone_info;
         request->zone_info().SerializeToString(&zone_info);
-        if (zk_client_->IsExistNode(zk_zone_data_path_ + "/follower") > 0) {
-            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/follower", zone_info)) {
+        if (zk_client_->IsExistNode(zk_path_.zone_data_path_ + "/follower") > 0) {
+            if (!zk_client_->CreateNode(zk_path_.zone_data_path_ + "/follower", zone_info)) {
                 PDLOG(WARNING, "write follower to zk failed, alias: %s", request->zone_info().replica_alias().c_str());
                 code = 450;
                 rpc_msg = "create zk failed";
                 break;
             }
         } else {
-            if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", zone_info)) {
+            if (!zk_client_->SetNodeValue(zk_path_.zone_data_path_ + "/follower", zone_info)) {
                 code = 304;
                 rpc_msg = "set zk failed";
                 PDLOG(WARNING, "set zk failed, save follower value failed");
@@ -8341,7 +8343,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
                 }
             }
         }
-        if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
+        if (!zk_client_->DeleteNode(zk_path_.zone_data_path_ + "/replica/" + request->alias())) {
             code = 452;
             rpc_msg = "del zk failed";
             PDLOG(WARNING, "del replica zk node [%s] failed, when remove repcluster", request->alias().c_str());
@@ -8403,11 +8405,11 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
         ZoneInfo zone_info;
         zone_info.CopyFrom(request->zone_info());
         zone_info.set_mode(kNORMAL);
-        zone_info.set_zone_name(endpoint_ + zk_root_path_);
+        zone_info.set_zone_name(endpoint_ + zk_path_.root_path_);
         zone_info.set_replica_alias("");
         zone_info.set_zone_term(1);
         zone_info.SerializeToString(&value);
-        if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", value)) {
+        if (!zk_client_->SetNodeValue(zk_path_.zone_data_path_ + "/follower", value)) {
             code = 304;
             rpc_msg = "set zk failed";
             PDLOG(WARNING, "set zk failed, save follower value failed");
@@ -8494,15 +8496,15 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
     zone_info.set_mode(request->sm());
     std::string value;
     zone_info.SerializeToString(&value);
-    if (zk_client_->IsExistNode(zk_zone_data_path_ + "/follower") > 0) {
-        if (!zk_client_->CreateNode(zk_zone_data_path_ + "/follower", value)) {
+    if (zk_client_->IsExistNode(zk_path_.zone_data_path_ + "/follower") > 0) {
+        if (!zk_client_->CreateNode(zk_path_.zone_data_path_ + "/follower", value)) {
             PDLOG(WARNING, "write follower to zk failed");
             response->set_code(::openmldb::base::ReturnCode::kCreateZkFailed);
             response->set_msg("create zk failed");
             return;
         }
     } else {
-        if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", value)) {
+        if (!zk_client_->SetNodeValue(zk_path_.zone_data_path_ + "/follower", value)) {
             PDLOG(WARNING, "set zk failed, save follower value failed");
             response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
@@ -8965,9 +8967,9 @@ bool NameServerImpl::UpdateZkTableNodeWithoutNotify(const TableInfo* table_info)
     table_info->SerializeToString(&table_value);
     std::string temp_path;
     if (table_info->db().empty()) {
-        temp_path = zk_table_data_path_ + "/" + table_info->name();
+        temp_path = zk_path_.table_data_path_ + "/" + table_info->name();
     } else {
-        temp_path = zk_db_table_data_path_ + "/" + std::to_string(table_info->tid());
+        temp_path = zk_path_.db_table_data_path_ + "/" + std::to_string(table_info->tid());
     }
     if (!zk_client_->SetNodeValue(temp_path, table_value)) {
         LOG(WARNING) << "update table node[" << temp_path << "] failed!";
@@ -9161,7 +9163,7 @@ int NameServerImpl::CreateAddIndexOP(const std::string& name, const std::string&
     // zk_op_sync_node only need to create once, so implment that through pid == 0
     if (pid == 0) {
         std::string partition_num_value = std::to_string(table_info->table_partition_size());
-        std::string table_sync_node = zk_op_sync_path_ + "/" + std::to_string(table_info->tid());
+        std::string table_sync_node = zk_path_.op_sync_path_ + "/" + std::to_string(table_info->tid());
         if (zk_client_->IsExistNode(table_sync_node) == 0) {
             if (!zk_client_->SetNodeValue(table_sync_node, partition_num_value)) {
                 LOG(WARNING) << "set sync value failed. table " << name << "node " << table_sync_node;
@@ -9334,7 +9336,7 @@ std::shared_ptr<Task> NameServerImpl::CreateTableSyncTask(uint64_t op_index, ::o
 void NameServerImpl::RunSyncTaskFun(uint32_t tid, const boost::function<bool()>& fun,
                                     std::shared_ptr<::openmldb::api::TaskInfo> task_info) {
     std::string value;
-    std::string table_sync_node = zk_op_sync_path_ + "/" + std::to_string(tid);
+    std::string table_sync_node = zk_path_.op_sync_path_ + "/" + std::to_string(tid);
     do {
         uint32_t task_num = 0;
         {
@@ -9532,8 +9534,8 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         response->set_msg("database already exists");
         PDLOG(INFO, "database %s already exists", db_name.c_str());
     } else {
-        if (IsClusterMode() && !zk_client_->CreateNode(zk_db_path_ + "/" + request->db(), "")) {
-            PDLOG(WARNING, "create db node[%s/%s] failed!", zk_db_path_.c_str(), request->db().c_str());
+        if (IsClusterMode() && !zk_client_->CreateNode(zk_path_.db_path_ + "/" + request->db(), "")) {
+            PDLOG(WARNING, "create db node[%s/%s] failed!", zk_path_.db_path_.c_str(), request->db().c_str());
             response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             return;
@@ -9606,8 +9608,8 @@ void NameServerImpl::DropDatabase(RpcController* controller, const DropDatabaseR
         return;
     }
     if (IsClusterMode()) {
-        if (!zk_client_->DeleteNode(zk_db_path_ + "/" + request->db())) {
-            PDLOG(WARNING, "drop db node[%s/%s] failed!", zk_db_path_.c_str(), request->db().c_str());
+        if (!zk_client_->DeleteNode(zk_path_.db_path_ + "/" + request->db())) {
+            PDLOG(WARNING, "drop db node[%s/%s] failed!", zk_path_.db_path_.c_str(), request->db().c_str());
             response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             return;
@@ -9883,7 +9885,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const CreateProc
     sp_info->CopyFrom(request->sp_info());
     const std::string& db_name = sp_info->db_name();
     const std::string& sp_name = sp_info->sp_name();
-    const std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "." + sp_name;
+    const std::string sp_data_path = zk_path_.db_sp_data_path_ + "/" + db_name + "." + sp_name;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (databases_.find(db_name) == databases_.end()) {
@@ -10030,7 +10032,7 @@ void NameServerImpl::DropProcedure(RpcController* controller, const DropProcedur
         }
     }
     DropProcedureOnTablet(db_name, sp_name);
-    std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "." + sp_name;
+    std::string sp_data_path = zk_path_.db_sp_data_path_ + "/" + db_name + "." + sp_name;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!zk_client_->DeleteNode(sp_data_path)) {
@@ -10060,18 +10062,18 @@ bool NameServerImpl::RecoverProcedureInfo() {
     db_table_sp_map_.clear();
     db_sp_table_map_.clear();
     std::vector<std::string> db_sp_vec;
-    if (!zk_client_->GetChildren(zk_db_sp_data_path_, db_sp_vec)) {
-        if (zk_client_->IsExistNode(zk_db_sp_data_path_) != 0) {
-            LOG(WARNING) << "zk_db_sp_data_path node [" << zk_db_sp_data_path_ << "] is not exist";
+    if (!zk_client_->GetChildren(zk_path_.db_sp_data_path_, db_sp_vec)) {
+        if (zk_client_->IsExistNode(zk_path_.db_sp_data_path_) != 0) {
+            LOG(WARNING) << "zk_db_sp_data_path node [" << zk_path_.db_sp_data_path_ << "] is not exist";
             return true;
         } else {
-            LOG(WARNING) << "get zk_db_sp_data_path [" << zk_db_sp_data_path_ << "] children node failed!";
+            LOG(WARNING) << "get zk_db_sp_data_path [" << zk_path_.db_sp_data_path_ << "] children node failed!";
             return false;
         }
     }
     LOG(INFO) << "need to recover db store procedure num: " << db_sp_vec.size();
     for (const auto& node : db_sp_vec) {
-        std::string sp_node = zk_db_sp_data_path_ + "/" + node;
+        std::string sp_node = zk_path_.db_sp_data_path_ + "/" + node;
         std::string value;
         if (!zk_client_->GetNodeValue(sp_node, value)) {
             LOG(WARNING) << "get db store procedure info failed! sp node: " << sp_node;
@@ -10110,7 +10112,7 @@ bool NameServerImpl::AllocateTableId(uint32_t* id) {
     }
     std::lock_guard<std::mutex> lock(mu_);
     if (IsClusterMode()) {
-        if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
+        if (!zk_client_->SetNodeValue(zk_path_.table_index_node_, std::to_string(table_index_ + 1))) {
             PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
             return false;
         }
