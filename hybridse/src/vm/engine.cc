@@ -44,7 +44,6 @@ EngineOptions::EngineOptions()
     : keep_ir_(false),
       compile_only_(false),
       plan_only_(false),
-      performance_sensitive_(true),
       cluster_optimized_(false),
       batch_request_optimized_(true),
       enable_expr_optimize_(true),
@@ -180,7 +179,7 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
 }
 
 bool Engine::Get(const std::string& sql, const std::string& db, RunSession& session,
-                 base::Status& status) {  // NOLINT (runtime/references)
+                 base::Status& status, bool performance_sensitive) {  // NOLINT (runtime/references)
     std::shared_ptr<CompileInfo> cached_info = GetCacheLocked(db, sql, session.engine_mode());
     if (cached_info && IsCompatibleCache(session, cached_info, status)) {
         session.SetCompileInfo(cached_info);
@@ -198,7 +197,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     sql_context.sql = sql;
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();
-    sql_context.is_performance_sensitive = options_.is_performance_sensitive();
+    sql_context.is_performance_sensitive = performance_sensitive;
     sql_context.is_cluster_optimized = options_.is_cluster_optimzied();
     sql_context.is_batch_request_optimized = options_.is_batch_request_optimized();
     sql_context.enable_batch_window_parallelization = options_.is_enable_batch_window_parallelization();
@@ -243,7 +242,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
                      const codec::Schema& parameter_schema,
                      const std::set<size_t>& common_column_indices, ExplainOutput* explain_output,
-                     base::Status* status) {
+                     base::Status* status, bool performance_sensitive) {
     if (explain_output == NULL || status == NULL) {
         LOG(WARNING) << "input args is invalid";
         return false;
@@ -261,7 +260,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     ctx.sql = sql;
     ctx.db = db;
     ctx.parameter_types = parameter_schema;
-    ctx.is_performance_sensitive = options_.is_performance_sensitive();
+    ctx.is_performance_sensitive = performance_sensitive;
     ctx.is_cluster_optimized = options_.is_cluster_optimzied();
     ctx.is_batch_request_optimized = !common_column_indices.empty();
     ctx.batch_request_info.common_column_indices = common_column_indices;
@@ -309,20 +308,22 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     return true;
 }
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
-                     ExplainOutput* explain_output, base::Status* status) {
+                     ExplainOutput* explain_output, base::Status* status, bool performance_sensitive) {
     const codec::Schema empty_schema;
-    return Explain(sql, db, engine_mode, empty_schema, {}, explain_output, status);
+    return Explain(sql, db, engine_mode, empty_schema, {}, explain_output, status, performance_sensitive);
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
-                     const codec::Schema& parameter_schema, ExplainOutput* explain_output, base::Status* status) {
-    return Explain(sql, db, engine_mode, parameter_schema, {}, explain_output, status);
+                     const codec::Schema& parameter_schema, ExplainOutput* explain_output, base::Status* status,
+                     bool performance_sensitive) {
+    return Explain(sql, db, engine_mode, parameter_schema, {}, explain_output, status, performance_sensitive);
 }
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
              const std::set<size_t>& common_column_indices,
-             ExplainOutput* explain_output, base::Status* status) {
+             ExplainOutput* explain_output, base::Status* status,
+             bool performance_sensitive) {
     const codec::Schema empty_schema;
-    return Explain(sql, db, engine_mode, empty_schema, common_column_indices, explain_output, status);
+    return Explain(sql, db, engine_mode, empty_schema, common_column_indices, explain_output, status, performance_sensitive);
 }
 
 void Engine::ClearCacheLocked(const std::string& db) {
@@ -330,6 +331,10 @@ void Engine::ClearCacheLocked(const std::string& db) {
     for (auto& cache : lru_cache_) {
         cache.second.erase(db);
     }
+}
+
+EngineOptions Engine::GetEngineOptions() {
+    return options_;
 }
 
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db, const std::string& sql,
