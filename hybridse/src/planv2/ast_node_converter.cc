@@ -1639,7 +1639,7 @@ base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t*
     bool is_null = false;
     if (int_literal->is_long()) {
         const int size = int_literal->image().size();
-        codec::StringRef str_ref(std::string(int_literal->image().substr(0, size - 1)));
+        codec::StringRef str_ref(size - 1, int_literal->image().data());
         udf::v1::string_to_bigint(&str_ref, val, &is_null);
     } else {
         codec::StringRef str_ref(std::string(int_literal->image()));
