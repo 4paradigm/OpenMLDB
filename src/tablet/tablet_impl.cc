@@ -4444,7 +4444,7 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
     while (true) {
         buffer.clear();
         ::openmldb::base::Slice record;
-        ::openmldb::base::Status status = reader.ReadRecord(&record, &buffer);
+        ::openmldb::log::Status status = reader.ReadRecord(&record, &buffer);
         if (status.IsWaitRecord() || status.IsEof()) {
             PDLOG(INFO,
                   "read path %s for table tid %u pid %u completed. succ_cnt "
