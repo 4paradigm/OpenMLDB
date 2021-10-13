@@ -159,7 +159,7 @@ object WindowAggPlan {
     val approxRatio = 0.05
 
     // 1. Analyze the data distribution
-    var distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
+    val distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
       // Do not use skew config
 
       val distributionDf = if (!ctx.getConf.enableWindowSkewExpandedAllOpt) {
@@ -193,17 +193,17 @@ object WindowAggPlan {
     }
 
     if (ctx.getConf.windowSkewOptCache) {
-      distributionDf = distributionDf.cache()
+      distributionDf.cache()
     }
 
     // 2. Add "part" column and "expand" column by joining the distribution table
-    var addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
+    val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
       repartitionColIndexes, orderByColIndex, partitionKeyColName, partIdColName, expandedRowColName)
     logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {
       distributionDf.unpersist()
-      addColumnsDf = addColumnsDf.cache()
+      addColumnsDf.cache()
     }
 
     // Update the column indexes and repartition keys
