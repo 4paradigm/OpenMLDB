@@ -23,6 +23,7 @@
 
 #include <ctype.h>
 #include <list>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -249,6 +250,9 @@ class NodeManager {
 
     SqlNode *MakeDeployStmt(const std::string& name, const SqlNode* stmt, bool if_not_exist);
     PlanNode *MakeDeployPlanNode(const std::string& name, const SqlNode* stmt, bool if_not_exist);
+
+    LoadDataNode* MakeLoadDataNode(const std::string& file_name, const std::vector<std::string>& table_path,
+                                   const std::shared_ptr<ImportOptions> options);
     // Make NodeList
     SqlNode *MakeExplainNode(const QueryNode *query,
                              node::ExplainType explain_type);

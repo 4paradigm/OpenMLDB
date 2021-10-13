@@ -224,3 +224,20 @@ cases:
               |      +-table: t1
               |      +-alias: <nil>
               +-window_list: []
+  - id: load_data_infile_1
+    sql: LOAD DATA INFILE 'hello.csv' INTO TABLE t1;
+    expect:
+      node_tree_str: |
+        +-node[kLoadDataStmt]
+          +-file: hello.csv
+          +-table_path: [t1]
+          +-options: <nil>
+  - id: load_data_infile_2
+    sql: LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS (charset = 'utf-8');
+    expect:
+      node_tree_str: |
+        +-node[kLoadDataStmt]
+          +-file: data.csv
+          +-table_path: [t1]
+          +-options:
+            +-charset: utf-8

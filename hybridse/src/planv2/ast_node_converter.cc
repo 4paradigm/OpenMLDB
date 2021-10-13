@@ -15,6 +15,7 @@
  */
 #include "planv2/ast_node_converter.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -381,8 +382,9 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         }
 
         case zetasql::AST_STRING_LITERAL: {
-            const zetasql::ASTStringLiteral* literal = ast_expression->GetAsOrDie<zetasql::ASTStringLiteral>();
-            *output = node_manager->MakeConstNode(literal->string_value());
+            std::string str_value;
+            CHECK_STATUS(AstStringLiteralToString(ast_expression, &str_value));
+            *output = node_manager->MakeConstNode((str_value));
             return base::Status::OK();
         }
 
@@ -598,8 +600,16 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             break;
         }
         case zetasql::AST_LOAD_DATA_STATEMENT: {
-            const auto ast_import_stmt = statement->GetAsOrNull<zetasql::ASTLoadDataStatement>();
-            CHECK_TRUE(ast_import_stmt != nullptr, common::kSqlAstError, "not an ASTLoadDataStatement");
+            const auto load_data_stmt = statement->GetAsOrNull<zetasql::ASTLoadDataStatement>();
+            CHECK_TRUE(load_data_stmt != nullptr, common::kSqlAstError, "not an ASTLoadDataStatement");
+            std::string file_name = load_data_stmt->in_file()->string_value();
+            std::vector<std::string> table_path;
+            CHECK_STATUS(AstPathExpressionToStringList(load_data_stmt->table_name(), table_path));
+            auto options = std::make_shared<node::ImportOptions>();
+            if (load_data_stmt->options_list() != nullptr) {
+                CHECK_STATUS(ConvertAstOptionsListToMap(load_data_stmt->options_list(), options));
+            }
+            *output = node_manager->MakeLoadDataNode(file_name, table_path, options);
             break;
         }
         case zetasql::AST_DEPLOY_STATEMENT: {
@@ -1737,6 +1747,19 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
         static_cast<node::ColumnIndexNode*>(node_manager->MakeColumnIndexNode(index_node_list));
     *output = dynamic_cast<node::CreateIndexNode*>(
         node_manager->MakeCreateIndexNode(index_name, table_path.back(), column_index_node));
+    return base::Status::OK();
+}
+
+base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options,
+                                        std::shared_ptr<node::ImportOptions> options_map) {
+    for (auto entry : options->options_entries()) {
+        std::string key = entry->name()->GetAsString();
+        auto entry_value = entry->value();
+        std::string value;
+        // NOTE: currently only support value type for string
+        CHECK_STATUS(AstStringLiteralToString(entry_value, &value));
+        options_map->emplace(key, value);
+    }
     return base::Status::OK();
 }
 }  // namespace plan

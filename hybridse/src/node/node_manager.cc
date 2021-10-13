@@ -749,6 +749,11 @@ PlanNode *NodeManager::MakeDeployPlanNode(const std::string& name, const SqlNode
     DeployPlanNode* node = new DeployPlanNode(name, stmt, if_not_exist);
     return RegisterNode(node);
 }
+LoadDataNode* NodeManager::MakeLoadDataNode(const std::string& file_name, const std::vector<std::string>& table_path,
+                                   const std::shared_ptr<ImportOptions> options) {
+    LoadDataNode* node = new LoadDataNode(file_name, table_path, options);
+    return RegisterNode(node);
+}
 
 AllNode *NodeManager::MakeAllNode(const std::string &relation_name) { return MakeAllNode(relation_name, ""); }
 

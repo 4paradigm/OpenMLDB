@@ -21,6 +21,7 @@
 
 #include <iostream>
 #include <map>
+#include <unordered_map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -40,6 +41,8 @@ class LlvmUdfGenBase;
 
 namespace hybridse {
 namespace node {
+
+typedef std::unordered_map<std::string, std::string> ImportOptions;
 
 // Global methods
 std::string NameOfSqlNodeType(const SqlNodeType &type);
@@ -1933,10 +1936,23 @@ class CmdNode : public SqlNode {
 
 class LoadDataNode : public SqlNode {
  public:
-    LoadDataNode() : SqlNode(kLoadDataStmt, 0, 0) {}
+    explicit LoadDataNode(const std::string& f, const std::vector<std::string>& tp,
+                          const std::shared_ptr<ImportOptions> op)
+        : SqlNode(kLoadDataStmt, 0, 0), file_(f), table_path_(tp), options_(op) {}
+    ~LoadDataNode() {}
+
+    const std::string& file() const { return file_; }
+    const std::vector<std::string>& table_path() const { return table_path_; }
+    const std::shared_ptr<ImportOptions>& options() const { return options_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
  private:
     const std::string file_;
-    const std::string table_name_;
+    const std::vector<std::string> table_path_;
+    // TODO(aceforeverd): extend value to other type like number, list
+    //    replace map with optimized class
+    std::shared_ptr<ImportOptions> options_ = nullptr;
 };
 
 class CreateIndexNode : public SqlNode {
