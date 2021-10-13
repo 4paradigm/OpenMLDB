@@ -16,6 +16,25 @@
 set -eE
 set -o nounset
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+fetch() {
+    if [ $# -ne 2 ]; then
+        echo "usage: fetch url output_file"
+        exit 1
+    fi
+    local url=$1
+    local file_name=$2
+    if [ ! -e "$file_name" ]; then
+        echo -e "${GREEN}downloading $url ...${NC}"
+        curl -SL -o "$file_name" "$url"
+        echo -e "${GREEN}download $url${NC}"
+    else
+        echo "$file_name" already downloaded
+    fi
+}
+
 pushd "$(dirname "$0")/.."
 ROOT=$(pwd)
 
@@ -42,19 +61,19 @@ mkdir -p "$THIRDSRC_PATH"
 pushd "${THIRDSRC_PATH}"
 
 if [[ "$OSTYPE" = "darwin"* ]]; then
-    curl -SLo thirdparty.tar.gz "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz"
-    curl -SLo libzetasql.tar.gz "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-darwin-x86_64.tar.gz"
+    fetch "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz" thirdparty.tar.gz
+    fetch "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-darwin-x86_64.tar.gz" libzetasql.tar.gz
 elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
     if [[ $ARCH = 'x86_64' ]]; then
-        curl -SLo thirdparty.tar.gz "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz"
-        curl -SLo libzetasql.tar.gz "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-x86_64.tar.gz"
+        fetch "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz" thirdparty.tar.gz
+        fetch "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-x86_64.tar.gz" libzetasql.tar.gz
     elif [[ $ARCH = 'aarch64' ]]; then
-        curl -SLo thirdparty.tar.gz "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz"
-        curl -SLo libzetasql.tar.gz "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-aarch64.tar.gz"
+        fetch "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz" thirdparty.tar.gz
+        fetch "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-aarch64.tar.gz" libzetasql.tar.gz
     fi
 fi
-
-tar xzf thirdparty.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
-tar xzf libzetasql.tar.gz -C "${THIRDPARTY_PATH}" --strip-components 1
 popd
+
+tar xzf "$THIRDSRC_PATH/thirdparty.tar.gz" -C "${THIRDPARTY_PATH}" --strip-components 1
+tar xzf "$THIRDSRC_PATH/libzetasql.tar.gz" -C "${THIRDPARTY_PATH}" --strip-components 1
 popd
