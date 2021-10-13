@@ -31,12 +31,19 @@ if [ -n "$VERSION" ] ; then
     # tweak VERSION based on rules:
     #  - 0.2.2     -> 0.2.2
     #  - 0.2.2(.*) -> 0.2.2-SNAPSHOT
+
     # shellcheck disable=SC2001
     SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
     BASE_VERSION=${VERSION%"$SUFFIX_VERSION"}
     if [ -n "$SUFFIX_VERSION" ]; then
-        VERSION="$BASE_VERSION-SNAPSHOT"
+      VERSION=${BASE_VERSION}
+      if [ -f openmldb-native/src/main/resources/libsql_jsdk.dylib ]; then
+        VERSION="${VERSION}-macos"
+      fi
+      VERSION="${VERSION}-SNAPSHOT"
     fi
+    echo "set version: ${VERSION}"
+
     mvn versions:set -DnewVersion="${VERSION}"
 fi
 mvn deploy -Dmaven.test.skip=true
