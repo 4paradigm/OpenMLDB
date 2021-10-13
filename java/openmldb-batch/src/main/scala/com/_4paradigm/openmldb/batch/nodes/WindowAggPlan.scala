@@ -159,7 +159,7 @@ object WindowAggPlan {
     val approxRatio = 0.05
 
     // 1. Analyze the data distribution
-    val distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
+    var distributionDf = if (ctx.getConf.windowSkewOptConfig.equals("")) {
       // Do not use skew config
 
       val distributionDf = if (!ctx.getConf.enableWindowSkewExpandedAllOpt) {
