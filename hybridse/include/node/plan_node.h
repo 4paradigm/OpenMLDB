@@ -19,6 +19,7 @@
 
 #include <glog/logging.h>
 #include <list>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -451,6 +452,25 @@ class DeployPlanNode : public LeafPlanNode {
     const std::string name_;
     const SqlNode* stmt_ = nullptr;
     const bool if_not_exist_ = false;
+};
+
+class LoadDataPlanNode : public LeafPlanNode {
+ public:
+    explicit LoadDataPlanNode(const std::string& f, const std::vector<std::string>& tp,
+                          const std::shared_ptr<ImportOptions> op)
+        : LeafPlanNode(kPlanTypeLoadData), file_(f), table_path_(tp), options_(op) {}
+    ~LoadDataPlanNode() {}
+
+    const std::string& file() const { return file_; }
+    const std::vector<std::string>& table_path() const { return table_path_; }
+    const std::shared_ptr<ImportOptions>& options() const { return options_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
+ private:
+    const std::string file_;
+    const std::vector<std::string> table_path_;
+    std::shared_ptr<ImportOptions> options_ = nullptr;
 };
 
 class InsertPlanNode : public LeafPlanNode {

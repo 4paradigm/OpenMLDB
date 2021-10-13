@@ -299,13 +299,14 @@ base::Status Planner::CreateWindowPlanNode(const node::WindowDefNode *w_ptr, nod
 }
 
 base::Status Planner::CreateDeployPlanNode(const node::DeployNode *root, node::PlanNode **output) {
-    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create table plan with null node");
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create deploy plan with null node");
     *output = node_manager_->MakeDeployPlanNode(root->name(), root->stmt(), root->is_if_not_exists());
     return base::Status::OK();
 }
 
 base::Status Planner::CreateLoadDataPlanNode(const node::LoadDataNode *root, node::PlanNode **output) {
-    LOG(WARNING) << "NOT IMPLEMENTED";
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create load data plan with null node");
+    *output = node_manager_->MakeLoadDataPlanNode(root->file(), root->table_path(), root->options());
     return base::Status::OK();
 }
 

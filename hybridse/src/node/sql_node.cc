@@ -169,21 +169,6 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const std::vec
     output << org_tab << SPACE_ST << item_name << ": " << ss.str();
 }
 
-template <typename K, typename V>
-void PrintValue(std::ostream &output, const std::string &org_tab, const std::unordered_map<K, V> &value,
-                const std::string &item_name, bool last_child) {
-    output << org_tab << SPACE_ST << item_name << ":";
-    if (value.empty()) {
-        output << " <nil>";
-        return;
-    }
-    auto new_tab = org_tab + INDENT + SPACE_ED;
-    for (auto it = value.cbegin(); it != value.cend(); ++it) {
-        output << "\n" << new_tab << SPACE_ST << it->first << ": "
-            << it->second;
-    }
-}
-
 bool SqlNode::Equals(const SqlNode *that) const {
     if (this == that) {
         return true;

@@ -686,5 +686,17 @@ void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {
     output << "\n";
     PrintSqlNode(output, new_tab, stmt(), "stmt", true);
 }
+
+void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, file_, "file", false);
+    output << "\n";
+    PrintValue(output, tab, table_path_, "table_path", false);
+    output << "\n";
+    PrintValue<std::string, std::string>(output, tab, *options_.get(), "options", true);
+}
 }  // namespace node
 }  // namespace hybridse

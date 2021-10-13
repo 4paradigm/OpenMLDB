@@ -15,6 +15,7 @@
  */
 
 #include "node/node_manager.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -438,8 +439,8 @@ UnaryExpr *NodeManager::MakeUnaryExprNode(ExprNode *left, FnOperator op) {
 }
 
 SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::string &db_name,
-                                          const std::string &table_name,
-                                          SqlNodeList *column_desc_list, SqlNodeList *table_option_list) {
+                                          const std::string &table_name, SqlNodeList *column_desc_list,
+                                          SqlNodeList *table_option_list) {
     int replica_num = 1;
     int partition_num = 1;
     SqlNodeList partition_meta_list;
@@ -740,18 +741,24 @@ SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name, const s
     return RegisterNode(node_ptr);
 }
 
-SqlNode *NodeManager::MakeDeployStmt(const std::string& name, const SqlNode* stmt, bool if_not_exist) {
-    DeployNode* node = new DeployNode(name, stmt, if_not_exist);
+SqlNode *NodeManager::MakeDeployStmt(const std::string &name, const SqlNode *stmt, bool if_not_exist) {
+    DeployNode *node = new DeployNode(name, stmt, if_not_exist);
     return RegisterNode(node);
 }
 
-PlanNode *NodeManager::MakeDeployPlanNode(const std::string& name, const SqlNode* stmt, bool if_not_exist) {
-    DeployPlanNode* node = new DeployPlanNode(name, stmt, if_not_exist);
+PlanNode *NodeManager::MakeDeployPlanNode(const std::string &name, const SqlNode *stmt, bool if_not_exist) {
+    DeployPlanNode *node = new DeployPlanNode(name, stmt, if_not_exist);
     return RegisterNode(node);
 }
-LoadDataNode* NodeManager::MakeLoadDataNode(const std::string& file_name, const std::vector<std::string>& table_path,
-                                   const std::shared_ptr<ImportOptions> options) {
-    LoadDataNode* node = new LoadDataNode(file_name, table_path, options);
+LoadDataNode *NodeManager::MakeLoadDataNode(const std::string &file_name, const std::vector<std::string> &table_path,
+                                            const std::shared_ptr<ImportOptions> options) {
+    LoadDataNode *node = new LoadDataNode(file_name, table_path, options);
+    return RegisterNode(node);
+}
+LoadDataPlanNode *NodeManager::MakeLoadDataPlanNode(const std::string &file_name,
+                                                    const std::vector<std::string> &table_path,
+                                                    const std::shared_ptr<ImportOptions> options) {
+    LoadDataPlanNode *node = new LoadDataPlanNode(file_name, table_path, options);
     return RegisterNode(node);
 }
 

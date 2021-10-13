@@ -253,6 +253,8 @@ class NodeManager {
 
     LoadDataNode* MakeLoadDataNode(const std::string& file_name, const std::vector<std::string>& table_path,
                                    const std::shared_ptr<ImportOptions> options);
+    LoadDataPlanNode* MakeLoadDataPlanNode(const std::string& file_name, const std::vector<std::string>& table_path,
+                                   const std::shared_ptr<ImportOptions> options);
     // Make NodeList
     SqlNode *MakeExplainNode(const QueryNode *query,
                              node::ExplainType explain_type);

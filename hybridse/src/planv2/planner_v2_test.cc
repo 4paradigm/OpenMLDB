@@ -1587,6 +1587,19 @@ TEST_F(PlannerV2Test, DeployPlanNodeTest) {
       |      +-alias: <nil>
       +-window_list: [])sql", plan_trees.front()->GetTreeString().c_str());
 }
+TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
+    const std::string sql = "LOAD DATA INFILE 'hello.csv' INTO TABLE t1 OPTIONS (key = 'cat');";
+    node::PlanNodeList plan_trees;
+    base::Status status;
+    NodeManager nm;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
+    ASSERT_EQ(1, plan_trees.size());
+    ASSERT_STREQ(R"sql(+-[kPlanTypeLoadData]
+  +-file: hello.csv
+  +-table_path: [t1]
+  +-options:
+    +-key: cat)sql", plan_trees.front()->GetTreeString().c_str());
+}
 //
 // TEST_F(PlannerTest, CreateSpParseTest) {
 //    std::string sql =
