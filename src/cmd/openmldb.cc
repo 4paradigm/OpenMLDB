@@ -18,11 +18,9 @@
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
-#include <sched.h>
 #include <snappy.h>
 #include <unistd.h>
 
-#include <csignal>
 #include <iostream>
 #include <memory>
 #include <random>
@@ -48,18 +46,15 @@
 #include "cmd/display.h"
 #include "cmd/sdk_iterator.h"
 #include "cmd/sql_cmd.h"
-#include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "common/tprinter.h"
-#include "config.h"  // NOLINT
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "version.h"  // NOLINT
-#include "vm/engine.h"
 
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
 using TabletClient = openmldb::client::TabletClient;
@@ -4882,17 +4877,17 @@ void StartAPIServer() {
         exit(1);
     }
     PDLOG(INFO, "start apiserver on endpoint %s with version %s", real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
-    server.set_version(OPENMLDB_VERSION.c_str());
+    server.set_version(OPENMLDB_VERSION);
     server.RunUntilAskedToQuit();
 }
 
 int main(int argc, char* argv[]) {
-    ::google::SetVersionString(OPENMLDB_VERSION.c_str());
+    ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
-        ::openmldb::cmd::HandleCli();
+        ::openmldb::cmd::ClusterSQLClient();
 #if defined(__linux__) || defined(__mac_tablet__)
     } else if (FLAGS_role == "tablet") {
         StartTablet();
