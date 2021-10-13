@@ -179,6 +179,16 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
                 output));
             break;
         }
+        case ::hybridse::node::kExprIn: {
+            CHECK_STATUS(BuildInExpr(
+                dynamic_cast<const ::hybridse::node::InExpr*>(node),
+                output));
+            break;
+        }
+        case ::hybridse::node::kExprList: {
+            CHECK_STATUS(BuildExprList(dynamic_cast<const ::hybridse::node::ExprListNode*>(node), output));
+            break;
+        }
         default: {
             return Status(kCodegenError,
                           "Expression Type " +
@@ -900,6 +910,32 @@ Status ExprIRBuilder::BuildBetweenExpr(const ::hybridse::node::BetweenExpr* node
 
     PredicateIRBuilder predicate_ir_builder(ctx_->GetCurrentBlock());
     return predicate_ir_builder.BuildBetweenExpr(lhs_value, low_value, high_value, node->is_not_between(), output);
+}
+
+Status ExprIRBuilder::BuildInExpr(const ::hybridse::node::InExpr* node, NativeValue* output) {
+    CHECK_TRUE(node != nullptr, kCodegenError, "Invalid in expr node");
+
+    NativeValue lhs_value;
+    CHECK_STATUS(Build(node->GetLhs(), &lhs_value), "failed to build lhs in InExpr");
+
+    NativeValue expr_value_list;
+    CHECK_STATUS(Build(node->GetInList(), &expr_value_list));
+
+    PredicateIRBuilder predicate_ir_builder(ctx_->GetCurrentBlock());
+    CHECK_STATUS(predicate_ir_builder.BuildInExpr(lhs_value, expr_value_list, node->IsNot(), output));
+
+    return Status::OK();
+}
+
+Status ExprIRBuilder::BuildExprList(const ::hybridse::node::ExprListNode* node, NativeValue* output) {
+    std::vector<NativeValue> expr_value_list;
+    for (const auto& ele : node->children_) {
+        NativeValue ele_value;
+        CHECK_STATUS(Build(ele, &ele_value));
+        expr_value_list.push_back(std::move(ele_value));
+    }
+    *output = NativeValue::CreateTuple(std::move(expr_value_list));
+    return Status::OK();
 }
 
 Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const int schema_idx, llvm::Value** slice_ptr,

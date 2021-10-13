@@ -6,6 +6,9 @@
 - Enhance plan optimization on `GROUP` and `FILTER` op [#350](https://github.com/4paradigm/OpenMLDB/pull/350)
 - Refactor status code and status macro. Save first message (root message) in `status.msg`. [#430](https://github.com/4paradigm/OpenMLDB/issues/430)
 
+### SQL Syntax
+- Support IN predicate: [#423](https://github.com/4paradigm/OpenMLDB/pull/423)
+
 ### Bug Fix
 - Fix plan error triggered by optimize the same plan node repeatedly. [#437](https://github.com/4paradigm/OpenMLDB/issues/437)
 

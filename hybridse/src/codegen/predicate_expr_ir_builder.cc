@@ -757,5 +757,29 @@ Status PredicateIRBuilder::BuildBetweenExpr(const NativeValue& lhs, const Native
     return Status::OK();
 }
 
+Status PredicateIRBuilder::BuildInExpr(const NativeValue& lhs, const NativeValue& in_list, bool is_not,
+                                       NativeValue* output) {
+    ::llvm::IRBuilder<> builder(block_);
+    NativeValue default_value = NativeValue::Create(builder.getInt1(false));
+    // PERF: preliminary implementation, expect to be slow
+    if (in_list.IsTuple()) {
+        for (size_t i = 0; i < in_list.GetFieldNum(); ++i) {
+            const auto& expr = in_list.GetField(i);
+
+            NativeValue eq_value;
+            CHECK_STATUS(BuildEqExpr(lhs, expr, &eq_value));
+
+            CHECK_STATUS(BuildOrExpr(default_value, eq_value, &default_value));
+        }
+    } else {
+        CHECK_TRUE(false, kCodegenError, "Un-supported: in_list value of IN predicate is not tuple");
+    }
+    if (is_not) {
+        CHECK_STATUS(BuildNotExpr(default_value, &default_value));
+    }
+    *output = default_value;
+    return Status::OK();
+}
+
 }  // namespace codegen
 }  // namespace hybridse

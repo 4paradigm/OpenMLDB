@@ -15,6 +15,7 @@
  */
 
 #include "node/expr_node.h"
+#include <absl/strings/str_cat.h>
 #include "codec/fe_row_codec.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/type_ir_builder.h"
@@ -732,6 +733,16 @@ ExprListNode* ExprListNode::ShadowCopy(NodeManager* nm) const {
     return list;
 }
 
+Status ExprListNode::InferAttr(ExprAnalysisContext* ctx) {
+    auto top_type = ctx->node_manager()->MakeTypeNode(kTuple);
+    for (const auto& ele : children_) {
+        top_type->AddGeneric(ele->GetOutputType(), ele->nullable());
+    }
+    SetOutputType(top_type);
+    SetNullable(false);
+    return Status::OK();
+}
+
 OrderByNode* OrderByNode::ShadowCopy(NodeManager* nm) const {
     return nm->MakeOrderByNode(order_expressions_);
 }
@@ -773,6 +784,27 @@ Status BetweenExpr::InferAttr(ExprAnalysisContext* ctx) {
 
     SetOutputType(top_type);
     SetNullable(GetLhs()->nullable() || GetLow()->nullable() || GetHigh()->nullable());
+    return Status::OK();
+}
+
+InExpr* InExpr::ShadowCopy(NodeManager *nm) const {
+    return nm->MakeInExpr(GetLhs(), GetInList(), IsNot());
+}
+
+Status InExpr::InferAttr(ExprAnalysisContext* ctx) {
+    CHECK_TRUE(kExprList == GetInList()->GetExprType(), kTypeError,
+               absl::StrCat("Un-support in_list type in In Expression, expect ExprList, but got ",
+                            ExprTypeName(GetInList()->GetExprType())));
+    bool nullable = GetLhs()->nullable();
+    const auto in_list = dynamic_cast<const ExprListNode*>(GetInList());
+    for (const auto& ele : in_list->children_) {
+        const TypeNode* cmp_type = nullptr;
+        CHECK_STATUS(
+            CompareTypeAccept(ctx->node_manager(), GetLhs()->GetOutputType(), ele->GetOutputType(), &cmp_type));
+        nullable |= ele->nullable();
+    }
+    SetOutputType(ctx->node_manager()->MakeTypeNode(kBool));
+    SetNullable(nullable);
     return Status::OK();
 }
 

@@ -30,10 +30,10 @@
 
 using ::openmldb::base::ParseFileNameFromPath;
 using ::openmldb::base::Slice;
-using ::openmldb::base::Status;
 using ::openmldb::log::NewSeqFile;
 using ::openmldb::log::Reader;
 using ::openmldb::log::SequentialFile;
+using ::openmldb::log::Status;
 
 namespace openmldb {
 namespace tools {

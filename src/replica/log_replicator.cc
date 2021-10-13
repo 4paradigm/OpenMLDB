@@ -87,7 +87,7 @@ void LogReplicator::SyncToDisk() {
     std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ != NULL) {
         uint64_t consumed = ::baidu::common::timer::get_micros();
-        ::openmldb::base::Status status = wh_->Sync();
+        ::openmldb::log::Status status = wh_->Sync();
         if (!status.ok()) {
             PDLOG(WARNING, "fail to sync data for path %s", path_.c_str());
         }
@@ -200,7 +200,7 @@ bool LogReplicator::Recover() {
         ::openmldb::log::SequentialFile* seq_file = ::openmldb::log::NewSeqFile(full_path, fd);
         ::openmldb::log::Reader reader(seq_file, NULL, false, 0, false);
         ::openmldb::base::Slice record;
-        ::openmldb::base::Status status = reader.ReadRecord(&record, &buffer);
+        ::openmldb::log::Status status = reader.ReadRecord(&record, &buffer);
         delete seq_file;
         if (!status.ok()) {
             PDLOG(WARNING, "fail to get offset from file %s", full_path.c_str());
@@ -303,7 +303,7 @@ bool LogReplicator::ApplyEntry(const LogEntry& entry) {
     std::string buffer;
     entry.SerializeToString(&buffer);
     ::openmldb::base::Slice slice(buffer.c_str(), buffer.size());
-    ::openmldb::base::Status status = wh_->Write(slice);
+    ::openmldb::log::Status status = wh_->Write(slice);
     if (!status.ok()) {
         PDLOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
         return false;
@@ -443,7 +443,7 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
     std::string buffer;
     entry.SerializeToString(&buffer);
     ::openmldb::base::Slice slice(buffer);
-    ::openmldb::base::Status status = wh_->Write(slice);
+    ::openmldb::log::Status status = wh_->Write(slice);
     if (!status.ok()) {
         PDLOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
         return false;

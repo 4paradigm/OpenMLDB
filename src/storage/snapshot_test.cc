@@ -32,6 +32,7 @@
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_writer.h"
+#include "log/status.h"
 #include "proto/tablet.pb.h"
 #include "storage/binlog.h"
 #include "storage/mem_table.h"
@@ -119,7 +120,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     MemTableSnapshot snapshot(4, 3, log_part, FLAGS_db_root_path);
@@ -144,7 +145,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     for (; count < 30; count++) {
@@ -158,7 +159,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
         if (count == 25) {
             offset++;
@@ -172,7 +173,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
             std::string buffer1;
             entry1.SerializeToString(&buffer1);
             ::openmldb::base::Slice slice1(buffer1);
-            ::openmldb::base::Status status = wh->Write(slice1);
+            ::openmldb::log::Status status = wh->Write(slice1);
         }
     }
     uint64_t snapshot_offset = 0;
@@ -244,7 +245,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -318,7 +319,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -382,7 +383,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
             bool ok = entry.SerializeToString(&val);
             ASSERT_TRUE(ok);
             Slice sval(val.c_str(), val.size());
-            Status status = writer.AddRecord(sval);
+            ::openmldb::log::Status status = writer.AddRecord(sval);
             ASSERT_TRUE(status.ok());
         }
         {
@@ -400,7 +401,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
             bool ok = entry.SerializeToString(&val);
             ASSERT_TRUE(ok);
             Slice sval(val.c_str(), val.size());
-            Status status = writer.AddRecord(sval);
+            ::openmldb::log::Status status = writer.AddRecord(sval);
             ASSERT_TRUE(status.ok());
         }
         writer.EndLog();
@@ -421,7 +422,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         bool ok = entry.SerializeToString(&val);
         ASSERT_TRUE(ok);
         Slice sval(val.c_str(), val.size());
-        Status status = writer.AddRecord(sval);
+        ::openmldb::log::Status status = writer.AddRecord(sval);
         ASSERT_TRUE(status.ok());
         entry.set_pk("test1");
         entry.set_ts(9528);
@@ -518,7 +519,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
             bool ok = entry.SerializeToString(&val);
             ASSERT_TRUE(ok);
             Slice sval(val.c_str(), val.size());
-            Status status = writer.AddRecord(sval);
+            ::openmldb::log::Status status = writer.AddRecord(sval);
             ASSERT_TRUE(status.ok());
         }
         {
@@ -536,7 +537,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
             bool ok = entry.SerializeToString(&val);
             ASSERT_TRUE(ok);
             Slice sval(val.c_str(), val.size());
-            Status status = writer.AddRecord(sval);
+            ::openmldb::log::Status status = writer.AddRecord(sval);
             ASSERT_TRUE(status.ok());
         }
         writer.EndLog();
@@ -557,7 +558,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
         bool ok = entry.SerializeToString(&val);
         ASSERT_TRUE(ok);
         Slice sval(val.c_str(), val.size());
-        Status status = writer.AddRecord(sval);
+        ::openmldb::log::Status status = writer.AddRecord(sval);
         ASSERT_TRUE(status.ok());
         entry.set_pk("test1");
         entry.set_ts(9528);
@@ -642,7 +643,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
         bool ok = entry.SerializeToString(&val);
         ASSERT_TRUE(ok);
         Slice sval(val.c_str(), val.size());
-        Status status = writer.AddRecord(sval);
+        ::openmldb::log::Status status = writer.AddRecord(sval);
         ASSERT_TRUE(status.ok());
         entry.set_pk("test0");
         entry.set_ts(9528);
@@ -671,7 +672,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
         bool ok = entry.SerializeToString(&val);
         ASSERT_TRUE(ok);
         Slice sval(val.c_str(), val.size());
-        Status status = writer.AddRecord(sval);
+        ::openmldb::log::Status status = writer.AddRecord(sval);
         ASSERT_TRUE(status.ok());
         entry.set_pk("test1");
         entry.set_ts(9528);
@@ -741,7 +742,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
         if (count % 2 == 0) {
             ::openmldb::api::LogEntry entry1;
@@ -754,7 +755,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
             std::string buffer1;
             entry1.SerializeToString(&buffer1);
             ::openmldb::base::Slice slice1(buffer1);
-            ::openmldb::base::Status status = wh->Write(slice1);
+            ::openmldb::log::Status status = wh->Write(slice1);
             offset++;
         }
         if (count % 4 == 0) {
@@ -762,7 +763,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
             std::string buffer2;
             entry.SerializeToString(&buffer2);
             ::openmldb::base::Slice slice2(buffer2);
-            ::openmldb::base::Status status = wh->Write(slice2);
+            ::openmldb::log::Status status = wh->Write(slice2);
             offset++;
         }
     }
@@ -783,7 +784,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
     }
     uint64_t offset_value;
@@ -820,7 +821,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
     }
     {
@@ -835,7 +836,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
     }
 
@@ -898,7 +899,7 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
     }
     RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
@@ -922,7 +923,7 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
     }
     uint64_t offset_value;
@@ -962,7 +963,7 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
     }
     {
@@ -976,7 +977,7 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
     }
 
@@ -1042,7 +1043,7 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
 
         google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> d_list;
         ::openmldb::api::Dimension* d_ptr2 = d_list.Add();
@@ -1094,7 +1095,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         table->Put(key, count, "value", 5);
         offset++;
     }
@@ -1110,7 +1111,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         table->Put(key, count, "value", 5);
         offset++;
     }
@@ -1152,7 +1153,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         table->Put(key, count, "value", 5);
         offset++;
     }
@@ -1228,7 +1229,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -1250,7 +1251,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -1268,7 +1269,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -1369,7 +1370,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
         bool ok = entry.SerializeToString(&val);
         ASSERT_TRUE(ok);
         Slice sval(val.c_str(), val.size());
-        Status status = writer.AddRecord(sval);
+        ::openmldb::log::Status status = writer.AddRecord(sval);
         ASSERT_TRUE(status.ok());
         writer.EndLog();
     }
@@ -1459,7 +1460,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
         if (count % 2 == 0) {
             ::openmldb::api::LogEntry entry1;
@@ -1472,7 +1473,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
             std::string buffer1;
             entry1.SerializeToString(&buffer1);
             ::openmldb::base::Slice slice1(buffer1);
-            ::openmldb::base::Status status = wh->Write(slice1);
+            ::openmldb::log::Status status = wh->Write(slice1);
             offset++;
         }
         if (count % 4 == 0) {
@@ -1480,7 +1481,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
             std::string buffer2;
             entry.SerializeToString(&buffer2);
             ::openmldb::base::Slice slice2(buffer2);
-            ::openmldb::base::Status status = wh->Write(slice2);
+            ::openmldb::log::Status status = wh->Write(slice2);
             offset++;
         }
     }
@@ -1501,7 +1502,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
     }
     uint64_t offset_value;
@@ -1559,7 +1560,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
     }
     {
@@ -1574,7 +1575,7 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         offset++;
     }
     // end_offset less than last make snapshot offset, MakeSnapshot will fail.
@@ -1622,7 +1623,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -1687,7 +1688,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
@@ -1715,7 +1716,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
-        ::openmldb::base::Status status = wh->Write(slice);
+        ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();

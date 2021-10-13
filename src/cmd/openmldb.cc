@@ -2062,12 +2062,12 @@ void HandleShowReplicaCluster(const std::vector<std::string>& parts, ::openmldb:
     tp.Print(true);
 }
 
-bool HasIsTsCol(const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& list) {
+bool HasTsCol(const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& list) {
     if (list.empty()) {
         return false;
     }
     for (auto it = list.begin(); it != list.end(); it++) {
-        if (it->has_ttl()) {
+        if (!it->ts_name().empty()) {
             return true;
         }
     }
@@ -2110,7 +2110,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::openmldb::client::NsCl
     }
     uint64_t ts = 0;
     uint32_t start_index = 0;
-    if (!HasIsTsCol(tables[0].column_key())) {
+    if (!HasTsCol(tables[0].column_key())) {
         try {
             ts = boost::lexical_cast<uint64_t>(parts[2]);
         } catch (std::exception const& e) {
@@ -2477,6 +2477,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::openmldb::clie
         return;
     }
     ns_table_info.set_db(client->GetDb());
+    ns_table_info.set_format_version(1);
     std::string msg;
     if (!client->CreateTable(ns_table_info, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;
@@ -2844,13 +2845,6 @@ void HandleNSClientSetTablePartition(const std::vector<std::string>& parts, ::op
         return;
     }
     std::cout << "set table partition ok" << std::endl;
-}
-
-void HandleNsClientSQL(const std::string sql, ::openmldb::client::NsClient* client) {
-    std::string msg;
-    if (!client->ExecuteSQL(sql, msg)) {
-        std::cout << "execute sql failed, sql:" << sql << " , msg: " << msg << std::endl;
-    }
 }
 
 void HandleNSClientGetTablePartition(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
@@ -4691,7 +4685,6 @@ void StartNsClient() {
     std::string display_prefix = endpoint + " " + client.GetDb() + "> ";
     std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
-    bool use_sql = false;
     bool multi_line = false;
     while (true) {
         std::string buffer;
@@ -4716,23 +4709,6 @@ void StartNsClient() {
             if (buffer.empty()) {
                 continue;
             }
-        }
-        if (use_sql) {
-            sql.append(buffer);
-            if (sql == "exit" || sql == "quit") {
-                use_sql = false;
-                display_prefix = endpoint + " " + client.GetDb() + "> ";
-                multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
-                ::openmldb::base::linenoiseSetMultiLine(0);
-            } else if (sql.back() == ';') {
-                HandleNsClientSQL(sql, &client);
-                multi_line = false;
-                sql.clear();
-            } else {
-                sql.append("\n");
-                multi_line = true;
-            }
-            continue;
         }
         std::vector<std::string> parts;
         ::openmldb::base::SplitString(buffer, " ", parts);
@@ -4828,12 +4804,6 @@ void StartNsClient() {
             HandleNsUseDb(parts, &client);
         } else if (parts[0] == "dropdb") {
             HandleNsDropDb(parts, &client);
-        } else if (parts[0] == "sql") {
-            use_sql = true;
-            display_prefix = endpoint + " " + client.GetDb() + " sql> ";
-            multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
-            ::openmldb::base::linenoiseSetMultiLine(1);
-            sql.clear();
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

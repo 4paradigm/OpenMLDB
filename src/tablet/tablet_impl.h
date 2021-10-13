@@ -40,6 +40,7 @@
 #include "tablet/bulk_load_mgr.h"
 #include "tablet/combine_iterator.h"
 #include "tablet/file_receiver.h"
+#include "tablet/sp_cache.h"
 #include "vm/engine.h"
 #include "zk/zk_client.h"
 
@@ -65,92 +66,6 @@ typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table>>> Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator>>> Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot>>> Snapshots;
 
-// tablet cache entry for sql procedure
-struct SQLProcedureCacheEntry {
-    std::shared_ptr<hybridse::sdk::ProcedureInfo> procedure_info;
-    std::shared_ptr<hybridse::vm::CompileInfo> request_info;
-    std::shared_ptr<hybridse::vm::CompileInfo> batch_request_info;
-
-    SQLProcedureCacheEntry(const std::shared_ptr<hybridse::sdk::ProcedureInfo> pinfo,
-                           std::shared_ptr<hybridse::vm::CompileInfo> rinfo,
-                           std::shared_ptr<hybridse::vm::CompileInfo> brinfo)
-        : procedure_info(pinfo), request_info(rinfo), batch_request_info(brinfo) {}
-};
-class SpCache : public hybridse::vm::CompileInfoCache {
- public:
-    SpCache() : db_sp_map_() {}
-    ~SpCache() {}
-    void InsertSQLProcedureCacheEntry(const std::string& db, const std::string& sp_name,
-                                      std::shared_ptr<hybridse::sdk::ProcedureInfo> procedure_info,
-                                      std::shared_ptr<hybridse::vm::CompileInfo> request_info,
-                                      std::shared_ptr<hybridse::vm::CompileInfo> batch_request_info) {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto& sp_map_of_db = db_sp_map_[db];
-        sp_map_of_db.insert(
-            std::make_pair(sp_name, SQLProcedureCacheEntry(procedure_info, request_info, batch_request_info)));
-    }
-
-    void DropSQLProcedureCacheEntry(const std::string& db, const std::string& sp_name) {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        db_sp_map_[db].erase(sp_name);
-        return;
-    }
-    const bool ProcedureExist(const std::string& db, const std::string& sp_name) {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto& sp_map_of_db = db_sp_map_[db];
-        auto sp_it = sp_map_of_db.find(sp_name);
-        return sp_it != sp_map_of_db.end();
-    }
-    std::shared_ptr<hybridse::vm::CompileInfo> GetRequestInfo(const std::string& db, const std::string& sp_name,
-                                                              hybridse::base::Status& status) override {  // NOLINT
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto db_it = db_sp_map_.find(db);
-        if (db_it == db_sp_map_.end()) {
-            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
-                                            "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<hybridse::vm::CompileInfo>();
-        }
-        auto sp_it = db_it->second.find(sp_name);
-        if (sp_it == db_it->second.end()) {
-            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
-                                            "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<hybridse::vm::CompileInfo>();
-        }
-
-        if (!sp_it->second.request_info) {
-            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
-                                            "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<hybridse::vm::CompileInfo>();
-        }
-        return sp_it->second.request_info;
-    }
-    std::shared_ptr<hybridse::vm::CompileInfo> GetBatchRequestInfo(const std::string& db, const std::string& sp_name,
-                                                                   hybridse::base::Status& status) override {  // NOLINT
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto db_it = db_sp_map_.find(db);
-        if (db_it == db_sp_map_.end()) {
-            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
-                                            "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<hybridse::vm::CompileInfo>();
-        }
-        auto sp_it = db_it->second.find(sp_name);
-        if (sp_it == db_it->second.end()) {
-            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
-                                            "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<hybridse::vm::CompileInfo>();
-        }
-        if (!sp_it->second.batch_request_info) {
-            status = hybridse::base::Status(hybridse::common::kProcedureNotFound,
-                                            "store procedure[" + sp_name + "] not found in db[" + db + "]");
-            return std::shared_ptr<hybridse::vm::CompileInfo>();
-        }
-        return sp_it->second.batch_request_info;
-    }
-
- private:
-    std::map<std::string, std::map<std::string, SQLProcedureCacheEntry>> db_sp_map_;
-    SpinMutex spin_mutex_;
-};
 class TabletImpl : public ::openmldb::api::TabletServer {
  public:
     TabletImpl();
@@ -466,6 +381,10 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                   openmldb::api::SQLBatchRequestQueryResponse* response,
                                   butil::IOBuf& buf);  // NOLINT
 
+    inline bool IsClusterMode() const {
+        return startup_mode_ == ::openmldb::type::StartupMode::kCluster;
+    }
+
  private:
     void RunRequestQuery(RpcController* controller, const openmldb::api::QueryRequest& request,
                          ::hybridse::vm::RequestRunSession& session,                  // NOLINT
@@ -504,6 +423,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::shared_ptr<SpCache> sp_cache_;
     std::string notify_path_;
     std::string sp_root_path_;
+    ::openmldb::type::StartupMode startup_mode_;
 };
 
 }  // namespace tablet
