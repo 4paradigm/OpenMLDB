@@ -33,9 +33,9 @@ for COMPONENT in $COMPONENTS; do
     fi
     if [ "$OS" = 'darwin' ]; then
         nohup ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true > /dev/null 2>&1 &
-        if [ $? -eq 0 ]; then
+        sleep 1
+        if kill -0 $! > /dev/null 2>&1; then
             echo $! > "$PID_FILE"
-            sleep 1
         else
             echo "$COMPONENT start failed"
             exit 1
