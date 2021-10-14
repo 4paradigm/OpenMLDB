@@ -115,7 +115,7 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
                 ScopeVar sv;
 
                 vm::SchemasContext schemas_context;
-                schemas_context.BuildTrivial({&table});
+                schemas_context.BuildTrivial(table.catalog(), {&table});
                 MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
 
@@ -129,7 +129,7 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
                 // build column
                 size_t schema_idx;
                 size_t col_idx;
-                schemas_context.ResolveColumnIndexByName("", col, &schema_idx,
+                schemas_context.ResolveColumnIndexByName("", "", col, &schema_idx,
                                                          &col_idx);
 
                 ::llvm::Value* column = NULL;
@@ -243,12 +243,12 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                 ScopeVar sv;
 
                 vm::SchemasContext schemas_context;
-                schemas_context.BuildTrivial({&table});
+                schemas_context.BuildTrivial(table.catalog(), {&table});
                 MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
                 size_t schema_idx;
                 size_t col_idx;
-                schemas_context.ResolveColumnIndexByName("", col, &schema_idx,
+                schemas_context.ResolveColumnIndexByName("", "", col, &schema_idx,
                                                          &col_idx);
 
                 ListIRBuilder list_builder(entry_block, &sv);
@@ -361,12 +361,12 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 ScopeVar sv;
 
                 vm::SchemasContext schemas_context;
-                schemas_context.BuildTrivial({&table});
+                schemas_context.BuildTrivial(table.catalog(), {&table});
                 MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
                 size_t schema_idx;
                 size_t col_idx;
-                schemas_context.ResolveColumnIndexByName("", col, &schema_idx,
+                schemas_context.ResolveColumnIndexByName("", "", col, &schema_idx,
                                                          &col_idx);
 
                 ListIRBuilder list_builder(entry_block, &sv);
@@ -450,12 +450,12 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                 ScopeVar sv;
 
                 vm::SchemasContext schemas_context;
-                schemas_context.BuildTrivial({&table});
+                schemas_context.BuildTrivial(table.catalog(), {&table});
                 MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
                 size_t schema_idx;
                 size_t col_idx;
-                schemas_context.ResolveColumnIndexByName("", col, &schema_idx,
+                schemas_context.ResolveColumnIndexByName("", "", col, &schema_idx,
                                                          &col_idx);
 
                 ListIRBuilder list_builder(entry_block, &sv);

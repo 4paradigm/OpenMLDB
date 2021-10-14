@@ -2954,8 +2954,8 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         if (!table->GetDB().empty()) {
             catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
-        // bulk load data receiver should be destroyed too, and can't do at the same time. So keep data receiver destroy
-        // before table destroy
+        // bulk load data receiver should be destroyed too, and can't do table and data receiver destroy at the same
+        // time. So keep data receiver destroy before table destroy.
         bulk_load_mgr_.RemoveReceiver(tid, pid);
         code = 0;
     } while (false);

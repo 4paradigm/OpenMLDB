@@ -32,9 +32,9 @@ class PlanNodeTest : public ::testing::Test {
 };
 
 TEST_F(PlanNodeTest, PlanNodeEqualsTest) {
-    PlanNode *table1 = manager_->MakeTablePlanNode("t1");
-    PlanNode *table2 = manager_->MakeTablePlanNode("t1");
-    PlanNode *table3 = manager_->MakeTablePlanNode("t2");
+    PlanNode *table1 = manager_->MakeTablePlanNode("db1", "t1");
+    PlanNode *table2 = manager_->MakeTablePlanNode("db1", "t1");
+    PlanNode *table3 = manager_->MakeTablePlanNode("db2", "t2");
     ASSERT_TRUE(table1->Equals(table1));
     ASSERT_TRUE(table1->Equals(table2));
     ASSERT_FALSE(table1->Equals(table3));

@@ -104,6 +104,23 @@ struct OPData {
     std::list<std::shared_ptr<Task>> task_list_;
 };
 
+struct ZkPath {
+    std::string root_path_;
+    std::string db_path_;
+    std::string table_index_node_;
+    std::string term_node_;
+    std::string table_data_path_;
+    std::string db_table_data_path_;
+    std::string db_sp_data_path_;
+    std::string auto_failover_node_;
+    std::string table_changed_notify_node_;
+    std::string offline_endpoint_lock_node_;
+    std::string zone_data_path_;
+    std::string op_index_node_;
+    std::string op_data_path_;
+    std::string op_sync_path_;
+};
+
 class NameServerImplTest;
 class NameServerImplRemoteTest;
 
@@ -742,25 +759,12 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::shared_ptr<::openmldb::nameserver::ClusterInfo>> nsc_;
     ZoneInfo zone_info_;
     ZkClient* zk_client_;
+    ZkPath zk_path_;
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;
     ::baidu::common::ThreadPool task_thread_pool_;
-    std::string zk_table_index_node_;
-    std::string zk_term_node_;
-    std::string zk_table_data_path_;
-    std::string zk_db_path_;
-    std::string zk_db_table_data_path_;
-    std::string zk_db_sp_data_path_;
-    std::string zk_auto_failover_node_;
-    std::string zk_auto_recover_table_node_;
-    std::string zk_table_changed_notify_node_;
-    std::string zk_offline_endpoint_lock_node_;
-    std::string zk_zone_data_path_;
     uint32_t table_index_;
     uint64_t term_;
-    std::string zk_op_index_node_;
-    std::string zk_op_data_path_;
-    std::string zk_op_sync_path_;
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::list<std::shared_ptr<OPData>> done_op_list_;
@@ -774,7 +778,6 @@ class NameServerImpl : public NameServer {
     std::atomic<uint64_t> task_rpc_version_;
     std::map<uint64_t, std::list<std::shared_ptr<::openmldb::api::TaskInfo>>> task_map_;
     std::set<std::string> databases_;
-    std::string zk_root_path_;
     std::string endpoint_;
     std::map<std::string, std::string> real_ep_map_;
     std::map<std::string, std::string> remote_real_ep_map_;
