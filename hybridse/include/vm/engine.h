@@ -169,12 +169,22 @@ class RunSession {
     /// Return the engine mode of this run session
     EngineMode engine_mode() const { return engine_mode_; }
 
+    // Set perfromance sensitive for query
+    void SetPerformanceSensitive(bool performance_sensitive) {
+        performance_sensitive_ = performance_sensitive;
+    }
+    // Get if enable performance sensitive or not
+    bool GetPerformanceSensitive() {
+        return performance_sensitive_;
+    }
+
  protected:
     std::shared_ptr<hybridse::vm::CompileInfo> compile_info_;
     hybridse::vm::EngineMode engine_mode_;
     bool is_debug_;
     std::string sp_name_;
     friend Engine;
+    bool performance_sensitive_;
 };
 
 /// \brief BatchRunSession is a kind of RunSession designed for batch mode query.
@@ -371,9 +381,11 @@ class Engine {
                             base::Status& status);  // NOLINT
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
-                                                EngineMode engine_mode);
+                                                EngineMode engine_mode,
+                                                bool performance_sensitive);
     bool SetCacheLocked(const std::string& db, const std::string& sql,
                         EngineMode engine_mode,
+                        bool performance_sensitive,
                         std::shared_ptr<CompileInfo> info);
 
     bool IsCompatibleCache(RunSession& session,  // NOLINT

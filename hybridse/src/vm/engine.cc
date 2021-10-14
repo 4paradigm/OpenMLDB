@@ -180,7 +180,8 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
 
 bool Engine::Get(const std::string& sql, const std::string& db, RunSession& session,
                  base::Status& status, bool performance_sensitive) {  // NOLINT (runtime/references)
-    std::shared_ptr<CompileInfo> cached_info = GetCacheLocked(db, sql, session.engine_mode());
+                 // tobe
+    std::shared_ptr<CompileInfo> cached_info = GetCacheLocked(db, sql, session.engine_mode(), true);
     if (cached_info && IsCompatibleCache(session, cached_info, status)) {
         session.SetCompileInfo(cached_info);
         return true;
@@ -224,7 +225,8 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
         }
     }
 
-    SetCacheLocked(db, sql, session.engine_mode(), info);
+// tobe
+    SetCacheLocked(db, sql, session.engine_mode(), true, info);
     session.SetCompileInfo(info);
     if (session.is_debug_) {
         std::ostringstream plan_oss;
@@ -329,7 +331,10 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
 void Engine::ClearCacheLocked(const std::string& db) {
     std::lock_guard<base::SpinMutex> lock(mu_);
     for (auto& cache : lru_cache_) {
-        cache.second.erase(db);
+        auto& mode_cache = cache.second;
+        for (auto iter = mode_cache.begin(); iter != mode_cache.end(); iter++) {
+            mode_cache[iter->first].erase(db);
+        }
     }
 }
 
@@ -338,18 +343,30 @@ EngineOptions Engine::GetEngineOptions() {
 }
 
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db, const std::string& sql,
-                                                    EngineMode engine_mode) {
+                                                    EngineMode engine_mode, bool performance_sensitive) {
     std::lock_guard<base::SpinMutex> lock(mu_);
+    // Check mode
     auto mode_iter = lru_cache_.find(engine_mode);
     if (mode_iter == lru_cache_.end()) {
         return nullptr;
     }
     auto& mode_cache = mode_iter->second;
-    auto db_iter = mode_cache.find(db);
-    if (db_iter == mode_cache.end()) {
+
+    // Check performance_sensitive
+    auto performance_sensitive_iter = mode_cache.find(performance_sensitive);
+    if (performance_sensitive_iter == mode_cache.end()) {
+        return nullptr;
+    }
+    auto& performance_sensitive_cache = performance_sensitive_iter->second;
+
+    // Check db
+    auto db_iter = performance_sensitive_cache.find(db);
+    if (db_iter == performance_sensitive_cache.end()) {
         return nullptr;
     }
     auto& lru = db_iter->second;
+
+    // Check SQL
     auto value = lru.get(sql);
     if (value == boost::none) {
         return nullptr;
@@ -359,13 +376,15 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db, const
 }
 
 bool Engine::SetCacheLocked(const std::string& db, const std::string& sql, EngineMode engine_mode,
-                            std::shared_ptr<CompileInfo> info) {
+                            bool performance_sensitive, std::shared_ptr<CompileInfo> info) {
     std::lock_guard<base::SpinMutex> lock(mu_);
+
     auto& mode_cache = lru_cache_[engine_mode];
+    auto& performance_sensitive_cache = mode_cache[performance_sensitive];
     using BoostLRU = boost::compute::detail::lru_cache<std::string, std::shared_ptr<CompileInfo>>;
-    std::map<std::string, BoostLRU>::iterator db_iter = mode_cache.find(db);
-    if (db_iter == mode_cache.end()) {
-        db_iter = mode_cache.insert(db_iter, {db, BoostLRU(options_.max_sql_cache_size())});
+    std::map<std::string, BoostLRU>::iterator db_iter = performance_sensitive_cache.find(db);
+    if (db_iter == performance_sensitive_cache.end()) {
+        db_iter = performance_sensitive_cache.insert(db_iter, {db, BoostLRU(options_.max_sql_cache_size())});
     }
     auto& lru = db_iter->second;
     auto value = lru.get(sql);
