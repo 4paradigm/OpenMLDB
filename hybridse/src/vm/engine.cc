@@ -180,7 +180,6 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
 
 bool Engine::Get(const std::string& sql, const std::string& db, RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
-                 // tobe
     std::shared_ptr<CompileInfo> cached_info = GetCacheLocked(db, sql, session.engine_mode(),
         session.GetPerformanceSensitive());
     if (cached_info && IsCompatibleCache(session, cached_info, status)) {
@@ -325,7 +324,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
              ExplainOutput* explain_output, base::Status* status,
              bool performance_sensitive) {
     const codec::Schema empty_schema;
-    return Explain(sql, db, engine_mode, empty_schema, common_column_indices, explain_output, status, performance_sensitive);
+    return Explain(sql, db, engine_mode, empty_schema, common_column_indices, explain_output, status,
+        performance_sensitive);
 }
 
 void Engine::ClearCacheLocked(const std::string& db) {
