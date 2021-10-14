@@ -16,8 +16,9 @@
 # limitations under the License.
 
 export COMPONENTS="tablet nameserver"
+BASEDIR="$(dirname $( cd "$( dirname "$0"  )" && pwd ))"
 for COMPONENT in $COMPONENTS; do
-    PID_FILE="./bin/$COMPONENT.pid"
+    PID_FILE="$BASEDIR/bin/$COMPONENT.pid"
     if [ ! -f "$PID_FILE" ]
     then
          echo "no $COMPONENT to stop (could not find file $PID_FILE)"

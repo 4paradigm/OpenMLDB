@@ -16,10 +16,12 @@
 # limitations under the License.
 
 export COMPONENTS="tablet nameserver"
+BASEDIR="$(dirname $( cd "$( dirname "$0"  )" && pwd ))"
+OS=`uname -a | awk '{print $1}' | tr [A-Z] [a-z]`
 for COMPONENT in $COMPONENTS; do
-    PID_FILE="./bin/$COMPONENT.pid"
+    PID_FILE="$BASEDIR/bin/$COMPONENT.pid"
     mkdir -p "$(dirname "$PID_FILE")"
-    LOG_DIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+    LOG_DIR=$(grep log_dir $BASEDIR/conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
     [ -n "$LOG_DIR" ] || { echo "Invalid log dir"; exit 1; }
     mkdir -p "$LOG_DIR"
     if [ -f "$PID_FILE" ]; then
@@ -28,12 +30,23 @@ for COMPONENT in $COMPONENTS; do
             exit 0
         fi
     fi
-    if ./bin/mon "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$PID_FILE";
-    then
-        sleep 1
+    if [ $OS = 'darwin' ]; then
+        nohup ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true > /dev/null 2>&1 &
+        if [ $? -eq 0 ]; then
+            echo $! > $PID_FILE
+            sleep 1
+        else
+            echo "$COMPONENT start failed"
+            exit 1
+        fi
     else
-        echo "$COMPONENT start failed"
-        exit 1
+        if ./bin/mon "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$PID_FILE";
+        then
+            sleep 1
+        else
+            echo "$COMPONENT start failed"
+            exit 1
+        fi
     fi
-done    
+done
 echo "OpenMLDB start success"
