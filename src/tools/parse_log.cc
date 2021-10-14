@@ -81,7 +81,7 @@ void ReadLog(const std::string& full_path) {
         success_cnt++;
     } while (status.ok());
     my_cout.close();
-    printf("--------success_cnt: %lu\n", success_cnt);
+    printf("--------success_cnt: %llu\n", success_cnt);
 }
 
 }  // namespace tools
