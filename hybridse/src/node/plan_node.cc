@@ -694,7 +694,9 @@ void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) c
     output << "\n";
     PrintValue(output, tab, file_, "file", false);
     output << "\n";
-    PrintValue(output, tab, table_path_, "table_path", false);
+    PrintValue(output, tab, db_, "db", false);
+    output << "\n";
+    PrintValue(output, tab, table_, "table", false);
     output << "\n";
     PrintValue<std::string, std::string>(output, tab, *options_.get(), "options", true);
 }

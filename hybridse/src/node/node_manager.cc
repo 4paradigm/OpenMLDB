@@ -750,15 +750,15 @@ PlanNode *NodeManager::MakeDeployPlanNode(const std::string &name, const SqlNode
     DeployPlanNode *node = new DeployPlanNode(name, stmt, if_not_exist);
     return RegisterNode(node);
 }
-LoadDataNode *NodeManager::MakeLoadDataNode(const std::string &file_name, const std::vector<std::string> &table_path,
-                                            const std::shared_ptr<ImportOptions> options) {
-    LoadDataNode *node = new LoadDataNode(file_name, table_path, options);
+LoadDataNode *NodeManager::MakeLoadDataNode(const std::string &file_name, const std::string& db,
+                                            const std::string &table, const std::shared_ptr<OptionsMap> options) {
+    LoadDataNode *node = new LoadDataNode(file_name, db, table, options);
     return RegisterNode(node);
 }
 LoadDataPlanNode *NodeManager::MakeLoadDataPlanNode(const std::string &file_name,
-                                                    const std::vector<std::string> &table_path,
-                                                    const std::shared_ptr<ImportOptions> options) {
-    LoadDataPlanNode *node = new LoadDataPlanNode(file_name, table_path, options);
+                                                    const std::string& db, const std::string& table,
+                                                    const std::shared_ptr<OptionsMap> options) {
+    LoadDataPlanNode *node = new LoadDataPlanNode(file_name, db, table, options);
     return RegisterNode(node);
 }
 

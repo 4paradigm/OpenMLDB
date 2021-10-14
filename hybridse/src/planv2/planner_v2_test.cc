@@ -1596,7 +1596,8 @@ TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
     ASSERT_EQ(1, plan_trees.size());
     ASSERT_STREQ(R"sql(+-[kPlanTypeLoadData]
   +-file: hello.csv
-  +-table_path: [t1]
+  +-db: <nil>
+  +-table: t1
   +-options:
     +-key: cat)sql", plan_trees.front()->GetTreeString().c_str());
 }

@@ -148,7 +148,7 @@ cases:
         +-node[CMD]
           +-cmd_type: show deployments
           +-args: []
-  - id: shwo_deployment
+  - id: show_deployment
     desc: show deployment foo
     sql: SHOW DEPLOYMENT foo;
     expect:
@@ -230,14 +230,16 @@ cases:
       node_tree_str: |
         +-node[kLoadDataStmt]
           +-file: hello.csv
-          +-table_path: [t1]
+          +-db: <nil>
+          +-table: t1
           +-options: <nil>
   - id: load_data_infile_2
-    sql: LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS (charset = 'utf-8');
+    sql: LOAD DATA INFILE 'data.csv' INTO TABLE db0.t1 OPTIONS (charset = 'utf-8');
     expect:
       node_tree_str: |
         +-node[kLoadDataStmt]
           +-file: data.csv
-          +-table_path: [t1]
+          +-db: db0
+          +-table: t1
           +-options:
             +-charset: utf-8

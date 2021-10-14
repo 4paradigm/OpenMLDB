@@ -603,13 +603,22 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             const auto load_data_stmt = statement->GetAsOrNull<zetasql::ASTLoadDataStatement>();
             CHECK_TRUE(load_data_stmt != nullptr, common::kSqlAstError, "not an ASTLoadDataStatement");
             std::string file_name = load_data_stmt->in_file()->string_value();
+
+            CHECK_TRUE(load_data_stmt->table_name()->num_names() <= 2, common::kSqlAstError,
+                       "unsupported size of table path");
             std::vector<std::string> table_path;
             CHECK_STATUS(AstPathExpressionToStringList(load_data_stmt->table_name(), table_path));
-            auto options = std::make_shared<node::ImportOptions>();
+            std::string table = table_path.back();
+            std::string db;
+            if (table_path.size() == 2) {
+                db = table_path[0];
+            }
+
+            auto options = std::make_shared<node::OptionsMap>();
             if (load_data_stmt->options_list() != nullptr) {
                 CHECK_STATUS(ConvertAstOptionsListToMap(load_data_stmt->options_list(), options));
             }
-            *output = node_manager->MakeLoadDataNode(file_name, table_path, options);
+            *output = node_manager->MakeLoadDataNode(file_name, db, table, options);
             break;
         }
         case zetasql::AST_DEPLOY_STATEMENT: {
@@ -1751,7 +1760,7 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
 }
 
 base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options,
-                                        std::shared_ptr<node::ImportOptions> options_map) {
+                                        std::shared_ptr<node::OptionsMap> options_map) {
     for (auto entry : options->options_entries()) {
         std::string key = entry->name()->GetAsString();
         auto entry_value = entry->value();

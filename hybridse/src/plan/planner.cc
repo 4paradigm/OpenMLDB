@@ -306,7 +306,7 @@ base::Status Planner::CreateDeployPlanNode(const node::DeployNode *root, node::P
 
 base::Status Planner::CreateLoadDataPlanNode(const node::LoadDataNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create load data plan with null node");
-    *output = node_manager_->MakeLoadDataPlanNode(root->file(), root->table_path(), root->options());
+    *output = node_manager_->MakeLoadDataPlanNode(root->file(), root->db(), root->table(), root->options());
     return base::Status::OK();
 }
 

@@ -124,7 +124,7 @@ enum ExprType {
     kExprOrderExpression,
     kExprGetField,
     kExprCond,
-    kExprUnknow = 9999
+    kExprUnknow = -1
 };
 // typedef hybridse::type::Type DataType;
 enum DataType {
@@ -274,7 +274,7 @@ enum PlanType {
     kPlanTypeCreateIndex,
     kPlanTypeLoadData,
     kPlanTypeDeploy,
-    kUnknowPlan = 100,
+    kUnknowPlan = -1,
 };
 
 enum TTLType {
