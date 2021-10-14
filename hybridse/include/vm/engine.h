@@ -328,7 +328,7 @@ class Engine {
     /// \brief Compile sql in db and stored the results in the session
     bool Get(const std::string& sql, const std::string& db,
              RunSession& session,    // NOLINT
-             base::Status& status);
+             base::Status& status);  // NOLINT
 
     /// \brief Search all tables related to the specific sql in db.
     ///
