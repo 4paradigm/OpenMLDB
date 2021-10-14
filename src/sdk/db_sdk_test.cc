@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "sdk/db_sdk.h"
+
 #include <unistd.h>
 
 #include <memory>
@@ -26,15 +28,12 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "sdk/db_sdk.h"
 #include "sdk/mini_cluster.h"
 
 namespace openmldb::sdk {
 
 using ::openmldb::codec::SchemaCodec;
 
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
@@ -46,21 +45,41 @@ class MockClosure : public ::google::protobuf::Closure {
     void Run() override {}
 };
 
-class ClusterSDKTest : public ::testing::Test {
+class DBSDKTest : public ::testing::Test {
  public:
-    ClusterSDKTest() : mc_(new MiniCluster(6181)) {}
-    ~ClusterSDKTest() override { delete mc_; }
+    DBSDKTest() : mc_(new MiniCluster(6181)) {}
+    ~DBSDKTest() override { delete mc_; }
     void SetUp() override {
-        bool ok = mc_->SetUp();
-        ASSERT_TRUE(ok);
+        ASSERT_TRUE(mc_->SetUp());
     }
     void TearDown() override { mc_->Close(); }
 
+    void CreateTable() {
+        table_name_ = "test" + GenRand();
+        db_name_ = "db" + GenRand();
+        auto ns_client = mc_->GetNsClient();
+        ASSERT_TRUE(ns_client);
+        std::string error;
+        ASSERT_TRUE(ns_client->CreateDatabase(db_name_, error));
+
+        ::openmldb::nameserver::TableInfo table_info;
+        table_info.set_format_version(1);
+        table_info.set_db(db_name_);
+        table_info.set_name(table_name_);
+        SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col1", ::openmldb::type::kString);
+        SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col2", ::openmldb::type::kBigInt);
+        SchemaCodec::SetIndex(table_info.add_column_key(), "index0", "col1", "col2", ::openmldb::type::kAbsoluteTime, 0,
+                              0);
+        ASSERT_TRUE(ns_client->CreateTable(table_info, error));
+    }
+
  public:
     MiniCluster* mc_;
+    std::string db_name_;
+    std::string table_name_;
 };
 
-TEST_F(ClusterSDKTest, smoke_empty_cluster) {
+TEST_F(DBSDKTest, smokeEmptyCluster) {
     ClusterOptions option;
     option.zk_cluster = mc_->GetZkCluster();
     option.zk_path = mc_->GetZkPath();
@@ -68,47 +87,34 @@ TEST_F(ClusterSDKTest, smoke_empty_cluster) {
     ASSERT_TRUE(sdk.Init());
 }
 
-TEST_F(ClusterSDKTest, smoketest) {
+TEST_F(DBSDKTest, smokeTest) {
     ClusterOptions option;
     option.zk_cluster = mc_->GetZkCluster();
     option.zk_path = mc_->GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
-    ::openmldb::nameserver::TableInfo table_info;
-    table_info.set_format_version(1);
-    std::string name = "test" + GenRand();
-    std::string db = "db" + GenRand();
-    auto ns_client = mc_->GetNsClient();
-    std::string error;
-    bool ok = ns_client->CreateDatabase(db, error);
-    ASSERT_TRUE(ok);
-    table_info.set_name(name);
-    table_info.set_db(db);
-    SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col1", ::openmldb::type::kString);
-    SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col2", ::openmldb::type::kBigInt);
-    SchemaCodec::SetIndex(table_info.add_column_key(), "index0", "col1", "col2", ::openmldb::type::kAbsoluteTime, 0, 0);
-    ok = ns_client->CreateTable(table_info, error);
-    ASSERT_TRUE(ok);
-    sleep(5);
+
+    CreateTable();
+    sleep(5);  // let sdk find the new table
+
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablet;
-    ok = sdk.GetTablet(db, name, &tablet);
-    ASSERT_TRUE(ok);
+    ASSERT_TRUE(sdk.GetTablet(db_name_, table_name_, &tablet));
     ASSERT_EQ(8u, tablet.size());
-    uint32_t tid = sdk.GetTableId(db, name);
+    uint32_t tid = sdk.GetTableId(db_name_, table_name_);
     ASSERT_NE(tid, 0u);
-    auto table_ptr = sdk.GetTableInfo(db, name);
-    ASSERT_EQ(table_ptr->db(), db);
-    ASSERT_EQ(table_ptr->name(), name);
+    auto table_ptr = sdk.GetTableInfo(db_name_, table_name_);
+    ASSERT_EQ(table_ptr->db(), db_name_);
+    ASSERT_EQ(table_ptr->name(), table_name_);
+
     auto ns_ptr = sdk.GetNsClient();
-    if (!ns_ptr) {
-        ASSERT_TRUE(false);
-    }
-    ASSERT_EQ(ns_ptr->GetEndpoint(), ns_client->GetEndpoint());
+    ASSERT_TRUE(ns_ptr);
+    ASSERT_EQ(ns_ptr->GetEndpoint(), mc_->GetNsClient()->GetEndpoint());
     ASSERT_TRUE(sdk.Refresh());
 }
 
-TEST_F(ClusterSDKTest, standAloneMode) {
-    // mini cluster endpoints' ports are random, so we get the ns first
+// TODO(hw): StandAlone sdk can access cluster, but it's not a good test. Better to access StandAlone server.
+TEST_F(DBSDKTest, standAloneMode) {
+    // mini cluster endpoints' ports are random, so we get the ns address first
     auto ns = mc_->GetNsClient()->GetRealEndpoint();
     LOG(INFO) << "nameserver address: " << ns;
     auto sep = ns.find(':');
@@ -117,6 +123,21 @@ TEST_F(ClusterSDKTest, standAloneMode) {
     auto port = ns.substr(sep + 1);
     StandAloneSDK sdk(host, std::stoi(port));
     ASSERT_TRUE(sdk.Init());
+
+    CreateTable();
+    sleep(3);  // sdk refresh time 2s, sleep for update
+
+    // check get tablet
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablet;
+    ASSERT_TRUE(sdk.GetTablet(db_name_, table_name_, &tablet));
+    ASSERT_EQ(8u, tablet.size());
+    uint32_t tid = sdk.GetTableId(db_name_, table_name_);
+    ASSERT_NE(tid, 0u);
+    auto table_ptr = sdk.GetTableInfo(db_name_, table_name_);
+    ASSERT_EQ(table_ptr->db(), db_name_);
+    ASSERT_EQ(table_ptr->name(), table_name_);
+
+    // TODO(hw): procedure test
 }
 
 }  // namespace openmldb::sdk

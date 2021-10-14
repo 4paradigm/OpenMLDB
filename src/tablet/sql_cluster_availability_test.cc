@@ -122,8 +122,8 @@ void DropTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& n
 
 void DropProcedure(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client,  // NOLINT
                    const std::string& db, const std::string& sp_name) {
-    ::openmldb::nameserver::DropProcedureRequest request;
-    ::openmldb::nameserver::GeneralResponse response;
+    api::DropProcedureRequest request;
+    nameserver::GeneralResponse response;
     request.set_db_name(db);
     request.set_sp_name(sp_name);
     bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropProcedure, &request,

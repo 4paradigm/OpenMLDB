@@ -67,8 +67,8 @@ DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
-DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client | apiserver",
-              "Set the openmldb role for start");
+DEFINE_string(role, "",
+              "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
@@ -4854,6 +4854,7 @@ void StartAPIServer() {
 int main(int argc, char* argv[]) {
     ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+
     if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
@@ -4870,6 +4871,7 @@ int main(int argc, char* argv[]) {
 #endif
     } else {
         std::cout << "client start in stand-alone mode" << std::endl;
+        // TODO(hw): standalonesdk refresh every 2s, too many logs in Debug mode
         ::openmldb::cmd::StandAloneSQLClient();
     }
     return 0;
