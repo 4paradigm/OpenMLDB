@@ -16,12 +16,13 @@
 # limitations under the License.
 
 export COMPONENTS="tablet nameserver"
-BASEDIR="$(dirname $( cd "$( dirname "$0"  )" && pwd ))"
-OS=`uname -a | awk '{print $1}' | tr [A-Z] [a-z]`
+BASEDIR="$(dirname "$( cd "$( dirname "$0"  )" && pwd )")"
+OS="$(uname -a | awk '{print $1}' | tr '[:upper:]' '[:lower:]')"
+cd "$BASEDIR"
 for COMPONENT in $COMPONENTS; do
-    PID_FILE="$BASEDIR/bin/$COMPONENT.pid"
+    PID_FILE="./bin/$COMPONENT.pid"
     mkdir -p "$(dirname "$PID_FILE")"
-    LOG_DIR=$(grep log_dir $BASEDIR/conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+    LOG_DIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
     [ -n "$LOG_DIR" ] || { echo "Invalid log dir"; exit 1; }
     mkdir -p "$LOG_DIR"
     if [ -f "$PID_FILE" ]; then
@@ -30,10 +31,10 @@ for COMPONENT in $COMPONENTS; do
             exit 0
         fi
     fi
-    if [ $OS = 'darwin' ]; then
+    if [ "$OS" = 'darwin' ]; then
         nohup ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true > /dev/null 2>&1 &
         if [ $? -eq 0 ]; then
-            echo $! > $PID_FILE
+            echo $! > "$PID_FILE"
             sleep 1
         else
             echo "$COMPONENT start failed"
