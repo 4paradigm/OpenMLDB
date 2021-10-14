@@ -29,6 +29,7 @@ namespace sqlcase {
 class SqlCase {
  public:
     struct TableInfo {
+        std::string db_;
         std::string name_;
         std::string schema_;
         std::string index_;

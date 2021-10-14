@@ -49,9 +49,11 @@ class PhysicalPlanContext {
     /**
      * Get unique column id by named column from table.
      */
-    Status GetSourceID(const std::string& table_name,
+    Status GetSourceID(const std::string& db_name,
+                       const std::string& table_name,
                        const std::string& column_name, size_t* column_id);
-    Status GetRequestSourceID(const std::string& table_name,
+    Status GetRequestSourceID(const std::string& db_name,
+                              const std::string& table_name,
                               const std::string& column_name,
                               size_t* column_id);
 
@@ -130,11 +132,11 @@ class PhysicalPlanContext {
     const std::string db_;
     std::shared_ptr<Catalog> catalog_;
 
-    Status InitializeSourceIdMappings(const std::string& table_name);
+    Status InitializeSourceIdMappings(const std::string& db_name, const std::string& table_name);
 
     // manage column unique ids
     size_t column_id_counter_ = 1;
-    std::map<std::string, std::map<std::string, size_t>> table_column_id_map_;
+    std::map<std::string, std::map<std::string, std::map<std::string, size_t>>> db_table_column_id_map_;
     // TODO(xxx): pass in request name
     std::map<std::string, std::map<std::string, size_t>> request_column_id_map_;
 

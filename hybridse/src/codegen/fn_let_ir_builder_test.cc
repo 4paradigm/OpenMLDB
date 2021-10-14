@@ -149,7 +149,7 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
 
     vm::SchemasContext schemas_ctx;
-    schemas_ctx.BuildTrivial(std::vector<const hybridse::type::TableDef*>({&table1, &table2}));
+    schemas_ctx.BuildTrivial(table1.catalog(), std::vector<const hybridse::type::TableDef*>({&table1, &table2}));
 
     vm::Schema schema;
     CheckFnLetBuilder(&manager, &schemas_ctx, "", sql, row_ptr, window_ptr, &schema, &output);
@@ -327,9 +327,9 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
     int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
 
     vm::SchemasContext schemas_ctx;
-    schemas_ctx.BuildTrivial(std::vector<const type::TableDef*>({&table1, &table2}));
+    schemas_ctx.BuildTrivial(table1.catalog(), std::vector<const type::TableDef*>({&table1, &table2}));
     size_t sid = 111, cid = 222;
-    Status status = schemas_ctx.ResolveColumnIndexByName("t1", "col1", &sid, &cid);
+    Status status = schemas_ctx.ResolveColumnIndexByName("", "t1", "col1", &sid, &cid);
     LOG(INFO) << status << " " << sid << " " << cid;
 
     vm::Schema schema;
