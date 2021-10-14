@@ -16,7 +16,7 @@
 # limitations under the License.
 
 export COMPONENTS="tablet nameserver"
-BASEDIR="$(dirname $( cd "$( dirname "$0"  )" && pwd ))"
+BASEDIR="$(dirname "$( cd "$( dirname "$0"  )" && pwd )")"
 for COMPONENT in $COMPONENTS; do
     PID_FILE="$BASEDIR/bin/$COMPONENT.pid"
     if [ ! -f "$PID_FILE" ]

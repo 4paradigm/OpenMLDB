@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
 export COMPONENTS="tablet nameserver"
 BASEDIR="$(dirname "$( cd "$( dirname "$0"  )" && pwd )")"
 OS="$(uname -a | awk '{print $1}' | tr '[:upper:]' '[:lower:]')"
