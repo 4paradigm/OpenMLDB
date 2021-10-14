@@ -179,9 +179,10 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
 }
 
 bool Engine::Get(const std::string& sql, const std::string& db, RunSession& session,
-                 base::Status& status, bool performance_sensitive) {  // NOLINT (runtime/references)
+                 base::Status& status) {  // NOLINT (runtime/references)
                  // tobe
-    std::shared_ptr<CompileInfo> cached_info = GetCacheLocked(db, sql, session.engine_mode(), true);
+    std::shared_ptr<CompileInfo> cached_info = GetCacheLocked(db, sql, session.engine_mode(),
+        session.GetPerformanceSensitive());
     if (cached_info && IsCompatibleCache(session, cached_info, status)) {
         session.SetCompileInfo(cached_info);
         return true;
@@ -198,7 +199,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     sql_context.sql = sql;
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();
-    sql_context.is_performance_sensitive = performance_sensitive;
+    sql_context.is_performance_sensitive = session.GetPerformanceSensitive();
     sql_context.is_cluster_optimized = options_.is_cluster_optimzied();
     sql_context.is_batch_request_optimized = options_.is_batch_request_optimized();
     sql_context.enable_batch_window_parallelization = options_.is_enable_batch_window_parallelization();
@@ -225,8 +226,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
         }
     }
 
-// tobe
-    SetCacheLocked(db, sql, session.engine_mode(), true, info);
+    SetCacheLocked(db, sql, session.engine_mode(), session.GetPerformanceSensitive(), info);
     session.SetCompileInfo(info);
     if (session.is_debug_) {
         std::ostringstream plan_oss;

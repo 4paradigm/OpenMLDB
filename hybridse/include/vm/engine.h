@@ -184,7 +184,7 @@ class RunSession {
     bool is_debug_;
     std::string sp_name_;
     friend Engine;
-    bool performance_sensitive_;
+    bool performance_sensitive_ = true;
 };
 
 /// \brief BatchRunSession is a kind of RunSession designed for batch mode query.
@@ -328,8 +328,7 @@ class Engine {
     /// \brief Compile sql in db and stored the results in the session
     bool Get(const std::string& sql, const std::string& db,
              RunSession& session,    // NOLINT
-             base::Status& status,
-             bool performance_sensitive = true);
+             base::Status& status);
 
     /// \brief Search all tables related to the specific sql in db.
     ///
