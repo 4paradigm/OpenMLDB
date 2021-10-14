@@ -159,7 +159,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas, con
         if (table_info->format_version() != 1) {
             continue;
         }
-        tables.push_back(*(table_info.get()));
+        tables.push_back(*(table_info));
         auto it = mapping.find(table_info->db());
         if (it == mapping.end()) {
             std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>> table_in_db;

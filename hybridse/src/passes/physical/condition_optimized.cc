@@ -255,7 +255,7 @@ bool ConditionOptimized::TransformConstEqualExprPair(
     return !condition_eq_pair.empty();
 }
 // Return Equal Expression Pair
-// Left Expr should belongs to first schema
+// Left Expr should belong to first schema
 bool ConditionOptimized::TransformJoinEqualExprPair(
     const SchemasContext* left_schemas_ctx,
     const SchemasContext* right_schemas_ctx, node::ExprListNode* and_conditions,
