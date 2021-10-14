@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include "base/status.h"
+#include "log/status.h"
 
 namespace openmldb {
-namespace base {
+namespace log {
 
 const char* Status::CopyState(const char* state) {
     uint32_t size;
@@ -27,7 +27,7 @@ const char* Status::CopyState(const char* state) {
     return result;
 }
 
-Status::Status(Code code, const Slice& msg, const Slice& msg2) {
+Status::Status(Code code, const ::openmldb::base::Slice& msg, const ::openmldb::base::Slice& msg2) {
     assert(code != kOk);
     const uint32_t len1 = msg.size();
     const uint32_t len2 = msg2.size();
@@ -91,5 +91,5 @@ std::string Status::ToString() const {
     }
 }
 
-}  // namespace base
+}  // namespace log
 }  // namespace openmldb

@@ -98,6 +98,10 @@ class ExprIRBuilder {
 
     Status BuildBetweenExpr(const ::hybridse::node::BetweenExpr* node, NativeValue* output);
 
+    Status BuildInExpr(const ::hybridse::node::InExpr* node, NativeValue* output);
+
+    Status BuildExprList(const ::hybridse::node::ExprListNode* node, NativeValue* output);
+
     Status ExtractSliceFromRow(const NativeValue& input_value, const int schema_idx, ::llvm::Value** slice_ptr,
                                ::llvm::Value** slice_size);
     Status GetFunction(const std::string& col, const std::vector<const node::TypeNode*>& generic_types,

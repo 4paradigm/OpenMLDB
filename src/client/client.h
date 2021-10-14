@@ -29,9 +29,7 @@
 
 using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
 
-namespace openmldb {
-
-namespace client {
+namespace openmldb::client {
 
 class Client {
  public:
@@ -59,7 +57,6 @@ class Client {
     std::string real_endpoint_;
 };
 
-}  // namespace client
-}  // namespace openmldb
+}  // namespace openmldb::client
 
 #endif  // SRC_CLIENT_CLIENT_H_

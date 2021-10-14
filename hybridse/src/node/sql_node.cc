@@ -15,6 +15,7 @@
  */
 
 #include "node/sql_node.h"
+#include <absl/strings/str_cat.h>
 
 #include <numeric>
 #include <string>
@@ -387,12 +388,15 @@ const std::string ColumnRefNode::GenerateExpressionName() const {
     return str;
 }
 const std::string ColumnRefNode::GetExprString() const {
-    std::string str = "";
-    if (!relation_name_.empty()) {
-        str.append(relation_name_).append(".");
+    std::string path = "";
+    if (!db_name_.empty()) {
+        path.append(db_name_).append(".");
     }
-    str.append(column_name_);
-    return str;
+    if (!relation_name_.empty()) {
+        path.append(relation_name_).append(".");
+    }
+    path.append(column_name_);
+    return path;
 }
 bool ColumnRefNode::Equals(const ExprNode *node) const {
     if (this == node) {
@@ -1738,6 +1742,51 @@ bool BetweenExpr::Equals(const ExprNode *node) const {
     const BetweenExpr *that = dynamic_cast<const BetweenExpr *>(node);
     return is_not_between() == that->is_not_between() && ExprEquals(GetLhs(), that->GetLhs()) &&
            ExprEquals(GetLow(), that->GetLow()) && ExprEquals(GetHigh(), that->GetHigh());
+}
+
+void InExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, IsNot() ? "true" : "false", "is_not", false);
+    output << "\n";
+    PrintSqlNode(output, tab, GetLhs(), "lhs", false);
+    output << "\n";
+    PrintSqlNode(output, tab, GetInList(), GetInTypeString(), true);
+}
+
+std::string InExpr::GetInTypeString() const {
+    auto in_list = GetInList();
+    if (in_list == nullptr) {
+        return "unknown";
+    }
+    switch (in_list->GetExprType()) {
+        case kExprList:
+            return "in_list";
+        case kExprQuery:
+            return "query";
+        default:
+            return "unknown";
+    }
+}
+
+const std::string InExpr::GetExprString() const {
+    std::string str = "";
+    absl::StrAppend(&str, ExprString(GetLhs()));
+    if (IsNot()) {
+        absl::StrAppend(&str, " not");
+    }
+    absl::StrAppend(&str, " in ");
+    absl::StrAppend(&str, ExprString(GetInList()));
+    return str;
+}
+
+bool InExpr::Equals(const ExprNode *node) const {
+    if (!ExprNode::Equals(node)) {
+        return false;
+    }
+    const InExpr* in_expr = dynamic_cast<const InExpr*>(node);
+    return in_expr != nullptr && IsNot() == in_expr->IsNot();
 }
 
 std::string FnDefNode::GetFlatString() const {

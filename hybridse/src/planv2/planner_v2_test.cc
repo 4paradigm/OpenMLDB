@@ -91,7 +91,8 @@ TEST_P(PlannerV2Test, PlannerSucessTest) {
     std::cout << sqlstr << std::endl;
     base::Status status;
     node::PlanNodeList plan_trees;
-    ASSERT_TRUE(PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status)) << status;
+    EXPECT_EQ(GetParam().expect().success_, PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status))
+        << status;
     LOG(INFO) << "logical plan:\n";
     for (auto tree : plan_trees) {
         LOG(INFO) << "statement : " << *tree << std::endl;

@@ -25,10 +25,10 @@
 
 #include "base/glog_wapper.h"  // NOLINT
 #include "base/slice.h"
-#include "base/status.h"
+#include "log/status.h"
 
 using ::openmldb::base::Slice;
-using ::openmldb::base::Status;
+using ::openmldb::log::Status;
 
 namespace openmldb {
 namespace log {

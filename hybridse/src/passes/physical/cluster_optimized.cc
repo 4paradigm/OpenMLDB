@@ -60,7 +60,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(
             size_t column_id;
             auto column_ref =
                 dynamic_cast<const node::ColumnRefNode*>(column_expr);
-            Status status = joined_schema_ctx->ResolveColumnID(
+            Status status = joined_schema_ctx->ResolveColumnID(column_ref->GetDBName(),
                 column_ref->GetRelationName(), column_ref->GetColumnName(),
                 &column_id);
             if (!status.isOK()) {

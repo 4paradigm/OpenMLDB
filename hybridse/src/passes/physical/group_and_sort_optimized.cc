@@ -1,5 +1,5 @@
 /*
- * Copyright 021 4paradigm
+ * Copyright 2021 4paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -224,7 +224,7 @@ bool GroupAndSortOptimized::KeysOptimized(
 
     if (PhysicalOpType::kPhysicalOpDataProvider == in->GetOpType()) {
         auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
-        // Do not optimized with Request DataProvider (no index has been provided)
+        // Do not optimize with Request DataProvider (no index has been provided)
         if (DataProviderType::kProviderTypeRequest == scan_op->provider_type_) {
             return false;
         }
@@ -657,14 +657,15 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
     size_t child_column_id;
     size_t source_column_id;
     const PhysicalOpNode* source;
-    Status status = schemas_ctx->ResolveColumnID(
+    Status status = schemas_ctx->ResolveColumnID(col->GetDBName(),
         col->GetRelationName(), col->GetColumnName(), &column_id, &path_idx,
         &child_column_id, &source_column_id, &source);
 
     // try loose the relation
     if (!status.isOK() && !col->GetRelationName().empty()) {
         status = schemas_ctx->ResolveColumnID(
-            "", col->GetColumnName(), &column_id, &path_idx, &child_column_id,
+            col->GetDBName(), col->GetRelationName(), col->GetColumnName(),
+            &column_id, &path_idx, &child_column_id,
             &source_column_id, &source);
     }
 

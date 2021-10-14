@@ -114,6 +114,8 @@ set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
 find_package(SWIG REQUIRED)
 include(UseSWIG)
 find_package(absl REQUIRED)
+# modify absl::time_zone INTERFACE_LINK_LIBRARIES
+set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$<PLATFORM_ID:Darwin>:-framework CoreFoundation>")
 
 find_package(GTest 1.10 EXACT REQUIRED)
 

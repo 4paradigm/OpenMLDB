@@ -228,7 +228,7 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     }
 }
 
-TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
+/*TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb4" + GenRand();
 
@@ -345,7 +345,7 @@ TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
         ASSERT_EQ("1", traverse_response.pk());
         ASSERT_EQ(1u, traverse_response.ts());
     }
-}
+} */
 
 }  // namespace nameserver
 }  // namespace openmldb

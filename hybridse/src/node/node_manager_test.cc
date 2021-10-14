@@ -30,21 +30,21 @@ class NodeManagerTest : public ::testing::Test {
 
 TEST_F(NodeManagerTest, MakeSqlNode) {
     NodeManager *manager = new NodeManager();
-    manager->MakeTableNode("", "table1");
-    manager->MakeTableNode("", "table2");
+    manager->MakeTableNode("t1", "table1");
+    manager->MakeTableNode("t2", "table2");
     manager->MakeLimitNode(10);
 
-    manager->MakeTablePlanNode("t1");
-    manager->MakeTablePlanNode("t2");
-    manager->MakeTablePlanNode("t3");
+    manager->MakeTablePlanNode("db1", "t1");
+    manager->MakeTablePlanNode("db2", "t2");
+    manager->MakeTablePlanNode("", "t3");
 
     ASSERT_EQ(6, manager->GetNodeListSize());
     delete manager;
 }
 TEST_F(NodeManagerTest, MakeAndExprTest) {
     NodeManager *manager = new NodeManager();
-    manager->MakeTableNode("", "table1");
-    manager->MakeTableNode("", "table2");
+    manager->MakeTableNode("t1", "table1");
+    manager->MakeTableNode("t2", "table2");
     manager->MakeLimitNode(10);
 
     ExprListNode expr_list;

@@ -39,10 +39,11 @@ class SchemaSource {
     const std::string& GetColumnName(size_t idx) const;
     const hybridse::type::Type GetColumnType(size_t idx) const;
     const std::string& GetSourceName() const;
+    const std::string& GetSourceDB() const;
 
     // build utility
     void SetSchema(const codec::Schema* schema);
-    void SetSourceName(const std::string& name);
+    void SetSourceDBAndTableName(const std::string& db, const std::string& name);
     void SetColumnID(size_t idx, size_t column_id);
     void SetSource(size_t idx, size_t child_idx, size_t child_column_id);
     void SetNonSource(size_t idx);
@@ -64,6 +65,7 @@ class SchemaSource {
     const codec::Schema* schema_;
 
     std::string source_name_ = "";
+    std::string source_db_ = "";
 
     // column identifier of each output column
     std::vector<size_t> column_ids_;
@@ -92,7 +94,8 @@ class SchemasContext {
      * Given relation name and column name, return schema slice
      * index and column index within current context.
      */
-    base::Status ResolveColumnIndexByName(const std::string& relation_name,
+    base::Status ResolveColumnIndexByName(const std::string& db_name,
+                                          const std::string& relation_name,
                                           const std::string& column_name,
                                           size_t* schema_idx,
                                           size_t* col_idx) const;
@@ -121,7 +124,8 @@ class SchemasContext {
      * Given relation name and column name, return column unique id
      * under current context.
      */
-    base::Status ResolveColumnID(const std::string& relation_name,
+    base::Status ResolveColumnID(const std::string& db_name,
+                                 const std::string& relation_name,
                                  const std::string& column_name,
                                  size_t* column_id) const;
 
@@ -131,7 +135,8 @@ class SchemasContext {
      * else `child_path_id` is the index of the child which the column
      * is resolved from.
      */
-    base::Status ResolveColumnID(const std::string& relation_name,
+    base::Status ResolveColumnID(const std::string& db_name,
+                                 const std::string& relation_name,
                                  const std::string& column_name,
                                  size_t* column_id, int* child_path_idx,
                                  size_t* child_column_id,
@@ -151,6 +156,7 @@ class SchemasContext {
      * Get the relation name for this schema context, default ""
      */
     const std::string& GetName() const;
+    const std::string& GetDBName() const;
 
     const PhysicalOpNode* GetRoot() const;
 
@@ -175,10 +181,19 @@ class SchemasContext {
     size_t GetSchemaSourceSize() const;
 
     /**
-     * Set the relation name for this schema context.
+     * Check database name and relation name match with current context
      */
-    void SetName(const std::string& name);
+    bool CheckDatabaseAndRelation(const std::string& db, const std::string& table) const;
 
+    /**
+     * Set the database name and relation name for this schema context.
+     */
+    void SetDBAndRelationName(const std::string& db, const std::string& relation_name);
+
+    /**
+     * Set the defautl database name
+     */
+    void SetDefaultDBName(const std::string& default_db_name);
     /**
      * Add new schema source and return the mutable instance of added source.
      */
@@ -214,7 +229,7 @@ class SchemasContext {
      * this can be commonly used when no plan node is provided.
      */
     void BuildTrivial(const std::vector<const codec::Schema*>& schemas);
-    void BuildTrivial(const std::vector<const type::TableDef*>& tables);
+    void BuildTrivial(const std::string& default_db, const std::vector<const type::TableDef*>& tables);
 
  private:
     bool IsColumnAmbiguous(const std::string& column_name) const;
@@ -223,6 +238,8 @@ class SchemasContext {
 
     // root node to search column id, can be null
     const PhysicalOpNode* root_ = nullptr;
+    std::string default_db_name_ = "";
+    std::string root_db_name_ = "";
     std::string root_relation_name_ = "";
 
     // column id -> (schema idx, column idx) mapping

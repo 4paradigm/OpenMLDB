@@ -117,7 +117,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 target_link_libraries(parse_log ${LINK_LIBS})
 
-add_executable(openmldb cmd/openmldb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
+add_executable(openmldb cmd/openmldb.cc proto/client.pb.cc base/linenoise.cc)
 target_link_libraries(openmldb ${BIN_LIBS})
 
 add_subdirectory(sdk)

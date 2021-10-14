@@ -16,6 +16,7 @@
 
 #include "apiserver/api_server_impl.h"
 #include "brpc/channel.h"
+#include "memory"
 #include "brpc/restful.h"
 #include "brpc/server.h"
 #include "butil/logging.h"
@@ -24,21 +25,20 @@
 #include "json2pb/rapidjson.h"
 #include "sdk/mini_cluster.h"
 
-namespace openmldb {
-namespace apiserver {
+namespace openmldb::apiserver {
 
 class APIServerTestEnv : public testing::Environment {
  public:
     static APIServerTestEnv* Instance() {
-        static APIServerTestEnv* instance = new APIServerTestEnv;
+        static auto* instance = new APIServerTestEnv;
         return instance;
     }
-    virtual void SetUp() {
+    void SetUp() override {
         std::cout << "Environment SetUp!" << std::endl;
         ::hybridse::vm::Engine::InitializeGlobalLLVM();
         FLAGS_zk_session_timeout = 100000;
 
-        mc.reset(new sdk::MiniCluster(6181));
+        mc = std::make_shared<sdk::MiniCluster>(6181);
         ASSERT_TRUE(mc->SetUp()) << "Fail to set up mini cluster";
 
         sdk::ClusterOptions cluster_options;
@@ -47,7 +47,7 @@ class APIServerTestEnv : public testing::Environment {
         // Owned by queue_svc
         cluster_sdk = new ::openmldb::sdk::ClusterSDK(cluster_options);
         ASSERT_TRUE(cluster_sdk->Init()) << "Fail to connect to db";
-        queue_svc.reset(new APIServerImpl);
+        queue_svc = std::make_shared<APIServerImpl>();
         ASSERT_TRUE(queue_svc->Init(cluster_sdk));
 
         sdk::SQLRouterOptions sql_opt;
@@ -85,7 +85,7 @@ class APIServerTestEnv : public testing::Environment {
             << "Fail to initialize http channel";
     }
 
-    virtual void TearDown() {
+    void TearDown() override {
         std::cout << "Environment TearDown!" << std::endl;
         hybridse::sdk::Status status;
         cluster_remote->DropDB(db, &status);
@@ -95,7 +95,7 @@ class APIServerTestEnv : public testing::Environment {
     }
 
     std::string db;
-    ::openmldb::sdk::ClusterSDK* cluster_sdk;
+    ::openmldb::sdk::DBSDK* cluster_sdk = nullptr;
     std::shared_ptr<sdk::MiniCluster> mc;
     std::shared_ptr<APIServerImpl> queue_svc;
     brpc::Server server;
@@ -109,11 +109,11 @@ class APIServerTestEnv : public testing::Environment {
 
 class APIServerTest : public ::testing::Test {
  public:
-    APIServerTest() {}
-    ~APIServerTest() {}
+    APIServerTest() = default;
+    ~APIServerTest() override {}
 };
 
-TEST_F(APIServerTest, json_format) {
+TEST_F(APIServerTest, jsonFormat) {
     butil::rapidjson::Document document;
 
     // Check the format of put request
@@ -142,7 +142,7 @@ TEST_F(APIServerTest, json_format) {
     ASSERT_EQ(butil::rapidjson::kNullType, arr[6].GetType());
 }
 
-TEST_F(APIServerTest, invalid_put) {
+TEST_F(APIServerTest, invalidPut) {
     const auto env = APIServerTestEnv::Instance();
     brpc::Controller cntl;
     cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
@@ -202,7 +202,7 @@ TEST_F(APIServerTest, invalid_put) {
     LOG(INFO) << resp.msg;
 }
 
-TEST_F(APIServerTest, valid_put) {
+TEST_F(APIServerTest, validPut) {
     const auto env = APIServerTestEnv::Instance();
 
     // create table
@@ -258,7 +258,7 @@ TEST_F(APIServerTest, valid_put) {
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table " + table + ";", &status)) << status.msg;
 }
 
-TEST_F(APIServerTest, put_case1) {
+TEST_F(APIServerTest, putCase1) {
     const auto env = APIServerTestEnv::Instance();
 
     // create table
@@ -651,8 +651,7 @@ TEST_F(APIServerTest, getTables) {
     }
 }
 
-}  // namespace apiserver
-}  // namespace openmldb
+}  // namespace openmldb::apiserver
 
 int main(int argc, char* argv[]) {
     testing::AddGlobalTestEnvironment(openmldb::apiserver::APIServerTestEnv::Instance());

@@ -440,6 +440,39 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                         ast_expression->GetNodeKindString());
             break;
         }
+
+        case zetasql::AST_IN_EXPRESSION: {
+            auto in_expr = ast_expression->GetAsOrNull<zetasql::ASTInExpression>();
+            CHECK_TRUE(in_expr != nullptr, common::kUnsupportSql, "not an ASTInExpression");
+
+            node::ExprNode* lhs_expr = nullptr;
+            CHECK_STATUS(ConvertExprNode(in_expr->lhs(), node_manager, &lhs_expr));
+
+            bool is_not = in_expr->is_not();
+
+            if (in_expr->in_list() != nullptr) {
+                node::ExprListNode* in_list = nullptr;
+                CHECK_STATUS(ConvertExprNodeList(in_expr->in_list()->list(), node_manager, &in_list));
+                // can't handle large sized in list currently, just stop earlier
+                CHECK_TRUE(in_list->GetChildNum() <= 1000, common::kPlanError,
+                           absl::StrCat("Un-support: IN predicate size should not larger than 1000, but got ",
+                                        in_list->GetChildNum()));
+                *output = node_manager->MakeInExpr(lhs_expr, in_list, is_not);
+            } else if (in_expr->query() != nullptr) {
+                node::QueryNode* query_node = nullptr;
+                CHECK_STATUS(ConvertQueryNode(in_expr->query(), node_manager, &query_node));
+                node::QueryExpr* query_expr = node_manager->MakeQueryExprNode(query_node);
+                *output = node_manager->MakeInExpr(lhs_expr, query_expr, is_not);
+                // not support sub query in IN predicate, stop earlier
+                CHECK_TRUE(false, common::kPlanError, "Un-support: IN predicate with sub query as in list");
+            } else {
+                // TODO(aceforeverd): support unnest expression
+                return base::Status(common::kUnsupportSql,
+                                    "Un-supported: IN predicate with unnest expression as in list");
+            }
+            return base::Status::OK();
+        }
+
         default: {
             FAIL_STATUS(common::kUnsupportSql, "Unsupport ASTExpression ", ast_expression->GetNodeKindString())
         }
@@ -841,12 +874,18 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
                        "Un-support tablesample clause")
             CHECK_TRUE(nullptr == table_path_expression->hint(), common::kSqlAstError, "Un-support hint")
 
-            CHECK_TRUE(table_path_expression->path_expr()->num_names() <= 2, common::kSqlAstError,
-                       "Invalid table path expression ", table_path_expression->path_expr()->ToIdentifierPathString());
+            std::vector<std::string> names;
+            CHECK_STATUS(AstPathExpressionToStringList(table_path_expression->path_expr(), names))
+
+            CHECK_TRUE(names.size() >=1 && names.size() <= 2, common::kSqlAstError,
+                       "Invalid table path expression ", table_path_expression->path_expr()->ToIdentifierPathString())
             std::string alias_name =
                 nullptr != table_path_expression->alias() ? table_path_expression->alias()->GetAsString() : "";
-            *output =
-                node_manager->MakeTableNode(table_path_expression->path_expr()->last_name()->GetAsString(), alias_name);
+            if (names.size() == 1) {
+                *output = node_manager->MakeTableNode(names[0], alias_name);
+            } else {
+                *output = node_manager->MakeTableNode(names[0], names[1], alias_name);
+            }
             break;
         }
         case zetasql::AST_JOIN: {

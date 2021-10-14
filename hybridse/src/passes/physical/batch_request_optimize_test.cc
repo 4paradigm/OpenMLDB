@@ -88,6 +88,9 @@ INSTANTIATE_TEST_SUITE_P(BatchRequestTestLastJoinComplex, BatchRequestOptimizeTe
                         testing::ValuesIn(sqlcase::InitCases(
                             "/cases/function/join/test_lastjoin_complex.yaml")));
 
+INSTANTIATE_TEST_SUITE_P(BatchRequestTestMultipleDatabases, BatchRequestOptimizeTest,
+                         testing::ValuesIn(sqlcase::InitCases(
+                             "/cases/function/multiple_databases/test_multiple_databases.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     EngineTestSelectSample, BatchRequestOptimizeTest,
     testing::ValuesIn(

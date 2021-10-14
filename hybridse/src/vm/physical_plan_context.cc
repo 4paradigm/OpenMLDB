@@ -132,12 +132,16 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects, const Sche
     return Status::OK();
 }
 
-Status PhysicalPlanContext::GetSourceID(const std::string& table_name,
+Status PhysicalPlanContext::GetSourceID(const std::string& db_name,
+                                        const std::string& table_name,
                                         const std::string& column_name,
                                         size_t* column_id) {
-    CHECK_STATUS(InitializeSourceIdMappings(table_name));
-    auto tbl_iter = table_column_id_map_.find(table_name);
-    CHECK_TRUE(tbl_iter != table_column_id_map_.end(), kPlanError,
+    std::string dbstr = db_name.empty() ? db() : db_name;
+    CHECK_STATUS(InitializeSourceIdMappings(dbstr, table_name));
+    CHECK_TRUE(db_table_column_id_map_.find(dbstr) != db_table_column_id_map_.end(), kPlanError,
+               "Fail to find database ", dbstr);
+    auto tbl_iter = db_table_column_id_map_[dbstr].find(table_name);
+    CHECK_TRUE(tbl_iter != db_table_column_id_map_[dbstr].end(), kPlanError,
                "Fail to find source table name ", table_name);
     auto& dict = tbl_iter->second;
     auto col_iter = dict.find(column_name);
@@ -147,10 +151,11 @@ Status PhysicalPlanContext::GetSourceID(const std::string& table_name,
     return Status::OK();
 }
 
-Status PhysicalPlanContext::GetRequestSourceID(const std::string& table_name,
+Status PhysicalPlanContext::GetRequestSourceID(const std::string& db_name,
+                                               const std::string& table_name,
                                                const std::string& column_name,
                                                size_t* column_id) {
-    CHECK_STATUS(InitializeSourceIdMappings(table_name));
+    CHECK_STATUS(InitializeSourceIdMappings(db_name.empty() ? db() : db_name, table_name));
     auto tbl_iter = request_column_id_map_.find(table_name);
     CHECK_TRUE(tbl_iter != request_column_id_map_.end(), kPlanError,
                "Fail to find source table name ", table_name);
@@ -163,16 +168,23 @@ Status PhysicalPlanContext::GetRequestSourceID(const std::string& table_name,
 }
 
 Status PhysicalPlanContext::InitializeSourceIdMappings(
+    const std::string& db_name,
     const std::string& table_name) {
-    if (table_column_id_map_.find(table_name) != table_column_id_map_.end()) {
-        return Status::OK();
+    if (db_table_column_id_map_.find(db_name) != db_table_column_id_map_.end()) {
+        if (db_table_column_id_map_[db_name].find(table_name) != db_table_column_id_map_[db_name].end()) {
+            return Status::OK();
+        }
+    } else {
+        db_table_column_id_map_.insert(std::make_pair(db_name, std::map<std::string, std::map<std::string, size_t>>()));
     }
-    auto table = catalog_->GetTable(db(), table_name);
+    auto &table_column_id_map = db_table_column_id_map_[db_name];
+
+    auto table = catalog_->GetTable(db_name, table_name);
     CHECK_TRUE(table != nullptr, kPlanError,
                "Fail to find source table name: ", table_name);
 
     const codec::Schema& schema = *table->GetSchema();
-    auto& table_dict = table_column_id_map_[table_name];
+    auto& table_dict = table_column_id_map[table_name];
     for (auto j = 0; j < schema.size(); ++j) {
         const auto& col_def = schema.Get(j);
         const std::string& column_name = col_def.name();
