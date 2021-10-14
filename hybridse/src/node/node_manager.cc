@@ -48,9 +48,11 @@ QueryNode *NodeManager::MakeUnionQueryNode(QueryNode *left, QueryNode *right, bo
     RegisterNode(node_ptr);
     return node_ptr;
 }
-
 TableRefNode *NodeManager::MakeTableNode(const std::string &name, const std::string &alias) {
-    TableRefNode *node_ptr = new TableNode(name, alias);
+    return MakeTableNode("", name, alias);
+}
+TableRefNode *NodeManager::MakeTableNode(const std::string& db, const std::string &name, const std::string &alias) {
+    TableRefNode *node_ptr = new TableNode(db, name, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -579,8 +581,8 @@ PlanNode *NodeManager::MakeMultiPlanNode(const PlanType &type) {
     return node_ptr;
 }
 
-PlanNode *NodeManager::MakeTablePlanNode(const std::string &table_name) {
-    PlanNode *node_ptr = new TablePlanNode("", table_name);
+PlanNode *NodeManager::MakeTablePlanNode(const std::string& db, const std::string &table_name) {
+    PlanNode *node_ptr = new TablePlanNode(db, table_name);
     return RegisterNode(node_ptr);
 }
 
@@ -940,6 +942,10 @@ BetweenExpr *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNo
     BetweenExpr *node = new BetweenExpr(expr, left, right);
     node->set_is_not_between(is_not);
     return RegisterNode(node);
+}
+InExpr *NodeManager::MakeInExpr(ExprNode* lhs, ExprNode* in_list, bool is_not) {
+    InExpr* in_expr = new InExpr(lhs, in_list, is_not);
+    return RegisterNode(in_expr);
 }
 ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
     if (node::ExprListNullOrEmpty(expr_list)) {

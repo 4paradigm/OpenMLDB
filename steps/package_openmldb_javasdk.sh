@@ -27,17 +27,27 @@ test -f build/src/sdk/libsql_jsdk.dylib && cp build/src/sdk/libsql_jsdk.dylib  j
 test -f build/src/sdk/libsql_jsdk.so && cp build/src/sdk/libsql_jsdk.so  java/openmldb-native/src/main/resources/
 
 pushd java/
-if [ -n "$VERSION" ] ; then
+BASE_PATTERN="^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*"
+if [[ $VERSION =~ $BASE_PATTERN ]]; then
     # tweak VERSION based on rules:
     #  - 0.2.2     -> 0.2.2
     #  - 0.2.2(.*) -> 0.2.2-SNAPSHOT
+
     # shellcheck disable=SC2001
-    SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
-    BASE_VERSION=${VERSION%"$SUFFIX_VERSION"}
+    SUFFIX_VERSION=$(echo "$VERSION" | sed -e "s/${BASE_PATTERN}//")
+    BASE_VERSION=${VERSION%"$SUFFIX_VERSION"}0
     if [ -n "$SUFFIX_VERSION" ]; then
-        VERSION="$BASE_VERSION-SNAPSHOT"
+      VERSION=${BASE_VERSION}
+      if [ -f openmldb-native/src/main/resources/libsql_jsdk.dylib ]; then
+        VERSION="${VERSION}-macos"
+      fi
+      VERSION="${VERSION}-SNAPSHOT"
     fi
+    echo "set version: ${VERSION}"
+
     mvn versions:set -DnewVersion="${VERSION}"
+else
+    echo "use version in pom files"
 fi
 mvn deploy -Dmaven.test.skip=true
 popd

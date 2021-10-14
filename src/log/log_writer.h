@@ -26,12 +26,11 @@
 #include <string>
 
 #include "base/slice.h"
-#include "base/status.h"
+#include "log/status.h"
 #include "log/log_format.h"
 #include "log/writable_file.h"
 
 using ::openmldb::base::Slice;
-using ::openmldb::base::Status;
 
 namespace openmldb {
 namespace log {
@@ -97,11 +96,11 @@ struct WriteHandle {
         lw_ = new Writer(compress_type, wf_, dest_length);
     }
 
-    ::openmldb::base::Status Write(const ::openmldb::base::Slice& slice) { return lw_->AddRecord(slice); }
+    Status Write(const ::openmldb::base::Slice& slice) { return lw_->AddRecord(slice); }
 
-    ::openmldb::base::Status Sync() { return wf_->Sync(); }
+    Status Sync() { return wf_->Sync(); }
 
-    ::openmldb::base::Status EndLog() { return lw_->EndLog(); }
+    Status EndLog() { return lw_->EndLog(); }
 
     uint64_t GetSize() { return wf_->GetSize(); }
 

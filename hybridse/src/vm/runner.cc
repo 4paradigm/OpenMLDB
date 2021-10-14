@@ -2991,11 +2991,11 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
             return std::shared_ptr<DataHandler>();
         }
         if (ctx.sp_name().empty()) {
-            return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+            return tablet->SubQuery(task_id_, cluster_job->db(),
                                     cluster_job->sql(), row, false,
                                     ctx.is_debug());
         } else {
-            return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+            return tablet->SubQuery(task_id_, cluster_job->db(),
                                     ctx.sp_name(), row, true, ctx.is_debug());
         }
     }
@@ -3045,12 +3045,12 @@ std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
         return fail_ptr;
     }
     if (ctx.sp_name().empty()) {
-        return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+        return tablet->SubQuery(task_id_, cluster_job->db(),
                                 cluster_job->sql(),
                                 ctx.cluster_job()->common_column_indices(),
                                 rows, request_is_common, false, ctx.is_debug());
     } else {
-        return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+        return tablet->SubQuery(task_id_, cluster_job->db(),
                                 ctx.sp_name(),
                                 ctx.cluster_job()->common_column_indices(),
                                 rows, request_is_common, true, ctx.is_debug());

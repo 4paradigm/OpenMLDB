@@ -3,6 +3,7 @@
 --role=nameserver
 --zk_cluster=127.0.0.1:7181
 --zk_root_path=/openmldb_cluster
+#--tablet=127.0.0.1:9921
 
 --openmldb_log_dir=./logs
 --log_file_count=24

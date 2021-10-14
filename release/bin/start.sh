@@ -28,33 +28,36 @@ cd "$(dirname "$0")"/../ || exit 1
 
 OP=$1
 COMPONENT=$2
-HAS_COMPONENT=false
+HAS_COMPONENT="false"
 for ITEM in $COMPONENTS;
 do
   if [ "$COMPONENT" = "$ITEM" ]; then
-    HAS_COMPONENT=true
+    HAS_COMPONENT="true"
   fi
 done
 
-"$HAS_COMPONENT" == false || { echo "No component named $COMPONENT in [$COMPONENTS]"; exit 1; }
+if [ "$HAS_COMPONENT" = "false" ]; then
+    echo "No component named $COMPONENT in [$COMPONENTS]";
+    exit 1;
+fi
 
-FEDB_PID_FILE="./bin/$COMPONENT.pid"
-mkdir -p "$(dirname "$FEDB_PID_FILE")"
+OPENMLDB_PID_FILE="./bin/$COMPONENT.pid"
+mkdir -p "$(dirname "$OPENMLDB_PID_FILE")"
 LOG_DIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
 [ -n "$LOG_DIR" ] || { echo "Invalid log dir"; exit 1; }
 mkdir -p "$LOG_DIR"
 case $OP in
     start)
         echo "Starting $COMPONENT ... "
-        if [ -f "$FEDB_PID_FILE" ]; then
-            if kill -0 "$(cat "$FEDB_PID_FILE")" > /dev/null 2>&1; then
-                echo tablet already running as process "$(cat "$FEDB_PID_FILE")".
+        if [ -f "$OPENMLDB_PID_FILE" ]; then
+            if kill -0 "$(cat "$OPENMLDB_PID_FILE")" > /dev/null 2>&1; then
+                echo tablet already running as process "$(cat "$OPENMLDB_PID_FILE")".
                 exit 0
             fi
         fi
 
         # Ref https://github.com/tj/mon
-        if ./bin/mon "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$FEDB_PID_FILE";
+        if ./bin/mon "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$OPENMLDB_PID_FILE";
         then
             sleep 1
             echo STARTED
@@ -65,12 +68,12 @@ case $OP in
         ;;
     stop)
         echo "Stopping $COMPONENT ... "
-        if [ ! -f "$FEDB_PID_FILE" ]
+        if [ ! -f "$OPENMLDB_PID_FILE" ]
         then
-             echo "no tablet to stop (could not find file $FEDB_PID_FILE)"
+             echo "no tablet to stop (could not find file $OPENMLDB_PID_FILE)"
         else
-            kill "$(cat "$FEDB_PID_FILE")"
-            rm "$FEDB_PID_FILE"
+            kill "$(cat "$OPENMLDB_PID_FILE")"
+            rm "$OPENMLDB_PID_FILE"
             echo STOPPED
         fi
         ;;

@@ -30,7 +30,8 @@
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
 #include "proto/fe_type.pb.h"
-#include "sdk/cluster_sdk.h"
+#include "sdk/db_sdk.h"
+#include "sdk/node_adapter.h"
 #include "sdk/sql_cluster_router.h"
 #include "version.h"  // NOLINT
 
@@ -39,12 +40,13 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_bool(interactive);
 DECLARE_string(cmd);
+// stand-alone mode
+DECLARE_string(host);
+DECLARE_int32(port);
 
-using ::openmldb::catalog::TTL_TYPE_MAP;
-
-namespace openmldb {
-namespace cmd {
+namespace openmldb::cmd {
 using hybridse::plan::PlanAPI;
+using ::openmldb::catalog::TTL_TYPE_MAP;
 const std::string LOGO =  // NOLINT
 
     "  _____                    ______  _       _____   ______   \n"
@@ -60,8 +62,8 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
                             OPENMLDB_COMMIT_ID;
 
 std::string db = "";  // NOLINT
-::openmldb::sdk::ClusterSDK *cs = NULL;
-::openmldb::sdk::SQLClusterRouter *sr = NULL;
+::openmldb::sdk::DBSDK *cs = nullptr;
+::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
     if (!result_set || result_set->Size() == 0) {
@@ -173,11 +175,10 @@ void PrintTableIndex(std::ostream &stream, const ::hybridse::vm::IndexList &inde
             t.add(index.second_key());
         }
         std::ostringstream oss;
-        for (int i = 0; i < index.ttl_size(); i++) {
-            oss << index.ttl(i);
-            if (i != index.ttl_size() - 1) {
-                oss << "m"
-                    << ",";
+        for (int ttl_idx = 0; ttl_idx < index.ttl_size(); ttl_idx++) {
+            oss << index.ttl(ttl_idx);
+            if (ttl_idx != index.ttl_size() - 1) {
+                oss << "m,";
             }
         }
         t.add(oss.str());
@@ -200,7 +201,7 @@ void PrintTableSchema(std::ostream &stream, const ::hybridse::vm::Schema &schema
         stream << "Empty set" << std::endl;
         return;
     }
-    uint32_t items_size = schema.size();
+
     ::hybridse::base::TextTable t('-', ' ', ' ');
     t.add("#");
     t.add("Field");
@@ -208,7 +209,7 @@ void PrintTableSchema(std::ostream &stream, const ::hybridse::vm::Schema &schema
     t.add("Null");
     t.end_of_row();
 
-    for (uint32_t i = 0; i < items_size; i++) {
+    for (auto i = 0; i < schema.size(); i++) {
         const auto &column = schema.Get(i);
         t.add(std::to_string(i + 1));
         t.add(column.name());
@@ -273,7 +274,7 @@ void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema
             stream << "Empty set" << std::endl;
             return;
         }
-        uint32_t items_size = schema.size();
+
         ::hybridse::base::TextTable t('-', ' ', ' ');
 
         t.add("#");
@@ -282,7 +283,7 @@ void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema
         t.add("IsConstant");
         t.end_of_row();
 
-        for (uint32_t i = 0; i < items_size; i++) {
+        for (auto i = 0; i < schema.size(); i++) {
             const auto &column = schema.Get(i);
             t.add(std::to_string(i + 1));
             t.add(column.name());
@@ -394,16 +395,18 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
                 return;
             }
             std::string name = cmd_node->GetArgs()[0];
-            std::string error;
-            printf("Drop table %s? yes/no\n", name.c_str());
-            std::string input;
-            std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-            if (input != "yes") {
-                printf("'drop %s' cmd is canceled!\n", name.c_str());
-                return;
+            if (FLAGS_interactive) {
+                printf("Drop table %s? yes/no\n", name.c_str());
+                std::string input;
+                std::cin >> input;
+                std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+                if (input != "yes") {
+                    printf("'drop %s' cmd is canceled!\n", name.c_str());
+                    return;
+                }
             }
             auto ns = cs->GetNsClient();
+            std::string error;
             bool ok = ns->DropTable(name, error);
             if (ok) {
                 std::cout << "drop ok" << std::endl;
@@ -458,8 +461,9 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             std::string error;
             std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos = cs->GetProcedureInfo(&error);
             std::vector<std::pair<std::string, std::string>> pairs;
+            pairs.reserve(sp_infos.size());
             for (auto &sp_info : sp_infos) {
-                pairs.push_back(std::make_pair(sp_info->GetDbName(), sp_info->GetSpName()));
+                pairs.emplace_back(sp_info->GetDbName(), sp_info->GetSpName());
             }
             PrintItems(pairs, std::cout);
             break;
@@ -499,20 +503,14 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
 
 void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node) {
     ::openmldb::common::ColumnKey column_key;
-    column_key.set_index_name(create_index_node->index_name_);
-    for (const auto &key : create_index_node->index_->GetKey()) {
-        column_key.add_col_name(key);
-    }
-    column_key.set_ts_name(create_index_node->index_->GetTs());
-    auto ttl = column_key.mutable_ttl();
-    ::openmldb::type::TTLType ttl_type;
-    if (!::openmldb::client::NsClient::TTLTypeParse(create_index_node->index_->ttl_type(), &ttl_type)) {
-        std::cout << "ttl type " << create_index_node->index_->ttl_type() << " is invalid" << std::endl;
+    hybridse::base::Status status;
+    if (!::openmldb::sdk::NodeAdapter::TransformToColumnKey(create_index_node->index_, {}, &column_key, &status)) {
+        std::cout << "failed to create index. error msg: " << status.msg << std::endl;
         return;
     }
-    ttl->set_ttl_type(ttl_type);
-    ttl->set_abs_ttl(create_index_node->index_->GetAbsTTL());
-    ttl->set_lat_ttl(create_index_node->index_->GetLatTTL());
+    // `create index` must set the index name.
+    column_key.set_index_name(create_index_node->index_name_);
+    DLOG(INFO) << column_key.DebugString();
 
     std::string error;
     auto ns = cs->GetNsClient();
@@ -611,25 +609,16 @@ void HandleSQL(const std::string &sql) {
     }
 }
 
-void HandleCli() {
+// cluster mode: if zk_cluster is not empty,
+// standalone mode:
+void Shell() {
+    DCHECK(cs);
+    DCHECK(sr);
     if (FLAGS_interactive) {
         std::cout << LOGO << std::endl;
         std::cout << "v" << VERSION << std::endl;
     }
-    ::openmldb::sdk::ClusterOptions copt;
-    copt.zk_cluster = FLAGS_zk_cluster;
-    copt.zk_path = FLAGS_zk_root_path;
-    cs = new ::openmldb::sdk::ClusterSDK(copt);
-    bool ok = cs->Init();
-    if (!ok) {
-        std::cout << "Fail to connect to db" << std::endl;
-        return;
-    }
-    sr = new ::openmldb::sdk::SQLClusterRouter(cs);
-    if (!sr->Init()) {
-        std::cout << "Fail to connect to db" << std::endl;
-        return;
-    }
+
     std::string ns_endpoint = cs->GetNsClient()->GetEndpoint();
     std::string display_prefix = ns_endpoint + "/" + db + "> ";
     std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
@@ -640,9 +629,12 @@ void HandleCli() {
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
             db = FLAGS_database;
+            auto ns = cs->GetNsClient();
+            std::string error;
+            ns->Use(db, error);
         } else {
             char *line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
-            if (line == NULL) {
+            if (line == nullptr) {
                 return;
             }
             if (line[0] != '\0' && line[0] != '/') {
@@ -673,7 +665,43 @@ void HandleCli() {
     }
 }
 
-}  // namespace cmd
-}  // namespace openmldb
+void ClusterSQLClient() {
+    ::openmldb::sdk::ClusterOptions copt;
+    copt.zk_cluster = FLAGS_zk_cluster;
+    copt.zk_path = FLAGS_zk_root_path;
+    cs = new ::openmldb::sdk::ClusterSDK(copt);
+    bool ok = cs->Init();
+    if (!ok) {
+        std::cout << "Fail to connect to db" << std::endl;
+        return;
+    }
+    sr = new ::openmldb::sdk::SQLClusterRouter(cs);
+    if (!sr->Init()) {
+        std::cout << "Fail to connect to db" << std::endl;
+        return;
+    }
+    Shell();
+}
+
+void StandAloneSQLClient() {
+    // connect to nameserver
+    if (FLAGS_host.empty() || FLAGS_port == 0) {
+        std::cout << "host or port is missing" << std::endl;
+    }
+    cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
+    bool ok = cs->Init();
+    if (!ok) {
+        std::cout << "Fail to connect to db" << std::endl;
+        return;
+    }
+    sr = new ::openmldb::sdk::SQLClusterRouter(cs);
+    if (!sr->Init()) {
+        std::cout << "Fail to connect to db" << std::endl;
+        return;
+    }
+    Shell();
+}
+
+}  // namespace openmldb::cmd
 
 #endif  // SRC_CMD_SQL_CMD_H_

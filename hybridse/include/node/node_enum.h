@@ -124,6 +124,7 @@ enum ExprType {
     kExprOrderExpression,
     kExprGetField,
     kExprCond,
+    kExprIn,
     kExprUnknow = -1
 };
 // typedef hybridse::type::Type DataType;

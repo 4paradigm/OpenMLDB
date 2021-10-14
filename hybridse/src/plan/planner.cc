@@ -567,7 +567,7 @@ base::Status Planner::CreateTableReferencePlanNode(const node::TableRefNode *roo
     switch (root->ref_type_) {
         case node::kRefTable: {
             const node::TableNode *table_node = dynamic_cast<const node::TableNode *>(root);
-            plan_node = node_manager_->MakeTablePlanNode(table_node->org_table_name_);
+            plan_node = node_manager_->MakeTablePlanNode(table_node->db_, table_node->org_table_name_);
             if (!table_node->alias_table_name_.empty()) {
                 *output = node_manager_->MakeRenamePlanNode(plan_node, table_node->alias_table_name_);
             } else {

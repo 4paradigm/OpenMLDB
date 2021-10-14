@@ -104,6 +104,9 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.physical.plan.graphviz.path", doc="The path of physical plan graphviz image")
   var physicalPlanGraphvizPath = ""
 
+  @ConfigOption(name="openmldb.physical.plan.print", doc="Print the sql physical plan")
+  var printPhysicalPlan = false
+
   @ConfigOption(name="openmldb.enable.native.last.join", doc="Enable native last join or not")
   var enableNativeLastJoin = true
 

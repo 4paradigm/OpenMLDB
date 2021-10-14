@@ -956,7 +956,15 @@ TEST_F(ASTNodeConverterTest, ConvertTypeFailTest) {
 }
 // expect tree string equal for converted CreateStmt
 TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
-    auto& sql = GetParam().sql_str();
+    const auto& sql_case = GetParam();
+    auto& sql = sql_case.sql_str();
+
+    if (!sql_case.expect().success_) {
+        // skip case that expect failure, ASTNodeConverterTest can't ensure the convert
+        // will fail in `ParseStatement` or `ConvertStatement`, those failure case will
+        // check in planner_v2_test
+        return;
+    }
 
     std::unique_ptr<zetasql::ParserOutput> parser_output;
     ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
@@ -966,8 +974,8 @@ TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
     base::Status status;
     status = ConvertStatement(statement, manager_, &output);
     EXPECT_EQ(common::kOk, status.code) << status;
-    if (status.isOK() && !GetParam().expect().node_tree_str_.empty()) {
-        EXPECT_STREQ(GetParam().expect().node_tree_str_.c_str(), output->GetTreeString().c_str())
+    if (status.isOK() && !sql_case.expect().node_tree_str_.empty()) {
+        EXPECT_STREQ(sql_case.expect().node_tree_str_.c_str(), output->GetTreeString().c_str())
             << output->GetTreeString().c_str();
     }
 }
@@ -985,7 +993,8 @@ INSTANTIATE_TEST_SUITE_P(ASTFilterStatementTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/where_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTSimpleSelectTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
-
+INSTANTIATE_TEST_SUITE_P(ASTJoinTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 }  // namespace plan
 }  // namespace hybridse
 

@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 
-#include "sdk/cluster_sdk.h"
+#include "sdk/db_sdk.h"
 #include "sdk/table_reader.h"
 
 namespace openmldb {
@@ -29,7 +29,7 @@ namespace sdk {
 class TableReader;
 class TableReaderImpl : public TableReader {
  public:
-    explicit TableReaderImpl(ClusterSDK* cluster_sdk);
+    explicit TableReaderImpl(DBSDK* cluster_sdk);
     ~TableReaderImpl() {}
 
     std::shared_ptr<hybridse::sdk::ResultSet> Scan(const std::string& db, const std::string& table,
@@ -42,7 +42,7 @@ class TableReaderImpl : public TableReader {
                                                          ::hybridse::sdk::Status* status);
 
  private:
-    ClusterSDK* cluster_sdk_;
+    DBSDK* cluster_sdk_;
 };
 
 }  // namespace sdk

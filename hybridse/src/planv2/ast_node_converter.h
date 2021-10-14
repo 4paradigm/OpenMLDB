@@ -52,6 +52,9 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
                                         node::TableRefNode** output);
 base::Status ConvertSelectList(const zetasql::ASTSelectList* select_list, node::NodeManager* node_manager,
                                node::SqlNodeList** output);
+
+base::Status ConvertInExpr(const zetasql::ASTInExpression* in_expr, node::NodeManager* node_manager,
+                           node::InExpr** output);
 base::Status ConvertLimitOffsetNode(const zetasql::ASTLimitOffset* limit_offset, node::NodeManager* node_manager,
                                     node::SqlNode** output);
 

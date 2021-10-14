@@ -182,6 +182,7 @@ class BatchModeTransformer {
 
     base::Status CreateRequestUnionNode(PhysicalOpNode* request,
                                         PhysicalOpNode* right,
+                                        const std::string& db_name,
                                         const std::string& primary_name,
                                         const codec::Schema* primary_schema,
                                         const node::ExprListNode* partition,

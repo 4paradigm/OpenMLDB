@@ -24,11 +24,11 @@
 namespace openmldb {
 
 namespace base {
-class Status;
 class Slice;
 }  // namespace base
 
 namespace log {
+class Status;
 
 // A file abstraction for reading sequentially through a file
 class SequentialFile {
@@ -44,7 +44,7 @@ class SequentialFile {
     // If an error was encountered, returns a non-OK status.
     //
     // REQUIRES: External synchronization
-    virtual base::Status Read(size_t n, base::Slice* result, char* scratch) = 0;
+    virtual Status Read(size_t n, base::Slice* result, char* scratch) = 0;
 
     // Skip "n" bytes from the file. This is guaranteed to be no
     // slower that reading the same data, but may be faster.
@@ -53,10 +53,10 @@ class SequentialFile {
     // file, and Skip will return OK.
     //
     // REQUIRES: External synchronization
-    virtual base::Status Skip(uint64_t n) = 0;
+    virtual Status Skip(uint64_t n) = 0;
 
-    virtual base::Status Tell(uint64_t* pos) = 0;
-    virtual base::Status Seek(uint64_t pos) = 0;
+    virtual Status Tell(uint64_t* pos) = 0;
+    virtual Status Seek(uint64_t pos) = 0;
 
  private:
     // No copying allowed

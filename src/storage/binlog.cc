@@ -24,13 +24,13 @@
 #include "base/glog_wapper.h"
 #include "base/hash.h"
 #include "base/kv_iterator.h"
-#include "base/status.h"
 #include "base/strings.h"
 #include "codec/flat_array.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "log/log_writer.h"
+#include "log/status.h"
 
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
@@ -57,7 +57,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
     while (true) {
         buffer.clear();
         ::openmldb::base::Slice record;
-        ::openmldb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        ::openmldb::log::Status status = log_reader.ReadNextRecord(&record, &buffer);
         if (status.IsWaitRecord()) {
             int end_log_index = log_reader.GetEndLogIndex();
             int cur_log_index = log_reader.GetLogIndex();

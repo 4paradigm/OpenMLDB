@@ -381,12 +381,12 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     ScopeVar sv;
 
     vm::SchemasContext schemas_context;
-    schemas_context.BuildTrivial({&table});
+    schemas_context.BuildTrivial(table.catalog(),  {&table});
     size_t schema_idx;
     size_t col_idx;
 
     ASSERT_TRUE(
-        schemas_context.ResolveColumnIndexByName("", col, &schema_idx, &col_idx)
+        schemas_context.ResolveColumnIndexByName("", "", col, &schema_idx, &col_idx)
             .isOK());
 
     MemoryWindowDecodeIRBuilder buf_builder(&schemas_context, entry_block);

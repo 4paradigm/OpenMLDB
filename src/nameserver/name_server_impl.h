@@ -34,6 +34,7 @@
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "codec/schema_codec.h"
+#include "nameserver/cluster_info.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
@@ -82,45 +83,6 @@ struct NearLineTabletInfo : public EndpointInfo {
     std::shared_ptr<::openmldb::client::NearLineTabletClient> client_;
 };
 
-class ClusterInfo {
- public:
-    explicit ClusterInfo(const ::openmldb::nameserver::ClusterAddress& cdp);
-
-    void CheckZkClient();
-
-    void UpdateNSClient(const std::vector<std::string>& children);
-
-    int Init(std::string& msg);  // NOLINT
-
-    bool CreateTableRemote(const ::openmldb::api::TaskInfo& task_info,
-                           const ::openmldb::nameserver::TableInfo& table_info,
-                           const ::openmldb::nameserver::ZoneInfo& zone_info);
-
-    bool DropTableRemote(const ::openmldb::api::TaskInfo& task_info, const std::string& name, const std::string& db,
-                         const ::openmldb::nameserver::ZoneInfo& zone_info);
-
-    bool AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term,
-                               std::string& msg);  // NOLINT
-
-    bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term,
-                                  int& code,          // NOLINT
-                                  std::string& msg);  // NOLINT
-
-    bool UpdateRemoteRealEpMap();
-
-    std::shared_ptr<::openmldb::client::NsClient> client_;
-    std::map<std::string, std::map<std::string, std::vector<TablePartition>>> last_status;
-    ::openmldb::nameserver::ClusterAddress cluster_add_;
-    uint64_t ctime_;
-    std::atomic<ClusterStatus> state_;
-    std::shared_ptr<std::map<std::string, std::string>> remote_real_ep_map_;
-
- private:
-    std::shared_ptr<ZkClient> zk_client_;
-    uint64_t session_term_;
-    // todo :: add statsus variable show replicas status
-};
-
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
 typedef std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>> TableInfos;
@@ -140,6 +102,23 @@ struct Task {
 struct OPData {
     ::openmldb::api::OPInfo op_info_;
     std::list<std::shared_ptr<Task>> task_list_;
+};
+
+struct ZkPath {
+    std::string root_path_;
+    std::string db_path_;
+    std::string table_index_node_;
+    std::string term_node_;
+    std::string table_data_path_;
+    std::string db_table_data_path_;
+    std::string db_sp_data_path_;
+    std::string auto_failover_node_;
+    std::string table_changed_notify_node_;
+    std::string offline_endpoint_lock_node_;
+    std::string zone_data_path_;
+    std::string op_index_node_;
+    std::string op_data_path_;
+    std::string op_sync_path_;
 };
 
 class NameServerImplTest;
@@ -162,6 +141,10 @@ class NameServerImpl : public NameServer {
     NameServerImpl(const NameServerImpl&) = delete;
 
     NameServerImpl& operator=(const NameServerImpl&) = delete;
+
+    inline bool IsClusterMode() const {
+        return startup_mode_ == ::openmldb::type::StartupMode::kCluster;
+    }
 
     void DeleteOPTask(RpcController* controller, const ::openmldb::api::DeleteTaskRequest* request,
                       ::openmldb::api::GeneralResponse* response, Closure* done);
@@ -396,7 +379,7 @@ class NameServerImpl : public NameServer {
 
     void AddDataType(std::shared_ptr<TableInfo> table_info);
 
-    int CheckTableMeta(const TableInfo& table_info);
+    static int CheckTableMeta(const TableInfo& table_info);
 
     int FillColumnKey(TableInfo& table_info);  // NOLINT
 
@@ -763,6 +746,10 @@ class NameServerImpl : public NameServer {
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 
+    bool AllocateTableId(uint32_t* id);
+
+    uint64_t GetTerm() const;
+
  private:
     std::mutex mu_;
     Tablets tablets_;
@@ -772,25 +759,12 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::shared_ptr<::openmldb::nameserver::ClusterInfo>> nsc_;
     ZoneInfo zone_info_;
     ZkClient* zk_client_;
+    ZkPath zk_path_;
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;
     ::baidu::common::ThreadPool task_thread_pool_;
-    std::string zk_table_index_node_;
-    std::string zk_term_node_;
-    std::string zk_table_data_path_;
-    std::string zk_db_path_;
-    std::string zk_db_table_data_path_;
-    std::string zk_db_sp_data_path_;
-    std::string zk_auto_failover_node_;
-    std::string zk_auto_recover_table_node_;
-    std::string zk_table_changed_notify_node_;
-    std::string zk_offline_endpoint_lock_node_;
-    std::string zk_zone_data_path_;
     uint32_t table_index_;
     uint64_t term_;
-    std::string zk_op_index_node_;
-    std::string zk_op_data_path_;
-    std::string zk_op_sync_path_;
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::list<std::shared_ptr<OPData>> done_op_list_;
@@ -804,13 +778,13 @@ class NameServerImpl : public NameServer {
     std::atomic<uint64_t> task_rpc_version_;
     std::map<uint64_t, std::list<std::shared_ptr<::openmldb::api::TaskInfo>>> task_map_;
     std::set<std::string> databases_;
-    std::string zk_root_path_;
     std::string endpoint_;
     std::map<std::string, std::string> real_ep_map_;
     std::map<std::string, std::string> remote_real_ep_map_;
     std::map<std::string, std::string> sdk_endpoint_map_;
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_sp_table_map_;
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_table_sp_map_;
+    ::openmldb::type::StartupMode startup_mode_;
 };
 
 }  // namespace nameserver

@@ -123,6 +123,9 @@ class TablePlanNode : public LeafPlanNode {
     virtual bool Equals(const PlanNode *that) const;
     const bool IsPrimary() const { return is_primary_; }
     void SetIsPrimary(bool is_primary) { is_primary_ = is_primary; }
+    const std::string GetPathString() const {
+        return db_.empty() ? table_ : db_ + "." + table_;
+    }
 
     const std::string db_;
     const std::string table_;

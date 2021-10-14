@@ -211,7 +211,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
         for (uint64_t i = 0; i < batchSize;) {
             std::string buffer;
             ::openmldb::base::Slice record;
-            ::openmldb::base::Status status = log_reader_.ReadNextRecord(&record, &buffer);
+            ::openmldb::log::Status status = log_reader_.ReadNextRecord(&record, &buffer);
             if (status.ok()) {
                 ::openmldb::api::LogEntry* entry = request.add_entries();
                 if (!entry->ParseFromString(record.ToString())) {
