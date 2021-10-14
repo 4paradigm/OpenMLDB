@@ -239,7 +239,9 @@ class DDLParser {
         ::hybridse::vm::EngineOptions options;
         options.set_keep_ir(true);
         options.set_compile_only(true);
-        session->SetPerformanceSensitive(false);
+        options.set_performance_sensitive(false);
+        // TODO(chendihao): Set in session instead of options
+        //session->SetPerformanceSensitive(false);
         auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
 
         ::hybridse::base::Status status;
