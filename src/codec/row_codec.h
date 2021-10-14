@@ -75,15 +75,15 @@ class RowCodec {
         return str_len;
     }
 
-    static ::openmldb::base::ResultMsg EncodeRow(const std::vector<std::string> input_value, const Schema& schema,
+    static ::openmldb::base::Status EncodeRow(const std::vector<std::string> input_value, const Schema& schema,
                                                  uint32_t version,
                                                  std::string& row) {  // NOLINT
         if (input_value.empty() || input_value.size() != (uint64_t)schema.size()) {
-            return ::openmldb::base::ResultMsg(-1, "input error");
+            return ::openmldb::base::Status(-1, "input error");
         }
         int32_t str_len = CalStrLength(input_value, schema);
         if (str_len < 0) {
-            return ::openmldb::base::ResultMsg(-1, "cal str len failed");
+            return ::openmldb::base::Status(-1, "cal str len failed");
         }
         ::openmldb::codec::RowBuilder builder(schema);
         uint32_t size = builder.CalTotalLength(str_len);
@@ -96,25 +96,25 @@ class RowCodec {
                 builder.AppendNULL();
                 continue;
             } else if (input_value[i] == "null" || input_value[i] == NONETOKEN) {
-                return ::openmldb::base::ResultMsg(-1, col.name() + " should not be null");
+                return ::openmldb::base::Status(-1, col.name() + " should not be null");
             }
             if (!builder.AppendValue(input_value[i])) {
                 std::string msg = "append " + ::openmldb::type::DataType_Name(col.data_type()) + " error";
-                return ::openmldb::base::ResultMsg(-1, msg);
+                return ::openmldb::base::Status(-1, msg);
             }
         }
-        return ::openmldb::base::ResultMsg(0, "ok");
+        return ::openmldb::base::Status(0, "ok");
     }
 
-    static ::openmldb::base::ResultMsg EncodeRow(const std::map<std::string, std::string>& str_map,
+    static ::openmldb::base::Status EncodeRow(const std::map<std::string, std::string>& str_map,
                                                  const Schema& schema, int32_t version,
                                                  std::string& row) {  // NOLINT
         if (str_map.empty() || str_map.size() != (uint64_t)schema.size()) {
-            return ::openmldb::base::ResultMsg(-1, "input error");
+            return ::openmldb::base::Status(-1, "input error");
         }
         int32_t str_len = CalStrLength(str_map, schema);
         if (str_len < 0) {
-            return ::openmldb::base::ResultMsg(-1, "cal str len error");
+            return ::openmldb::base::Status(-1, "cal str len error");
         }
         ::openmldb::codec::RowBuilder builder(schema);
         builder.SetSchemaVersion(version);
@@ -125,27 +125,27 @@ class RowCodec {
             const ::openmldb::common::ColumnDesc& col = schema.Get(i);
             auto iter = str_map.find(col.name());
             if (iter == str_map.end()) {
-                return ::openmldb::base::ResultMsg(-1, col.name() + " not in str_map");
+                return ::openmldb::base::Status(-1, col.name() + " not in str_map");
             }
             if (!col.not_null() && (iter->second == "null" || iter->second == NONETOKEN)) {
                 builder.AppendNULL();
                 continue;
             } else if (iter->second == "null" || iter->second == NONETOKEN) {
-                return ::openmldb::base::ResultMsg(-1, col.name() + " should not be null");
+                return ::openmldb::base::Status(-1, col.name() + " should not be null");
             }
             if (!builder.AppendValue(iter->second)) {
                 std::string msg = "append " + ::openmldb::type::DataType_Name(col.data_type()) + " error";
-                return ::openmldb::base::ResultMsg(-1, msg);
+                return ::openmldb::base::Status(-1, msg);
             }
         }
-        return ::openmldb::base::ResultMsg(0, "ok");
+        return ::openmldb::base::Status(0, "ok");
     }
 
-    static ::openmldb::base::ResultMsg EncodeRow(const std::vector<std::string>& input_value,
+    static ::openmldb::base::Status EncodeRow(const std::vector<std::string>& input_value,
                                                  const std::vector<::openmldb::codec::ColumnDesc>& columns,
                                                  int modify_times, std::string* row) {
         if (input_value.size() != columns.size()) {
-            return ::openmldb::base::ResultMsg(-1, "input error");
+            return ::openmldb::base::Status(-1, "input error");
         }
         uint16_t cnt = (uint16_t)input_value.size();
         ::openmldb::codec::FlatArrayCodec codec(row, cnt, modify_times);
@@ -180,7 +180,7 @@ class RowCodec {
                     strcpy(buf, date.c_str());  // NOLINT
                     char* result = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_s);
                     if (result == NULL) {
-                        return ::openmldb::base::ResultMsg(-1, "date format error");
+                        return ::openmldb::base::Status(-1, "date format error");
                     }
                     tm_s.tm_isdst = -1;
                     time = mktime(&tm_s) * 1000;
@@ -198,21 +198,21 @@ class RowCodec {
                     } else if (raw_value == "false") {
                         value = false;
                     } else {
-                        return ::openmldb::base::ResultMsg(-1, "bool format error");
+                        return ::openmldb::base::Status(-1, "bool format error");
                     }
                     codec_ok = codec.Append(value);
                 } else {
                     codec_ok = codec.AppendNull();
                 }
             } catch (std::exception const& e) {
-                return ::openmldb::base::ResultMsg(-1, e.what());
+                return ::openmldb::base::Status(-1, e.what());
             }
             if (!codec_ok) {
-                return ::openmldb::base::ResultMsg(-1, "encode failed");
+                return ::openmldb::base::Status(-1, "encode failed");
             }
         }
         codec.Build();
-        return ::openmldb::base::ResultMsg(0, "ok");
+        return ::openmldb::base::Status(0, "ok");
     }
 
     static bool DecodeRow(const Schema& schema,  // NOLINT

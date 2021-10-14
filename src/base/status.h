@@ -24,9 +24,9 @@
 namespace openmldb {
 namespace base {
 
-struct ResultMsg {
-    ResultMsg(int code_i, std::string msg_i) : code(code_i), msg(msg_i) {}
-    ResultMsg() : code(0), msg("ok") {}
+struct Status {
+    Status(int code_i, std::string msg_i) : code(code_i), msg(msg_i) {}
+    Status() : code(0), msg("ok") {}
     inline bool OK() const { return code == 0; }
     inline const std::string& GetMsg() const { return msg; }
     inline int GetCode() const { return code; }

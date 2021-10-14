@@ -42,7 +42,7 @@ class NearLineTabletClient : public Client {
         return client_.Init();
     }
 
-    ::openmldb::base::ResultMsg CreateTable(const std::string& db_name, const std::string& table_name,
+    ::openmldb::base::Status CreateTable(const std::string& db_name, const std::string& table_name,
             const std::string& partition_key, const Schema& schema);
 
  private:
