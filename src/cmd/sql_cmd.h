@@ -65,7 +65,8 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK *cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 
-void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set, std::string &fileAddress, std::map<std::string, std::string> &option) {
+void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
+ const std::string &fileAddress, std::map<std::string, std::string> *option) {
     std::ofstream fstream;
     std::map<std::string, std::string>::iterator iter;
 
@@ -76,8 +77,8 @@ void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
     std::string nullValues = "null";
     std::string header = "true";
 
-    for (iter = option.begin(); iter != option.end(); iter++) {
-        std::string key= iter->first;
+    for (iter = option->begin(); iter != option->end(); iter++) {
+        std::string key = iter->first;
         if (key == "format") {
             format = iter->second;
         } else if (key == "mode") {
@@ -100,7 +101,7 @@ void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
     if (mode == "errorifexists" && access(fileAddress.c_str(), 0) == -1) {
         stream << "File already exists" << std::endl;
         return;
-    }  
+    }
     
     if (mode == "overwrite") {
         fstream.open(fileAddress, std::ofstream::trunc);
@@ -124,7 +125,7 @@ void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
             std::string schemaString = "";
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 schemaString.append(schema->GetColumnName(i));
-                if(i != schema->GetColumnCnt()-1) {
+                if (i != schema->GetColumnCnt()-1) {
                     schemaString.append(delimiter);
                 } else {
                     fstream << schemaString << std::endl;
@@ -214,7 +215,7 @@ void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
     } else {
         stream << "This format (" + format + ") is not currently supported" << std::endl;
         return;
-    }   
+    }
     fstream.close(); 
 }
 
