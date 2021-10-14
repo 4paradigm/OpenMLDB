@@ -915,7 +915,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
 
     auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>(), parameter);
     if (!client) {
-        DLOG(INFO) << "no tablet avilable for sql " << sql;
+        DLOG(INFO) << "no tablet available for sql " << sql;
         return {};
     }
     DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
