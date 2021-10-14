@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SDK_CLUSTER_SDK_H_
-#define SRC_SDK_CLUSTER_SDK_H_
+#ifndef SRC_SDK_DB_SDK_H_
+#define SRC_SDK_DB_SDK_H_
 
 #include <map>
 #include <memory>
@@ -181,4 +181,4 @@ class StandAloneSDK : public DBSDK {
 };
 
 }  // namespace openmldb::sdk
-#endif  // SRC_SDK_CLUSTER_SDK_H_
+#endif  // SRC_SDK_DB_SDK_H_
