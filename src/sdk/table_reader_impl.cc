@@ -85,7 +85,7 @@ class ScanFutureImpl : public ScanFuture {
     std::shared_ptr<::hybridse::vm::TableHandler> table_handler_;
 };
 
-TableReaderImpl::TableReaderImpl(ClusterSDK* cluster_sdk) : cluster_sdk_(cluster_sdk) {}
+TableReaderImpl::TableReaderImpl(DBSDK* cluster_sdk) : cluster_sdk_(cluster_sdk) {}
 
 std::shared_ptr<openmldb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::string& db, const std::string& table,
                                                                       const std::string& key, int64_t st, int64_t et,

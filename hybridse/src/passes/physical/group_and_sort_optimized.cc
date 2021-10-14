@@ -657,14 +657,15 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
     size_t child_column_id;
     size_t source_column_id;
     const PhysicalOpNode* source;
-    Status status = schemas_ctx->ResolveColumnID(
+    Status status = schemas_ctx->ResolveColumnID(col->GetDBName(),
         col->GetRelationName(), col->GetColumnName(), &column_id, &path_idx,
         &child_column_id, &source_column_id, &source);
 
     // try loose the relation
     if (!status.isOK() && !col->GetRelationName().empty()) {
         status = schemas_ctx->ResolveColumnID(
-            "", col->GetColumnName(), &column_id, &path_idx, &child_column_id,
+            col->GetDBName(), col->GetRelationName(), col->GetColumnName(),
+            &column_id, &path_idx, &child_column_id,
             &source_column_id, &source);
     }
 

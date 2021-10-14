@@ -171,6 +171,16 @@ void CheckTransformPhysicalPlan(const SqlCase& sql_case, bool is_cluster_optimiz
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
+    hybridse::type::Database db2;
+    db2.set_name("db2");
+    {
+        hybridse::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_catalog("db2");
+        table_def.set_name("table2");
+        AddTable(db2, table_def);
+    }
+    catalog->AddDatabase(db2);
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status base_status;
     {
@@ -364,7 +374,8 @@ INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOp
                                            "-3, 0), index_keys=(col1))\n"
                                            "      +-UNION(partition_keys=(col1), orders=(col5 ASC), "
                                            "range=(col5, -3, 0), index_keys=)\n"
-                                           "          DATA_PROVIDER(table=t3)\n"
+                                           "          RENAME(name=t1)\n"
+                                           "            DATA_PROVIDER(table=t3)\n"
                                            "      DATA_PROVIDER(request=t1)\n"
                                            "      DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
                             // 1
@@ -377,7 +388,8 @@ INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOp
                                            "-3, 0), index_keys=(col1,col2))\n"
                                            "      +-UNION(partition_keys=(col1), orders=(ASC), range=(col5, "
                                            "-3, 0), index_keys=(col2))\n"
-                                           "          DATA_PROVIDER(type=Partition, table=t3, "
+                                           "          RENAME(name=t1)\n"
+                                           "            DATA_PROVIDER(type=Partition, table=t3, "
                                            "index=index2_t3)\n"
                                            "      DATA_PROVIDER(request=t1)\n"
                                            "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
@@ -390,7 +402,8 @@ INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOp
                                            "range=(col5, -3, 0), index_keys=(col1))\n"
                                            "      +-UNION(partition_keys=(col1), orders=(col5 ASC), "
                                            "range=(col5, -3, 0), index_keys=)\n"
-                                           "          DATA_PROVIDER(table=t3)\n"
+                                           "          RENAME(name=t1)\n"
+                                           "            DATA_PROVIDER(table=t3)\n"
                                            "      DATA_PROVIDER(request=t1)\n"
                                            "      DATA_PROVIDER(type=Partition, table=t1, "
                                            "index=index1)")));
@@ -437,6 +450,16 @@ TEST_P(TransformRequestModePassOptimizedTest, pass_pass_optimized_test) {
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
+    hybridse::type::Database db2;
+    db2.set_name("db2");
+    {
+        hybridse::type::TableDef table_def;
+        BuildTableDef(table_def);
+        table_def.set_catalog("db2");
+        table_def.set_name("table2");
+        AddTable(db2, table_def);
+    }
+    catalog->AddDatabase(db2);
     PhysicalPlanCheck(catalog, in_out.first, in_out.second);
 }
 

@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 #include "testing/test_base.h"
+
+#include <unordered_map>
+
 #include "plan/plan_api.h"
 namespace hybridse {
 namespace vm {
@@ -428,8 +431,11 @@ bool InitSimpleCataLogFromSqlCase(SqlCase& sql_case,  // NOLINT
     if (sql_case.db_.empty()) {
         sql_case.db_ =  sqlcase::SqlCase::GenRand("auto_db");
     }
+
+    std::unordered_map<std::string, hybridse::type::Database> db_map;
     hybridse::type::Database db;
     db.set_name(sql_case.db());
+    db_map[sql_case.db()] = db;
     for (int32_t i = 0; i < sql_case.CountInputs(); i++) {
         sql_case.inputs_[i].name_ = sql_case.inputs()[i].name_;
         if (sql_case.inputs_[i].name_.empty()) {
@@ -440,11 +446,18 @@ bool InitSimpleCataLogFromSqlCase(SqlCase& sql_case,  // NOLINT
             return false;
         }
         table_def.set_name(sql_case.inputs_[i].name_);
-        if (!AddTable(db, table_def)) {
+        if (db_map.find(table_def.catalog()) == db_map.end()) {
+            hybridse::type::Database new_db;
+            new_db.set_name(table_def.catalog());
+            db_map[table_def.catalog()] = new_db;
+        }
+        if (!AddTable(db_map[table_def.catalog()], table_def)) {
             return false;
         }
     }
-    catalog->AddDatabase(db);
+    for (auto iter = db_map.begin(); iter != db_map.end(); iter++) {
+        catalog->AddDatabase(iter->second);
+    }
     return true;
 }
 

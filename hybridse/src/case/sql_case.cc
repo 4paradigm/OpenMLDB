@@ -768,8 +768,11 @@ bool SqlCase::ExtractInputTableDef(const TableInfo& input,
             return false;
         }
     }
-
-    table.set_catalog(db_);
+    if (input.db_.empty()) {
+        table.set_catalog(db_);
+    } else {
+        table.set_catalog(input.db_);
+    }
     table.set_name(input.name_);
     return true;
 }
@@ -919,6 +922,10 @@ bool SqlCase::CreateRowsFromYamlNode(
 }
 bool SqlCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
                                           SqlCase::TableInfo* table) {
+    if (schema_data["db"]) {
+        table->db_ = schema_data["db"].as<std::string>();
+        boost::trim(table->db_);
+    }
     if (schema_data["name"]) {
         table->name_ = schema_data["name"].as<std::string>();
         boost::trim(table->name_);

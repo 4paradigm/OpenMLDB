@@ -620,13 +620,16 @@ class QueryNode : public SqlNode {
 
 class TableNode : public TableRefNode {
  public:
-    TableNode() : TableRefNode(kRefTable, ""), org_table_name_("") {}
+    TableNode() : TableRefNode(kRefTable, ""), db_(""), org_table_name_("") {}
 
     TableNode(const std::string &name, const std::string &alias)
-        : TableRefNode(kRefTable, alias), org_table_name_(name) {}
+        : TableRefNode(kRefTable, alias), db_(""), org_table_name_(name) {}
+    TableNode(const std::string &db, const std::string &name, const std::string &alias)
+        : TableRefNode(kRefTable, alias), db_(db), org_table_name_(name) {}
     ~TableNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SqlNode *node) const;
+    const std::string db_;
     const std::string org_table_name_;
 };
 

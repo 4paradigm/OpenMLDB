@@ -284,7 +284,7 @@ bool SqlCompiler::BuildClusterJob(SqlContext& ctx, Status& status) {  // NOLINT
     }
     bool is_request_mode = vm::kRequestMode == ctx.engine_mode ||
                            vm::kBatchRequestMode == ctx.engine_mode;
-    RunnerBuilder runner_builder(&ctx.nm, ctx.sql,
+    RunnerBuilder runner_builder(&ctx.nm, ctx.sql, ctx.db,
                                  ctx.is_cluster_optimized && is_request_mode,
                                  ctx.batch_request_info.common_column_indices,
                                  ctx.batch_request_info.common_node_set);

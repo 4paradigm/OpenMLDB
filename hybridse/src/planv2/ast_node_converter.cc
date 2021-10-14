@@ -874,12 +874,18 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
                        "Un-support tablesample clause")
             CHECK_TRUE(nullptr == table_path_expression->hint(), common::kSqlAstError, "Un-support hint")
 
-            CHECK_TRUE(table_path_expression->path_expr()->num_names() <= 2, common::kSqlAstError,
-                       "Invalid table path expression ", table_path_expression->path_expr()->ToIdentifierPathString());
+            std::vector<std::string> names;
+            CHECK_STATUS(AstPathExpressionToStringList(table_path_expression->path_expr(), names))
+
+            CHECK_TRUE(names.size() >=1 && names.size() <= 2, common::kSqlAstError,
+                       "Invalid table path expression ", table_path_expression->path_expr()->ToIdentifierPathString())
             std::string alias_name =
                 nullptr != table_path_expression->alias() ? table_path_expression->alias()->GetAsString() : "";
-            *output =
-                node_manager->MakeTableNode(table_path_expression->path_expr()->last_name()->GetAsString(), alias_name);
+            if (names.size() == 1) {
+                *output = node_manager->MakeTableNode(names[0], alias_name);
+            } else {
+                *output = node_manager->MakeTableNode(names[0], names[1], alias_name);
+            }
             break;
         }
         case zetasql::AST_JOIN: {

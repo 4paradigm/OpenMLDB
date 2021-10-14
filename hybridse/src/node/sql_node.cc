@@ -388,12 +388,15 @@ const std::string ColumnRefNode::GenerateExpressionName() const {
     return str;
 }
 const std::string ColumnRefNode::GetExprString() const {
-    std::string str = "";
-    if (!relation_name_.empty()) {
-        str.append(relation_name_).append(".");
+    std::string path = "";
+    if (!db_name_.empty()) {
+        path.append(db_name_).append(".");
     }
-    str.append(column_name_);
-    return str;
+    if (!relation_name_.empty()) {
+        path.append(relation_name_).append(".");
+    }
+    path.append(column_name_);
+    return path;
 }
 bool ColumnRefNode::Equals(const ExprNode *node) const {
     if (this == node) {
