@@ -1985,10 +1985,10 @@ class LoadDataNode : public SqlNode {
         : SqlNode(kLoadDataStmt, 0, 0), file_(f), db_(db), table_(table), options_(op) {}
     ~LoadDataNode() {}
 
-    const std::string& file() const { return file_; }
-    const std::string& db() const { return db_; }
-    const std::string& table() const { return table_; }
-    const std::shared_ptr<OptionsMap> options() const { return options_; }
+    const std::string& File() const { return file_; }
+    const std::string& Db() const { return db_; }
+    const std::string& Table() const { return table_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const override;
 
@@ -2028,10 +2028,10 @@ class DeployNode : public SqlNode {
         : SqlNode(kDeployStmt, 0, 0), name_(name), stmt_(stmt), stmt_str_(stmt_str), if_not_exists_(if_not_exists) {}
     ~DeployNode() {}
 
-    const std::string& name() const { return name_; }
-    const SqlNode* stmt() const { return stmt_; }
-    const bool is_if_not_exists() const { return if_not_exists_; }
-    const std::string& stmt_str() const { return stmt_str_; }
+    const std::string& Name() const { return name_; }
+    const SqlNode* Stmt() const { return stmt_; }
+    const bool IsIfNotExists() const { return if_not_exists_; }
+    const std::string& StmtStr() const { return stmt_str_; }
 
     void Print(std::ostream& output, const std::string& tab) const override;
 
