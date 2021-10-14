@@ -406,8 +406,8 @@ std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> DBSDK::GetProcedureIn
 
 bool StandAloneSDK::Init() {
     ::hybridse::vm::EngineOptions opt;
-    opt.set_compile_only(true);
-    opt.set_plan_only(true);
+    opt.SetCompileOnly(true);
+    opt.SetPlanOnly(true);
     engine_ = new ::hybridse::vm::Engine(catalog_, opt);
     return PeriodicRefresh();
 }

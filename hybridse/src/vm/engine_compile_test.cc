@@ -509,7 +509,7 @@ TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
             "select db1.t1.col1, db1.t1.col2,db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
             "on db1.t1.col1=db2.t2.col1;"};
         EngineOptions options;
-        options.set_performance_sensitive(false);
+        options.SetPerformanceSensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {

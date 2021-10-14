@@ -237,9 +237,9 @@ class DDLParser {
         // TODO(hw): engine is input, do not create in here
         ::hybridse::vm::Engine::InitializeGlobalLLVM();
         ::hybridse::vm::EngineOptions options;
-        options.set_keep_ir(true);
-        options.set_compile_only(true);
-        options.set_performance_sensitive(false);
+        options.SetKeepIR(true);
+        options.SetCompileOnly(true);
+        options.SetPerformanceSensitive(false);
         auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
 
         ::hybridse::base::Status status;
