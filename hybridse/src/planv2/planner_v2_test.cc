@@ -1561,7 +1561,7 @@ TEST_F(PlannerV2Test, DeployPlanNodeTest) {
     NodeManager nm;
     ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
     ASSERT_EQ(1, plan_trees.size());
-    ASSERT_STREQ(R"sql(+-[kPlanTypeDeploy]
+    EXPECT_STREQ(R"sql(+-[kPlanTypeDeploy]
   +-if_not_exists: true
   +-name: foo
   +-stmt:
@@ -1586,6 +1586,13 @@ TEST_F(PlannerV2Test, DeployPlanNodeTest) {
       |      +-table: t1
       |      +-alias: <nil>
       +-window_list: [])sql", plan_trees.front()->GetTreeString().c_str());
+    auto deploy_stmt = dynamic_cast<node::DeployPlanNode*>(plan_trees.front());
+    ASSERT_TRUE(deploy_stmt != nullptr);
+    EXPECT_STREQ(R"sql(SELECT
+  col1
+FROM
+  t1
+)sql", deploy_stmt->stmt_str().c_str());
 }
 TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
     const std::string sql = "LOAD DATA INFILE 'hello.csv' INTO TABLE t1 OPTIONS (key = 'cat');";

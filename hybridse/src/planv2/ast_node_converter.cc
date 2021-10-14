@@ -627,7 +627,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             node::SqlNode* deploy_stmt = nullptr;
             CHECK_STATUS(ConvertStatement(ast_deploy_stmt->stmt(), node_manager, &deploy_stmt));
             *output = node_manager->MakeDeployStmt(ast_deploy_stmt->name()->GetAsString(), deploy_stmt,
-                                                   ast_deploy_stmt->is_if_not_exists());
+                                                   ast_deploy_stmt->UnparseStmt(), ast_deploy_stmt->is_if_not_exists());
             break;
         }
         default: {

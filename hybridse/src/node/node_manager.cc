@@ -741,13 +741,15 @@ SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name, const s
     return RegisterNode(node_ptr);
 }
 
-SqlNode *NodeManager::MakeDeployStmt(const std::string &name, const SqlNode *stmt, bool if_not_exist) {
-    DeployNode *node = new DeployNode(name, stmt, if_not_exist);
+DeployNode *NodeManager::MakeDeployStmt(const std::string &name, const SqlNode *stmt,
+                                     const std::string& stmt_str, bool if_not_exist) {
+    DeployNode *node = new DeployNode(name, stmt, stmt_str, if_not_exist);
     return RegisterNode(node);
 }
 
-PlanNode *NodeManager::MakeDeployPlanNode(const std::string &name, const SqlNode *stmt, bool if_not_exist) {
-    DeployPlanNode *node = new DeployPlanNode(name, stmt, if_not_exist);
+DeployPlanNode *NodeManager::MakeDeployPlanNode(const std::string &name, const SqlNode *stmt,
+                                                const std::string& stmt_str, bool if_not_exist) {
+    DeployPlanNode *node = new DeployPlanNode(name, stmt, stmt_str, if_not_exist);
     return RegisterNode(node);
 }
 LoadDataNode *NodeManager::MakeLoadDataNode(const std::string &file_name, const std::string& db,

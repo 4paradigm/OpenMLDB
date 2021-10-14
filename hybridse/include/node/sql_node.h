@@ -1980,19 +1980,21 @@ class ExplainNode : public SqlNode {
 
 class DeployNode : public SqlNode {
  public:
-    explicit DeployNode(const std::string& name, const SqlNode* stmt, bool if_not_exists)
-        : SqlNode(kDeployStmt, 0, 0), name_(name), stmt_(stmt), if_not_exists_(if_not_exists) {}
+    explicit DeployNode(const std::string& name, const SqlNode* stmt, const std::string& stmt_str, bool if_not_exists)
+        : SqlNode(kDeployStmt, 0, 0), name_(name), stmt_(stmt), stmt_str_(stmt_str), if_not_exists_(if_not_exists) {}
     ~DeployNode() {}
 
     const std::string& name() const { return name_; }
     const SqlNode* stmt() const { return stmt_; }
     const bool is_if_not_exists() const { return if_not_exists_; }
+    const std::string& stmt_str() const { return stmt_str_; }
 
     void Print(std::ostream& output, const std::string& tab) const override;
 
  private:
     const std::string name_;
     const SqlNode* stmt_ = nullptr;
+    const std::string stmt_str_;
     const bool if_not_exists_ = false;
 };
 

@@ -248,8 +248,10 @@ class NodeManager {
                                  const std::string &table_name,
                                  ColumnIndexNode *index);
 
-    SqlNode *MakeDeployStmt(const std::string& name, const SqlNode* stmt, bool if_not_exist);
-    PlanNode *MakeDeployPlanNode(const std::string& name, const SqlNode* stmt, bool if_not_exist);
+    DeployNode *MakeDeployStmt(const std::string& name, const SqlNode* stmt, const std::string& stmt_str,
+                            bool if_not_exist);
+    DeployPlanNode *MakeDeployPlanNode(const std::string& name, const SqlNode* stmt,
+                                       const std::string& stmt_str, bool if_not_exist);
 
     LoadDataNode *MakeLoadDataNode(const std::string &file_name, const std::string& db, const std::string &table,
                                    const std::shared_ptr<OptionsMap> options);
