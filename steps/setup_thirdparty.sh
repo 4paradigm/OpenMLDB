@@ -42,7 +42,7 @@ ARCH=$(arch)
 
 THIRDPARTY_HOME=https://github.com/jingchen2222/hybridsql-asserts
 ZETASQL_HOME=https://github.com/aceforeverd/zetasql
-ZETASQL_VERSION=0.2.1-beta7
+ZETASQL_VERSION=0.2.1.beta9
 
 echo "Install thirdparty ... for $(uname -a)"
 
