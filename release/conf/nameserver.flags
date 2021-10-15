@@ -1,9 +1,9 @@
 # nameserver.conf 
 --endpoint=127.0.0.1:6527
 --role=nameserver
---zk_cluster=127.0.0.1:7181
---zk_root_path=/openmldb_cluster
-#--tablet=127.0.0.1:9921
+#--zk_cluster=127.0.0.1:7181
+#--zk_root_path=/openmldb_cluster
+--tablet=127.0.0.1:9921
 
 --openmldb_log_dir=./logs
 --log_file_count=24
@@ -17,7 +17,7 @@
 #--request_timeout_ms=12000
 #--request_sleep_time=1000
 
---zk_session_timeout=10000
+#--zk_session_timeout=10000
 #--zk_keep_alive_check_interval=15000
 --tablet_heartbeat_timeout=60000
 #--tablet_offline_check_interval=1000
