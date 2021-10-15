@@ -81,9 +81,12 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "show deployments";
         case kCmdDropDeployment:
             return "drop deployment";
-        default:
+        case kCmdSetSelectMode:
+            return "set select_mode";
+        case kCmdUnknown:
             return "unknown cmd type";
     }
+    return "undefined cmd type";
 }
 
 inline const std::string ExplainTypeName(const ExplainType &explain_type) {

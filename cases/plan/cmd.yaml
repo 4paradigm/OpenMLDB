@@ -322,3 +322,10 @@ cases:
           |    +-window_list: []
           +-options:
             +-delimit: ,
+  - id: set_select_mode
+    sql: SET SELECT_MODE = 'TRINO';
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: set select_mode
+          +-args: [TRINO]

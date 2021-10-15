@@ -245,6 +245,7 @@ enum CmdType {
     kCmdShowDeployment,
     kCmdShowDeployments,
     kCmdDropDeployment,
+    kCmdSetSelectMode,
     kCmdUnknown = -1
 };
 enum ExplainType {

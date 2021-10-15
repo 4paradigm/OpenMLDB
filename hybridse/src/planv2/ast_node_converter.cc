@@ -632,6 +632,20 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node_manager->MakeCmdNode(node::CmdType::kCmdUseDatabase, db_name);
             break;
         }
+        case zetasql::AST_SINGLE_ASSIGNMENT: {
+            const auto ast_assign_stmt = statement->GetAsOrNull<zetasql::ASTSingleAssignment>();
+            CHECK_TRUE(nullptr != ast_assign_stmt, common::kSqlAstError, "not an ASTSingleAssignment");
+            const auto key = ast_assign_stmt->variable()->GetAsString();
+            if (boost::iequals(key, "select_mode")) {
+                std::string mode;
+                CHECK_STATUS(AstStringLiteralToString(ast_assign_stmt->expression(), &mode),
+                             "Unsupport: set statement's value other than string literal");
+                *output = node_manager->MakeCmdNode(node::CmdType::kCmdSetSelectMode, mode);
+            } else {
+                CHECK_TRUE(false, common::kSqlAstError, "Unsupport Set Statement other than 'select_mode'");
+            }
+            break;
+        }
         case zetasql::AST_LOAD_DATA_STATEMENT: {
             const auto load_data_stmt = statement->GetAsOrNull<zetasql::ASTLoadDataStatement>();
             CHECK_TRUE(load_data_stmt != nullptr, common::kSqlAstError, "not an ASTLoadDataStatement");
@@ -930,8 +944,8 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
             std::vector<std::string> names;
             CHECK_STATUS(AstPathExpressionToStringList(table_path_expression->path_expr(), names))
 
-            CHECK_TRUE(names.size() >=1 && names.size() <= 2, common::kSqlAstError,
-                       "Invalid table path expression ", table_path_expression->path_expr()->ToIdentifierPathString())
+            CHECK_TRUE(names.size() >= 1 && names.size() <= 2, common::kSqlAstError, "Invalid table path expression ",
+                       table_path_expression->path_expr()->ToIdentifierPathString())
             std::string alias_name =
                 nullptr != table_path_expression->alias() ? table_path_expression->alias()->GetAsString() : "";
             if (names.size() == 1) {
