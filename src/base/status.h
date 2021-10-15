@@ -143,7 +143,7 @@ enum ReturnCode {
     kIsFollowerCluster = 453,
     kCurNameserverIsNotLeaderMdoe = 454,
     kShowtableErrorWhenAddReplicaCluster = 455,
-    kNameserverIsFollowerAndRequestHasNoZoneInfo = 501,
+    kNoZoneInfo = 501,
     kZoneInfoMismathch = 502,
     kCreateTableForReplicaClusterFailed = 503,
     kAddTaskInReplicaClusterNsFailed = 504,
