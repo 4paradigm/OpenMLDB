@@ -649,6 +649,10 @@ void Shell() {
             }
         }
         sql.append(buffer);
+        if (sql == "quit;") {
+            sql.clear();
+            return;
+        }
         if (sql.back() == ';') {
             HandleSQL(sql);
             multi_line = false;
