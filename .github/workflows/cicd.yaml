@@ -241,6 +241,7 @@ jobs:
           VERSION=$(echo "$VERSION" | sed -e 's/^v//')
           ./steps/package_openmldb_javasdk.sh "$VERSION"
         env:
+          # do not set user.home on macos
           MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
@@ -281,7 +282,6 @@ jobs:
           VERSION=$(echo "$VERSION" | sed -e 's/^v//')
           ./steps/package_openmldb_javasdk.sh "$VERSION"
         env:
-          MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
