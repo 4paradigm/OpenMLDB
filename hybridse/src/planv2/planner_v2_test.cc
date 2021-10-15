@@ -1555,6 +1555,60 @@ TEST_F(PlannerV2Test, CreatePlanLeakTest) {
         cnt++;
     }
 }
+TEST_F(PlannerV2Test, DeployPlanNodeTest) {
+    const std::string sql = "DEPLOY IF NOT EXISTS foo SELECT col1 from t1;";
+    node::PlanNodeList plan_trees;
+    base::Status status;
+    NodeManager nm;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
+    ASSERT_EQ(1, plan_trees.size());
+    EXPECT_STREQ(R"sql(+-[kPlanTypeDeploy]
+  +-if_not_exists: true
+  +-name: foo
+  +-stmt:
+    +-node[kQuery]: kQuerySelect
+      +-distinct_opt: false
+      +-where_expr: null
+      +-group_expr_list: null
+      +-having_expr: null
+      +-order_expr_list: null
+      +-limit: null
+      +-select_list[list]:
+      |  +-0:
+      |    +-node[kResTarget]
+      |      +-val:
+      |      |  +-expr[column ref]
+      |      |    +-relation_name: <nil>
+      |      |    +-column_name: col1
+      |      +-name: <nil>
+      +-tableref_list[list]:
+      |  +-0:
+      |    +-node[kTableRef]: kTable
+      |      +-table: t1
+      |      +-alias: <nil>
+      +-window_list: [])sql", plan_trees.front()->GetTreeString().c_str());
+    auto deploy_stmt = dynamic_cast<node::DeployPlanNode*>(plan_trees.front());
+    ASSERT_TRUE(deploy_stmt != nullptr);
+    EXPECT_STREQ(R"sql(SELECT
+  col1
+FROM
+  t1
+)sql", deploy_stmt->stmt_str().c_str());
+}
+TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
+    const std::string sql = "LOAD DATA INFILE 'hello.csv' INTO TABLE t1 OPTIONS (key = 'cat');";
+    node::PlanNodeList plan_trees;
+    base::Status status;
+    NodeManager nm;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
+    ASSERT_EQ(1, plan_trees.size());
+    ASSERT_STREQ(R"sql(+-[kPlanTypeLoadData]
+  +-file: hello.csv
+  +-db: <nil>
+  +-table: t1
+  +-options:
+    +-key: cat)sql", plan_trees.front()->GetTreeString().c_str());
+}
 //
 // TEST_F(PlannerTest, CreateSpParseTest) {
 //    std::string sql =
