@@ -9,7 +9,7 @@ on:
         default: 'all'
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  HYBRIDSE_SOURCE: local
+  HYBRIDSE_SOURCE:
 
 jobs:
   java-sdk-test-standalone-0:

@@ -21,7 +21,7 @@ on:
     branches:
       - main
 env:
-  HYBRIDSE_SOURCE: local
+  HYBRIDSE_SOURCE:
 jobs:
   linux-unit-test:
     name: Run unit tests in Linux
@@ -31,8 +31,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build and install hybridse-sdk
-          run: |
-            bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
       - name: Run unit tests for Linux
         working-directory: java/openmldb-batch
         run: |
@@ -53,8 +53,8 @@ jobs:
           java-version: '8'
           distribution: 'adopt'
       - name: Build and install hybridse-sdk
-          run: |
-            bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
       - name: Run unit tests for MacOS
         working-directory: java/openmldb-batch
         run: |
