@@ -63,6 +63,11 @@ if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
     cmake --build build --target install -- -j"$(nproc)"
     mv hybridse "$THIRDPARTY_PATH/hybridse"
     popd
+
+    pushd "${ROOT}/hybridse/java"
+    mvn install -Dmaven.test.skip=true
+    popd
+
 else
     echo "Download hybridse package"
     pushd "${THIRDSRC_PATH}"
