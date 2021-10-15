@@ -19,6 +19,7 @@
 
 #include <glog/logging.h>
 #include <list>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -436,6 +437,46 @@ class CmdPlanNode : public LeafPlanNode {
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
+};
+
+class DeployPlanNode : public LeafPlanNode {
+ public:
+    explicit DeployPlanNode(const std::string& name, const SqlNode* stmt, const std::string& stmt_str,
+                            bool if_not_exist)
+        : LeafPlanNode(kPlanTypeDeploy), name_(name), stmt_(stmt), stmt_str_(stmt_str), if_not_exist_(if_not_exist) {}
+    ~DeployPlanNode() {}
+
+    const std::string& name() const { return name_; }
+    const SqlNode* stmt() const { return stmt_; }
+    bool is_if_not_exists() const { return if_not_exist_; }
+    const std::string& stmt_str() const { return stmt_str_; }
+
+    void Print(std::ostream& output, const std::string& tab) const override;
+
+ private:
+    const std::string name_;
+    const SqlNode* stmt_ = nullptr;
+    const std::string stmt_str_;
+    const bool if_not_exist_ = false;
+};
+
+class LoadDataPlanNode : public LeafPlanNode {
+ public:
+    explicit LoadDataPlanNode(const std::string& f, const std::string& db, const std::string& table,
+                          const std::shared_ptr<OptionsMap> op)
+        : LeafPlanNode(kPlanTypeLoadData), file_(f), db_(db), table_(table), options_(op) {}
+    ~LoadDataPlanNode() {}
+
+    const std::string& file() const { return file_; }
+    const std::shared_ptr<OptionsMap> options() const { return options_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
+ private:
+    const std::string file_;
+    const std::string db_;
+    const std::string table_;
+    std::shared_ptr<OptionsMap> options_ = nullptr;
 };
 
 class InsertPlanNode : public LeafPlanNode {

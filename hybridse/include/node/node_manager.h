@@ -23,6 +23,7 @@
 
 #include <ctype.h>
 #include <list>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -251,6 +252,15 @@ class NodeManager {
                                  const std::string &table_name,
                                  ColumnIndexNode *index);
 
+    DeployNode *MakeDeployStmt(const std::string& name, const SqlNode* stmt, const std::string& stmt_str,
+                            bool if_not_exist);
+    DeployPlanNode *MakeDeployPlanNode(const std::string& name, const SqlNode* stmt,
+                                       const std::string& stmt_str, bool if_not_exist);
+
+    LoadDataNode *MakeLoadDataNode(const std::string &file_name, const std::string& db, const std::string &table,
+                                   const std::shared_ptr<OptionsMap> options);
+    LoadDataPlanNode* MakeLoadDataPlanNode(const std::string& file_name, const std::string &db,
+                                           const std::string& table, const std::shared_ptr<OptionsMap> options);
     // Make NodeList
     SqlNode *MakeExplainNode(const QueryNode *query,
                              node::ExplainType explain_type);

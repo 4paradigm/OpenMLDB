@@ -38,4 +38,5 @@ setup(
             'openmldb = sqlalchemy_openmldb.saopenmldb:OpenMLDBDialect',
         ],
     },
+    zip_safe=False,
 )

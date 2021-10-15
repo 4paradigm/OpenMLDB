@@ -85,7 +85,9 @@ enum SqlNodeType {
     kCreateSpStmt,
     kInputParameter,
     kPartitionNum,
-    kUnknow
+    kLoadDataStmt,
+    kDeployStmt,
+    kUnknow = -1
 };
 
 enum TableRefType {
@@ -123,7 +125,7 @@ enum ExprType {
     kExprGetField,
     kExprCond,
     kExprIn,
-    kExprUnknow = 9999
+    kExprUnknow = -1
 };
 // typedef hybridse::type::Type DataType;
 enum DataType {
@@ -238,7 +240,11 @@ enum CmdType {
     kCmdShowProcedures,
     kCmdDropSp,
     kCmdDropDatabase,
-    kCmdExit
+    kCmdExit,
+    kCmdShowDeployment,
+    kCmdShowDeployments,
+    kCmdDropDeployment,
+    kCmdUnknown = -1
 };
 enum ExplainType {
     kExplainLogical,
@@ -267,7 +273,9 @@ enum PlanType {
     kProjectNode,
     kPlanTypeCreateSp,
     kPlanTypeCreateIndex,
-    kUnknowPlan = 100,
+    kPlanTypeLoadData,
+    kPlanTypeDeploy,
+    kUnknowPlan = -1,
 };
 
 enum TTLType {

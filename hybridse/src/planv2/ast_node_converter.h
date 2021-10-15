@@ -15,6 +15,7 @@
  */
 #ifndef HYBRIDSE_SRC_PLANV2_AST_NODE_CONVERTER_H_
 #define HYBRIDSE_SRC_PLANV2_AST_NODE_CONVERTER_H_
+#include <memory>
 #include <string>
 
 #include "node/node_manager.h"
@@ -105,6 +106,8 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
                                   node::CmdNode** output);
 base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement* root, node::NodeManager* node_manager,
                                          node::CreateIndexNode** output);
+base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options,
+                                        std::shared_ptr<node::OptionsMap> options_map);
 }  // namespace plan
 }  // namespace hybridse
 #endif  // HYBRIDSE_SRC_PLANV2_AST_NODE_CONVERTER_H_
