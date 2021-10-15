@@ -12,7 +12,7 @@
 --thread_pool_size=24
 #--file_compression=off
 
-#--zk_session_timeout=10000
+--zk_session_timeout=10000
 #--zk_keep_alive_check_interval=15000
 
 # log conf

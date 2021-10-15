@@ -649,7 +649,7 @@ void Shell() {
             }
         }
         sql.append(buffer);
-        if (sql == "quit;") {
+        if (sql == "quit;" || sql == "exit;" || sql == "quit" || sql == "exit") {
             sql.clear();
             return;
         }
