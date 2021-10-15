@@ -27,7 +27,7 @@ jobs:
     name: Run unit tests in Linux
     runs-on: ubuntu-latest
     container:
-      image: maven:3.6-jdk-8
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
     steps:
       - uses: actions/checkout@v2
       - name: Build and install hybridse-sdk
