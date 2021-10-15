@@ -42,12 +42,13 @@ class ExplainInfoImpl : public ExplainInfo {
  public:
     ExplainInfoImpl(const ::hybridse::sdk::SchemaImpl& input_schema, const ::hybridse::sdk::SchemaImpl& output_schema,
                     const std::string& logical_plan, const std::string& physical_plan, const std::string& ir,
-                    const std::string& request_name)
+                    const std::string& request_db_name, const std::string& request_name)
         : input_schema_(input_schema),
           output_schema_(output_schema),
           logical_plan_(logical_plan),
           physical_plan_(physical_plan),
           ir_(ir),
+          request_db_name_(request_db_name),
           request_name_(request_name) {}
     ~ExplainInfoImpl() {}
 
@@ -62,6 +63,7 @@ class ExplainInfoImpl : public ExplainInfo {
     const std::string& GetIR() override { return ir_; }
 
     const std::string& GetRequestName() override { return request_name_; }
+    const std::string& GetRequestDbName() override { return request_db_name_; }
 
  private:
     ::hybridse::sdk::SchemaImpl input_schema_;
@@ -69,6 +71,7 @@ class ExplainInfoImpl : public ExplainInfo {
     std::string logical_plan_;
     std::string physical_plan_;
     std::string ir_;
+    std::string request_db_name_;
     std::string request_name_;
 };
 
@@ -733,11 +736,13 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     return true;
 }
 std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
-    const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row) {
-    return GetTabletClient(db, sql, row, std::shared_ptr<openmldb::sdk::SQLRequestRow>());
+    const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
+    const std::shared_ptr<SQLRequestRow>& row) {
+    return GetTabletClient(db, sql, engine_mode, row, std::shared_ptr<openmldb::sdk::SQLRequestRow>());
 }
 std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
-    const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row,
+    const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode, const
+                                                       std::shared_ptr<SQLRequestRow>& row,
     const std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {
     ::hybridse::codec::Schema parameter_schema_raw;
     if (parameter) {
@@ -761,13 +766,15 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     if (!cache) {
         ::hybridse::vm::ExplainOutput explain;
         ::hybridse::base::Status vm_status;
-        if (cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kBatchMode, parameter_schema_raw, &explain,
+        if (cluster_sdk_->GetEngine()->Explain(sql, db, engine_mode, parameter_schema_raw, &explain,
                                                &vm_status)) {
             std::shared_ptr<::hybridse::sdk::SchemaImpl> schema;
             if (explain.input_schema.size() > 0) {
                 schema = std::make_shared<::hybridse::sdk::SchemaImpl>(explain.input_schema);
             } else {
-                auto table_info = cluster_sdk_->GetTableInfo(db, explain.router.GetMainTable());
+                const std::string& main_table = explain.router.GetMainTable();
+                const std::string& main_db = explain.router.GetMainDb().empty() ? db : explain.router.GetMainDb();
+                auto table_info = cluster_sdk_->GetTableInfo(main_db, main_table);
                 ::hybridse::codec::Schema raw_schema;
                 if (table_info &&
                     ::openmldb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc(), &raw_schema)) {
@@ -784,14 +791,15 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     if (cache) {
         const std::string& col = cache->router.GetRouterCol();
         const std::string& main_table = cache->router.GetMainTable();
+        const std::string main_db = cache->router.GetMainDb().empty() ? db : cache->router.GetMainDb();
         if (!main_table.empty()) {
             DLOG(INFO) << "get main table" << main_table;
             std::string val;
             if (!col.empty() && row && row->GetRecordVal(col, &val)) {
-                tablet = cluster_sdk_->GetTablet(db, main_table, val);
+                tablet = cluster_sdk_->GetTablet(main_db, main_table, val);
             }
             if (!tablet) {
-                tablet = cluster_sdk_->GetTablet(db, main_table);
+                tablet = cluster_sdk_->GetTablet(main_db, main_table);
             }
         }
     }
@@ -822,10 +830,11 @@ std::shared_ptr<openmldb::client::TabletClient> SQLClusterRouter::GetTablet(cons
         return nullptr;
     }
     const std::string& table = sp_info->GetMainTable();
-    auto tablet = cluster_sdk_->GetTablet(db, table);
+    const std::string& db_name = sp_info->GetMainDb().empty() ? db : sp_info->GetMainDb();
+    auto tablet = cluster_sdk_->GetTablet(db_name, table);
     if (!tablet) {
         status->code = -1;
-        status->msg = "fail to get tablet, table " + table;
+        status->msg = "fail to get tablet, table " + db_name + "." + table;
         LOG(WARNING) << status->msg;
         return nullptr;
     }
@@ -878,7 +887,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLRequest(co
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
-    auto client = GetTabletClient(db, sql, row);
+    auto client = GetTabletClient(db, sql, hybridse::vm::kRequestMode, row);
     if (!client) {
         status->msg = "not tablet found";
         return {};
@@ -913,7 +922,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
         return {};
     }
 
-    auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>(), parameter);
+    auto client = GetTabletClient(db, sql, hybridse::vm::kBatchMode, std::shared_ptr<SQLRequestRow>(), parameter);
     if (!client) {
         DLOG(INFO) << "no tablet available for sql " << sql;
         return {};
@@ -939,7 +948,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchReque
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
     auto response = std::make_shared<::openmldb::api::SQLBatchRequestQueryResponse>();
-    auto client = GetTabletClient(db, sql, std::shared_ptr<SQLRequestRow>(), std::shared_ptr<SQLRequestRow>());
+    auto client = GetTabletClient(db, sql, hybridse::vm::kBatchRequestMode, std::shared_ptr<SQLRequestRow>(),
+        std::shared_ptr<SQLRequestRow>());
     if (!client) {
         status->code = -1;
         status->msg = "no tablet found";
@@ -1144,6 +1154,7 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, co
     ::hybridse::sdk::SchemaImpl output_schema(explain_output.output_schema);
     std::shared_ptr<ExplainInfoImpl> impl(new ExplainInfoImpl(input_schema, output_schema, explain_output.logical_plan,
                                                               explain_output.physical_plan, explain_output.ir,
+                                                              explain_output.request_db_name,
                                                               explain_output.request_name));
     return impl;
 }
@@ -1369,16 +1380,18 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedureP
         return false;
     }
     sp_info.mutable_output_schema()->CopyFrom(rtidb_output_schema);
+    sp_info.set_main_db(explain_output.request_db_name);
     sp_info.set_main_table(explain_output.request_name);
     // get dependent tables, and fill sp_info
-    std::set<std::string> tables;
+    std::set<std::pair<std::string, std::string>> tables;
     ::hybridse::base::Status status;
     if (!cluster_sdk_->GetEngine()->GetDependentTables(sql, db, ::hybridse::vm::kRequestMode, &tables, status)) {
         LOG(WARNING) << "fail to get dependent tables: " << status.msg;
         return false;
     }
     for (auto& table : tables) {
-        sp_info.add_tables(table);
+        sp_info.add_dbs(table.first);
+        sp_info.add_tables(table.second);
     }
     // send request to ns client
     if (!ns_ptr->CreateProcedure(sp_info, options_.request_timeout, msg)) {

@@ -73,7 +73,7 @@ void Engine::InitializeGlobalLLVM() {
 }
 
 bool Engine::GetDependentTables(const std::string& sql, const std::string& db, EngineMode engine_mode,
-                                std::set<std::string>* tables, base::Status& status) {
+                                std::set<std::pair<std::string, std::string>>* db_tables, base::Status& status) {
     auto info = std::make_shared<hybridse::vm::SqlCompileInfo>();
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
@@ -95,7 +95,7 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db, E
     }
 
     for (auto iter = logical_plan.cbegin(); iter != logical_plan.cend(); iter++) {
-        if (!GetDependentTables(*iter, tables, status)) {
+        if (!GetDependentTables(*iter, db_tables, status)) {
             return false;
         }
     }
@@ -110,9 +110,9 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db, E
  * @param status
  * @return
  */
-bool Engine::GetDependentTables(node::PlanNode* node, std::set<std::string>* tables,
+bool Engine::GetDependentTables(node::PlanNode* node, std::set<std::pair<std::string, std::string>>* db_tables,
                                 base::Status& status) {  // NOLINT
-    if (nullptr == tables) {
+    if (nullptr == db_tables) {
         status.code = common::kNullPointer;
         status.msg = "fail to get sql depend tables, output tables vector is null";
         return false;
@@ -122,13 +122,13 @@ bool Engine::GetDependentTables(node::PlanNode* node, std::set<std::string>* tab
         switch (node->GetType()) {
             case node::kPlanTypeTable: {
                 const node::TablePlanNode* table_node = dynamic_cast<const node::TablePlanNode*>(node);
-                tables->insert(table_node->table_);
+                db_tables->insert(std::make_pair(table_node->db_, table_node->table_));
                 return true;
             }
             default: {
                 if (node->GetChildrenSize() > 0) {
                     for (auto child : node->GetChildren()) {
-                        if (!GetDependentTables(child, tables, status)) {
+                        if (!GetDependentTables(child, db_tables, status)) {
                             return false;
                         }
                     }
@@ -276,8 +276,9 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     explain_output->physical_plan = ctx.physical_plan_str;
     explain_output->ir = ctx.ir;
     explain_output->request_name = ctx.request_name;
+    explain_output->request_db_name = ctx.request_db_name;
     if (engine_mode == ::hybridse::vm::kBatchMode) {
-        std::set<std::string> tables;
+        std::set<std::pair<std::string, std::string>> tables;
         base::Status status;
         for (auto iter = ctx.logical_plan.cbegin(); iter != ctx.logical_plan.cend(); iter++) {
             if (!GetDependentTables(*iter, &tables, status)) {
@@ -286,9 +287,11 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
             }
         }
         if (!tables.empty()) {
-            explain_output->router.SetMainTable(*tables.begin());
+            explain_output->router.SetMainDb(tables.begin()->first);
+            explain_output->router.SetMainTable(tables.begin()->second);
         }
     } else {
+        explain_output->router.SetMainDb(ctx.request_db_name);
         explain_output->router.SetMainTable(ctx.request_name);
         explain_output->router.Parse(ctx.physical_plan);
     }

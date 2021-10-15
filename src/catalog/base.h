@@ -29,14 +29,15 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
  public:
     ProcedureInfoImpl(const std::string& db_name, const std::string& sp_name, const std::string& sql,
                       const ::hybridse::sdk::SchemaImpl& input_schema, const ::hybridse::sdk::SchemaImpl& output_schema,
-                      const std::vector<std::string>& tables, const std::string& main_table)
+                      const std::vector<std::string>& tables, const std::string& main_table, const std::string& main_db)
         : db_name_(db_name),
           sp_name_(sp_name),
           sql_(sql),
           input_schema_(input_schema),
           output_schema_(output_schema),
           tables_(tables),
-          main_table_(main_table) {}
+          main_table_(main_table),
+          main_db_(main_db){}
 
     ~ProcedureInfoImpl() {}
 
@@ -53,6 +54,7 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
     const std::vector<std::string>& GetTables() const override { return tables_; }
 
     const std::string& GetMainTable() const override { return main_table_; }
+    const std::string& GetMainDb() const override { return main_db_; }
 
  private:
     std::string db_name_;
@@ -62,6 +64,7 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
     ::hybridse::sdk::SchemaImpl output_schema_;
     std::vector<std::string> tables_;
     std::string main_table_;
+    std::string main_db_;
 };
 
 }  // namespace catalog

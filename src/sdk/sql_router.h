@@ -49,6 +49,7 @@ class ExplainInfo {
     virtual const std::string& GetPhysicalPlan() = 0;
     virtual const std::string& GetIR() = 0;
     virtual const std::string& GetRequestName() = 0;
+    virtual const std::string& GetRequestDbName() = 0;
 };
 
 class QueryFuture {

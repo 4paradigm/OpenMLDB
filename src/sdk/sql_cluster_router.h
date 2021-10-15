@@ -178,11 +178,12 @@ class SQLClusterRouter : public SQLRouter {
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status);
 
+    std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const std::string& db, const std::string& sql,
+                                                                      const ::hybridse::vm::EngineMode engine_mode,
+                                                                      const std::shared_ptr<SQLRequestRow>& row);
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(
-        const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row);
-    std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(
-        const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row,
-        const std::shared_ptr<SQLRequestRow>& parameter_row);
+        const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
+        const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<SQLRequestRow>& parameter_row);
 
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
