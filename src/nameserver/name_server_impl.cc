@@ -2225,7 +2225,7 @@ int NameServerImpl::AddDefaultIndex(TableInfo* table_info) {
     for (const auto& column : table_info->column_desc()) {
         if (column.data_type() != type::kFloat && column.data_type() != type::kDouble) {
             ::openmldb::common::ColumnKey* index = nullptr;
-            if (table_info->column_key_size == 0) {
+            if (table_info->column_key_size() == 0) {
                 index = table_info->add_column_key();
             } else {
                 index = table_info->mutable_column_key(0);
@@ -3046,7 +3046,7 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
-            response->set_code(::openmldb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
+            response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
             response->set_msg(
                 "nameserver is for follower cluster, and request has no zone "
                 "info");
@@ -3398,7 +3398,7 @@ void NameServerImpl::LoadTable(RpcController* controller, const LoadTableRequest
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
-            response->set_code(::openmldb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
+            response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
             response->set_msg(
                 "nameserver is for follower cluster, and request has no zone "
                 "info");
@@ -3468,7 +3468,7 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller, const Crea
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
-            response->set_code(::openmldb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
+            response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
             response->set_msg(
                 "nameserver is for follower cluster, and request has no zone "
                 "info");
@@ -3574,7 +3574,7 @@ void NameServerImpl::CreateTableInfo(RpcController* controller, const CreateTabl
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
-            response->set_code(::openmldb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
+            response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
             response->set_msg(
                 "nameserver is for follower cluster, and request has no zone "
                 "info");
@@ -3804,13 +3804,13 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             }
             return;
         } else {
-            AddDefaultIndex(table_info);
+            AddDefaultIndex(table_info.get());
         }
     } else if (table_info->column_key_size() == 0) {
         // if no column_key, add one which key is the first column which is not float or double
         // the logic should be the same as 'create table xx(xx,index(key=<auto_selected_col>)) xx;'
         // Ref NsClient::TransformToTableDef
-        AddDefaultIndex(table_info);
+        AddDefaultIndex(table_info.get());
     }
 
     if (CheckTableMeta(*table_info) < 0) {
@@ -3818,7 +3818,7 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         return;
     }
     if (!request->has_zone_info()) {
-        if (FillColumnKey(table_info) < 0) {
+        if (FillColumnKey(table_info.get()) < 0) {
             base::SetResponseStatus(base::ReturnCode::kInvalidParameter, "fill column key failed", response);
             PDLOG(WARNING, "fill column key failed");
             return;
@@ -4358,13 +4358,9 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller, const Add
     std::lock_guard<std::mutex> lock(mu_);
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         if (!request->has_zone_info()) {
-            response->set_code(::openmldb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
-            response->set_msg(
-                "nameserver is for follower cluster, and request has no zone "
-                "info");
-            PDLOG(WARNING,
-                  "nameserver is for follower cluster, and request has no zone "
-                  "info");
+            response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                    request->zone_info().zone_term() != zone_info_.zone_term()) {
