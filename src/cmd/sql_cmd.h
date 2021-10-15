@@ -94,16 +94,19 @@ void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
         }
     }
 
-    if (access(fileAddress.c_str(), 4) == -1) {
-        stream << "File is Read-only" << std::endl;
-        return;
-    }
-    if (mode == "errorifexists" && access(fileAddress.c_str(), 0) == -1) {
-        stream << "File already exists" << std::endl;
+    if (access(fileAddress.c_str(), 2) == -1) {
+        stream << "File has no write permission" << std::endl;
         return;
     }
     
-    if (mode == "overwrite") {
+    if (mode == "errorifexists") {
+        if (access(fileAddress.c_str(), 0) == 0) {
+            stream << "File already exists" << std::endl;
+            return;
+        } else {
+            fstream.open(fileAddress);
+        } 
+    } else if (mode == "overwrite") {
         fstream.open(fileAddress, std::ofstream::trunc);
     } else if (mode == "append") {
         fstream.open(fileAddress, std::ofstream::app);
