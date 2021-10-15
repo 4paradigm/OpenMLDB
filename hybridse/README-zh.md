@@ -36,33 +36,32 @@ HybridSE是一个模块化的SQL编译器和执行器，提供了SQL语法校验
 ## 准备开发环境
 
 ```bash
-git clone --recursive https://github.com/4paradigm/HybridSE.git
-cd HybridSE
-docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/hybridsql:0.3.0
-cd /HybridSE
-# init enviroment before build
-./tools/init_env.profile.sh
+git clone --recursive https://github.com/4paradigm/OpenMLDB.git
+cd OpenMLDB/
+docker run -v `pwd`:/OpenMLDB -it ghcr.io/4paradigm/hybridsql:0.4.0
 ```
 
-建议开发者使用我们提供的镜像编译和安装库。若需要使用自己的开发环境，请确保相关依赖库正确安装。编译环境和依赖库可参考 [HybridSQL-docker](https://github.com/4paradigm/HybridSQL-docker/blob/main/README.md)
+建议开发者使用我们提供的镜像编译和安装库。若需要使用自己的开发环境，请确保相关依赖库正确安装。编译环境和依赖库可参考 [HybridSQL-docker](https://github.com/4paradigm/OpenMLDB/tree/main/hybridse/docker)
 
 ## 编译
 
 ```bash
-cd /HybridSE
+cd /OpenMLDB/hybridse
 mkdir -p build && cd build
-cmake ..
-# just compile the core library
-make -j$(nproc) hybridse_core
+# run by single script
+./tools/hybridse_build.sh
 ```
 
 ## 安装
 
 ```bash
-cd /HybridSE
-mkdir -p build && cd build
-cmake ..  -DCMAKE_INSTALL_PREFIX="CONFIG_YOUR_HYRBIDSE_INSTALL_DIR"
-make -j$(nproc) install
+cd /OpenMLDB/hybridse
+# custom install directory
+cmake -H. -Bbuild  -DCMAKE_INSTALL_PREFIX="CONFIG_YOUR_HYRBIDSE_INSTALL_DIR"
+cd build && make -j$(nproc) install
+
+# or run single script, which will default install to 'hybridse/build/hybridse'
+./tools/hybridse_deploy.sh
 ```
 
 更详细的编译和安装配置可参见文档：[快速开始HybridSE](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/quick_start.md)
@@ -70,22 +69,20 @@ make -j$(nproc) install
 ## 测试
 
 ```bash
-cd /HybridSE
-mkdir -p build & cd buid
-cmake .. -DTESTING_ENABLE=ON
-export SQL_CASE_BASE_DIR=/HybridSE 
+cd /OpenMLDB/hybridse
+cmake -H. -Bbuild -DTESTING_ENABLE=ON
+cd build
+export SQL_CASE_BASE_DIR=/OpenMLDB
 make -j$(nproc) && make -j$(nproc) test
 ```
 
 ## 运行 simple engine demo
 
 ```bash
-cd /HybridSE
-mkdir build
-cd build
-cmake ..
-make -j$(nproc) hybridse_proto && make -j$(nproc) simple_engine_demo
-./src/simple_engine_demo
+cd /OpenMLDB/hybridse
+cmake -H. -Bbuild -DEXAMPLES_ENABLE=ON
+cd build/
+make toydb -j$(nproc)
 ```
 `simple_engine_demo`是基于HyrbidSE实现的内存表SQL引擎。更多细节可参见文档：[如何实现一个简单引擎](https://github.com/4paradigm/HybridSQL-docs/blob/feat/simple_engine_demo_doc/hybridse/usage/simple_engine_demo.md)
 
@@ -93,20 +90,20 @@ make -j$(nproc) hybridse_proto && make -j$(nproc) simple_engine_demo
 
 + 编译 ToyDB
 
-  ```bash
-  cd /HybridSE
-  mkdir build 
-  cmake .. -DEXAMPLES_ENABLE=ON 
-  make -j$(nproc) hybridse_proto && make -j$(nproc) toydb
-  ```
+```bash
+cd /OpenMLDB/hybridse
+cmake -H. -Bbuild -DEXAMPLES_ENABLE=ON
+cd build/
+make toydb -j$(nproc)
+```
 
 + 启动 ToyDB
 
-  ```
-  cd /HybridSE/examples/toydb/onebox
-  bash start_all.sh
-  bash start_cli.sh
-  ```
+```
+cd /OpenMLDB/hybridse/examples/toydb/onebox
+bash start_all.sh
+bash start_cli.sh
+```
 
 ToyDB是基于HybridSE开发的简易单机内存数据库. 它支持基本的数据库操作和SQL查询语句。详细使用可参见：[ToyDB快速开始](https://github.com/4paradigm/HybridSQL-docs/blob/feat/hybridse-quick-start-doc/hybridse/usage/toydb_usage/toydb_quickstart.md)
 

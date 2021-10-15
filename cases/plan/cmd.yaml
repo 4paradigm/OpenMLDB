@@ -140,4 +140,106 @@ cases:
         +-node[CMD]
           +-cmd_type: drop database
           +-args: [db1]
-
+  - id: show_deployments
+    desc: show deployments
+    sql: SHOW DEPLOYMENTS;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show deployments
+          +-args: []
+  - id: show_deployment
+    desc: show deployment foo
+    sql: SHOW DEPLOYMENT foo;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show deployment
+          +-args: [foo]
+  - id: drop_deployment
+    desc: drop deployment foo
+    sql: DROP DEPLOYMENT foo;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop deployment
+          +-args: [foo]
+  - id: deploy_stmt_1
+    desc: deploy query task
+    sql: DEPLOY foo SELECT col1 from t1;
+    expect:
+      node_tree_str: |
+        +-node[kDeployStmt]
+          +-if_not_exists: false
+          +-name: foo
+          +-stmt:
+            +-node[kQuery]: kQuerySelect
+              +-distinct_opt: false
+              +-where_expr: null
+              +-group_expr_list: null
+              +-having_expr: null
+              +-order_expr_list: null
+              +-limit: null
+              +-select_list[list]:
+              |  +-0:
+              |    +-node[kResTarget]
+              |      +-val:
+              |      |  +-expr[column ref]
+              |      |    +-relation_name: <nil>
+              |      |    +-column_name: col1
+              |      +-name: <nil>
+              +-tableref_list[list]:
+              |  +-0:
+              |    +-node[kTableRef]: kTable
+              |      +-table: t1
+              |      +-alias: <nil>
+              +-window_list: []
+  - id: deploy_stmt_2
+    desc: deploy query task if not exists
+    sql: DEPLOY IF NOT EXISTS foo2 SELECT col1 from t1;
+    expect:
+      node_tree_str: |
+        +-node[kDeployStmt]
+          +-if_not_exists: true
+          +-name: foo2
+          +-stmt:
+            +-node[kQuery]: kQuerySelect
+              +-distinct_opt: false
+              +-where_expr: null
+              +-group_expr_list: null
+              +-having_expr: null
+              +-order_expr_list: null
+              +-limit: null
+              +-select_list[list]:
+              |  +-0:
+              |    +-node[kResTarget]
+              |      +-val:
+              |      |  +-expr[column ref]
+              |      |    +-relation_name: <nil>
+              |      |    +-column_name: col1
+              |      +-name: <nil>
+              +-tableref_list[list]:
+              |  +-0:
+              |    +-node[kTableRef]: kTable
+              |      +-table: t1
+              |      +-alias: <nil>
+              +-window_list: []
+  - id: load_data_infile_1
+    sql: LOAD DATA INFILE 'hello.csv' INTO TABLE t1;
+    expect:
+      node_tree_str: |
+        +-node[kLoadDataStmt]
+          +-file: hello.csv
+          +-db: <nil>
+          +-table: t1
+          +-options: <nil>
+  - id: load_data_infile_2
+    sql: LOAD DATA INFILE 'data.csv' INTO TABLE db0.t1 OPTIONS (charset = 'utf-8');
+    expect:
+      node_tree_str: |
+        +-node[kLoadDataStmt]
+          +-file: data.csv
+          +-db: db0
+          +-table: t1
+          +-options:
+            +-charset: utf-8
