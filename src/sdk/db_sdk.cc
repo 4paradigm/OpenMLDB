@@ -74,8 +74,8 @@ bool ClusterSDK::Init() {
               << ",session timeout " << options_.session_timeout << " and session id " << zk_client_->GetSessionTerm();
 
     ::hybridse::vm::EngineOptions eopt;
-    eopt.set_compile_only(true);
-    eopt.set_plan_only(true);
+    eopt.SetCompileOnly(true);
+    eopt.SetPlanOnly(true);
     engine_ = new ::hybridse::vm::Engine(catalog_, eopt);
 
     ok = BuildCatalog();
@@ -406,8 +406,8 @@ std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> DBSDK::GetProcedureIn
 
 bool StandAloneSDK::Init() {
     ::hybridse::vm::EngineOptions opt;
-    opt.set_compile_only(true);
-    opt.set_plan_only(true);
+    opt.SetCompileOnly(true);
+    opt.SetPlanOnly(true);
     engine_ = new ::hybridse::vm::Engine(catalog_, opt);
     return PeriodicRefresh();
 }

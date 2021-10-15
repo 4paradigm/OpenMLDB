@@ -101,26 +101,26 @@ void simple_test(const EngineOptions &options) {
 
 TEST_F(JitWrapperTest, test) {
     EngineOptions options;
-    options.set_keep_ir(true);
+    options.SetKeepIR(true);
     simple_test(options);
 }
 
 #ifdef LLVM_EXT_ENABLE
 TEST_F(JitWrapperTest, test_mcjit) {
     EngineOptions options;
-    options.set_keep_ir(true);
-    options.jit_options().set_enable_mcjit(true);
-    options.jit_options().set_enable_gdb(true);
-    options.jit_options().set_enable_perf(true);
-    options.jit_options().set_enable_vtune(true);
+    options.SetKeepIR(true);
+    options.jit_options().SetEnableMCJIT(true);
+    options.jit_options().SetEnableGDB(true);
+    options.jit_options().SetEnablePerf(true);
+    options.jit_options().SetEnableVTune(true);
     simple_test(options);
 }
 #endif
 
 TEST_F(JitWrapperTest, test_window) {
     EngineOptions options;
-    options.set_keep_ir(true);
-    options.set_performance_sensitive(false);
+    options.SetKeepIR(true);
+    options.SetPerformanceSensitive(false);
     auto catalog = GetTestCatalog();
     auto compile_info = Compile(
         "select col_1, sum(col_2) over w, "

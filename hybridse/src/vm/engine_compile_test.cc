@@ -58,8 +58,8 @@ TEST_F(EngineCompileTest, EngineLRUCacheTest) {
 
     // Simple Engine
     EngineOptions options;
-    options.set_compile_only(true);
-    options.set_max_sql_cache_size(1);
+    options.SetCompileOnly(true);
+    options.SetMaxSQLCacheSize(1);
     Engine engine(catalog, options);
 
     std::string sql = "select col1, col2 from t1;";
@@ -104,8 +104,8 @@ TEST_F(EngineCompileTest, EngineWithParameterizedLRUCacheTest) {
 
     // Simple Engine
     EngineOptions options;
-    options.set_compile_only(true);
-    options.set_max_sql_cache_size(1);
+    options.SetCompileOnly(true);
+    options.SetMaxSQLCacheSize(1);
     Engine engine(catalog, options);
 
     hybridse::codec::Schema parameter_schema;
@@ -189,7 +189,7 @@ TEST_F(EngineCompileTest, EngineEmptyDefaultDBLRUCacheTest) {
     }
 
     EngineOptions options;
-    options.set_performance_sensitive(false);
+    options.SetPerformanceSensitive(false);
     Engine engine(catalog, options);
     std::string sql =
         "select db1.t1.col1, db1.t1.col2,db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
@@ -259,8 +259,8 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
             "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 "
             "order by t2.col5 on t1.col1 = t2.col2;"};
         EngineOptions options;
-        options.set_compile_only(true);
-        options.set_performance_sensitive(false);
+        options.SetCompileOnly(true);
+        options.SetPerformanceSensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
@@ -282,7 +282,7 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
             "on "
             "t1.col1 = t2.col2;"};
         EngineOptions options;
-        options.set_performance_sensitive(false);
+        options.SetPerformanceSensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
@@ -406,8 +406,8 @@ TEST_F(EngineCompileTest, RouterTest) {
             "window w1 as (partition by col2 \n"
             "order by col5 rows between 3 preceding and current row);";
         EngineOptions options;
-        options.set_compile_only(true);
-        options.set_performance_sensitive(false);
+        options.SetCompileOnly(true);
+        options.SetPerformanceSensitive(false);
         Engine engine(catalog, options);
         ExplainOutput explain_output;
         codec::Schema empty_parameter_schema;
@@ -451,8 +451,8 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
         "window w1 as (partition by col2 \n"
         "order by col5 rows between 3 preceding and current row);";
     EngineOptions options;
-    options.set_compile_only(true);
-    options.set_performance_sensitive(false);
+    options.SetCompileOnly(true);
+    options.SetPerformanceSensitive(false);
     Engine engine(catalog, options);
     ExplainOutput explain_output;
     base::Status status;
@@ -509,7 +509,7 @@ TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
             "select db1.t1.col1, db1.t1.col2,db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
             "on db1.t1.col1=db2.t2.col1;"};
         EngineOptions options;
-        options.set_performance_sensitive(false);
+        options.SetPerformanceSensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
