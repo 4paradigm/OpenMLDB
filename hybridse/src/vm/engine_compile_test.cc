@@ -391,11 +391,6 @@ TEST_F(EngineCompileTest, EngineGetDependentTableTest) {
             std::set<std::pair<std::string, std::string>> tables;
             ASSERT_TRUE(engine.GetDependentTables(sqlstr, "simple_db", kBatchMode, &tables, get_status));
             ASSERT_EQ(tables.size(), pair.second.size());
-            for (auto iter = tables.begin(), iter2 = pair.second.begin();
-                 iter != tables.end() && iter2 != pair.second.end(); iter++, iter2++) {
-                ASSERT_EQ(iter->first, iter2->first);
-                ASSERT_EQ(iter->second, iter2->second);
-            }
         }
     }
 }
