@@ -2138,54 +2138,51 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller, const MakeSnapsho
 }
 
 int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
-    std::map<std::string, ::openmldb::type::DataType> column_map;
-    for (const auto& column_desc : table_info.column_desc()) {
-        column_map.insert(std::make_pair(column_desc.name(), column_desc.data_type()));
-    }
-
-    if (table_info.column_key_size() > 0) {
-        for (const auto& column_key : table_info.column_key()) {
-            bool has_iter = false;
-            for (const auto& column_name : column_key.col_name()) {
-                has_iter = true;
-                auto iter = column_map.find(column_name);
-                if ((iter != column_map.end() &&
-                     ((iter->second == ::openmldb::type::kFloat) || (iter->second == ::openmldb::type::kDouble)))) {
-                    PDLOG(WARNING, "float or double type column can not be index, column is: %s",
-                          column_key.index_name().c_str());
-                    return -1;
-                }
-            }
-            if (!has_iter) {
-                auto iter = column_map.find(column_key.index_name());
-                if (iter == column_map.end()) {
-                    PDLOG(WARNING, "index must member of columns when column key col name is empty");
-                    return -1;
-                }
-                if (iter->second == ::openmldb::type::kFloat || iter->second == ::openmldb::type::kDouble) {
-                    PDLOG(WARNING, "float or double column can not be index");
-                    return -1;
-                }
-            }
-            if (column_key.has_ttl()) {
-                if ((column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max) ||
-                    (column_key.ttl().lat_ttl() > FLAGS_latest_ttl_max)) {
-                    uint32_t max_ttl = column_key.ttl().ttl_type() == ::openmldb::type::TTLType::kAbsoluteTime
-                                           ? FLAGS_absolute_ttl_max
-                                           : FLAGS_latest_ttl_max;
-                    uint64_t ttl = column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max ? column_key.ttl().abs_ttl()
-                                                                                       : column_key.ttl().lat_ttl();
-                    PDLOG(WARNING,
-                          "ttl is greater than conf value. ttl[%lu] ttl_type[%s] "
-                          "max ttl[%u]",
-                          ttl, ::openmldb::type::TTLType_Name(column_key.ttl().ttl_type()).c_str(), max_ttl);
-                    return -1;
-                }
-            }
-        }
-    } else {
+    if (table_info.column_key_size() == 0) {
         PDLOG(WARNING, "no index in table_meta");
         return -1;
+    }
+
+    std::map<std::string, ::openmldb::type::DataType> column_map;
+    for (const auto& column_desc : table_info.column_desc()) {
+        column_map.emplace(column_desc.name(), column_desc.data_type());
+    }
+    for (const auto& column_key : table_info.column_key()) {
+        bool has_iter = false;
+        for (const auto& column_name : column_key.col_name()) {
+            has_iter = true;
+            auto iter = column_map.find(column_name);
+            if ((iter != column_map.end() &&
+                 ((iter->second == ::openmldb::type::kFloat) || (iter->second == ::openmldb::type::kDouble)))) {
+                PDLOG(WARNING, "float or double type column can not be index, column is: %s",
+                      column_key.index_name().c_str());
+                return -1;
+            }
+        }
+        if (!has_iter) {
+            auto iter = column_map.find(column_key.index_name());
+            if (iter == column_map.end()) {
+                PDLOG(WARNING, "index must member of columns when column key col name is empty");
+                return -1;
+            }
+            if (iter->second == ::openmldb::type::kFloat || iter->second == ::openmldb::type::kDouble) {
+                PDLOG(WARNING, "float or double column can not be index");
+                return -1;
+            }
+        }
+        if (column_key.has_ttl()) {
+            if ((column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max) ||
+                (column_key.ttl().lat_ttl() > FLAGS_latest_ttl_max)) {
+                uint32_t max_ttl = column_key.ttl().ttl_type() == ::openmldb::type::TTLType::kAbsoluteTime
+                                       ? FLAGS_absolute_ttl_max
+                                       : FLAGS_latest_ttl_max;
+                uint64_t ttl = column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max ? column_key.ttl().abs_ttl()
+                                                                                   : column_key.ttl().lat_ttl();
+                PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
+                      ttl, ::openmldb::type::TTLType_Name(column_key.ttl().ttl_type()).c_str(), max_ttl);
+                return -1;
+            }
+        }
     }
 
     std::set<std::string> partition_keys;
@@ -3811,6 +3808,10 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         // the logic should be the same as 'create table xx(xx,index(key=<auto_selected_col>)) xx;'
         // Ref NsClient::TransformToTableDef
         AddDefaultIndex(table_info.get());
+    }
+    if (!IsClusterMode()) {
+        table_info->set_partition_num(1);
+        table_info->set_replica_num(1);
     }
 
     if (CheckTableMeta(*table_info) < 0) {
@@ -9487,8 +9488,9 @@ std::shared_ptr<Task> NameServerImpl::CreateAddIndexToTabletTask(uint64_t op_ind
         sub_task->task_info_->set_op_type(op_type);
         sub_task->task_info_->set_task_type(::openmldb::api::TaskType::kAddIndexToTablet);
         sub_task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
+        std::vector<::openmldb::common::ColumnKey> column_key_vec = { column_key };
         boost::function<bool()> fun =
-            boost::bind(&TabletClient::AddIndex, tablet->client_, tid, pid, column_key, sub_task->task_info_);
+            boost::bind(&TabletClient::AddIndex, tablet->client_, tid, pid, column_key_vec, sub_task->task_info_);
         sub_task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, sub_task->task_info_);
         task->sub_task_.push_back(sub_task);
         PDLOG(INFO,

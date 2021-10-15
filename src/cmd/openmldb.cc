@@ -260,7 +260,6 @@ void StartTablet() {
     }
     server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
-    tablet->SetServer(&server);
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
     if (real_endpoint.empty()) {
         real_endpoint = FLAGS_endpoint;

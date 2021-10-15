@@ -227,8 +227,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void UpdateRealEndpointMap(RpcController* controller, const openmldb::api::UpdateRealEndpointMapRequest* request,
                                openmldb::api::GeneralResponse* response, Closure* done);
 
-    inline void SetServer(brpc::Server* server) { server_ = server; }
-
     // get on value from specified ttl type index
     int32_t GetIndex(const ::openmldb::api::GetRequest* request, const ::openmldb::api::TableMeta& meta,
                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, CombineIterator* combine_it,
@@ -385,6 +383,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
         return startup_mode_ == ::openmldb::type::StartupMode::kCluster;
     }
 
+    std::string GetDBPath(const std::string& root_path, uint32_t tid, uint32_t pid);
+
  private:
     void RunRequestQuery(RpcController* controller, const openmldb::api::QueryRequest& request,
                          ::hybridse::vm::RequestRunSession& session,                  // NOLINT
@@ -407,7 +407,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     BulkLoadMgr bulk_load_mgr_;
-    brpc::Server* server_;  // TODO(hw): need?
     std::vector<std::string> mode_root_paths_;
     std::vector<std::string> mode_recycle_root_paths_;
     std::atomic<bool> follower_;

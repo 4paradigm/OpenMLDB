@@ -40,6 +40,7 @@
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "base/hash.h"
+#include "base/proto_util.h"
 #include "base/status.h"
 #include "base/strings.h"
 #include "brpc/controller.h"
@@ -120,7 +121,6 @@ TabletImpl::TabletImpl()
       task_pool_(FLAGS_task_pool_size),
       io_pool_(FLAGS_io_pool_size),
       snapshot_pool_(FLAGS_snapshot_pool_size),
-      server_(NULL),
       mode_root_paths_(),
       mode_recycle_root_paths_(),
       follower_(false),
@@ -2166,7 +2166,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
             LOG(WARNING) << "fail to get table db root path for tid " << tid << " pid " << pid;
             return;
         }
-        std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+        std::string db_path = GetDBPath(db_root_path, tid, pid);
         if (!::openmldb::base::IsExists(db_path)) {
             LOG(WARNING) << "table db path doesn't exist. tid " << tid << " pid " << pid;
             response->set_code(ReturnCode::kTableDbPathIsNotExist);
@@ -2457,7 +2457,7 @@ void TabletImpl::SendData(RpcController* controller, const ::openmldb::api::Send
                 return;
             }
             if (iter == file_receiver_map_.end()) {
-                std::string path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+                std::string path = GetDBPath(db_root_path, tid, pid) + "/";
                 std::string dir_name;
                 if (request->has_dir_name() && request->dir_name().size() > 0) {
                     dir_name = request->dir_name();
@@ -2626,7 +2626,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
             break;
         }
         // send table_meta file
-        std::string full_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+        std::string full_path = GetDBPath(db_root_path, tid, pid) + "/";
         std::string file_name = "table_meta.txt";
         if (sender.SendFile(file_name, full_path + file_name) < 0) {
             PDLOG(WARNING, "send table_meta.txt failed. tid[%u] pid[%u]", tid, pid);
@@ -2808,7 +2808,7 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
             break;
         }
 
-        std::string db_path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+        std::string db_path = GetDBPath(root_path, tid, pid);
         if (!::openmldb::base::IsExists(db_path)) {
             PDLOG(WARNING, "table db path is not exist. tid %u, pid %u, path %s", tid, pid, db_path.c_str());
             response->set_code(::openmldb::base::ReturnCode::kTableDbPathIsNotExist);
@@ -2880,7 +2880,7 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
             PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
             break;
         }
-        std::string binlog_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/binlog/";
+        std::string binlog_path = GetDBPath(db_root_path, tid, pid) + "/binlog/";
         ::openmldb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
         if (snapshot->Recover(table, snapshot_offset) &&
             binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset)) {
@@ -2967,7 +2967,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         return code;
     }
 
-    std::string source_path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string source_path = GetDBPath(root_path, tid, pid);
     if (!::openmldb::base::IsExists(source_path)) {
         if (task_ptr) {
             std::lock_guard<std::mutex> lock(mu_);
@@ -3031,7 +3031,7 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
         response->set_msg("fail to find db root path");
         return;
     }
-    std::string table_db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string table_db_path = GetDBPath(db_root_path, tid, pid);
 
     if (WriteTableMeta(table_db_path, table_meta) < 0) {
         PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
@@ -3135,7 +3135,7 @@ int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, std::string& m
         PDLOG(WARNING, "fail to get table db root path");
         return 138;
     }
-    std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string db_path = GetDBPath(db_root_path, tid, pid);
     std::string manifest_file = db_path + "/snapshot/MANIFEST";
     int fd = open(manifest_file.c_str(), O_RDONLY);
     if (fd < 0) {
@@ -3271,7 +3271,7 @@ void TabletImpl::DeleteBinlog(RpcController* controller, const ::openmldb::api::
         PDLOG(WARNING, "fail to get table db root path");
         return;
     }
-    std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string db_path = GetDBPath(db_root_path, tid, pid);
     std::string binlog_path = db_path + "/binlog";
     if (::openmldb::base::IsExists(binlog_path)) {
         if (FLAGS_recycle_bin_enabled) {
@@ -3311,7 +3311,7 @@ void TabletImpl::CheckFile(RpcController* controller, const ::openmldb::api::Che
         return;
     }
     std::string file_name = request->file();
-    std::string full_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+    std::string full_path = GetDBPath(db_root_path, tid, pid) + "/";
     if (request->has_dir_name() && request->dir_name().size() > 0) {
         if (request->dir_name() != "index") {
             full_path.append("snapshot/");
@@ -3343,14 +3343,16 @@ void TabletImpl::GetManifest(RpcController* controller, const ::openmldb::api::G
                              ::openmldb::api::GetManifestResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(request->tid(), request->pid(), db_root_path);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
         response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
         PDLOG(WARNING, "fail to get table db root path");
         return;
     }
-    std::string db_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid());
+    std::string db_path = GetDBPath(db_root_path, tid, pid);
     std::string manifest_file = db_path + "/snapshot/MANIFEST";
     ::openmldb::api::Manifest manifest;
     int fd = open(manifest_file.c_str(), O_RDONLY);
@@ -3459,7 +3461,7 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         msg.assign("fail to get table db root path");
         return -1;
     }
-    std::string table_db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string table_db_path = GetDBPath(db_root_path, tid, pid);
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
         replicator =
@@ -4034,7 +4036,7 @@ bool TabletImpl::ChooseTableRootPath(uint32_t tid, uint32_t pid, std::string& pa
         PDLOG(WARNING, "table db path doesn't found. tid %u, pid %u", tid, pid);
         return false;
     }
-    path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    path = GetDBPath(root_path, tid, pid);
     if (!::openmldb::base::IsExists(path)) {
         PDLOG(WARNING, "table db path doesn`t exist. tid %u, pid %u", tid, pid);
         return false;
@@ -4110,7 +4112,7 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
         PDLOG(WARNING, "delete index %s failed. tid %u pid %u", request->idx_name().c_str(), tid, pid);
         return;
     }
-    std::string db_path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string db_path = GetDBPath(root_path, tid, pid);
     WriteTableMeta(db_path, table->GetTableMeta().get());
     PDLOG(INFO, "delete index %s success. tid %u pid %u", request->idx_name().c_str(), tid, pid);
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -4172,7 +4174,7 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
         SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
         return;
     }
-    std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
+    std::string index_path = GetDBPath(db_root_path, tid, pid) + "/index/";
     for (const auto& kv : pid_endpoint_map) {
         if (kv.first == pid) {
             continue;
@@ -4196,8 +4198,7 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
                 SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
                 return;
             }
-            std::string des_index_path =
-                des_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(kv.first) + "/index/";
+            std::string des_index_path = GetDBPath(des_db_root_path, tid, kv.first) + "/index/";
             if (!::openmldb::base::IsExists(des_index_path) && !::openmldb::base::MkdirRecur(des_index_path)) {
                 PDLOG(WARNING, "mkdir failed. tid[%u] pid[%u] path[%s]", tid, pid, des_index_path.c_str());
                 SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
@@ -4320,7 +4321,7 @@ void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
         SetTaskStatus(task, ::openmldb::api::kFailed);
         return;
     }
-    std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
+    std::string index_path = GetDBPath(db_root_path, tid, pid) + "/index/";
     if (!::openmldb::base::MkdirRecur(index_path)) {
         LOG(WARNING) << "fail to create path " << index_path << ". tid " << tid << " pid " << pid;
         SetTaskStatus(task, ::openmldb::api::kFailed);
@@ -4432,7 +4433,7 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
         SetTaskStatus(task, ::openmldb::api::TaskStatus::kFailed);
         return;
     }
-    std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
+    std::string index_path = GetDBPath(db_root_path, tid, pid) + "/index/";
     std::string index_file_path = index_path + std::to_string(cur_pid) + "_" + std::to_string(pid) + "_index.data";
     if (!::openmldb::base::IsExists(index_file_path)) {
         if (last_time + FLAGS_load_index_max_wait_time < cur_time) {
@@ -4516,8 +4517,7 @@ void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::a
     std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
         if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kExtractIndexData, task_ptr) < 0) {
-            response->set_code(-1);
-            response->set_msg("add task failed");
+            base::SetResponseStatus(-1, "add task failed", response);
             return;
         }
     }
@@ -4531,33 +4531,28 @@ void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::a
             table = GetTableUnLock(tid, pid);
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
-                response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-                response->set_msg("table is not exist");
+                base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table is not exist", response);
                 break;
             }
             if (table->GetTableStat() != ::openmldb::storage::kNormal) {
-                PDLOG(WARNING,
-                      "table state is %d, cannot extract index data. tid %u, "
-                      "pid %u",
+                PDLOG(WARNING, "table state is %d, cannot extract index data. tid %u, pid %u",
                       table->GetTableStat(), tid, pid);
-                response->set_code(::openmldb::base::ReturnCode::kTableStatusIsNotKnormal);
-                response->set_msg("table status is not kNormal");
+                base::SetResponseStatus(base::ReturnCode::kTableStatusIsNotKnormal,
+                        "table status is not kNormal", response);
                 break;
             }
             snapshot = GetSnapshotUnLock(tid, pid);
             if (!snapshot) {
                 PDLOG(WARNING, "snapshot is not exist. tid %u pid %u", tid, pid);
-                response->set_code(::openmldb::base::ReturnCode::kSnapshotIsNotExist);
-                response->set_msg("table snapshot is not exist");
+                base::SetResponseStatus(base::ReturnCode::kSnapshotIsNotExist,
+                        "table snapshot is not exist", response);
                 break;
             }
         }
-        std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot =
-            std::static_pointer_cast<::openmldb::storage::MemTableSnapshot>(snapshot);
+        auto memtable_snapshot = std::static_pointer_cast<::openmldb::storage::MemTableSnapshot>(snapshot);
         task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, memtable_snapshot,
                                        request->column_key(), request->idx(), request->partition_num(), task_ptr));
-        response->set_code(::openmldb::base::ReturnCode::kOk);
-        response->set_msg("ok");
+        base::SetResponseOK(response);
         return;
     } while (0);
     SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
@@ -4591,48 +4586,40 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table is not exist", response);
         return;
     }
     auto* mem_table = dynamic_cast<MemTable*>(table.get());
     if (mem_table == NULL) {
         PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
-        response->set_msg("table is not memtable");
+        base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
         return;
     }
-    if (!mem_table->AddIndex(request->column_key())) {
-        PDLOG(WARNING, "add index %s failed. tid %u, pid %u", request->column_key().index_name().c_str(), tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kAddIndexFailed);
-        response->set_msg("add index failed");
+    if (!mem_table->AddIndex(request->column_key(0))) {
+        PDLOG(WARNING, "add index %s failed. tid %u, pid %u", request->column_key(0).index_name().c_str(), tid, pid);
+        base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
         return;
     }
     std::string db_root_path;
     bool ok = ChooseDBRootPath(tid, pid, db_root_path);
     if (!ok) {
-        response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
-        response->set_msg("fail to get db root path");
+        base::SetResponseStatus(base::ReturnCode::kFailToGetDbRootPath, "fail to get db root path", response);
         PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
         return;
     }
-    std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string db_path = GetDBPath(db_root_path, tid, pid);
     if (!::openmldb::base::IsExists(db_path)) {
         PDLOG(WARNING, "table db path doesn't exist. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableDbPathIsNotExist);
-        response->set_msg("table db path is not exist");
+        base::SetResponseStatus(base::ReturnCode::kTableDbPathIsNotExist, "table db path is not exist", response);
         return;
     }
     if (WriteTableMeta(db_path, table->GetTableMeta().get()) < 0) {
         PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kWriteDataFailed);
-        response->set_msg("write data failed");
+        base::SetResponseStatus(base::ReturnCode::kWriteDataFailed, "write meta data failed", response);
         return;
     }
-    PDLOG(INFO, "add index %s ok. tid %u pid %u", request->column_key().index_name().c_str(), request->tid(),
-          request->pid());
-    response->set_code(::openmldb::base::ReturnCode::kOk);
-    response->set_msg("ok");
+    PDLOG(INFO, "add index %s ok. tid %u pid %u", request->column_key(0).index_name().c_str(), tid, pid);
+    base::SetResponseOK(response);
 }
 
 void TabletImpl::CancelOP(RpcController* controller, const openmldb::api::CancelOPRequest* request,
@@ -4888,6 +4875,10 @@ void TabletImpl::GetBulkLoadInfo(RpcController* controller, const ::openmldb::ap
 
     response->set_code(::openmldb::base::kOk);
     response->set_msg("ok");
+}
+
+std::string TabletImpl::GetDBPath(const std::string& root_path, uint32_t tid, uint32_t pid) {
+    return root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
 }
 
 void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
