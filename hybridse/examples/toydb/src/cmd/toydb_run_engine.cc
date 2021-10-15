@@ -69,17 +69,17 @@ int RunSingle(const std::string& yaml_path) {
         return ENGINE_TEST_RET_INVALID_CASE;
     }
     EngineOptions options;
-    options.set_cluster_optimized(FLAGS_cluster_mode == "cluster");
-    options.set_batch_request_optimized(FLAGS_enable_batch_request_opt);
-    options.set_enable_expr_optimize(FLAGS_enable_expr_opt);
-    options.set_enable_batch_window_parallelization(
+    options.SetClusterOptimized(FLAGS_cluster_mode == "cluster");
+    options.SetBatchRequestOptimized(FLAGS_enable_batch_request_opt);
+    options.SetEnableExprOptimize(FLAGS_enable_expr_opt);
+    options.SetEnableBatchWindowParallelization(
         FLAGS_enable_batch_window_parallelization);
 
     JitOptions& jit_options = options.jit_options();
-    jit_options.set_enable_mcjit(FLAGS_enable_mcjit);
-    jit_options.set_enable_vtune(FLAGS_enable_vtune);
-    jit_options.set_enable_gdb(FLAGS_enable_gdb);
-    jit_options.set_enable_perf(FLAGS_enable_perf);
+    jit_options.SetEnableMCJIT(FLAGS_enable_mcjit);
+    jit_options.SetEnableVTune(FLAGS_enable_vtune);
+    jit_options.SetEnableGDB(FLAGS_enable_gdb);
+    jit_options.SetEnablePerf(FLAGS_enable_perf);
 
     for (auto& sql_case : cases) {
         if (FLAGS_case_id >= 0 &&
