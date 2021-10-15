@@ -1041,6 +1041,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kDeployStmt:
             output = "kDeployStmt";
             break;
+        case kSelectIntoStmt:
+            output = "kSelectIntoStmt";
+            break;
         case kLoadDataStmt:
             output = "kLoadDataStmt";
             break;
@@ -1313,6 +1316,17 @@ void DeployNode::Print(std::ostream& output, const std::string& org_tab) const {
     PrintValue(output, tab, name_, "name", false);
     output << "\n";
     PrintSqlNode(output, tab, stmt_, "stmt", true);
+}
+
+void SelectIntoNode::Print(std::ostream &output, const std::string &tab) const {
+    SqlNode::Print(output, tab);
+    const std::string new_tab = tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, new_tab, OutFile(), "out_file", false);
+    output << "\n";
+    PrintSqlNode(output, new_tab, Query(), "query", false);
+    output << "\n";
+    PrintValue<std::string, std::string>(output, new_tab, *Options().get(), "options", true);
 }
 
 void LoadDataNode::Print(std::ostream &output, const std::string &org_tab) const {

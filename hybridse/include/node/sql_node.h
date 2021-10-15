@@ -1978,7 +1978,28 @@ class CmdNode : public SqlNode {
     std::vector<std::string> args_;
 };
 
-class LoadDataNode : public SqlNode {
+class SelectIntoNode final : public SqlNode {
+ public:
+    explicit SelectIntoNode(const QueryNode* query, const std::string& query_str, const std::string& out,
+                            const std::shared_ptr<OptionsMap> options)
+        : SqlNode(kSelectIntoStmt, 0, 0), query_(query), query_str_(query_str), out_file_(out), options_(options) {}
+    ~SelectIntoNode() {}
+
+    const QueryNode* Query() const { return query_; }
+    const std::string& QueryStr() const { return query_str_; }
+    const std::string& OutFile() const { return out_file_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+    void Print(std::ostream& output, const std::string& org_tab) const override;
+
+ private:
+    const QueryNode* query_;
+    const std::string query_str_;
+    const std::string out_file_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
+class LoadDataNode final : public SqlNode {
  public:
     explicit LoadDataNode(const std::string& f, const std::string& db, const std::string& table,
                           const std::shared_ptr<OptionsMap> op)
@@ -1998,7 +2019,7 @@ class LoadDataNode : public SqlNode {
     const std::string table_;
     // TODO(aceforeverd): extend value to other type like number, list
     //    replace map with optimized class
-    std::shared_ptr<OptionsMap> options_ = nullptr;
+    const std::shared_ptr<OptionsMap> options_ = nullptr;
 };
 
 class CreateIndexNode : public SqlNode {
@@ -2022,7 +2043,7 @@ class ExplainNode : public SqlNode {
     const node::QueryNode *query_;
 };
 
-class DeployNode : public SqlNode {
+class DeployNode final : public SqlNode {
  public:
     explicit DeployNode(const std::string& name, const SqlNode* stmt, const std::string& stmt_str, bool if_not_exists)
         : SqlNode(kDeployStmt, 0, 0), name_(name), stmt_(stmt), stmt_str_(stmt_str), if_not_exists_(if_not_exists) {}

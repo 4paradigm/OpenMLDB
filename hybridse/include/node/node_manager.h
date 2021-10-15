@@ -261,6 +261,10 @@ class NodeManager {
                                    const std::shared_ptr<OptionsMap> options);
     LoadDataPlanNode* MakeLoadDataPlanNode(const std::string& file_name, const std::string &db,
                                            const std::string& table, const std::shared_ptr<OptionsMap> options);
+    SelectIntoNode* MakeSelectIntoNode(const QueryNode* query, const std::string& query_str,
+                                       const std::string& out_file, const std::shared_ptr<OptionsMap> options);
+    SelectIntoPlanNode* MakeSelectIntoPlanNode(const QueryNode* query, const std::string& query_str,
+                                               const std::string& out_file, const std::shared_ptr<OptionsMap> options);
     // Make NodeList
     SqlNode *MakeExplainNode(const QueryNode *query,
                              node::ExplainType explain_type);

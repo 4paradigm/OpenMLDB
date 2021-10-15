@@ -663,6 +663,21 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                                                    ast_deploy_stmt->UnparseStmt(), ast_deploy_stmt->is_if_not_exists());
             break;
         }
+        case zetasql::AST_SELECT_INTO_STATEMENT: {
+            const auto ast_select_into_stmt = statement->GetAsOrNull<zetasql::ASTSelectIntoStatement>();
+            CHECK_TRUE(ast_select_into_stmt != nullptr, common::kSqlAstError, "not an ASTSelectIntoStatement");
+            node::QueryNode* query = nullptr;
+            CHECK_STATUS(ConvertQueryNode(ast_select_into_stmt->query(), node_manager, &query));
+
+            std::string out_file = ast_select_into_stmt->out_file()->string_value();
+
+            auto options = std::make_shared<node::OptionsMap>();
+            if (ast_select_into_stmt->options_list() != nullptr) {
+                CHECK_STATUS(ConvertAstOptionsListToMap(ast_select_into_stmt->options_list(), options));
+            }
+            *output = node_manager->MakeSelectIntoNode(query, ast_select_into_stmt->UnparseQuery(), out_file, options);
+            break;
+        }
         default: {
             FAIL_STATUS(common::kSqlAstError, "Un-support statement type: ", statement->GetNodeKindString());
         }

@@ -85,6 +85,7 @@ enum SqlNodeType {
     kCreateSpStmt,
     kInputParameter,
     kPartitionNum,
+    kSelectIntoStmt,
     kLoadDataStmt,
     kDeployStmt,
     kUnknow = -1
@@ -273,6 +274,7 @@ enum PlanType {
     kProjectNode,
     kPlanTypeCreateSp,
     kPlanTypeCreateIndex,
+    kPlanTypeSelectInto,
     kPlanTypeLoadData,
     kPlanTypeDeploy,
     kUnknowPlan = -1,
