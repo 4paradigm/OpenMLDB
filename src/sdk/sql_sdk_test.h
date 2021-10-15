@@ -24,6 +24,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
@@ -138,7 +139,7 @@ void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
     }
     input_dbs.insert(sql_case.db_);
 
-    for(int i = 0 ; i < sql_case.inputs_.size(); i++) {
+    for (int i = 0; i < sql_case.inputs_.size(); i++) {
         if (!sql_case.inputs_[i].db_.empty()) {
             input_dbs.insert(sql_case.inputs_[i].db_);
         }
@@ -149,7 +150,7 @@ void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
 
     // create db if not exist
     std::set<std::string> db_set(dbs.begin(), dbs.end());
-    for(auto iter = input_dbs.begin(); iter != input_dbs.end(); iter++) {
+    for (auto iter = input_dbs.begin(); iter != input_dbs.end(); iter++) {
         auto db_name = *iter;
         DLOG(INFO) << "Create DB " << db_name << " BEGIN";
         if (db_set.find(db_name) == db_set.cend()) {
@@ -157,7 +158,6 @@ void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         }
         DLOG(INFO) << "Create DB DONE!";
     }
-
 }
 
 void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT

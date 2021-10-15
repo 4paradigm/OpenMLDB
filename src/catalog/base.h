@@ -37,7 +37,7 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
           output_schema_(output_schema),
           tables_(tables),
           main_table_(main_table),
-          main_db_(main_db){}
+          main_db_(main_db) {}
 
     ~ProcedureInfoImpl() {}
 
