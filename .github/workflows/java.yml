@@ -21,7 +21,7 @@ on:
     branches:
       - main
 env:
-  HYBRIDSE_SOURCE:
+  HYBRIDSE_SOURCE: local
 jobs:
   linux-unit-test:
     name: Run unit tests in Linux
