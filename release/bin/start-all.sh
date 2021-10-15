@@ -15,7 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
 export COMPONENTS="tablet nameserver"
+BASEDIR="$(dirname "$( cd "$( dirname "$0"  )" && pwd )")"
+OS="$(uname -a | awk '{print $1}' | tr '[:upper:]' '[:lower:]')"
+cd "$BASEDIR"
 for COMPONENT in $COMPONENTS; do
     PID_FILE="./bin/$COMPONENT.pid"
     mkdir -p "$(dirname "$PID_FILE")"
@@ -28,12 +32,23 @@ for COMPONENT in $COMPONENTS; do
             exit 0
         fi
     fi
-    if ./bin/mon "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$PID_FILE";
-    then
+    if [ "$OS" = 'darwin' ]; then
+        nohup ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true > /dev/null 2>&1 &
         sleep 1
+        if kill -0 $! > /dev/null 2>&1; then
+            echo $! > "$PID_FILE"
+        else
+            echo "$COMPONENT start failed"
+            exit 1
+        fi
     else
-        echo "$COMPONENT start failed"
-        exit 1
+        if ./bin/mon "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$PID_FILE";
+        then
+            sleep 1
+        else
+            echo "$COMPONENT start failed"
+            exit 1
+        fi
     fi
-done    
+done
 echo "OpenMLDB start success"

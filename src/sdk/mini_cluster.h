@@ -36,7 +36,7 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
-#include "sdk/cluster_sdk.h"
+#include "sdk/db_sdk.h"
 #include "tablet/tablet_impl.h"
 
 DECLARE_string(endpoint);

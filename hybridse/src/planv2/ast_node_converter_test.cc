@@ -724,7 +724,7 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
     expect_converted(R"sql(
         SHOW create procedure ab.cd.name;
     )sql",
-                     common::kSqlAstError, "Invalid name for SHOW CREATE PROCEDURE: ab.cd.name");
+                     common::kSqlAstError, "Invalid target name for SHOW CREATE PROCEDURE: ab.cd.name");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
@@ -847,8 +847,8 @@ TEST_F(ASTNodeConverterTest, ASTIntLiteralToNumberTest) {
         int32_t v1 = rng();
         literal.set_image(std::to_string(v1));
         auto status = ASTIntLiteralToNum(&literal, &output);
-        ASSERT_EQ(status.code, common::kOk);
-        ASSERT_EQ(v1, output);
+        EXPECT_EQ(status.code, common::kOk) << status.str();
+        EXPECT_EQ(v1, output);
     }
 
     std::mt19937_64 rng_64(std::time(0));
@@ -858,8 +858,8 @@ TEST_F(ASTNodeConverterTest, ASTIntLiteralToNumberTest) {
         literal.set_image(std::to_string(v2) + 'l');
         output = 0;
         auto s2 = ASTIntLiteralToNum(&literal, &output);
-        ASSERT_EQ(s2.code, common::kOk);
-        ASSERT_EQ(v2, output);
+        EXPECT_EQ(s2.code, common::kOk) << s2.str();
+        EXPECT_EQ(v2, output);
     }
 
     {
@@ -869,8 +869,8 @@ TEST_F(ASTNodeConverterTest, ASTIntLiteralToNumberTest) {
         literal.set_image(ss.str());
         output = 0;
         auto s3 = ASTIntLiteralToNum(&literal, &output);
-        ASSERT_EQ(s3.code, common::kOk);
-        ASSERT_EQ(v3, output);
+        EXPECT_EQ(s3.code, common::kOk) << s3.str();
+        EXPECT_EQ(v3, output);
     }
 }
 

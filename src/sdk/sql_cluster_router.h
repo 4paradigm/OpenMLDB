@@ -29,7 +29,7 @@
 #include "boost/compute/detail/lru_cache.hpp"
 #include "catalog/schema_adapter.h"
 #include "client/tablet_client.h"
-#include "sdk/cluster_sdk.h"
+#include "sdk/db_sdk.h"
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
 
@@ -101,9 +101,9 @@ struct SQLCache {
 class SQLClusterRouter : public SQLRouter {
  public:
     explicit SQLClusterRouter(const SQLRouterOptions& options);
-    explicit SQLClusterRouter(ClusterSDK* sdk);
+    explicit SQLClusterRouter(DBSDK* sdk);
 
-    ~SQLClusterRouter();
+    ~SQLClusterRouter() override;
 
     bool Init();
 
@@ -233,7 +233,7 @@ class SQLClusterRouter : public SQLRouter {
 
  private:
     SQLRouterOptions options_;
-    ClusterSDK* cluster_sdk_;
+    DBSDK* cluster_sdk_;
     std::map<std::string, boost::compute::detail::lru_cache<std::string, std::shared_ptr<SQLCache>>> input_lru_cache_;
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
