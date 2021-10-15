@@ -405,7 +405,7 @@ bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, c
     size_t child_column_id;
     size_t source_column_id;
     const PhysicalOpNode* source;
-    hybridse::base::Status status = hybridse::base::Status::OK();
+    hybridse::base::Status status =
         schemas_ctx->ResolveColumnID(DDLParser::DB_NAME, col->GetRelationName(), col->GetColumnName(),
             &column_id, &path_idx,&child_column_id, &source_column_id, &source);
 
