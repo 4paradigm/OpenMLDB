@@ -99,9 +99,9 @@ public class SqlEngine implements AutoCloseable {
      */
     public static EngineOptions createDefaultEngineOptions() {
         EngineOptions engineOptions = new EngineOptions();
-        engineOptions.set_keep_ir(true);
-        engineOptions.set_compile_only(true);
-        engineOptions.set_performance_sensitive(false);
+        engineOptions.SetKeepIR(true);
+        engineOptions.SetCompileOnly(true);
+        engineOptions.SetPerformanceSensitive(false);
         return engineOptions;
     }
 
