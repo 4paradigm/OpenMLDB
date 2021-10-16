@@ -460,7 +460,7 @@ class DeployPlanNode : public LeafPlanNode {
     const bool if_not_exist_ = false;
 };
 
-class SelectIntoPlanNode final : public LeafPlanNode {
+class SelectIntoPlanNode : public LeafPlanNode {
  public:
     explicit SelectIntoPlanNode(const QueryNode* query, const std::string& query_str, const std::string& out,
                                 const std::shared_ptr<OptionsMap> options)
@@ -481,7 +481,7 @@ class SelectIntoPlanNode final : public LeafPlanNode {
     const std::shared_ptr<OptionsMap> options_;
 };
 
-class LoadDataPlanNode final : public LeafPlanNode {
+class LoadDataPlanNode : public LeafPlanNode {
  public:
     explicit LoadDataPlanNode(const std::string& f, const std::string& db, const std::string& table,
                           const std::shared_ptr<OptionsMap> op)
