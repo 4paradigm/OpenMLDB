@@ -1981,7 +1981,7 @@ class CmdNode : public SqlNode {
     std::vector<std::string> args_;
 };
 
-class SelectIntoNode final : public SqlNode {
+class SelectIntoNode : public SqlNode {
  public:
     explicit SelectIntoNode(const QueryNode* query, const std::string& query_str, const std::string& out,
                             const std::shared_ptr<OptionsMap> options)
@@ -2002,7 +2002,7 @@ class SelectIntoNode final : public SqlNode {
     const std::shared_ptr<OptionsMap> options_;
 };
 
-class LoadDataNode final : public SqlNode {
+class LoadDataNode : public SqlNode {
  public:
     explicit LoadDataNode(const std::string& f, const std::string& db, const std::string& table,
                           const std::shared_ptr<OptionsMap> op)
@@ -2046,7 +2046,7 @@ class ExplainNode : public SqlNode {
     const node::QueryNode *query_;
 };
 
-class DeployNode final : public SqlNode {
+class DeployNode : public SqlNode {
  public:
     explicit DeployNode(const std::string& name, const SqlNode* stmt, const std::string& stmt_str, bool if_not_exists)
         : SqlNode(kDeployStmt, 0, 0), name_(name), stmt_(stmt), stmt_str_(stmt_str), if_not_exists_(if_not_exists) {}
