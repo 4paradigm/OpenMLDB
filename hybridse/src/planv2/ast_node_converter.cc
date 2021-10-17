@@ -1597,7 +1597,7 @@ base::Status ConvertASTScript(const zetasql::ASTScript* script, node::NodeManage
     CHECK_TRUE(nullptr != script, common::kSqlAstError, "Fail to convert ASTScript, script is null")
     *output = node_manager->MakeNodeList();
     for (auto statement : script->statement_list()) {
-        CHECK_TRUE(nullptr != statement && statement->IsSqlStatement(), common::kSqlAstError, "not an SQL Statement")
+        CHECK_TRUE(nullptr != statement, common::kSqlAstError, "SQL Statement is null")
         node::SqlNode* stmt;
         CHECK_STATUS(ConvertStatement(statement, node_manager, &stmt));
         (*output)->PushBack(stmt);
