@@ -101,6 +101,13 @@ TEST_F(EngineCompileTest, EngineLRUCacheTestWithPerformanceSensitive) {
     index->set_second_key("col5");
     AddTable(db, table_def);
 
+    // table t2
+    hybridse::type::TableDef table_def2;
+    sqlcase::CaseSchemaMock::BuildTableDef(table_def2);
+    table_def2.set_name("t2");
+    AddTable(db, table_def2);
+    catalog->AddDatabase(db);
+
     // Simple Engine
     EngineOptions options;
     options.set_compile_only(true);
@@ -125,7 +132,7 @@ TEST_F(EngineCompileTest, EngineLRUCacheTestWithPerformanceSensitive) {
         bsession3.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "simple_db", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
+        ASSERT_NE(bsession2.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
     }
 }
 
