@@ -346,7 +346,7 @@ jobs:
           ./tools/compile_and_coverage.sh
 
       - name: Upload Coverage Report
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         with:
           files: ${{ env.HYBRIDSE_PATH }}/build/coverage.info,${{ env.HYBRIDSE_PATH }}/java/hybridse-sdk/target/site/jacoco/jacoco.xml
           name: coverage
