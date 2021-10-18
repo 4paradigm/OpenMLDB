@@ -24,8 +24,6 @@ DEFINE_string(cluster_mode, "standalone",
 DEFINE_bool(
     enable_batch_request_opt, true,
     "Specify whether perform batch request optimization in batch request mode");
-DEFINE_bool(performance_sensitive, true,
-            "Specify whether do performance sensitive check");
 DEFINE_bool(enable_expr_opt, true,
             "Specify whether do expression optimization");
 DEFINE_bool(

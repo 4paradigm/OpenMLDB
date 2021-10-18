@@ -101,13 +101,6 @@ TEST_F(EngineCompileTest, EngineLRUCacheTestWithPerformanceSensitive) {
     index->set_second_key("col5");
     AddTable(db, table_def);
 
-    // table t2
-    hybridse::type::TableDef table_def2;
-    sqlcase::CaseSchemaMock::BuildTableDef(table_def2);
-    table_def2.set_name("t2");
-    AddTable(db, table_def2);
-    catalog->AddDatabase(db);
-
     // Simple Engine
     EngineOptions options;
     options.set_compile_only(true);
@@ -132,7 +125,7 @@ TEST_F(EngineCompileTest, EngineLRUCacheTestWithPerformanceSensitive) {
         bsession3.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "simple_db", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_NE(bsession2.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
+        ASSERT_NE(bsession1.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
     }
 }
 
@@ -468,7 +461,7 @@ TEST_F(EngineCompileTest, RouterTest) {
         codec::Schema empty_parameter_schema;
         base::Status status;
         ASSERT_TRUE(engine.Explain(sql, "simple_db", kBatchRequestMode,
-                                   empty_parameter_schema, &explain_output, &status));
+                                   empty_parameter_schema, &explain_output, &status, false));
         ASSERT_EQ(explain_output.router.GetMainTable(), "t1");
         ASSERT_EQ(explain_output.router.GetRouterCol(), "col2");
     }
@@ -512,7 +505,7 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
     base::Status status;
     ASSERT_TRUE(engine.Explain(sql, "simple_db", kBatchRequestMode,
                                common_column_indices, &explain_output,
-                               &status));
+                               &status, false));
     ASSERT_TRUE(status.isOK()) << status;
     auto& output_schema = explain_output.output_schema;
     ASSERT_EQ(false, output_schema.Get(0).is_constant());
