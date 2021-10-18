@@ -436,7 +436,7 @@ bool StandAloneSDK::BuildCatalog() {
     for (const auto& table : tables) {
         auto& db_map = mapping[table.db()];
         db_map[table.name()] = std::make_shared<nameserver::TableInfo>(table);
-        DLOG(INFO) << "load table info with name " << table.name() << " in db " << table.db();
+        VLOG(5) << "load table info with name " << table.name() << " in db " << table.db();
     }
 
     std::vector<api::ProcedureInfo> procedures;

@@ -41,6 +41,7 @@ cmake-build-*/
 # ignore pb generate code
 src/proto/*.cc
 src/proto/*.h
+
 # ignore some build directory
 build
 build_mac
@@ -71,7 +72,7 @@ java/openmldb-import/src/main/java/com/_4paradigm/openmldb/proto/
 java/openmldb-nearline-tablet/src/main/java/com/_4paradigm/openmldb/proto/
 java/openmldb-taskmanager/src/main/java/com/_4paradigm/openmldb/proto/
 python/logs
-python/sqlalchemy-test/*.xml
+/python/test/*.xml
 
 .vscode/settings.json
 
