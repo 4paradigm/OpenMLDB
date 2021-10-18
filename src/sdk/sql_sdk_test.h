@@ -24,6 +24,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
@@ -132,20 +133,31 @@ class SQLSDKBatchRequestQueryTest : public SQLSDKQueryTest {
 
 void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                           std::shared_ptr<SQLRouter> router) {
+    std::unordered_set<std::string> input_dbs;
     if (sql_case.db().empty()) {
         sql_case.db_ = hybridse::sqlcase::SqlCase::GenRand("auto_db") + std::to_string((int64_t)time(NULL));
     }
-    DLOG(INFO) << "Create DB " << sql_case.db_ << " BEGIN";
+    input_dbs.insert(sql_case.db_);
+
+    for (int i = 0; i < sql_case.inputs_.size(); i++) {
+        if (!sql_case.inputs_[i].db_.empty()) {
+            input_dbs.insert(sql_case.inputs_[i].db_);
+        }
+    }
     hybridse::sdk::Status status;
     std::vector<std::string> dbs;
     ASSERT_TRUE(router->ShowDB(&dbs, &status));
 
     // create db if not exist
     std::set<std::string> db_set(dbs.begin(), dbs.end());
-    if (db_set.find(sql_case.db()) == db_set.cend()) {
-        ASSERT_TRUE(router->CreateDB(sql_case.db(), &status));
+    for (auto iter = input_dbs.begin(); iter != input_dbs.end(); iter++) {
+        auto db_name = *iter;
+        DLOG(INFO) << "Create DB " << db_name << " BEGIN";
+        if (db_set.find(db_name) == db_set.cend()) {
+            ASSERT_TRUE(router->CreateDB(db_name, &status));
+        }
+        DLOG(INFO) << "Create DB DONE!";
     }
-    DLOG(INFO) << "Create DB DONE!";
 }
 
 void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
@@ -158,6 +170,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
             sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((int64_t)time(NULL)),
                                     i);
         }
+        std::string input_db_name = sql_case.inputs_[i].db_.empty() ? sql_case.db() : sql_case.inputs_[i].db_;
         // create table
         std::string create;
         ASSERT_TRUE(sql_case.BuildCreateSqlFromInput(i, &create, partition_num));
@@ -165,7 +178,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
         LOG(INFO) << create;
         if (!create.empty()) {
-            router->ExecuteDDL(sql_case.db(), create, &status);
+            router->ExecuteDDL(input_db_name, create, &status);
             ASSERT_TRUE(router->RefreshCatalog());
             ASSERT_TRUE(status.code == 0) << status.msg;
         }
@@ -184,10 +197,11 @@ void SQLSDKTest::DropTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
             continue;
         }
         // create table
+        std::string db_name = sql_case.inputs_[i].db_.empty() ? sql_case.db_ : sql_case.inputs_[i].db_;
         std::string drop = "drop table " + sql_case.inputs()[i].name_ + ";";
         LOG(INFO) << drop;
         if (!drop.empty()) {
-            router->ExecuteDDL(sql_case.db(), drop, &status);
+            router->ExecuteDDL(db_name, drop, &status);
             ASSERT_TRUE(router->RefreshCatalog());
         }
     }
@@ -295,6 +309,7 @@ void SQLSDKTest::InsertTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
             continue;
         }
 
+        std::string db_name = sql_case.inputs_[i].db_.empty() ? sql_case.db_ : sql_case.inputs_[i].db_;
         // insert into table
         std::vector<std::string> inserts;
         ASSERT_TRUE(sql_case.BuildInsertSqlListFromInput(i, &inserts));
@@ -308,7 +323,7 @@ void SQLSDKTest::InsertTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
             DLOG(INFO) << insert;
             if (!insert.empty()) {
                 for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
-                    ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status)) << status.msg;
+                    ASSERT_TRUE(router->ExecuteInsert(db_name, insert, &status)) << status.msg;
                     ASSERT_TRUE(router->RefreshCatalog());
                 }
             }
@@ -531,7 +546,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
             results.push_back(rs);
             if (!has_batch_request) {
                 LOG(INFO) << "insert request: \n" << inserts[i];
-                bool ok = router->ExecuteInsert(sql_case.db(), inserts[i], &status);
+                bool ok = router->ExecuteInsert(insert_table.catalog(), inserts[i], &status);
                 ASSERT_TRUE(ok);
             }
         }
@@ -902,8 +917,10 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/select/test_sub_select.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestWhere, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/select/test_where.yaml")));
-
-
+// Test Multiple Databases
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestMultipleDatabases, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/multiple_databases/test_multiple_databases.yaml")));
 // Test Window
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestErrorWindow, SQLSDKQueryTest,

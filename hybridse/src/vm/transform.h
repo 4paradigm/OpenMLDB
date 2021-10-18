@@ -261,6 +261,7 @@ class RequestModeTransformer : public BatchModeTransformer {
 
     const Schema& request_schema() const { return request_schema_; }
     const std::string& request_name() const { return request_name_; }
+    const std::string& request_db_name() const { return request_db_name_; }
     const BatchRequestInfo& batch_request_info() const {
         return batch_request_info_;
     }
@@ -282,7 +283,8 @@ class RequestModeTransformer : public BatchModeTransformer {
  private:
     bool enable_batch_request_opt_;
     vm::Schema request_schema_;
-    std::string request_name_;
+    std::string request_name_ = "";
+    std::string request_db_name_ = "";
     BatchRequestInfo batch_request_info_;
 };
 

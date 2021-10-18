@@ -1905,6 +1905,7 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
         *output = provider;
         request_schema_ = *(*output)->GetOutputSchema();
         request_name_ = table->GetName();
+        request_db_name_ = table->GetDatabase();
         return Status::OK();
     } else {
         return BatchModeTransformer::TransformScanOp(node, output);

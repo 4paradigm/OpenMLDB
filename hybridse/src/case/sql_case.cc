@@ -1547,40 +1547,7 @@ hybridse::sqlcase::SqlCase SqlCase::LoadSqlCaseWithID(
     return SqlCase();
 }
 std::string FindSqlCaseBaseDirPath() {
-    auto base_dir = SqlCase::SqlCaseBaseDir();
-    if (!base_dir.empty()) {
-        return base_dir;
-    }
-    boost::filesystem::path current_path(boost::filesystem::current_path());
-    boost::filesystem::path hybridse_path;
-    bool find_hybridse_dir = false;
-
-    while (current_path.has_parent_path()) {
-        current_path = current_path.parent_path();
-        if (current_path.filename().string() == "fesql") {
-            hybridse_path = current_path;
-            find_hybridse_dir = true;
-            break;
-        }
-        boost::filesystem::directory_iterator endIter;
-        for (boost::filesystem::directory_iterator iter(current_path);
-             iter != endIter; iter++) {
-            if (boost::filesystem::is_directory(*iter) &&
-                iter->path().filename() == "fesql") {
-                hybridse_path = iter->path();
-                find_hybridse_dir = true;
-                break;
-            }
-        }
-        if (find_hybridse_dir) {
-            break;
-        }
-    }
-
-    if (find_hybridse_dir) {
-        return hybridse_path.string();
-    }
-    return std::string();
+    return SqlCase::SqlCaseBaseDir();
 }
 void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
     SqlCase::CreateSqlCasesFromYaml(hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases);
