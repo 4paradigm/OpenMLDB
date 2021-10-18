@@ -1157,6 +1157,50 @@ TEST_F(SqlCaseTest, EmptyExpectProviderTest) {
     EXPECT_EQ(false, case3.expect().success_);
 }
 
+TEST_F(SqlCaseTest, BuildCreateSpSqlFromInputTest) {
+    {
+        SqlCase::TableInfo input;
+        input.columns_ = {"c1 string", "c2 int", "c3 bigint", "c4 timestamp"};
+        SqlCase sql_case;
+        sql_case.inputs_.push_back(input);
+        std::string sql = "select c1, c2, c3, c4 from t1";
+        std::string sp_sql = "";
+        ASSERT_TRUE(sql_case.BuildCreateSpSqlFromInput(0, sql, {}, &sp_sql));
+        ASSERT_EQ(
+            "CREATE Procedure (\n"
+            "c1 string,\n"
+            "c2 int,\n"
+            "c3 bigint,\n"
+            "c4 timestamp)\n"
+            "BEGIN\n"
+            "select c1, c2, c3, c4 from t1\n"
+            "END;",
+            sp_sql)
+            << sp_sql;
+    }
+
+    // create procedure with common idx
+    {
+        SqlCase::TableInfo input;
+        input.columns_ = {"c1 string", "c2 int", "c3 bigint", "c4 timestamp"};
+        SqlCase sql_case;
+        sql_case.inputs_.push_back(input);
+        std::string sql = "select c1, c2, c3, c4 from t1";
+        std::string sp_sql = "";
+        ASSERT_TRUE(sql_case.BuildCreateSpSqlFromInput(0, sql, {0, 1, 3}, &sp_sql));
+        ASSERT_EQ(
+            "CREATE Procedure (\n"
+            "const c1 string,\n"
+            "const c2 int,\n"
+            "c3 bigint,\n"
+            "const c4 timestamp)\n"
+            "BEGIN\n"
+            "select c1, c2, c3, c4 from t1\n"
+            "END;",
+            sp_sql)
+            << sp_sql;
+    }
+}
 }  // namespace sqlcase
 }  // namespace hybridse
 

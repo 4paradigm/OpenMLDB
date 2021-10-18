@@ -406,13 +406,15 @@ bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, c
     size_t source_column_id;
     const PhysicalOpNode* source;
     hybridse::base::Status status =
-        schemas_ctx->ResolveColumnID(DDLParser::DB_NAME, col->GetRelationName(), col->GetColumnName(),
-            &column_id, &path_idx,&child_column_id, &source_column_id, &source);
+        schemas_ctx->ResolveColumnID(col->GetDBName(), col->GetRelationName(), col->GetColumnName(), &column_id,
+                                     &path_idx,
+                                     &child_column_id, &source_column_id, &source);
 
     // try loose the relation
     if (!status.isOK() && !col->GetRelationName().empty()) {
-        status = schemas_ctx->ResolveColumnID(DDLParser::DB_NAME, "", col->GetColumnName(), &column_id, &path_idx,
-            &child_column_id, &source_column_id, &source);
+        status = schemas_ctx->ResolveColumnID("", "", col->GetColumnName(), &column_id, &path_idx,
+                                              &child_column_id,
+                                              &source_column_id, &source);
     }
 
     if (!status.isOK()) {
