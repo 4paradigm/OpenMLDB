@@ -75,7 +75,6 @@ void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
     std::string delimiter = ",";
     std::string nullValues = "null";
     std::string header = "true";
-    
     for (iter = option->begin(); iter != option->end(); iter++) {
         std::string key = iter->first;
         if (key == "format") {
@@ -193,13 +192,12 @@ void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
                             rowString.append("NA");
                         }
                     }
-                    if(i != schema->GetColumnCnt()-1) {
+                    if (i != schema->GetColumnCnt()-1) {
                         rowString.append(delimiter);
                     } else {
                         fstream << rowString << std::endl;
                     }
                 }
-                
             }
         }
         stream << "Save successfully" << std::endl;
@@ -207,7 +205,7 @@ void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
         stream << "This format (" + format + ") is not currently supported" << std::endl;
         return;
     }
-    fstream.close(); 
+    fstream.close();
 }
 
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
