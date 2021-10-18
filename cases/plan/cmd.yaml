@@ -242,7 +242,10 @@ cases:
           +-db: db0
           +-table: t1
           +-options:
-            +-charset: utf-8
+            +-charset:
+              +-expr[primary]
+                +-value: utf-8
+                +-type: string
   - id: select_into_outfile_1
     sql: SELECT col1 FROM t1 WHERE col1 > 10 INTO OUTFILE 'data.csv';
     expect:
@@ -321,7 +324,10 @@ cases:
           |    |      +-alias: <nil>
           |    +-window_list: []
           +-options:
-            +-delimit: ,
+            +-delimit:
+              +-expr[primary]
+                +-value: ,
+                +-type: string
   - id: set_select_mode
     sql: SET SELECT_MODE = 'TRINO';
     expect:

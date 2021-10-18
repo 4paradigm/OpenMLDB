@@ -700,7 +700,7 @@ void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) c
     output << "\n";
     PrintValue(output, tab, Table(), "table", false);
     output << "\n";
-    PrintValue<std::string, std::string>(output, tab, *Options().get(), "options", true);
+    PrintValue(output, tab, *Options().get(), "options", true);
 }
 
 void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) const {
@@ -711,7 +711,7 @@ void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) con
     output << "\n";
     PrintSqlNode(output, new_tab, Query(), "query", false);
     output << "\n";
-    PrintValue<std::string, std::string>(output, new_tab, *Options().get(), "options", true);
+    PrintValue(output, new_tab, *Options().get(), "options", true);
 }
 
 void SetPlanNode::Print(std::ostream &output, const std::string &org_tab) const {

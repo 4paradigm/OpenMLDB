@@ -42,7 +42,9 @@ class LlvmUdfGenBase;
 namespace hybridse {
 namespace node {
 
-typedef std::unordered_map<std::string, std::string> OptionsMap;
+class ConstNode;
+
+typedef std::unordered_map<std::string, const ConstNode*> OptionsMap;
 
 // Global methods
 std::string NameOfSqlNodeType(const SqlNodeType &type);
@@ -2025,13 +2027,14 @@ class LoadDataNode : public SqlNode {
 
 class SetNode : public SqlNode {
  public:
-     explicit SetNode(const std::string& key, const ConstNode* value) : SqlNode(kSetStmt, 0, 0), key_(key), value_(value) {}
-     ~SetNode() {}
+    explicit SetNode(const std::string& key, const ConstNode* value)
+        : SqlNode(kSetStmt, 0, 0), key_(key), value_(value) {}
+    ~SetNode() {}
 
-     const std::string& Key() const { return key_; }
-     const ConstNode* Value() const { return value_; }
+    const std::string& Key() const { return key_; }
+    const ConstNode* Value() const { return value_; }
 
-    void Print(std::ostream &output, const std::string &org_tab) const override;
+    void Print(std::ostream& output, const std::string& org_tab) const override;
 
  private:
     const std::string key_;
@@ -2600,20 +2603,8 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const std::str
 void PrintValue(std::ostream &output, const std::string &org_tab, const std::vector<std::string> &vec,
                 const std::string &item_name, bool last_child);
 
-template <typename K, typename V>
-inline void PrintValue(std::ostream &output, const std::string &org_tab, const std::unordered_map<K, V> &value,
-                const std::string &item_name, bool last_child) {
-    output << org_tab << SPACE_ST << item_name << ":";
-    if (value.empty()) {
-        output << " <nil>";
-        return;
-    }
-    auto new_tab = org_tab + INDENT + SPACE_ED;
-    for (auto it = value.cbegin(); it != value.cend(); ++it) {
-        output << "\n" << new_tab << SPACE_ST << it->first << ": "
-            << it->second;
-    }
-}
+void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap &value,
+                const std::string &item_name, bool last_child);
 }  // namespace node
 }  // namespace hybridse
 #endif  // HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_

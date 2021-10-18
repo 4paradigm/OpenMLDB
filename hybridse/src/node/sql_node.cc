@@ -170,6 +170,20 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const std::vec
     output << org_tab << SPACE_ST << item_name << ": " << ss.str();
 }
 
+void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap &value,
+                const std::string &item_name, bool last_child) {
+    output << org_tab << SPACE_ST << item_name << ":";
+    if (value.empty()) {
+        output << " <nil>";
+        return;
+    }
+    auto new_tab = org_tab + INDENT + SPACE_ED;
+    for (auto it = value.begin(); it != value.end(); ++it) {
+        output << "\n";
+        PrintSqlNode(output, new_tab, it->second, it->first, std::next(it) == value.end());
+    }
+}
+
 bool SqlNode::Equals(const SqlNode *that) const {
     if (this == that) {
         return true;
@@ -1329,7 +1343,7 @@ void SelectIntoNode::Print(std::ostream &output, const std::string &tab) const {
     output << "\n";
     PrintSqlNode(output, new_tab, Query(), "query", false);
     output << "\n";
-    PrintValue<std::string, std::string>(output, new_tab, *Options().get(), "options", true);
+    PrintValue(output, new_tab, *Options().get(), "options", true);
 }
 
 void LoadDataNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1337,13 +1351,13 @@ void LoadDataNode::Print(std::ostream &output, const std::string &org_tab) const
 
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, file_, "file", false);
+    PrintValue(output, tab, File(), "file", false);
     output << "\n";
-    PrintValue(output, tab, db_, "db", false);
+    PrintValue(output, tab, Db(), "db", false);
     output << "\n";
-    PrintValue(output, tab, table_, "table", false);
+    PrintValue(output, tab, Table(), "table", false);
     output << "\n";
-    PrintValue<std::string, std::string>(output, tab, *options_.get(), "options", true);
+    PrintValue(output, tab, *Options().get(), "options", true);
 }
 
 void SetNode::Print(std::ostream &output, const std::string &org_tab) const {

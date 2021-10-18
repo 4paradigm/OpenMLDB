@@ -1608,7 +1608,10 @@ TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
   +-db: <nil>
   +-table: t1
   +-options:
-    +-key: cat)sql", plan_trees.front()->GetTreeString().c_str());
+    +-key:
+      +-expr[primary]
+        +-value: cat
+        +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
 }
 
 TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
@@ -1643,7 +1646,10 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
   |    |      +-alias: <nil>
   |    +-window_list: []
   +-options:
-    +-key: cat)sql", plan_trees.front()->GetTreeString().c_str());
+    +-key:
+      +-expr[primary]
+        +-value: cat
+        +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
 
     const auto select_into = dynamic_cast<node::SelectIntoPlanNode*>(plan_trees.front());
     ASSERT_TRUE(select_into != nullptr);

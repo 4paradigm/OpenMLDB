@@ -638,7 +638,8 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             const auto key = ast_assign_stmt->variable()->GetAsString();
             node::ExprNode* value = nullptr;
             CHECK_STATUS(ConvertExprNode(ast_assign_stmt->expression(), node_manager, &value));
-            CHECK_TRUE(value->GetExprType() == node::kExprPrimary, common::kSqlAstError, "Unsupported Set value other than const type");
+            CHECK_TRUE(value->GetExprType() == node::kExprPrimary, common::kSqlAstError,
+                       "Unsupported Set value other than const type");
             *output = node_manager->MakeSetNode(key, dynamic_cast<node::ConstNode*>(value));
             break;
         }
@@ -659,7 +660,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
 
             auto options = std::make_shared<node::OptionsMap>();
             if (load_data_stmt->options_list() != nullptr) {
-                CHECK_STATUS(ConvertAstOptionsListToMap(load_data_stmt->options_list(), options));
+                CHECK_STATUS(ConvertAstOptionsListToMap(load_data_stmt->options_list(), node_manager, options));
             }
             *output = node_manager->MakeLoadDataNode(file_name, db, table, options);
             break;
@@ -683,7 +684,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
 
             auto options = std::make_shared<node::OptionsMap>();
             if (ast_select_into_stmt->options_list() != nullptr) {
-                CHECK_STATUS(ConvertAstOptionsListToMap(ast_select_into_stmt->options_list(), options));
+                CHECK_STATUS(ConvertAstOptionsListToMap(ast_select_into_stmt->options_list(), node_manager, options));
             }
             *output = node_manager->MakeSelectIntoNode(query, ast_select_into_stmt->UnparseQuery(), out_file, options);
             break;
@@ -1823,15 +1824,16 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
     return base::Status::OK();
 }
 
-base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options,
+base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options, node::NodeManager* node_manager,
                                         std::shared_ptr<node::OptionsMap> options_map) {
     for (auto entry : options->options_entries()) {
         std::string key = entry->name()->GetAsString();
         auto entry_value = entry->value();
-        std::string value;
-        // NOTE: currently only support value type for string
-        CHECK_STATUS(AstStringLiteralToString(entry_value, &value));
-        options_map->emplace(key, value);
+        node::ExprNode* value = nullptr;
+        CHECK_STATUS(ConvertExprNode(entry_value, node_manager, &value));
+        CHECK_TRUE(value->GetExprType() == node::kExprPrimary, common::kSqlAstError,
+                   "Unsupported value other than const type");
+        options_map->emplace(key, dynamic_cast<const node::ConstNode*>(value));
     }
     return base::Status::OK();
 }
