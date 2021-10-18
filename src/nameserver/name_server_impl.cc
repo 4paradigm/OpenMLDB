@@ -10163,7 +10163,6 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
             return;
         }
         // only find one db
-        // db_sp_info_map_ won't have
         if (db_sp_info_map_.find(db_name) == db_sp_info_map_.end()) {
             response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
             response->set_msg("database not found");
@@ -10171,6 +10170,7 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
             return;
         }
         auto& sp_map = db_sp_info_map_[db_name];
+        // db_sp_info_map_ won't have empty map of one db
         DCHECK(!sp_map.empty()) << "db " << db_name << " 's sp map is empty";
         // if no sp name, show all sp in this db
         if (sp_name.empty()) {
@@ -10190,6 +10190,7 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
             PDLOG(WARNING, "db %s sp[%s] not found", db_name, sp_name);
             return;
         }
+        // only return the specified one
         auto add = response->add_sp_info();
         add->CopyFrom(*sp_map[sp_name]);
     }
