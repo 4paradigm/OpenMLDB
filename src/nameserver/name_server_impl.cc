@@ -10141,9 +10141,7 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    // empty(unset or empty string) means 'show all'
-    // TODO(hw): delete
-    CHECK(request->db_name().empty());
+    // empty(unset or set empty string) means 'show all'
     auto& db_name = request->db_name();
     auto& sp_name = request->sp_name();
 

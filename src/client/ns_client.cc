@@ -920,7 +920,6 @@ bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_n
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowProcedure, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     *msg = response.msg();
-    // TODO(hw): which format to store sp info?
     if (ok && response.code() == 0) {
         infos->clear();
         for (auto& sp : response.sp_info()) {
