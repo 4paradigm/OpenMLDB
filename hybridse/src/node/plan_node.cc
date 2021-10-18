@@ -223,6 +223,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeCreateIndex";
         case kPlanTypeCreateSp:
             return "kPlanTypeCreateSp";
+        case kPlanTypeSet:
+            return "kPlanTypeSet";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -710,6 +712,15 @@ void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) con
     PrintSqlNode(output, new_tab, Query(), "query", false);
     output << "\n";
     PrintValue<std::string, std::string>(output, new_tab, *Options().get(), "options", true);
+}
+
+void SetPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, Key(), "key", false);
+    output << "\n";
+    PrintSqlNode(output, tab, Value(), "value", true);
 }
 }  // namespace node
 }  // namespace hybridse

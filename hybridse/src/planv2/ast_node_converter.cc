@@ -636,14 +636,10 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             const auto ast_assign_stmt = statement->GetAsOrNull<zetasql::ASTSingleAssignment>();
             CHECK_TRUE(nullptr != ast_assign_stmt, common::kSqlAstError, "not an ASTSingleAssignment");
             const auto key = ast_assign_stmt->variable()->GetAsString();
-            if (boost::iequals(key, "select_mode")) {
-                std::string mode;
-                CHECK_STATUS(AstStringLiteralToString(ast_assign_stmt->expression(), &mode),
-                             "Unsupport: set statement's value other than string literal");
-                *output = node_manager->MakeCmdNode(node::CmdType::kCmdSetSelectMode, mode);
-            } else {
-                CHECK_TRUE(false, common::kSqlAstError, "Unsupport Set Statement other than 'select_mode'");
-            }
+            node::ExprNode* value = nullptr;
+            CHECK_STATUS(ConvertExprNode(ast_assign_stmt->expression(), node_manager, &value));
+            CHECK_TRUE(value->GetExprType() == node::kExprPrimary, common::kSqlAstError, "Unsupported Set value other than const type");
+            *output = node_manager->MakeSetNode(key, dynamic_cast<node::ConstNode*>(value));
             break;
         }
         case zetasql::AST_LOAD_DATA_STATEMENT: {

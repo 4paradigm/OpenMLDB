@@ -1047,6 +1047,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kLoadDataStmt:
             output = "kLoadDataStmt";
             break;
+        case kSetStmt:
+            output = "kSetStmt";
+            break;
         case kUnknow:
             output = "kUnknow";
             break;
@@ -1341,6 +1344,15 @@ void LoadDataNode::Print(std::ostream &output, const std::string &org_tab) const
     PrintValue(output, tab, table_, "table", false);
     output << "\n";
     PrintValue<std::string, std::string>(output, tab, *options_.get(), "options", true);
+}
+
+void SetNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, Key(), "key", false);
+    output << "\n";
+    PrintSqlNode(output, tab, Value(), "value", true);
 }
 
 void InsertStmt::Print(std::ostream &output, const std::string &org_tab) const {

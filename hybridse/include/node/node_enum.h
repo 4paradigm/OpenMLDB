@@ -88,6 +88,7 @@ enum SqlNodeType {
     kSelectIntoStmt,
     kLoadDataStmt,
     kDeployStmt,
+    kSetStmt,
     kUnknow = -1
 };
 
@@ -245,7 +246,6 @@ enum CmdType {
     kCmdShowDeployment,
     kCmdShowDeployments,
     kCmdDropDeployment,
-    kCmdSetSelectMode,
     kCmdUnknown = -1
 };
 enum ExplainType {
@@ -278,6 +278,7 @@ enum PlanType {
     kPlanTypeSelectInto,
     kPlanTypeLoadData,
     kPlanTypeDeploy,
+    kPlanTypeSet,
     kUnknowPlan = -1,
 };
 

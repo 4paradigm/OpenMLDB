@@ -316,6 +316,12 @@ base::Status Planner::CreateSelectIntoPlanNode(const node::SelectIntoNode *root,
     return base::Status::OK();
 }
 
+base::Status Planner::CreateSetPlanNode(const node::SetNode *root, node::PlanNode **output) {
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create set plan with null node");
+    *output = node_manager_->MakeSetPlanNode(root);
+    return base::Status::OK();
+}
+
 base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create table plan with null node")
     const node::CreateStmt *create_tree = static_cast<const node::CreateStmt *>(root);
@@ -477,6 +483,12 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 node::PlanNode *deploy_plan_node = nullptr;
                 CHECK_STATUS(CreateDeployPlanNode(dynamic_cast<node::DeployNode *>(parser_tree), &deploy_plan_node));
                 plan_trees.push_back(deploy_plan_node);
+                break;
+            }
+            case ::hybridse::node::kSetStmt: {
+                node::PlanNode *set_plan_node = nullptr;
+                CHECK_STATUS(CreateSetPlanNode(dynamic_cast<node::SetNode *>(parser_tree), &set_plan_node));
+                plan_trees.push_back(set_plan_node);
                 break;
             }
             default: {

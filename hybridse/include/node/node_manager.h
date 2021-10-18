@@ -265,6 +265,8 @@ class NodeManager {
                                        const std::string& out_file, const std::shared_ptr<OptionsMap> options);
     SelectIntoPlanNode* MakeSelectIntoPlanNode(const QueryNode* query, const std::string& query_str,
                                                const std::string& out_file, const std::shared_ptr<OptionsMap> options);
+    SetNode* MakeSetNode(const std::string& key, const ConstNode* value);
+    SetPlanNode* MakeSetPlanNode(const SetNode* set_node);
     // Make NodeList
     SqlNode *MakeExplainNode(const QueryNode *query,
                              node::ExplainType explain_type);

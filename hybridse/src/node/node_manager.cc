@@ -778,6 +778,16 @@ SelectIntoPlanNode* NodeManager::MakeSelectIntoPlanNode(const QueryNode* query, 
     return RegisterNode(node);
 }
 
+SetNode* NodeManager::MakeSetNode(const std::string &key, const ConstNode *value) {
+    SetNode* node = new SetNode(key, value);
+    return RegisterNode(node);
+}
+
+SetPlanNode* NodeManager::MakeSetPlanNode(const SetNode *set_node) {
+    SetPlanNode* node = new SetPlanNode(set_node->Key(), set_node->Value());
+    return RegisterNode(node);
+}
+
 AllNode *NodeManager::MakeAllNode(const std::string &relation_name) { return MakeAllNode(relation_name, ""); }
 
 AllNode *NodeManager::MakeAllNode(const std::string &relation_name, const std::string &db_name) {

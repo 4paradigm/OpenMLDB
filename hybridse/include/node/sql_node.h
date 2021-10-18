@@ -81,8 +81,6 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "show deployments";
         case kCmdDropDeployment:
             return "drop deployment";
-        case kCmdSetSelectMode:
-            return "set select_mode";
         case kCmdUnknown:
             return "unknown cmd type";
     }
@@ -2023,6 +2021,21 @@ class LoadDataNode : public SqlNode {
     // TODO(aceforeverd): extend value to other type like number, list
     //    replace map with optimized class
     const std::shared_ptr<OptionsMap> options_ = nullptr;
+};
+
+class SetNode : public SqlNode {
+ public:
+     explicit SetNode(const std::string& key, const ConstNode* value) : SqlNode(kSetStmt, 0, 0), key_(key), value_(value) {}
+     ~SetNode() {}
+
+     const std::string& Key() const { return key_; }
+     const ConstNode* Value() const { return value_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
+ private:
+    const std::string key_;
+    const ConstNode* value_;
 };
 
 class CreateIndexNode : public SqlNode {

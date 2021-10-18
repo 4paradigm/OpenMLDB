@@ -1618,7 +1618,7 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
     NodeManager nm;
     ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
     ASSERT_EQ(1, plan_trees.size());
-    ASSERT_STREQ(R"sql(+-[kPlanTypeSelectInto]
+    EXPECT_STREQ(R"sql(+-[kPlanTypeSelectInto]
   +-out_file: m.txt
   +-query:
   |  +-node[kQuery]: kQuerySelect
@@ -1652,6 +1652,21 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
 FROM
   t0
 )sql", select_into->QueryStr().c_str());
+}
+
+TEST_F(PlannerV2Test, SetPlanNodeTest) {
+    const auto sql = "SET select_mode = 'TRINO'";
+    node::PlanNodeList plan_trees;
+    base::Status status;
+    NodeManager nm;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
+    ASSERT_EQ(1, plan_trees.size());
+    EXPECT_STREQ(R"sql(+-[kPlanTypeSet]
+  +-key: select_mode
+  +-value:
+    +-expr[primary]
+      +-value: TRINO
+      +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
 }
 //
 // TEST_F(PlannerTest, CreateSpParseTest) {

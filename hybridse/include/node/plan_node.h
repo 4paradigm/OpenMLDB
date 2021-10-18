@@ -502,6 +502,22 @@ class LoadDataPlanNode : public LeafPlanNode {
     const std::shared_ptr<OptionsMap> options_ = nullptr;
 };
 
+class SetPlanNode : public LeafPlanNode {
+ public:
+    explicit SetPlanNode(const std::string& key, const ConstNode* value)
+        : LeafPlanNode(kPlanTypeSet), key_(key), value_(value) {}
+    ~SetPlanNode() {}
+
+    const std::string& Key() const { return key_; }
+    const ConstNode* Value() const { return value_; }
+
+    void Print(std::ostream& output, const std::string& org_tab) const override;
+
+ private:
+    const std::string key_;
+    const ConstNode* value_;
+};
+
 class InsertPlanNode : public LeafPlanNode {
  public:
     explicit InsertPlanNode(const InsertStmt *insert_node) : LeafPlanNode(kPlanTypeInsert), insert_node_(insert_node) {}
