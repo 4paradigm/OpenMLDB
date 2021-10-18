@@ -137,7 +137,7 @@ TEST_F(DBSDKTest, standAloneMode) {
     ASSERT_EQ(table_ptr->db(), db_name_);
     ASSERT_EQ(table_ptr->name(), table_name_);
 
-    // TODO(hw): procedure test
+    // TODO(hw): procedure test, but it's hard to add sp to server here.
 }
 
 }  // namespace openmldb::sdk
