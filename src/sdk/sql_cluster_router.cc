@@ -1516,5 +1516,22 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchReques
     return future;
 }
 
+std::shared_ptr<hybridse::sdk::Schema> SQLClusterRouter::GetTableSchema(
+    const std::string& db, const std::string& table_name) {
+    auto table_info = cluster_sdk_->GetTableInfo(db, table_name);
+    if (!table_info) {
+        LOG(ERROR) << "table with name " + table_name + " in db " + db + " does not exist";
+        return {};
+    }
+
+    ::hybridse::vm::Schema output_schema;
+    if (::openmldb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc(), &output_schema)) {
+        return std::make_shared<::hybridse::sdk::SchemaImpl>(output_schema);
+    } else {
+        LOG(ERROR) << "Failed to convert schema for " + table_name + "in db " + db;
+    }
+    return {};
+}
+
 }  // namespace sdk
 }  // namespace openmldb
