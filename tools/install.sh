@@ -23,7 +23,7 @@ else
   cd ..
 fi
 
-echo 'install nameserver and tabnet'
+echo 'install nameserver and tablet'
 FILE=openmldb-0.2.2-linux.tar.gz
 if [ -e "${FILE}" ]; then
   echo "${FILE} exist"
@@ -90,27 +90,27 @@ sh bin/start.sh start nameserver
 cd ..
 echo 'nameserver Ok'
  
-echo 'starting tabnet'
+echo 'starting tablet'
 cd openmldb-tablet-2.2.0
 IP=$(hostname -i)
 #get available port
-ns_port=9527
-PID=$(lsof -i :${ns_port}|grep -v "PID" | awk '{print $2}')
+tablet_port=9527
+PID=$(lsof -i :${tablet_port}|grep -v "PID" | awk '{print $2}')
 if [ "${PID}" != "" ]; then
    echo "ns port is unavailable; try to get another port!"
-   ns_port=0
-   while [ "${ns_port}" -eq 0 ]; do
+   tablet_port=0
+   while [ "${tablet_port}" -eq 0 ]; do
       temp1=$(shuf -i 1024-10000 -n1)
       PID=$(lsof -i :"${temp1}"|grep -v "PID" | awk '{print $2}')
       if [ "${PID}" != "" ] ; then
          echo "try to get another port!"
       else
-         ns_port=${temp1}
+         tablet_port=${temp1}
       fi
    done
-   echo "${ns_port}"
+   echo "${tablet_port}"
 fi
-#modify tabnet config
+#modify tablet config
 sed -i "s:--endpoint=[a-zA-Z0-9//.:]*:--endpoint=${IP}\:${ns_port}:" conf/tablet.flags
 sed -i "s:--role=[a-zA-Z0-9//.:]*:--role=tablet:" conf/tablet.flags
 sed -i "s:--zk_cluster=[a-zA-Z0-9//.:]*:--zk_cluster=${IP}\:${clientPort}:" conf/tablet.flags
@@ -118,9 +118,8 @@ sed -i "s:--zk_root_path=[a-zA-Z0-9//.:]*:--zk_root_path=/openmldb_cluster:" con
 sed -i "s:--enable_distsql=[a-zA-Z0-9//.:]*:--enable_distsql=true:" conf/tablet.flags
 sh bin/start.sh start tablet
 cd ..
-echo 'tabnet Ok'
+echo 'tablet Ok'
 
 echo 'employ complete'
-
 
 
