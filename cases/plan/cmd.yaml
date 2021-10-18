@@ -332,3 +332,8 @@ cases:
             +-expr[primary]
               +-value: TRINO
               +-type: string
+  - id: set_select_mode_2
+    desc: unsupport syntax
+    sql: SET SELECT_MODE = 1 + 2;
+    expect:
+      success: false
