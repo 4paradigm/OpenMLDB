@@ -42,6 +42,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -1175,6 +1176,23 @@ public class FesqlUtil {
                                               String defaultDBName,
                                               List<InputDesc> inputs,
                                               boolean useFirstInputAsRequests) {
+        // Create inputs' databasess if exist
+        HashSet<String> dbNames = new HashSet<>();
+        if (!StringUtils.isEmpty(defaultDBName)) {
+            dbNames.add(defaultDBName);
+        }
+
+        if (!Objects.isNull(inputs)) {
+            for (InputDesc input : inputs) {
+                // CreateDB if input's db has been configured and hasn't been created before
+                if (!StringUtils.isEmpty(input.getDb()) && !dbNames.contains(input.getDb())) {
+                    boolean dbOk = executor.createDB(input.getDb());
+                    dbNames.add(input.getDb());
+                    log.info("create db:{},{}", input.getDb(), dbOk);
+                }
+            }
+        }
+
         FesqlResult fesqlResult = new FesqlResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {

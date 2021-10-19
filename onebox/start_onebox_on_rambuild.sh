@@ -27,9 +27,9 @@ NS3=$IP:9624
 TABLET1=$IP:9520
 TABLET2=$IP:9521
 TABLET3=$IP:9522
-
-../build/bin/openmldb --db_root_path=/rambuild/tablet0-binlogs \
-                   --recycle_bin_root_path=/rambuild/recycle_bin0 \
+RAMBUILD_PREFIX=/tmp/rambuild
+../build/bin/openmldb --db_root_path=${RAMBUILD_PREFIX}/tablet0-binlogs \
+                   --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin0 \
                    --endpoint=${TABLET1} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\
@@ -37,8 +37,8 @@ TABLET3=$IP:9522
                    --zk_root_path=/onebox > tablet0.log 2>&1 &
 
 # start tablet1
-../build/bin/openmldb --db_root_path=/rambuild/tablet1-binlogs \
-                   --recycle_bin_root_path=/rambuild/recycle_bin1 \
+../build/bin/openmldb --db_root_path=${RAMBUILD_PREFIX}/tablet1-binlogs \
+                   --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin1 \
                    --endpoint=${TABLET2} --role=tablet \
                    --zk_cluster=${ZK_CLUSTER}\
                    --binlog_notify_on_put=true\
@@ -46,8 +46,8 @@ TABLET3=$IP:9522
                    --zk_root_path=/onebox > tablet1.log 2>&1 &
 
 # start tablet2
-../build/bin/openmldb --db_root_path=/rambuild/tablet2-binlogs \
-                   --recycle_bin_root_path=/rambuild/recycle_bin2 \
+../build/bin/openmldb --db_root_path=${RAMBUILD_PREFIX}/tablet2-binlogs \
+                   --recycle_bin_root_path=${RAMBUILD_PREFIX}/recycle_bin2 \
                    --endpoint=${TABLET3} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\

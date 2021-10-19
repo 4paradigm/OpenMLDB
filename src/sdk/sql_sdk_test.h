@@ -139,7 +139,7 @@ void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
     }
     input_dbs.insert(sql_case.db_);
 
-    for (int i = 0; i < sql_case.inputs_.size(); i++) {
+    for (size_t i = 0; i < sql_case.inputs_.size(); i++) {
         if (!sql_case.inputs_[i].db_.empty()) {
             input_dbs.insert(sql_case.inputs_[i].db_);
         }
