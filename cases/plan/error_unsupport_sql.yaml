@@ -72,3 +72,6 @@ cases:
   - id: in_predicate_fail
     desc: error with empty in list
     sql: select 'a' in () from t1;
+  - id: set_statement
+    desc: unsupported value type
+    sql: SET SELECT_MODE = 1 + 2;
