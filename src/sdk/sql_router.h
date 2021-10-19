@@ -49,6 +49,7 @@ class ExplainInfo {
     virtual const std::string& GetPhysicalPlan() = 0;
     virtual const std::string& GetIR() = 0;
     virtual const std::string& GetRequestName() = 0;
+    virtual const std::string& GetRequestDbName() = 0;
 };
 
 class QueryFuture {
@@ -134,6 +135,9 @@ class SQLRouter {
     virtual std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<openmldb::sdk::SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(
+        const std::string& db, const std::string& table_name) = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

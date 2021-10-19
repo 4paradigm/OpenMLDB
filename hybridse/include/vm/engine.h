@@ -287,13 +287,14 @@ class BatchRequestRunSession : public RunSession {
 
 /// An options class for controlling runtime interpreter behavior.
 struct ExplainOutput {
-    vm::Schema input_schema;    ///< The schema of request row for request-mode query
-    std::string request_name;   ///< The name of request for request-mode query
-    std::string logical_plan;   ///< Logical plan string
-    std::string physical_plan;  ///< Physical plan string
-    std::string ir;             ///< Codegen IR String
-    vm::Schema output_schema;   ///< The schema of query result
-    vm::Router router;          ///< The Router for request-mode query
+    vm::Schema input_schema;      ///< The schema of request row for request-mode query
+    std::string request_db_name;  ///< The name of request db for request-mode query
+    std::string request_name;     ///< The name of request for request-mode query
+    std::string logical_plan;     ///< Logical plan string
+    std::string physical_plan;    ///< Physical plan string
+    std::string ir;               ///< Codegen IR String
+    vm::Schema output_schema;     ///< The schema of query result
+    vm::Router router;            ///< The Router for request-mode query
 };
 
 
@@ -337,7 +338,7 @@ class Engine {
     /// The tables' names are returned in tables
     bool GetDependentTables(const std::string& sql, const std::string& db,
                             EngineMode engine_mode,
-                            std::set<std::string>* tables,
+                            std::set<std::pair<std::string, std::string>>* db_tables,
                             base::Status& status);  // NOLINT
 
     /// \brief Explain sql compiling result.
@@ -372,7 +373,7 @@ class Engine {
     void ClearCacheLocked(const std::string& db);
 
  private:
-    bool GetDependentTables(node::PlanNode* node, std::set<std::string>* tables,
+    bool GetDependentTables(node::PlanNode* node, std::set<std::pair<std::string, std::string>>* db_tables,
                             base::Status& status);  // NOLINT
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
