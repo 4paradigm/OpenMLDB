@@ -65,60 +65,103 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK *cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 
-void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
- const std::string &fileAddress, std::map<std::string, std::string> *option) {
-    std::ofstream fstream;
-    std::map<std::string, std::string>::iterator iter;
-    // Options in default
-    std::string format = "csv";
-    std::string mode = "errorifexists";
-    std::string delimiter = ",";
-    std::string nullValues = "null";
-    std::string header = "true";
-    for (iter = option->begin(); iter != option->end(); iter++) {
-        std::string key = iter->first;
-        if (key == "format") {
-            format = iter->second;
-        } else if (key == "mode") {
-            mode = iter->second;
-        } else if (key == "delimiter") {
-            delimiter = iter->second;
-        } else if (key == "nullValues") {
-            nullValues = iter->second;
-        } else if (key == "header") {
-            header = iter->second;
-        } else {
-            stream << "This option (" + iter->second + ") is not currently supported" << std::endl;
+class SelectIntoOptions
+{
+    public:
+        SelectIntoOptions() {
+            // Options in default
+            format = "csv";
+            mode = "error_if_exists";
+            delimiter = ",";
+            nullValues = "null";
+            header = true;
         }
-    }
-    if (mode == "errorifexists") {
-        if (access(fileAddress.c_str(), 0) == 0) {
-            stream << "File already exists" << std::endl;
-            return;
+        SelectIntoOptions(const std::string &fileAddress, std::unordered_map<std::string, const ConstNode*> *OptionsMap) {
+            std::unordered_map<std::string, const ConstNode*>::iterator iter;
+            for (iter = OptionsMap->begin(); iter != OptionsMap->end(); iter++) {
+                std::string key = iter->first;
+                if (key == "format") {
+                    format = iter->second->GetStr();
+                } else if (key == "mode") {
+                    mode = iter->second->GetStr();
+                } else if (key == "delimiter") {
+                    delimiter = iter->second->GetStr();
+                } else if (key == "nullValues") {
+                    nullValues = iter->second->GetStr();
+                } else if (key == "header") {
+                    header = iter->second->GetBool();
+                } else {
+                    std::cout << "This option (" + key + ") is not currently supported" << std::endl;
+                    errorFlag = true;
+                    return;
+                }
+            }
+            if (errorFlag != true) {
+                if (mode == "errorifexists") {
+                    if (access(fileAddress.c_str(), 0) == 0) {
+                        std::cout << "File already exists" << std::endl;
+                        errorFlag = true;
+                    } else {
+                        fstream.open(fileAddress);
+                    }
+                } else if (mode == "overwrite") {
+                    fstream.open(fileAddress, std::ios::out);
+                } else if (mode == "append") {
+                    fstream.open(fileAddress, std::ios::app);
+                } else {
+                    std::cout << "This mode (" + mode + ") is not currently supported" << std::endl;
+                    errorFlag = true;
+                }
+            }
         }
-        fstream.open(fileAddress);
-    } else if (mode == "overwrite") {
-        fstream.open(fileAddress, std::ios::out);
-    } else if (mode == "append") {
-        fstream.open(fileAddress, std::ios::app);
-    } else {
-        stream << "This mode (" + mode + ") is not currently supported" << std::endl;
+        ~SelectIntoOptions() {
+            fstream.close();
+        }
+        char *getFormat() {
+            return format;
+        }
+        char *getNullValues() {
+            return nullValues;
+        }
+        bool getHeader() {
+            return header;
+        }
+        bool isError() {
+            return errorFlag;
+        }
+        std::ofstream getOfstream() {
+            return fstream;
+        }
+    private:
+        char *format;
+        char *mode;
+        char *delimiter;
+        char *nullValues;
+        bool header;
+        bool errorFlag = false;
+        std::ofstream fstream;
+};
+
+
+void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fileAddress, std::map<std::string, std::string> *option) {
+    SelectIntoOptions *options = new SelectIntoOptions(&fileAddress, option);
+    if (options->isError == true) {
         return;
     }
-    if (format == "csv") {
+    if (options.getFormat() == "csv") {
         if (!result_set || result_set->Size() == 0) {
             return;
         }
         auto *schema = result_set->GetSchema();
         // Add Header
-        if (header == "true") {
+        if (options.getHeader() == "true") {
             std::string schemaString = "";
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 schemaString.append(schema->GetColumnName(i));
                 if (i != schema->GetColumnCnt()-1) {
                     schemaString.append(delimiter);
                 } else {
-                    fstream << schemaString << std::endl;
+                    option.getOfstream() << schemaString << std::endl;
                 }
             }
         }
@@ -126,7 +169,7 @@ void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
             std::string rowString = "";
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 if (result_set->IsNULL(i)) {
-                    rowString.append(nullValues);
+                    rowString.append(option.getNullValues());
                 } else {
                     auto data_type = schema->GetColumnType(i);
                     switch (data_type) {
@@ -195,17 +238,16 @@ void SaveResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set,
                     if (i != schema->GetColumnCnt()-1) {
                         rowString.append(delimiter);
                     } else {
-                        fstream << rowString << std::endl;
+                        option.getOfstream() << rowString << std::endl;
                     }
                 }
             }
         }
-        stream << "Save successfully" << std::endl;
+        std::cout << "Save successfully" << std::endl;
     } else {
-        stream << "This format (" + format + ") is not currently supported" << std::endl;
+        std::cout << "This format (" + options.getFormat() + ") is not currently supported" << std::endl;
         return;
     }
-    fstream.close();
 }
 
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
@@ -738,13 +780,13 @@ void HandleSQL(const std::string &sql) {
         case hybridse::node::kPlanTypeFuncDef:
         case hybridse::node::kPlanTypeQuery: {
             if (db.empty()) {
-                std::cout << "please use database first" << std::endl;
+                std::cout << "Please use database first" << std::endl;
                 return;
             }
             ::hybridse::sdk::Status status;
             auto rs = sr->ExecuteSQL(db, sql, &status);
             if (!rs) {
-                std::cout << "fail to execute query" << std::endl;
+                std::cout << "Fail to execute query" << std::endl;
             } else {
                 PrintResultSet(std::cout, rs.get());
             }
