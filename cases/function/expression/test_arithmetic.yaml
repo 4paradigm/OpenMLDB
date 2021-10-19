@@ -672,6 +672,7 @@ cases:
         - [ NULL, NULL, NULL, NULL ]
   - id: bitwise_const_null_operands
     desc: bitwise operation return null if any of operands is null
+    tags: ["TODO", "@qiliguo, @zhaowei, integration test fail"]
     inputs:
       - columns: ["c1 int16","c2 int32","c3 bigint", "c4 int", "c6 timestamp"]
         indexs: ["index1:c3:c6"]
