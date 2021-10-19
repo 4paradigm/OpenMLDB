@@ -25,6 +25,12 @@ namespace vm {
 
 class Router {
  public:
+    Router() : main_db_(), main_table_(), router_col_() {}
+    ~Router() {}
+    void SetMainDb(const std::string& main_db) {
+        main_db_ = main_db;
+    }
+    const std::string& GetMainDb() const { return main_db_; }
     void SetMainTable(const std::string& main_table) {
         main_table_ = main_table;
     }
@@ -39,6 +45,7 @@ class Router {
     bool IsWindowNode(const PhysicalOpNode* physical_node);
 
  private:
+    std::string main_db_;
     std::string main_table_;
     std::string router_col_;
 };

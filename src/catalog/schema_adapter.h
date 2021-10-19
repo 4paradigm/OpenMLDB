@@ -419,7 +419,7 @@ class SchemaAdapter {
         std::shared_ptr<openmldb::catalog::ProcedureInfoImpl> sp_info_impl =
             std::make_shared<openmldb::catalog::ProcedureInfoImpl>(sp_info.db_name(), sp_info.sp_name(), sp_info.sql(),
                                                                    input_schema, output_schema, table_vec,
-                                                                   sp_info.main_table());
+                                                                   sp_info.main_table(), sp_info.main_db());
         return sp_info_impl;
     }
 };

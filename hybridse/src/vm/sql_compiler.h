@@ -59,6 +59,7 @@ struct SqlContext {
     std::shared_ptr<hybridse::vm::HybridSeJitWrapper> jit = nullptr;
     Schema schema;
     Schema request_schema;
+    std::string request_db_name;
     std::string request_name;
     Schema parameter_types;
     uint32_t row_size;
