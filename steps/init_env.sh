@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # init_env.sh
-set -eE
+set -eE -x
 
 pushd "$(dirname "$0")/.."
 
@@ -63,6 +63,15 @@ if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
     cmake --build build --target install -- -j"$(nproc)"
     mv hybridse "$THIRDPARTY_PATH/hybridse"
     popd
+
+    pushd "${ROOT}/hybridse/java"
+    if [[ "$OSTYPE" = "darwin"* ]]; then
+        mvn install -Dmaven.test.skip=true -Pmacos -Dgpg.skip
+    elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
+        mvn install -Dmaven.test.skip=true -Dgpg.skip
+    fi
+    popd
+
 else
     echo "Download hybridse package"
     pushd "${THIRDSRC_PATH}"

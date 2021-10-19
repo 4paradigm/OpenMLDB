@@ -242,4 +242,104 @@ cases:
           +-db: db0
           +-table: t1
           +-options:
-            +-charset: utf-8
+            +-charset:
+              +-expr[primary]
+                +-value: utf-8
+                +-type: string
+  - id: select_into_outfile_1
+    sql: SELECT col1 FROM t1 WHERE col1 > 10 INTO OUTFILE 'data.csv';
+    expect:
+      node_tree_str: |
+        +-node[kSelectIntoStmt]
+          +-out_file: data.csv
+          +-query:
+          |  +-node[kQuery]: kQuerySelect
+          |    +-distinct_opt: false
+          |    +-where_expr:
+          |    |  +-expr[binary]
+          |    |    +->[list]:
+          |    |      +-0:
+          |    |      |  +-expr[column ref]
+          |    |      |    +-relation_name: <nil>
+          |    |      |    +-column_name: col1
+          |    |      +-1:
+          |    |        +-expr[primary]
+          |    |          +-value: 10
+          |    |          +-type: int32
+          |    +-group_expr_list: null
+          |    +-having_expr: null
+          |    +-order_expr_list: null
+          |    +-limit: null
+          |    +-select_list[list]:
+          |    |  +-0:
+          |    |    +-node[kResTarget]
+          |    |      +-val:
+          |    |      |  +-expr[column ref]
+          |    |      |    +-relation_name: <nil>
+          |    |      |    +-column_name: col1
+          |    |      +-name: <nil>
+          |    +-tableref_list[list]:
+          |    |  +-0:
+          |    |    +-node[kTableRef]: kTable
+          |    |      +-table: t1
+          |    |      +-alias: <nil>
+          |    +-window_list: []
+          +-options: <nil>
+  - id: select_into_outfile_2
+    sql: SELECT col1 FROM t1 WHERE col1 <= 10 INTO OUTFILE 'data.csv' OPTIONS ( delimit = ',' );
+    expect:
+      node_tree_str: |
+        +-node[kSelectIntoStmt]
+          +-out_file: data.csv
+          +-query:
+          |  +-node[kQuery]: kQuerySelect
+          |    +-distinct_opt: false
+          |    +-where_expr:
+          |    |  +-expr[binary]
+          |    |    +-<=[list]:
+          |    |      +-0:
+          |    |      |  +-expr[column ref]
+          |    |      |    +-relation_name: <nil>
+          |    |      |    +-column_name: col1
+          |    |      +-1:
+          |    |        +-expr[primary]
+          |    |          +-value: 10
+          |    |          +-type: int32
+          |    +-group_expr_list: null
+          |    +-having_expr: null
+          |    +-order_expr_list: null
+          |    +-limit: null
+          |    +-select_list[list]:
+          |    |  +-0:
+          |    |    +-node[kResTarget]
+          |    |      +-val:
+          |    |      |  +-expr[column ref]
+          |    |      |    +-relation_name: <nil>
+          |    |      |    +-column_name: col1
+          |    |      +-name: <nil>
+          |    +-tableref_list[list]:
+          |    |  +-0:
+          |    |    +-node[kTableRef]: kTable
+          |    |      +-table: t1
+          |    |      +-alias: <nil>
+          |    +-window_list: []
+          +-options:
+            +-delimit:
+              +-expr[primary]
+                +-value: ,
+                +-type: string
+  - id: set_select_mode
+    sql: SET SELECT_MODE = 'TRINO';
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-key: SELECT_MODE
+          +-value:
+            +-expr[primary]
+              +-value: TRINO
+              +-type: string
+  - id: set_select_mode_2
+    desc: unsupport syntax
+    sql: SET SELECT_MODE = 1 + 2;
+    expect:
+      success: false

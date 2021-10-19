@@ -42,7 +42,9 @@ class LlvmUdfGenBase;
 namespace hybridse {
 namespace node {
 
-typedef std::unordered_map<std::string, std::string> OptionsMap;
+class ConstNode;
+
+typedef std::unordered_map<std::string, const ConstNode*> OptionsMap;
 
 // Global methods
 std::string NameOfSqlNodeType(const SqlNodeType &type);
@@ -81,9 +83,10 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "show deployments";
         case kCmdDropDeployment:
             return "drop deployment";
-        default:
+        case kCmdUnknown:
             return "unknown cmd type";
     }
+    return "undefined cmd type";
 }
 
 inline const std::string ExplainTypeName(const ExplainType &explain_type) {
@@ -1978,6 +1981,27 @@ class CmdNode : public SqlNode {
     std::vector<std::string> args_;
 };
 
+class SelectIntoNode : public SqlNode {
+ public:
+    explicit SelectIntoNode(const QueryNode* query, const std::string& query_str, const std::string& out,
+                            const std::shared_ptr<OptionsMap> options)
+        : SqlNode(kSelectIntoStmt, 0, 0), query_(query), query_str_(query_str), out_file_(out), options_(options) {}
+    ~SelectIntoNode() {}
+
+    const QueryNode* Query() const { return query_; }
+    const std::string& QueryStr() const { return query_str_; }
+    const std::string& OutFile() const { return out_file_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+    void Print(std::ostream& output, const std::string& org_tab) const override;
+
+ private:
+    const QueryNode* query_;
+    const std::string query_str_;
+    const std::string out_file_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
 class LoadDataNode : public SqlNode {
  public:
     explicit LoadDataNode(const std::string& f, const std::string& db, const std::string& table,
@@ -1998,7 +2022,23 @@ class LoadDataNode : public SqlNode {
     const std::string table_;
     // TODO(aceforeverd): extend value to other type like number, list
     //    replace map with optimized class
-    std::shared_ptr<OptionsMap> options_ = nullptr;
+    const std::shared_ptr<OptionsMap> options_ = nullptr;
+};
+
+class SetNode : public SqlNode {
+ public:
+    explicit SetNode(const std::string& key, const ConstNode* value)
+        : SqlNode(kSetStmt, 0, 0), key_(key), value_(value) {}
+    ~SetNode() {}
+
+    const std::string& Key() const { return key_; }
+    const ConstNode* Value() const { return value_; }
+
+    void Print(std::ostream& output, const std::string& org_tab) const override;
+
+ private:
+    const std::string key_;
+    const ConstNode* value_;
 };
 
 class CreateIndexNode : public SqlNode {
@@ -2563,20 +2603,8 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const std::str
 void PrintValue(std::ostream &output, const std::string &org_tab, const std::vector<std::string> &vec,
                 const std::string &item_name, bool last_child);
 
-template <typename K, typename V>
-inline void PrintValue(std::ostream &output, const std::string &org_tab, const std::unordered_map<K, V> &value,
-                const std::string &item_name, bool last_child) {
-    output << org_tab << SPACE_ST << item_name << ":";
-    if (value.empty()) {
-        output << " <nil>";
-        return;
-    }
-    auto new_tab = org_tab + INDENT + SPACE_ED;
-    for (auto it = value.cbegin(); it != value.cend(); ++it) {
-        output << "\n" << new_tab << SPACE_ST << it->first << ": "
-            << it->second;
-    }
-}
+void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap &value,
+                const std::string &item_name, bool last_child);
 }  // namespace node
 }  // namespace hybridse
 #endif  // HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_

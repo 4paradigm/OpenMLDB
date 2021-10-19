@@ -66,17 +66,6 @@ class EngineOptions {
     /// Return `true` if the engine only generate physical plan.
     inline bool is_plan_only() const { return plan_only_; }
 
-    /// Set `true` if the engine is performance sensitive, default `true`.
-    ///
-    /// Normally, the engine can support more abilities under performance un-sensitive mode.
-    inline void set_performance_sensitive(bool flag) {
-        performance_sensitive_ = flag;
-    }
-    /// Return `true` if the engine is performance sensitive.
-    inline bool is_performance_sensitive() const {
-        return performance_sensitive_;
-    }
-
     /// Set `true` to enable cluster optimization, default `false`
     inline EngineOptions* set_cluster_optimized(bool flag) {
         cluster_optimized_ = flag;
@@ -132,7 +121,6 @@ class EngineOptions {
     bool keep_ir_;
     bool compile_only_;
     bool plan_only_;
-    bool performance_sensitive_;
     bool cluster_optimized_;
     bool batch_request_optimized_;
     bool enable_expr_optimize_;
@@ -181,12 +169,22 @@ class RunSession {
     /// Return the engine mode of this run session
     EngineMode engine_mode() const { return engine_mode_; }
 
+    // Set perfromance sensitive for query
+    void SetPerformanceSensitive(bool performance_sensitive) {
+        performance_sensitive_ = performance_sensitive;
+    }
+    // Get if enable performance sensitive or not
+    bool GetPerformanceSensitive() {
+        return performance_sensitive_;
+    }
+
  protected:
     std::shared_ptr<hybridse::vm::CompileInfo> compile_info_;
     hybridse::vm::EngineMode engine_mode_;
     bool is_debug_;
     std::string sp_name_;
     friend Engine;
+    bool performance_sensitive_ = true;
 };
 
 /// \brief BatchRunSession is a kind of RunSession designed for batch mode query.
@@ -347,7 +345,8 @@ class Engine {
     /// The success or fail status message is returned as Status in status.
     /// TODO: base::Status* status -> base::Status& status
     bool Explain(const std::string& sql, const std::string& db,
-                 EngineMode engine_mode, ExplainOutput* explain_output, base::Status* status);
+                 EngineMode engine_mode, ExplainOutput* explain_output, base::Status* status,
+                 bool performance_sensitive = true);
     /// \brief Explain sql compiling result.
     ///
     /// The results are returned as ExplainOutput in explain_output.
@@ -356,13 +355,15 @@ class Engine {
     bool Explain(const std::string& sql, const std::string& db,
                  EngineMode engine_mode, const codec::Schema& parameter_schema,
                  ExplainOutput* explain_output,
-                 base::Status* status);
+                 base::Status* status,
+                 bool performance_sensitive = true);
 
     /// \brief Same as above, but allowing compiling with configuring common column indices.
     ///
     /// The common column indices are used for common column optimization under EngineMode::kBatchRequestMode
     bool Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
-                 const std::set<size_t>& common_column_indices, ExplainOutput* explain_output, base::Status* status);
+                 const std::set<size_t>& common_column_indices, ExplainOutput* explain_output, base::Status* status,
+                 bool performance_sensitive = true);
 
     /// \brief Update engine's catalog
     inline void UpdateCatalog(std::shared_ptr<Catalog> cl) {
@@ -372,14 +373,19 @@ class Engine {
     /// \brief Clear engine's compiling result cache
     void ClearCacheLocked(const std::string& db);
 
+    /// \brief Get engine's options
+    EngineOptions GetEngineOptions();
+
  private:
     bool GetDependentTables(node::PlanNode* node, std::set<std::pair<std::string, std::string>>* db_tables,
                             base::Status& status);  // NOLINT
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
-                                                EngineMode engine_mode);
+                                                EngineMode engine_mode,
+                                                bool performance_sensitive);
     bool SetCacheLocked(const std::string& db, const std::string& sql,
                         EngineMode engine_mode,
+                        bool performance_sensitive,
                         std::shared_ptr<CompileInfo> info);
 
     bool IsCompatibleCache(RunSession& session,  // NOLINT
@@ -389,7 +395,8 @@ class Engine {
     bool Explain(const std::string& sql, const std::string& db,
                  EngineMode engine_mode, const codec::Schema& parameter_schema,
                  const std::set<size_t>& common_column_indices,
-                 ExplainOutput* explain_output, base::Status* status);
+                 ExplainOutput* explain_output, base::Status* status,
+                 bool performance_sensitive);
     std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
     base::SpinMutex mu_;

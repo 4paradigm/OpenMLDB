@@ -446,10 +446,10 @@ class DeployPlanNode : public LeafPlanNode {
         : LeafPlanNode(kPlanTypeDeploy), name_(name), stmt_(stmt), stmt_str_(stmt_str), if_not_exist_(if_not_exist) {}
     ~DeployPlanNode() {}
 
-    const std::string& name() const { return name_; }
-    const SqlNode* stmt() const { return stmt_; }
-    bool is_if_not_exists() const { return if_not_exist_; }
-    const std::string& stmt_str() const { return stmt_str_; }
+    const std::string& Name() const { return name_; }
+    const SqlNode* Stmt() const { return stmt_; }
+    bool IsIfNotExists() const { return if_not_exist_; }
+    const std::string& StmtStr() const { return stmt_str_; }
 
     void Print(std::ostream& output, const std::string& tab) const override;
 
@@ -460,6 +460,27 @@ class DeployPlanNode : public LeafPlanNode {
     const bool if_not_exist_ = false;
 };
 
+class SelectIntoPlanNode : public LeafPlanNode {
+ public:
+    explicit SelectIntoPlanNode(const QueryNode* query, const std::string& query_str, const std::string& out,
+                                const std::shared_ptr<OptionsMap> options)
+        : LeafPlanNode(kPlanTypeSelectInto), query_(query), query_str_(query_str), out_file_(out), options_(options) {}
+    ~SelectIntoPlanNode() {}
+
+    const QueryNode* Query() const { return query_; }
+    const std::string& QueryStr() const { return query_str_; }
+    const std::string& OutFile() const { return out_file_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+    void Print(std::ostream& output, const std::string& tab) const override;
+
+ private:
+    const QueryNode* query_;
+    const std::string query_str_;
+    const std::string out_file_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
 class LoadDataPlanNode : public LeafPlanNode {
  public:
     explicit LoadDataPlanNode(const std::string& f, const std::string& db, const std::string& table,
@@ -467,8 +488,10 @@ class LoadDataPlanNode : public LeafPlanNode {
         : LeafPlanNode(kPlanTypeLoadData), file_(f), db_(db), table_(table), options_(op) {}
     ~LoadDataPlanNode() {}
 
-    const std::string& file() const { return file_; }
-    const std::shared_ptr<OptionsMap> options() const { return options_; }
+    const std::string& File() const { return file_; }
+    const std::string& Db() const { return db_; }
+    const std::string& Table() const { return table_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const override;
 
@@ -476,7 +499,23 @@ class LoadDataPlanNode : public LeafPlanNode {
     const std::string file_;
     const std::string db_;
     const std::string table_;
-    std::shared_ptr<OptionsMap> options_ = nullptr;
+    const std::shared_ptr<OptionsMap> options_ = nullptr;
+};
+
+class SetPlanNode : public LeafPlanNode {
+ public:
+    explicit SetPlanNode(const std::string& key, const ConstNode* value)
+        : LeafPlanNode(kPlanTypeSet), key_(key), value_(value) {}
+    ~SetPlanNode() {}
+
+    const std::string& Key() const { return key_; }
+    const ConstNode* Value() const { return value_; }
+
+    void Print(std::ostream& output, const std::string& org_tab) const override;
+
+ private:
+    const std::string key_;
+    const ConstNode* value_;
 };
 
 class InsertPlanNode : public LeafPlanNode {
