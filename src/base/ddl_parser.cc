@@ -412,8 +412,7 @@ bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, c
 
     // try loose the relation
     if (!status.isOK() && !col->GetRelationName().empty()) {
-        status = schemas_ctx->ResolveColumnID("", "", col->GetColumnName(), &column_id, &path_idx,
-                                              &child_column_id,
+        status = schemas_ctx->ResolveColumnID("", "", col->GetColumnName(), &column_id, &path_idx, &child_column_id,
                                               &source_column_id, &source);
     }
 

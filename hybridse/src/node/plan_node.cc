@@ -217,10 +217,14 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeDeploy";
         case kPlanTypeLoadData:
             return "kPlanTypeLoadData";
+        case kPlanTypeSelectInto:
+            return "kPlanTypeSelectInto";
         case kPlanTypeCreateIndex:
             return "kPlanTypeCreateIndex";
         case kPlanTypeCreateSp:
             return "kPlanTypeCreateSp";
+        case kPlanTypeSet:
+            return "kPlanTypeSet";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -678,11 +682,11 @@ void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {
     PlanNode::Print(output, tab);
     output << "\n";
     std::string new_tab = tab + INDENT;
-    PrintValue(output, new_tab, if_not_exist_ ? "true": "false", "if_not_exists", false);
+    PrintValue(output, new_tab, IsIfNotExists() ? "true": "false", "if_not_exists", false);
     output << "\n";
-    PrintValue(output, new_tab, name_, "name", false);
+    PrintValue(output, new_tab, Name(), "name", false);
     output << "\n";
-    PrintSqlNode(output, new_tab, stmt(), "stmt", true);
+    PrintSqlNode(output, new_tab, Stmt(), "stmt", true);
 }
 
 void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -690,13 +694,33 @@ void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) c
 
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, file_, "file", false);
+    PrintValue(output, tab, File(), "file", false);
     output << "\n";
-    PrintValue(output, tab, db_, "db", false);
+    PrintValue(output, tab, Db(), "db", false);
     output << "\n";
-    PrintValue(output, tab, table_, "table", false);
+    PrintValue(output, tab, Table(), "table", false);
     output << "\n";
-    PrintValue<std::string, std::string>(output, tab, *options_.get(), "options", true);
+    PrintValue(output, tab, *Options().get(), "options", true);
+}
+
+void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) const {
+    PlanNode::Print(output, tab);
+    const std::string new_tab = tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, new_tab, OutFile(), "out_file", false);
+    output << "\n";
+    PrintSqlNode(output, new_tab, Query(), "query", false);
+    output << "\n";
+    PrintValue(output, new_tab, *Options().get(), "options", true);
+}
+
+void SetPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, Key(), "key", false);
+    output << "\n";
+    PrintSqlNode(output, tab, Value(), "value", true);
 }
 }  // namespace node
 }  // namespace hybridse

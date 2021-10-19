@@ -632,6 +632,17 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node_manager->MakeCmdNode(node::CmdType::kCmdUseDatabase, db_name);
             break;
         }
+        case zetasql::AST_SINGLE_ASSIGNMENT: {
+            const auto ast_assign_stmt = statement->GetAsOrNull<zetasql::ASTSingleAssignment>();
+            CHECK_TRUE(nullptr != ast_assign_stmt, common::kSqlAstError, "not an ASTSingleAssignment");
+            const auto key = ast_assign_stmt->variable()->GetAsString();
+            node::ExprNode* value = nullptr;
+            CHECK_STATUS(ConvertExprNode(ast_assign_stmt->expression(), node_manager, &value));
+            CHECK_TRUE(value->GetExprType() == node::kExprPrimary, common::kSqlAstError,
+                       "Unsupported Set value other than const type");
+            *output = node_manager->MakeSetNode(key, dynamic_cast<node::ConstNode*>(value));
+            break;
+        }
         case zetasql::AST_LOAD_DATA_STATEMENT: {
             const auto load_data_stmt = statement->GetAsOrNull<zetasql::ASTLoadDataStatement>();
             CHECK_TRUE(load_data_stmt != nullptr, common::kSqlAstError, "not an ASTLoadDataStatement");
@@ -649,7 +660,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
 
             auto options = std::make_shared<node::OptionsMap>();
             if (load_data_stmt->options_list() != nullptr) {
-                CHECK_STATUS(ConvertAstOptionsListToMap(load_data_stmt->options_list(), options));
+                CHECK_STATUS(ConvertAstOptionsListToMap(load_data_stmt->options_list(), node_manager, options));
             }
             *output = node_manager->MakeLoadDataNode(file_name, db, table, options);
             break;
@@ -661,6 +672,21 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             CHECK_STATUS(ConvertStatement(ast_deploy_stmt->stmt(), node_manager, &deploy_stmt));
             *output = node_manager->MakeDeployStmt(ast_deploy_stmt->name()->GetAsString(), deploy_stmt,
                                                    ast_deploy_stmt->UnparseStmt(), ast_deploy_stmt->is_if_not_exists());
+            break;
+        }
+        case zetasql::AST_SELECT_INTO_STATEMENT: {
+            const auto ast_select_into_stmt = statement->GetAsOrNull<zetasql::ASTSelectIntoStatement>();
+            CHECK_TRUE(ast_select_into_stmt != nullptr, common::kSqlAstError, "not an ASTSelectIntoStatement");
+            node::QueryNode* query = nullptr;
+            CHECK_STATUS(ConvertQueryNode(ast_select_into_stmt->query(), node_manager, &query));
+
+            std::string out_file = ast_select_into_stmt->out_file()->string_value();
+
+            auto options = std::make_shared<node::OptionsMap>();
+            if (ast_select_into_stmt->options_list() != nullptr) {
+                CHECK_STATUS(ConvertAstOptionsListToMap(ast_select_into_stmt->options_list(), node_manager, options));
+            }
+            *output = node_manager->MakeSelectIntoNode(query, ast_select_into_stmt->UnparseQuery(), out_file, options);
             break;
         }
         default: {
@@ -915,8 +941,8 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
             std::vector<std::string> names;
             CHECK_STATUS(AstPathExpressionToStringList(table_path_expression->path_expr(), names))
 
-            CHECK_TRUE(names.size() >=1 && names.size() <= 2, common::kSqlAstError,
-                       "Invalid table path expression ", table_path_expression->path_expr()->ToIdentifierPathString())
+            CHECK_TRUE(names.size() >= 1 && names.size() <= 2, common::kSqlAstError, "Invalid table path expression ",
+                       table_path_expression->path_expr()->ToIdentifierPathString())
             std::string alias_name =
                 nullptr != table_path_expression->alias() ? table_path_expression->alias()->GetAsString() : "";
             if (names.size() == 1) {
@@ -1568,7 +1594,7 @@ base::Status ConvertASTScript(const zetasql::ASTScript* script, node::NodeManage
     CHECK_TRUE(nullptr != script, common::kSqlAstError, "Fail to convert ASTScript, script is null")
     *output = node_manager->MakeNodeList();
     for (auto statement : script->statement_list()) {
-        CHECK_TRUE(nullptr != statement && statement->IsSqlStatement(), common::kSqlAstError, "not an SQL Statement")
+        CHECK_TRUE(nullptr != statement, common::kSqlAstError, "SQL Statement is null")
         node::SqlNode* stmt;
         CHECK_STATUS(ConvertStatement(statement, node_manager, &stmt));
         (*output)->PushBack(stmt);
@@ -1798,15 +1824,16 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
     return base::Status::OK();
 }
 
-base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options,
+base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options, node::NodeManager* node_manager,
                                         std::shared_ptr<node::OptionsMap> options_map) {
     for (auto entry : options->options_entries()) {
         std::string key = entry->name()->GetAsString();
         auto entry_value = entry->value();
-        std::string value;
-        // NOTE: currently only support value type for string
-        CHECK_STATUS(AstStringLiteralToString(entry_value, &value));
-        options_map->emplace(key, value);
+        node::ExprNode* value = nullptr;
+        CHECK_STATUS(ConvertExprNode(entry_value, node_manager, &value));
+        CHECK_TRUE(value->GetExprType() == node::kExprPrimary, common::kSqlAstError,
+                   "Unsupported value other than const type");
+        options_map->emplace(key, dynamic_cast<const node::ConstNode*>(value));
     }
     return base::Status::OK();
 }
