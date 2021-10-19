@@ -66,9 +66,9 @@ if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
 
     pushd "${ROOT}/hybridse/java"
     if [[ "$OSTYPE" = "darwin"* ]]; then
-        mvn install -Dmaven.test.skip=true -Pmacos -Dgpg.skip
+        mvn clean install -Dmaven.test.skip=true -Pmacos -Dgpg.skip
     elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
-        mvn install -Dmaven.test.skip=true -Dgpg.skip
+        mvn clean install -Dmaven.test.skip=true -Dgpg.skip
     fi
     popd
 

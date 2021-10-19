@@ -76,9 +76,8 @@ class SelectIntoOptions
             nullValues = "null";
             header = true;
         }
-        SelectIntoOptions(const std::string &fileAddress, std::unordered_map<std::string, const ConstNode*> *OptionsMap) {
-            std::unordered_map<std::string, const ConstNode*>::iterator iter;
-            for (iter = OptionsMap->begin(); iter != OptionsMap->end(); iter++) {
+        SelectIntoOptions(const std::string &fileAddress, std::shared_ptr<hybridse::node::OptionsMap> optionsMap) {
+            for (auto iter = optionsMap->begin(); iter != optionsMap->end(); iter++) {
                 std::string key = iter->first;
                 if (key == "format") {
                     format = iter->second->GetStr();
@@ -97,19 +96,19 @@ class SelectIntoOptions
                 }
             }
             if (errorFlag != true) {
-                if (mode == "errorifexists") {
+                if (strcmp(mode, "errorifexists") == 0) {
                     if (access(fileAddress.c_str(), 0) == 0) {
                         std::cout << "File already exists" << std::endl;
                         errorFlag = true;
                     } else {
                         fstream.open(fileAddress);
                     }
-                } else if (mode == "overwrite") {
+                } else if (strcmp(mode, "overwrite") == 0) {
                     fstream.open(fileAddress, std::ios::out);
-                } else if (mode == "append") {
+                } else if (strcmp(mode, "append") == 0) {
                     fstream.open(fileAddress, std::ios::app);
                 } else {
-                    std::cout << "This mode (" + mode + ") is not currently supported" << std::endl;
+                    std::cout << "This mode (" << mode << ") is not currently supported" << std::endl;
                     errorFlag = true;
                 }
             }
@@ -117,11 +116,14 @@ class SelectIntoOptions
         ~SelectIntoOptions() {
             fstream.close();
         }
-        char *getFormat() {
+        const char *getFormat() {
             return format;
         }
-        char *getNullValues() {
+        const char *getNullValues() {
             return nullValues;
+        }
+        const char *getDelimiter() {
+            return delimiter;
         }
         bool getHeader() {
             return header;
@@ -129,39 +131,40 @@ class SelectIntoOptions
         bool isError() {
             return errorFlag;
         }
-        std::ofstream getOfstream() {
-            return fstream;
+        std::ofstream *getOfstream() {
+            return &fstream;
         }
     private:
-        char *format;
-        char *mode;
-        char *delimiter;
-        char *nullValues;
+        const char *format;
+        const char *mode;
+        const char *delimiter;
+        const char *nullValues;
         bool header;
         bool errorFlag = false;
         std::ofstream fstream;
 };
 
 
-void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fileAddress, std::map<std::string, std::string> *option) {
-    SelectIntoOptions *options = new SelectIntoOptions(&fileAddress, option);
-    if (options->isError == true) {
+void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fileAddress,
+    std::shared_ptr<hybridse::node::OptionsMap> optionsMap) {
+    openmldb::cmd::SelectIntoOptions *options = new openmldb::cmd::SelectIntoOptions(fileAddress, optionsMap);
+    if (options->isError() == true) {
         return;
     }
-    if (options.getFormat() == "csv") {
+    if (strcmp(options->getFormat(), "csv") == 0) {
         if (!result_set || result_set->Size() == 0) {
             return;
         }
         auto *schema = result_set->GetSchema();
         // Add Header
-        if (options.getHeader() == "true") {
+        if (options->getHeader() == true) {
             std::string schemaString = "";
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 schemaString.append(schema->GetColumnName(i));
                 if (i != schema->GetColumnCnt()-1) {
-                    schemaString.append(delimiter);
+                    schemaString.append(options->getDelimiter());
                 } else {
-                    option.getOfstream() << schemaString << std::endl;
+                    *options->getOfstream() << schemaString << std::endl;
                 }
             }
         }
@@ -169,7 +172,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
             std::string rowString = "";
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 if (result_set->IsNULL(i)) {
-                    rowString.append(option.getNullValues());
+                    rowString.append(options->getNullValues());
                 } else {
                     auto data_type = schema->GetColumnType(i);
                     switch (data_type) {
@@ -236,16 +239,16 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                         }
                     }
                     if (i != schema->GetColumnCnt()-1) {
-                        rowString.append(delimiter);
+                        rowString.append(options->getDelimiter());
                     } else {
-                        option.getOfstream() << rowString << std::endl;
+                        *options->getOfstream() << rowString << std::endl;
                     }
                 }
             }
         }
         std::cout << "Save successfully" << std::endl;
     } else {
-        std::cout << "This format (" + options.getFormat() + ") is not currently supported" << std::endl;
+        std::cout << "This format (" << options->getFormat() << ") is not currently supported" << std::endl;
         return;
     }
 }
@@ -798,6 +801,24 @@ void HandleSQL(const std::string &sql) {
                 std::cout << "Fail to execute query" << std::endl;
             } else {
                 PrintResultSet(std::cout, rs.get());
+            }
+            return;
+        }
+        case hybridse::node::kPlanTypeSelectInto: {
+            auto *selectIntoPlanNode = dynamic_cast<hybridse::node::SelectIntoPlanNode *>(node);
+            const std::string& querySql = selectIntoPlanNode->QueryStr();
+            const std::string& fileAddress = selectIntoPlanNode->OutFile();
+            const std::shared_ptr<hybridse::node::OptionsMap> optionsMap = selectIntoPlanNode->Options();
+            if (db.empty()) {
+                std::cout << "Please use database first" << std::endl;
+                return;
+            }
+            ::hybridse::sdk::Status status;
+            auto rs = sr->ExecuteSQL(db, querySql, &status);
+            if (!rs) {
+                std::cout << "Fail to execute query" << std::endl;
+            } else {
+                SaveResultSet(rs.get(), fileAddress, optionsMap);
             }
             return;
         }
