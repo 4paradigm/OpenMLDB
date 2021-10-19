@@ -649,6 +649,11 @@ void Shell() {
             }
         }
         sql.append(buffer);
+        if (sql == "quit;" || sql == "exit;" || sql == "quit" || sql == "exit") {
+            std::cout << "Bye" << std::endl;
+            sql.clear();
+            return;
+        }
         if (sql.back() == ';') {
             HandleSQL(sql);
             multi_line = false;
