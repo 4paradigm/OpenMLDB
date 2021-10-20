@@ -65,18 +65,19 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK *cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 
-class SelectIntoOptions
+class SaveFileOptions
 {
     public:
-        SelectIntoOptions() {
-            // Options in default
-            format = "csv";
-            mode = "error_if_exists";
-            delimiter = ",";
-            nullValues = "null";
-            header = true;
+        SaveFileOptions()
+            : format("csv"), mode("error_if_exists"), delimiter(","), nullValues("null"), header(true) {
+            if ((filePath = getcwd(NULL, 0)) != NULL) {
+                std::cout << "File path is current working directory in default" << std::endl;
+            } else {
+                throw "Can't set file path";
+            }
         }
-        SelectIntoOptions(const std::string &fileAddress, std::shared_ptr<hybridse::node::OptionsMap> optionsMap) {
+        SaveFileOptions(const std::string &filePath, std::shared_ptr<hybridse::node::OptionsMap> optionsMap) {
+            this->filePath = filePath.c_str(); 
             for (auto iter = optionsMap->begin(); iter != optionsMap->end(); iter++) {
                 std::string key = iter->first;
                 if (key == "format") {
@@ -90,65 +91,64 @@ class SelectIntoOptions
                 } else if (key == "header") {
                     header = iter->second->GetBool();
                 } else {
-                    std::cout << "This option (" + key + ") is not currently supported" << std::endl;
-                    errorFlag = true;
-                    return;
+                    throw "This option (" + key + ") is not currently supported";
                 }
             }
-            if (errorFlag != true) {
-                if (strcmp(mode, "errorifexists") == 0) {
-                    if (access(fileAddress.c_str(), 0) == 0) {
-                        std::cout << "File already exists" << std::endl;
-                        errorFlag = true;
-                    } else {
-                        fstream.open(fileAddress);
-                    }
-                } else if (strcmp(mode, "overwrite") == 0) {
-                    fstream.open(fileAddress, std::ios::out);
-                } else if (strcmp(mode, "append") == 0) {
-                    fstream.open(fileAddress, std::ios::app);
+            if (strcmp(mode, "errorifexists") == 0) {
+                if (access(filePath.c_str(), 0) == 0) {
+                    throw "File already exists";
                 } else {
-                    std::cout << "This mode (" << mode << ") is not currently supported" << std::endl;
-                    errorFlag = true;
+                    fstream->open(filePath);
                 }
+            } else if (strcmp(mode, "overwrite") == 0) {
+                fstream->open(filePath, std::ios::out);
+            } else if (strcmp(mode, "append") == 0) {
+                fstream->open(filePath, std::ios::app);
+            } else {
+                std::string modeStr = mode;
+                throw "This mode (" + modeStr + ") is not currently supported";
             }
         }
-        ~SelectIntoOptions() {
-            fstream.close();
+        ~SaveFileOptions() {
+            fstream->close();
         }
-        const char *getFormat() {
+        const char* getFormat() const{
             return format;
         }
-        const char *getNullValues() {
+        const char* getNullValues() const{
             return nullValues;
         }
-        const char *getDelimiter() {
+        const char* getDelimiter() const{
             return delimiter;
         }
-        bool getHeader() {
+        const char* getFilePath() const{
+            return filePath;
+        }
+        bool getHeader() const{
             return header;
         }
-        bool isError() {
-            return errorFlag;
-        }
-        std::ofstream *getOfstream() {
-            return &fstream;
+        std::ofstream* getOfstream() {
+            return fstream;
         }
     private:
-        const char *format;
-        const char *mode;
-        const char *delimiter;
-        const char *nullValues;
+        const char* format;
+        const char* mode;
+        const char* delimiter;
+        const char* nullValues;
+        const char* filePath;
         bool header;
-        bool errorFlag = false;
-        std::ofstream fstream;
+        std::ofstream* fstream = nullptr;
 };
 
 
-void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fileAddress,
+void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &filePath,
     std::shared_ptr<hybridse::node::OptionsMap> optionsMap) {
-    openmldb::cmd::SelectIntoOptions *options = new openmldb::cmd::SelectIntoOptions(fileAddress, optionsMap);
-    if (options->isError() == true) {
+    openmldb::cmd::SaveFileOptions *options;
+    try {
+        options = new openmldb::cmd::SaveFileOptions(filePath, optionsMap);
+    } catch (const char* errorMsg) {
+        std::cout << errorMsg << std::endl;
+        delete options;
         return;
     }
     if (strcmp(options->getFormat(), "csv") == 0) {
@@ -251,6 +251,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
         std::cout << "This format (" << options->getFormat() << ") is not currently supported" << std::endl;
         return;
     }
+    delete options;
 }
 
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
@@ -807,7 +808,7 @@ void HandleSQL(const std::string &sql) {
         case hybridse::node::kPlanTypeSelectInto: {
             auto *selectIntoPlanNode = dynamic_cast<hybridse::node::SelectIntoPlanNode *>(node);
             const std::string& querySql = selectIntoPlanNode->QueryStr();
-            const std::string& fileAddress = selectIntoPlanNode->OutFile();
+            const std::string& filePath = selectIntoPlanNode->OutFile();
             const std::shared_ptr<hybridse::node::OptionsMap> optionsMap = selectIntoPlanNode->Options();
             if (db.empty()) {
                 std::cout << "Please use database first" << std::endl;
@@ -818,7 +819,7 @@ void HandleSQL(const std::string &sql) {
             if (!rs) {
                 std::cout << "Fail to execute query" << std::endl;
             } else {
-                SaveResultSet(rs.get(), fileAddress, optionsMap);
+                SaveResultSet(rs.get(), filePath, optionsMap);
             }
             return;
         }
