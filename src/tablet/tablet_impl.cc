@@ -1512,13 +1512,14 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
         if (request->is_debug()) {
             session.EnableDebug();
         }
+        session.SetPerformanceSensitive(request->is_performance_sensitive());
         session.SetParameterSchema(parameter_schema);
         {
             bool ok = engine_->Get(request->sql(), request->db(), session, status);
             if (!ok) {
                 response->set_msg(status.msg);
                 response->set_code(::openmldb::base::kSQLCompileError);
-                DLOG(WARNING) << "fail to compile sql " << request->sql();
+                DLOG(WARNING) << "fail to compile sql " << request->sql() << ", message: " << status.msg;
                 return;
             }
         }

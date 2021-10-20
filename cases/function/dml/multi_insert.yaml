@@ -33,12 +33,12 @@ cases:
           );
         insert: insert into {0} values("hello", 1, 2, 3.3f, 4.4, 5L, "world", 12345678L, "2020-05-21", true);
     sql: select * from {0};
-    output:
+    expect:
       columns: ["col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64",
           "col6 string", "col7 timestamp", "col8 date", "col9 bool"]
       order: col1
       rows:
-        - [hello, 1, 2, 3.3, 4.4, 5, world, 12345678, 2020-05-21, true]
+        - [hello, 1, 2, 3.3, 4.4, 5, world, 12345678, "2020-05-21", true]
   - id: 1
     desc: 简单INSERT 多行
     inputs:
@@ -60,7 +60,7 @@ cases:
             ("hello", 11, 22, 33.3, 44.4, 55, "fesql");
 
     sql: select * from {0};
-    output:
+    expect:
       columns: [ "col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64",
                  "col6 string"]
       order: col1
@@ -84,7 +84,7 @@ cases:
             (1, 10000L, 1590738987000L),
             (2, 20000L, 1590738988000L);
     sql: select * from {0};
-    output:
+    expect:
       columns: ["col1 int", "col5 bigint", "std_ts timestamp"]
       order: col1
       rows:
@@ -111,7 +111,7 @@ cases:
             (1, 10000L, 1590738987000L),
             (2, 20000L, 1590738988000L);
     sql: select * from {0};
-    output:
+    expect:
       columns: ["col1 int", "col2 int16", "col3 float", "col4 double", "col5 bigint", "std_ts timestamp", "str string"]
       order: col1
       rows:
@@ -138,12 +138,12 @@ cases:
             (2, 20000L, '2020-05-28');
 
     sql: select * from {0};
-    output:
+    expect:
       columns: [ "col1 int", "col2 int16", "col3 float", "col4 double", "col5 bigint", "std_date date", "str string" ]
       order: col1
       rows:
-        - [1, NULL, NULL, NULL, 10000, 2020-05-27, NULL]
-        - [2, NULL, NULL, NULL, 20000, 2020-05-28, NULL]
+        - [1, NULL, NULL, NULL, 10000, "2020-05-27", NULL]
+        - [2, NULL, NULL, NULL, 20000, "2020-05-28", NULL]
   - id: 5
     desc: 简单INSERT NULL value
     inputs:
@@ -163,7 +163,7 @@ cases:
           insert into {0} values ("hello", 1, NULL, 3.3f, 4.4, 5L, "world"),
           ("hi", 2, NULL, 33.3f, 44.4, 55L, "db")
     sql: select * from {0};
-    output:
+    expect:
       columns: [ "col0 string", "col1 int", "col2 int16", "col3 float", "col4 double", "col5 bigint", "col6 string" ]
       order: col1
       rows:
