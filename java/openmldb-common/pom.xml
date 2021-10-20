@@ -5,11 +5,11 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.2.3</version>
+        <version>0.2.4-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <version>0.2.3</version>
     <artifactId>openmldb-common</artifactId>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version> 1.8 </java.version>
