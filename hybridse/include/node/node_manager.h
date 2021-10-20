@@ -23,6 +23,7 @@
 
 #include <ctype.h>
 #include <list>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -66,7 +67,7 @@ class NodeManager {
     ProjectNode *MakeAggProjectNode(const int32_t pos, const std::string &name,
                                     node::ExprNode *expression,
                                     node::FrameNode *frame);
-    PlanNode *MakeTablePlanNode(const std::string &node);
+    PlanNode *MakeTablePlanNode(const std::string& db, const std::string &table_name);
     PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
                            const OrderByNode *order_by,
                            const ExprNode *condition);
@@ -80,6 +81,9 @@ class NodeManager {
     QueryNode *MakeUnionQueryNode(QueryNode *left, QueryNode *right,
                                   bool is_all);
     TableRefNode *MakeTableNode(const std::string &name,
+                                const std::string &alias);
+    TableRefNode *MakeTableNode(const std::string& db,
+                                const std::string &name,
                                 const std::string &alias);
     TableRefNode *MakeJoinNode(const TableRefNode *left,
                                const TableRefNode *right, const JoinType type,
@@ -248,6 +252,21 @@ class NodeManager {
                                  const std::string &table_name,
                                  ColumnIndexNode *index);
 
+    DeployNode *MakeDeployStmt(const std::string& name, const SqlNode* stmt, const std::string& stmt_str,
+                            bool if_not_exist);
+    DeployPlanNode *MakeDeployPlanNode(const std::string& name, const SqlNode* stmt,
+                                       const std::string& stmt_str, bool if_not_exist);
+
+    LoadDataNode *MakeLoadDataNode(const std::string &file_name, const std::string& db, const std::string &table,
+                                   const std::shared_ptr<OptionsMap> options);
+    LoadDataPlanNode* MakeLoadDataPlanNode(const std::string& file_name, const std::string &db,
+                                           const std::string& table, const std::shared_ptr<OptionsMap> options);
+    SelectIntoNode* MakeSelectIntoNode(const QueryNode* query, const std::string& query_str,
+                                       const std::string& out_file, const std::shared_ptr<OptionsMap> options);
+    SelectIntoPlanNode* MakeSelectIntoPlanNode(const QueryNode* query, const std::string& query_str,
+                                               const std::string& out_file, const std::shared_ptr<OptionsMap> options);
+    SetNode* MakeSetNode(const std::string& key, const ConstNode* value);
+    SetPlanNode* MakeSetPlanNode(const SetNode* set_node);
     // Make NodeList
     SqlNode *MakeExplainNode(const QueryNode *query,
                              node::ExplainType explain_type);

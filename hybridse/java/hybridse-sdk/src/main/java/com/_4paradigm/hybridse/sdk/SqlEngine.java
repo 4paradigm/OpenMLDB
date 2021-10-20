@@ -27,6 +27,7 @@ import com._4paradigm.hybridse.vm.SimpleCatalog;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +101,6 @@ public class SqlEngine implements AutoCloseable {
         EngineOptions engineOptions = new EngineOptions();
         engineOptions.set_keep_ir(true);
         engineOptions.set_compile_only(true);
-        engineOptions.set_performance_sensitive(false);
         return engineOptions;
     }
 
@@ -119,14 +119,14 @@ public class SqlEngine implements AutoCloseable {
         options = engineOptions;
         catalog = new SimpleCatalog();
         session = new BatchRunSession();
+        session.SetPerformanceSensitive(false);
         for (TypeOuterClass.Database database: databases) {
             catalog.AddDatabase(database);
         }
         engine = new Engine(catalog, options);
 
         BaseStatus status = new BaseStatus();
-        // TODO(chenjing): Support passing null default database name for core API
-        boolean ok = engine.Get(sql, defaultDbName, session, status);
+        boolean ok = engine.Get(sql, Objects.isNull(defaultDbName) ? "" : defaultDbName, session, status);
         if (!(ok && status.getMsg().equals("ok"))) {
             throw new UnsupportedHybridSeException("SQL parse error: " + status.GetMsg() + "\n" + status.GetTraces());
         }

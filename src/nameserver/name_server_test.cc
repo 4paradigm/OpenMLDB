@@ -30,6 +30,7 @@
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -53,27 +54,6 @@ using std::vector;
 
 namespace openmldb {
 namespace nameserver {
-
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
-
-void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
-                      ::openmldb::nameserver::TableInfo* table_meta) {
-    auto column_desc = table_meta->add_column_desc();
-    column_desc->set_name("idx0");
-    column_desc->set_data_type(::openmldb::type::kString);
-    auto column_desc1 = table_meta->add_column_desc();
-    column_desc1->set_name("value");
-    column_desc1->set_data_type(::openmldb::type::kString);
-    auto column_key = table_meta->add_column_key();
-    column_key->set_index_name("idx0");
-    column_key->add_col_name("idx0");
-    ::openmldb::common::TTLSt* ttl_st = column_key->mutable_ttl();
-    ttl_st->set_abs_ttl(abs_ttl);
-    ttl_st->set_lat_ttl(lat_ttl);
-    ttl_st->set_ttl_type(ttl_type);
-}
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -148,7 +128,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     int32_t old_offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     brpc::ServerOptions options;
     brpc::Server server;
@@ -163,10 +143,10 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     CreateTableRequest request;
     GeneralResponse response;
     TableInfo* table_info = request.mutable_table_info();
-    std::string name = "test" + GenRand();
+    std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
     TablePartition* partion = table_info->add_table_partition();
-    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     partion->set_pid(0);
     PartitionMeta* meta = partion->add_partition_meta();
     meta->set_endpoint("127.0.0.1:9530");
@@ -226,7 +206,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_FALSE(ok);
 
     // snapshot with db
-    std::string db = "db" + GenRand();
+    std::string db = "db" + ::openmldb::test::GenRand();
     CreateDatabaseRequest db_request;
     db_request.set_db(db);
     ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateDatabase, &db_request,
@@ -296,7 +276,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
 
 TEST_F(NameServerImplTest, ConfigGetAndSet) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     std::string endpoint = "127.0.0.1:9631";
     FLAGS_endpoint = endpoint;
@@ -358,7 +338,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
 
 TEST_F(NameServerImplTest, CreateTable) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9632";
     NameServerImpl* nameserver = new NameServerImpl();
@@ -402,7 +382,7 @@ TEST_F(NameServerImplTest, CreateTable) {
     CreateTableRequest request;
     GeneralResponse response;
     TableInfo* table_info = request.mutable_table_info();
-    std::string name = "test" + GenRand();
+    std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
@@ -412,7 +392,7 @@ TEST_F(NameServerImplTest, CreateTable) {
     TablePartition* partion1 = table_info->add_table_partition();
     partion1->set_pid(2);
     PartitionMeta* meta1 = partion1->add_partition_meta();
-    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     meta1->set_endpoint("127.0.0.1:9531");
     meta1->set_is_leader(true);
     ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
@@ -435,7 +415,7 @@ TEST_F(NameServerImplTest, CreateTable) {
 
 TEST_F(NameServerImplTest, Offline) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_auto_failover = true;
     FLAGS_endpoint = "127.0.0.1:9633";
     NameServerImpl* nameserver = new NameServerImpl();
@@ -456,7 +436,7 @@ TEST_F(NameServerImplTest, Offline) {
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9533";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     ok = tablet->Init("");
     ASSERT_TRUE(ok);
@@ -476,7 +456,7 @@ TEST_F(NameServerImplTest, Offline) {
     ASSERT_TRUE(ok);
 
     FLAGS_endpoint = "127.0.0.1:9534";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
     ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
     ok = tablet2->Init("");
     ASSERT_TRUE(ok);
@@ -499,7 +479,7 @@ TEST_F(NameServerImplTest, Offline) {
     CreateTableRequest request;
     GeneralResponse response;
     TableInfo* table_info = request.mutable_table_info();
-    std::string name = "test" + GenRand();
+    std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
@@ -524,7 +504,7 @@ TEST_F(NameServerImplTest, Offline) {
     PartitionMeta* meta2 = partion2->add_partition_meta();
     meta2->set_endpoint("127.0.0.1:9534");
     meta2->set_is_leader(true);
-    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
                                         FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
@@ -553,7 +533,7 @@ TEST_F(NameServerImplTest, Offline) {
 
 TEST_F(NameServerImplTest, SetTablePartition) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9632";
     NameServerImpl* nameserver = new NameServerImpl();
@@ -606,9 +586,9 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     CreateTableRequest request;
     GeneralResponse response;
     TableInfo* table_info = request.mutable_table_info();
-    std::string name = "test" + GenRand();
+    std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
-    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
     PartitionMeta* meta = partion->add_partition_meta();
@@ -671,7 +651,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
 
 TEST_F(NameServerImplTest, CancelOP) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9632";
     NameServerImpl* nameserver = new NameServerImpl();
@@ -749,7 +729,7 @@ void InitTablet(int port, vector<Server*> services, vector<shared_ptr<TabletImpl
         exit(1);
     }
     for (uint64_t i = 0; i < services.size(); i++) {
-        FLAGS_db_root_path = "/tmp/test4" + GenRand();
+        FLAGS_db_root_path = "/tmp/test4" + ::openmldb::test::GenRand();
         port += 500;
         FLAGS_endpoint = "127.0.0.1:" + std::to_string(port);
 
@@ -781,7 +761,7 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
         PDLOG(WARNING, "services and eps size not equal");
         exit(1);
     }
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:" + std::to_string(port);
     for (uint64_t i = 0; i < services.size(); i++) {
         shared_ptr<NameServerImpl> ns = std::make_shared<NameServerImpl>();
@@ -903,11 +883,11 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     // replica cluster has table, add as follower cluster failed
     CreateTableRequest create_table_request;
     TableInfo* table_info = create_table_request.mutable_table_info();
-    string name = "test" + GenRand();
+    string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
-    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     f2_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
     ASSERT_EQ(0, general_response.code());
     general_response.Clear();
@@ -1068,11 +1048,11 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
 
     CreateTableRequest create_table_request;
     TableInfo* table_info = create_table_request.mutable_table_info();
-    string name = "test" + GenRand();
+    string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
-    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
 
     m1_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
     ASSERT_EQ(0, general_response.code());
@@ -1104,7 +1084,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
         ASSERT_EQ(0, general_response.code());
         general_response.Clear();
     }
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
 
     m1_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
@@ -1200,11 +1180,11 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     {
         CreateTableRequest create_table_request;
         TableInfo* table_info = create_table_request.mutable_table_info();
-        string name = "test" + GenRand();
+        string name = "test" + ::openmldb::test::GenRand();
         table_info->set_name(name);
         table_info->set_partition_num(1);
         table_info->set_replica_num(2);
-        AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+        ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         f2_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
         ASSERT_EQ(0, general_response.code());
         ShowTableRequest show_table_request;
@@ -1249,10 +1229,10 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     show_replica_cluster_response.Clear();
 
     CreateTableRequest create_table_request;
-    string name = "test" + GenRand();
+    string name = "test" + ::openmldb::test::GenRand();
     TableInfo* table_info = create_table_request.mutable_table_info();
     table_info->set_name(name);
-    AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     TablePartition* partition = table_info->add_table_partition();
     partition->set_pid(0);
     PartitionMeta* meta1 = partition->add_partition_meta();
@@ -1447,7 +1427,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
 
 TEST_F(NameServerImplTest, ShowCatalogVersion) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     brpc::ServerOptions options;
     brpc::Server server;
@@ -1469,10 +1449,10 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         CreateTableRequest request;
         GeneralResponse response;
         TableInfo* table_info = request.mutable_table_info();
-        std::string name = "test" + GenRand();
+        std::string name = "test" + ::openmldb::test::GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
-        AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+        ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
         PartitionMeta* meta = partion->add_partition_meta();
@@ -1506,10 +1486,10 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         CreateTableRequest request;
         GeneralResponse response;
         TableInfo* table_info = request.mutable_table_info();
-        std::string name = "test" + GenRand();
+        std::string name = "test" + ::openmldb::test::GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
-        AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+        ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
         PartitionMeta* meta = partion->add_partition_meta();
@@ -1547,6 +1527,6 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
     return RUN_ALL_TESTS();
 }

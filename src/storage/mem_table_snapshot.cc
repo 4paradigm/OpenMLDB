@@ -136,7 +136,7 @@ void MemTableSnapshot::RecoverSingleSnapshot(const std::string& path, std::share
         while (true) {
             buffer.clear();
             ::openmldb::base::Slice record;
-            ::openmldb::base::Status status = reader.ReadRecord(&record, &buffer);
+            ::openmldb::log::Status status = reader.ReadRecord(&record, &buffer);
             if (status.IsWaitRecord() || status.IsEof()) {
                 consumed = ::baidu::common::timer::now_time() - consumed;
                 PDLOG(INFO,
@@ -222,7 +222,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb
     }
     while (true) {
         ::openmldb::base::Slice record;
-        ::openmldb::base::Status status = reader.ReadRecord(&record, &buffer);
+        ::openmldb::log::Status status = reader.ReadRecord(&record, &buffer);
         if (status.IsEof()) {
             break;
         }
@@ -294,7 +294,7 @@ uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
         }
         buffer.clear();
         ::openmldb::base::Slice record;
-        ::openmldb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        ::openmldb::log::Status status = log_reader.ReadNextRecord(&record, &buffer);
         if (status.ok()) {
             ::openmldb::api::LogEntry entry;
             if (!entry.ParseFromString(record.ToString())) {
@@ -405,7 +405,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     while (!has_error && cur_offset < collected_offset) {
         buffer.clear();
         ::openmldb::base::Slice record;
-        ::openmldb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        ::openmldb::log::Status status = log_reader.ReadNextRecord(&record, &buffer);
         if (status.ok()) {
             ::openmldb::api::LogEntry entry;
             if (!entry.ParseFromString(record.ToString())) {
@@ -439,7 +439,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
                 expired_key_num++;
                 continue;
             }
-            ::openmldb::base::Status status = wh->Write(record);
+            ::openmldb::log::Status status = wh->Write(record);
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]", tmp_file_path.c_str(),
                       status.ToString().c_str());
@@ -580,7 +580,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(std::shared_ptr<Table> table, con
     DLOG(INFO) << "extract index data from snapshot";
     while (true) {
         ::openmldb::base::Slice record;
-        ::openmldb::base::Status status = reader.ReadRecord(&record, &buffer);
+        ::openmldb::log::Status status = reader.ReadRecord(&record, &buffer);
         if (status.IsEof()) {
             break;
         }
@@ -800,7 +800,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, const ::ope
     while (!has_error && cur_offset < collected_offset) {
         buffer.clear();
         ::openmldb::base::Slice record;
-        ::openmldb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        ::openmldb::log::Status status = log_reader.ReadNextRecord(&record, &buffer);
         if (status.ok()) {
             ::openmldb::api::LogEntry entry;
             if (!entry.ParseFromString(record.ToString())) {
@@ -910,7 +910,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, const ::ope
                     extract_count++;
                 }
             }
-            ::openmldb::base::Status status = wh->Write(record);
+            ::openmldb::log::Status status = wh->Write(record);
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]", tmp_file_path.c_str(),
                       status.ToString().c_str());
@@ -1092,7 +1092,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table> table,
     while (true) {
         buffer.clear();
         ::openmldb::base::Slice record;
-        ::openmldb::base::Status status = reader.ReadRecord(&record, &buffer);
+        ::openmldb::log::Status status = reader.ReadRecord(&record, &buffer);
         if (status.IsWaitRecord() || status.IsEof()) {
             PDLOG(INFO,
                   "read path %s for table tid %u pid %u completed, succ_cnt "
@@ -1219,7 +1219,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(std::shared_ptr<Table> table,
     while (cur_offset < collected_offset) {
         buffer.clear();
         ::openmldb::base::Slice record;
-        ::openmldb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        ::openmldb::log::Status status = log_reader.ReadNextRecord(&record, &buffer);
         if (status.IsWaitRecord()) {
             int end_log_index = log_reader.GetEndLogIndex();
             int cur_log_index = log_reader.GetLogIndex();

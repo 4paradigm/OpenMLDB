@@ -28,13 +28,11 @@
 
 #include "base/endianconv.h"
 #include "base/glog_wapper.h"  // NOLINT
-#include "base/status.h"
 #include "base/strings.h"
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "log/log_format.h"
-
-using ::openmldb::base::Status;
+#include "log/status.h"
 
 DECLARE_bool(binlog_enable_crc);
 DECLARE_int32(binlog_name_length);
@@ -472,22 +470,22 @@ uint64_t LogReader::GetLastRecordEndOffset() {
     return reader_->LastRecordEndOffset();
 }
 
-::openmldb::base::Status LogReader::ReadNextRecord(::openmldb::base::Slice* record, std::string* buffer) {
+::openmldb::log::Status LogReader::ReadNextRecord(::openmldb::base::Slice* record, std::string* buffer) {
     // first read record
     if (sf_ == NULL) {
         if (RollRLogFile() < 0) {
             PDLOG(WARNING, "fail to roll read log");
-            return ::openmldb::base::Status::WaitRecord();
+            return ::openmldb::log::Status::WaitRecord();
         }
     }
-    ::openmldb::base::Status status = reader_->ReadRecord(record, buffer);
+    ::openmldb::log::Status status = reader_->ReadRecord(record, buffer);
     if (status.IsEof()) {
         PDLOG(INFO, "reach the end of file. index %d", log_part_index_);
         if (RollRLogFile() < 0) {
             // reache the latest log part
             return status;
         }
-        return ::openmldb::base::Status::Eof();
+        return ::openmldb::log::Status::Eof();
     }
     return status;
 }

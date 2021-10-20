@@ -29,7 +29,6 @@
 #include "base/status.h"
 #include "catalog/schema_adapter.h"
 #include "client/client.h"
-#include "node/node_manager.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
@@ -100,12 +99,6 @@ class NsClient : public Client {
 
     bool CreateTable(const ::openmldb::nameserver::TableInfo& table_info,
                      std::string& msg);  // NOLINT
-
-    bool ExecuteSQL(const std::string& script,
-                    std::string& msg);  // NOLINT
-
-    bool ExecuteSQL(const std::string& db, const std::string& script,
-                    std::string& msg);  // NOLINT
 
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
 
@@ -212,11 +205,6 @@ class NsClient : public Client {
     bool SwitchMode(const ::openmldb::nameserver::ServerMode& mode,
                     std::string& msg);  // NOLINT
 
-    static bool TTLTypeParse(const std::string& type_str, ::openmldb::type::TTLType* type);
-    static bool TransformToColumnKey(hybridse::node::ColumnIndexNode* column_index,
-                                     const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
-                                     common::ColumnKey* index, hybridse::base::Status* status);
-
     bool AddIndex(const std::string& table_name, const ::openmldb::common::ColumnKey& column_key,
                   std::vector<openmldb::common::ColumnDesc>* cols,
                   std::string& msg);  // NOLINT
@@ -231,15 +219,6 @@ class NsClient : public Client {
                        std::string& msg);  // NOLINT
 
     bool CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_info, uint64_t request_timeout, std::string* msg);
-
- private:
-    bool TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, ::openmldb::nameserver::TableInfo* table,
-                             hybridse::base::Status* status);
-
-    bool HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
-                      hybridse::base::Status* sql_status);
-    bool HandleSQLCreateTable(hybridse::node::CreatePlanNode* create, const std::string& db,
-                              hybridse::node::NodeManager* node_manager, hybridse::base::Status* sql_status);
 
  private:
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> client_;

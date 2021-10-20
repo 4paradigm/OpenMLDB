@@ -73,6 +73,10 @@ class Planner {
     base::Status CreateCreateIndexPlan(const SqlNode *root, node::PlanNode **output);
     base::Status CreateFuncDefPlan(const SqlNode *root, node::PlanNode **output);
     base::Status CreateWindowPlanNode(const node::WindowDefNode *w_ptr, node::WindowPlanNode *plan_node);
+    base::Status CreateDeployPlanNode(const node::DeployNode *root, node::PlanNode **output);
+    base::Status CreateLoadDataPlanNode(const node::LoadDataNode *root, node::PlanNode **output);
+    base::Status CreateSelectIntoPlanNode(const node::SelectIntoNode *root, node::PlanNode **output);
+    base::Status CreateSetPlanNode(const node::SetNode *root, node::PlanNode **output);
     base::Status CreateCreateProcedurePlan(const node::SqlNode *root, const PlanNodeList &inner_plan_node_list,
                                            node::PlanNode **output);
     node::NodeManager *node_manager_;

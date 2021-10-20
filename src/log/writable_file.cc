@@ -26,10 +26,9 @@
 #include <unistd.h>
 
 #include "base/slice.h"
-#include "base/status.h"
+#include "log/status.h"
 
 using ::openmldb::base::Slice;
-using ::openmldb::base::Status;
 
 namespace openmldb {
 namespace log {

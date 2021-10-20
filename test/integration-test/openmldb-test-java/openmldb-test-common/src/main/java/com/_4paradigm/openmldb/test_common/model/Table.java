@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class Table implements Serializable{
     private String name = genAutoName();
+    private String db = "";
     private String index;
     private String schema;
     private String data;

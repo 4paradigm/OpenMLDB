@@ -120,7 +120,8 @@ class CoreAPI {
         hybridse::node::ColumnRefNode* expr);
 
     static ColumnSourceInfo ResolveSourceColumn(
-        hybridse::vm::PhysicalOpNode* node, const std::string& relation_name,
+        hybridse::vm::PhysicalOpNode* node, const std::string& db_name,
+        const std::string& relation_name,
         const std::string& column_name);
 
     static size_t GetUniqueID(const hybridse::vm::PhysicalOpNode* node);

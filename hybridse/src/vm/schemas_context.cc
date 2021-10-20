@@ -75,11 +75,13 @@ void SchemaSource::SetSchema(const codec::Schema* schema) {
     source_child_column_ids_ = std::vector<size_t>(schema->size(), 0);
 }
 
-void SchemaSource::SetSourceName(const std::string& name) {
+void SchemaSource::SetSourceDBAndTableName(const std::string& db, const std::string& name) {
+    source_db_ = db;
     source_name_ = name;
 }
 
 const std::string& SchemaSource::GetSourceName() const { return source_name_; }
+const std::string& SchemaSource::GetSourceDB() const { return source_db_; }
 
 void SchemaSource::SetSource(size_t idx, size_t child_idx,
                              size_t child_column_id) {
@@ -129,7 +131,9 @@ std::string SchemaSource::ToString() const {
 }
 
 void SchemasContext::Clear() {
+    root_db_name_ = "";
     root_relation_name_ = "";
+    default_db_name_ = "";
     column_id_map_.clear();
     column_name_map_.clear();
     child_source_map_.clear();
@@ -141,10 +145,13 @@ void SchemasContext::Clear() {
     owned_concat_output_schema_.Clear();
 }
 
-void SchemasContext::SetName(const std::string& name) {
-    root_relation_name_ = name;
+void SchemasContext::SetDBAndRelationName(const std::string& db, const std::string& relation_name) {
+    root_db_name_ = db.empty() ? default_db_name_ : db;
+    root_relation_name_ = relation_name;
 }
-
+void SchemasContext::SetDefaultDBName(const std::string& default_db_name) {
+    default_db_name_ = default_db_name;
+}
 SchemaSource* SchemasContext::AddSource() {
     schema_sources_.push_back(new SchemaSource());
     return schema_sources_[schema_sources_.size() - 1];
@@ -156,7 +163,7 @@ void SchemasContext::Merge(size_t child_idx, const SchemasContext* child) {
         auto new_source = this->AddSource();
         new_source->SetSchema(source->GetSchema());
         // source can take the child name for detail showing
-        new_source->SetSourceName(child->GetName());
+        new_source->SetSourceDBAndTableName(child->GetDBName(), child->GetName());
         for (size_t j = 0; j < source->size(); ++j) {
             // inherit child column id
             new_source->SetColumnID(j, source->GetColumnID(j));
@@ -173,7 +180,7 @@ void SchemasContext::MergeWithNewID(size_t child_idx,
         auto new_source = this->AddSource();
         new_source->SetSchema(source->GetSchema());
         // source can take the child name for detail showing
-        new_source->SetSourceName(child->GetName());
+        new_source->SetSourceDBAndTableName(child->GetDBName(), child->GetName());
         for (size_t j = 0; j < source->size(); ++j) {
             // use new column id but record source child column id
             new_source->SetColumnID(j, plan_ctx->GetNewColumnID());
@@ -189,10 +196,12 @@ size_t SchemasContext::GetColumnNum() const {
 }
 
 Status SchemasContext::ResolveColumnIndexByName(
+    const std::string& db_name,
     const std::string& relation_name, const std::string& column_name,
     size_t* schema_idx, size_t* col_idx) const {
     CHECK_TRUE(this->CheckBuild(), kColumnNotFound,
                "Schemas context is not fully build");
+
     if (relation_name.empty()) {
         // if relation name not specified, resolve in current context only
         auto iter = column_name_map_.find(column_name);
@@ -217,18 +226,17 @@ Status SchemasContext::ResolveColumnIndexByName(
         size_t cur_schema_idx;
         for (auto& pair : iter->second) {
             auto source = GetSchemaSource(pair.first);
-            if (!source->GetSourceName().empty() &&
-                source->GetSourceName() == relation_name) {
+            if (source->GetSourceDB() == (db_name.empty() ? default_db_name_ : db_name) &&
+                (!source->GetSourceName().empty() &&
+                 source->GetSourceName() == (relation_name.empty() ? root_relation_name_ : relation_name))) {
                 if (!found) {
                     found = true;
                     cur_column_id = source->GetColumnID(pair.second);
                     cur_col_idx = pair.second;
                     cur_schema_idx = pair.first;
                 } else {
-                    CHECK_TRUE(
-                        cur_column_id == source->GetColumnID(pair.second),
-                        kColumnNotFound, "Ambiguous column name ",
-                        relation_name, ".", column_name);
+                    CHECK_TRUE(cur_column_id == source->GetColumnID(pair.second), kColumnNotFound,
+                               "Ambiguous column name ", db_name, ".", relation_name, ".", column_name);
                 }
             }
         }
@@ -245,9 +253,9 @@ Status SchemasContext::ResolveColumnIndexByName(
         size_t source_column_id;
         const PhysicalOpNode* source_node = nullptr;
         CHECK_STATUS(
-            ResolveColumnID(relation_name, column_name, &column_id, &child_idx,
+            ResolveColumnID(db_name, relation_name, column_name, &column_id, &child_idx,
                             &child_column_id, &source_column_id, &source_node),
-            "Fail to resolve column ", relation_name, ".", column_name);
+            "Fail to resolve column ", db_name, ".", relation_name, ".", column_name);
 
         // compute index under current context
         return ResolveColumnIndexByID(column_id, schema_idx, col_idx);
@@ -288,19 +296,21 @@ Status SchemasContext::ResolveColumnRefIndex(
     CHECK_TRUE(this->CheckBuild(), kColumnNotFound,
                "Schemas context is not fully build");
     CHECK_TRUE(column_ref != nullptr, kColumnNotFound);
-    return ResolveColumnIndexByName(column_ref->GetRelationName(),
+    return ResolveColumnIndexByName(column_ref->GetDBName(),
+                                    column_ref->GetRelationName(),
                                     column_ref->GetColumnName(), schema_idx,
                                     col_idx);
 }
 
-Status SchemasContext::ResolveColumnID(const std::string& relation_name,
+Status SchemasContext::ResolveColumnID(const std::string& db_name,
+                                       const std::string& relation_name,
                                        const std::string& column_name,
                                        size_t* column_id) const {
     CHECK_TRUE(this->CheckBuild(), kColumnNotFound,
                "Schemas context is not fully build");
     size_t schema_idx;
     size_t col_idx;
-    CHECK_STATUS(ResolveColumnIndexByName(relation_name, column_name,
+    CHECK_STATUS(ResolveColumnIndexByName(db_name, relation_name, column_name,
                                           &schema_idx, &col_idx));
     *column_id = GetSchemaSource(schema_idx)->GetColumnID(col_idx);
     return Status::OK();
@@ -453,6 +463,9 @@ const codec::RowFormat* SchemasContext::GetRowFormat(size_t idx) const {
 const std::string& SchemasContext::GetName() const {
     return root_relation_name_;
 }
+const std::string& SchemasContext::GetDBName() const {
+    return root_db_name_;
+}
 
 const PhysicalOpNode* SchemasContext::GetRoot() const { return root_; }
 
@@ -523,13 +536,23 @@ void SchemasContext::Build() {
         }
     }
 }
-
+bool SchemasContext::CheckDatabaseAndRelation(const std::string& db, const std::string& relation) const {
+    if ((db.empty() ? default_db_name_ : db) == (root_db_name_.empty() ? default_db_name_ : root_db_name_)) {
+        if (relation == "" || relation == root_relation_name_) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    return false;
+}
 Status SchemasContext::ResolveColumnID(
+    const std::string& db_name,
     const std::string& relation_name, const std::string& column_name,
     size_t* column_id, int* child_path_idx, size_t* child_column_id,
     size_t* source_column_id, const PhysicalOpNode** source_node) const {
     // current context match relation name
-    if (relation_name.empty() || relation_name == root_relation_name_) {
+    if (CheckDatabaseAndRelation(db_name, relation_name)) {
         auto iter = column_name_map_.find(column_name);
         if (iter != column_name_map_.end()) {
             // exit if find ambiguous match
@@ -569,7 +592,6 @@ Status SchemasContext::ResolveColumnID(
                 child_col_id = child_source->GetSourceColumnID(child_col_idx);
                 path_idx = child_source->GetSourceChildIdx(child_col_idx);
             }
-
             *source_column_id = cur_column_id;
             *source_node = cur_node;
             return Status::OK();
@@ -577,10 +599,7 @@ Status SchemasContext::ResolveColumnID(
     }
 
     // find recursively if node information is specified
-    if (root_ == nullptr) {
-        return Status(kColumnNotFound,
-                      "Not found: " + relation_name + "." + column_name);
-    }
+    CHECK_TRUE(root_ != nullptr, kColumnNotFound, "Not found: ", db_name, ".", relation_name, ".", column_name);
     bool found = false;
     const auto& children = root_->GetProducers();
     for (size_t i = 0; i < children.size(); ++i) {
@@ -593,7 +612,7 @@ Status SchemasContext::ResolveColumnID(
         size_t sub_source_column_id;
         const PhysicalOpNode* sub_source_node = nullptr;
 
-        Status status = child_ctx->ResolveColumnID(
+        Status status = child_ctx->ResolveColumnID(db_name,
             relation_name, column_name, &cur_child_column_id,
             &sub_child_path_idx, &sub_child_column_id, &sub_source_column_id,
             &sub_source_node);
@@ -623,7 +642,7 @@ Status SchemasContext::ResolveColumnID(
         // check if candidate is ambiguous
         if (found) {
             CHECK_TRUE(*column_id == cand_column_id, kColumnNotFound,
-                       "Ambiguous column ", relation_name, ".", column_name,
+                       "Ambiguous column ", db_name, ".", relation_name, ".", column_name,
                        ": #", *column_id, " and #", cand_column_id);
         } else {
             found = true;
@@ -634,12 +653,8 @@ Status SchemasContext::ResolveColumnID(
             *source_node = sub_source_node;
         }
     }
-    if (found) {
-        return Status::OK();
-    } else {
-        return Status(kColumnNotFound,
-                      "Not found: " + relation_name + "." + column_name);
-    }
+    CHECK_TRUE(found, kColumnNotFound, "Column Not found: ", db_name, ".", relation_name, ".", column_name);
+    return base::Status::OK();
 }
 
 void SchemasContext::BuildTrivial(
@@ -647,6 +662,7 @@ void SchemasContext::BuildTrivial(
     size_t column_id = 1;
     for (auto schema : schemas) {
         auto source = this->AddSource();
+        source->SetSourceDBAndTableName("", "");
         source->SetSchema(schema);
         for (int i = 0; i < schema->size(); ++i) {
             source->SetColumnID(i, column_id);
@@ -657,13 +673,15 @@ void SchemasContext::BuildTrivial(
 }
 
 void SchemasContext::BuildTrivial(
+    const std::string& default_db_name,
     const std::vector<const type::TableDef*>& tables) {
+    default_db_name_ = default_db_name;
     size_t column_id = 1;
     for (auto table : tables) {
         auto schema = &table->columns();
         auto source = this->AddSource();
         source->SetSchema(schema);
-        source->SetSourceName(table->name());
+        source->SetSourceDBAndTableName(table->catalog(), table->name());
         for (int i = 0; i < schema->size(); ++i) {
             source->SetColumnID(i, column_id);
             column_id += 1;

@@ -15,6 +15,7 @@
  */
 
 #include "node/node_manager.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -47,9 +48,11 @@ QueryNode *NodeManager::MakeUnionQueryNode(QueryNode *left, QueryNode *right, bo
     RegisterNode(node_ptr);
     return node_ptr;
 }
-
 TableRefNode *NodeManager::MakeTableNode(const std::string &name, const std::string &alias) {
-    TableRefNode *node_ptr = new TableNode(name, alias);
+    return MakeTableNode("", name, alias);
+}
+TableRefNode *NodeManager::MakeTableNode(const std::string& db, const std::string &name, const std::string &alias) {
+    TableRefNode *node_ptr = new TableNode(db, name, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -438,8 +441,8 @@ UnaryExpr *NodeManager::MakeUnaryExprNode(ExprNode *left, FnOperator op) {
 }
 
 SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::string &db_name,
-                                          const std::string &table_name,
-                                          SqlNodeList *column_desc_list, SqlNodeList *table_option_list) {
+                                          const std::string &table_name, SqlNodeList *column_desc_list,
+                                          SqlNodeList *table_option_list) {
     int replica_num = 1;
     int partition_num = 1;
     SqlNodeList partition_meta_list;
@@ -578,8 +581,8 @@ PlanNode *NodeManager::MakeMultiPlanNode(const PlanType &type) {
     return node_ptr;
 }
 
-PlanNode *NodeManager::MakeTablePlanNode(const std::string &table_name) {
-    PlanNode *node_ptr = new TablePlanNode("", table_name);
+PlanNode *NodeManager::MakeTablePlanNode(const std::string& db, const std::string &table_name) {
+    PlanNode *node_ptr = new TablePlanNode(db, table_name);
     return RegisterNode(node_ptr);
 }
 
@@ -739,6 +742,52 @@ SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name, const s
     CreateIndexNode *node_ptr = new CreateIndexNode(index_name, table_name, index);
     return RegisterNode(node_ptr);
 }
+
+DeployNode *NodeManager::MakeDeployStmt(const std::string &name, const SqlNode *stmt,
+                                     const std::string& stmt_str, bool if_not_exist) {
+    DeployNode *node = new DeployNode(name, stmt, stmt_str, if_not_exist);
+    return RegisterNode(node);
+}
+
+DeployPlanNode *NodeManager::MakeDeployPlanNode(const std::string &name, const SqlNode *stmt,
+                                                const std::string& stmt_str, bool if_not_exist) {
+    DeployPlanNode *node = new DeployPlanNode(name, stmt, stmt_str, if_not_exist);
+    return RegisterNode(node);
+}
+LoadDataNode *NodeManager::MakeLoadDataNode(const std::string &file_name, const std::string& db,
+                                            const std::string &table, const std::shared_ptr<OptionsMap> options) {
+    LoadDataNode *node = new LoadDataNode(file_name, db, table, options);
+    return RegisterNode(node);
+}
+LoadDataPlanNode *NodeManager::MakeLoadDataPlanNode(const std::string &file_name,
+                                                    const std::string& db, const std::string& table,
+                                                    const std::shared_ptr<OptionsMap> options) {
+    LoadDataPlanNode *node = new LoadDataPlanNode(file_name, db, table, options);
+    return RegisterNode(node);
+}
+
+SelectIntoNode* NodeManager::MakeSelectIntoNode(const QueryNode* query, const std::string& query_str,
+                                   const std::string& out_file, const std::shared_ptr<OptionsMap> options) {
+    SelectIntoNode* node = new SelectIntoNode(query, query_str, out_file, options);
+    return RegisterNode(node);
+}
+
+SelectIntoPlanNode* NodeManager::MakeSelectIntoPlanNode(const QueryNode* query, const std::string& query_str,
+                                               const std::string& out_file, const std::shared_ptr<OptionsMap> options) {
+    SelectIntoPlanNode* node = new SelectIntoPlanNode(query, query_str, out_file, options);
+    return RegisterNode(node);
+}
+
+SetNode* NodeManager::MakeSetNode(const std::string &key, const ConstNode *value) {
+    SetNode* node = new SetNode(key, value);
+    return RegisterNode(node);
+}
+
+SetPlanNode* NodeManager::MakeSetPlanNode(const SetNode *set_node) {
+    SetPlanNode* node = new SetPlanNode(set_node->Key(), set_node->Value());
+    return RegisterNode(node);
+}
+
 AllNode *NodeManager::MakeAllNode(const std::string &relation_name) { return MakeAllNode(relation_name, ""); }
 
 AllNode *NodeManager::MakeAllNode(const std::string &relation_name, const std::string &db_name) {

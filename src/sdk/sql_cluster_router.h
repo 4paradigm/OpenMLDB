@@ -29,7 +29,7 @@
 #include "boost/compute/detail/lru_cache.hpp"
 #include "catalog/schema_adapter.h"
 #include "client/tablet_client.h"
-#include "sdk/cluster_sdk.h"
+#include "sdk/db_sdk.h"
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
 
@@ -101,9 +101,9 @@ struct SQLCache {
 class SQLClusterRouter : public SQLRouter {
  public:
     explicit SQLClusterRouter(const SQLRouterOptions& options);
-    explicit SQLClusterRouter(ClusterSDK* sdk);
+    explicit SQLClusterRouter(DBSDK* sdk);
 
-    ~SQLClusterRouter();
+    ~SQLClusterRouter() override;
 
     bool Init();
 
@@ -178,11 +178,15 @@ class SQLClusterRouter : public SQLRouter {
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status);
 
+    std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const std::string& db, const std::string& sql,
+                                                                      const ::hybridse::vm::EngineMode engine_mode,
+                                                                      const std::shared_ptr<SQLRequestRow>& row);
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(
-        const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row);
-    std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(
-        const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row,
-        const std::shared_ptr<SQLRequestRow>& parameter_row);
+        const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
+        const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<SQLRequestRow>& parameter_row);
+
+    std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(
+        const std::string& db, const std::string& table_name) override;
 
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
@@ -214,8 +218,13 @@ class SQLClusterRouter : public SQLRouter {
 
     bool HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* plan,
             const std::string& db, const std::string& sql,
-            std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
-            hybridse::node::NodeManager* node_manager, std::string* msg);
+            std::shared_ptr<::openmldb::client::NsClient> ns_ptr, std::string* msg);
+
+    bool HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
+            std::shared_ptr<::openmldb::client::NsClient> ns_ptr, std::string* msg);
+
+    bool HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
+            std::shared_ptr<::openmldb::client::NsClient> ns_ptr, std::string* msg);
 
     inline bool CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema);
 
@@ -228,7 +237,7 @@ class SQLClusterRouter : public SQLRouter {
 
  private:
     SQLRouterOptions options_;
-    ClusterSDK* cluster_sdk_;
+    DBSDK* cluster_sdk_;
     std::map<std::string, boost::compute::detail::lru_cache<std::string, std::shared_ptr<SQLCache>>> input_lru_cache_;
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;

@@ -78,7 +78,10 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
 
       val root = engine.getPlan
       logger.info("Get HybridSE physical plan: ")
-      root.Print()
+
+      if (config.printPhysicalPlan) {
+        root.Print()
+      }
 
       if (!config.physicalPlanGraphvizPath.equals("")) {
         logger.info("Draw the physical plan and save to " + config.physicalPlanGraphvizPath)

@@ -11,7 +11,7 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  HYBRIDSE_SOURCE:
+  HYBRIDSE_SOURCE: local
 
 jobs:
   build_and_cpp_ut:
@@ -241,7 +241,47 @@ jobs:
           VERSION=$(echo "$VERSION" | sed -e 's/^v//')
           ./steps/package_openmldb_javasdk.sh "$VERSION"
         env:
+          # do not set user.home on macos
           MAVEN_OPTS: -Duser.home=/github/home
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+  java-sdk-deploy-mac:
+    runs-on: macos-latest
+    # TODO(hw): needs ut on mac
+    needs: [ "build_and_cpp_ut", "sql_sdk_test", "sql_cluster_test", "java-sdk", "python-sdk" ]
+    # java deploy is triggered with a push to main or a tag push
+    # a 'vX.Y.Z' tag push will deploy a release version to maven central,
+    # any other push will deploy a SNAPSHOT version.
+    # see more in 'steps/package_openmldb_javasdk.sh'
+    if: >
+      success() && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '8'
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_TOKEN
+          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
+
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v3
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: upload to maven
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=$(echo "$VERSION" | sed -e 's/^v//')
+          ./steps/package_openmldb_javasdk.sh "$VERSION"
+        env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}

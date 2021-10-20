@@ -15,7 +15,7 @@
 
 FROM centos:7
 
-LABEL org.opencontainers.image.source https://github.com/4paradigm/HybridSE
+LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
 
 COPY setup_cmake.sh /
 # hadolint ignore=DL3031

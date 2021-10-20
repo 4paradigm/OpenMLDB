@@ -182,6 +182,7 @@ Status SqlCompiler::BuildRequestModePhysicalPlan(SqlContext* ctx, const ::hybrid
     CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(), &ctx->encoded_request_schema), kPlanError,
                "Fail to encode request schema");
     ctx->request_name = transformer.request_name();
+    ctx->request_db_name = transformer.request_db_name();
     ctx->schema = *(*output)->GetOutputSchema();
     return Status::OK();
 }
@@ -204,6 +205,7 @@ Status SqlCompiler::BuildBatchRequestModePhysicalPlan(SqlContext* ctx, const ::h
                                           &ctx->encoded_request_schema),
                kPlanError, "Fail to encode request schema");
     ctx->request_name = transformer.request_name();
+    ctx->request_db_name = transformer.request_db_name();
 
     // set batch request output schema
     const auto& output_common_indices =
@@ -284,7 +286,7 @@ bool SqlCompiler::BuildClusterJob(SqlContext& ctx, Status& status) {  // NOLINT
     }
     bool is_request_mode = vm::kRequestMode == ctx.engine_mode ||
                            vm::kBatchRequestMode == ctx.engine_mode;
-    RunnerBuilder runner_builder(&ctx.nm, ctx.sql,
+    RunnerBuilder runner_builder(&ctx.nm, ctx.sql, ctx.db,
                                  ctx.is_cluster_optimized && is_request_mode,
                                  ctx.batch_request_info.common_column_indices,
                                  ctx.batch_request_info.common_node_set);

@@ -34,7 +34,7 @@
 #include "proto/tablet.pb.h"
 
 using ::openmldb::base::Slice;
-using ::openmldb::base::Status;
+using ::openmldb::log::Status;
 
 DECLARE_string(snapshot_compression);
 bool compressed_ = true;

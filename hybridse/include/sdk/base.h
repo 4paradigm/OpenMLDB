@@ -140,6 +140,7 @@ class ProcedureInfo {
     virtual const hybridse::sdk::Schema& GetOutputSchema() const = 0;
     virtual const std::vector<std::string>& GetTables() const = 0;
     virtual const std::string& GetMainTable() const = 0;
+    virtual const std::string& GetMainDb() const = 0;
 };
 
 }  // namespace sdk

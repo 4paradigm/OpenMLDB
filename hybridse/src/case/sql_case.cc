@@ -768,8 +768,11 @@ bool SqlCase::ExtractInputTableDef(const TableInfo& input,
             return false;
         }
     }
-
-    table.set_catalog(db_);
+    if (input.db_.empty()) {
+        table.set_catalog(db_);
+    } else {
+        table.set_catalog(input.db_);
+    }
     table.set_name(input.name_);
     return true;
 }
@@ -919,6 +922,10 @@ bool SqlCase::CreateRowsFromYamlNode(
 }
 bool SqlCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
                                           SqlCase::TableInfo* table) {
+    if (schema_data["db"]) {
+        table->db_ = schema_data["db"].as<std::string>();
+        boost::trim(table->db_);
+    }
     if (schema_data["name"]) {
         table->name_ = schema_data["name"].as<std::string>();
         boost::trim(table->name_);
@@ -1540,40 +1547,7 @@ hybridse::sqlcase::SqlCase SqlCase::LoadSqlCaseWithID(
     return SqlCase();
 }
 std::string FindSqlCaseBaseDirPath() {
-    auto base_dir = SqlCase::SqlCaseBaseDir();
-    if (!base_dir.empty()) {
-        return base_dir;
-    }
-    boost::filesystem::path current_path(boost::filesystem::current_path());
-    boost::filesystem::path hybridse_path;
-    bool find_hybridse_dir = false;
-
-    while (current_path.has_parent_path()) {
-        current_path = current_path.parent_path();
-        if (current_path.filename().string() == "fesql") {
-            hybridse_path = current_path;
-            find_hybridse_dir = true;
-            break;
-        }
-        boost::filesystem::directory_iterator endIter;
-        for (boost::filesystem::directory_iterator iter(current_path);
-             iter != endIter; iter++) {
-            if (boost::filesystem::is_directory(*iter) &&
-                iter->path().filename() == "fesql") {
-                hybridse_path = iter->path();
-                find_hybridse_dir = true;
-                break;
-            }
-        }
-        if (find_hybridse_dir) {
-            break;
-        }
-    }
-
-    if (find_hybridse_dir) {
-        return hybridse_path.string();
-    }
-    return std::string();
+    return SqlCase::SqlCaseBaseDir();
 }
 void InitCases(std::string yaml_path, std::vector<SqlCase>& cases) {  // NOLINT
     SqlCase::CreateSqlCasesFromYaml(hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases);

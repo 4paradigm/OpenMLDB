@@ -50,3 +50,79 @@ cases:
   - id: 8-2
     desc: LastJoin有不等式条件无ORDER BY
     sql: SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 on t1.col1 = t2.col2 and t2.col5 >= t1.col5;
+  - id: 9-1
+    desc: t1 LAST JOIN db2.table2
+    sql: |
+      SELECT t1.COL1, t1.COL2, db2.table2.COL1, db2.table2.COL2 FROM t1 last join db2.table2 order by
+      db2.table2.col5 on t1.col1 = db2.table2.col2;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: t1
+          |  |    |    +-column_name: COL1
+          |  |    +-name: <nil>
+          |  +-1:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: t1
+          |  |    |    +-column_name: COL2
+          |  |    +-name: <nil>
+          |  +-2:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: db2.table2
+          |  |    |    +-column_name: COL1
+          |  |    +-name: <nil>
+          |  +-3:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: db2.table2
+          |      |    +-column_name: COL2
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kJoin
+          |      +-join_type: LastJoin
+          |      +-left:
+          |      |  +-node[kTableRef]: kTable
+          |      |    +-table: t1
+          |      |    +-alias: <nil>
+          |      +-right:
+          |        +-node[kTableRef]: kTable
+          |          +-table: table2
+          |          +-alias: <nil>
+          |      +-order_expressions:
+          |        +-node[kExpr]
+          |          +-order_expressions: (db2.table2.col5 ASC)
+          |      +-on:
+          |        +-expr[binary]
+          |          +-=[list]:
+          |            +-0:
+          |            |  +-expr[column ref]
+          |            |    +-relation_name: t1
+          |            |    +-column_name: col1
+          |            +-1:
+          |              +-expr[column ref]
+          |                +-relation_name: db2.table2
+          |                +-column_name: col2
+          +-window_list: []
+  - id: 9-2
+    desc: db.t1 LAST JOIN db2.table2
+    sql: |
+      SELECT db.t1.COL1, db.t1.COL2, db2.table2.COL1, db2.table2.COL2 FROM db.t1 last join db2.table2 order by
+      db2.table2.col5 on db.t1.col1 = db2.table2.col2;
+
