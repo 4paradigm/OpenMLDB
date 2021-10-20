@@ -34,7 +34,7 @@ message ProcedureInfo {
     optional string main_db = 7;
     repeated string tables = 8; // dependent tables
     repeated string dbs = 9; // dependent dbs
-    optional openmldb.type.ProcedureType type = 10;
+    optional openmldb.type.ProcedureType type = 10 [default = kNormal];
 }
 
 message CreateProcedureRequest {
