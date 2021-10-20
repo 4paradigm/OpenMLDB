@@ -68,103 +68,109 @@ std::string db = "";  // NOLINT
 class SaveFileOptions
 {
     public:
-        SaveFileOptions()
-            : format("csv"), mode("error_if_exists"), delimiter(","), nullValues("null"), header(true) {
-            if ((filePath = getcwd(NULL, 0)) != NULL) {
-                std::cout << "File path is current working directory in default" << std::endl;
+        SaveFileOptions(const std::string file_path) {
+            file_path_ = file_path.c_str();
+            if (access(file_path_, 0) == 0) {
+                throw "File already exists";
             } else {
-                throw "Can't set file path";
+                fstream_->open(file_path_);
+            }
+            if (fstream_->is_open() == false) {
+                throw "Fail to open file, please check file path";
             }
         }
-        SaveFileOptions(const std::string &filePath, std::shared_ptr<hybridse::node::OptionsMap> optionsMap) {
-            this->filePath = filePath.c_str(); 
-            for (auto iter = optionsMap->begin(); iter != optionsMap->end(); iter++) {
+        SaveFileOptions(const std::string &file_path, std::shared_ptr<hybridse::node::OptionsMap> options_map) {
+            // TODO(zekai): Resolved file path like (file:////usr/test.csv) or (hdfs:////usr/test.csv)
+            file_path_ = file_path.c_str();
+            for (auto iter = options_map->begin(); iter != options_map->end(); iter++) {
                 std::string key = iter->first;
                 if (key == "format") {
-                    format = iter->second->GetStr();
+                    format_ = iter->second->GetStr();
                 } else if (key == "mode") {
-                    mode = iter->second->GetStr();
+                    mode_ = iter->second->GetStr();
                 } else if (key == "delimiter") {
-                    delimiter = iter->second->GetStr();
+                    delimiter_ = iter->second->GetStr();
                 } else if (key == "nullValues") {
-                    nullValues = iter->second->GetStr();
+                    nullValues_ = iter->second->GetStr();
                 } else if (key == "header") {
-                    header = iter->second->GetBool();
+                    header_ = iter->second->GetBool();
                 } else {
                     throw "This option (" + key + ") is not currently supported";
                 }
             }
-            if (strcmp(mode, "errorifexists") == 0) {
-                if (access(filePath.c_str(), 0) == 0) {
+            if (strcmp(mode_, "error_if_exists") == 0) {
+                if (access(file_path_, 0) == 0) {
                     throw "File already exists";
                 } else {
-                    fstream->open(filePath);
+                    fstream_->open(file_path);
                 }
-            } else if (strcmp(mode, "overwrite") == 0) {
-                fstream->open(filePath, std::ios::out);
-            } else if (strcmp(mode, "append") == 0) {
-                fstream->open(filePath, std::ios::app);
+            } else if (strcmp(mode_, "overwrite") == 0) {
+                fstream_->open(file_path_, std::ios::out);
+            } else if (strcmp(mode_, "append") == 0) {
+                fstream_->open(file_path_, std::ios::app);
             } else {
-                std::string modeStr = mode;
-                throw "This mode (" + modeStr + ") is not currently supported";
+                std::string mode_str = mode_;
+                throw "This mode (" + mode_str + ") is not currently supported";
+            }
+            if (fstream_->is_open() == false) {
+                throw "Fail to open file, please check file path";
             }
         }
         ~SaveFileOptions() {
-            fstream->close();
+            fstream_->close();
         }
-        const char* getFormat() const{
-            return format;
+        const char* GetFormat() const{
+            return format_;
         }
-        const char* getNullValues() const{
-            return nullValues;
+        const char* GetNullValues() const{
+            return nullValues_;
         }
-        const char* getDelimiter() const{
-            return delimiter;
+        const char* GetDelimiter() const{
+            return delimiter_;
         }
-        const char* getFilePath() const{
-            return filePath;
+        const char* GetFilePath() const{
+            return file_path_;
         }
-        bool getHeader() const{
-            return header;
+        bool GetHeader() const{
+            return header_;
         }
-        std::ofstream* getOfstream() {
-            return fstream;
+        std::ofstream* GetOfstream() {
+            return fstream_;
         }
     private:
-        const char* format;
-        const char* mode;
-        const char* delimiter;
-        const char* nullValues;
-        const char* filePath;
-        bool header;
-        std::ofstream* fstream = nullptr;
+        const char* format_ = "csv";
+        const char* mode_ = "error_if_exists";
+        const char* delimiter_ = ",";
+        const char* nullValues_ = "null";
+        const char* file_path_ = "";
+        bool header_ = true;
+        std::ofstream* fstream_ = nullptr;
 };
 
 
-void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &filePath,
-    std::shared_ptr<hybridse::node::OptionsMap> optionsMap) {
-    openmldb::cmd::SaveFileOptions *options;
+void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &file_path,
+    std::shared_ptr<hybridse::node::OptionsMap> options_map) {
+    std::shared_ptr<openmldb::cmd::SaveFileOptions> options;
     try {
-        options = new openmldb::cmd::SaveFileOptions(filePath, optionsMap);
+        options.reset(new openmldb::cmd::SaveFileOptions(file_path, options_map));
     } catch (const char* errorMsg) {
         std::cout << errorMsg << std::endl;
-        delete options;
         return;
     }
-    if (strcmp(options->getFormat(), "csv") == 0) {
+    if (strcmp(options->GetFormat(), "csv") == 0) {
         if (!result_set || result_set->Size() == 0) {
             return;
         }
         auto *schema = result_set->GetSchema();
         // Add Header
-        if (options->getHeader() == true) {
+        if (options->GetHeader() == true) {
             std::string schemaString = "";
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 schemaString.append(schema->GetColumnName(i));
                 if (i != schema->GetColumnCnt()-1) {
-                    schemaString.append(options->getDelimiter());
+                    schemaString.append(options->GetDelimiter());
                 } else {
-                    *options->getOfstream() << schemaString << std::endl;
+                    *options->GetOfstream() << schemaString << std::endl;
                 }
             }
         }
@@ -172,7 +178,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
             std::string rowString = "";
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 if (result_set->IsNULL(i)) {
-                    rowString.append(options->getNullValues());
+                    rowString.append(options->GetNullValues());
                 } else {
                     auto data_type = schema->GetColumnType(i);
                     switch (data_type) {
@@ -239,19 +245,17 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                         }
                     }
                     if (i != schema->GetColumnCnt()-1) {
-                        rowString.append(options->getDelimiter());
+                        rowString.append(options->GetDelimiter());
                     } else {
-                        *options->getOfstream() << rowString << std::endl;
+                        *options->GetOfstream() << rowString << std::endl;
                     }
                 }
             }
         }
         std::cout << "Save successfully" << std::endl;
     } else {
-        std::cout << "This format (" << options->getFormat() << ") is not currently supported" << std::endl;
-        return;
+        std::cout << "This format (" << options->GetFormat() << ") is not currently supported" << std::endl;
     }
-    delete options;
 }
 
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
