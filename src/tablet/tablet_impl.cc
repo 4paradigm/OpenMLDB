@@ -4595,8 +4595,8 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
         return;
     }
-    if (!mem_table->AddIndex(request->column_key(0))) {
-        PDLOG(WARNING, "add index %s failed. tid %u, pid %u", request->column_key(0).index_name().c_str(), tid, pid);
+    if (!mem_table->AddIndex(request->column_key())) {
+        PDLOG(WARNING, "add index failed. tid %u, pid %u", tid, pid);
         base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
         return;
     }

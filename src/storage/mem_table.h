@@ -221,7 +221,7 @@ class MemTable : public Table {
 
     bool DeleteIndex(const std::string& idx_name);
 
-    bool AddIndex(const ::openmldb::common::ColumnKey& column_key);
+    bool AddIndex(const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs);
 
  private:
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
