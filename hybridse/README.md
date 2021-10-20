@@ -49,33 +49,32 @@ HybridSE has following characteristic:
 ## Prepare Code & Docker
 
 ```bash
-git clone --recursive https://github.com/4paradigm/HybridSE.git
-cd HybridSE
-docker run -v `pwd`:/HybridSE -it ghcr.io/4paradigm/hybridsql:0.3.0
-cd /HybridSE
-# init enviroment before build
-./tools/init_env.profile.sh
+git clone --recursive https://github.com/4paradigm/OpenMLDB.git
+cd OpenMLDB/
+docker run -v `pwd`:/OpenMLDB -it ghcr.io/4paradigm/hybridsql:0.4.0
 ```
 
-It is recommended using the docker image listed above for faster start and avoid dependency hole. You may checkout [HybridSQL-docker](https://github.com/4paradigm/HybridSQL-docker/blob/main/README.md) for complete dependency.
+It is recommended using the docker image listed above for faster start and avoid dependency hole. You may checkout [HybridSQL-docker](https://github.com/4paradigm/OpenMLDB/tree/main/hybridse/docker) for complete dependency.
 
 ## Build
 
 ```bash
-cd /HybridSE
+cd /OpenMLDB/hybridse
 mkdir -p build && cd build
-cmake ..
-# compile the core library
-make -j$(nproc) hybridse_core # install coreutils if nproc not found in mac
+# run by single script
+./tools/hybridse_build.sh
 ```
 
 ## Install
 
 ```bash
-cd /HybridSE
-mkdir -p build && cd build
-cmake ..  -DCMAKE_INSTALL_PREFIX="CONFIG_YOUR_HYRBIDSE_INSTALL_DIR"
-make -j$(nproc) install
+cd /OpenMLDB/hybridse
+# custom install directory
+cmake -H. -Bbuild  -DCMAKE_INSTALL_PREFIX="CONFIG_YOUR_HYRBIDSE_INSTALL_DIR"
+cd build && make -j$(nproc) install
+
+# or run single script, which will default install to 'hybridse/build/hybridse'
+./tools/hybridse_deploy.sh
 ```
 
 checkout [HybridSE Quick start](https://github.com/4paradigm/HybridSQL-docs/blob/main/hybridse/usage/quick_start.md) for more information
@@ -83,21 +82,22 @@ checkout [HybridSE Quick start](https://github.com/4paradigm/HybridSQL-docs/blob
 ## Run tests
 
 ```bash
-cd /HybridSE
-mkdir -p build & cd buid
-cmake .. -DTESTING_ENABLE=ON
-export SQL_CASE_BASE_DIR=/HybridSE
+cd /OpenMLDB/hybridse
+cmake -H. -Bbuild -DTESTING_ENABLE=ON
+cd build
+export SQL_CASE_BASE_DIR=/OpenMLDB
 make -j$(nproc) && make -j$(nproc) test
 ```
 
 ## Run simple engine demo
 
 ```bash
-cd /HybridSE
-mkdir build
-cd build
-cmake ..
-make -j$(nproc) hybridse_proto && make -j$(nproc) simple_engine_demo
+cd /OpenMLDB/hybridse
+# compile
+cmake -H. -Bbuild -DEXAMPLES_ENABLE=ON
+cd build/
+make simple_engine_demo -j$(nproc)
+# run
 ./src/simple_engine_demo
 ```
 
@@ -108,16 +108,16 @@ make -j$(nproc) hybridse_proto && make -j$(nproc) simple_engine_demo
 - Build ToyDB
 
 ```bash
-cd /HybridSE
-mkdir build
-cmake .. -DEXAMPLES_ENABLE=ON
-make -j$(nproc) hybridse_proto && make toydb -j$(nproc)
+cd /OpenMLDB/hybridse
+cmake -H. -Bbuild -DEXAMPLES_ENABLE=ON
+cd build/
+make toydb -j$(nproc)
 ```
 
 - Start ToyDB
 
 ```bash
-cd /HybridSE/examples/toydb/onebox
+cd /OpenMLDB/hybridse/examples/toydb/onebox
 sh start_all.sh
 sh start_cli.sh
 ```

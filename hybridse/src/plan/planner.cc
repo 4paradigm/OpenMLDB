@@ -15,6 +15,7 @@
  */
 
 #include "plan/planner.h"
+
 #include <algorithm>
 #include <map>
 #include <random>
@@ -22,6 +23,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "plan/plan_api.h"
 #include "proto/fe_common.pb.h"
 #include "udf/default_udf_library.h"
@@ -84,13 +86,11 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         current_node = node_manager_->MakeFilterPlanNode(current_node, root->where_clause_ptr_);
     }
 
-
-
     // select target_list
     CHECK_TRUE(nullptr != root->GetSelectList() && !root->GetSelectList()->GetList().empty(), common::kPlanError,
                "fail to create select query plan: select expr list is null or empty")
 
-    const udf::UdfLibrary* lib = udf::DefaultUdfLibrary::get();
+    const udf::UdfLibrary *lib = udf::DefaultUdfLibrary::get();
     // prepare window list
     std::map<const node::WindowDefNode *, node::ProjectListNode *> project_list_map;
     node::ProjectListNode *table_project_list = node_manager_->MakeProjectListPlanNode(nullptr, false);
@@ -298,6 +298,30 @@ base::Status Planner::CreateWindowPlanNode(const node::WindowDefNode *w_ptr, nod
     return base::Status::OK();
 }
 
+base::Status Planner::CreateDeployPlanNode(const node::DeployNode *root, node::PlanNode **output) {
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create deploy plan with null node");
+    *output = node_manager_->MakeDeployPlanNode(root->Name(), root->Stmt(), root->StmtStr(), root->IsIfNotExists());
+    return base::Status::OK();
+}
+
+base::Status Planner::CreateLoadDataPlanNode(const node::LoadDataNode *root, node::PlanNode **output) {
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create load data plan with null node");
+    *output = node_manager_->MakeLoadDataPlanNode(root->File(), root->Db(), root->Table(), root->Options());
+    return base::Status::OK();
+}
+
+base::Status Planner::CreateSelectIntoPlanNode(const node::SelectIntoNode *root, node::PlanNode **output) {
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create select into plan with null node");
+    *output = node_manager_->MakeSelectIntoPlanNode(root->Query(), root->QueryStr(), root->OutFile(), root->Options());
+    return base::Status::OK();
+}
+
+base::Status Planner::CreateSetPlanNode(const node::SetNode *root, node::PlanNode **output) {
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create set plan with null node");
+    *output = node_manager_->MakeSetPlanNode(root);
+    return base::Status::OK();
+}
+
 base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create table plan with null node")
     const node::CreateStmt *create_tree = static_cast<const node::CreateStmt *>(root);
@@ -430,15 +454,41 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 break;
             }
             case ::hybridse::node::kExplainStmt: {
-                node::PlanNode* explan_plan = nullptr;
+                node::PlanNode *explan_plan = nullptr;
                 CHECK_STATUS(CreateExplainPlan(parser_tree, &explan_plan))
                 plan_trees.push_back(explan_plan);
                 break;
             }
             case ::hybridse::node::kCreateIndexStmt: {
-                node::PlanNode* create_index_plan = nullptr;
+                node::PlanNode *create_index_plan = nullptr;
                 CHECK_STATUS(CreateCreateIndexPlan(parser_tree, &create_index_plan))
                 plan_trees.push_back(create_index_plan);
+                break;
+            }
+            case ::hybridse::node::kSelectIntoStmt: {
+                node::PlanNode *select_into_plan_node = nullptr;
+                CHECK_STATUS(CreateSelectIntoPlanNode(dynamic_cast<node::SelectIntoNode *>(parser_tree),
+                                                      &select_into_plan_node));
+                plan_trees.push_back(select_into_plan_node);
+                break;
+            }
+            case ::hybridse::node::kLoadDataStmt: {
+                node::PlanNode *load_data_plan_node = nullptr;
+                CHECK_STATUS(
+                    CreateLoadDataPlanNode(dynamic_cast<node::LoadDataNode *>(parser_tree), &load_data_plan_node));
+                plan_trees.push_back(load_data_plan_node);
+                break;
+            }
+            case ::hybridse::node::kDeployStmt: {
+                node::PlanNode *deploy_plan_node = nullptr;
+                CHECK_STATUS(CreateDeployPlanNode(dynamic_cast<node::DeployNode *>(parser_tree), &deploy_plan_node));
+                plan_trees.push_back(deploy_plan_node);
+                break;
+            }
+            case ::hybridse::node::kSetStmt: {
+                node::PlanNode *set_plan_node = nullptr;
+                CHECK_STATUS(CreateSetPlanNode(dynamic_cast<node::SetNode *>(parser_tree), &set_plan_node));
+                plan_trees.push_back(set_plan_node);
                 break;
             }
             default: {

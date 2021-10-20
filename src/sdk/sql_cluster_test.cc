@@ -143,7 +143,7 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         request_row->AppendInt64(3);
         ASSERT_TRUE(request_row->Build());
         auto sql_cluster_router = std::dynamic_pointer_cast<SQLClusterRouter>(router);
-        auto client = sql_cluster_router->GetTabletClient(db, sql, request_row);
+        auto client = sql_cluster_router->GetTabletClient(db, sql, hybridse::vm::kRequestMode, request_row);
         int pid = ::openmldb::base::hash64(pk) % 2;
         ASSERT_EQ(client->GetEndpoint(), tables[0].table_partition(pid).partition_meta(0).endpoint());
     }
@@ -378,6 +378,38 @@ TEST_F(SQLClusterTest, create_table) {
     ASSERT_EQ(pid_map.begin()->second, pid_map.rbegin()->second);
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test1;", &status));
+    ASSERT_TRUE(router->DropDB(db, &status));
+}
+
+TEST_F(SQLClusterTest, get_table_schema) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string db = "db" + GenRand();
+    std::string table = "test0";
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+
+    std::string ddl = "create table " + table +
+                      "("
+                      "col1 string, col2 bigint,"
+                      "index(key=col1, ts=col2)) "
+                      "options(partitionnum=3);";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    auto schema = router->GetTableSchema(db, table);
+    ASSERT_EQ(schema->GetColumnCnt(), 2);
+    ASSERT_EQ(schema->GetColumnName(0), "col1");
+    ASSERT_EQ(schema->GetColumnType(0), hybridse::sdk::DataType::kTypeString);
+    ASSERT_EQ(schema->GetColumnName(1), "col2");
+    ASSERT_EQ(schema->GetColumnType(1), hybridse::sdk::DataType::kTypeInt64);
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
 }
 

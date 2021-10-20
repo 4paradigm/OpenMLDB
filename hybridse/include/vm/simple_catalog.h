@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef HYBRIDSE_SRC_VM_SIMPLE_CATALOG_H_
-#define HYBRIDSE_SRC_VM_SIMPLE_CATALOG_H_
+#ifndef HYBRIDSE_INCLUDE_VM_SIMPLE_CATALOG_H_
+#define HYBRIDSE_INCLUDE_VM_SIMPLE_CATALOG_H_
 
 #include <map>
 #include <memory>
@@ -109,4 +109,4 @@ class SimpleCatalog : public Catalog {
 
 }  // namespace vm
 }  // namespace hybridse
-#endif  // HYBRIDSE_SRC_VM_SIMPLE_CATALOG_H_
+#endif  // HYBRIDSE_INCLUDE_VM_SIMPLE_CATALOG_H_

@@ -170,6 +170,20 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const std::vec
     output << org_tab << SPACE_ST << item_name << ": " << ss.str();
 }
 
+void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap &value,
+                const std::string &item_name, bool last_child) {
+    output << org_tab << SPACE_ST << item_name << ":";
+    if (value.empty()) {
+        output << " <nil>";
+        return;
+    }
+    auto new_tab = org_tab + INDENT + SPACE_ED;
+    for (auto it = value.begin(); it != value.end(); ++it) {
+        output << "\n";
+        PrintSqlNode(output, new_tab, it->second, it->first, std::next(it) == value.end());
+    }
+}
+
 bool SqlNode::Equals(const SqlNode *that) const {
     if (this == that) {
         return true;
@@ -1038,6 +1052,18 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kInputParameter:
             output = "kInputParameter";
             break;
+        case kDeployStmt:
+            output = "kDeployStmt";
+            break;
+        case kSelectIntoStmt:
+            output = "kSelectIntoStmt";
+            break;
+        case kLoadDataStmt:
+            output = "kLoadDataStmt";
+            break;
+        case kSetStmt:
+            output = "kSetStmt";
+            break;
         case kUnknow:
             output = "kUnknow";
             break;
@@ -1296,6 +1322,53 @@ void ExplainNode::Print(std::ostream &output, const std::string &org_tab) const 
     output << "\n";
     PrintSqlNode(output, tab, query_, "query", true);
 }
+
+void DeployNode::Print(std::ostream& output, const std::string& org_tab) const {
+    SqlNode::Print(output, org_tab);
+
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, if_not_exists_ ? "true" : "false", "if_not_exists", false);
+    output << "\n";
+    PrintValue(output, tab, name_, "name", false);
+    output << "\n";
+    PrintSqlNode(output, tab, stmt_, "stmt", true);
+}
+
+void SelectIntoNode::Print(std::ostream &output, const std::string &tab) const {
+    SqlNode::Print(output, tab);
+    const std::string new_tab = tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, new_tab, OutFile(), "out_file", false);
+    output << "\n";
+    PrintSqlNode(output, new_tab, Query(), "query", false);
+    output << "\n";
+    PrintValue(output, new_tab, *Options().get(), "options", true);
+}
+
+void LoadDataNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, File(), "file", false);
+    output << "\n";
+    PrintValue(output, tab, Db(), "db", false);
+    output << "\n";
+    PrintValue(output, tab, Table(), "table", false);
+    output << "\n";
+    PrintValue(output, tab, *Options().get(), "options", true);
+}
+
+void SetNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, Key(), "key", false);
+    output << "\n";
+    PrintSqlNode(output, tab, Value(), "value", true);
+}
+
 void InsertStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;

@@ -21,6 +21,7 @@
 
 #include <iostream>
 #include <map>
+#include <unordered_map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -40,6 +41,10 @@ class LlvmUdfGenBase;
 
 namespace hybridse {
 namespace node {
+
+class ConstNode;
+
+typedef std::unordered_map<std::string, const ConstNode*> OptionsMap;
 
 // Global methods
 std::string NameOfSqlNodeType(const SqlNodeType &type);
@@ -72,9 +77,16 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "exit";
         case kCmdCreateIndex:
             return "create index";
-        default:
+        case kCmdShowDeployment:
+            return "show deployment";
+        case kCmdShowDeployments:
+            return "show deployments";
+        case kCmdDropDeployment:
+            return "drop deployment";
+        case kCmdUnknown:
             return "unknown cmd type";
     }
+    return "undefined cmd type";
 }
 
 inline const std::string ExplainTypeName(const ExplainType &explain_type) {
@@ -1969,6 +1981,66 @@ class CmdNode : public SqlNode {
     std::vector<std::string> args_;
 };
 
+class SelectIntoNode : public SqlNode {
+ public:
+    explicit SelectIntoNode(const QueryNode* query, const std::string& query_str, const std::string& out,
+                            const std::shared_ptr<OptionsMap> options)
+        : SqlNode(kSelectIntoStmt, 0, 0), query_(query), query_str_(query_str), out_file_(out), options_(options) {}
+    ~SelectIntoNode() {}
+
+    const QueryNode* Query() const { return query_; }
+    const std::string& QueryStr() const { return query_str_; }
+    const std::string& OutFile() const { return out_file_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+    void Print(std::ostream& output, const std::string& org_tab) const override;
+
+ private:
+    const QueryNode* query_;
+    const std::string query_str_;
+    const std::string out_file_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
+class LoadDataNode : public SqlNode {
+ public:
+    explicit LoadDataNode(const std::string& f, const std::string& db, const std::string& table,
+                          const std::shared_ptr<OptionsMap> op)
+        : SqlNode(kLoadDataStmt, 0, 0), file_(f), db_(db), table_(table), options_(op) {}
+    ~LoadDataNode() {}
+
+    const std::string& File() const { return file_; }
+    const std::string& Db() const { return db_; }
+    const std::string& Table() const { return table_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
+ private:
+    const std::string file_;
+    const std::string db_;
+    const std::string table_;
+    // TODO(aceforeverd): extend value to other type like number, list
+    //    replace map with optimized class
+    const std::shared_ptr<OptionsMap> options_ = nullptr;
+};
+
+class SetNode : public SqlNode {
+ public:
+    explicit SetNode(const std::string& key, const ConstNode* value)
+        : SqlNode(kSetStmt, 0, 0), key_(key), value_(value) {}
+    ~SetNode() {}
+
+    const std::string& Key() const { return key_; }
+    const ConstNode* Value() const { return value_; }
+
+    void Print(std::ostream& output, const std::string& org_tab) const override;
+
+ private:
+    const std::string key_;
+    const ConstNode* value_;
+};
+
 class CreateIndexNode : public SqlNode {
  public:
     explicit CreateIndexNode(const std::string &index_name, const std::string &table_name, ColumnIndexNode *index)
@@ -1988,6 +2060,26 @@ class ExplainNode : public SqlNode {
 
     const node::ExplainType explain_type_;
     const node::QueryNode *query_;
+};
+
+class DeployNode : public SqlNode {
+ public:
+    explicit DeployNode(const std::string& name, const SqlNode* stmt, const std::string& stmt_str, bool if_not_exists)
+        : SqlNode(kDeployStmt, 0, 0), name_(name), stmt_(stmt), stmt_str_(stmt_str), if_not_exists_(if_not_exists) {}
+    ~DeployNode() {}
+
+    const std::string& Name() const { return name_; }
+    const SqlNode* Stmt() const { return stmt_; }
+    const bool IsIfNotExists() const { return if_not_exists_; }
+    const std::string& StmtStr() const { return stmt_str_; }
+
+    void Print(std::ostream& output, const std::string& tab) const override;
+
+ private:
+    const std::string name_;
+    const SqlNode* stmt_ = nullptr;
+    const std::string stmt_str_;
+    const bool if_not_exists_ = false;
 };
 
 class FnParaNode : public FnNode {
@@ -2507,6 +2599,11 @@ void PrintSqlVector(std::ostream &output, const std::string &tab, const NodePoin
 void PrintSqlVector(std::ostream &output, const std::string &tab, const std::vector<ExprNode *> &vec,
                     const std::string &vector_name, bool last_item);
 void PrintValue(std::ostream &output, const std::string &org_tab, const std::string &value,
+                const std::string &item_name, bool last_child);
+void PrintValue(std::ostream &output, const std::string &org_tab, const std::vector<std::string> &vec,
+                const std::string &item_name, bool last_child);
+
+void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap &value,
                 const std::string &item_name, bool last_child);
 }  // namespace node
 }  // namespace hybridse

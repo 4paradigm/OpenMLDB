@@ -81,6 +81,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     request.set_is_debug(is_debug);
     request.set_parameter_row_size(parameter_row.size());
     request.set_parameter_row_slices(1);
+    request.set_is_performance_sensitive(true);
     for (auto& type : parameter_types) {
         request.add_parameter_types(type);
     }

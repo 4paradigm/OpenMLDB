@@ -82,6 +82,60 @@ TEST_F(EngineCompileTest, EngineLRUCacheTest) {
     }
 }
 
+TEST_F(EngineCompileTest, EngineLRUCacheTestWithPerformanceSensitive) {
+    // Build Simple Catalog
+    auto catalog = BuildSimpleCatalog();
+
+    // database simple_db
+    hybridse::type::Database db;
+    db.set_name("simple_db");
+
+    // table t1
+    hybridse::type::TableDef table_def;
+    sqlcase::CaseSchemaMock::BuildTableDef(table_def);
+    table_def.set_name("t1");
+    ::hybridse::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    AddTable(db, table_def);
+
+    // table t2
+    hybridse::type::TableDef table_def2;
+    sqlcase::CaseSchemaMock::BuildTableDef(table_def2);
+    table_def2.set_name("t2");
+    AddTable(db, table_def2);
+    catalog->AddDatabase(db);
+
+    // Simple Engine
+    EngineOptions options;
+    options.set_compile_only(true);
+    options.set_max_sql_cache_size(1);
+    Engine engine(catalog, options);
+
+    std::string sql = "select col1, col2 from t1;";
+    {
+        base::Status get_status;
+        BatchRunSession bsession1;
+        bsession1.SetPerformanceSensitive(true);
+        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession1, get_status)) << get_status;
+        ASSERT_EQ(get_status.code, common::kOk);
+
+        BatchRunSession bsession2;
+        bsession2.SetPerformanceSensitive(true);
+        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_EQ(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
+
+        BatchRunSession bsession3;
+        bsession3.SetPerformanceSensitive(false);
+        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession3, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_NE(bsession2.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
+    }
+}
+
 TEST_F(EngineCompileTest, EngineWithParameterizedLRUCacheTest) {
     // Build Simple Catalog
     auto catalog = BuildSimpleCatalog();
@@ -189,7 +243,6 @@ TEST_F(EngineCompileTest, EngineEmptyDefaultDBLRUCacheTest) {
     }
 
     EngineOptions options;
-    options.set_performance_sensitive(false);
     Engine engine(catalog, options);
     std::string sql =
         "select db1.t1.col1, db1.t1.col2,db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
@@ -200,21 +253,25 @@ TEST_F(EngineCompileTest, EngineEmptyDefaultDBLRUCacheTest) {
     {
         base::Status get_status;
         BatchRunSession bsession1;
+        bsession1.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "", bsession1, get_status)) << get_status;
         ASSERT_EQ(get_status.code, common::kOk);
         BatchRunSession bsession2;
+        bsession2.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "", bsession2, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_EQ(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
 
         // cache compile info is different under different default db
         BatchRunSession bsession3;
+        bsession3.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "default_db", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_NE(bsession1.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
 
         // cache compile info is different under different default db
         BatchRunSession bsession4;
+        bsession4.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql2, "", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_NE(bsession1.GetCompileInfo().get(), bsession4.GetCompileInfo().get());
@@ -260,7 +317,6 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
             "order by t2.col5 on t1.col1 = t2.col2;"};
         EngineOptions options;
         options.set_compile_only(true);
-        options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
@@ -268,6 +324,7 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             BatchRunSession session;
+            session.SetPerformanceSensitive(false);
             ASSERT_TRUE(engine.Get(sqlstr, "simple_db", session, get_status));
         }
     }
@@ -282,7 +339,6 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
             "on "
             "t1.col1 = t2.col2;"};
         EngineOptions options;
-        options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
@@ -298,20 +354,32 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
 
 TEST_F(EngineCompileTest, EngineGetDependentTableTest) {
     {
-        std::vector<std::pair<std::string, std::set<std::string>>> pairs;
+        std::vector<std::pair<std::string, std::set<std::pair<std::string, std::string>>>> pairs;
         pairs.push_back(std::make_pair("SELECT col1, col2 from t1;",
-                                       std::set<std::string>({"t1"})));
-        pairs.push_back(
-            std::make_pair("SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
-                           "last join t2 "
-                           "order by t2.col5 on t1.col1 = t2.col2;",
-                           std::set<std::string>({"t1", "t2"})));
+                                       std::set<std::pair<std::string, std::string>>({std::make_pair("", "t1")})));
+        pairs.push_back(std::make_pair(
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
+            "last join t2 "
+            "order by t2.col5 on t1.col1 = t2.col2;",
+            std::set<std::pair<std::string, std::string>>({std::make_pair("", "t1"), std::make_pair("", "t2")})));
 
-        pairs.push_back(
-            std::make_pair("SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
-                           "last join t2 "
-                           "order by t2.col5 on t1.col1 = t2.col2;",
-                           std::set<std::string>({"t1", "t2"})));
+        pairs.push_back(std::make_pair(
+            "SELECT t1.COL1, t1.COL2, db2.t2.COL1, db2.t2.COL2 FROM t1 "
+            "last join db2.t2 "
+            "order by db2.t2.col5 on t1.col1 = db2.t2.col2;",
+            std::set<std::pair<std::string, std::string>>({std::make_pair("", "t1"), std::make_pair("db2", "t2")})));
+
+        pairs.push_back(std::make_pair(
+            "SELECT db1.t1.COL1, db1.t1.COL2, db2.t2.COL1, db2.t2.COL2 FROM db1.t1 "
+            "last join db2.t2 "
+            "order by db2.t2.col5 on db1.t1.col1 = db2.t2.col2;",
+            std::set<std::pair<std::string, std::string>>({std::make_pair("db1", "t1"), std::make_pair("db2", "t2")})));
+
+        pairs.push_back(std::make_pair(
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
+            "last join t2 "
+            "order by t2.col5 on t1.col1 = t2.col2;",
+            std::set<std::pair<std::string, std::string>>({std::make_pair("", "t1"), std::make_pair("", "t2")})));
         pairs.push_back(std::make_pair(
             "SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5,\n"
             "      test_sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER "
@@ -324,7 +392,7 @@ TEST_F(EngineCompileTest, EngineGetDependentTableTest) {
             "t1.col5 = t2.col5\n"
             "      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 "
             "ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
-            std::set<std::string>({"t1", "t2"})));
+            std::set<std::pair<std::string, std::string>>({std::make_pair("", "t1"), std::make_pair("", "t2")})));
 
         for (auto pair : pairs) {
             base::Status get_status;
@@ -334,10 +402,14 @@ TEST_F(EngineCompileTest, EngineGetDependentTableTest) {
             boost::to_lower(sqlstr);
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
-            std::set<std::string> tables;
-            ASSERT_TRUE(engine.GetDependentTables(
-                sqlstr, "simple_db", kBatchMode, &tables, get_status));
-            ASSERT_EQ(tables, pair.second);
+            std::set<std::pair<std::string, std::string>> tables;
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "simple_db", kBatchMode, &tables, get_status));
+            ASSERT_EQ(tables.size(), pair.second.size());
+            for (auto iter = tables.begin(), iter2 = pair.second.begin();
+                 iter != tables.end() && iter2 != pair.second.end(); iter++, iter2++) {
+                ASSERT_EQ(iter->first, iter2->first);
+                ASSERT_EQ(iter->second, iter2->second);
+            }
         }
 
         for (auto pair : pairs) {
@@ -348,18 +420,22 @@ TEST_F(EngineCompileTest, EngineGetDependentTableTest) {
             boost::to_lower(sqlstr);
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
-            std::set<std::string> tables;
-            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", kRequestMode,
-                                                  &tables, get_status));
-            ASSERT_EQ(tables, pair.second);
+            std::set<std::pair<std::string, std::string>> tables;
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", kRequestMode, &tables, get_status));
+            ASSERT_EQ(tables.size(), pair.second.size());
+            for (auto iter = tables.begin(), iter2 = pair.second.begin();
+                 iter != tables.end() && iter2 != pair.second.end(); iter++, iter2++) {
+                ASSERT_EQ(iter->first, iter2->first);
+                ASSERT_EQ(iter->second, iter2->second);
+            }
         }
     }
 
     // const select
     {
-        std::vector<std::pair<std::string, std::set<std::string>>> pairs;
-        pairs.push_back(std::make_pair("SELECT substr(\"hello world\", 3, 6);",
-                                       std::set<std::string>()));
+        std::vector<std::pair<std::string, std::set<std::pair<std::string, std::string>>>> pairs;
+        pairs.push_back(
+            std::make_pair("SELECT substr(\"hello world\", 3, 6);", std::set<std::pair<std::string, std::string>>()));
         for (auto pair : pairs) {
             base::Status get_status;
             EngineOptions options;
@@ -368,10 +444,9 @@ TEST_F(EngineCompileTest, EngineGetDependentTableTest) {
             boost::to_lower(sqlstr);
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
-            std::set<std::string> tables;
-            ASSERT_TRUE(engine.GetDependentTables(
-                sqlstr, "simple_db", kBatchMode, &tables, get_status));
-            ASSERT_EQ(tables, pair.second);
+            std::set<std::pair<std::string, std::string>> tables;
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "simple_db", kBatchMode, &tables, get_status));
+            ASSERT_EQ(tables.size(), pair.second.size());
         }
     }
 }
@@ -407,13 +482,12 @@ TEST_F(EngineCompileTest, RouterTest) {
             "order by col5 rows between 3 preceding and current row);";
         EngineOptions options;
         options.set_compile_only(true);
-        options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         ExplainOutput explain_output;
         codec::Schema empty_parameter_schema;
         base::Status status;
         ASSERT_TRUE(engine.Explain(sql, "simple_db", kBatchRequestMode,
-                                   empty_parameter_schema, &explain_output, &status));
+                                   empty_parameter_schema, &explain_output, &status, false));
         ASSERT_EQ(explain_output.router.GetMainTable(), "t1");
         ASSERT_EQ(explain_output.router.GetRouterCol(), "col2");
     }
@@ -452,13 +526,12 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
         "order by col5 rows between 3 preceding and current row);";
     EngineOptions options;
     options.set_compile_only(true);
-    options.set_performance_sensitive(false);
     Engine engine(catalog, options);
     ExplainOutput explain_output;
     base::Status status;
     ASSERT_TRUE(engine.Explain(sql, "simple_db", kBatchRequestMode,
                                common_column_indices, &explain_output,
-                               &status));
+                               &status, false));
     ASSERT_TRUE(status.isOK()) << status;
     auto& output_schema = explain_output.output_schema;
     ASSERT_EQ(false, output_schema.Get(0).is_constant());
@@ -509,7 +582,6 @@ TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
             "select db1.t1.col1, db1.t1.col2,db2.t2.col3,db2.t2.col4 from db1.t1 last join db2.t2 ORDER BY db2.t2.col5 "
             "on db1.t1.col1=db2.t2.col1;"};
         EngineOptions options;
-        options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
@@ -517,6 +589,7 @@ TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             BatchRunSession session;
+            session.SetPerformanceSensitive(false);
             ASSERT_TRUE(engine.Get(sqlstr, "", session, get_status)) << get_status;
         }
     }
