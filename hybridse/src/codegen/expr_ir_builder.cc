@@ -827,7 +827,7 @@ Status ExprIRBuilder::BuildGetFieldExpr(
             CHECK_TRUE(0 <= idx && idx < input_value.GetFieldNum(),
                        kCodegenError, "Tuple idx out of range: ", idx);
             *output = input_value.GetField(idx);
-        } catch (std::invalid_argument err) {
+        } catch (std::invalid_argument& err) {
             return Status(kCodegenError,
                           "Invalid Tuple index: " + node->GetColumnName());
         }
