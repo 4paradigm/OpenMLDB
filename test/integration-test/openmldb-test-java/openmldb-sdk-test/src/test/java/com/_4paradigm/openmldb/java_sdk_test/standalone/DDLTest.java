@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.v230;
-
+package com._4paradigm.openmldb.java_sdk_test.standalone;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -32,27 +31,40 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("DML")
-public class DMLTest extends FedbTest {
-
+@Feature("CLI-DDL")
+public class DDLTest extends FedbTest {
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/test_insert.yaml")
-    @Story("insert")
-    public void testInsert(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    @Yaml(filePaths = "function/ddl/test_create.yaml")
+    @Story("create")
+    public void testCreate(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
     }
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
-    @Story("insert-prepared")
-    public void testInsertWithPrepared(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
+    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
+    @Story("ttl")
+    public void testTTL(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
     }
 
+    // @Test(dataProvider = "getCase")
+    // @Yaml(filePaths = "function/ddl/test_options.yaml")
+    // @Story("options")
+    // public void testOptions(SQLCase testCase){
+    //     ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    // }
+
+    // @Test(dataProvider = "getCase")
+    // @Yaml(filePaths = "function/ddl/test_create_index.yaml")
+    // @Story("create_index")
+    // public void testCreateIndex(SQLCase testCase){
+    //     ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+    // }
+
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/insert_multi.yml")
-    @Story("insert-multi")
-    public void testInsertMulti(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
+    @Story("create_no_index")
+    public void testCreateIndex(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
     }
 }

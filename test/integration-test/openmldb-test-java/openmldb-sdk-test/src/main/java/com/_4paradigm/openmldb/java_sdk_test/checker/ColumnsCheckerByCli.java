@@ -30,8 +30,8 @@ import java.util.List;
  * @date 2020/6/16 3:14 PM
  */
 @Slf4j
-public class ColumnsCheckerByJBDC extends BaseChecker {
-    public ColumnsCheckerByJBDC(ExpectDesc expect, FesqlResult fesqlResult) {
+public class ColumnsCheckerByCli extends BaseChecker {
+    public ColumnsCheckerByCli(ExpectDesc expect, FesqlResult fesqlResult) {
         super(expect, fesqlResult);
     }
 
@@ -47,8 +47,6 @@ public class ColumnsCheckerByJBDC extends BaseChecker {
         Assert.assertEquals(expectColumns.size(),columnNames.size(), "Illegal schema size");
         for (int i = 0; i < expectColumns.size(); i++) {
             Assert.assertEquals(columnNames.get(i), Table.getColumnName(expectColumns.get(i)).replace(" ",""));
-            // Assert.assertEquals(FesqlUtil.getColumnTypeByJDBC(columnTypes.get(i)),
-            //         FesqlUtil.getColumnTypeByJDBC(Table.getColumnType(expectColumns.get(i))));
         }
     }
 }

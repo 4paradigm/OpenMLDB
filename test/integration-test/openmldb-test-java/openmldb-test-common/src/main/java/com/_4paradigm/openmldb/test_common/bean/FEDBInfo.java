@@ -29,6 +29,9 @@ import java.util.List;
 @Data
 @Builder
 public class FEDBInfo {
+    private OpenMLDBDeployType deployType;
+    private String host;
+    private int port;
     private String basePath;
     private String fedbPath;
     private String zk_cluster;

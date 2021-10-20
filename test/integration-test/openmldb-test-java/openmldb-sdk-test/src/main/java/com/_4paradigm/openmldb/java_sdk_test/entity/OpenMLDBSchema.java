@@ -17,10 +17,10 @@ package com._4paradigm.openmldb.java_sdk_test.entity;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
-public class DBColumn {
-    private int id;
-    private String fieldName;
-    private String fieldType;
-    private boolean nullable;
+public class OpenMLDBSchema {
+    private List<OpenMLDBColumn> columns;
+    private List<OpenMLDBIndex> indexs;
 }

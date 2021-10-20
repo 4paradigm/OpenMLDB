@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.java_sdk_test.common;
 
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBDeployType;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.util.FEDBDeploy;
 import com.google.common.collect.Lists;
@@ -46,7 +47,7 @@ public class FedbTest extends BaseTest {
     public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String fedbPath) throws Exception {
         FedbGlobalVar.env = env;
         if(env.equalsIgnoreCase("cluster")){
-            FEDBDeploy fedbDeploy = new FEDBDeploy(version);
+            FEDBDeploy fedbDeploy = new FEDBDeploy(version);;
             fedbDeploy.setFedbPath(fedbPath);
             fedbDeploy.setCluster(true);
             FedbGlobalVar.mainInfo = fedbDeploy.deployFEDB(2, 3);
@@ -57,8 +58,9 @@ public class FedbTest extends BaseTest {
             FedbGlobalVar.mainInfo = fedbDeploy.deployFEDB(2, 3);
         }else{
             FedbGlobalVar.mainInfo = FEDBInfo.builder()
-                    .basePath("/home/zhaowei01/fedb-auto-test/0.2.2")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/0.2.2/openmldb-ns-1/bin/openmldb")
+                    .deployType(OpenMLDBDeployType.CLUSTER)
+                    .basePath("/home/zhaowei01/fedb-auto-test/tmp")
+                    .fedbPath("/home/zhaowei01/fedb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
                     .zk_cluster("172.24.4.55:10000")
                     .zk_root_path("/openmldb")
                     .nsNum(2).tabletNum(3)

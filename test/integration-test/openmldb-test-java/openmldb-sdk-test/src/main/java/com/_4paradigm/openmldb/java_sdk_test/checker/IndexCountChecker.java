@@ -13,31 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com._4paradigm.openmldb.java_sdk_test.command;
+
+package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
-import com._4paradigm.openmldb.test_common.model.InputDesc;
+import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
+import org.testng.Assert;
 
-import java.util.List;
 
+/**
+ * @author zhaowei
+ * @date 2020/6/16 3:14 PM
+ */
 @Slf4j
-public class OpenMLDBCommandUtil {
+public class IndexCountChecker extends BaseChecker {
     private static final Logger logger = new LogProxy(log);
-
-    public static FesqlResult createDB(FEDBInfo fedbInfo, String dbName) {
-        String sql = String.format("create database %s ;",dbName);
-        FesqlResult fesqlResult = OpenMLDBComamndFacade.sql(fedbInfo,dbName,sql);
-        return fesqlResult;
+    public IndexCountChecker(ExpectDesc expect, FesqlResult fesqlResult){
+        super(expect,fesqlResult);
     }
 
-    public static FesqlResult desc(FEDBInfo fedbInfo, String dbName, String tableName) {
-        String sql = String.format("desc %s ;",tableName);
-        FesqlResult fesqlResult = OpenMLDBComamndFacade.sql(fedbInfo,dbName,sql);
-        return fesqlResult;
+    @Override
+    public void check() throws Exception {
+        logger.info("index count check");
+        int expectCount = expect.getIndexCount();
+        int actual = fesqlResult.getSchema().getIndexs().size();
+        Assert.assertEquals(actual,expectCount,"index count验证失败");
     }
+
 }

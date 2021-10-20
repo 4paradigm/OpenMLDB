@@ -22,6 +22,7 @@ import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -65,6 +66,7 @@ public class OpenMLDBComamndFacade {
     }
     public static FesqlResult sql(FEDBInfo fedbInfo, String dbName, String sql) {
         logger.info("sql:"+sql);
+        sql = StringUtils.replace(sql,"\n","");
         FesqlResult fesqlResult = SqlChainManager.of().sql(fedbInfo, dbName, sql);
         logger.info("fesqlResult:"+fesqlResult);
         return fesqlResult;

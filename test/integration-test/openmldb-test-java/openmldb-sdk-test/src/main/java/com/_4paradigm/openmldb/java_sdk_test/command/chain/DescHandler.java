@@ -22,16 +22,15 @@ import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.CommandResultUtil;
 import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com.google.common.base.Joiner;
-import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class QueryHandler extends AbstractSQLHandler{
+public class DescHandler extends AbstractSQLHandler{
     @Override
     public boolean preHandle(String sql) {
-        return sql.split("\\s+")[0].equalsIgnoreCase("select");
+        return sql.split("\\s+")[0].equalsIgnoreCase("desc");
     }
 
     @Override
@@ -43,19 +42,7 @@ public class QueryHandler extends AbstractSQLHandler{
         fesqlResult.setOk(ok);
         fesqlResult.setDbName(dbName);
         if (ok) {
-            int count = 0;
-            List<List<Object>> rows = new ArrayList<>();
-            if(CollectionUtils.isNotEmpty(result)&&!(result.get(0).trim().equalsIgnoreCase("Empty set"))) {
-                List<String> columnNames = Arrays.asList(result.get(1).split("\\s+"));
-                for (int i = 3; i < result.size() - 2; i++) {
-                    count++;
-                    List<Object> row = Arrays.asList(result.get(i).split("\\s+"));
-                    rows.add(row);
-                }
-                fesqlResult.setColumnNames(columnNames);
-            }
-            fesqlResult.setCount(count);
-            fesqlResult.setResult(rows);
+            fesqlResult.setSchema(CommandResultUtil.parseSchema(result));
         }
         return fesqlResult;
     }

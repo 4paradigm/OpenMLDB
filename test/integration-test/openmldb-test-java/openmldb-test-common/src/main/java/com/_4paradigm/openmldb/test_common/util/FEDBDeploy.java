@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.test_common.util;
 
 
 import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBDeployType;
 import com._4paradigm.openmldb.test_common.common.FedbDeployConfig;
 import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import com._4paradigm.test_tool.command_tool.common.LinuxUtil;
@@ -25,6 +26,7 @@ import com.google.common.collect.Lists;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.util.List;
@@ -46,11 +48,24 @@ public class FEDBDeploy {
         this.version = version;
         this.fedbUrl = FedbDeployConfig.getUrl(version);
     }
+    public FEDBInfo deployFEDBByStandalone(){
+        String testPath = DeployUtil.getTestPath(version);
+        String ip = LinuxUtil.getLocalIP();
+        File file = new File(testPath);
+        if(!file.exists()){
+            file.mkdirs();
+        }
+        downloadFEDB(testPath);
+        FEDBInfo fedbInfo = deployStandalone(testPath,ip);
+        log.info("openmldb-info:"+fedbInfo);
+        return fedbInfo;
+    }
     public FEDBInfo deployFEDB(int ns, int tablet){
         return deployFEDB(null,ns,tablet);
     }
     public FEDBInfo deployFEDB(String clusterName, int ns, int tablet){
         FEDBInfo.FEDBInfoBuilder builder = FEDBInfo.builder();
+        builder.deployType(OpenMLDBDeployType.CLUSTER);
         String testPath = DeployUtil.getTestPath(version);
         if(StringUtils.isNotEmpty(clusterName)) {
             testPath = testPath + "/" + clusterName;
@@ -286,6 +301,52 @@ public class FEDBDeploy {
             e.printStackTrace();
         }
         throw new RuntimeException("apiserver部署失败");
+    }
+
+    public FEDBInfo deployStandalone(String testPath, String ip){
+        try {
+            int nsPort = LinuxUtil.getNoUsedPort();
+            int tabletPort = LinuxUtil.getNoUsedPort();
+            String nsEndpoint = ip+":"+nsPort;
+            String tabletEndpoint = ip+":"+tabletPort;
+            String standaloneName = "/openmldb-standalone";
+            List<String> commands = Lists.newArrayList(
+                    "cp -r " + testPath + "/" + fedbName + " " + testPath + standaloneName,
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/nameserver.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/nameserver.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint=" + nsEndpoint + "#' " + testPath + standaloneName + "/conf/nameserver.flags",
+                    "sed -i 's@#--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/nameserver.flags",
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/tablet.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/tablet.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/tablet.flags"
+            );
+            commands.forEach(ExecutorUtil::run);
+            if(StringUtils.isNotEmpty(fedbPath)){
+                FEDBCommandUtil.cpRtidb(testPath+standaloneName,fedbPath);
+            }
+            ExecutorUtil.run("sh "+testPath+standaloneName+"/bin/start-all.sh");
+            boolean nsOk = LinuxUtil.checkPortIsUsed(nsPort,3000,30);
+            boolean tabletOk = LinuxUtil.checkPortIsUsed(tabletPort,3000,30);
+            if(nsOk&&tabletOk){
+                log.info(String.format("standalone 部署成功,nsPort：{},tabletPort:{}",nsPort,tabletPort));
+                FEDBInfo fedbInfo = FEDBInfo.builder()
+                        .deployType(OpenMLDBDeployType.STANDALONE)
+                        .fedbPath(testPath+"/openmldb-standalone/bin/openmldb")
+                        .apiServerEndpoints(Lists.newArrayList())
+                        .basePath(testPath)
+                        .nsEndpoints(Lists.newArrayList(nsEndpoint))
+                        .nsNum(1)
+                        .host(ip)
+                        .port(nsPort)
+                        .tabletNum(1)
+                        .tabletEndpoints(Lists.newArrayList(tabletEndpoint))
+                        .build();
+                return fedbInfo;
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        throw new RuntimeException("standalone 部署失败");
     }
 }
 

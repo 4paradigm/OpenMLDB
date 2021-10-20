@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.test_common.model;
 
 import lombok.Data;
 
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -26,4 +27,6 @@ public class ExpectDesc extends Table {
     private int count = -1;
     private Boolean success = true;
     private Map<String,Object> options;
+    private List<TableIndex> idxs;
+    private int indexCount = -1;
 }

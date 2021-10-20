@@ -27,8 +27,12 @@ public class SqlChainManager {
 
     private AbstractSQLHandler initHandler(){
         QueryHandler queryHandler = new QueryHandler();
-        UpdateHandler updateHandler = new UpdateHandler();
-        queryHandler.setNextHandler(updateHandler);
+        DMLHandler dmlHandler = new DMLHandler();
+        DDLHandler ddlHandler = new DDLHandler();
+        DescHandler descHandler = new DescHandler();
+        queryHandler.setNextHandler(dmlHandler);
+        dmlHandler.setNextHandler(ddlHandler);
+        ddlHandler.setNextHandler(descHandler);
         return queryHandler;
     }
 

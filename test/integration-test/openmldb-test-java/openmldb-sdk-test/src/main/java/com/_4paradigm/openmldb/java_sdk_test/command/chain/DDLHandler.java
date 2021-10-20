@@ -15,48 +15,29 @@
  */
 package com._4paradigm.openmldb.java_sdk_test.command.chain;
 
-
-
 import com._4paradigm.openmldb.java_sdk_test.command.OpenmlDBCommandFactory;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.CommandResultUtil;
 import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com.google.common.base.Joiner;
-import org.apache.commons.collections4.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-public class QueryHandler extends AbstractSQLHandler{
+public class DDLHandler extends AbstractSQLHandler{
     @Override
     public boolean preHandle(String sql) {
-        return sql.split("\\s+")[0].equalsIgnoreCase("select");
+        String prefix = sql.split("\\s+")[0].toLowerCase();
+        return prefix.equals("create")||prefix.equals("drop");
     }
 
     @Override
     public FesqlResult onHandle(FEDBInfo fedbInfo, String dbName, String sql) {
         FesqlResult fesqlResult = new FesqlResult();
         List<String> result = OpenmlDBCommandFactory.runNoInteractive(fedbInfo,dbName,sql);
-        boolean ok = CommandResultUtil.success(result);
         fesqlResult.setMsg(Joiner.on("\n").join(result));
-        fesqlResult.setOk(ok);
+        fesqlResult.setOk(CommandResultUtil.success(result));
         fesqlResult.setDbName(dbName);
-        if (ok) {
-            int count = 0;
-            List<List<Object>> rows = new ArrayList<>();
-            if(CollectionUtils.isNotEmpty(result)&&!(result.get(0).trim().equalsIgnoreCase("Empty set"))) {
-                List<String> columnNames = Arrays.asList(result.get(1).split("\\s+"));
-                for (int i = 3; i < result.size() - 2; i++) {
-                    count++;
-                    List<Object> row = Arrays.asList(result.get(i).split("\\s+"));
-                    rows.add(row);
-                }
-                fesqlResult.setColumnNames(columnNames);
-            }
-            fesqlResult.setCount(count);
-            fesqlResult.setResult(rows);
-        }
         return fesqlResult;
     }
+
 }

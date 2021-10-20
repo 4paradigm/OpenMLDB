@@ -35,6 +35,7 @@ import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -127,7 +128,7 @@ public class CommandExecutor extends BaseExecutor{
             }
         }
         String sql = fesqlCase.getSql();
-        if (sql != null && sql.length() > 0) {
+        if (StringUtils.isNotEmpty(sql)) {
             // log.info("sql:{}", sql);
             if(MapUtils.isNotEmpty(fedbInfoMap)) {
                 sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
@@ -187,7 +188,7 @@ public class CommandExecutor extends BaseExecutor{
         for (InputDesc table : tables) {
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
-                FesqlUtil.ddl(executor, dbName, drop);
+                // FesqlUtil.ddl(executor, dbName, drop);
             }
         }
     }

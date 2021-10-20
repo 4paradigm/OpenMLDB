@@ -20,7 +20,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class DBIndex {
+public class OpenMLDBIndex {
     private int id;
     private String indexName;
     private List<String> keys;
