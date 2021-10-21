@@ -801,8 +801,8 @@ void HandleSQL(const std::string &sql) {
         }
         case hybridse::node::kPlanTypeSelectInto: {
             auto *select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode *>(node);
-            const std::string& query_sql = selectIntoPlanNode->QueryStr();
-            const std::string& file_path = selectIntoPlanNode->OutFile();
+            const std::string& query_sql = select_into_plan_node->QueryStr();
+            const std::string& file_path = select_into_plan_node->OutFile();
             const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
             if (db.empty()) {
                 std::cout << "ERROR: Please use database first" << std::endl;
