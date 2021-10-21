@@ -68,17 +68,6 @@ std::string db = "";  // NOLINT
 class SaveFileOptions
 {
     public:
-        SaveFileOptions(const std::string &file_path) {
-            file_path_ = file_path.c_str();
-            if (access(file_path_, 0) == 0) {
-                throw "ERROR: File already exists";
-            } else {
-                fstream_.open(file_path_);
-            }
-            if (fstream_.is_open() == false) {
-                throw "ERROR: Fail to open file, please check file path";
-            }
-        }
         SaveFileOptions(const std::string &file_path, std::shared_ptr<hybridse::node::OptionsMap> options_map) {
             // TODO(zekai): Resolved file path like (file:////usr/test.csv) or (hdfs:////usr/test.csv)
             file_path_ = file_path.c_str();
@@ -86,12 +75,12 @@ class SaveFileOptions
                 std::string key = iter->first;
                 if (key == "format") {
                     format_ = iter->second->GetStr();
-                } else if (key == "mode") {
+                } else if (key == "save_mode") {
                     mode_ = iter->second->GetStr();
                 } else if (key == "delimiter") {
                     delimiter_ = iter->second->GetStr();
-                } else if (key == "nullValues") {
-                    nullValues_ = iter->second->GetStr();
+                } else if (key == "null_value") {
+                    null_value_ = iter->second->GetStr();
                 } else if (key == "header") {
                     header_ = iter->second->GetBool();
                 } else {
@@ -123,8 +112,8 @@ class SaveFileOptions
         const char* GetFormat() const{
             return format_;
         }
-        const char* GetNullValues() const{
-            return nullValues_;
+        const char* GetNullValue() const{
+            return null_value_;
         }
         const char* GetDelimiter() const{
             return delimiter_;
@@ -142,7 +131,7 @@ class SaveFileOptions
         const char* format_ = "csv";
         const char* mode_ = "error_if_exists";
         const char* delimiter_ = ",";
-        const char* nullValues_ = "null";
+        const char* null_value_ = "null";
         const char* file_path_ = "";
         bool header_ = true;
         std::ofstream fstream_;
@@ -153,14 +142,9 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
     std::shared_ptr<hybridse::node::OptionsMap> options_map) {
     std::shared_ptr<openmldb::cmd::SaveFileOptions> options;
     try {
-        if (options_map->empty()) {
-            options = std::make_shared<openmldb::cmd::SaveFileOptions>(file_path);
-        } else {
-            options = std::make_shared<openmldb::cmd::SaveFileOptions>(file_path, options_map);
-        }
-    } catch (const char* errorMsg) {
-        std::cout << errorMsg << std::endl;
-        return;
+        options = std::make_shared<openmldb::cmd::SaveFileOptions>(file_path, options_map);
+    } catch (const char* error_msg) {
+        throw error_msg;
     }
     if (strcmp(options->GetFormat(), "csv") == 0) {
         if (!result_set || result_set->Size() == 0) {
@@ -183,7 +167,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
             std::string rowString = "";
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 if (result_set->IsNULL(i)) {
-                    rowString.append(options->GetNullValues());
+                    rowString.append(options->GetNullValue());
                 } else {
                     auto data_type = schema->GetColumnType(i);
                     switch (data_type) {
@@ -259,7 +243,8 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
         }
         std::cout << "SUCCEED: Save successfully" << std::endl;
     } else {
-        std::cout << "ERROR: This format (" << options->GetFormat() << ") is not currently supported" << std::endl;
+        std::string error_msg = "ERROR: This format (" + (std::string)options->GetFormat() + ") is not currently supported";
+        throw error_msg;
     }
 }
 
@@ -815,20 +800,25 @@ void HandleSQL(const std::string &sql) {
             return;
         }
         case hybridse::node::kPlanTypeSelectInto: {
-            auto *selectIntoPlanNode = dynamic_cast<hybridse::node::SelectIntoPlanNode *>(node);
-            const std::string& querySql = selectIntoPlanNode->QueryStr();
-            const std::string& filePath = selectIntoPlanNode->OutFile();
-            const std::shared_ptr<hybridse::node::OptionsMap> optionsMap = selectIntoPlanNode->Options();
+            auto *select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode *>(node);
+            const std::string& query_sql = selectIntoPlanNode->QueryStr();
+            const std::string& file_path = selectIntoPlanNode->OutFile();
+            const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
             if (db.empty()) {
                 std::cout << "ERROR: Please use database first" << std::endl;
                 return;
             }
             ::hybridse::sdk::Status status;
-            auto rs = sr->ExecuteSQL(db, querySql, &status);
+            auto rs = sr->ExecuteSQL(db, query_sql, &status);
             if (!rs) {
                 std::cout << "ERROR: Fail to execute query" << std::endl;
             } else {
-                SaveResultSet(rs.get(), filePath, optionsMap);
+                // TODO(zekai): Use status instead of catch throw
+                try {
+                    SaveResultSet(rs.get(), file_path, options_map);
+                } catch (const char* error_msg) {
+                    std::cout << error_msg << std::endl;
+                }
             }
             return;
         }
