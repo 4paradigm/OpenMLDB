@@ -52,7 +52,7 @@
 		<hadoop.version>2.7.1</hadoop.version>
 		<spark.version>3.0.0</spark.version>
 		<spark.dependencyScope>provided</spark.dependencyScope>
-		<default.project.version>0.2.3</default.project.version>
+		<default.project.version>0.2.4</default.project.version>
 		<default.hybridse.sdk.version>0.2.4</default.hybridse.sdk.version>
 	</properties>
 
