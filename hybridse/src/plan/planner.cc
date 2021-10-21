@@ -330,25 +330,27 @@ base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::Pla
                                                      create_tree->GetDistributionList());
     return base::Status::OK();
 }
-
-bool Planner::IsTable(node::PlanNode *node) {
+/// Check if current plan node is depend on a [table|simple select table/rename table/ sub query table)
+/// Store TablePlanNode into output if true
+bool Planner::IsTable(node::PlanNode *node, node::PlanNode** output) {
     if (nullptr == node) {
         return false;
     }
 
     switch (node->type_) {
         case node::kPlanTypeTable: {
+            *output = node;
             return true;
         }
         case node::kPlanTypeRename: {
-            return IsTable(node->GetChildren()[0]);
+            return IsTable(node->GetChildren()[0], output);
         }
         case node::kPlanTypeQuery: {
-            return IsTable(dynamic_cast<node::QueryPlanNode *>(node)->GetChildren()[0]);
+            return IsTable(dynamic_cast<node::QueryPlanNode *>(node)->GetChildren()[0], output);
         }
         case node::kPlanTypeProject: {
-            if ((dynamic_cast<node::ProjectPlanNode *>(node))->IsSimpleProjectPlan()) {
-                return IsTable(node->GetChildren()[0]);
+            if ((dynamic_cast<node::ProjectPlanNode *>(node))->IsSimpleProjectPlan(), output) {
+                return IsTable(node->GetChildren()[0], output);
             }
         }
         default: {
@@ -357,34 +359,39 @@ bool Planner::IsTable(node::PlanNode *node) {
     }
     return false;
 }
-base::Status Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output) {
+base::Status Planner::ValidatePrimaryPath(node::PlanNode *node, std::vector<node::PlanNode *>& outputs) {
     CHECK_TRUE(nullptr != node, common::kPlanError, "primary path validate fail: node or output is null")
 
     switch (node->type_) {
         case node::kPlanTypeJoin:
         case node::kPlanTypeUnion: {
             auto binary_op = dynamic_cast<node::BinaryPlanNode *>(node);
-            node::PlanNode *left_primary_table = nullptr;
-            CHECK_STATUS(ValidatePrimaryPath(binary_op->GetLeft(), &left_primary_table),
+            CHECK_STATUS(ValidatePrimaryPath(binary_op->GetLeft(), outputs),
                          "primary path validate fail: left path isn't valid")
+            CHECK_TRUE(!outputs.empty(), common::kPlanError, "PLAN error: No request/primary table exist in left tree");
+            node::PlanNode *right_table = nullptr;
 
-            if (IsTable(binary_op->GetRight())) {
-                *output = left_primary_table;
-                return base::Status::OK();
+            // If right side is a table|simple select table|rename table
+            // It isn't necessary to be primary
+            if (IsTable(binary_op->GetRight(), &right_table)) {
+                // Collect table if it is equal with primary table node
+                if (node::PlanEquals(right_table, outputs[0])) {
+                    outputs.push_back(right_table);
+                }
+            } else {
+                CHECK_STATUS(ValidatePrimaryPath(binary_op->GetRight(), outputs),
+                             "primary path validate fail: right path isn't valid")
             }
-
-            node::PlanNode *right_primary_table = nullptr;
-            CHECK_STATUS(ValidatePrimaryPath(binary_op->GetRight(), &right_primary_table),
-                         "primary path validate fail: right path isn't valid")
-
-            CHECK_TRUE(node::PlanEquals(left_primary_table, right_primary_table), common::kPlanError,
-                       "primary path validate fail: left path and right path has "
-                       "different source")
-            *output = left_primary_table;
             return base::Status::OK();
         }
         case node::kPlanTypeTable: {
-            *output = node;
+            if (outputs.empty()) {
+                outputs.push_back(node);
+            } else {
+                CHECK_TRUE(node::PlanEquals(node, outputs[0]), common::kPlanError,
+                           "PLAN error: Non-support multiple primary tables")
+                outputs.push_back(node);
+            }
             return base::Status::OK();
         }
         case node::kPlanTypeCreate:
@@ -397,7 +404,7 @@ base::Status Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode *
         }
         default: {
             auto unary_op = dynamic_cast<const node::UnaryPlanNode *>(node);
-            CHECK_STATUS(ValidatePrimaryPath(unary_op->GetDepend(), output));
+            CHECK_STATUS(ValidatePrimaryPath(unary_op->GetDepend(), outputs));
             return base::Status::OK();
         }
     }
@@ -412,9 +419,13 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
 
                 if (!is_batch_mode_) {
                     // return false if Primary path check fail
-                    ::hybridse::node::PlanNode *primary_node;
-                    CHECK_STATUS(ValidatePrimaryPath(query_plan, &primary_node))
-                    dynamic_cast<node::TablePlanNode *>(primary_node)->SetIsPrimary(true);
+                    std::vector<::hybridse::node::PlanNode*> primary_nodes;
+                    CHECK_STATUS(ValidatePrimaryPath(query_plan, primary_nodes))
+                    CHECK_TRUE(!primary_nodes.empty(), common::kPlanError,
+                               "PLAN error: No request/primary table exist!")
+                    for (auto primary_node : primary_nodes) {
+                        dynamic_cast<node::TablePlanNode *>(primary_node)->SetIsPrimary(true);
+                    }
                 }
 
                 plan_trees.push_back(query_plan);

@@ -63,7 +63,7 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
 bool InitToydbEngineCatalog(
     SqlCase& sql_case,  // NOLINT
     const EngineOptions& engine_options,
-    std::map<std::string,
+    std::map<std::pair<std::string, std::string>,
              std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
         name_table_map,                                     // NOLINT
     std::shared_ptr<vm::Engine> engine,
@@ -85,7 +85,7 @@ bool InitToydbEngineCatalog(
             LOG(WARNING) << "Fail to init toydb storage table";
             return false;
         }
-        name_table_map[table_def.name()] = table;
+        name_table_map[std::make_pair(table_def.catalog(), table_def.name())] = table;
         if (engine_options.is_cluster_optimzied()) {
             // add table with local tablet
             if (!AddTable(catalog, table_def, table, engine.get())) {
