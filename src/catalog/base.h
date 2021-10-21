@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "proto/sql_procedure.pb.h"
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 
@@ -27,19 +28,9 @@ namespace catalog {
 
 class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
  public:
-    ProcedureInfoImpl(const std::string& db_name, const std::string& sp_name, const std::string& sql,
-                      const ::hybridse::sdk::SchemaImpl& input_schema, const ::hybridse::sdk::SchemaImpl& output_schema,
-                      const std::vector<std::string>& tables, const std::string& main_table, const std::string& main_db)
-        : db_name_(db_name),
-          sp_name_(sp_name),
-          sql_(sql),
-          input_schema_(input_schema),
-          output_schema_(output_schema),
-          tables_(tables),
-          main_table_(main_table),
-          main_db_(main_db) {}
+    explicit ProcedureInfoImpl(const ::openmldb::api::ProcedureInfo& procedure);
 
-    ~ProcedureInfoImpl() {}
+    ~ProcedureInfoImpl() = default;
 
     const ::hybridse::sdk::Schema& GetInputSchema() const override { return input_schema_; }
 
@@ -56,6 +47,8 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
     const std::string& GetMainTable() const override { return main_table_; }
     const std::string& GetMainDb() const override { return main_db_; }
 
+    ::hybridse::sdk::ProcedureType GetType() const override { return type_; }
+
  private:
     std::string db_name_;
     std::string sp_name_;
@@ -65,6 +58,7 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
     std::vector<std::string> tables_;
     std::string main_table_;
     std::string main_db_;
+    ::hybridse::sdk::ProcedureType type_;
 };
 
 }  // namespace catalog
