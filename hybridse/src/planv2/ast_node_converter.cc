@@ -391,7 +391,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
         case zetasql::AST_BOOLEAN_LITERAL: {
             const zetasql::ASTBooleanLiteral* literal = ast_expression->GetAsOrDie<zetasql::ASTBooleanLiteral>();
             bool bool_value;
-            hybridse::codec::StringRef str(literal->image().data());
+            hybridse::codec::StringRef str(literal->image().size(), literal->image().data());
             bool is_null;
             hybridse::udf::v1::string_to_bool(&str, &bool_value, &is_null);
             CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid bool literal: ", literal->image())
@@ -404,13 +404,13 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             bool is_null;
             if (literal->is_float32()) {
                 float float_value = 0.0;
-                hybridse::codec::StringRef str(std::string(literal->image().substr(0, literal->image().size() - 1)));
+                hybridse::codec::StringRef str(literal->image().size() - 1, literal->image().data());
                 hybridse::udf::v1::string_to_float(&str, &float_value, &is_null);
                 CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid float literal: ", literal->image());
                 *output = node_manager->MakeConstNode(float_value);
             } else {
                 double double_value = 0.0;
-                hybridse::codec::StringRef str(literal->image().data());
+                hybridse::codec::StringRef str(literal->image().size(), literal->image().data());
                 hybridse::udf::v1::string_to_double(&str, &double_value, &is_null);
                 CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid double literal: ", literal->image());
                 *output = node_manager->MakeConstNode(double_value);
@@ -1639,10 +1639,10 @@ base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t*
     bool is_null = false;
     if (int_literal->is_long()) {
         const int size = int_literal->image().size();
-        codec::StringRef str_ref(std::string(int_literal->image().substr(0, size - 1)));
+        codec::StringRef str_ref(size - 1, int_literal->image().data());
         udf::v1::string_to_bigint(&str_ref, val, &is_null);
     } else {
-        codec::StringRef str_ref(std::string(int_literal->image()));
+        codec::StringRef str_ref(int_literal->image().size(), int_literal->image().data());
         udf::v1::string_to_bigint(&str_ref, val, &is_null);
     }
     CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid integer literal: ", int_literal->image());
@@ -1677,7 +1677,7 @@ base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int
     }
     bool is_null = false;
     const int size = interval_literal->image().size();
-    codec::StringRef str_ref(std::string(interval_literal->image().substr(0, size - 1)));
+    codec::StringRef str_ref(interval_literal->image().size() - 1, interval_literal->image().data());
     udf::v1::string_to_bigint(&str_ref, val, &is_null);
 
     CHECK_TRUE(!is_null, common::kTypeError, "Invalid interval literal: ", interval_literal->image());
