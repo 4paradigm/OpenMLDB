@@ -50,7 +50,7 @@ class TableIteratorTest : public ::testing::Test {
     ~TableIteratorTest() {}
 };
 
-TEST_F(TableIteratorTest, empty_window_table) {
+TEST_F(TableIteratorTest, EmptyWindowTable) {
     type::TableDef table_def;
     BuildTableSchema(table_def);
     std::shared_ptr<Table> table(new Table(1, 1, table_def));
@@ -59,7 +59,7 @@ TEST_F(TableIteratorTest, empty_window_table) {
     ASSERT_FALSE(it.Valid());
 }
 
-TEST_F(TableIteratorTest, empty_full_table) {
+TEST_F(TableIteratorTest, EmptyFullTable) {
     type::TableDef table_def;
     BuildTableSchema(table_def);
     std::shared_ptr<Table> table(new Table(1, 1, table_def));
@@ -68,7 +68,7 @@ TEST_F(TableIteratorTest, empty_full_table) {
     ASSERT_FALSE(it.Valid());
 }
 
-TEST_F(TableIteratorTest, it_full_table) {
+TEST_F(TableIteratorTest, ItFullTable) {
     type::TableDef table_def;
     BuildTableSchema(table_def);
     std::shared_ptr<Table> table(new Table(1, 1, table_def));
@@ -104,7 +104,7 @@ TEST_F(TableIteratorTest, it_full_table) {
     ASSERT_FALSE(it.Valid());
 }
 
-TEST_F(TableIteratorTest, it_window_table) {
+TEST_F(TableIteratorTest, ItWindowTable) {
     type::TableDef table_def;
     BuildTableSchema(table_def);
     std::shared_ptr<Table> table(new Table(1, 1, table_def));
@@ -129,7 +129,8 @@ TEST_F(TableIteratorTest, it_window_table) {
     ASSERT_TRUE(it.Valid());
     {
         auto key = it.GetKey();
-        Row key_expect("key1");
+        const std::string key1 = "key1";
+        Row key_expect(key1);
         ASSERT_EQ(0, key.compare(key_expect));
         auto wit = it.GetValue();
         wit->SeekToFirst();
@@ -142,7 +143,8 @@ TEST_F(TableIteratorTest, it_window_table) {
     it.Next();
     {
         auto key = it.GetKey();
-        Row key_expect("key2");
+        const std::string key2 = "key2";
+        Row key_expect(key2);
         ASSERT_EQ(0, key.compare(key_expect));
         auto wit = it.GetValue();
         wit->SeekToFirst();
