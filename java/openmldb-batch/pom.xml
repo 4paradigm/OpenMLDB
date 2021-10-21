@@ -4,11 +4,15 @@
 
 	<modelVersion>4.0.0</modelVersion>
 
+	<parent>
+		<artifactId>openmldb-parent</artifactId>
+		<groupId>com.4paradigm.openmldb</groupId>
+		<version>0.2.3</version>
+	</parent>
 
-        <groupId>com.4paradigm.openmldb</groupId>
 	<artifactId>openmldb-batch</artifactId>
 	<name>openmldb-batch</name>
-        <packaging>jar</packaging>
+	<packaging>jar</packaging>
 	<version>${revision}</version>
 
 	<description>OpenMLDB Batch is the LLVM-based and high-performance batch execution engine for feature engineering.</description>
@@ -48,7 +52,7 @@
 		<hadoop.version>2.7.1</hadoop.version>
 		<spark.version>3.0.0</spark.version>
 		<spark.dependencyScope>provided</spark.dependencyScope>
-		<default.project.version>0.2.3</default.project.version>
+		<default.project.version>0.2.4</default.project.version>
 		<default.hybridse.sdk.version>0.2.4</default.hybridse.sdk.version>
 	</properties>
 

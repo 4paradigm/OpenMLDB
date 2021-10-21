@@ -3884,8 +3884,7 @@ void TabletImpl::RefreshTableInfo() {
             LOG(WARNING) << "fail to parse procedure proto. node: " << node << " value: " << value;
             continue;
         }
-        // conver to ProcedureInfoImpl
-        auto sp_info = openmldb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
+        auto sp_info = std::make_shared<openmldb::catalog::ProcedureInfoImpl>(sp_info_pb);
         if (!sp_info) {
             LOG(WARNING) << "convert procedure info failed, sp_name: " << sp_info_pb.sp_name()
                          << " db: " << sp_info_pb.db_name();
@@ -4728,7 +4727,7 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
         return;
     }
 
-    auto sp_info_impl = openmldb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info);
+    auto sp_info_impl = std::make_shared<openmldb::catalog::ProcedureInfoImpl>(sp_info);
     if (!sp_info_impl) {
         response->set_msg(status.str());
         response->set_code(::openmldb::base::kCreateProcedureFailedOnTablet);

@@ -167,8 +167,7 @@ bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas,
             continue;
         }
         DLOG(INFO) << "parse procedure " << sp_info_pb.sp_name() << " ok";
-        // convert to ProcedureInfoImpl
-        auto sp_info = openmldb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
+        auto sp_info = std::make_shared<openmldb::catalog::ProcedureInfoImpl>(sp_info_pb);
         if (!sp_info) {
             LOG(WARNING) << "convert procedure info failed, sp_name: " << sp_info_pb.sp_name()
                          << " db: " << sp_info_pb.db_name();

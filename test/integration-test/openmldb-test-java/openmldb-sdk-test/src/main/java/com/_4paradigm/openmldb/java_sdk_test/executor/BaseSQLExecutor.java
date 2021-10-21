@@ -33,6 +33,7 @@ import org.apache.commons.collections4.MapUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -50,7 +51,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         this.executor = executor;
         this.fesqlCase = fesqlCase;
         this.executorType = executorType;
-        dbName = fesqlCase.getDb();
+        dbName = Objects.isNull(fesqlCase.getDb()) ? "" : fesqlCase.getDb();
         if (!CollectionUtils.isEmpty(fesqlCase.getInputs())) {
             for (InputDesc inputDesc : fesqlCase.getInputs()) {
                 tableNames.add(inputDesc.getName());
@@ -119,7 +120,8 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         for (InputDesc table : tables) {
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
-                FesqlUtil.ddl(executor, dbName, drop);
+                String tableDBName = table.getDb().isEmpty() ? dbName : table.getDb();
+                FesqlUtil.ddl(executor, tableDBName, drop);
             }
         }
     }

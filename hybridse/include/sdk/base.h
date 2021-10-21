@@ -129,6 +129,12 @@ class TableSet {
     virtual int32_t Size() { return 0; }
 };
 
+enum ProcedureType {
+    kUnknow = -1,
+    kReqProcedure = 0,
+    kReqDeployment,
+};
+
 class ProcedureInfo {
  public:
     ProcedureInfo() {}
@@ -141,6 +147,7 @@ class ProcedureInfo {
     virtual const std::vector<std::string>& GetTables() const = 0;
     virtual const std::string& GetMainTable() const = 0;
     virtual const std::string& GetMainDb() const = 0;
+    virtual ProcedureType GetType() const = 0;
 };
 
 }  // namespace sdk

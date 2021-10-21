@@ -36,7 +36,7 @@ echo "Install thirdparty ... for $(uname -a)"
 
 ./steps/setup_thirdparty.sh "$THIRDPARTY_PATH"
 
-if [ ! -d "$THIRDSRC_PATH" ]; then
+if [ ! -d "$THIRDSRC_PATH/zookeeper-3.4.14" ]; then
     echo -e "${GREEN}downloading thirdsrc.tar.gz${NC}"
     mkdir -p "$THIRDSRC_PATH"
     curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
@@ -80,10 +80,10 @@ else
     pushd "${THIRDSRC_PATH}"
 
     if [[ "$OSTYPE" = "darwin"* ]]; then
-        curl -SLo hybridse.tar.gz https://github.com/tobegit3hub/OpenMLDB/releases/download/hybridse-v0.2.4.20211015/hybridse-0.2.4.20211015-darwin-x86_64.tar.gz
+        curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.2.4-20211018/hybridse-0.2.4-20211018-darwin-x86_64.tar.gz
     elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
         if [[ $ARCH = 'x86_64' ]]; then
-            curl -SLo hybridse.tar.gz https://github.com/tobegit3hub/OpenMLDB/releases/download/hybridse-v0.2.4.20211015/hybridse-0.2.4.20211015-linux-x86_64.tar.gz
+            curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.2.4-20211018/hybridse-0.2.4-20211018-linux-x86_64.tar.gz
         elif [[ $ARCH = 'aarch64' ]]; then
             # NOTE: missing hybridse-aarch64
             echo "missing hybridse-aarch64"

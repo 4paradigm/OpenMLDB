@@ -39,7 +39,7 @@ std::string SQLCaseTest::GetYAMLBaseDir() {
             yaml_base_dir.append("/");
         }
     } else {
-        yaml_base_dir = "/rtidb";
+        yaml_base_dir = "/openmldb";
     }
     DLOG(INFO) << "InitCases YMAL_CASE_BASE_DIR: " << yaml_base_dir;
     return yaml_base_dir;
