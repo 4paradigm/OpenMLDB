@@ -116,7 +116,7 @@ TEST_F(SQLClusterTest, cluster_insert_with_column_default_value) {
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + name +
                       "("
-                      "col1 int not null, col2 bigint default 112 not null"
+                      "col1 int not null, col2 bigint default 112 not null,"
                       "index(key=col1, ts=col2)) options(partitionnum=1);";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
