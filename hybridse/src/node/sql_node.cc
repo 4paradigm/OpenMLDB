@@ -1275,10 +1275,10 @@ void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     output << "\n";
     PrintValue(output, tab, DataTypeName(column_type_), "column_type", false);
     output << "\n";
-    PrintValue(output, tab, std::to_string(op_not_null_), "NOT NULL", false);
+    PrintValue(output, tab, std::to_string(op_not_null_), "NOT NULL", !default_value_);
     if (default_value_) {
         output << "\n";
-        PrintSqlNode(output, tab, default_value_, "default_value", false);
+        PrintSqlNode(output, tab, default_value_, "default_value", true);
     }
 }
 

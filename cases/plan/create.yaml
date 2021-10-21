@@ -775,9 +775,9 @@ cases:
           |  |    +-column_type: int32
           |  |    +-NOT NULL: 0
           |  |    +-default_value:
-          |  |    |  +-expr[primary]
-          |  |    |    +-value: 1
-          |  |    |    +-type: int32
+          |  |      +-expr[primary]
+          |  |        +-value: 1
+          |  |        +-type: int32
           |  +-1:
           |    +-node[kColumnDesc]
           |      +-column_name: column2
@@ -805,12 +805,12 @@ cases:
           |  |    +-column_type: string
           |  |    +-NOT NULL: 0
           |  |    +-default_value:
-          |  |    |  +-expr[cast]
-          |  |    |    +-cast_type: string
-          |  |    |    +-expr:
-          |  |    |      +-expr[primary]
-          |  |    |        +-value: 1
-          |  |    |        +-type: int32
+          |  |      +-expr[cast]
+          |  |        +-cast_type: string
+          |  |        +-expr:
+          |  |          +-expr[primary]
+          |  |            +-value: 1
+          |  |            +-type: int32
           |  +-1:
           |    +-node[kColumnDesc]
           |      +-column_name: column3
