@@ -619,7 +619,7 @@ void HandleSQL(const std::string &sql) {
                 return;
             }
             ::hybridse::sdk::Status status;
-            auto rs = sr->ExecuteSQL(db, sql, &status);
+            auto rs = sr->ExecuteSQL(db, sql, &status, performance_sensitive);
             if (!rs) {
                 std::cout << "fail to execute query" << std::endl;
             } else {
