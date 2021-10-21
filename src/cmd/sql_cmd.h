@@ -533,7 +533,7 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     }
 }
 
-bool SetOption(const std::shared_ptr<hybridse::node::OptionsMap> &options, const std::string &option_name,
+bool GetOption(const std::shared_ptr<hybridse::node::OptionsMap> &options, const std::string &option_name,
                hybridse::node::DataType option_type,
                std::function<bool(const hybridse::node::ConstNode *node)> const &f) {
     auto it = options->find(option_name);
@@ -617,8 +617,8 @@ bool AppendColumnValue(const std::string &v, hybridse::sdk::DataType type, bool 
     }
 }
 
-bool InsertOneRow(const std::string &insert_placeholder, const std::vector<std::string> &cols,
-                  const std::string &nullValue, std::string *error) {
+bool InsertOneRow(const std::string &insert_placeholder, const std::vector<int> &str_col_idx,
+                  const std::string &nullValue, const std::vector<std::string> &cols, std::string *error) {
     if (cols.empty()) {
         return false;
     }
@@ -638,9 +638,9 @@ bool InsertOneRow(const std::string &insert_placeholder, const std::vector<std::
     }
     // scan all strings , calc the sum, to init SQLInsertRow's string length
     std::string::size_type str_len_sum = 0;
-    for (int i = 0; i < cnt; ++i) {
-        if (schema->GetColumnType(i) == hybridse::sdk::kTypeString && cols[i] != nullValue) {
-            str_len_sum += cols[i].length();
+    for (auto idx : str_col_idx) {
+        if (cols[idx] != nullValue) {
+            str_len_sum += cols[idx].length();
         }
     }
     row->Init(static_cast<int>(str_len_sum));
@@ -670,7 +670,7 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
     bool header = true;
     std::string nullValue{"null"}, format{"csv"};
 
-    if (!SetOption(options, "delimiter", hybridse::node::kVarchar,
+    if (!GetOption(options, "delimiter", hybridse::node::kVarchar,
                    [&delimiter, error](const hybridse::node::ConstNode *node) {
                        auto &s = node->GetAsString();
                        if (s.size() != 1) {
@@ -680,17 +680,17 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
                        delimiter = s[0];
                        return true;
                    }) ||
-        !SetOption(options, "header", hybridse::node::kBool,
+        !GetOption(options, "header", hybridse::node::kBool,
                    [&header](const hybridse::node::ConstNode *node) {
                        header = node->GetBool();
                        return true;
                    }) ||
-        !SetOption(options, "nullValue", hybridse::node::kVarchar,
+        !GetOption(options, "nullValue", hybridse::node::kVarchar,
                    [&nullValue](const hybridse::node::ConstNode *node) {
                        nullValue = node->GetAsString();
                        return true;
                    }) ||
-        !SetOption(options, "format", hybridse::node::kVarchar,
+        !GetOption(options, "format", hybridse::node::kVarchar,
                    [&format, error](const hybridse::node::ConstNode *node) {
                        if (node->GetAsString() != "csv") {
                            *error = "only support csv";
@@ -720,21 +720,14 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
     }
     std::vector<std::string> cols;
     SplitCSVLineWithDelimiterForStrings(line, delimiter, &cols);
-    // build placeholder
-    std::string holders;
-    for (auto i = 0; i < cols.size(); ++i) {
-        holders += ((i == 0) ? "?" : ",?");
+    auto schema = sr->GetTableSchema(database, table);
+    if (cols.size() != schema->GetColumnCnt()) {
+        *error = "mismatch column size";
+        return false;
     }
-    hybridse::sdk::Status status;
-    std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
 
     if (header) {
         // the first line is the column names, check if equal with table schema
-        auto schema = sr->GetTableSchema(database, table);
-        if (cols.size() != schema->GetColumnCnt()) {
-            *error = "mismatch column size";
-            return false;
-        }
         for (int i = 0; i < schema->GetColumnCnt(); ++i) {
             if (cols[i] != schema->GetColumnName(i)) {
                 *error = "mismatch column name";
@@ -746,10 +739,24 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
         std::getline(file, line);
     }
 
+    // build placeholder
+    std::string holders;
+    for (auto i = 0; i < schema->GetColumnCnt(); ++i) {
+        holders += ((i == 0) ? "?" : ",?");
+    }
+    hybridse::sdk::Status status;
+    std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
+    std::vector<int> strColIdx;
+    for (int i = 0; i < schema->GetColumnCnt(); ++i) {
+        if (schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+            strColIdx.emplace_back(i);
+        }
+    }
+
     do {
         cols.clear();
         SplitCSVLineWithDelimiterForStrings(line, delimiter, &cols);
-        if (!InsertOneRow(insert_placeholder, cols, nullValue, error)) {
+        if (!InsertOneRow(insert_placeholder, strColIdx, nullValue, cols, error)) {
             *error = "line [" + line + "] insert failed, " + *error;
             return false;
         }
