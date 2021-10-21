@@ -21,7 +21,8 @@ namespace catalog {
 
 ProcedureInfoImpl::ProcedureInfoImpl(const ::openmldb::api::ProcedureInfo& procedure) :
     db_name_(procedure.db_name()), sp_name_(procedure.sp_name()), sql_(procedure.sql()),
-    main_table_(procedure.main_table()), main_db_(procedure.main_db()), type_(::hybridse::sdk::ProcedureType::kNormal) {
+    main_table_(procedure.main_table()), main_db_(procedure.main_db()),
+    type_(::hybridse::sdk::ProcedureType::kReqProcedure) {
     if (procedure.input_schema_size() > 0) {
         ::hybridse::vm::Schema hybridse_in_schema;
         openmldb::catalog::SchemaAdapter::ConvertSchema(procedure.input_schema(), &hybridse_in_schema);
@@ -35,8 +36,8 @@ ProcedureInfoImpl::ProcedureInfoImpl(const ::openmldb::api::ProcedureInfo& proce
     for (const auto& table : procedure.tables()) {
         tables_.push_back(table);
     }
-    if (procedure.type() == ::openmldb::type::ProcedureType::kDeployment) {
-        type_ = ::hybridse::sdk::ProcedureType::kDeployment;
+    if (procedure.type() == ::openmldb::type::ProcedureType::kReqDeployment) {
+        type_ = ::hybridse::sdk::ProcedureType::kReqDeployment;
     }
 }
 

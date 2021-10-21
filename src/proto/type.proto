@@ -70,6 +70,6 @@ enum StartupMode {
 
 enum ProcedureType {
     kUnknow = -1;
-    kNormal = 0;
-    kDeployment = 1;
+    kReqProcedure = 0;
+    kReqDeployment = 1;
 }

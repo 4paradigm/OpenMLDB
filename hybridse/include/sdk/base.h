@@ -131,8 +131,8 @@ class TableSet {
 
 enum ProcedureType {
     kUnknow = -1,
-    kNormal = 0,
-    kDeployment,
+    kReqProcedure = 0,
+    kReqDeployment,
 };
 
 class ProcedureInfo {
