@@ -151,7 +151,9 @@ class NodeManager {
                                  SqlNodeList *column_desc_list,
                                  SqlNodeList *partition_meta_list);
     SqlNode *MakeColumnDescNode(const std::string &column_name,
-                                const DataType data_type, bool op_not_null);
+                                const DataType data_type,
+                                bool op_not_null,
+                                ExprNode* default_value = nullptr);
     SqlNode *MakeColumnIndexNode(SqlNodeList *keys, SqlNode *ts, SqlNode *ttl,
                                  SqlNode *version);
     SqlNode *MakeColumnIndexNode(SqlNodeList *index_item_list);

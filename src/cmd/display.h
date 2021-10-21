@@ -61,6 +61,7 @@ __attribute__((unused)) static void PrintSchema(
     t.add("Field");
     t.add("Type");
     t.add("Null");
+    t.add("Default");
     t.end_of_row();
 
     for (int i = 0; i < column_desc.size(); i++) {
@@ -70,6 +71,7 @@ __attribute__((unused)) static void PrintSchema(
         // kXXX discard k
         t.add(DataType_Name(column.data_type()).substr(1));
         t.add(column.not_null() ? "NO" : "YES");
+        t.add(column.default_value());
         t.end_of_row();
     }
 

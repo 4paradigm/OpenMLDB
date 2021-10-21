@@ -105,6 +105,22 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         return false;
                     }
                 }
+                auto default_val = column_def->GetDefaultValue();
+                if (default_val) {
+                    if (default_val->GetExprType() != hybridse::node::kExprPrimary) {
+                        status->msg = "CREATE common: default value expression not supported";
+                        status->code = hybridse::common::kTypeError;
+                        return false;
+                    }
+                    auto val = TransformDataType(*dynamic_cast<hybridse::node::ConstNode*>(default_val),
+                                                 column_desc->data_type());
+                    if (!val) {
+                        status->msg = "CREATE common: default value type mismatch";
+                        status->code = hybridse::common::kTypeError;
+                        return false;
+                    }
+                    column_desc->set_default_value(DataToString(*val));
+                }
                 break;
             }
 
@@ -295,6 +311,145 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
         index->set_ts_name(column_index->GetTs());
     }
     return true;
+}
+
+std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::TransformDataType(const hybridse::node::ConstNode& node,
+                                                                          openmldb::type::DataType column_type) {
+    hybridse::node::DataType node_type = node.GetDataType();
+    switch (column_type) {
+        case openmldb::type::kBool:
+            if (node_type == hybridse::node::kInt32) {
+                return std::make_shared<hybridse::node::ConstNode>(node.GetBool());
+            } else if (node_type == hybridse::node::kBool) {
+                return std::make_shared<hybridse::node::ConstNode>(node);
+            }
+            break;
+        case openmldb::type::kSmallInt:
+            if (node_type == hybridse::node::kInt16) {
+                return std::make_shared<hybridse::node::ConstNode>(node);
+            } else if (node_type == hybridse::node::kInt32) {
+                return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt16());
+            }
+            break;
+        case openmldb::type::kInt:
+            if (node_type == hybridse::node::kInt16) {
+                return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt32());
+            } else if (node_type == hybridse::node::kInt32) {
+                return std::make_shared<hybridse::node::ConstNode>(node);
+            } else if (node_type == hybridse::node::kInt64) {
+                return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt32());
+            }
+            break;
+        case openmldb::type::kBigInt:
+            if (node_type == hybridse::node::kInt16 || node_type == hybridse::node::kInt32) {
+                return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt64());
+            } else if (node_type == hybridse::node::kInt64) {
+                return std::make_shared<hybridse::node::ConstNode>(node);
+            }
+            break;
+        case openmldb::type::kFloat:
+            if (node_type == hybridse::node::kDouble || node_type == hybridse::node::kInt32 ||
+                node_type == hybridse::node::kInt16) {
+                return std::make_shared<hybridse::node::ConstNode>(node.GetAsFloat());
+            } else if (node_type == hybridse::node::kFloat) {
+                return std::make_shared<hybridse::node::ConstNode>(node);
+            }
+            break;
+        case openmldb::type::kDouble:
+            if (node_type == hybridse::node::kFloat || node_type == hybridse::node::kInt32 ||
+                node_type == hybridse::node::kInt16) {
+                return std::make_shared<hybridse::node::ConstNode>(node.GetAsDouble());
+            } else if (node_type == hybridse::node::kDouble) {
+                return std::make_shared<hybridse::node::ConstNode>(node);
+            }
+            break;
+        case openmldb::type::kDate:
+            if (node_type == hybridse::node::kVarchar) {
+                int32_t year;
+                int32_t month;
+                int32_t day;
+                if (node.GetAsDate(&year, &month, &day)) {
+                    if (year < 1900 || year > 9999) break;
+                    if (month < 1 || month > 12) break;
+                    if (day < 1 || day > 31) break;
+                    int32_t date = (year - 1900) << 16;
+                    date = date | ((month - 1) << 8);
+                    date = date | day;
+                    return std::make_shared<hybridse::node::ConstNode>(date);
+                }
+                break;
+            } else if (node_type == hybridse::node::kDate) {
+                return std::make_shared<hybridse::node::ConstNode>(node);
+            }
+            break;
+        case openmldb::type::kTimestamp:
+            if (node_type == hybridse::node::kInt16 || node_type == hybridse::node::kInt32 ||
+                node_type == hybridse::node::kTimestamp) {
+                return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt64());
+            } else if (node_type == hybridse::node::kInt64) {
+                return std::make_shared<hybridse::node::ConstNode>(node);
+            }
+            break;
+        case openmldb::type::kVarchar:
+        case openmldb::type::kString:
+            if (node_type == hybridse::node::kVarchar) {
+                return std::make_shared<hybridse::node::ConstNode>(node);
+            }
+            break;
+        default:
+            return std::shared_ptr<hybridse::node::ConstNode>();
+    }
+    return std::shared_ptr<hybridse::node::ConstNode>();
+}
+
+std::string NodeAdapter::DataToString(const hybridse::node::ConstNode& node) {
+    switch (node.GetDataType()) {
+        case hybridse::node::kInt16:
+        case hybridse::node::kInt32:
+        case hybridse::node::kInt64:
+        case hybridse::node::kFloat:
+        case hybridse::node::kDouble:
+        case hybridse::node::kVarchar:
+            return node.GetAsString();
+        case hybridse::node::kBool:
+            return std::to_string(node.GetBool());
+        case hybridse::node::kDate:
+            return std::to_string(node.GetInt());
+        case hybridse::node::kTimestamp:
+            return std::to_string(node.GetLong());
+        default:
+            return "";
+    }
+}
+
+std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::string& str,
+                                                                     openmldb::type::DataType data_type) {
+    try {
+        switch (data_type) {
+            case type::kBool:
+                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<bool>(str));
+            case type::kSmallInt:
+                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<int16_t>(str));
+            case type::kInt:
+            case type::kDate:
+                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<int32_t>(str));
+            case type::kBigInt:
+            case type::kTimestamp:
+                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<int64_t>(str));
+            case type::kFloat:
+                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<float>(str));
+            case type::kDouble:
+                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<double>(str));
+            case type::kVarchar:
+            case type::kString:
+                return std::make_shared<hybridse::node::ConstNode>(str);
+            default:
+                return std::shared_ptr<hybridse::node::ConstNode>();
+        }
+    } catch (std::exception const& e) {
+        return std::shared_ptr<hybridse::node::ConstNode>();
+    }
+    return std::shared_ptr<hybridse::node::ConstNode>();
 }
 
 }  // namespace sdk

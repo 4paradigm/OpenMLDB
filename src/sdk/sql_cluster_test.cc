@@ -103,6 +103,53 @@ TEST_F(SQLClusterTest, cluster_insert) {
     ASSERT_TRUE(ok);
 }
 
+TEST_F(SQLClusterTest, cluster_insert_with_column_default_value) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 int not null, col2 bigint default 112 not null"
+                      "index(key=col1, ts=col2)) options(partitionnum=1);";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string sql;
+    sql = "insert into " + name + " values(1, 1);";
+    ASSERT_TRUE(router->ExecuteInsert(db, sql, &status));
+    sql = "insert into " + name + "(col1, col2) values(2, 2);";
+    ASSERT_TRUE(router->ExecuteInsert(db, sql, &status));
+    sql = "insert into " + name + "(col1) values(3);";
+    ASSERT_TRUE(router->ExecuteInsert(db, sql, &status));
+    sql = "insert into " + name + "(col2) values(4);";
+    ASSERT_FALSE(router->ExecuteInsert(db, sql, &status));
+
+    auto endpoints = mc_->GetTbEndpoint();
+    uint32_t count = 0;
+    for (const auto& endpoint : endpoints) {
+        ::openmldb::tablet::TabletImpl* tb1 = mc_->GetTablet(endpoint);
+        ::openmldb::api::GetTableStatusRequest request;
+        ::openmldb::api::GetTableStatusResponse response;
+        MockClosure closure;
+        tb1->GetTableStatus(NULL, &request, &response, &closure);
+        for (const auto& table_status : response.all_table_status()) {
+            count += table_status.record_cnt();
+        }
+    }
+    ASSERT_EQ(3u, count);
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
+}
+
 TEST_F(SQLSDKQueryTest, GetTabletClient) {
     std::string ddl =
         "create table t1(col0 string,\n"

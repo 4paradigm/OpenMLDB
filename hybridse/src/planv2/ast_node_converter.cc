@@ -1301,7 +1301,12 @@ base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::
                     node::DataType type;
                     CHECK_STATUS(node::StringToDataType(type_name, &type));
 
-                    *node = node_manager->MakeColumnDescNode(name, type, not_null);
+                    node::ExprNode* default_value = nullptr;
+                    if (simple_column_schema->default_expression()) {
+                        ConvertExprNode(simple_column_schema->default_expression(), node_manager, &default_value);
+                    }
+
+                    *node = node_manager->MakeColumnDescNode(name, type, not_null, default_value);
                     return base::Status::OK();
                 }
                 default: {

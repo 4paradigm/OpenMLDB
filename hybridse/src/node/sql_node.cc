@@ -1276,6 +1276,10 @@ void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     PrintValue(output, tab, DataTypeName(column_type_), "column_type", false);
     output << "\n";
     PrintValue(output, tab, std::to_string(op_not_null_), "NOT NULL", false);
+    if (default_value_) {
+        output << "\n";
+        PrintSqlNode(output, tab, default_value_, "default_value", false);
+    }
 }
 
 void ColumnIndexNode::Print(std::ostream &output, const std::string &org_tab) const {

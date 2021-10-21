@@ -43,6 +43,7 @@ message ColumnDesc {
     optional openmldb.type.DataType data_type = 2;
     optional bool not_null = 3 [default = false];
     optional bool is_constant = 4 [default = false];
+    optional string default_value = 5;
 }
 
 message TTLSt {

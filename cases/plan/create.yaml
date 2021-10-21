@@ -756,3 +756,66 @@ cases:
           +-replica_num: 1
           +-partition_num: 1
           +-distribution_list: []
+  - id: 26
+    desc: Column default value
+    sql: |
+      create table test(
+          column1 int default 1,
+          column2 int
+      );
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: test
+          +-IF NOT EXIST: 0
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column1
+          |  |    +-column_type: int32
+          |  |    +-NOT NULL: 0
+          |  |    +-default_value:
+          |  |    |  +-expr[primary]
+          |  |    |    +-value: 1
+          |  |    |    +-type: int32
+          |  +-1:
+          |    +-node[kColumnDesc]
+          |      +-column_name: column2
+          |      +-column_type: int32
+          |      +-NOT NULL: 0
+          +-replica_num: 1
+          +-partition_num: 1
+          +-distribution_list: []
+  - id: 27
+    desc: Column default value with explicit type
+    sql: |
+      create table test(
+          column1 string default CAST(1 as string),
+          column3 int
+      );
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: test
+          +-IF NOT EXIST: 0
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column1
+          |  |    +-column_type: string
+          |  |    +-NOT NULL: 0
+          |  |    +-default_value:
+          |  |    |  +-expr[cast]
+          |  |    |    +-cast_type: string
+          |  |    |    +-expr:
+          |  |    |      +-expr[primary]
+          |  |    |        +-value: 1
+          |  |    |        +-type: int32
+          |  +-1:
+          |    +-node[kColumnDesc]
+          |      +-column_name: column3
+          |      +-column_type: int32
+          |      +-NOT NULL: 0
+          +-replica_num: 1
+          +-partition_num: 1
+          +-distribution_list: []

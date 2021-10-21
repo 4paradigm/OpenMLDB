@@ -19,8 +19,10 @@
 
 #include <map>
 #include <string>
+
 #include "node/node_manager.h"
 #include "proto/name_server.pb.h"
+#include "proto/type.pb.h"
 
 namespace openmldb {
 namespace sdk {
@@ -28,11 +30,19 @@ namespace sdk {
 class NodeAdapter {
  public:
     static bool TransformToTableDef(::hybridse::node::CreatePlanNode* create_node,
-            ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status);
+                                    ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status);
 
     static bool TransformToColumnKey(hybridse::node::ColumnIndexNode* column_index,
-            const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
-            common::ColumnKey* index, hybridse::base::Status* status);
+                                     const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
+                                     common::ColumnKey* index, hybridse::base::Status* status);
+
+    static std::shared_ptr<hybridse::node::ConstNode> TransformDataType(const hybridse::node::ConstNode& node,
+                                                                        openmldb::type::DataType column_type);
+
+    static std::string DataToString(const hybridse::node::ConstNode& node);
+
+    static std::shared_ptr<hybridse::node::ConstNode> StringToData(const std::string& str,
+                                                                   openmldb::type::DataType data_type);
 };
 
 }  // namespace sdk
