@@ -42,6 +42,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -437,6 +438,7 @@ public class FesqlUtil {
             return null;
         }
 
+        String insertDbName= input.getDb().isEmpty() ? dbName : input.getDb();
         logger.info("select sql:{}", selectSql);
         FesqlResult fesqlResult = new FesqlResult();
         List<List<Object>> result = Lists.newArrayList();
@@ -471,7 +473,7 @@ public class FesqlUtil {
                 fesqlResult.setMsg("Convert Result Set To List Fail");
                 return fesqlResult;
             }
-            if (need_insert_request_row && !executor.executeInsert(dbName, inserts.get(i))) {
+            if (need_insert_request_row && !executor.executeInsert(insertDbName, inserts.get(i))) {
                 fesqlResult.setOk(false);
                 fesqlResult.setMsg("Fail to execute sql in request mode fail to insert request row after query");
                 logger.error(fesqlResult.getMsg());
@@ -596,6 +598,7 @@ public class FesqlUtil {
         }
 
         logger.info("procedure sql:{}", sql);
+        String insertDbName = input.getDb().isEmpty() ? dbName : input.getDb();
         FesqlResult fesqlResult = new FesqlResult();
         if (!executor.executeDDL(dbName, sql)) {
             logger.error("execute ddl failed! sql: {}", sql);
@@ -630,7 +633,7 @@ public class FesqlUtil {
                     return fesqlResult;
                 }
                 result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
-                if (needInsertRequestRow && !executor.executeInsert(dbName, inserts.get(i))) {
+                if (needInsertRequestRow && !executor.executeInsert(insertDbName, inserts.get(i))) {
                     fesqlResult.setOk(false);
                     fesqlResult.setMsg("fail to execute sql in request mode: fail to insert request row after query");
                     logger.error(fesqlResult.getMsg());
@@ -1170,9 +1173,26 @@ public class FesqlUtil {
     }
 
     public static FesqlResult createAndInsert(SqlExecutor executor,
-                                              String dbName,
+                                              String defaultDBName,
                                               List<InputDesc> inputs,
                                               boolean useFirstInputAsRequests) {
+        // Create inputs' databasess if exist
+        HashSet<String> dbNames = new HashSet<>();
+        if (!StringUtils.isEmpty(defaultDBName)) {
+            dbNames.add(defaultDBName);
+        }
+
+        if (!Objects.isNull(inputs)) {
+            for (InputDesc input : inputs) {
+                // CreateDB if input's db has been configured and hasn't been created before
+                if (!StringUtils.isEmpty(input.getDb()) && !dbNames.contains(input.getDb())) {
+                    boolean dbOk = executor.createDB(input.getDb());
+                    dbNames.add(input.getDb());
+                    log.info("create db:{},{}", input.getDb(), dbOk);
+                }
+            }
+        }
+
         FesqlResult fesqlResult = new FesqlResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {
@@ -1183,6 +1203,7 @@ public class FesqlUtil {
                 }
                 createSql = SQLCase.formatSql(createSql, i, tableName);
                 createSql = formatSql(createSql,FedbGlobalVar.mainInfo);
+                String dbName = inputs.get(i).getDb().isEmpty() ? defaultDBName : inputs.get(i).getDb();
                 createTable(executor,dbName,createSql);
                 InputDesc input = inputs.get(i);
                 if (0 == i && useFirstInputAsRequests) {
@@ -1206,7 +1227,7 @@ public class FesqlUtil {
     }
 
     public static FesqlResult createAndInsertWithPrepared(SqlExecutor executor,
-                                              String dbName,
+                                              String defaultDBName,
                                               List<InputDesc> inputs,
                                               boolean useFirstInputAsRequests) {
         FesqlResult fesqlResult = new FesqlResult();
@@ -1215,6 +1236,7 @@ public class FesqlUtil {
                 String tableName = inputs.get(i).getName();
                 String createSql = inputs.get(i).extractCreate();
                 createSql = SQLCase.formatSql(createSql, i, tableName);
+                String dbName = inputs.get(i).getDb().isEmpty() ? defaultDBName : inputs.get(i).getDb();
                 createTable(executor,dbName,createSql);
                 InputDesc input = inputs.get(i);
                 if (0 == i && useFirstInputAsRequests) {

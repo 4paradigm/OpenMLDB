@@ -394,32 +394,6 @@ class SchemaAdapter {
         fedb_column->set_data_type(openmldb_type);
         return true;
     }
-
-    static std::shared_ptr<hybridse::sdk::ProcedureInfo> ConvertProcedureInfo(
-        const openmldb::api::ProcedureInfo& sp_info) {
-        ::hybridse::vm::Schema hybridse_in_schema;
-        if (!openmldb::catalog::SchemaAdapter::ConvertSchema(sp_info.input_schema(), &hybridse_in_schema)) {
-            LOG(WARNING) << "fail to convert input schema";
-            return nullptr;
-        }
-        ::hybridse::vm::Schema hybridse_out_schema;
-        if (!openmldb::catalog::SchemaAdapter::ConvertSchema(sp_info.output_schema(), &hybridse_out_schema)) {
-            LOG(WARNING) << "fail to convert output schema";
-            return nullptr;
-        }
-        ::hybridse::sdk::SchemaImpl input_schema(hybridse_in_schema);
-        ::hybridse::sdk::SchemaImpl output_schema(hybridse_out_schema);
-        std::vector<std::string> table_vec;
-        auto& tables = sp_info.tables();
-        for (const auto& table : tables) {
-            table_vec.push_back(table);
-        }
-        std::shared_ptr<openmldb::catalog::ProcedureInfoImpl> sp_info_impl =
-            std::make_shared<openmldb::catalog::ProcedureInfoImpl>(sp_info.db_name(), sp_info.sp_name(), sp_info.sql(),
-                                                                   input_schema, output_schema, table_vec,
-                                                                   sp_info.main_table());
-        return sp_info_impl;
-    }
 };
 
 }  // namespace catalog

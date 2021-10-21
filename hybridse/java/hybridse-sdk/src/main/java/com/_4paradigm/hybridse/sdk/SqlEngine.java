@@ -101,7 +101,6 @@ public class SqlEngine implements AutoCloseable {
         EngineOptions engineOptions = new EngineOptions();
         engineOptions.set_keep_ir(true);
         engineOptions.set_compile_only(true);
-        engineOptions.set_performance_sensitive(false);
         return engineOptions;
     }
 
@@ -120,6 +119,7 @@ public class SqlEngine implements AutoCloseable {
         options = engineOptions;
         catalog = new SimpleCatalog();
         session = new BatchRunSession();
+        session.SetPerformanceSensitive(false);
         for (TypeOuterClass.Database database: databases) {
             catalog.AddDatabase(database);
         }

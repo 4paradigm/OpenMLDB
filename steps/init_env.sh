@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # init_env.sh
-set -eE
+set -eE -x
 
 pushd "$(dirname "$0")/.."
 
@@ -36,15 +36,14 @@ echo "Install thirdparty ... for $(uname -a)"
 
 ./steps/setup_thirdparty.sh "$THIRDPARTY_PATH"
 
-echo -e "${GREEN}downloading thirdsrc.tar.gz${NC}"
-mkdir -p "$THIRDSRC_PATH"
-curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
-tar xzf thirdsrc.tar.gz -C "$THIRDSRC_PATH" --strip-components 1
-echo -e "${GREEN}set up thirdsrc done${NC}"
-
-if [ -d "$THIRDPARTY_PATH/hybridse" ]; then
-    echo "${GREEN}thirdparty/hybridse path: $THIRDPARTY_PATH/hybridse already exist, skip download/install deps${NC}"
-    exit 0
+if [ ! -d "$THIRDSRC_PATH/zookeeper-3.4.14" ]; then
+    echo -e "${GREEN}downloading thirdsrc.tar.gz${NC}"
+    mkdir -p "$THIRDSRC_PATH"
+    curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
+    tar xzf thirdsrc.tar.gz -C "$THIRDSRC_PATH" --strip-components 1
+    echo -e "${GREEN}set up thirdsrc done${NC}"
+else
+    echo "thirdsrc already exist, skip download"
 fi
 
 echo "HYBRIDSE_SOURCE: $HYBRIDSE_SOURCE"
@@ -63,15 +62,28 @@ if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
     cmake --build build --target install -- -j"$(nproc)"
     mv hybridse "$THIRDPARTY_PATH/hybridse"
     popd
+
+    pushd "${ROOT}/hybridse/java"
+    if [[ "$OSTYPE" = "darwin"* ]]; then
+        mvn install -Dmaven.test.skip=true -Pmacos -Dgpg.skip
+    elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
+        mvn install -Dmaven.test.skip=true -Dgpg.skip
+    fi
+    popd
+
 else
+    if [ -d "$THIRDPARTY_PATH/hybridse" ]; then
+        echo "${GREEN}thirdparty/hybridse path: $THIRDPARTY_PATH/hybridse already exist, skip download/install deps${NC}"
+        exit 0
+    fi
     echo "Download hybridse package"
     pushd "${THIRDSRC_PATH}"
 
     if [[ "$OSTYPE" = "darwin"* ]]; then
-        curl -SLo hybridse.tar.gz https://github.com/vagetablechicken/fedb/releases/download/hybridse-v0.2.4.20210930/hybridse-0.2.4.20210930-darwin-x86_64.tar.gz
+        curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.2.4-20211018/hybridse-0.2.4-20211018-darwin-x86_64.tar.gz
     elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
         if [[ $ARCH = 'x86_64' ]]; then
-            curl -SLo hybridse.tar.gz https://github.com/vagetablechicken/fedb/releases/download/hybridse-v0.2.4.20210930/hybridse-0.2.4.20210930-linux-x86_64.tar.gz
+            curl -SLo hybridse.tar.gz https://github.com/jingchen2222/OpenMLDB/releases/download/hybridse-v0.2.4-20211018/hybridse-0.2.4-20211018-linux-x86_64.tar.gz
         elif [[ $ARCH = 'aarch64' ]]; then
             # NOTE: missing hybridse-aarch64
             echo "missing hybridse-aarch64"

@@ -1593,8 +1593,9 @@ TEST_F(PlannerV2Test, DeployPlanNodeTest) {
   col1
 FROM
   t1
-)sql", deploy_stmt->stmt_str().c_str());
+)sql", deploy_stmt->StmtStr().c_str());
 }
+
 TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
     const std::string sql = "LOAD DATA INFILE 'hello.csv' INTO TABLE t1 OPTIONS (key = 'cat');";
     node::PlanNodeList plan_trees;
@@ -1607,7 +1608,71 @@ TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
   +-db: <nil>
   +-table: t1
   +-options:
-    +-key: cat)sql", plan_trees.front()->GetTreeString().c_str());
+    +-key:
+      +-expr[primary]
+        +-value: cat
+        +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
+}
+
+TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
+    const std::string sql = "SELECT c2 FROM t0 INTO OUTFILE 'm.txt' OPTIONS (key = 'cat');";
+    node::PlanNodeList plan_trees;
+    base::Status status;
+    NodeManager nm;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
+    ASSERT_EQ(1, plan_trees.size());
+    EXPECT_STREQ(R"sql(+-[kPlanTypeSelectInto]
+  +-out_file: m.txt
+  +-query:
+  |  +-node[kQuery]: kQuerySelect
+  |    +-distinct_opt: false
+  |    +-where_expr: null
+  |    +-group_expr_list: null
+  |    +-having_expr: null
+  |    +-order_expr_list: null
+  |    +-limit: null
+  |    +-select_list[list]:
+  |    |  +-0:
+  |    |    +-node[kResTarget]
+  |    |      +-val:
+  |    |      |  +-expr[column ref]
+  |    |      |    +-relation_name: <nil>
+  |    |      |    +-column_name: c2
+  |    |      +-name: <nil>
+  |    +-tableref_list[list]:
+  |    |  +-0:
+  |    |    +-node[kTableRef]: kTable
+  |    |      +-table: t0
+  |    |      +-alias: <nil>
+  |    +-window_list: []
+  +-options:
+    +-key:
+      +-expr[primary]
+        +-value: cat
+        +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
+
+    const auto select_into = dynamic_cast<node::SelectIntoPlanNode*>(plan_trees.front());
+    ASSERT_TRUE(select_into != nullptr);
+    EXPECT_STREQ(R"sql(SELECT
+  c2
+FROM
+  t0
+)sql", select_into->QueryStr().c_str());
+}
+
+TEST_F(PlannerV2Test, SetPlanNodeTest) {
+    const auto sql = "SET select_mode = 'TRINO'";
+    node::PlanNodeList plan_trees;
+    base::Status status;
+    NodeManager nm;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
+    ASSERT_EQ(1, plan_trees.size());
+    EXPECT_STREQ(R"sql(+-[kPlanTypeSet]
+  +-key: select_mode
+  +-value:
+    +-expr[primary]
+      +-value: TRINO
+      +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
 }
 //
 // TEST_F(PlannerTest, CreateSpParseTest) {

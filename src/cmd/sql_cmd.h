@@ -438,16 +438,25 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             break;
         }
         case hybridse::node::kCmdShowCreateSp: {
-            std::string db_name = cmd_node->GetArgs()[0];
-            if (db_name.empty()) {
+            auto &args = cmd_node->GetArgs();
+            std::string db_name, sp_name;
+            if (args.size() == 1) {
+                // only sp name, no db_name
                 if (db.empty()) {
                     std::cout << "please enter database first" << std::endl;
                     return;
                 } else {
                     db_name = db;
                 }
+                sp_name = args[0];
+            } else if (args.size() == 2) {
+                db_name = args[0];
+                sp_name = args[1];
+            } else {
+                std::cout << "invalid args for show create procedure" << std::endl;
+                return;
             }
-            std::string sp_name = cmd_node->GetArgs()[1];
+
             std::string error;
             std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cs->GetProcedureInfo(db_name, sp_name, &error);
             if (!sp_info) {
@@ -649,6 +658,11 @@ void Shell() {
             }
         }
         sql.append(buffer);
+        if (sql == "quit;" || sql == "exit;" || sql == "quit" || sql == "exit") {
+            std::cout << "Bye" << std::endl;
+            sql.clear();
+            return;
+        }
         if (sql.back() == ';') {
             HandleSQL(sql);
             multi_line = false;

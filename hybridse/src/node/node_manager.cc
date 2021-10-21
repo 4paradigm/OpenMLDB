@@ -766,6 +766,28 @@ LoadDataPlanNode *NodeManager::MakeLoadDataPlanNode(const std::string &file_name
     return RegisterNode(node);
 }
 
+SelectIntoNode* NodeManager::MakeSelectIntoNode(const QueryNode* query, const std::string& query_str,
+                                   const std::string& out_file, const std::shared_ptr<OptionsMap> options) {
+    SelectIntoNode* node = new SelectIntoNode(query, query_str, out_file, options);
+    return RegisterNode(node);
+}
+
+SelectIntoPlanNode* NodeManager::MakeSelectIntoPlanNode(const QueryNode* query, const std::string& query_str,
+                                               const std::string& out_file, const std::shared_ptr<OptionsMap> options) {
+    SelectIntoPlanNode* node = new SelectIntoPlanNode(query, query_str, out_file, options);
+    return RegisterNode(node);
+}
+
+SetNode* NodeManager::MakeSetNode(const std::string &key, const ConstNode *value) {
+    SetNode* node = new SetNode(key, value);
+    return RegisterNode(node);
+}
+
+SetPlanNode* NodeManager::MakeSetPlanNode(const SetNode *set_node) {
+    SetPlanNode* node = new SetPlanNode(set_node->Key(), set_node->Value());
+    return RegisterNode(node);
+}
+
 AllNode *NodeManager::MakeAllNode(const std::string &relation_name) { return MakeAllNode(relation_name, ""); }
 
 AllNode *NodeManager::MakeAllNode(const std::string &relation_name, const std::string &db_name) {

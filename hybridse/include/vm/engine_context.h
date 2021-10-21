@@ -64,10 +64,10 @@ class CompileInfo {
                                 const std::string& tab) = 0;
 };
 
-typedef std::map<
-    EngineMode,
-    std::map<std::string, boost::compute::detail::lru_cache<
-                              std::string, std::shared_ptr<CompileInfo>>>>
+typedef std::map<EngineMode,
+            std::map<bool,
+                std::map<std::string,
+                    boost::compute::detail::lru_cache<std::string, std::shared_ptr<CompileInfo>>>>>
     EngineLRUCache;
 
 class CompileInfoCache {

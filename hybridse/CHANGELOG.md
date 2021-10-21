@@ -8,6 +8,15 @@
 
 ### SQL Syntax
 - Support IN predicate: [#423](https://github.com/4paradigm/OpenMLDB/pull/423)
+- DEPLOYMENT related statements: [#506](https://github.com/4paradigm/OpenMLDB/pull/506)
+  - `SHOW DEPLOYMENTS`: [#406](https://github.com/4paradigm/OpenMLDB/issues/460)
+  - `SHOW DEPLOYMENT foo`: [#406](https://github.com/4paradigm/OpenMLDB/issues/460)
+  - `DROP DEPLOYMENT foo`: [#406](https://github.com/4paradigm/OpenMLDB/issues/460)
+  - `DEPLOY foo <sql statement>`: [#447](https://github.com/4paradigm/OpenMLDB/issues/447)
+- Table Data Import/Export:
+  - `LOAD DATA INFILE <file name> INTO TABLE <table name>`: [#506](https://github.com/4paradigm/OpenMLDB/pull/506)
+  - `<query statement> INTO OUTFILE <file name>`: [#532](https://github.com/4paradigm/OpenMLDB/pull/532)
+- `SET SELECT_MODE`: [#532](https://github.com/4paradigm/OpenMLDB/pull/532)
 
 ### Bug Fix
 - Fix plan error triggered by optimize the same plan node repeatedly. [#437](https://github.com/4paradigm/OpenMLDB/issues/437)

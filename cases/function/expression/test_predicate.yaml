@@ -487,12 +487,14 @@ cases:
     expect:
       columns: ["id:bigint", "name:string", "code:string", "score:int"]
     expectProvider:
-      - rows:
-          - [1, Lucy, A, 10]
-          - [2, Zoey, B, 100]
-      - rows:
-          - [1, Lucy, A, NULL]
-          - [2, Zoey, B, NULL]
+      0:
+        rows:
+          - [ 1, Lucy, A, 10 ]
+          - [ 2, Zoey, B, 100 ]
+      1:
+        rows:
+          - [ 1, Lucy, A, NULL ]
+          - [ 2, Zoey, B, NULL ]
   - id: in_predicate_type_conversion
     desc: type conversion occurred between lhs and in_list
     mode: hybridse-only
@@ -518,10 +520,12 @@ cases:
     expect:
       columns: ["id:bigint", "name:string", "code:string", "score:int"]
     expectProvider:
-      - rows:
+      0:
+        rows:
           - [1, Lucy, A, 10]
           - [2, Zoey, B, NULL]
-      - rows:
+      1:
+        rows:
           - [1, Lucy, A, NULL]
           - [2, Zoey, B, 100]
   - id: in_predicate_subexpr
@@ -549,10 +553,12 @@ cases:
     expect:
       columns: ["id:bigint", "name:string", "code:string", "score:int"]
     expectProvider:
-      - rows:
+      0:
+        rows:
           - [1, Lucy, A, 10]
           - [2, Zoey, B, NULL]
-      - rows:
+      1:
+        rows:
           - [1, Lucy, A, NULL]
           - [2, Zoey, B, 100]
   - id: in_predicate_with_window
@@ -577,13 +583,15 @@ cases:
     expect:
       columns: ["id bigint", "col1 int32", "std_ts timestamp", "w1_id bool"]
     expectProvider:
-      - rows:
+      0:
+        rows:
           - [1, 1, 1590115420000, false]
           - [3, 1, 1590115430000, true]
           - [5, 1, 1590115440000, true]
           - [7, 1, 1590115450000, true]
           - [9, 1, 1590115460000, false]
-      - rows:
+      1:
+        rows:
           - [1, 1, 1590115420000, true]
           - [3, 1, 1590115430000, false]
           - [5, 1, 1590115440000, false]

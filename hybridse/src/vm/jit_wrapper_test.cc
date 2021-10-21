@@ -61,6 +61,20 @@ std::shared_ptr<SqlCompileInfo> Compile(
     return std::dynamic_pointer_cast<SqlCompileInfo>(session.GetCompileInfo());
 }
 
+std::shared_ptr<SqlCompileInfo> CompileNotPerformanceSensitive(
+    const std::string &sql, const EngineOptions &options,
+    std::shared_ptr<SimpleCatalog> catalog) {
+    base::Status status;
+    BatchRunSession session;
+    session.SetPerformanceSensitive(false);
+    Engine engine(catalog, options);
+    if (!engine.Get(sql, "db", session, status)) {
+        LOG(WARNING) << "Fail to compile sql";
+        return nullptr;
+    }
+    return std::dynamic_pointer_cast<SqlCompileInfo>(session.GetCompileInfo());
+}
+
 void simple_test(const EngineOptions &options) {
     auto catalog = GetTestCatalog();
     std::string sql = "select col_1, col_2 from t1;";
@@ -120,9 +134,8 @@ TEST_F(JitWrapperTest, test_mcjit) {
 TEST_F(JitWrapperTest, test_window) {
     EngineOptions options;
     options.set_keep_ir(true);
-    options.set_performance_sensitive(false);
     auto catalog = GetTestCatalog();
-    auto compile_info = Compile(
+    auto compile_info = CompileNotPerformanceSensitive(
         "select col_1, sum(col_2) over w, "
         "distinct_count(col_2) over w "
         "from t1 "
