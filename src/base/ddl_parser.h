@@ -47,11 +47,6 @@ using hybridse::vm::Sort;
 using IndexMap = std::map<std::string, std::vector<::openmldb::common::ColumnKey>>;
 std::ostream& operator<<(std::ostream& os, IndexMap& index_map);
 
-// Ref hybridse/src/passes/physical/group_and_sort_optimized.cc:651
-// TODO(hw): hybridse should open this method
-static bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
-                                            std::string* source_name);
-
 class IndexMapBuilder {
  public:
     explicit IndexMapBuilder(std::shared_ptr<Catalog> cl) : cl_(std::move(cl)) {}
@@ -254,12 +249,10 @@ class DDLParser {
     static void AddTables(
         const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schema,
         hybridse::type::Database* db) {
-        std::vector<::hybridse::type::TableDef> defs;
         for (auto& table : schema) {
             // add to database
             auto def = db->add_tables();
             def->set_name(table.first);
-
             auto& cols = table.second;
             for (auto& col : cols) {
                 auto add = def->add_columns();

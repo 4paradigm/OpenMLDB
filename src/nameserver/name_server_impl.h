@@ -308,8 +308,6 @@ class NameServerImpl : public NameServer {
     void SetSdkEndpoint(RpcController* controller, const SetSdkEndpointRequest* request, GeneralResponse* response,
                         Closure* done);
 
-    void Deploy(RpcController* controller, const DeployRequest* request, DeployResponse* response, Closure* done);
-
     int SyncExistTable(const std::string& alias, const std::string& name, const std::string& db,
                        const std::vector<::openmldb::nameserver::TableInfo> tables_remote,
                        const ::openmldb::nameserver::TableInfo& table_info_local, uint32_t pid, int& code,  // NOLINT

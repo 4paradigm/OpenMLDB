@@ -461,13 +461,6 @@ message ShowCatalogResponse {
     optional string msg = 3;
 }
 
-message DeployRequest {}
-
-message DeployResponse {
-    optional int32 code = 1;
-    optional string msg = 3;
-}
-
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -518,5 +511,4 @@ service NameServer {
     // sql procedure interfaces
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
     rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
-    rpc Deploy(DeployRequest) returns (DeployResponse);
 }

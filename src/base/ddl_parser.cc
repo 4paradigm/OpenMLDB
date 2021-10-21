@@ -21,6 +21,11 @@
 
 namespace openmldb::base {
 
+// Ref hybridse/src/passes/physical/group_and_sort_optimized.cc:651
+// // TODO(hw): hybridse should open this method
+bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
+        std::string* source_name);
+
 bool IndexMapBuilder::CreateIndex(const std::string& table, const hybridse::node::ExprListNode* keys,
                                   const hybridse::node::OrderByNode* ts, const SchemasContext* ctx) {
     // we encode table, keys and ts to one string

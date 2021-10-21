@@ -3899,11 +3899,6 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
     return ::openmldb::base::Status(-1, "nearline tablet is not health");
 }
 
-void NameServerImpl::Deploy(RpcController* controller, const DeployRequest* request, DeployResponse* response,
-        Closure* done) {
-
-}
-
 bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
     std::string table_value;
     table_info->SerializeToString(&table_value);
@@ -9488,9 +9483,8 @@ std::shared_ptr<Task> NameServerImpl::CreateAddIndexToTabletTask(uint64_t op_ind
         sub_task->task_info_->set_op_type(op_type);
         sub_task->task_info_->set_task_type(::openmldb::api::TaskType::kAddIndexToTablet);
         sub_task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-        std::vector<::openmldb::common::ColumnKey> column_key_vec = { column_key };
         boost::function<bool()> fun =
-            boost::bind(&TabletClient::AddIndex, tablet->client_, tid, pid, column_key_vec, sub_task->task_info_);
+            boost::bind(&TabletClient::AddIndex, tablet->client_, tid, pid, column_key, sub_task->task_info_);
         sub_task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, sub_task->task_info_);
         task->sub_task_.push_back(sub_task);
         PDLOG(INFO,

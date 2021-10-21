@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/ddl_parser.h"
 #include "base/linenoise.h"
 #include "base/texttable.h"
 #include "catalog/schema_adapter.h"
@@ -532,6 +533,31 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     }
 }
 
+base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
+    if (db.empty()) {
+        return base::Status(base::ReturnCode::kError, "please use database first");
+    }
+    if (deploy_node == nullptr) {
+        return base::Status(base::ReturnCode::kError, "illegal deploy statement");
+    }
+    std::string select_sql = deploy_node->StmtStr() + ";";
+    printf("%s\n", select_sql.c_str());
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    auto ns = cs->GetNsClient();
+    if (ns->ShowDBTable(db, &tables).OK()) {
+        return base::Status(base::ReturnCode::kError, "get table failed");
+    }
+    std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>> table_map;
+    for (const auto& table : tables) {
+        table_map.emplace(table.name(), table.column_desc());
+    }
+    auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_map);
+    for (const auto& kv : index_map) {
+    }
+    ::openmldb::api::ProcedureInfo sp_info;
+
+}
+
 void HandleSQL(const std::string &sql) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
@@ -596,6 +622,10 @@ void HandleSQL(const std::string &sql) {
             if (!ok) {
                 std::cout << "fail to execute insert" << std::endl;
             }
+            return;
+        }
+        case hybridse::node::kPlanTypeDeploy: {
+            HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
             return;
         }
         case hybridse::node::kPlanTypeFuncDef:

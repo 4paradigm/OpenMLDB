@@ -1091,17 +1091,14 @@ bool TabletClient::DeleteIndex(uint32_t tid, uint32_t pid, const std::string& id
     return true;
 }
 
-bool TabletClient::AddIndex(uint32_t tid, uint32_t pid,
-        const std::vector<::openmldb::common::ColumnKey>& column_key_vec,
-        std::shared_ptr<TaskInfo> task_info) {
+bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common::ColumnKey& column_key,
+                            std::shared_ptr<TaskInfo> task_info) {
     ::openmldb::api::AddIndexRequest request;
     ::openmldb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    for (const auto& column_key : column_key_vec) {
-        auto cur_column_key = request.add_column_key();
-        cur_column_key->CopyFrom(column_key);
-    }
+    ::openmldb::common::ColumnKey* cur_column_key = request.mutable_column_key();
+    cur_column_key->CopyFrom(column_key);
     bool ok = client_.SendRequest(&openmldb::api::TabletServer_Stub::AddIndex, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {

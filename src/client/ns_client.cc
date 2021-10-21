@@ -151,6 +151,17 @@ bool NsClient::ShowTable(const std::string& name, std::vector<::openmldb::namese
     return ShowTable(name, GetDb(), false, tables, msg);
 }
 
+base::Status NsClient::ShowDBTable(const std::string& db_name, std::vector<::openmldb::nameserver::TableInfo>* tables) {
+    if (tables == nullptr) {
+        return base::Status(base::ReturnCode::kError, "null ptr");
+    }
+    base::Status status(base::ReturnCode::kError, "");
+    if (ShowTable("", db_name, false, *tables, status.msg)) {
+        return {};
+    }
+    return status;
+}
+
 bool NsClient::ShowAllTable(std::vector<::openmldb::nameserver::TableInfo>& tables, std::string& msg) {
     return ShowTable("", "", true, tables, msg);
 }

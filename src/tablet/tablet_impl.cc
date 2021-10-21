@@ -4618,7 +4618,7 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         base::SetResponseStatus(base::ReturnCode::kWriteDataFailed, "write meta data failed", response);
         return;
     }
-    PDLOG(INFO, "add index %s ok. tid %u pid %u", request->column_key(0).index_name().c_str(), tid, pid);
+    PDLOG(INFO, "add index %s ok. tid %u pid %u", request->column_key().index_name().c_str(), tid, pid);
     base::SetResponseOK(response);
 }
 
