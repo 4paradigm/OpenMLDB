@@ -668,8 +668,7 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
     // options, value is ConstNode
     char delimiter = ',';
     bool header = true;
-    // TODO(hw): nullValue?
-    std::string nullValues{"null"}, format{"csv"};
+    std::string nullValue{"null"}, format{"csv"};
 
     if (!SetOption(options, "delimiter", hybridse::node::kVarchar,
                    [&delimiter, error](const hybridse::node::ConstNode *node) {
@@ -686,9 +685,9 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
                        header = node->GetBool();
                        return true;
                    }) ||
-        !SetOption(options, "nullValues", hybridse::node::kVarchar,
-                   [&nullValues](const hybridse::node::ConstNode *node) {
-                       nullValues = node->GetAsString();
+        !SetOption(options, "nullValue", hybridse::node::kVarchar,
+                   [&nullValue](const hybridse::node::ConstNode *node) {
+                       nullValue = node->GetAsString();
                        return true;
                    }) ||
         !SetOption(options, "format", hybridse::node::kVarchar,
@@ -701,7 +700,7 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
                    })) {
         return false;
     }
-    std::cout << "options: delimiter [" << delimiter << "], has header[" << header << "], nullValue[" << nullValues
+    std::cout << "options: delimiter [" << delimiter << "], has header[" << header << "], nullValue[" << nullValue
               << "], format[" << format << "]" << std::endl;
     // read csv
     if (!base::IsExists(file_path)) {
@@ -730,8 +729,18 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
     std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
 
     if (header) {
-        // the first line is the column names
-        // TODO(hw): check column names or build a name->idx map?
+        // the first line is the column names, check if equal with table schema
+        auto schema = sr->GetTableSchema(database, table);
+        if (cols.size() != schema->GetColumnCnt()) {
+            *error = "mismatch column size";
+            return false;
+        }
+        for (int i = 0; i < schema->GetColumnCnt(); ++i) {
+            if (cols[i] != schema->GetColumnName(i)) {
+                *error = "mismatch column name";
+                return false;
+            }
+        }
 
         // then read the first row of data
         std::getline(file, line);
@@ -740,7 +749,7 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
     do {
         cols.clear();
         SplitCSVLineWithDelimiterForStrings(line, delimiter, &cols);
-        if (!InsertOneRow(insert_placeholder, cols, nullValues, error)) {
+        if (!InsertOneRow(insert_placeholder, cols, nullValue, error)) {
             *error = "line [" + line + "] insert failed, " + *error;
             return false;
         }
