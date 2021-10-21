@@ -68,15 +68,15 @@ std::string db = "";  // NOLINT
 class SaveFileOptions
 {
     public:
-        SaveFileOptions(const std::string file_path) {
+        SaveFileOptions(const std::string &file_path) {
             file_path_ = file_path.c_str();
             if (access(file_path_, 0) == 0) {
-                throw "File already exists";
+                throw "ERROR: File already exists";
             } else {
-                fstream_->open(file_path_);
+                fstream_.open(file_path_);
             }
-            if (fstream_->is_open() == false) {
-                throw "Fail to open file, please check file path";
+            if (fstream_.is_open() == false) {
+                throw "ERROR: Fail to open file, please check file path";
             }
         }
         SaveFileOptions(const std::string &file_path, std::shared_ptr<hybridse::node::OptionsMap> options_map) {
@@ -95,29 +95,30 @@ class SaveFileOptions
                 } else if (key == "header") {
                     header_ = iter->second->GetBool();
                 } else {
-                    throw "This option (" + key + ") is not currently supported";
+                    std::string error_msg = "ERROR: This option (" + key + ") is not currently supported";
+                    throw error_msg.c_str();
                 }
             }
             if (strcmp(mode_, "error_if_exists") == 0) {
                 if (access(file_path_, 0) == 0) {
-                    throw "File already exists";
+                    throw "ERROR: File already exists";
                 } else {
-                    fstream_->open(file_path);
+                    fstream_.open(file_path);
                 }
             } else if (strcmp(mode_, "overwrite") == 0) {
-                fstream_->open(file_path_, std::ios::out);
+                fstream_.open(file_path_, std::ios::out);
             } else if (strcmp(mode_, "append") == 0) {
-                fstream_->open(file_path_, std::ios::app);
+                fstream_.open(file_path_, std::ios::app);
             } else {
-                std::string mode_str = mode_;
-                throw "This mode (" + mode_str + ") is not currently supported";
+                std::string error_msg = "ERROR: This mode (" + (std::string)mode_ + ") is not currently supported";
+                throw error_msg.c_str();
             }
-            if (fstream_->is_open() == false) {
-                throw "Fail to open file, please check file path";
+            if (fstream_.is_open() == false) {
+                throw "ERROR: Fail to open file, please check file path";
             }
         }
         ~SaveFileOptions() {
-            fstream_->close();
+            fstream_.close();
         }
         const char* GetFormat() const{
             return format_;
@@ -135,7 +136,7 @@ class SaveFileOptions
             return header_;
         }
         std::ofstream* GetOfstream() {
-            return fstream_;
+            return &fstream_;
         }
     private:
         const char* format_ = "csv";
@@ -144,7 +145,7 @@ class SaveFileOptions
         const char* nullValues_ = "null";
         const char* file_path_ = "";
         bool header_ = true;
-        std::ofstream* fstream_ = nullptr;
+        std::ofstream fstream_;
 };
 
 
@@ -152,7 +153,11 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
     std::shared_ptr<hybridse::node::OptionsMap> options_map) {
     std::shared_ptr<openmldb::cmd::SaveFileOptions> options;
     try {
-        options.reset(new openmldb::cmd::SaveFileOptions(file_path, options_map));
+        if (options_map->empty()) {
+            options = std::make_shared<openmldb::cmd::SaveFileOptions>(file_path);
+        } else {
+            options = std::make_shared<openmldb::cmd::SaveFileOptions>(file_path, options_map);
+        }
     } catch (const char* errorMsg) {
         std::cout << errorMsg << std::endl;
         return;
@@ -252,9 +257,9 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                 }
             }
         }
-        std::cout << "Save successfully" << std::endl;
+        std::cout << "SUCCEED: Save successfully" << std::endl;
     } else {
-        std::cout << "This format (" << options->GetFormat() << ") is not currently supported" << std::endl;
+        std::cout << "ERROR: This format (" << options->GetFormat() << ") is not currently supported" << std::endl;
     }
 }
 
@@ -508,7 +513,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             std::vector<std::string> dbs;
             auto ns = cs->GetNsClient();
             if (!ns) {
-                std::cout << "Fail to connect to db" << std::endl;
+                std::cout << "ERROR: Fail to connect to db" << std::endl;
             }
             ns->ShowDatabase(&dbs, error);
             PrintItems(std::cout, "Databases", dbs);
@@ -517,7 +522,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
 
         case hybridse::node::kCmdShowTables: {
             if (db.empty()) {
-                std::cout << "please enter database first" << std::endl;
+                std::cout << "ERROR: please enter database first" << std::endl;
                 return;
             }
             auto tables = cs->GetTables(db);
@@ -532,7 +537,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
 
         case hybridse::node::kCmdDescTable: {
             if (db.empty()) {
-                std::cout << "Please enter database first" << std::endl;
+                std::cout << "ERROR: Please enter database first" << std::endl;
                 return;
             }
             auto table = cs->GetTableInfo(db, cmd_node->GetArgs()[0]);
@@ -552,9 +557,9 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             std::string error;
             bool ok = ns->CreateDatabase(name, error);
             if (ok) {
-                std::cout << "Create database successfully" << std::endl;
+                std::cout << "SUCCEED: Create database successfully" << std::endl;
             } else {
-                std::cout << "Create database failed for " << error << std::endl;
+                std::cout << "ERROR: Create database failed for " << error << std::endl;
             }
             break;
         }
@@ -567,7 +572,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
                 std::cout << error << std::endl;
             } else {
                 db = name;
-                std::cout << "Database changed" << std::endl;
+                std::cout << "SUCCEED: Database changed" << std::endl;
             }
             break;
         }
@@ -578,13 +583,13 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             if (!ns->DropDatabase(name, error)) {
                 std::cout << error << std::endl;
             } else {
-                std::cout << "Drop successfully" << std::endl;
+                std::cout << "SUCCEED: Drop successfully" << std::endl;
             }
             break;
         }
         case hybridse::node::kCmdDropTable: {
             if (db.empty()) {
-                std::cout << "Please enter database first" << std::endl;
+                std::cout << "ERROR: Please enter database first" << std::endl;
                 return;
             }
             std::string name = cmd_node->GetArgs()[0];
@@ -602,10 +607,10 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             std::string error;
             bool ok = ns->DropTable(name, error);
             if (ok) {
-                std::cout << "Drop successfully" << std::endl;
+                std::cout << "SUCCEED: Drop successfully" << std::endl;
                 sr->RefreshCatalog();
             } else {
-                std::cout << "Failed to drop. error msg: " << error << std::endl;
+                std::cout << "ERROR: Failed to drop. error msg: " << error << std::endl;
             }
             break;
         }
@@ -624,9 +629,9 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             auto ns = cs->GetNsClient();
             bool ok = ns->DeleteIndex(table_name, index_name, error);
             if (ok) {
-                std::cout << "Drop index successfully" << std::endl;
+                std::cout << "SUCCEED: Drop index successfully" << std::endl;
             } else {
-                std::cout << "Fail to drop index. error msg: " << error << std::endl;
+                std::cout << "ERROR: Fail to drop index. error msg: " << error << std::endl;
             }
             break;
         }
@@ -636,7 +641,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             if (args.size() == 1) {
                 // only sp name, no db_name
                 if (db.empty()) {
-                    std::cout << "Please enter database first" << std::endl;
+                    std::cout << "ERROR: Please enter database first" << std::endl;
                     return;
                 } else {
                     db_name = db;
@@ -646,14 +651,14 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
                 db_name = args[0];
                 sp_name = args[1];
             } else {
-                std::cout << "invalid args for show create procedure" << std::endl;
+                std::cout << "ERROR: Invalid args for show create procedure" << std::endl;
                 return;
             }
 
             std::string error;
             std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cs->GetProcedureInfo(db_name, sp_name, &error);
             if (!sp_info) {
-                std::cout << "Fail to show procdure. error msg: " << error << std::endl;
+                std::cout << "ERROR: Fail to show procdure. error msg: " << error << std::endl;
                 return;
             }
             PrintProcedureInfo(*sp_info);
@@ -672,7 +677,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
         }
         case hybridse::node::kCmdDropSp: {
             if (db.empty()) {
-                std::cout << "Please enter database first" << std::endl;
+                std::cout << "ERROR: Please enter database first" << std::endl;
                 return;
             }
             std::string sp_name = cmd_node->GetArgs()[0];
@@ -688,9 +693,9 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             auto ns = cs->GetNsClient();
             bool ok = ns->DropProcedure(db, sp_name, error);
             if (ok) {
-                std::cout << "Drop successfully" << std::endl;
+                std::cout << "SUCCEED: Drop successfully" << std::endl;
             } else {
-                std::cout << "Failed to drop. error msg: " << error << std::endl;
+                std::cout << "ERROR: Failed to drop. error msg: " << error << std::endl;
             }
             break;
         }
@@ -707,7 +712,7 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     ::openmldb::common::ColumnKey column_key;
     hybridse::base::Status status;
     if (!::openmldb::sdk::NodeAdapter::TransformToColumnKey(create_index_node->index_, {}, &column_key, &status)) {
-        std::cout << "Failed to create index. error msg: " << status.msg << std::endl;
+        std::cout << "ERROR: Failed to create index. error msg: " << status.msg << std::endl;
         return;
     }
     // `create index` must set the index name.
@@ -718,9 +723,9 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     auto ns = cs->GetNsClient();
     bool ok = ns->AddIndex(create_index_node->table_name_, column_key, nullptr, error);
     if (ok) {
-        std::cout << "Create index successfully" << std::endl;
+        std::cout << "SUCCEED: Create index successfully" << std::endl;
     } else {
-        std::cout << "Failed to create index. error msg: " << error << std::endl;
+        std::cout << "ERROR: Failed to create index. error msg: " << error << std::endl;
         return;
     }
 }
@@ -749,7 +754,7 @@ void HandleSQL(const std::string &sql) {
             ::hybridse::sdk::Status status;
             auto info = sr->Explain(db, mu_script, &status);
             if (!info) {
-                std::cout << "Fail to get explain info" << std::endl;
+                std::cout << "ERROR: Fail to get explain info" << std::endl;
                 return;
             }
             std::cout << info->GetPhysicalPlan() << std::endl;
@@ -758,22 +763,22 @@ void HandleSQL(const std::string &sql) {
         case hybridse::node::kPlanTypeCreate:
         case hybridse::node::kPlanTypeCreateSp: {
             if (db.empty()) {
-                std::cout << "Please use database first" << std::endl;
+                std::cout << "ERROR: Please use database first" << std::endl;
                 return;
             }
             ::hybridse::sdk::Status status;
             bool ok = sr->ExecuteDDL(db, sql, &status);
             if (!ok) {
-                std::cout << "Fail to execute ddl" << std::endl;
+                std::cout << "ERROR: Fail to execute ddl" << std::endl;
             } else {
                 sr->RefreshCatalog();
-                std::cout << "Create successfully" << std::endl;
+                std::cout << "SUCCEED: Create successfully" << std::endl;
             }
             return;
         }
         case hybridse::node::kPlanTypeCreateIndex: {
             if (db.empty()) {
-                std::cout << "Please use database first" << std::endl;
+                std::cout << "ERROR: Please use database first" << std::endl;
                 return;
             }
             auto *create_index_node = dynamic_cast<hybridse::node::CreateIndexPlanNode *>(node);
@@ -782,28 +787,28 @@ void HandleSQL(const std::string &sql) {
         }
         case hybridse::node::kPlanTypeInsert: {
             if (db.empty()) {
-                std::cout << "Please use database first" << std::endl;
+                std::cout << "ERROR: Please use database first" << std::endl;
                 return;
             }
             ::hybridse::sdk::Status status;
             bool ok = sr->ExecuteInsert(db, sql, &status);
             if (!ok) {
-                std::cout << "Fail to execute insert" << std::endl;
+                std::cout << "ERROR: Fail to execute insert" << std::endl;
             } else {
-                std::cout << "Insert successfully" << std::endl;
+                std::cout << "SUCCEED: Insert successfully" << std::endl;
             }
             return;
         }
         case hybridse::node::kPlanTypeFuncDef:
         case hybridse::node::kPlanTypeQuery: {
             if (db.empty()) {
-                std::cout << "Please use database first" << std::endl;
+                std::cout << "ERROR: Please use database first" << std::endl;
                 return;
             }
             ::hybridse::sdk::Status status;
             auto rs = sr->ExecuteSQL(db, sql, &status);
             if (!rs) {
-                std::cout << "Fail to execute query" << std::endl;
+                std::cout << "ERROR: Fail to execute query" << std::endl;
             } else {
                 PrintResultSet(std::cout, rs.get());
             }
@@ -815,13 +820,13 @@ void HandleSQL(const std::string &sql) {
             const std::string& filePath = selectIntoPlanNode->OutFile();
             const std::shared_ptr<hybridse::node::OptionsMap> optionsMap = selectIntoPlanNode->Options();
             if (db.empty()) {
-                std::cout << "Please use database first" << std::endl;
+                std::cout << "ERROR: Please use database first" << std::endl;
                 return;
             }
             ::hybridse::sdk::Status status;
             auto rs = sr->ExecuteSQL(db, querySql, &status);
             if (!rs) {
-                std::cout << "Fail to execute query" << std::endl;
+                std::cout << "ERROR: Fail to execute query" << std::endl;
             } else {
                 SaveResultSet(rs.get(), filePath, optionsMap);
             }
