@@ -58,7 +58,7 @@ mkdir -p "$THIRDPARTY_PATH"
 mkdir -p "$THIRDSRC_PATH"
 
 pushd "${THIRDSRC_PATH}"
-
+# TODO: show download link, so user can copy link easily
 if [[ "$OSTYPE" = "darwin"* ]]; then
     fetch "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz" thirdparty.tar.gz
     fetch "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-darwin-x86_64.tar.gz" libzetasql.tar.gz
