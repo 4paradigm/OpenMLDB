@@ -447,7 +447,7 @@ bool StandAloneSDK::BuildCatalog() {
     // api::ProcedureInfo to hybridse::sdk::ProcedureInfo
     catalog::Procedures db_sp_map;
     for (auto& sp : procedures) {
-        auto sdk_sp = openmldb::catalog::SchemaAdapter::ConvertProcedureInfo(sp);
+        auto sdk_sp = std::make_shared<catalog::ProcedureInfoImpl>(sp);
         if (!sdk_sp) {
             LOG(WARNING) << "sp convert failed, skip sp: " << sp.db_name() << "-" << sp.sp_name();
             continue;
