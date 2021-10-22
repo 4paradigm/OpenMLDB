@@ -96,7 +96,7 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     std::string insert = "insert into "+ name +" values('key1', 1);";
     ASSERT_TRUE(router->ExecuteInsert(db, insert, &status));
     ASSERT_TRUE(router->RefreshCatalog());
-    
+
     // True
     std::string select_into_sql = "select * from "+ name +" into outfile '" + file_path + "'";
     try {
@@ -145,7 +145,8 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     } catch (const char* errorMsg) {}
 
     // False - Format un-supported
-    select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'overwrite', format = 'parquet')";
+    select_into_sql = "select * from "+ name +" into outfile '" + file_path‘
+     + "' options (mode = 'overwrite', format = 'parquet')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
         ASSERT_TRUE(false);
@@ -159,7 +160,8 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     } catch (const char* errorMsg) {}
 
     // False - Option un-supported
-    select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'overwrite', test = 'null')";
+    select_into_sql = "select * from "+ name +" into outfile '" + file_path
+     + "' options (mode = 'overwrite', test = 'null')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
         ASSERT_TRUE(false);
