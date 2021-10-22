@@ -38,9 +38,9 @@ class Row {
     Row();
     explicit Row(const std::string &str);
     Row(const Row &s);
-    Row(size_t major_slices, const Row &major, size_t secondary_slices,
+    explicit Row(size_t major_slices, const Row &major, size_t secondary_slices,
         const Row &secondary);
-    Row(const hybridse::base::RefCountedSlice &s, size_t secondary_slices,
+    explicit Row(const hybridse::base::RefCountedSlice &s, size_t secondary_slices,
         const Row &secondary);
 
     explicit Row(const hybridse::base::RefCountedSlice &s);
