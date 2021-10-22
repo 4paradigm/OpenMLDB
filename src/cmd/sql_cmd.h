@@ -65,6 +65,7 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
 std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK *cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
+bool performance_sensitive = true;
 
 void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
     if (!result_set || result_set->Size() == 0) {
@@ -461,7 +462,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             std::string error;
             std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cs->GetProcedureInfo(db_name, sp_name, &error);
             if (!sp_info) {
-                std::cout << "Fail to show procdure. error msg: " << error << std::endl;
+                std::cout << "Fail to show procedure. error msg: " << error << std::endl;
                 return;
             }
             PrintProcedureInfo(*sp_info);
@@ -530,6 +531,19 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     } else {
         std::cout << "failed to create index. error msg: " << error << std::endl;
         return;
+    }
+}
+
+void SetVariable(const std::string key, const hybridse::node::ConstNode* value) {
+    if (key == "performance_sensitive") {
+        if (value->GetDataType() == hybridse::node::kBool) {
+            performance_sensitive = value->GetBool();
+            printf("Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true": "false");
+        } else {
+            printf("The type of %s should be bool\n", key.c_str());
+        }
+    } else {
+        printf("The variable key %s is not supported\n", key.c_str());
     }
 }
 
@@ -837,12 +851,17 @@ void HandleSQL(const std::string &sql) {
                 return;
             }
             ::hybridse::sdk::Status status;
-            auto rs = sr->ExecuteSQL(db, sql, &status);
+            auto rs = sr->ExecuteSQL(db, sql, &status, performance_sensitive);
             if (!rs) {
                 std::cout << "fail to execute query" << std::endl;
             } else {
                 PrintResultSet(std::cout, rs.get());
             }
+            return;
+        }
+        case hybridse::node::kPlanTypeSet: {
+            auto *set_node = dynamic_cast<hybridse::node::SetPlanNode *>(node);
+            SetVariable(set_node->Key(), set_node->Value());
             return;
         }
         case hybridse::node::kPlanTypeLoadData: {
