@@ -145,7 +145,7 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     } catch (const char* errorMsg) {}
 
     // False - Format un-supported
-    select_into_sql = "select * from "+ name +" into outfile '" + file_path‘
+    select_into_sql = "select * from "+ name +" into outfile '" + file_path
      + "' options (mode = 'overwrite', format = 'parquet')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
