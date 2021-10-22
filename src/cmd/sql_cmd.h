@@ -22,6 +22,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <iostream>
+#include <fstream>
 
 #include "base/linenoise.h"
 #include "base/texttable.h"
@@ -33,6 +35,7 @@
 #include "sdk/db_sdk.h"
 #include "sdk/node_adapter.h"
 #include "sdk/sql_cluster_router.h"
+#include "cmd/display.h"
 #include "version.h"  // NOLINT
 
 DEFINE_string(database, "", "Set database");
@@ -73,15 +76,15 @@ class SaveFileOptions
             file_path_ = file_path.c_str();
             for (auto iter = options_map->begin(); iter != options_map->end(); iter++) {
                 std::string key = iter->first;
-                if (key == "format") {
+                if (key == "format" && iter->second->GetDataType() == hybridse::node::kVarchar) {
                     format_ = iter->second->GetStr();
-                } else if (key == "save_mode") {
+                } else if (key == "save_mode" && iter->second->GetDataType() == hybridse::node::kVarchar) {
                     mode_ = iter->second->GetStr();
-                } else if (key == "delimiter") {
+                } else if (key == "delimiter" && iter->second->GetDataType() == hybridse::node::kVarchar) {
                     delimiter_ = iter->second->GetStr();
-                } else if (key == "null_value") {
+                } else if (key == "null_value" && iter->second->GetDataType() == hybridse::node::kVarchar) {
                     null_value_ = iter->second->GetStr();
-                } else if (key == "header") {
+                } else if (key == "header" && iter->second->GetDataType() == hybridse::node::kBool) {
                     header_ = iter->second->GetBool();
                 } else {
                     std::string error_msg = "ERROR: This option (" + key + ") is not currently supported";
@@ -124,8 +127,8 @@ class SaveFileOptions
         bool GetHeader() const{
             return header_;
         }
-        std::ofstream* GetOfstream() {
-            return &fstream_;
+        std::ofstream& GetOfstream() {
+            return fstream_;
         }
     private:
         const char* format_ = "csv";
@@ -159,7 +162,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                 if (i != schema->GetColumnCnt()-1) {
                     schemaString.append(options->GetDelimiter());
                 } else {
-                    *options->GetOfstream() << schemaString << std::endl;
+                    options->GetOfstream() << schemaString << std::endl;
                 }
             }
         }
@@ -236,7 +239,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                     if (i != schema->GetColumnCnt()-1) {
                         rowString.append(options->GetDelimiter());
                     } else {
-                        *options->GetOfstream() << rowString << std::endl;
+                        options->GetOfstream() << rowString << std::endl;
                     }
                 }
             }
