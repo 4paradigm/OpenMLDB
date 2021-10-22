@@ -46,3 +46,14 @@ message DropProcedureRequest {
     optional string db_name = 1;
     optional string sp_name = 2;
 }
+
+message ShowProcedureRequest {
+    optional string db_name = 1;
+    optional string sp_name = 2;
+}
+
+message ShowProcedureResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    repeated ProcedureInfo sp_info = 3;
+}

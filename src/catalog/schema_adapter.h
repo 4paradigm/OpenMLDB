@@ -343,7 +343,6 @@ class SchemaAdapter {
             default:
                 return false;
         }
-        return false;
     }
     static bool ConvertType(hybridse::sdk::DataType type, openmldb::type::DataType *cased_type) {
         switch (type) {
@@ -377,7 +376,6 @@ class SchemaAdapter {
             default:
                 return false;
         }
-        return false;
     }
 
     static bool ConvertType(const hybridse::type::ColumnDef& sql_column, openmldb::common::ColumnDesc* fedb_column) {

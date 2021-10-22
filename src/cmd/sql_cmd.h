@@ -460,7 +460,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             std::string error;
             std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cs->GetProcedureInfo(db_name, sp_name, &error);
             if (!sp_info) {
-                std::cout << "Fail to show procdure. error msg: " << error << std::endl;
+                std::cout << "Fail to show procedure. error msg: " << error << std::endl;
                 return;
             }
             PrintProcedureInfo(*sp_info);
