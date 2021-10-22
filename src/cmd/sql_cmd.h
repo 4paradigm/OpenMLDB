@@ -68,74 +68,100 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK *cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 
-class SaveFileOptions
-{
+class SaveFileOptions {
     public:
         SaveFileOptions(const std::string &file_path, std::shared_ptr<hybridse::node::OptionsMap> options_map) {
             // TODO(zekai): Resolved file path like (file:////usr/test.csv) or (hdfs:////usr/test.csv)
-            file_path_ = file_path.c_str();
+            file_path_ = file_path;
             for (auto iter = options_map->begin(); iter != options_map->end(); iter++) {
                 std::string key = iter->first;
-                if (key == "format" && iter->second->GetDataType() == hybridse::node::kVarchar) {
-                    format_ = iter->second->GetStr();
-                } else if (key == "save_mode" && iter->second->GetDataType() == hybridse::node::kVarchar) {
-                    mode_ = iter->second->GetStr();
-                } else if (key == "delimiter" && iter->second->GetDataType() == hybridse::node::kVarchar) {
-                    delimiter_ = iter->second->GetStr();
-                } else if (key == "null_value" && iter->second->GetDataType() == hybridse::node::kVarchar) {
-                    null_value_ = iter->second->GetStr();
-                } else if (key == "header" && iter->second->GetDataType() == hybridse::node::kBool) {
+                boost::to_lower(key);
+                if (key == "format") {
+                    if (iter->second->GetDataType() != hybridse::node::kVarchar) {
+                        std::string error_msg = "ERROR: Option (" + key + ") type mismatch, type should be string";
+                        throw error_msg.c_str();
+                    }
+                    format_ = iter->second->GetAsString();
+                } else if (key == "mode") {
+                    if (iter->second->GetDataType() != hybridse::node::kVarchar) {
+                        std::string error_msg = "ERROR: Option (" + key + ") type mismatch, type should be string";
+                        throw error_msg.c_str();
+                    }
+                    mode_ = iter->second->GetAsString();
+                } else if (key == "delimiter") {
+                    if (iter->second->GetDataType() != hybridse::node::kVarchar) {
+                        std::string error_msg = "ERROR: Option (" + key + ") type mismatch, type should be string";
+                        throw error_msg.c_str();
+                    }
+                    delimiter_ = iter->second->GetAsString();
+                } else if (key == "null_value") {
+                    if (iter->second->GetDataType() != hybridse::node::kVarchar) {
+                        std::string error_msg = "ERROR: Option (" + key + ") type mismatch, type should be string";
+                        throw error_msg.c_str();
+                    }
+                    null_value_ = iter->second->GetAsString();
+                } else if (key == "header") {
+                    if (iter->second->GetDataType() != hybridse::node::kVarchar) {
+                        std::string error_msg = "ERROR: Option (" + key + ") type mismatch, type should be string";
+                        throw error_msg.c_str();
+                    }
                     header_ = iter->second->GetBool();
                 } else {
                     std::string error_msg = "ERROR: This option (" + key + ") is not currently supported";
                     throw error_msg.c_str();
                 }
             }
-            if (strcmp(mode_, "error_if_exists") == 0) {
-                if (access(file_path_, 0) == 0) {
-                    throw "ERROR: File already exists";
+            // Check mode
+            if (mode_ == "error_if_exists") {
+                if (access(file_path_.c_str(), 0) == 0) {
                 } else {
-                    fstream_.open(file_path);
+                    fstream_.open(file_path_);
                 }
-            } else if (strcmp(mode_, "overwrite") == 0) {
+            } else if (mode_ == "overwrite") {
                 fstream_.open(file_path_, std::ios::out);
-            } else if (strcmp(mode_, "append") == 0) {
+            } else if (mode_ == "append") {
                 fstream_.open(file_path_, std::ios::app);
             } else {
-                std::string error_msg = "ERROR: This mode (" + (std::string)mode_ + ") is not currently supported";
+                std::string error_msg = "ERROR: This mode (" + mode_ + ") is not currently supported";
                 throw error_msg.c_str();
             }
+            // Check file
             if (fstream_.is_open() == false) {
                 throw "ERROR: Fail to open file, please check file path";
+            }
+            // Check format
+            if (format_ != "csv") {
+                std::string error_msg = "ERROR: This format (" + format_ + ") is not currently supported";
+                throw error_msg.c_str();
             }
         }
         ~SaveFileOptions() {
             fstream_.close();
         }
-        const char* GetFormat() const{
+        std::string GetFormat() {
             return format_;
         }
-        const char* GetNullValue() const{
+        std::string GetNullValue() {
             return null_value_;
         }
-        const char* GetDelimiter() const{
+        std::string GetDelimiter() {
             return delimiter_;
         }
-        const char* GetFilePath() const{
+        std::string GetFilePath() {
             return file_path_;
         }
-        bool GetHeader() const{
+        bool GetHeader() const {
             return header_;
         }
         std::ofstream& GetOfstream() {
             return fstream_;
         }
     private:
-        const char* format_ = "csv";
-        const char* mode_ = "error_if_exists";
-        const char* delimiter_ = ",";
-        const char* null_value_ = "null";
-        const char* file_path_ = "";
+        std::string format_ = "csv";
+        std::string mode_ = "error_if_exists";
+        std::string delimiter_ = ",";
+        std::string null_value_ = "null";
+        std::string file_path_ = "";
         bool header_ = true;
         std::ofstream fstream_;
 };
@@ -143,13 +169,8 @@ class SaveFileOptions
 
 void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &file_path,
     std::shared_ptr<hybridse::node::OptionsMap> options_map) {
-    std::shared_ptr<openmldb::cmd::SaveFileOptions> options;
-    try {
-        options = std::make_shared<openmldb::cmd::SaveFileOptions>(file_path, options_map);
-    } catch (const char* error_msg) {
-        throw error_msg;
-    }
-    if (strcmp(options->GetFormat(), "csv") == 0) {
+    std::shared_ptr<openmldb::cmd::SaveFileOptions> options = std::make_shared<openmldb::cmd::SaveFileOptions>(file_path, options_map);
+    if (options->GetFormat() == "csv") {
         if (!result_set || result_set->Size() == 0) {
             return;
         }
@@ -233,7 +254,8 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                             break;
                         }
                         default: {
-                            rowString.append("NA");
+                            std::string error_msg = "ERROR: In table, some types are not currently supported";
+                            throw error_msg.c_str();
                         }
                     }
                     if (i != schema->GetColumnCnt()-1) {
@@ -245,9 +267,6 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
             }
         }
         std::cout << "SUCCEED: Save successfully" << std::endl;
-    } else {
-        std::string error_msg = "ERROR: This format (" + (std::string)options->GetFormat() + ") is not currently supported";
-        throw error_msg;
     }
 }
 
