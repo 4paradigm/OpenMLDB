@@ -90,6 +90,7 @@ bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common
     decltype(common_cols_v.Size()) str_len_sum = 0;
     decltype(common_cols_v.Size()) non_common_idx = 0, common_idx = 0;
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
+        // if element is null, GetStringLength() will get 0
         if (sch->GetColumnType(i) != hybridse::sdk::kTypeString) {
             continue;
         }
@@ -223,7 +224,7 @@ void APIServerImpl::RegisterPut() {
         }
 
         const auto& value = document["value"];
-        // value should be array, and multi put is not supported now
+        // value should be an array, and multi put is not supported now
         if (!value.IsArray() || value.Empty() || value.Size() > 1 || !value[0].IsArray()) {
             writer << err.Set("Invalid value in body, only support to put one row");
             return;
@@ -250,6 +251,7 @@ void APIServerImpl::RegisterPut() {
         // scan all strings , calc the sum, to init SQLInsertRow's string length
         decltype(arr.Size()) str_len_sum = 0;
         for (int i = 0; i < cnt; ++i) {
+            // if null, GetStringLength() will get 0
             if (schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
                 str_len_sum += arr[i].GetStringLength();
             }
