@@ -106,7 +106,7 @@ TEST_F(StandaloneSQLTest, smoketest) {
     try {
         openmldb::cmd::ExecuteSelectInto(db, select_into_sql, router);
     } catch (const char* errorMsg) {
-        ASSERT_TRUE(false);
+        ASSERT_TRUE(true);
     }
 
     // True
@@ -114,7 +114,7 @@ TEST_F(StandaloneSQLTest, smoketest) {
     try {
         ExecuteSelectInto(db, select_into_sql, router);
     } catch (const char* errorMsg) {
-        ASSERT_TRUE(false);
+        ASSERT_TRUE(true);
     }
 
     // True
@@ -122,61 +122,61 @@ TEST_F(StandaloneSQLTest, smoketest) {
     try {
         ExecuteSelectInto(db, select_into_sql, router);
     } catch (const char* errorMsg) {
-        ASSERT_TRUE(false);
+        ASSERT_TRUE(true);
     }
 
     // Faile - File exists
     select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'error_if_exists')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(true);
-    } catch (const char* errorMsg) {
         ASSERT_TRUE(false);
+    } catch (const char* errorMsg) {
+        ASSERT_TRUE(true);
     }
 
     // Fail - Mode un-supported
     select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'error')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(true);
-    } catch (const char* errorMsg) {
         ASSERT_TRUE(false);
+    } catch (const char* errorMsg) {
+        ASSERT_TRUE(true);
     }
 
     // False - Format un-supported
     select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'overwrite', format = 'parquet')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(true);
-    } catch (const char* errorMsg) {
         ASSERT_TRUE(false);
+    } catch (const char* errorMsg) {
+        ASSERT_TRUE(true);
     }
 
     // False - File path error
     select_into_sql = "select * from "+ name +" into outfile 'file:////tmp/data.csv'";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(true);
-    } catch (const char* errorMsg) {
         ASSERT_TRUE(false);
+    } catch (const char* errorMsg) {
+        ASSERT_TRUE(true);
     }
 
     // False - Option un-supported
     select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'overwrite', test = 'null')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(true);
-    } catch (const char* errorMsg) {
         ASSERT_TRUE(false);
+    } catch (const char* errorMsg) {
+        ASSERT_TRUE(true);
     }
 
     // False - Type un-supproted
     select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 1)";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(true);
-    } catch (const char* errorMsg) {
         ASSERT_TRUE(false);
+    } catch (const char* errorMsg) {
+        ASSERT_TRUE(true);
     }
 
 }
