@@ -14,46 +14,49 @@
  * limitations under the License.
  */
 
-#include "base/file_util.h"
-#include <brpc/server.h>
-#include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>
 
-#include "base/glog_wapper.h"
-#include "client/ns_client.h"
-#include "gtest/gtest.h"
-#include "nameserver/name_server_impl.h"
-#include "proto/name_server.pb.h"
-#include "proto/tablet.pb.h"
-#include "proto/type.pb.h"
-#include "rpc/rpc_client.h"
-#include "tablet/tablet_impl.h"
-#include "sdk/db_sdk.h"
-#include "sdk/node_adapter.h"
-#include "sdk/sql_cluster_router.h"
-#include "plan/plan_api.h"
-#include "test/util.h"
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "cmd/sql_cmd.h"
 
+#include "sdk/sql_router.h"
+#include "base/file_util.h"
+#include "base/glog_wapper.h"
+#include "case/sql_case.h"
+#include "catalog/schema_adapter.h"
+#include "codec/fe_row_codec.h"
+#include "common/timer.h"
+#include "gflags/gflags.h"
+#include "gtest/gtest.h"
+#include "sdk/mini_cluster.h"
+#include "vm/catalog.h"
 
-DECLARE_string(db_root_path);
-DECLARE_string(zk_root_path);
-DECLARE_int32(zk_session_timeout);
-DECLARE_bool(interactive);
-DECLARE_string(cmd);
-DEFINE_bool(interactive, true, "Set the interactive");
-DEFINE_string(cmd, "", "Set the cmd");
+DEFINE_bool(interactive, true, "Set interactive");
+DEFINE_string(cmd, "", "Set cmd");
 
 namespace openmldb {
 namespace cmd {
+
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
+
+::openmldb::sdk::MiniCluster* mc_;
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1);  // NOLINT
+}
 class StandaloneSQLTest : public ::testing::Test {
  public:
     StandaloneSQLTest() {}
     ~StandaloneSQLTest() {}
+    void SetUp() {}
+    void TearDown() {}
 };
 
-static void ExecuteSelectInto(const std::string& db, const std::string& sql, ::openmldb::sdk::SQLClusterRouter *router) {
+static void ExecuteSelectInto(const std::string& db, const std::string& sql, std::shared_ptr<sdk::SQLRouter> router) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
     hybridse::node::PlanNodeList plan_trees;
@@ -76,33 +79,30 @@ static void ExecuteSelectInto(const std::string& db, const std::string& sql, ::o
 }
 
 TEST_F(StandaloneSQLTest, smoketest) {
-    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
-    brpc::Server tablet;
-    ASSERT_TRUE(::openmldb::test::StartTablet("127.0.0.1:9530", &tablet));
-
-    brpc::Server server;
-    ASSERT_TRUE(::openmldb::test::StartNS("127.0.0.1:9631", "127.0.0.1:9530", &server));
-    ::openmldb::client::NsClient client("127.0.0.1:9631", "");
-    ASSERT_EQ(client.Init(), 0);
-
-    ::openmldb::sdk::DBSDK *sdk = new ::openmldb::sdk::StandAloneSDK("127.0.0.1", 9631);
-    bool ok = sdk->Init();
+    sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
-    ::openmldb::sdk::SQLClusterRouter *router = new ::openmldb::sdk::SQLClusterRouter(sdk);
-    ASSERT_TRUE(router->Init());
-    const std::string db = "db";
-    hybridse::sdk::Status status;
-    ASSERT_TRUE(router->CreateDB(db, &status));
+    auto endpoints = mc_->GetTbEndpoint();
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string, col2 int);";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
 
-    const std::string ddl = "create table t1(col1 string, col2 int);";
-    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
-
-    const std::string insert = "insert into t1 values('key1', 1);";
+    std::string insert = "insert into "+ name +" values('key1', 1);";
     ASSERT_TRUE(router->ExecuteInsert(db, insert, &status));
-
-    int flag = 0;
+    ASSERT_TRUE(router->RefreshCatalog());
+    
     // True
-    std::string select_into_sql = "select * from t1 into outfile '/tmp/data.csv'";
+    std::string select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv'";
     try {
         openmldb::cmd::ExecuteSelectInto(db, select_into_sql, router);
     } catch (const char* errorMsg) {
@@ -110,7 +110,7 @@ TEST_F(StandaloneSQLTest, smoketest) {
     }
 
     // True
-    select_into_sql = "select * from t1 into outfile '/tmp/data.csv' options (mode = 'overwrite')";
+    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'overwrite')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
     } catch (const char* errorMsg) {
@@ -118,7 +118,7 @@ TEST_F(StandaloneSQLTest, smoketest) {
     }
 
     // True
-    select_into_sql = "select * from t1 into outfile '/tmp/data.csv' options (mode = 'append')";
+    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'append')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
     } catch (const char* errorMsg) {
@@ -126,63 +126,75 @@ TEST_F(StandaloneSQLTest, smoketest) {
     }
 
     // Faile - File exists
-    select_into_sql = "select * from t1 into outfile '/tmp/data.csv' options (mode = 'error_if_exists')";
+    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'error_if_exists')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
+        ASSERT_TRUE(true);
     } catch (const char* errorMsg) {
-        flag = 1;
+        ASSERT_TRUE(false);
     }
-    ASSERT_TRUE(flag == 1);
-    flag = 0;
 
     // Fail - Mode un-supported
-    select_into_sql = "select * from t1 into outfile '/tmp/data.csv' options (mode = 'error')";
+    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'error')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
+        ASSERT_TRUE(true);
     } catch (const char* errorMsg) {
-        flag = 1;
+        ASSERT_TRUE(false);
     }
-    ASSERT_TRUE(flag == 1);
-    flag = 0;
 
     // False - Format un-supported
-    select_into_sql = "select * from t1 into outfile '/tmp/data.csv' options (mode = 'overwrite', format = 'parquet')";
+    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'overwrite', format = 'parquet')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
+        ASSERT_TRUE(true);
     } catch (const char* errorMsg) {
-        flag = 1;
+        ASSERT_TRUE(false);
     }
-    ASSERT_TRUE(flag == 1);
-    flag = 0;
 
     // False - File path error
-    select_into_sql = "select * from t1 into outfile 'file:////tmp/data.csv'";
+    select_into_sql = "select * from "+ name +" into outfile 'file:////tmp/data.csv'";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
+        ASSERT_TRUE(true);
     } catch (const char* errorMsg) {
-        flag = 1;
+        ASSERT_TRUE(false);
     }
-    ASSERT_TRUE(flag == 1);
-    flag = 0;
 
     // False - Option un-supported
-    select_into_sql = "select * from t1 into outfile '/tmp/data.csv' options (mode = 'overwrite', test = 'null')";
+    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'overwrite', test = 'null')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
+        ASSERT_TRUE(true);
     } catch (const char* errorMsg) {
-        flag = 1;
+        ASSERT_TRUE(false);
     }
-    ASSERT_TRUE(flag == 1);
+
+    // False - Type un-supproted
+    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 1)";
+    try {
+        ExecuteSelectInto(db, select_into_sql, router);
+        ASSERT_TRUE(true);
+    } catch (const char* errorMsg) {
+        ASSERT_TRUE(false);
+    }
+
 }
+
 }  // namespace cmd
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
-    FLAGS_zk_session_timeout = 100000;
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
-    srand(time(NULL));
-    ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    return RUN_ALL_TESTS();
+    FLAGS_zk_session_timeout = 100000;
+    ::openmldb::sdk::MiniCluster mc(6181);
+    ::openmldb::cmd::mc_ = &mc;
+    int ok = ::openmldb::cmd::mc_->SetUp(1);
+    sleep(1);
+    srand(time(NULL));
+    ok = RUN_ALL_TESTS();
+    ::openmldb::cmd::mc_->Close();
+    return ok;
 }

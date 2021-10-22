@@ -97,6 +97,7 @@ ${ZETASQL_LIBS}
 ${BRPC_LIBS})
 
 if(TESTING_ENABLE)
+    compile_test(cmd)
     compile_test(base)
     compile_test(codec)
     compile_test(zk)
