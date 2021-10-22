@@ -349,8 +349,10 @@ bool Planner::IsTable(node::PlanNode *node, node::PlanNode** output) {
             return IsTable(dynamic_cast<node::QueryPlanNode *>(node)->GetChildren()[0], output);
         }
         case node::kPlanTypeProject: {
-            if ((dynamic_cast<node::ProjectPlanNode *>(node))->IsSimpleProjectPlan(), output) {
+            if ((dynamic_cast<node::ProjectPlanNode *>(node))->IsSimpleProjectPlan()) {
                 return IsTable(node->GetChildren()[0], output);
+            } else {
+                return false;
             }
         }
         default: {
