@@ -30,6 +30,7 @@
 
 #include "base/hash.h"
 #include "base/strings.h"
+#include "catalog/schema_adapter.h"
 #include "glog/logging.h"
 
 namespace openmldb::sdk {
@@ -114,8 +115,7 @@ bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint)
 }
 
 // TODO(hw): refactor
-bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas,
-                                     const std::vector<std::string>& sp_datas) {
+bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas, const std::vector<std::string>& sp_datas) {
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::map<std::string, std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>> mapping;
     auto new_catalog = std::make_shared<::openmldb::catalog::SDKCatalog>(client_manager_);
@@ -167,8 +167,7 @@ bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas,
             continue;
         }
         DLOG(INFO) << "parse procedure " << sp_info_pb.sp_name() << " ok";
-        // convert to ProcedureInfoImpl
-        auto sp_info = openmldb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
+        auto sp_info = std::make_shared<openmldb::catalog::ProcedureInfoImpl>(sp_info_pb);
         if (!sp_info) {
             LOG(WARNING) << "convert procedure info failed, sp_name: " << sp_info_pb.sp_name()
                          << " db: " << sp_info_pb.db_name();
@@ -253,7 +252,7 @@ uint32_t DBSDK::GetTableId(const std::string& db, const std::string& tname) {
 }
 
 std::shared_ptr<::openmldb::nameserver::TableInfo> DBSDK::GetTableInfo(const std::string& db,
-                                                                            const std::string& tname) {
+                                                                       const std::string& tname) {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {
@@ -306,8 +305,7 @@ bool ClusterSDK::GetRealEndpointFromZk(const std::string& endpoint, std::string*
 
 std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet() { return GetCatalog()->GetTablet(); }
 
-std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db,
-                                                                           const std::string& name) {
+std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db, const std::string& name) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         auto* sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
@@ -324,7 +322,7 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std:
 }
 
 bool DBSDK::GetTablet(const std::string& db, const std::string& name,
-                           std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>* tablets) {
+                      std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>* tablets) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         auto* sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
@@ -335,8 +333,8 @@ bool DBSDK::GetTablet(const std::string& db, const std::string& name,
     return false;
 }
 
-std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db,
-                                                                           const std::string& name, uint32_t pid) {
+std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db, const std::string& name,
+                                                                      uint32_t pid) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         auto* sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
@@ -347,9 +345,8 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std:
     return {};
 }
 
-std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db,
-                                                                           const std::string& name,
-                                                                           const std::string& pk) {
+std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db, const std::string& name,
+                                                                      const std::string& pk) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         auto sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
@@ -365,9 +362,8 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std:
     return {};
 }
 
-std::shared_ptr<hybridse::sdk::ProcedureInfo> DBSDK::GetProcedureInfo(const std::string& db,
-                                                                           const std::string& sp_name,
-                                                                           std::string* msg) {
+std::shared_ptr<hybridse::sdk::ProcedureInfo> DBSDK::GetProcedureInfo(const std::string& db, const std::string& sp_name,
+                                                                      std::string* msg) {
     if (msg == nullptr) {
         return {};
     }
@@ -428,24 +424,38 @@ bool StandAloneSDK::BuildCatalog() {
     }
     client_manager_->UpdateClient(real_ep_map);
 
-    // tables
+    // TableInfos
     std::vector<::openmldb::nameserver::TableInfo> tables;
     if (!GetNsClient()->ShowAllTable(tables, msg)) {
-        LOG(WARNING) << msg;
+        LOG(WARNING) << "show all table from ns failed, msg: " << msg;
         return false;
     }
-    // table_to_tablets_
     std::map<std::string, std::map<std::string, std::shared_ptr<nameserver::TableInfo>>> mapping;
     auto new_catalog = std::make_shared<catalog::SDKCatalog>(client_manager_);
     for (const auto& table : tables) {
         auto& db_map = mapping[table.db()];
         db_map[table.name()] = std::make_shared<nameserver::TableInfo>(table);
-        DLOG(INFO) << "load table info with name " << table.name() << " in db " << table.db();
+        VLOG(5) << "load table info with name " << table.name() << " in db " << table.db();
     }
-    // TODO(hw): no show procedure api, can't build dp_sp_map
 
-    // TODO(hw): use tables and sp map(no sp map now) to init a new catalog
-    if (!new_catalog->Init(tables, {})) {
+    std::vector<api::ProcedureInfo> procedures;
+    // empty db & sp names means show all
+    if (!GetNsClient()->ShowProcedure("", "", &procedures, &msg)) {
+        LOG(WARNING) << "show procedure from ns failed, msg: " << msg;
+        return false;
+    }
+    // api::ProcedureInfo to hybridse::sdk::ProcedureInfo
+    catalog::Procedures db_sp_map;
+    for (auto& sp : procedures) {
+        auto sdk_sp = std::make_shared<catalog::ProcedureInfoImpl>(sp);
+        if (!sdk_sp) {
+            LOG(WARNING) << "sp convert failed, skip sp: " << sp.db_name() << "-" << sp.sp_name();
+            continue;
+        }
+        db_sp_map[sp.db_name()][sp.sp_name()] = sdk_sp;
+    }
+
+    if (!new_catalog->Init(tables, db_sp_map)) {
         LOG(WARNING) << "fail to init catalog";
         return false;
     }
