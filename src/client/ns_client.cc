@@ -911,5 +911,24 @@ bool NsClient::DropProcedure(const std::string& db_name, const std::string& sp_n
     return false;
 }
 
+bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_name,
+                             std::vector<api::ProcedureInfo>* infos, std::string* msg) {
+    api::ShowProcedureRequest request;
+    api::ShowProcedureResponse response;
+    request.set_db_name(db_name);
+    request.set_sp_name(sp_name);
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowProcedure, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    *msg = response.msg();
+    if (ok && response.code() == 0) {
+        infos->clear();
+        for (auto& sp : response.sp_info()) {
+            infos->emplace_back(sp);
+        }
+        return true;
+    }
+    return false;
+}
+
 }  // namespace client
 }  // namespace openmldb

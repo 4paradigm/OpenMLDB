@@ -67,6 +67,7 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
 std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK *cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
+bool performance_sensitive = true;
 
 class SaveFileOptions {
  public:
@@ -738,6 +739,19 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     }
 }
 
+void SetVariable(const std::string key, const hybridse::node::ConstNode* value) {
+    if (key == "performance_sensitive") {
+        if (value->GetDataType() == hybridse::node::kBool) {
+            performance_sensitive = value->GetBool();
+            printf("Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true": "false");
+        } else {
+            printf("The type of %s should be bool\n", key.c_str());
+        }
+    } else {
+        printf("The variable key %s is not supported\n", key.c_str());
+    }
+}
+
 void HandleSQL(const std::string &sql) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
@@ -814,7 +828,7 @@ void HandleSQL(const std::string &sql) {
                 return;
             }
             ::hybridse::sdk::Status status;
-            auto rs = sr->ExecuteSQL(db, sql, &status);
+            auto rs = sr->ExecuteSQL(db, sql, &status, performance_sensitive);
             if (!rs) {
                 std::cout << "ERROR: Fail to execute query" << std::endl;
             } else {
@@ -842,7 +856,11 @@ void HandleSQL(const std::string &sql) {
                 } catch (const char* error_msg) {
                     std::cout << error_msg << std::endl;
                 }
-            }
+            } 
+        }
+        case hybridse::node::kPlanTypeSet: {
+            auto *set_node = dynamic_cast<hybridse::node::SetPlanNode *>(node);
+            SetVariable(set_node->Key(), set_node->Value());
             return;
         }
         default: {
