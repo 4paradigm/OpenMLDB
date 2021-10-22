@@ -556,9 +556,9 @@ bool GetOption(const std::shared_ptr<hybridse::node::OptionsMap> &options, const
 
 template <typename T>
 bool AppendColumnValue(const std::string &v, hybridse::sdk::DataType type, bool is_not_null,
-                       const std::string &nullValue, T row) {
+                       const std::string &null_value, T row) {
     // check if null
-    if (v == nullValue) {
+    if (v == null_value) {
         if (is_not_null) {
             return false;
         }
@@ -618,7 +618,7 @@ bool AppendColumnValue(const std::string &v, hybridse::sdk::DataType type, bool 
 }
 
 bool InsertOneRow(const std::string &insert_placeholder, const std::vector<int> &str_col_idx,
-                  const std::string &nullValue, const std::vector<std::string> &cols, std::string *error) {
+                  const std::string &null_value, const std::vector<std::string> &cols, std::string *error) {
     if (cols.empty()) {
         return false;
     }
@@ -639,14 +639,14 @@ bool InsertOneRow(const std::string &insert_placeholder, const std::vector<int> 
     // scan all strings , calc the sum, to init SQLInsertRow's string length
     std::string::size_type str_len_sum = 0;
     for (auto idx : str_col_idx) {
-        if (cols[idx] != nullValue) {
+        if (cols[idx] != null_value) {
             str_len_sum += cols[idx].length();
         }
     }
     row->Init(static_cast<int>(str_len_sum));
 
     for (int i = 0; i < cnt; ++i) {
-        if (!AppendColumnValue(cols[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), nullValue, row)) {
+        if (!AppendColumnValue(cols[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), null_value, row)) {
             *error = "translate to insert row failed";
             return false;
         }
@@ -668,7 +668,7 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
     // options, value is ConstNode
     char delimiter = ',';
     bool header = true;
-    std::string nullValue{"null"}, format{"csv"};
+    std::string null_value{"null"}, format{"csv"};
 
     if (!GetOption(options, "delimiter", hybridse::node::kVarchar,
                    [&delimiter, error](const hybridse::node::ConstNode *node) {
@@ -685,9 +685,9 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
                        header = node->GetBool();
                        return true;
                    }) ||
-        !GetOption(options, "nullValue", hybridse::node::kVarchar,
-                   [&nullValue](const hybridse::node::ConstNode *node) {
-                       nullValue = node->GetAsString();
+        !GetOption(options, "null_value", hybridse::node::kVarchar,
+                   [&null_value](const hybridse::node::ConstNode *node) {
+                       null_value = node->GetAsString();
                        return true;
                    }) ||
         !GetOption(options, "format", hybridse::node::kVarchar,
@@ -700,7 +700,7 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
                    })) {
         return false;
     }
-    std::cout << "options: delimiter [" << delimiter << "], has header[" << header << "], nullValue[" << nullValue
+    std::cout << "options: delimiter [" << delimiter << "], has header[" << header << "], null_value[" << null_value
               << "], format[" << format << "]" << std::endl;
     // read csv
     if (!base::IsExists(file_path)) {
@@ -756,7 +756,7 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
     do {
         cols.clear();
         SplitCSVLineWithDelimiterForStrings(line, delimiter, &cols);
-        if (!InsertOneRow(insert_placeholder, strColIdx, nullValue, cols, error)) {
+        if (!InsertOneRow(insert_placeholder, strColIdx, null_value, cols, error)) {
             *error = "line [" + line + "] insert failed, " + *error;
             return false;
         }
