@@ -41,19 +41,14 @@ DEFINE_string(cmd, "", "Set cmd");
 namespace openmldb {
 namespace cmd {
 
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
-
 ::openmldb::sdk::MiniCluster* mc_;
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
-class StandaloneSQLTest : public ::testing::Test {
+class SqlCmdTest : public ::testing::Test {
  public:
-    StandaloneSQLTest() {}
-    ~StandaloneSQLTest() {}
-    void SetUp() {}
-    void TearDown() {}
+    SqlCmdTest() {}
+    ~SqlCmdTest() {}
 };
 
 static void ExecuteSelectInto(const std::string& db, const std::string& sql, std::shared_ptr<sdk::SQLRouter> router) {
@@ -78,7 +73,7 @@ static void ExecuteSelectInto(const std::string& db, const std::string& sql, std
     }
 }
 
-TEST_F(StandaloneSQLTest, smoketest) {
+TEST_F(SqlCmdTest, select_into_outfile) {
     sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -86,6 +81,7 @@ TEST_F(StandaloneSQLTest, smoketest) {
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
+    std::string file_path =  "/tmp/data" + GenRand() + ".csv";
     ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
@@ -102,83 +98,81 @@ TEST_F(StandaloneSQLTest, smoketest) {
     ASSERT_TRUE(router->RefreshCatalog());
     
     // True
-    std::string select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv'";
+    std::string select_into_sql = "select * from "+ name +" into outfile '" + file_path + "'";
     try {
         openmldb::cmd::ExecuteSelectInto(db, select_into_sql, router);
     } catch (const char* errorMsg) {
         ASSERT_TRUE(true);
     }
+    // Check file
+    std::ifstream file;
+    file.open(file_path);
+    std::string line;
+    getline(file, line);
+    ASSERT_EQ(line, "col1,col2");
+    getline(file, line);
+    ASSERT_EQ(line, "key1,1");
+    file.close();
 
     // True
-    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'overwrite')";
+    select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'overwrite')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
     } catch (const char* errorMsg) {
-        ASSERT_TRUE(true);
+        ASSERT_TRUE(false);
     }
 
     // True
-    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'append')";
+    select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'append')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
     } catch (const char* errorMsg) {
-        ASSERT_TRUE(true);
+        ASSERT_TRUE(false);
     }
 
-    // Faile - File exists
-    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'error_if_exists')";
+    // Fail - File exists
+    select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'error_if_exists')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
         ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {
-        ASSERT_TRUE(true);
-    }
+    } catch (const char* errorMsg) {}
 
     // Fail - Mode un-supported
-    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'error')";
+    select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'error')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
         ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {
-        ASSERT_TRUE(true);
-    }
+    } catch (const char* errorMsg) {}
 
     // False - Format un-supported
-    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'overwrite', format = 'parquet')";
+    select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'overwrite', format = 'parquet')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
         ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {
-        ASSERT_TRUE(true);
-    }
+    } catch (const char* errorMsg) {}
 
     // False - File path error
     select_into_sql = "select * from "+ name +" into outfile 'file:////tmp/data.csv'";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
         ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {
-        ASSERT_TRUE(true);
-    }
+    } catch (const char* errorMsg) {}
 
     // False - Option un-supported
-    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 'overwrite', test = 'null')";
+    select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'overwrite', test = 'null')";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
         ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {
-        ASSERT_TRUE(true);
-    }
+    } catch (const char* errorMsg) {}
 
     // False - Type un-supproted
-    select_into_sql = "select * from "+ name +" into outfile '/tmp/data.csv' options (mode = 1)";
+    select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 1)";
     try {
         ExecuteSelectInto(db, select_into_sql, router);
         ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {
-        ASSERT_TRUE(true);
-    }
+    } catch (const char* errorMsg) {}
 
+    remove(file_path.c_str());
 }
 
 }  // namespace cmd

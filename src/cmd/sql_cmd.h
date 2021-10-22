@@ -47,6 +47,7 @@ DECLARE_string(cmd);
 DECLARE_string(host);
 DECLARE_int32(port);
 
+// TODO(zekai): add sql_cmd.cc
 namespace openmldb::cmd {
 using hybridse::plan::PlanAPI;
 using ::openmldb::catalog::TTL_TYPE_MAP;
@@ -68,6 +69,7 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK *cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 
+// TODO(zekai): use getoption
 class SaveFileOptions {
  public:
     SaveFileOptions(const std::string &file_path, std::shared_ptr<hybridse::node::OptionsMap> options_map) {
@@ -101,7 +103,7 @@ class SaveFileOptions {
                 }
                 null_value_ = iter->second->GetAsString();
             } else if (key == "header") {
-                if (iter->second->GetDataType() != hybridse::node::kVarchar) {
+                if (iter->second->GetDataType() != hybridse::node::kBool) {
                     std::string error_msg = "ERROR: The type of " + key + " mismatch, type should be bool";
                     throw error_msg.c_str();
                 }
@@ -162,7 +164,7 @@ class SaveFileOptions {
     std::string mode_ = "error_if_exists";
     std::string delimiter_ = ",";
     std::string null_value_ = "null";
-    std::string file_path_ = "";
+    std::string file_path_;
     bool header_ = true;
     std::ofstream fstream_;
 };
@@ -171,10 +173,10 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
     std::shared_ptr<hybridse::node::OptionsMap> options_map) {
     std::shared_ptr<openmldb::cmd::SaveFileOptions> options = std::make_shared<openmldb::cmd::SaveFileOptions>(
         file_path, options_map);
+    if (!result_set) {
+        return;
+    }
     if (options->GetFormat() == "csv") {
-        if (!result_set || result_set->Size() == 0) {
-            return;
-        }
         auto *schema = result_set->GetSchema();
         // Add Header
         if (options->GetHeader() == true) {
@@ -183,89 +185,90 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                 schemaString.append(schema->GetColumnName(i));
                 if (i != schema->GetColumnCnt()-1) {
                     schemaString.append(options->GetDelimiter());
-                } else {
-                    options->GetOfstream() << schemaString << std::endl;
                 }
             }
+            options->GetOfstream() << schemaString << std::endl;
         }
-        while (result_set->Next()) {
-            std::string rowString = "";
-            for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
-                if (result_set->IsNULL(i)) {
-                    rowString.append(options->GetNullValue());
-                } else {
-                    auto data_type = schema->GetColumnType(i);
-                    switch (data_type) {
-                        case hybridse::sdk::kTypeInt16: {
-                            int16_t value = 0;
-                            result_set->GetInt16(i, &value);
-                            rowString.append(std::to_string(value));
-                            break;
-                        }
-                        case hybridse::sdk::kTypeInt32: {
-                            int32_t value = 0;
-                            result_set->GetInt32(i, &value);
-                            rowString.append(std::to_string(value));
-                            break;
-                        }
-                        case hybridse::sdk::kTypeInt64: {
-                            int64_t value = 0;
-                            result_set->GetInt64(i, &value);
-                            rowString.append(std::to_string(value));
-                            break;
-                        }
-                        case hybridse::sdk::kTypeFloat: {
-                            float value = 0;
-                            result_set->GetFloat(i, &value);
-                            rowString.append(std::to_string(value));
-                            break;
-                        }
-                        case hybridse::sdk::kTypeDouble: {
-                            double value = 0;
-                            result_set->GetDouble(i, &value);
-                            rowString.append(std::to_string(value));
-                            break;
-                        }
-                        case hybridse::sdk::kTypeString: {
-                            std::string val;
-                            result_set->GetString(i, &val);
-                            rowString.append(val);
-                            break;
-                        }
-                        case hybridse::sdk::kTypeTimestamp: {
-                            int64_t ts = 0;
-                            result_set->GetTime(i, &ts);
-                            rowString.append(std::to_string(ts));
-                            break;
-                        }
-                        case hybridse::sdk::kTypeDate: {
-                            int32_t year = 0;
-                            int32_t month = 0;
-                            int32_t day = 0;
-                            std::stringstream ss;
-                            result_set->GetDate(i, &year, &month, &day);
-                            ss << year << "-" << month << "-" << day;
-                            rowString.append(ss.str());
-                            break;
-                        }
-                        case hybridse::sdk::kTypeBool: {
-                            bool value = false;
-                            result_set->GetBool(i, &value);
-                            rowString.append(value ? "true" : "false");
-                            break;
-                        }
-                        default: {
-                            std::string error_msg = "ERROR: In table, some types are not currently supported";
-                            throw error_msg.c_str();
-                        }
-                    }
-                    if (i != schema->GetColumnCnt()-1) {
-                        rowString.append(options->GetDelimiter());
+        if (result_set->Size() != 0) {
+            while (result_set->Next()) {
+                std::string rowString;
+                for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
+                    if (result_set->IsNULL(i)) {
+                        rowString.append(options->GetNullValue());
                     } else {
-                        options->GetOfstream() << rowString << std::endl;
+                        auto data_type = schema->GetColumnType(i);
+                        switch (data_type) {
+                            case hybridse::sdk::kTypeInt16: {
+                                int16_t value = 0;
+                                result_set->GetInt16(i, &value);
+                                rowString.append(std::to_string(value));
+                                break;
+                            }
+                            case hybridse::sdk::kTypeInt32: {
+                                int32_t value = 0;
+                                result_set->GetInt32(i, &value);
+                                rowString.append(std::to_string(value));
+                                break;
+                            }
+                            case hybridse::sdk::kTypeInt64: {
+                                int64_t value = 0;
+                                result_set->GetInt64(i, &value);
+                                rowString.append(std::to_string(value));
+                                break;
+                            }
+                            case hybridse::sdk::kTypeFloat: {
+                                float value = 0;
+                                result_set->GetFloat(i, &value);
+                                rowString.append(std::to_string(value));
+                                break;
+                            }
+                            case hybridse::sdk::kTypeDouble: {
+                                double value = 0;
+                                result_set->GetDouble(i, &value);
+                                rowString.append(std::to_string(value));
+                                break;
+                            }
+                            case hybridse::sdk::kTypeString: {
+                                std::string val;
+                                result_set->GetString(i, &val);
+                                rowString.append(val);
+                                break;
+                            }
+                            case hybridse::sdk::kTypeTimestamp: {
+                                int64_t ts = 0;
+                                result_set->GetTime(i, &ts);
+                                rowString.append(std::to_string(ts));
+                                break;
+                            }
+                            case hybridse::sdk::kTypeDate: {
+                                int32_t year = 0;
+                                int32_t month = 0;
+                                int32_t day = 0;
+                                std::stringstream ss;
+                                result_set->GetDate(i, &year, &month, &day);
+                                ss << year << "-" << month << "-" << day;
+                                rowString.append(ss.str());
+                                break;
+                            }
+                            case hybridse::sdk::kTypeBool: {
+                                bool value = false;
+                                result_set->GetBool(i, &value);
+                                rowString.append(value ? "true" : "false");
+                                break;
+                            }
+                            default: {
+                                std::string error_msg = "ERROR: In table, some types are not currently supported";
+                                throw error_msg.c_str();
+                            }
+                        }
+                        if (i != schema->GetColumnCnt()-1) {
+                            rowString.append(options->GetDelimiter());
+                        } else {
+                            options->GetOfstream() << rowString << std::endl;
+                        }
                     }
                 }
-            }
+            }            
         }
         std::cout << "SUCCEED: Save successfully" << std::endl;
     }
