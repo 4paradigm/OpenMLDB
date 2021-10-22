@@ -683,7 +683,8 @@ int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::
     }
     if (table_meta->tid() <= 0) {
         msg = "tid is zero";
-        return -1;
+        // tobe
+        //return -1;
     }
     std::map<std::string, ::openmldb::type::DataType> column_map;
     if (table_meta->column_desc_size() > 0) {
