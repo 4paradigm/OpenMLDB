@@ -71,7 +71,8 @@ class TabletClient : public Client {
                bool performance_sensitive = true);
 
     bool Query(const std::string& db, const std::string& sql, const std::string& row, brpc::Controller* cntl,
-               ::openmldb::api::QueryResponse* response, const bool is_debug = false, bool performance_sensitive = true);
+               ::openmldb::api::QueryResponse* response, const bool is_debug = false,
+               bool performance_sensitive = true);
 
     bool SQLBatchRequestQuery(const std::string& db, const std::string& sql,
                               std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch>, brpc::Controller* cntl,
