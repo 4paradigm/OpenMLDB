@@ -25,6 +25,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "base/file_util.h"
 #include "base/linenoise.h"
 #include "base/texttable.h"
 #include "catalog/schema_adapter.h"
