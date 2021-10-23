@@ -51,26 +51,23 @@ class SqlCmdTest : public ::testing::Test {
     ~SqlCmdTest() {}
 };
 
-static void ExecuteSelectInto(const std::string& db, const std::string& sql, std::shared_ptr<sdk::SQLRouter> router) {
+static void ExecuteSelectInto(const std::string& db, const std::string& sql,
+    std::shared_ptr<sdk::SQLRouter> router, ::openmldb::base::ResultMsg* openmldb_base_status) {
     hybridse::node::NodeManager node_manager;
-    hybridse::base::Status sql_status;
+    hybridse::base::Status hybridse_base_status;
     hybridse::node::PlanNodeList plan_trees;
-    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
-    ASSERT_EQ(sql_status.code, 0);
-
+    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, hybridse_base_status);
+    ASSERT_EQ(hybridse_base_status.code, 0);
     hybridse::node::PlanNode *node = plan_trees[0];
     auto *select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode *>(node);
     const std::string& query_sql = select_into_plan_node->QueryStr();
     const std::string& file_path = select_into_plan_node->OutFile();
     const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
     ASSERT_TRUE(!db.empty());
-    ::hybridse::sdk::Status status;
-    auto rs = router->ExecuteSQL(db, query_sql, &status);
-    try {
-        openmldb::cmd::SaveResultSet(rs.get(), file_path, options_map);
-    } catch (const char* errorMsg) {
-        throw errorMsg;
-    }
+    hybridse::sdk::Status hybridse_sdk_status;
+    auto rs = router->ExecuteSQL(db, query_sql, &hybridse_sdk_status);
+    ASSERT_EQ(hybridse_sdk_status.code, 0);
+    openmldb::cmd::SaveResultSet(rs.get(), file_path, options_map, openmldb_base_status);
 }
 
 TEST_F(SqlCmdTest, select_into_outfile) {
@@ -82,97 +79,89 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     std::string file_path =  "/tmp/data" + GenRand() + ".csv";
-    ::hybridse::sdk::Status status;
-    bool ok = router->CreateDB(db, &status);
+    ::hybridse::sdk::Status hybridse_sdk_status;
+    bool ok = router->CreateDB(db, &hybridse_sdk_status);
     ASSERT_TRUE(ok);
     auto endpoints = mc_->GetTbEndpoint();
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 int);";
-    ok = router->ExecuteDDL(db, ddl, &status);
+    ok = router->ExecuteDDL(db, ddl, &hybridse_sdk_status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
 
     std::string insert = "insert into "+ name +" values('key1', 1);";
-    ASSERT_TRUE(router->ExecuteInsert(db, insert, &status));
+    ASSERT_TRUE(router->ExecuteInsert(db, insert, &hybridse_sdk_status));
     ASSERT_TRUE(router->RefreshCatalog());
 
+
+    ::openmldb::base::ResultMsg openmldb_base_status;
     // True
     std::string select_into_sql = "select * from "+ name +" into outfile '" + file_path + "'";
-    try {
-        openmldb::cmd::ExecuteSelectInto(db, select_into_sql, router);
-    } catch (const char* errorMsg) {
-        ASSERT_TRUE(true);
-    }
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(openmldb_base_status.OK());
     // Check file
     std::ifstream file;
     file.open(file_path);
     std::string line;
-    getline(file, line);
-    ASSERT_EQ(line, "col1,col2");
-    getline(file, line);
-    ASSERT_EQ(line, "key1,1");
+    std::string data;
+    while (!file.eof()) {
+        getline(file, line);
+        data.append(line);
+    }
+    ASSERT_EQ(data, "col1,col2key1,1");
     file.close();
 
     // True
     select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'overwrite')";
-    try {
-        ExecuteSelectInto(db, select_into_sql, router);
-    } catch (const char* errorMsg) {
-        ASSERT_TRUE(false);
-    }
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(openmldb_base_status.OK());
 
     // True
     select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'append')";
-    try {
-        ExecuteSelectInto(db, select_into_sql, router);
-    } catch (const char* errorMsg) {
-        ASSERT_TRUE(false);
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(openmldb_base_status.OK());
+
+    file.open(file_path);
+    std::string data_append;
+    while (!file.eof()) {
+        getline(file, line);
+        data_append.append(line);
     }
+    ASSERT_EQ(data_append, "col1,col2key1,1col1,col2key1,1");
+    file.close();
 
     // Fail - File exists
     select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'error_if_exists')";
-    try {
-        ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {}
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(!openmldb_base_status.OK());
 
     // Fail - Mode un-supported
     select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 'error')";
-    try {
-        ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {}
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(!openmldb_base_status.OK());
 
     // False - Format un-supported
     select_into_sql = "select * from "+ name +" into outfile '" + file_path
      + "' options (mode = 'overwrite', format = 'parquet')";
-    try {
-        ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {}
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(!openmldb_base_status.OK());
 
     // False - File path error
     select_into_sql = "select * from "+ name +" into outfile 'file:////tmp/data.csv'";
-    try {
-        ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {}
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(!openmldb_base_status.OK());
 
     // False - Option un-supported
     select_into_sql = "select * from "+ name +" into outfile '" + file_path
      + "' options (mode = 'overwrite', test = 'null')";
-    try {
-        ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {}
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(!openmldb_base_status.OK());
 
     // False - Type un-supproted
     select_into_sql = "select * from "+ name +" into outfile '" + file_path + "' options (mode = 1)";
-    try {
-        ExecuteSelectInto(db, select_into_sql, router);
-        ASSERT_TRUE(false);
-    } catch (const char* errorMsg) {}
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(!openmldb_base_status.OK());
 
     remove(file_path.c_str());
 }
