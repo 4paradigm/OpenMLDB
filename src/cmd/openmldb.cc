@@ -326,7 +326,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
         }
         if (ts_dimensions.empty()) {
             if (!clients[endpoint]->Put(tid, pid, ts, value, iter->second, format_version)) {
-                printf("put failed. tid %u pid %u endpoint %s ts %lu \n", tid, pid, endpoint.c_str(), ts);
+                printf("put failed. tid %u pid %u endpoint %s ts %llu \n", tid, pid, endpoint.c_str(), ts);
                 return -1;
             }
         } else {
