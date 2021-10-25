@@ -175,6 +175,7 @@ class SaveFileOptions {
     std::ofstream& GetOfstream() {
         return fstream_;
     }
+
  private:
     std::string format_ = "csv";
     std::string mode_ = "error_if_exists";
@@ -285,7 +286,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                         }
                     }
                 }
-            }            
+            }
         }
         openmldb_base_status->msg = "SUCCEED: Save successfully";
     }
