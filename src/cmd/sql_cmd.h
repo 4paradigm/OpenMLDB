@@ -189,7 +189,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
     std::shared_ptr<hybridse::node::OptionsMap> options_map, ::openmldb::base::ResultMsg* openmldb_base_status) {
     std::shared_ptr<openmldb::cmd::SaveFileOptions> options = std::make_shared<openmldb::cmd::SaveFileOptions>(
         file_path, options_map, openmldb_base_status);
-    if (!result_set) {
+    if (!result_set || !openmldb_base_status->OK()) {
         return;
     }
     if (options->GetFormat() == "csv") {
@@ -275,6 +275,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                             default: {
                                 openmldb_base_status->msg = "ERROR: In table, some types are not currently supported";
                                 openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
+                                return;
                             }
                         }
                         if (i != schema->GetColumnCnt()-1) {
@@ -1108,6 +1109,7 @@ void HandleSQL(const std::string &sql) {
                 SaveResultSet(rs.get(), file_path, options_map, &openmldb_base_status);
                 std::cout << openmldb_base_status.GetMsg() << std::endl;
             } 
+            return;
         }
         case hybridse::node::kPlanTypeSet: {
             auto *set_node = dynamic_cast<hybridse::node::SetPlanNode *>(node);
