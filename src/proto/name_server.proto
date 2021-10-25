@@ -147,7 +147,7 @@ message AddReplicaData {
     required uint32 pid = 2;
     optional string endpoint = 3;
     optional uint32 remote_tid = 4; //for remote
-    optional string alias = 5; //for remote 
+    optional string alias = 5; //for remote
     optional TablePartition table_partition = 6; //for remote
     optional string db = 7 [default = ""];
 }
@@ -511,4 +511,5 @@ service NameServer {
     // sql procedure interfaces
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
     rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
+    rpc ShowProcedure(openmldb.api.ShowProcedureRequest) returns (openmldb.api.ShowProcedureResponse);
 }

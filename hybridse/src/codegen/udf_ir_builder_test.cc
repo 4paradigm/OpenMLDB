@@ -560,16 +560,16 @@ TEST_F(UdfIRBuilderTest, substring_pos_udf_test) {
 TEST_F(UdfIRBuilderTest, concat_str_udf_test) {
     //    concat("12345") == "12345"
     CheckUdf<StringRef, StringRef>("concat", StringRef("12345"),
-                                   StringRef(std::string("12345")));
+                                   StringRef("12345"));
 
     // concat("12345", "67890") == "1234567890"
     CheckUdf<StringRef, StringRef, StringRef>("concat", StringRef("1234567890"),
-                                              StringRef(std::string("12345")),
+                                              StringRef("12345"),
                                               StringRef("67890"));
 
     // concat("123", "4567890", "abcde") == "1234567890abcde"
     CheckUdf<StringRef, StringRef, StringRef, StringRef>(
-        "concat", StringRef("1234567890abcde"), StringRef(std::string("123")),
+        "concat", StringRef("1234567890abcde"), StringRef("123"),
         StringRef("4567890"), StringRef("abcde"));
 
     // concat("1", "23", "456", "7890", "abc", "de") == "1234567890abcde"

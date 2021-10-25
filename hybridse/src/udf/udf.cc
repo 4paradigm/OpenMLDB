@@ -879,42 +879,41 @@ bool RegisterMethod(const std::string &fn_name, hybridse::node::TypeNode *ret,
     return true;
 }
 
-void RegisterNativeUdfToModule() {
-    node::NodeManager nm;
+void RegisterNativeUdfToModule(hybridse::node::NodeManager* nm) {
     base::Status status;
 
-    auto bool_ty = nm.MakeTypeNode(node::kBool);
-    auto i32_ty = nm.MakeTypeNode(node::kInt32);
-    auto i64_ty = nm.MakeTypeNode(node::kInt64);
-    auto i16_ty = nm.MakeTypeNode(node::kInt16);
-    auto float_ty = nm.MakeTypeNode(node::kFloat);
-    auto double_ty = nm.MakeTypeNode(node::kDouble);
-    auto time_ty = nm.MakeTypeNode(node::kTimestamp);
-    auto date_ty = nm.MakeTypeNode(node::kDate);
-    auto string_ty = nm.MakeTypeNode(node::kVarchar);
-    auto row_ty = nm.MakeTypeNode(node::kRow);
+    auto bool_ty = nm->MakeTypeNode(node::kBool);
+    auto i32_ty = nm->MakeTypeNode(node::kInt32);
+    auto i64_ty = nm->MakeTypeNode(node::kInt64);
+    auto i16_ty = nm->MakeTypeNode(node::kInt16);
+    auto float_ty = nm->MakeTypeNode(node::kFloat);
+    auto double_ty = nm->MakeTypeNode(node::kDouble);
+    auto time_ty = nm->MakeTypeNode(node::kTimestamp);
+    auto date_ty = nm->MakeTypeNode(node::kDate);
+    auto string_ty = nm->MakeTypeNode(node::kVarchar);
+    auto row_ty = nm->MakeTypeNode(node::kRow);
 
-    auto list_i32_ty = nm.MakeTypeNode(node::kList, i32_ty);
-    auto list_i64_ty = nm.MakeTypeNode(node::kList, i64_ty);
-    auto list_i16_ty = nm.MakeTypeNode(node::kList, i16_ty);
-    auto list_bool_ty = nm.MakeTypeNode(node::kList, bool_ty);
-    auto list_float_ty = nm.MakeTypeNode(node::kList, float_ty);
-    auto list_double_ty = nm.MakeTypeNode(node::kList, double_ty);
-    auto list_time_ty = nm.MakeTypeNode(node::kList, time_ty);
-    auto list_date_ty = nm.MakeTypeNode(node::kList, date_ty);
-    auto list_string_ty = nm.MakeTypeNode(node::kList, string_ty);
-    auto list_row_ty = nm.MakeTypeNode(node::kList, row_ty);
+    auto list_i32_ty = nm->MakeTypeNode(node::kList, i32_ty);
+    auto list_i64_ty = nm->MakeTypeNode(node::kList, i64_ty);
+    auto list_i16_ty = nm->MakeTypeNode(node::kList, i16_ty);
+    auto list_bool_ty = nm->MakeTypeNode(node::kList, bool_ty);
+    auto list_float_ty = nm->MakeTypeNode(node::kList, float_ty);
+    auto list_double_ty = nm->MakeTypeNode(node::kList, double_ty);
+    auto list_time_ty = nm->MakeTypeNode(node::kList, time_ty);
+    auto list_date_ty = nm->MakeTypeNode(node::kList, date_ty);
+    auto list_string_ty = nm->MakeTypeNode(node::kList, string_ty);
+    auto list_row_ty = nm->MakeTypeNode(node::kList, row_ty);
 
-    auto iter_i32_ty = nm.MakeTypeNode(node::kIterator, i32_ty);
-    auto iter_i64_ty = nm.MakeTypeNode(node::kIterator, i64_ty);
-    auto iter_i16_ty = nm.MakeTypeNode(node::kIterator, i16_ty);
-    auto iter_bool_ty = nm.MakeTypeNode(node::kIterator, bool_ty);
-    auto iter_float_ty = nm.MakeTypeNode(node::kIterator, float_ty);
-    auto iter_double_ty = nm.MakeTypeNode(node::kIterator, double_ty);
-    auto iter_time_ty = nm.MakeTypeNode(node::kIterator, time_ty);
-    auto iter_date_ty = nm.MakeTypeNode(node::kIterator, date_ty);
-    auto iter_string_ty = nm.MakeTypeNode(node::kIterator, string_ty);
-    auto iter_row_ty = nm.MakeTypeNode(node::kIterator, row_ty);
+    auto iter_i32_ty = nm->MakeTypeNode(node::kIterator, i32_ty);
+    auto iter_i64_ty = nm->MakeTypeNode(node::kIterator, i64_ty);
+    auto iter_i16_ty = nm->MakeTypeNode(node::kIterator, i16_ty);
+    auto iter_bool_ty = nm->MakeTypeNode(node::kIterator, bool_ty);
+    auto iter_float_ty = nm->MakeTypeNode(node::kIterator, float_ty);
+    auto iter_double_ty = nm->MakeTypeNode(node::kIterator, double_ty);
+    auto iter_time_ty = nm->MakeTypeNode(node::kIterator, time_ty);
+    auto iter_date_ty = nm->MakeTypeNode(node::kIterator, date_ty);
+    auto iter_string_ty = nm->MakeTypeNode(node::kIterator, string_ty);
+    auto iter_row_ty = nm->MakeTypeNode(node::kIterator, row_ty);
 
     RegisterMethod("iterator", bool_ty, {list_i16_ty, iter_i16_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int16_t>));
