@@ -37,11 +37,13 @@ TEST_F(MemPoolTest, ByteMemoryPoolTest) {
 
     {
         ByteMemoryPool mem_pool;
+        const char src1[] = "helloworld";
         char* s1 = mem_pool.Alloc(10);
-        memcpy(s1, "helloworld", 10);
+        memcpy(s1, src1, strlen(src1));
 
+        const char src2[] = "hybridse";
         char* s2 = mem_pool.Alloc(5);
-        memcpy(s2, "hybridse", 10);
+        memcpy(s2, src2, strlen(src2));
 
         char* s3 = mem_pool.Alloc(15);
         memcpy(s3, s1, 10);

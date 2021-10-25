@@ -39,7 +39,7 @@ class MemoryChunk {
                    << reinterpret_cast<void*>(this) << ")" << std::endl;
         delete[] mem_;
     }
-    inline size_t available_size() { return chuck_size_ - allocated_size_; }
+    inline size_t available_size() const { return chuck_size_ - allocated_size_; }
     char* Alloc(size_t request_size) {
         if (request_size > available_size()) {
             return nullptr;
@@ -48,15 +48,14 @@ class MemoryChunk {
         allocated_size_ += request_size;
         return addr;
     }
-    inline void free() { allocated_size_ = 0; }
     inline MemoryChunk* next() { return next_; }
     enum { DEFAULT_CHUCK_SIZE = 4096 };
 
  private:
     MemoryChunk* next_;
-    size_t chuck_size_;
+    const size_t chuck_size_;
     size_t allocated_size_;
-    char* mem_;
+    char* const mem_;
 };
 class ByteMemoryPool {
  public:

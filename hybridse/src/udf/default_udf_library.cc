@@ -1722,7 +1722,7 @@ void DefaultUdfLibrary::InitDateUdf() {
 }
 
 void DefaultUdfLibrary::Init() {
-    udf::RegisterNativeUdfToModule();
+    udf::RegisterNativeUdfToModule(this->node_manager());
     InitUtilityUdf();
     InitDateUdf();
     InitTypeUdf();
