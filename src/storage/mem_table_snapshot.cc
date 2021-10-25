@@ -1097,7 +1097,7 @@ base::Status MemTableSnapshot::ExtractIndexFromBinlog(std::shared_ptr<Table> tab
 
 int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
         const std::vector<::openmldb::common::ColumnKey>& indexs,
-        uint32_t idx, uint32_t partition_num, uint64_t* out_offset) {
+        uint32_t partition_num, uint64_t* out_offset) {
     if (out_offset == NULL) {
         return -1;
     }

@@ -40,7 +40,7 @@ bool IndexMapBuilder::CreateIndex(const std::string& table, const hybridse::node
         LOG(DFATAL) << "index existed in cache, can't handle it now";
         return false;
     }
-    LOG(INFO) << "create index with unset ttl: " << index;
+    DLOG(INFO) << "create index with unset ttl: " << index;
 
     // default TTLSt is abs and ttl=0, rows will never expire.
     common::TTLSt ttl_st;
@@ -58,7 +58,7 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
     //  but range's column names may be renamed, needs schema context
 
     if (!range.Valid()) {
-        LOG(INFO) << "range is invalid, can't update ttl, still use the default ttl";
+        DLOG(INFO) << "range is invalid, can't update ttl, still use the default ttl";
         return true;
     }
 
@@ -70,7 +70,7 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
 
     std::stringstream ss;
     range.frame()->Print(ss, "");
-    LOG(INFO) << "frame info: " << ss.str() << ", get start points: " << start << ", " << rows_start;
+    DLOG(INFO) << "frame info: " << ss.str() << ", get start points: " << start << ", " << rows_start;
 
     common::TTLSt ttl_st;
 
@@ -90,7 +90,7 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
     }
 
     index_map_[latest_record_] = ttl_st;
-    LOG(INFO) << latest_record_ << " update ttl " << index_map_[latest_record_].DebugString();
+    DLOG(INFO) << latest_record_ << " update ttl " << index_map_[latest_record_].DebugString();
 
     // to avoid double update
     latest_record_.clear();

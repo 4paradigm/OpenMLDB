@@ -105,7 +105,7 @@ class MemTableSnapshot : public Snapshot {
                          uint64_t& out_offset);  // NOLINT
 
     int ExtractIndexData(std::shared_ptr<Table> table, const std::vector<::openmldb::common::ColumnKey>& column_key,
-                        uint32_t idx, uint32_t partition_num, uint64_t* out_offset);
+                        uint32_t partition_num, uint64_t* out_offset);
 
     bool DumpIndexData(std::shared_ptr<Table> table, const ::openmldb::common::ColumnKey& column_key, uint32_t idx,
                        const std::vector<::openmldb::log::WriteHandle*>& whs);

@@ -4511,6 +4511,55 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
         boost::bind(&TabletImpl::LoadIndexDataInternal, this, tid, pid, cur_pid + 1, partition_num, cur_time, task));
 }
 
+void TabletImpl::ExtractMultiIndexData(RpcController* controller,
+        const ::openmldb::api::ExtractMultiIndexDataRequest* request,
+        ::openmldb::api::GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table;
+    std::shared_ptr<Snapshot> snapshot;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        table = GetTableUnLock(tid, pid);
+        if (!table) {
+            PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
+            base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table is not exist", response);
+            return;
+        }
+        if (table->GetTableStat() != ::openmldb::storage::kNormal) {
+            PDLOG(WARNING, "table state is %d, cannot extract index data. tid %u, pid %u",
+                  table->GetTableStat(), tid, pid);
+            base::SetResponseStatus(base::ReturnCode::kTableStatusIsNotKnormal,
+                    "table status is not kNormal", response);
+            return;
+        }
+        snapshot = GetSnapshotUnLock(tid, pid);
+        if (!snapshot) {
+            PDLOG(WARNING, "snapshot is not exist. tid %u pid %u", tid, pid);
+            base::SetResponseStatus(base::ReturnCode::kSnapshotIsNotExist,
+                    "table snapshot is not exist", response);
+            return;
+        }
+    }
+    std::vector<::openmldb::common::ColumnKey> index_vec;
+    for (const auto& cur_column_key : request->column_key()) {
+        index_vec.push_back(cur_column_key);
+    }
+    uint64_t offset = 0;
+    auto memtable_snapshot = std::static_pointer_cast<::openmldb::storage::MemTableSnapshot>(snapshot);
+    if (memtable_snapshot->ExtractIndexData(table, index_vec, request->partition_num(), &offset) < 0) {
+        PDLOG(WARNING, "fail to extract index. tid %u pid %u", tid, pid);
+        return;
+    }
+    PDLOG(INFO, "extract index success. tid %u pid %u", tid, pid);
+    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+    if (replicator) {
+        replicator->SetSnapshotLogPartIndex(offset);
+    }
+    base::SetResponseOK(response);
+}
+
 void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::api::ExtractIndexDataRequest* request,
                                   ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);

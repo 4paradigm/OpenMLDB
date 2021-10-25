@@ -745,6 +745,8 @@ class NameServerImpl : public NameServer {
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 
+    std::shared_ptr<TabletInfo> GetTablet(const std::string& endpoint);
+
     bool AllocateTableId(uint32_t* id);
 
     uint64_t GetTerm() const;

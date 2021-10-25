@@ -205,6 +205,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void ExtractIndexData(RpcController* controller, const ::openmldb::api::ExtractIndexDataRequest* request,
                           ::openmldb::api::GeneralResponse* response, Closure* done);
 
+    void ExtractMultiIndexData(RpcController* controller, const ::openmldb::api::ExtractMultiIndexDataRequest* request,
+                          ::openmldb::api::GeneralResponse* response, Closure* done);
+
     void AddIndex(RpcController* controller, const ::openmldb::api::AddIndexRequest* request,
                   ::openmldb::api::GeneralResponse* response, Closure* done);
 

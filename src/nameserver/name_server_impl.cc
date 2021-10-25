@@ -2378,21 +2378,10 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::
                 continue;
             }
             std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
-            std::shared_ptr<TabletInfo> tablet_ptr;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                auto iter = tablets_.find(endpoint);
-                // check tablet if exist
-                if (iter == tablets_.end()) {
-                    PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
-                    return -1;
-                }
-                tablet_ptr = iter->second;
-                // check tablet healthy
-                if (tablet_ptr->state_ != ::openmldb::type::EndpointState::kHealthy) {
-                    PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
-                    return -1;
-                }
+            auto tablet_ptr = GetTablet(endpoint);
+            if (!tablet_ptr) {
+                PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
+                return -1;
             }
             if (is_leader) {
                 ::openmldb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
@@ -2429,21 +2418,10 @@ int NameServerImpl::DropTableOnTablet(std::shared_ptr<::openmldb::nameserver::Ta
         uint32_t pid = table_info->table_partition(idx).pid();
         for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
             std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
-            std::shared_ptr<TabletInfo> tablet_ptr;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                auto iter = tablets_.find(endpoint);
-                // check tablet if exist
-                if (iter == tablets_.end()) {
-                    PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
-                    continue;
-                }
-                tablet_ptr = iter->second;
-                // check tablet healthy
-                if (tablet_ptr->state_ != ::openmldb::type::EndpointState::kHealthy) {
-                    PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
-                    continue;
-                }
+            auto tablet_ptr = GetTablet(endpoint);
+            if (!tablet_ptr) {
+                PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
+                continue;
             }
             if (!tablet_ptr->client_->DropTable(tid, pid)) {
                 PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
@@ -7697,17 +7675,12 @@ void NameServerImpl::SelectLeader(const std::string& name, const std::string& db
     uint64_t max_offset = 0;
     std::vector<std::string> leader_endpoint_vec;
     for (const auto& endpoint : follower_endpoint) {
-        std::shared_ptr<TabletInfo> tablet_ptr;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto it = tablets_.find(endpoint);
-            if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
-                PDLOG(WARNING, "endpoint[%s] is offline. table[%s] pid[%u]  op_id[%lu]", endpoint.c_str(), name.c_str(),
-                      pid, task_info->op_id());
-                task_info->set_status(::openmldb::api::TaskStatus::kFailed);
-                return;
-            }
-            tablet_ptr = it->second;
+        auto tablet_ptr = GetTablet(endpoint);
+        if (!tablet_ptr) {
+            PDLOG(WARNING, "endpoint[%s] is offline. table[%s] pid[%u]  op_id[%lu]", endpoint.c_str(), name.c_str(),
+                  pid, task_info->op_id());
+            task_info->set_status(::openmldb::api::TaskStatus::kFailed);
+            return;
         }
         uint64_t offset = 0;
         if (!tablet_ptr->client_->FollowOfNoOne(tid, pid, cur_term, offset)) {
@@ -8953,7 +8926,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
 }
 
 bool NameServerImpl::UpdateZkTableNode(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info) {
-    if (UpdateZkTableNodeWithoutNotify(table_info.get())) {
+    if (IsClusterMode() && UpdateZkTableNodeWithoutNotify(table_info.get())) {
         NotifyTableChanged();
         return true;
     }
@@ -8961,6 +8934,9 @@ bool NameServerImpl::UpdateZkTableNode(const std::shared_ptr<::openmldb::nameser
 }
 
 bool NameServerImpl::UpdateZkTableNodeWithoutNotify(const TableInfo* table_info) {
+    if (!IsClusterMode()) {
+        return true;
+    }
     std::string table_value;
     table_info->SerializeToString(&table_value);
     std::string temp_path;
@@ -9108,11 +9084,29 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         openmldb::common::VersionPair* pair = table_info->add_schema_versions();
         pair->CopyFrom(new_pair);
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
-        if (CreateAddIndexOP(name, db, pid, add_cols, request->column_key(), index_pos) < 0) {
-            LOG(WARNING) << "create AddIndexOP failed, table " << name << " pid " << pid;
-            break;
+    if (IsClusterMode()) {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
+            if (CreateAddIndexOP(name, db, pid, add_cols, request->column_key(), index_pos) < 0) {
+                LOG(WARNING) << "create AddIndexOP failed, table " << name << " pid " << pid;
+                break;
+            }
+        }
+    } else {
+        for (const auto& partition : table_info->table_partition()) {
+            uint32_t pid = partition.pid();
+            for (const auto& meta : partition.partition_meta()) {
+                auto tablet_ptr = GetTablet(meta.endpoint());
+                if (!tablet_ptr) {
+                    PDLOG(WARNING, "endpoint[%s] can not find client", meta.endpoint().c_str());
+                    base::SetResponseStatus(ReturnCode::kTabletIsNotHealthy, "tablet is not exist", response);
+                    return;
+                }
+                if (!tablet_ptr->client_->AddIndex(table_info->tid(), pid, request->column_key(), nullptr)) {
+                    base::SetResponseStatus(ReturnCode::kAddIndexFailed, "add index failed", response);
+                    return;
+                }
+            }
         }
     }
     base::SetResponseOK(response);
@@ -9897,17 +9891,18 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const api::Creat
             response->set_msg(err_msg);
             break;
         }
-
-        std::string sp_value;
-        sp_info->SerializeToString(&sp_value);
-        std::string compressed;
-        ::snappy::Compress(sp_value.c_str(), sp_value.length(), &compressed);
-        if (!zk_client_->CreateNode(sp_data_path, compressed)) {
-            PDLOG(WARNING, "create db store procedure node[%s] failed! value[%s] value size[%lu]", sp_data_path.c_str(),
-                  sp_value.c_str(), compressed.length());
-            response->set_code(::openmldb::base::ReturnCode::kCreateZkFailed);
-            response->set_msg("create zk node failed");
-            break;
+        if (IsClusterMode()) {
+            std::string sp_value;
+            sp_info->SerializeToString(&sp_value);
+            std::string compressed;
+            ::snappy::Compress(sp_value.c_str(), sp_value.length(), &compressed);
+            if (!zk_client_->CreateNode(sp_data_path, compressed)) {
+                PDLOG(WARNING, "create db store procedure node[%s] failed! value[%s] value size[%lu]",
+                        sp_data_path.c_str(), sp_value.c_str(), compressed.length());
+                response->set_code(::openmldb::base::ReturnCode::kCreateZkFailed);
+                response->set_msg("create zk node failed");
+                break;
+            }
         }
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -10183,6 +10178,22 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
         auto add = response->add_sp_info();
         add->CopyFrom(*sp_map[sp_name]);
     }
+}
+
+std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoint) {
+    std::shared_ptr<TabletInfo> tablet_ptr;
+    std::lock_guard<std::mutex> lock(mu_);
+    auto iter = tablets_.find(endpoint);
+    // check tablet if exist
+    if (iter == tablets_.end()) {
+        return {};
+    }
+    tablet_ptr = iter->second;
+    // check tablet healthy
+    if (tablet_ptr->state_ != ::openmldb::type::EndpointState::kHealthy) {
+        return {};
+    }
+    return tablet_ptr;
 }
 
 }  // namespace nameserver
