@@ -1109,7 +1109,7 @@ void HandleSQL(const std::string &sql) {
                 ::openmldb::base::ResultMsg openmldb_base_status;
                 SaveResultSet(rs.get(), file_path, options_map, &openmldb_base_status);
                 std::cout << openmldb_base_status.GetMsg() << std::endl;
-            } 
+            }
             return;
         }
         case hybridse::node::kPlanTypeSet: {
