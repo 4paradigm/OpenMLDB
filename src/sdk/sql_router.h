@@ -103,11 +103,12 @@ class SQLRouter {
         hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
-                                                                 hybridse::sdk::Status* status) = 0;
+                                                                 hybridse::sdk::Status* status,
+                                                                 bool performance_sensitive = true) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
-        hybridse::sdk::Status* status) = 0;
+        hybridse::sdk::Status* status, bool performance_sensitive = true) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLBatchRequest(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRowBatch> row_batch,

@@ -12,7 +12,6 @@
     <artifactId>openmldb-jdbc</artifactId>
     <packaging>jar</packaging>
     <name>openmldb-jdbc</name>
-    <version>0.2.4-SNAPSHOT</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

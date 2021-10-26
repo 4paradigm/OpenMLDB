@@ -16,6 +16,7 @@
 
 syntax = "proto2";
 
+import "type.proto";
 import "common.proto";
 package openmldb.api;
 
@@ -33,6 +34,7 @@ message ProcedureInfo {
     optional string main_db = 7;
     repeated string tables = 8; // dependent tables
     repeated string dbs = 9; // dependent dbs
+    optional openmldb.type.ProcedureType type = 10 [default = kReqProcedure];
 }
 
 message CreateProcedureRequest {
@@ -43,4 +45,15 @@ message CreateProcedureRequest {
 message DropProcedureRequest {
     optional string db_name = 1;
     optional string sp_name = 2;
+}
+
+message ShowProcedureRequest {
+    optional string db_name = 1;
+    optional string sp_name = 2;
+}
+
+message ShowProcedureResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    repeated ProcedureInfo sp_info = 3;
 }
