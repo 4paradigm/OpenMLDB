@@ -103,13 +103,13 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     // Check file
     std::ifstream file;
     file.open(file_path);
-    std::string line;
-    std::string data;
-    while (!file.eof()) {
-        getline(file, line);
-        data.append(line);
-    }
-    ASSERT_EQ(data, "col1,col2key1,1");
+    file.seekg (0, file.end);
+    int length = file.tellg();
+    file.seekg (0, file.beg);
+    char* data = new char[length+1];
+    data[length] = '\0';
+    file.read(data, length);
+    ASSERT_TRUE(strcmp(data, "col1,col2\nkey1,1") == 0);
     file.close();
 
     // True
@@ -123,12 +123,13 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     ASSERT_TRUE(openmldb_base_status.OK());
 
     file.open(file_path);
-    std::string data_append;
-    while (!file.eof()) {
-        getline(file, line);
-        data_append.append(line);
-    }
-    ASSERT_EQ(data_append, "col1,col2key1,1col1,col2key1,1");
+    file.seekg (0, file.end);
+    int append_length = file.tellg();
+    file.seekg (0, file.beg);
+    char* append_data = new char[append_length+1];
+    append_data[append_length] = '\0';
+    file.read(append_data, append_length);
+    ASSERT_TRUE(strcmp(append_data, "col1,col2\nkey1,1\ncol1,col2\nkey1,1") == 0);
     file.close();
 
     // Fail - File exists
