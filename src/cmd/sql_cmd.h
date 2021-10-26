@@ -281,16 +281,16 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                                 return;
                             }
                         }
-                        if (i != schema->GetColumnCnt()-1) {
-                            rowString.append(options->GetDelimiter());
+                    }
+                    if (i != schema->GetColumnCnt()-1) {
+                        rowString.append(options->GetDelimiter());
+                    } else {
+                        if (!first) {
+                            options->GetOfstream() << std::endl;
                         } else {
-                            if (!first) {
-                                options->GetOfstream() << std::endl;
-                            } else {
-                                first = false;
-                            }
-                            options->GetOfstream() << rowString;
+                            first = false;
                         }
+                        options->GetOfstream() << rowString;
                     }
                 }
             }
