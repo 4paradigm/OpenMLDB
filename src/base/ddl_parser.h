@@ -54,7 +54,7 @@ static bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode*
 
 class IndexMapBuilder {
  public:
-    explicit IndexMapBuilder(std::shared_ptr<Catalog> cl) : cl_(std::move(cl)) {}
+    IndexMapBuilder() = default;
     // create the index with unset TTLSt, return false if the index(same table, same keys, same ts) existed
     bool CreateIndex(const std::string& table, const hybridse::node::ExprListNode* keys,
                      const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
@@ -67,7 +67,7 @@ class IndexMapBuilder {
                                                      const SchemasContext* ctx);
     // table, keys and ts -> table:key1,key2,...;ts
     static std::string Encode(const std::string& table, const hybridse::node::ExprListNode* keys,
-                       const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
+                              const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
 
     static std::pair<std::string, common::ColumnKey> Decode(const std::string& index_str);
 
@@ -97,14 +97,12 @@ class IndexMapBuilder {
     std::string latest_record_;
     // map<table_keys_and_order_str, ttl_st>
     std::map<std::string, common::TTLSt*> index_map_;
-    // used to get schema
-    std::shared_ptr<Catalog> cl_;
 };
 
 // no plan_ctx_, node_manager_: we assume that creating new op won't affect the upper level structure.
 class GroupAndSortOptimizedParser {
  public:
-    explicit GroupAndSortOptimizedParser(const std::shared_ptr<Catalog>& cl) : index_map_builder_(cl) {}
+    GroupAndSortOptimizedParser() = default;
 
     // LRD
     void Parse(PhysicalOpNode* cur_op) {
@@ -220,14 +218,14 @@ class DDLParser {
         }
         auto compile_info = session->GetCompileInfo();
         auto plan = session->GetCompileInfo()->GetPhysicalPlan();
-        return ParseIndexes(catalog, const_cast<hybridse::vm::PhysicalOpNode*>(plan));
+        return ParseIndexes(const_cast<hybridse::vm::PhysicalOpNode*>(plan));
     }
 
     // DLR
-    static IndexMap ParseIndexes(const std::shared_ptr<Catalog>& catalog, hybridse::vm::PhysicalOpNode* node) {
+    static IndexMap ParseIndexes(hybridse::vm::PhysicalOpNode* node) {
         // This physical plan is optimized, but no real optimization about index(cuz no index in fake catalog).
         // So we can run GroupAndSortOptimizedParser on the plan(very like transformer's pass-ApplyPasses)
-        GroupAndSortOptimizedParser parser(catalog);
+        GroupAndSortOptimizedParser parser;
         parser.Parse(node);
         return parser.GetIndexes();
     }
