@@ -38,8 +38,7 @@ bool IndexMapBuilder::CreateIndex(const std::string& table, const hybridse::node
     LOG(INFO) << "create index with unset ttl: " << index;
 
     // default TTLSt is abs and ttl=0, rows will never expire.
-    common::TTLSt ttl_st;
-    index_map_[index] = ttl_st;
+    index_map_[index] = new common::TTLSt;
     latest_record_ = index;
     return true;
 }
@@ -67,25 +66,22 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
     range.frame()->Print(ss, "");
     LOG(INFO) << "frame info: " << ss.str() << ", get start points: " << start << ", " << rows_start;
 
-    common::TTLSt ttl_st;
-
+    auto ttl_st_ptr = index_map_[latest_record_];
     auto type = frame->frame_type();
     if (type == hybridse::node::kFrameRows) {
         // frame_rows is valid
         DLOG_ASSERT(frame->frame_range() == nullptr && frame->GetHistoryRowsStartPreceding() > 0);
-        ttl_st.set_lat_ttl(frame->GetHistoryRowsStartPreceding());
-        ttl_st.set_ttl_type(type::TTLType::kLatestTime);
+        ttl_st_ptr->set_lat_ttl(frame->GetHistoryRowsStartPreceding());
+        ttl_st_ptr->set_ttl_type(type::TTLType::kLatestTime);
     } else {
         // frame_range is valid
         DLOG_ASSERT(type != hybridse::node::kFrameRowsMergeRowsRange) << "merge type, how to parse?";
         DLOG_ASSERT(frame->frame_rows() == nullptr && frame->GetHistoryRangeStart() < 0);
         // GetHistoryRangeStart is negative, ttl needs uint64
-        ttl_st.set_abs_ttl(std::max(MIN_TIME, -1 * frame->GetHistoryRangeStart()));
-        ttl_st.set_ttl_type(type::TTLType::kAbsoluteTime);
+        ttl_st_ptr->set_abs_ttl(std::max(MIN_TIME, -1 * frame->GetHistoryRangeStart()));
+        ttl_st_ptr->set_ttl_type(type::TTLType::kAbsoluteTime);
     }
-
-    index_map_[latest_record_] = ttl_st;
-    LOG(INFO) << latest_record_ << " update ttl " << index_map_[latest_record_].DebugString();
+    LOG(INFO) << latest_record_ << " update ttl " << index_map_[latest_record_]->DebugString();
 
     // to avoid double update
     latest_record_.clear();
@@ -96,6 +92,8 @@ IndexMap IndexMapBuilder::ToMap() {
     IndexMap result;
     for (auto& pair : index_map_) {
         auto dec = Decode(pair.first);
+        // message owns the memory
+        dec.second.set_allocated_ttl(pair.second);
         result[dec.first].emplace_back(dec.second);
     }
 
@@ -407,8 +405,7 @@ bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, c
     const PhysicalOpNode* source;
     hybridse::base::Status status =
         schemas_ctx->ResolveColumnID(col->GetDBName(), col->GetRelationName(), col->GetColumnName(), &column_id,
-                                     &path_idx,
-                                     &child_column_id, &source_column_id, &source);
+                                     &path_idx, &child_column_id, &source_column_id, &source);
 
     // try loose the relation
     if (!status.isOK() && !col->GetRelationName().empty()) {

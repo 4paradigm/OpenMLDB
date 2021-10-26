@@ -96,7 +96,7 @@ class IndexMapBuilder {
 
     std::string latest_record_;
     // map<table_keys_and_order_str, ttl_st>
-    std::map<std::string, common::TTLSt> index_map_;
+    std::map<std::string, common::TTLSt*> index_map_;
     // used to get schema
     std::shared_ptr<Catalog> cl_;
 };
