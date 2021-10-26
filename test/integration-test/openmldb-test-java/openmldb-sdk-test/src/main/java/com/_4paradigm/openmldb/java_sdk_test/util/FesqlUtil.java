@@ -1181,7 +1181,6 @@ public class FesqlUtil {
         if (!StringUtils.isEmpty(defaultDBName)) {
             dbNames.add(defaultDBName);
         }
-
         if (!Objects.isNull(inputs)) {
             for (InputDesc input : inputs) {
                 // CreateDB if input's db has been configured and hasn't been created before
@@ -1269,5 +1268,19 @@ public class FesqlUtil {
             sb.append(rs.GetRowString()).append("\n");
         }
         logger.info("RESULT:\n{} row in set\n{}", rs.Size(), sb.toString());
+    }
+    public static String getColumnTypeByType(int type){
+        switch (type){
+            case Types.BIGINT: return "bigint";
+            case Types.SMALLINT: return "smallint";
+            case Types.INTEGER: return "int";
+            case Types.VARCHAR: return "string";
+            case Types.FLOAT: return "float";
+            case Types.DOUBLE: return "double";
+            case Types.DATE: return "date";
+            case Types.TIMESTAMP: return "timestamp";
+            case Types.BOOLEAN: return "bool";
+        }
+        throw new IllegalArgumentException("not know type");
     }
 }

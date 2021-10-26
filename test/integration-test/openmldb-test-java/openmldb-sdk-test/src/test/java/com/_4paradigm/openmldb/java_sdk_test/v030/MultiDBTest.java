@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.v230;
+package com._4paradigm.openmldb.java_sdk_test.v030;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -32,31 +32,31 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("SelectTest")
-public class SelectTest extends FedbTest {
+@Feature("MultiDBTest")
+public class MultiDBTest extends FedbTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
+    @Yaml(filePaths = {"function/multiple_databases/"})
     @Step("{testCase.desc}")
     public void testSelect(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
+    @Yaml(filePaths = {"function/multiple_databases/"})
     public void testSelectRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
+    @Yaml(filePaths = {"function/multiple_databases/"})
     public void testSelectRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
+    @Yaml(filePaths = {"function/multiple_databases/"})
     public void testSelectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }

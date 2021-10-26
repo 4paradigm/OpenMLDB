@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.v230;
+package com._4paradigm.openmldb.java_sdk_test.v030;
 
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
@@ -34,26 +34,10 @@ import org.testng.annotations.Test;
 @Slf4j
 @Feature("DML")
 public class DMLTest extends FedbTest {
-
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/dml/test_insert.yaml", "function/dml/multi_insert.yaml"})
-    @Story("insert")
-    public void testInsert(SQLCase testCase){
+    @Yaml(filePaths = "function/dml/insert_multi.yml")
+    @Story("insert-multi")
+    public void testInsertMulti(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
-
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/multi_insert.yaml")
-    @Story("multi-insert")
-    public void testMultiInsert(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
-    }
-
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
-    @Story("insert-prepared")
-    public void testInsertWithPrepared(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
-    }
-
 }

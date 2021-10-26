@@ -57,18 +57,35 @@ public class FedbTest extends BaseTest {
             fedbDeploy.setCluster(false);
             FedbGlobalVar.mainInfo = fedbDeploy.deployFEDB(2, 3);
         }else{
+            // FedbGlobalVar.mainInfo = FEDBInfo.builder()
+            //         .deployType(OpenMLDBDeployType.CLUSTER)
+            //         .basePath("/home/zhaowei01/fedb-auto-test/tmp")
+            //         .fedbPath("/home/zhaowei01/fedb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
+            //         .zk_cluster("172.24.4.55:10000")
+            //         .zk_root_path("/openmldb")
+            //         .nsNum(2).tabletNum(3)
+            //         .nsEndpoints(Lists.newArrayList("172.24.4.55:10001", "172.24.4.55:10002"))
+            //         .tabletEndpoints(Lists.newArrayList("172.24.4.55:10003", "172.24.4.55:10004", "172.24.4.55:10005"))
+            //         .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10006"))
+            //         .build();
+            // FedbGlobalVar.env = "standalone";
+            //FEDBInfo(deployType=STANDALONE, host=172.24.4.55, port=10000, basePath=/home/zhaowei01/fedb-auto-test/standalone,
+            // fedbPath=/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb,
+            // zk_cluster=null, zk_root_path=null, nsNum=1, nsEndpoints=[172.24.4.55:10000], nsNames=null,
+            // tabletNum=1, tabletEndpoints=[172.24.4.55:10001], tabletNames=null, blobServerNum=0,
+            // blobServerEndpoints=null, blobServerNames=null, blobProxyNum=0, blobProxyEndpoints=null,
+            // blobProxyNames=null, apiServerEndpoints=[], apiServerNames=null,
+            // runCommand=/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb --zk_cluster=null --zk_root_path=null --role=sql_client)
             FedbGlobalVar.mainInfo = FEDBInfo.builder()
-                    .deployType(OpenMLDBDeployType.CLUSTER)
-                    .basePath("/home/zhaowei01/fedb-auto-test/tmp")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
-                    .zk_cluster("172.24.4.55:10000")
-                    .zk_root_path("/openmldb")
-                    .nsNum(2).tabletNum(3)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10001", "172.24.4.55:10002"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10003", "172.24.4.55:10004", "172.24.4.55:10005"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10006"))
+                    .deployType(OpenMLDBDeployType.STANDALONE)
+                    .basePath("/home/zhaowei01/fedb-auto-test/standalone")
+                    .fedbPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
+                    .nsNum(1).tabletNum(1)
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10000"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10001"))
+                    .host("172.24.4.55")
+                    .port(10000)
                     .build();
-            FedbGlobalVar.env = "standalone";
         }
         String caseEnv = System.getProperty("caseEnv");
         if (!StringUtils.isEmpty(caseEnv)) {

@@ -53,7 +53,10 @@ public class FEDBInfo {
     private String runCommand;
 
     public String getRunCommand(){
-        String runCommand = fedbPath+" --zk_cluster="+zk_cluster+" --zk_root_path="+zk_root_path+" --role=sql_client";
-        return runCommand;
+        if(deployType==OpenMLDBDeployType.CLUSTER) {
+            return fedbPath + " --zk_cluster=" + zk_cluster + " --zk_root_path=" + zk_root_path + " --role=sql_client";
+        }else{
+            return fedbPath + " --host=" + host + " --port=" + port;
+        }
     }
 }
