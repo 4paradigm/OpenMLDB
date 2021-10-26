@@ -109,7 +109,7 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     data[length] = '\0';
     file.read(data, length);
     ASSERT_EQ(strcmp(data, "col1,col2\nkey1,null"), 0);
-    delete data;
+    delete [] data;
     file.close();
 
     // True
@@ -130,7 +130,7 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     append_data[append_length] = '\0';
     file.read(append_data, append_length);
     ASSERT_EQ(strcmp(append_data, "col1,col2\nkey1,null\ncol1,col2\nkey1,null"), 0);
-    delete append_data;
+    delete [] append_data;
     file.close();
 
     // Fail - File exists
