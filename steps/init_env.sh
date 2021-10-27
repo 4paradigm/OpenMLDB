@@ -59,7 +59,7 @@ if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
             sysctl -n hw.logicalcpu
         }
     fi
-    cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCMAKE_INSTALL_PREFIX="hybridse"
+    cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCMAKE_INSTALL_PREFIX="hybridse" -DCMAKE_PREFIX_PATH=thirdparty
     cmake --build build --target install -- -j"$(nproc)"
     mv hybridse "$THIRDPARTY_PATH/hybridse"
     popd
