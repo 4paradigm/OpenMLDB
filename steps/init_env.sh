@@ -34,7 +34,7 @@ THIRDSRC_PATH="$ROOT/thirdsrc"
 echo "THIRDPARTY_PATH: ${THIRDPARTY_PATH}"
 echo "Install thirdparty ... for $(uname -a)"
 
-./steps/setup_thirdparty.sh "$THIRDPARTY_PATH"
+./steps/setup_thirdparty.sh -p "$THIRDPARTY_PATH"
 
 echo -e "${GREEN}downloading thirdsrc.tar.gz${NC}"
 mkdir -p "$THIRDSRC_PATH"
