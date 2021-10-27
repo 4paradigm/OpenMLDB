@@ -25,9 +25,7 @@ if uname -a | grep -q Darwin; then
     alias nproc='sysctl -n hw.logicalcpu'
 fi
 
-rm -rf build
-mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse"
-make -j"$(nproc)"
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse"
+cmake --build build -- -j"$(nproc)"
 
 popd
