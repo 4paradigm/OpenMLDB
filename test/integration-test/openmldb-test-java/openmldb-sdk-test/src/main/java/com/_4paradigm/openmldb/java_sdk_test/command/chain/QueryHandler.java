@@ -45,7 +45,7 @@ public class QueryHandler extends AbstractSQLHandler{
         if (ok) {
             int count = 0;
             List<List<Object>> rows = new ArrayList<>();
-            if(CollectionUtils.isNotEmpty(result)&&!(result.get(0).trim().equalsIgnoreCase("Empty set"))) {
+            if(CollectionUtils.isNotEmpty(result)&&result.size()>=2) {
                 List<String> columnNames = Arrays.asList(result.get(1).split("\\s+"));
                 for (int i = 3; i < result.size() - 2; i++) {
                     count++;

@@ -1,0 +1,98 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+cases:
+  -
+    id: 0
+    desc: 数据里有null、空串、特殊字符
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [7,",",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+    sql: select * from {0} into outfile '/tmp/openmldb_out/{0}.csv';
+    expect:
+      success: true
+  -
+    id: 1
+    desc: 全部数据类型测试
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+    sql: select * from {0} into outfile '/tmp/openmldb_out/{0}.csv';
+    expect:
+      success: true
+  -
+    id: 2
+    desc: 复杂sql结果导出
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",10, 1590738990000, 3.3]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "aaaaaaaaaa"]
+          - [1590738990000, "aaaaaaaaaa"]
+          - [1590738989000, "cc"]
+          - [1590738992000, "cc"]
+    sql: select * from
+      (select
+      id,
+      card_no,
+      trx_time,
+      substr(card_no, 1, 6) as card_no_prefix,
+      sum(trx_amt) over w30d,
+      count(merchant_id) over w10d
+      from  {0}
+      window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+      w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
+      last join {1} order by {1}.crd_lst_isu_dte on trx_fe.card_no = {1}.crd_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte
+      into outfile '/tmp/openmldb_out/{0}.csv';
+    expect:
+      success: true
+
+
+
+
+
+
+
+
+
+
+
+
+
+

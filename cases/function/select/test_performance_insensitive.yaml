@@ -1,0 +1,358 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+cases:
+  - id: 4-2
+    desc: Last Join 无order by, 拼表条件没有命中索引-rtidb环境不支持
+    mode: offline-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1;
+    expect:
+      success: false
+  - id: 4-3
+    desc: Last Join 无order by, 拼表条件命中部分的组合索引(前缀索引)
+    mode: offline-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",20,30,1590738991000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "dd",41,51,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1|c2:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "aa",3,14,1590738990000 ]
+          - [ "aa",4,15,1590738991000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1 and {0}.c4={1}.c4;
+    expect:
+      success: false
+  - id: 4-4
+    desc: Last Join 无order by, 拼表条件命中部分的组合索引(后缀索引)
+    mode: offline-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",20,30,1590738991000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "dd",41,51,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2|c1:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "aa",3,14,1590738990000 ]
+          - [ "aa",4,15,1590738991000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1 and {0}.c4={1}.c4;
+    expect:
+      success: false
+  - id: 4-6
+    desc: Last Join 无order by, 拼表条件没有命中索引-离线支持
+    mode: rtidb-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string", "c2 int", "c3 bigint", "c4 timestamp" ]
+      rows:
+        - [ "aa", 2, 13, 1590738989000 ]
+        - [ "bb", 21, 131, 1590738990000 ]
+  - id: 17-1
+    desc: 不等值拼接-未命中索引
+    mode: rtidb-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "bb",21,32,1590738993000 ]
+          - [ "bb",21,31,1590738992000 ]
+          - [ "bb",21,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c3<{1}.c3;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,32,1590738993000 ]
+        - [ "bb",21,32,1590738993000 ]
+  - id: 19-1
+    desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-不带orderby
+    mode: rtidb-batch-unsupport,offline-unsupport
+    tags: ["offline-unsupport, @chendihao", "离线结果不对"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-01"]
+          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-01"]
+          - [4,"bb",23,33,1.4,2.4,1590738990003,"2020-05-02"]
+          - [5,"bb",24,34,1.5,2.5,1590738990004,"2020-05-02"]
+    sql: |
+      select id,t2.c1,t2.c3,t1.c4, t2.w2_c3_sum, t1.w3_c4_sum
+      from (select id,c1,c3,c4,c7,c8,sum({0}.c3) OVER w2 as w2_c3_sum from {0} WINDOW w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)) as t2
+      last join (select c1,c4,c7,c8,sum({0}.c4) OVER w3 as w3_c4_sum from {0}  WINDOW w3 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 1 PRECEDING AND CURRENT ROW)) as t1
+      on t2.c8=t1.c8
+      ;
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","c4 bigint", "w2_c3_sum int", "w3_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30, 20, 30]
+        - [2,"aa",21,31, 41, 61]
+        - [3,"aa",22,32, 63, 63]
+        - [4,"bb",23,33, 23, 33]
+        - [5,"bb",24,34, 47, 67]
+  - id: 20
+    desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-带orderby-rtidb模式不支持
+    mode: offline-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+    sql: |
+      select id,t2.c1,t2.c3,t1.c4
+      from (select id,c1,c3,c4,c7,c8,sum({0}.c3) OVER w2 as w2_c3_sum from {0} WINDOW w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)) as t2
+      last join (select c1,c4,c7,c8,sum({1}.c4) OVER w3 as w3_c4_sum from {1}  WINDOW w3 AS (PARTITION BY {1}.c1 ORDER BY {1}.c7 ROWS_RANGE BETWEEN 1 PRECEDING AND CURRENT ROW)) as t1
+      ORDER BY t1.c7 on t2.c8=t1.c8
+      ;
+    expect:
+      success: false
+  -
+    id: 2
+    desc: float为partition by - 未命中索引
+    mode: rtidb-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"bb",20,31,1.1,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.1,2.3,1590738992000,"2020-05-03"]
+          - [4,"dd",20,33,1.1,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.2,2.5,1590738994000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, c5, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c5 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c5 float","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",1.1,30]
+        - [2,"bb",1.1,61]
+        - [3,"cc",1.1,93]
+        - [4,"dd",1.1,96]
+        - [5,"ee",1.2,34]
+  -
+    id: 3
+    desc: double为partition by - 未命中索引
+    mode: rtidb-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"bb",20,31,1.1,2.1,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.1,2.1,1590738992000,"2020-05-03"]
+          - [4,"dd",20,33,1.1,2.1,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.2,2.2,1590738994000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, c6, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c6 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c6 double","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",2.1,30]
+        - [2,"bb",2.1,61]
+        - [3,"cc",2.1,93]
+        - [4,"dd",2.1,96]
+        - [5,"ee",2.2,34]
+  - id: 2
+    desc: float为partition by - 未命中索引
+    mode: rtidb-unsupport
+    inputs:
+      - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ 1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ 2,"bb",20,31,1.1,2.2,1590738991000,"2020-05-02" ]
+          - [ 3,"cc",20,32,1.1,2.3,1590738992000,"2020-05-03" ]
+          - [ 4,"dd",20,33,1.1,2.4,1590738993000,"2020-05-04" ]
+          - [ 5,"ee",21,34,1.2,2.5,1590738994000,"2020-05-05" ]
+    sql: |
+      SELECT id, c1, c5, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c5 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: [ "id int","c1 string","c5 float","w1_c4_sum bigint" ]
+      rows:
+        - [ 1,"aa",1.1,30 ]
+        - [ 2,"bb",1.1,61 ]
+        - [ 3,"cc",1.1,93 ]
+        - [ 4,"dd",1.1,96 ]
+        - [ 5,"ee",1.2,34 ]
+  - id: 3
+    desc: double为partition by - 未命中索引
+    mode: rtidb-unsupport
+    inputs:
+      - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ 1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ 2,"bb",20,31,1.1,2.1,1590738991000,"2020-05-02" ]
+          - [ 3,"cc",20,32,1.1,2.1,1590738992000,"2020-05-03" ]
+          - [ 4,"dd",20,33,1.1,2.1,1590738993000,"2020-05-04" ]
+          - [ 5,"ee",21,34,1.2,2.2,1590738994000,"2020-05-05" ]
+    sql: |
+      SELECT id, c1, c6, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c6 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: [ "id int","c1 string","c6 double","w1_c4_sum bigint" ]
+      rows:
+        - [ 1,"aa",2.1,30 ]
+        - [ 2,"bb",2.1,61 ]
+        - [ 3,"cc",2.1,93 ]
+        - [ 4,"dd",2.1,96 ]
+        - [ 5,"ee",2.2,34 ]
+  - id: 8-4
+    desc: int为order by-加单位-未命中索引
+    mode: rtidb-unsupport
+    inputs:
+      - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ 1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ 2,"bb",21,31,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ 3,"cc",22,32,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ 4,"dd",23,33,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ 5,"ee",24,34,1.2,2.2,1590738991000,"2020-05-02" ]
+    sql: |
+      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c8 ORDER BY {0}.c3 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: [ "id int","c1 string","c4 bigint","w1_c4_count bigint" ]
+      rows:
+        - [ 1,"aa",30,1 ]
+        - [ 2,"bb",31,2 ]
+        - [ 3,"cc",32,3 ]
+        - [ 4,"dd",33,4 ]
+        - [ 5,"ee",34,1 ]
+  - id: 11
+    desc: date为order by-未命中索引
+    mode: offline-unsupport
+    inputs:
+      - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ 1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ 2,"bb",20,31,1.2,2.2,1590738990000,"2020-05-02" ]
+          - [ 3,"cc",20,32,1.3,2.3,1590738990000,"2020-05-03" ]
+          - [ 4,"dd",20,33,1.4,2.4,1590738990000,"2020-05-04" ]
+          - [ 5,"ee",21,34,1.5,2.5,1590738991000,"2020-05-05" ]
+    sql: |
+      SELECT id, c1, c8, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c8 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  - id: 5
+    desc: 样本表使用索引,UNION表未命中索引
+    mode: rtidb-unsupport
+    inputs:
+      - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"dd",20,96]
+        - [5,"ee",21,34]
+  - id: 6
+    desc: union表使用索引,样本表未命中索引
+    mode: rtidb-unsupport
+    inputs:
+      - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+      - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+        rows:
+          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (UNION {1} PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",20,30]
+        - [4,"dd",20,96]
+        - [5,"ee",21,34]

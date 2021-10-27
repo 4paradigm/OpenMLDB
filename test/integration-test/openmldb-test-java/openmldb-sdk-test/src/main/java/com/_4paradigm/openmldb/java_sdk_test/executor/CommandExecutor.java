@@ -154,8 +154,7 @@ public class CommandExecutor extends BaseExecutor{
     }
     @Override
     public void tearDown() {
-        FedbClient client = new FedbClient(FedbGlobalVar.mainInfo);
-        tearDown("mainVersion",client.getExecutor());
+        tearDown("mainVersion",FedbGlobalVar.mainInfo);
         // tearDown("mainVersion",FedbGlobalVar.mainInfo);
         // if(MapUtils.isNotEmpty(fedbInfoMap)) {
         //     fedbInfoMap.entrySet().stream().forEach(e -> tearDown(e.getKey(), e.getValue()));
@@ -173,22 +172,7 @@ public class CommandExecutor extends BaseExecutor{
         for (InputDesc table : tables) {
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
-                OpenmlDBCommandFactory.runNoInteractive(fedbInfo,dbName,drop);
-            }
-        }
-    }
-
-    public void tearDown(String version, SqlExecutor executor) {
-        log.info("version:{},begin drop table",version);
-        reportLog.info("version:{},begin drop table",version);
-        List<InputDesc> tables = fesqlCase.getInputs();
-        if (CollectionUtils.isEmpty(tables)) {
-            return;
-        }
-        for (InputDesc table : tables) {
-            if(table.isDrop()) {
-                String drop = "drop table " + table.getName() + ";";
-                // FesqlUtil.ddl(executor, dbName, drop);
+                // OpenmlDBCommandFactory.runNoInteractive(fedbInfo,dbName,drop);
             }
         }
     }

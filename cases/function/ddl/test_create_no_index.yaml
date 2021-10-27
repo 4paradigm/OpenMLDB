@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["不指定索引，进行lastjoin,匹配多行"]
+debugs: ["创建表不指定索引"]
 cases:
   -
     id: 0

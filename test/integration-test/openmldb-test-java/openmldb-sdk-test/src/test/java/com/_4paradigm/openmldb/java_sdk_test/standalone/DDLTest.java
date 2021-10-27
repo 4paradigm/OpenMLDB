@@ -64,7 +64,7 @@ public class DDLTest extends FedbTest {
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
     @Story("create_no_index")
-    public void testCreateIndex(SQLCase testCase){
+    public void testCreateNoIndex(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
     }
 }
