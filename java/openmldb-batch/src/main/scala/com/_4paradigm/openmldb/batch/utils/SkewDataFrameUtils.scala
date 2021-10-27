@@ -66,14 +66,20 @@ object SkewDataFrameUtils {
 
   def genAddColumnsDf(inputDf: DataFrame, distributionDf: DataFrame, quantile: Int,
                       repartitionColIndex: mutable.ArrayBuffer[Int], orderByColIndex: Int,
-                      partitionKeyColName: String, partIdColName: String, expandedRowColName: String): DataFrame = {
+                      partitionKeyColName: String, partIdColName: String, expandedRowColName: String,
+                      openBroadcastJoin: Boolean): DataFrame = {
 
     // Input dataframe left join distribution dataframe
     // TODO: Support multiple repartition keys
     val inputDfJoinCol = SparkColumnUtil.getColumnFromIndex(inputDf, repartitionColIndex(0))
     val distributionDfJoinCol = distributionDf(partitionKeyColName)
 
-    var joinDf = inputDf.join(distributionDf.hint("broadcast"), inputDfJoinCol === distributionDfJoinCol, "left")
+    // Use broadcast join normally
+    var joinDf = if (openBroadcastJoin) {
+      inputDf.join(distributionDf.hint("broadcast"), inputDfJoinCol === distributionDfJoinCol, "left")
+    } else {
+      inputDf.join(distributionDf, inputDfJoinCol === distributionDfJoinCol, "left")
+    }
 
     // TODO: Support multiple orderBy keys
     // Select * and case when(...) from joinDf

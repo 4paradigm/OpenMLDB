@@ -17,12 +17,15 @@
 #define HYBRIDSE_EXAMPLES_TOYDB_SRC_TESTING_TOYDB_ENGINE_TEST_BASE_H_
 
 #include <sqlite3.h>
+
 #include <map>
 #include <memory>
 #include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
+
 #include "case/case_data_mock.h"
 #include "case/sql_case.h"
 #include "glog/logging.h"
@@ -31,54 +34,42 @@
 namespace hybridse {
 namespace vm {
 std::shared_ptr<tablet::TabletCatalog> BuildToydbCatalog();
-std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
-    const hybridse::type::TableDef& table_def,
-    std::shared_ptr<hybridse::storage::Table> table);
-bool InitToydbEngineCatalog(
-    SqlCase& sql_case,  // NOLINT
-    const EngineOptions& engine_options,
-    std::map<std::string,
-             std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
-        name_table_map,                                     // NOLINT
-    std::shared_ptr<vm::Engine> engine,
-    std::shared_ptr<tablet::TabletCatalog> catalog);
-std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
-    int32_t data_size);
-void BatchRequestEngineCheckWithCommonColumnIndices(
-    const SqlCase& sql_case, const EngineOptions options,
-    const std::set<size_t>& common_column_indices);
-void BatchRequestEngineCheck(const SqlCase& sql_case,
-                             const EngineOptions options);
-void EngineCheck(const SqlCase& sql_case, const EngineOptions& options,
-                 EngineMode engine_mode);
+std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(const hybridse::type::TableDef& table_def,
+                                                          std::shared_ptr<hybridse::storage::Table> table);
+bool InitToydbEngineCatalog(SqlCase& sql_case,  // NOLINT
+                            const EngineOptions& engine_options,
+                            std::map<std::pair<std::string, std::string>,
+                                     std::shared_ptr<::hybridse::storage::Table>>&  // NOLINT
+                                name_table_map,                                     // NOLINT
+                            std::shared_ptr<vm::Engine> engine, std::shared_ptr<tablet::TabletCatalog> catalog);
+std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(int32_t data_size);
+void BatchRequestEngineCheckWithCommonColumnIndices(const SqlCase& sql_case, const EngineOptions options,
+                                                    const std::set<size_t>& common_column_indices);
+void BatchRequestEngineCheck(const SqlCase& sql_case, const EngineOptions options);
+void EngineCheck(const SqlCase& sql_case, const EngineOptions& options, EngineMode engine_mode);
 
-int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
-                                     char** azColName);
-void CheckSqliteCompatible(const SqlCase& sql_case, const vm::Schema& schema,
-                           const std::vector<Row>& output);
+int GenerateSqliteTestStringCallback(void* s, int argc, char** argv, char** azColName);
+void CheckSqliteCompatible(const SqlCase& sql_case, const vm::Schema& schema, const std::vector<Row>& output);
 
 class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
  public:
-    explicit ToydbBatchEngineTestRunner(const SqlCase& sql_case,
-                                        const EngineOptions options)
+    explicit ToydbBatchEngineTestRunner(const SqlCase& sql_case, const EngineOptions options)
         : BatchEngineTestRunner(sql_case, options), catalog_() {}
     bool InitEngineCatalog() override {
         catalog_ = BuildToydbCatalog();
         engine_ = std::make_shared<Engine>(catalog_, options_);
-        return InitToydbEngineCatalog(sql_case_, options_, name_table_map_,
-                                      engine_, catalog_);
+        return InitToydbEngineCatalog(sql_case_, options_, name_table_map_, engine_, catalog_);
     };
-    bool InitTable(const std::string table_name) override {
-        auto table = name_table_map_[table_name];
+    bool InitTable(const std::string& db, const std::string& table_name) override {
+        auto table = name_table_map_[std::make_pair(db, table_name)];
         if (!table) {
             LOG(WARNING) << "table " << table_name << "not exist ";
             return false;
         }
         return table->Init();
     }
-    bool AddRowsIntoTable(const std::string table_name,
-                          const std::vector<Row>& rows) override {
-        auto table = name_table_map_[table_name];
+    bool AddRowsIntoTable(const std::string& db, const std::string& table_name, const std::vector<Row>& rows) override {
+        auto table = name_table_map_[std::make_pair(db, table_name)];
         if (!table) {
             LOG(WARNING) << "table " << table_name << "not exist ";
             return false;
@@ -90,9 +81,8 @@ class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
         }
         return true;
     }
-    bool AddRowIntoTable(const std::string table_name,
-                         const Row& row) override {
-        auto table = name_table_map_[table_name];
+    bool AddRowIntoTable(const std::string& db, const std::string& table_name, const Row& row) override {
+        auto table = name_table_map_[std::make_pair(db, table_name)];
         if (!table) {
             LOG(WARNING) << "table " << table_name << "not exist ";
             return false;
@@ -105,39 +95,34 @@ class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
         if (sql_case_.standard_sql() && sql_case_.standard_sql_compatible()) {
             std::vector<Row> output_rows;
             ASSERT_TRUE(Compute(&output_rows).isOK());
-            CheckSqliteCompatible(sql_case_, GetSession()->GetSchema(),
-                                  output_rows);
+            CheckSqliteCompatible(sql_case_, GetSession()->GetSchema(), output_rows);
         }
     }
 
  private:
     std::shared_ptr<tablet::TabletCatalog> catalog_;
-    std::map<std::string, std::shared_ptr<::hybridse::storage::Table>>
-        name_table_map_;
+    std::map<std::pair<std::string, std::string>, std::shared_ptr<::hybridse::storage::Table>> name_table_map_;
 };
 
 class ToydbRequestEngineTestRunner : public RequestEngineTestRunner {
  public:
-    explicit ToydbRequestEngineTestRunner(const SqlCase& sql_case,
-                                          const EngineOptions options)
+    explicit ToydbRequestEngineTestRunner(const SqlCase& sql_case, const EngineOptions options)
         : RequestEngineTestRunner(sql_case, options), catalog_() {}
     bool InitEngineCatalog() override {
         catalog_ = BuildToydbCatalog();
         engine_ = std::make_shared<Engine>(catalog_, options_);
-        return InitToydbEngineCatalog(sql_case_, options_, name_table_map_,
-                                      engine_, catalog_);
+        return InitToydbEngineCatalog(sql_case_, options_, name_table_map_, engine_, catalog_);
     };
-    bool InitTable(const std::string table_name) override {
-        auto table = name_table_map_[table_name];
+    bool InitTable(const std::string& db, const std::string& table_name) override {
+        auto table = name_table_map_[std::make_pair(db, table_name)];
         if (!table) {
             LOG(WARNING) << "table " << table_name << "not exist ";
             return false;
         }
         return table->Init();
     }
-    bool AddRowsIntoTable(const std::string table_name,
-                          const std::vector<Row>& rows) override {
-        auto table = name_table_map_[table_name];
+    bool AddRowsIntoTable(const std::string& db, const std::string& table_name, const std::vector<Row>& rows) override {
+        auto table = name_table_map_[std::make_pair(db, table_name)];
         if (!table) {
             LOG(WARNING) << "table " << table_name << "not exist ";
             return false;
@@ -149,9 +134,8 @@ class ToydbRequestEngineTestRunner : public RequestEngineTestRunner {
         }
         return true;
     }
-    bool AddRowIntoTable(const std::string table_name,
-                         const Row& row) override {
-        auto table = name_table_map_[table_name];
+    bool AddRowIntoTable(const std::string& db, const std::string& table_name, const Row& row) override {
+        auto table = name_table_map_[std::make_pair(db, table_name)];
         if (!table) {
             LOG(WARNING) << "table " << table_name << "not exist ";
             return false;
@@ -161,36 +145,30 @@ class ToydbRequestEngineTestRunner : public RequestEngineTestRunner {
 
  private:
     std::shared_ptr<tablet::TabletCatalog> catalog_;
-    std::map<std::string, std::shared_ptr<::hybridse::storage::Table>>
-        name_table_map_;
+    std::map<std::pair<std::string, std::string>, std::shared_ptr<::hybridse::storage::Table>> name_table_map_;
 };
 
 class ToydbBatchRequestEngineTestRunner : public BatchRequestEngineTestRunner {
  public:
-    ToydbBatchRequestEngineTestRunner(
-        const SqlCase& sql_case, const EngineOptions options,
-        const std::set<size_t>& common_column_indices)
-        : BatchRequestEngineTestRunner(sql_case, options,
-                                       common_column_indices),
-          catalog_() {}
+    ToydbBatchRequestEngineTestRunner(const SqlCase& sql_case, const EngineOptions options,
+                                      const std::set<size_t>& common_column_indices)
+        : BatchRequestEngineTestRunner(sql_case, options, common_column_indices), catalog_() {}
     bool InitEngineCatalog() override {
         catalog_ = BuildToydbCatalog();
         engine_ = std::make_shared<Engine>(catalog_, options_);
-        return InitToydbEngineCatalog(sql_case_, options_, name_table_map_,
-                                      engine_, catalog_);
+        return InitToydbEngineCatalog(sql_case_, options_, name_table_map_, engine_, catalog_);
     };
-    bool InitTable(const std::string table_name) override {
-        auto table = name_table_map_[table_name];
+    bool InitTable(const std::string& db, const std::string& table_name) override {
+        auto table = name_table_map_[std::make_pair(db, table_name)];
         if (!table) {
             LOG(WARNING) << "table " << table_name << "not exist ";
             return false;
         }
         return table->Init();
     }
-    bool AddRowsIntoTable(const std::string table_name,
-                          const std::vector<Row>& rows) override {
+    bool AddRowsIntoTable(const std::string& db, const std::string& table_name, const std::vector<Row>& rows) override {
         LOG(INFO) << "Add rows into table " << table_name;
-        auto table = name_table_map_[table_name];
+        auto table = name_table_map_[std::make_pair(db, table_name)];
         if (!table) {
             LOG(WARNING) << "table " << table_name << "not exist ";
             return false;
@@ -202,9 +180,8 @@ class ToydbBatchRequestEngineTestRunner : public BatchRequestEngineTestRunner {
         }
         return true;
     }
-    bool AddRowIntoTable(const std::string table_name,
-                         const Row& row) override {
-        auto table = name_table_map_[table_name];
+    bool AddRowIntoTable(const std::string& db, const std::string& table_name, const Row& row) override {
+        auto table = name_table_map_[std::make_pair(db, table_name)];
         if (!table) {
             LOG(WARNING) << "table " << table_name << "not exist ";
             return false;
@@ -214,8 +191,7 @@ class ToydbBatchRequestEngineTestRunner : public BatchRequestEngineTestRunner {
 
  private:
     std::shared_ptr<tablet::TabletCatalog> catalog_;
-    std::map<std::string, std::shared_ptr<::hybridse::storage::Table>>
-        name_table_map_;
+    std::map<std::pair<std::string, std::string>, std::shared_ptr<::hybridse::storage::Table>> name_table_map_;
 };
 
 }  // namespace vm

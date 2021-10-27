@@ -254,6 +254,46 @@ TEST_F(SchemasContextTest, NewSchemasContextTest) {
     ASSERT_EQ(8u, column_id);
 }
 
+
+TEST_F(SchemasContextTest, DifferentDBNameAndSameTableName) {
+    type::TableDef t1;
+    BuildTableDef(t1);
+    t1.set_name("tx");
+    t1.set_catalog("db1");
+
+    type::TableDef t2;
+    BuildTableDef(t2);
+    t2.set_name("tx");
+    t2.set_catalog("db2");
+
+    auto init_source = [](SchemaSource* source, const type::TableDef& table,
+                          size_t offset) {
+      source->SetSourceDBAndTableName(table.catalog(), table.name());
+      source->SetSchema(&table.columns());
+      for (int i = 0; i < table.columns_size(); ++i) {
+          source->SetColumnID(i, offset);
+          offset += 1;
+      }
+    };
+
+    vm::SchemasContext schemas_context;
+    schemas_context.SetDefaultDBName("db1");
+    auto source1 = schemas_context.AddSource();
+    init_source(source1, t1, 0);
+    auto source2 = schemas_context.AddSource();
+    init_source(source2, t2, t1.columns_size());
+    schemas_context.Build();
+
+    size_t column_id;
+    Status status;
+    status = schemas_context.ResolveColumnID("db1", "tx", "col1", &column_id);
+    ASSERT_TRUE(status.isOK()) << status;
+    ASSERT_EQ(1u, column_id);
+
+    status = schemas_context.ResolveColumnID("db2", "tx", "col1", &column_id);
+    ASSERT_TRUE(status.isOK()) << status;
+    ASSERT_EQ(8u, column_id);
+}
 }  // namespace vm
 }  // namespace hybridse
 

@@ -59,8 +59,8 @@ class Planner {
     const bool enable_window_maxsize_merged_;
     const bool enable_batch_window_parallelization_;
     bool ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *> *windows);
-    bool IsTable(node::PlanNode *node);
-    base::Status ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output);
+    bool IsTable(node::PlanNode *node, node::PlanNode **output);
+    base::Status ValidatePrimaryPath(node::PlanNode *node, std::vector<node::PlanNode *> &outputs);  // NOLINT
     base::Status CheckWindowFrame(const node::WindowDefNode *w_ptr);
     base::Status CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree);
     base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, PlanNode **plan_tree);
