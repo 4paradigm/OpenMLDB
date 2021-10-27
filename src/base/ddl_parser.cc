@@ -92,11 +92,12 @@ IndexMap IndexMapBuilder::ToMap() {
     IndexMap result;
     for (auto& pair : index_map_) {
         auto dec = Decode(pair.first);
-        // message owns the memory
+        // message owns the TTLSt
         dec.second.set_allocated_ttl(pair.second);
         result[dec.first].emplace_back(dec.second);
     }
-
+    // TTLSt is owned by result now, index_map_ can't be reused
+    index_map_.clear();
     return result;
 }
 
@@ -153,6 +154,7 @@ std::vector<std::string> IndexMapBuilder::NormalizeColumns(const std::string& ta
     return result;
 }
 
+// ColumnKey in result doesn't set ttl
 std::pair<std::string, common::ColumnKey> IndexMapBuilder::Decode(const std::string& index_str) {
     if (index_str.empty()) {
         return {};

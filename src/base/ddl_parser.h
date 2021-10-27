@@ -55,10 +55,11 @@ static bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode*
 class IndexMapBuilder {
  public:
     IndexMapBuilder() = default;
-    // create the index with unset TTLSt, return false if the index(same table, same keys, same ts) existed
+    // Create the index with unset TTLSt, return false if the index(same table, same keys, same ts) existed
     bool CreateIndex(const std::string& table, const hybridse::node::ExprListNode* keys,
                      const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
     bool UpdateIndex(const hybridse::vm::Range& range);
+    // After ToMap, inner data will be cleared
     IndexMap ToMap();
 
  private:
