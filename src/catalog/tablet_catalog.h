@@ -173,7 +173,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     bool Init(const ClientManager &client_manager);
 
-    // TODO(denglong): threadsafe
+    // TODO(denglong): guarantee threadsafe
     bool UpdateIndex(const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs);
 
     const ::hybridse::vm::Schema *GetSchema() override { return &schema_; }

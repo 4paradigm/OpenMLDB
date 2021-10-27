@@ -275,115 +275,110 @@ void APIServerImpl::RegisterPut() {
     });
 }
 
-void APIServerImpl::ExecuteProcedure(const InterfaceProvider::Params& param,
-        const butil::IOBuf& req_body, JsonWriter& writer) {
-    auto err = GeneralError();
-    auto db_it = param.find("db_name");
-    auto sp_it = param.find("sp_name");
-    if (db_it == param.end() || sp_it == param.end()) {
-        writer << err.Set("Invalid path");
-        return;
-    }
-    auto db = db_it->second;
-    auto sp = sp_it->second;
-
-    Document document;
-    if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
-        writer << err.Set("Json parse failed");
-        return;
-    }
-
-    auto common_cols = document.FindMember("common_cols");
-    butil::rapidjson::Value common_cols_v;
-    if (common_cols != document.MemberEnd()) {
-        common_cols_v = common_cols->value;  // move
-        if (!common_cols_v.IsArray()) {
-            writer << err.Set("common_cols is not array");
-            return;
-        }
-    } else {
-        common_cols_v.SetArray();  // If there's no common cols, no need to add this field in request
-    }
-
-    auto input = document.FindMember("input");
-    if (input == document.MemberEnd() || !input->value.IsArray() || input->value.Empty()) {
-        writer << err.Set("Invalid input");
-        return;
-    }
-    const auto& rows = input->value;
-
-    hybridse::sdk::Status status;
-    // We need to use ShowProcedure to get input schema(should know which column is constant).
-    // GetRequestRowByProcedure can't do that.
-    auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
-    if (!sp_info) {
-        writer << err.Set(status.msg);
-        return;
-    }
-
-    const auto& schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl&>(sp_info->GetInputSchema());
-    // Hard copy, and RequestRow needs shared schema
-    auto input_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(schema_impl.GetSchema());
-    auto common_column_indices = std::make_shared<openmldb::sdk::ColumnIndicesSet>(input_schema);
-    decltype(common_cols_v.Size()) expected_common_size = 0;
-    for (int i = 0; i < input_schema->GetColumnCnt(); ++i) {
-        if (input_schema->IsConstant(i)) {
-            common_column_indices->AddCommonColumnIdx(i);
-            ++expected_common_size;
-        }
-    }
-
-    if (common_cols_v.Size() != expected_common_size) {
-        writer << err.Set("Invalid common cols size");
-        return;
-    }
-    auto expected_input_size = input_schema->GetColumnCnt() - expected_common_size;
-
-    // TODO(hw): SQLRequestRowBatch should add common & non-common cols directly
-    auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(input_schema, common_column_indices);
-    std::set<std::string> col_set;
-    for (decltype(rows.Size()) i = 0; i < rows.Size(); ++i) {
-        if (!rows[i].IsArray() || rows[i].Size() != expected_input_size) {
-            writer << err.Set("Invalid input data row");
-            return;
-        }
-        auto row = std::make_shared<sdk::SQLRequestRow>(input_schema, col_set);
-
-        // sizes have been checked
-        if (!Json2SQLRequestRow(rows[i], common_cols_v, row)) {
-            writer << err.Set("Translate to request row failed");
-            return;
-        }
-        row->Build();
-        row_batch->AddRow(row);
-    }
-
-    auto rs = sql_router_->CallSQLBatchRequestProcedure(db, sp, row_batch, &status);
-    if (!rs) {
-        writer << err.Set(status.msg);
-        return;
-    }
-
-    ExecSPResp resp;
-    // output schema in sp_info is needed for encoding data, so we need a bool in ExecSPResp to know whether to
-    // print schema
-    resp.sp_info = sp_info;
-    if (document.HasMember("need_schema") && document["need_schema"].IsBool() &&
-        document["need_schema"].GetBool()) {
-        resp.need_schema = true;
-    }
-    resp.rs = rs;
-    writer << resp;
-}
 
 void APIServerImpl::RegisterExecSP() {
-    provider_.post("/dbs/:db_name/procedures/:sp_name",
-            std::bind(&APIServerImpl::ExecuteProcedure, this,
-                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    auto procedure_fun = [this](const InterfaceProvider::Params& param,
+            const butil::IOBuf& req_body, JsonWriter& writer) {
+        auto err = GeneralError();
+        auto db_it = param.find("db_name");
+        auto sp_it = param.find("sp_name");
+        if (db_it == param.end() || sp_it == param.end()) {
+            writer << err.Set("Invalid path");
+            return;
+        }
+        auto db = db_it->second;
+        auto sp = sp_it->second;
 
-    provider_.post("/dbs/:db_name/deployments/:sp_name",
-            std::bind(&APIServerImpl::ExecuteProcedure, this,
-                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        Document document;
+        if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
+            writer << err.Set("Json parse failed");
+            return;
+        }
+
+        auto common_cols = document.FindMember("common_cols");
+        butil::rapidjson::Value common_cols_v;
+        if (common_cols != document.MemberEnd()) {
+            common_cols_v = common_cols->value;  // move
+            if (!common_cols_v.IsArray()) {
+                writer << err.Set("common_cols is not array");
+                return;
+            }
+        } else {
+            common_cols_v.SetArray();  // If there's no common cols, no need to add this field in request
+        }
+
+        auto input = document.FindMember("input");
+        if (input == document.MemberEnd() || !input->value.IsArray() || input->value.Empty()) {
+            writer << err.Set("Invalid input");
+            return;
+        }
+        const auto& rows = input->value;
+
+        hybridse::sdk::Status status;
+        // We need to use ShowProcedure to get input schema(should know which column is constant).
+        // GetRequestRowByProcedure can't do that.
+        auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
+        if (!sp_info) {
+            writer << err.Set(status.msg);
+            return;
+        }
+
+        const auto& schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl&>(sp_info->GetInputSchema());
+        // Hard copy, and RequestRow needs shared schema
+        auto input_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(schema_impl.GetSchema());
+        auto common_column_indices = std::make_shared<openmldb::sdk::ColumnIndicesSet>(input_schema);
+        decltype(common_cols_v.Size()) expected_common_size = 0;
+        for (int i = 0; i < input_schema->GetColumnCnt(); ++i) {
+            if (input_schema->IsConstant(i)) {
+                common_column_indices->AddCommonColumnIdx(i);
+                ++expected_common_size;
+            }
+        }
+
+        if (common_cols_v.Size() != expected_common_size) {
+            writer << err.Set("Invalid common cols size");
+            return;
+        }
+        auto expected_input_size = input_schema->GetColumnCnt() - expected_common_size;
+
+        // TODO(hw): SQLRequestRowBatch should add common & non-common cols directly
+        auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(input_schema, common_column_indices);
+        std::set<std::string> col_set;
+        for (decltype(rows.Size()) i = 0; i < rows.Size(); ++i) {
+            if (!rows[i].IsArray() || rows[i].Size() != expected_input_size) {
+                writer << err.Set("Invalid input data row");
+                return;
+            }
+            auto row = std::make_shared<sdk::SQLRequestRow>(input_schema, col_set);
+
+            // sizes have been checked
+            if (!Json2SQLRequestRow(rows[i], common_cols_v, row)) {
+                writer << err.Set("Translate to request row failed");
+                return;
+            }
+            row->Build();
+            row_batch->AddRow(row);
+        }
+
+        auto rs = sql_router_->CallSQLBatchRequestProcedure(db, sp, row_batch, &status);
+        if (!rs) {
+            writer << err.Set(status.msg);
+            return;
+        }
+
+        ExecSPResp resp;
+        // output schema in sp_info is needed for encoding data, so we need a bool in ExecSPResp to know whether to
+        // print schema
+        resp.sp_info = sp_info;
+        if (document.HasMember("need_schema") && document["need_schema"].IsBool() &&
+            document["need_schema"].GetBool()) {
+            resp.need_schema = true;
+        }
+        resp.rs = rs;
+        writer << resp;
+    };
+    provider_.post("/dbs/:db_name/procedures/:sp_name", procedure_fun);
+    provider_.post("/dbs/:db_name/deployments/:sp_name", procedure_fun);
 }
 
 void APIServerImpl::RegisterGetSP() {
