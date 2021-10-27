@@ -17,18 +17,19 @@
 #ifndef SRC_CMD_SQL_CMD_H_
 #define SRC_CMD_SQL_CMD_H_
 #include <algorithm>
+#include <fstream>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include <iostream>
-#include <fstream>
 
 #include "base/file_util.h"
 #include "base/linenoise.h"
 #include "base/texttable.h"
 #include "catalog/schema_adapter.h"
+#include "cmd/display.h"
 #include "cmd/split.h"
 #include "gflags/gflags.h"
 #include "node/node_manager.h"
@@ -37,7 +38,6 @@
 #include "sdk/db_sdk.h"
 #include "sdk/node_adapter.h"
 #include "sdk/sql_cluster_router.h"
-#include "cmd/display.h"
 #include "version.h"  // NOLINT
 
 DEFINE_string(database, "", "Set database");
@@ -74,77 +74,67 @@ bool performance_sensitive = true;
 
 class OptionsParse {
  public:
-    OptionsParse(std::shared_ptr<hybridse::node::OptionsMap> options_map, ::openmldb::base::ResultMsg* status) {
+    OptionsParse(std::shared_ptr<hybridse::node::OptionsMap> options_map, ::openmldb::base::ResultMsg *status) {
         for (hybridse::node::OptionsMap::iterator iter = options_map->begin(); iter != options_map->end(); iter++) {
             std::string key = iter->first;
             boost::to_lower(key);
             if (key == "format") {
                 GetOption(iter, "format", hybridse::node::kVarchar, status,
-                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg* status) {
-                            format_ = node->GetAsString();
-                            if (format_ != "csv") {
-                                status->msg = "ERROR: Parse option format failed, only support csv";
-                                return false;
-                            }
-                            return true;
+                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg *status) {
+                              format_ = node->GetAsString();
+                              if (format_ != "csv") {
+                                  status->msg = "ERROR: Parse option format failed, only support csv";
+                                  return false;
+                              }
+                              return true;
                           });
             } else if (key == "mode") {
                 GetOption(iter, "mode", hybridse::node::kVarchar, status,
-                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg* status) {
-                            mode_ = node->GetAsString();
-                            if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
-                                status->msg = "ERROR: Parse option mode failed, unsupported " + mode_;
-                                return false;
-                            }
-                            return true;
+                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg *status) {
+                              mode_ = node->GetAsString();
+                              if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
+                                  status->msg = "ERROR: Parse option mode failed, unsupported " + mode_;
+                                  return false;
+                              }
+                              return true;
                           });
             } else if (key == "delimiter") {
                 GetOption(iter, "delimiter", hybridse::node::kVarchar, status,
-                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg* status) {
-                            delimiter_ = node->GetAsString();
-                            if (delimiter_.size() != 1) {
-                                status->msg = "ERROR: Parse option delimiter failed, invalid delimiter " + delimiter_;
-                                return false;
-                            }
-                            return true;
+                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg *status) {
+                              delimiter_ = node->GetAsString();
+                              if (delimiter_.size() != 1) {
+                                  status->msg = "ERROR: Parse option delimiter failed, invalid delimiter " + delimiter_;
+                                  return false;
+                              }
+                              return true;
                           });
             } else if (key == "null_value") {
                 GetOption(iter, "null_value", hybridse::node::kVarchar, status,
-                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg* status) {
-                            null_value_ = node->GetAsString();
-                            // TODO(zekai): maybe add check for null_value
-                            return true;
+                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg *status) {
+                              null_value_ = node->GetAsString();
+                              // TODO(zekai): maybe add check for null_value
+                              return true;
                           });
             } else if (key == "header") {
                 GetOption(iter, "header", hybridse::node::kBool, status,
-                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg* status) {
-                            header_ = node->GetBool();
-                            return true;
+                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg *status) {
+                              header_ = node->GetBool();
+                              return true;
                           });
             } else {
                 status->msg = "ERROR: This option " + key + " is not currently supported";
                 status->code = openmldb::base::kSQLCmdRunError;
             }
-            if(!status->OK()) {
+            if (!status->OK()) {
                 return;
             }
         }
     }
-    std::string GetMode() const{
-        return mode_;
-    }
-    std::string GetFormat() const{
-        return format_;
-    }
-    std::string GetNullValue() const{
-        return null_value_;
-    }
-    std::string GetDelimiter() const{
-        return delimiter_;
-    }
-    bool GetHeader() const {
-        return header_;
-    }
+    std::string GetMode() const { return mode_; }
+    std::string GetFormat() const { return format_; }
+    std::string GetNullValue() const { return null_value_; }
+    std::string GetDelimiter() const { return delimiter_; }
+    bool GetHeader() const { return header_; }
 
  private:
     std::string format_ = "csv";
@@ -152,10 +142,10 @@ class OptionsParse {
     std::string delimiter_ = ",";
     std::string null_value_ = "null";
     bool header_ = true;
-    void GetOption(hybridse::node::OptionsMap::iterator& iter, const std::string& option_name,
-                   hybridse::node::DataType option_type, ::openmldb::base::ResultMsg* status,
-                   std::function<bool(const hybridse::node::ConstNode *node,
-                                      ::openmldb::base::ResultMsg* status)> const &f) {
+    void GetOption(
+        hybridse::node::OptionsMap::iterator &iter, const std::string &option_name,
+        hybridse::node::DataType option_type, ::openmldb::base::ResultMsg *status,
+        std::function<bool(const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg *status)> const &f) {
         auto node = iter->second;
         if (node->GetDataType() != option_type) {
             status->msg = "ERROR: Wrong type " + hybridse::node::DataTypeName(node->GetDataType()) + " for option " +
@@ -172,12 +162,12 @@ class OptionsParse {
 };
 
 void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &file_path,
-    std::shared_ptr<hybridse::node::OptionsMap> options_map, ::openmldb::base::ResultMsg* status) {
+                   std::shared_ptr<hybridse::node::OptionsMap> options_map, ::openmldb::base::ResultMsg *status) {
     if (!result_set) {
         return;
     }
-    std::shared_ptr<openmldb::cmd::OptionsParse> options_parse = std::make_shared<openmldb::cmd::OptionsParse>(
-        options_map, status);
+    std::shared_ptr<openmldb::cmd::OptionsParse> options_parse =
+        std::make_shared<openmldb::cmd::OptionsParse>(options_map, status);
     if (!status->OK()) {
         return;
     }
@@ -208,7 +198,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
             std::string schemaString;
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 schemaString.append(schema->GetColumnName(i));
-                if (i != schema->GetColumnCnt()-1) {
+                if (i != schema->GetColumnCnt() - 1) {
                     schemaString.append(options_parse->GetDelimiter());
                 }
             }
@@ -289,7 +279,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                             }
                         }
                     }
-                    if (i != schema->GetColumnCnt()-1) {
+                    if (i != schema->GetColumnCnt() - 1) {
                         rowString.append(options_parse->GetDelimiter());
                     } else {
                         if (!first) {
@@ -777,11 +767,11 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
 }
 
 // TODO(zekai): use status instead of printf
-void SetVariable(const std::string key, const hybridse::node::ConstNode* value) {
+void SetVariable(const std::string key, const hybridse::node::ConstNode *value) {
     if (key == "performance_sensitive") {
         if (value->GetDataType() == hybridse::node::kBool) {
             performance_sensitive = value->GetBool();
-            printf("Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true": "false");
+            printf("Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true" : "false");
         } else {
             printf("The type of %s should be bool\n", key.c_str());
         }
@@ -903,15 +893,17 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
 
     ::openmldb::base::ResultMsg result_msg;
     // options, value is ConstNode
-    std::shared_ptr<openmldb::cmd::OptionsParse> options_parse = std::make_shared<openmldb::cmd::OptionsParse>(
-        options, &result_msg);
+    std::shared_ptr<openmldb::cmd::OptionsParse> options_parse =
+        std::make_shared<openmldb::cmd::OptionsParse>(options, &result_msg);
     if (!result_msg.OK()) {
         return false;
     }
-    std::cout << "options: delimiter [" << options_parse->GetDelimiter()
-              << "], has header[" << options_parse->GetHeader()? "true" : "false"
-              << "], null_value[" << options_parse->GetNullValue()
-              << "], format[" << options_parse->GetFormat() << "]" << std::endl;
+    std::cout << "options: delimiter [" << options_parse->GetDelimiter() << "], has header["
+              << options_parse->GetHeader()
+        ? "true"
+        : "false"
+              << "], null_value[" << options_parse->GetNullValue() << "], format[" << options_parse->GetFormat() << "]"
+              << std::endl;
     // read csv
     if (!base::IsExists(file_path)) {
         *error = "file not exist";
@@ -1060,8 +1052,8 @@ void HandleSQL(const std::string &sql) {
         }
         case hybridse::node::kPlanTypeSelectInto: {
             auto *select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode *>(node);
-            const std::string& query_sql = select_into_plan_node->QueryStr();
-            const std::string& file_path = select_into_plan_node->OutFile();
+            const std::string &query_sql = select_into_plan_node->QueryStr();
+            const std::string &file_path = select_into_plan_node->OutFile();
             const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
             if (db.empty()) {
                 std::cout << "ERROR: Please use database first" << std::endl;
