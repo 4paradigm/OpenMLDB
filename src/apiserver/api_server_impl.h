@@ -62,7 +62,7 @@ class APIServerImpl : public APIServer {
     void RegisterGetTable();
 
     void ExecuteProcedure(const InterfaceProvider::Params& param,
-            const butil::IOBuf& req_body, JsonWriter& writer);
+            const butil::IOBuf& req_body, JsonWriter& writer); // NOLINT
 
     static bool Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
                                    const butil::rapidjson::Value& common_cols_v,

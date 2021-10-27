@@ -374,7 +374,7 @@ void APIServerImpl::ExecuteProcedure(const InterfaceProvider::Params& param,
     }
     resp.rs = rs;
     writer << resp;
-};
+}
 
 void APIServerImpl::RegisterExecSP() {
     provider_.post("/dbs/:db_name/procedures/:sp_name",

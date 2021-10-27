@@ -17,6 +17,8 @@
 #include "base/ddl_parser.h"
 
 #include <algorithm>
+#include <memory>
+#include <utility>
 #include <vector>
 #include "codec/schema_codec.h"
 #include "common/timer.h"
@@ -39,8 +41,6 @@ using hybridse::vm::PhysicalOpNode;
 using hybridse::vm::PhysicalOpType;
 using hybridse::vm::SchemasContext;
 using hybridse::vm::Sort;
-
-std::ostream& operator<<(std::ostream& os, IndexMap& index_map);
 
 constexpr const char* DB_NAME = "ddl_parser_db";
 
@@ -615,17 +615,6 @@ void GroupAndSortOptimizedParser::TransformParse(PhysicalOpNode* in) {
             break;
         }
     }
-}
-
-std::ostream& operator<<(std::ostream& os, IndexMap& index_map) {
-    for (auto& indexes : index_map) {
-        os << " {" << indexes.first << "[";
-        for (auto& ck : indexes.second) {
-            os << ck.ShortDebugString() << ", ";
-        }
-        os << "]} ";
-    }
-    return os;
 }
 
 bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,

@@ -34,7 +34,6 @@ using IndexMap = std::map<std::string, std::vector<::openmldb::common::ColumnKey
 
 class DDLParser {
  public:
-
     static IndexMap ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db);
 
     static IndexMap ExtractIndexes(const std::string& sql,

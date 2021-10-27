@@ -52,7 +52,7 @@ class SqlCmdTest : public ::testing::Test {
 };
 
 static void ExecuteSelectInto(const std::string& db, const std::string& sql, std::shared_ptr<sdk::SQLRouter> router,
-                              ::openmldb::base::ResultMsg* openmldb_base_status) {
+                              ::openmldb::base::Status* openmldb_base_status) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status hybridse_base_status;
     hybridse::node::PlanNodeList plan_trees;
@@ -94,7 +94,7 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     ASSERT_TRUE(router->ExecuteInsert(db, insert, &hybridse_sdk_status));
     ASSERT_TRUE(router->RefreshCatalog());
 
-    ::openmldb::base::ResultMsg openmldb_base_status;
+    ::openmldb::base::Status openmldb_base_status;
     // True
     std::string select_into_sql = "select * from " + name + " into outfile '" + file_path + "'";
     ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
