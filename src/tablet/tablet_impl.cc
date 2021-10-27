@@ -4668,6 +4668,9 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         return;
     }
     PDLOG(INFO, "add index %s ok. tid %u pid %u", request->column_key().index_name().c_str(), tid, pid);
+    if (!catalog_->UpdateTableMeta(*(table->GetTableMeta()))) {
+        PDLOG(WARNING, "update table meta failed. tid %u pid %u", tid, pid);
+    }
     base::SetResponseOK(response);
 }
 
@@ -4756,7 +4759,7 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
     if (!ok || session.GetCompileInfo() == nullptr) {
         response->set_msg(status.str());
         response->set_code(::openmldb::base::kSQLCompileError);
-        LOG(WARNING) << "fail to compile sql " << sql;
+        LOG(WARNING) << "fail to compile sql " << sql << std::endl << status.str();
         return;
     }
 

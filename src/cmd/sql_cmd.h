@@ -783,11 +783,17 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     std::string select_sql = deploy_node->StmtStr() + ";";
     hybridse::vm::ExplainOutput explain_output;
     hybridse::base::Status sql_status;
-    if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status)) {
-        return base::Status(base::ReturnCode::kError, "explain failed");
+    if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status, false)) {
+        return base::Status(base::ReturnCode::kError, sql_status.msg);
     }
     ::openmldb::api::ProcedureInfo sp_info;
-    sp_info.set_main_db(explain_output.request_db_name);
+    sp_info.set_db_name(db);
+    sp_info.set_sp_name(deploy_node->Name());
+    if (!explain_output.request_db_name.empty()) {
+        sp_info.set_main_db(explain_output.request_db_name);
+    } else {
+        sp_info.set_main_db(db);
+    }
     sp_info.set_main_table(explain_output.request_name);
     auto input_schema = sp_info.mutable_input_schema();
     auto output_schema = sp_info.mutable_output_schema();
@@ -798,7 +804,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
 
     std::set<std::pair<std::string, std::string>> table_pair;
     ::hybridse::base::Status status;
-    if (!cs->GetEngine()->GetDependentTables(select_sql, db, ::hybridse::vm::kRequestMode, &table_pair, status)) {
+    if (!cs->GetEngine()->GetDependentTables(select_sql, db, ::hybridse::vm::kBatchMode, &table_pair, status)) {
         return base::Status(base::ReturnCode::kError, "get dependent table failed");
     }
     for (auto& table : table_pair) {
@@ -821,8 +827,6 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     str_stream << ") BEGIN " << select_sql << " END;";
 
     sp_info.set_sql(str_stream.str());
-
-    printf("%s\n", sp_info.sql().c_str());
 
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = cs->GetNsClient();
@@ -891,6 +895,12 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
                 return base::Status(base::ReturnCode::kError, "table " + kv.first + " index col is not exist");
             }
             column_key.set_index_name("INDEX_" + std::to_string(::baidu::common::timer::now_time() + add_index_num));
+            /*if (!column_key.has_ttl()) {
+                return base::Status(base::ReturnCode::kError, "table " + kv.first + " has not ttl");
+            }*/
+            auto ttl =  column_key.mutable_ttl();
+            ttl->set_abs_ttl(0);
+            ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
             add_index_num++;
             std::string msg;
             if (!ns->AddIndex(kv.first, column_key, &cols, msg)) {

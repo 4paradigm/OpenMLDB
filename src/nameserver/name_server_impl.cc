@@ -9108,6 +9108,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
                 }
             }
         }
+        AddIndexToTableInfo(name, db, request->column_key(), table_info->column_key_size());
     }
     base::SetResponseOK(response);
     LOG(INFO) << "add index. table[" << name << "] index[" << index_name << "]";

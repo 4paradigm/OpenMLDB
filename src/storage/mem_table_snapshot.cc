@@ -617,7 +617,7 @@ int MemTableSnapshot::CheckDeleteAndUpdate(std::shared_ptr<Table> table, openmld
 base::Status MemTableSnapshot::GetIndexKey(std::shared_ptr<Table> table,
         const std::shared_ptr<IndexDef>& index, const base::Slice& data,
         std::map<uint8_t, codec::RowView>* decoder_map, std::string* index_key) {
-    if (table == nullptr || index || decoder_map || index_key == nullptr) {
+    if (table == nullptr || decoder_map == nullptr || index_key == nullptr) {
         return base::Status(base::ReturnCode::kError, "null ptr");
     }
     const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
@@ -637,7 +637,7 @@ base::Status MemTableSnapshot::GetIndexKey(std::shared_ptr<Table> table,
         if (ret < 0) {
             return base::Status(base::ReturnCode::kError, "decode error");
         } else if (ret == 1) {
-            // TODO(denglong): null value
+            val = ::openmldb::codec::NONETOKEN;
         }
         if (index_key->empty()) {
             *index_key = std::move(val);
@@ -665,7 +665,7 @@ base::Status MemTableSnapshot::ExtractIndexFromSnapshot(std::shared_ptr<Table> t
     std::vector<std::shared_ptr<IndexDef>> index_vec;
     for (const auto& index : add_indexs) {
         auto index_def = table->GetIndex(index.index_name());
-        if (index_def) {
+        if (!index_def) {
             return base::Status(base::ReturnCode::kError, "fail to get index " + index.index_name());
         }
         index_vec.push_back(index_def);
@@ -692,14 +692,14 @@ base::Status MemTableSnapshot::ExtractIndexFromSnapshot(std::shared_ptr<Table> t
             break;
         }
         if (!status.ok()) {
-            PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_,
-                  status.ToString().c_str());
+            PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s",
+                    tid_, pid_, status.ToString().c_str());
             has_error = true;
             break;
         }
         if (!entry.ParseFromString(record.ToString())) {
-            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
-                  ::openmldb::base::DebugString(record.ToString()).c_str());
+            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s",
+                    tid_, pid_, ::openmldb::base::DebugString(record.ToString()).c_str());
             has_error = true;
             break;
         }
@@ -734,13 +734,12 @@ base::Status MemTableSnapshot::ExtractIndexFromSnapshot(std::shared_ptr<Table> t
                 auto ret = GetIndexKey(table, index, data, &decoder_map, &index_key);
                 if (ret.OK() && !index_key.empty()) {
                     uint32_t index_pid = ::openmldb::base::hash64(index_key) % partition_num;
-                    // update entry and write entry into memory
                     if (index_pid == pid) {
                         add_key_idx_map.emplace(index->GetId(), index_key);
                     }
                 }
             }
-            if (add_key_idx_map.empty()) {
+            if (!add_key_idx_map.empty()) {
                 for (const auto& kv : add_key_idx_map) {
                     ::openmldb::api::Dimension* dim = entry.add_dimensions();
                     dim->set_idx(kv.first);
@@ -971,7 +970,7 @@ base::Status MemTableSnapshot::ExtractIndexFromBinlog(std::shared_ptr<Table> tab
     std::vector<std::shared_ptr<IndexDef>> index_vec;
     for (const auto& index : add_indexs) {
         auto index_def = table->GetIndex(index.index_name());
-        if (index_def) {
+        if (!index_def) {
             return base::Status(base::ReturnCode::kError, "fail to get index " + index.index_name());
         }
         index_vec.push_back(index_def);
@@ -1038,13 +1037,12 @@ base::Status MemTableSnapshot::ExtractIndexFromBinlog(std::shared_ptr<Table> tab
                     auto ret = GetIndexKey(table, index, data, &decoder_map, &index_key);
                     if (ret.OK() && !index_key.empty()) {
                         uint32_t index_pid = ::openmldb::base::hash64(index_key) % partition_num;
-                        // update entry and write entry into memory
                         if (index_pid == pid) {
                             add_key_idx_map.emplace(index->GetId(), index_key);
                         }
                     }
                 }
-                if (add_key_idx_map.empty()) {
+                if (!add_key_idx_map.empty()) {
                     for (const auto& kv : add_key_idx_map) {
                         ::openmldb::api::Dimension* dim = entry.add_dimensions();
                         dim->set_idx(kv.first);
@@ -1135,7 +1133,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
             has_error = true;
         }
         last_term = manifest.term();
-        DEBUGLOG("old manifest term is %lu", last_term);
+        DLOG(INFO) << "old manifest term is " << last_term;
     } else if (result < 0) {
         // parse manifest error
         has_error = true;
@@ -1145,6 +1143,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
         auto ret = ExtractIndexFromBinlog(table, wh, indexs, collected_offset, partition_num,
                 &cur_offset, &last_term, &write_count, &expired_key_num, &deleted_key_num);
         if (!ret.OK()) {
+            LOG(WARNING) << ret.msg;
             has_error = true;
         }
     }
@@ -1257,7 +1256,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, const ::ope
             has_error = true;
         }
         last_term = manifest.term();
-        DEBUGLOG("old manifest term is %lu", last_term);
+        DLOG(INFO) << "old manifest term is " << last_term;
     } else if (result < 0) {
         // parse manifest error
         has_error = true;
