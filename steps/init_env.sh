@@ -51,15 +51,15 @@ echo "HYBRIDSE_SOURCE: $HYBRIDSE_SOURCE"
 if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
     echo "Install hybridse locally"
     pushd "${ROOT}/hybridse"
-    ln -sf "$THIRDPARTY_PATH" thirdparty
-    ln -sf "$THIRDSRC_PATH" thirdsrc
+
     if uname -a | grep -q Darwin; then
         # in case coreutils not install on mac
         nproc() {
             sysctl -n hw.logicalcpu
         }
     fi
-    cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCMAKE_INSTALL_PREFIX="hybridse" -DCMAKE_PREFIX_PATH=thirdparty
+
+    cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCMAKE_INSTALL_PREFIX="hybridse" -DCMAKE_PREFIX_PATH="$ROOT/thirdparty"
     cmake --build build --target install -- -j"$(nproc)"
     mv hybridse "$THIRDPARTY_PATH/hybridse"
     popd
