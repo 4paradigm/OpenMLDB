@@ -398,7 +398,8 @@ bool ProjectPlanNode::Equals(const PlanNode *node) const {
         return false;
     }
     const ProjectPlanNode *that = dynamic_cast<const ProjectPlanNode *>(node);
-    return PlanListEquals(this->project_list_vec_, that->project_list_vec_) &&
+    return table_ == that->table_ &&
+           PlanListEquals(this->project_list_vec_, that->project_list_vec_) &&
            UnaryPlanNode::Equals(node);
 }
 bool ProjectPlanNode::IsSimpleProjectPlan() {
@@ -485,7 +486,8 @@ bool TablePlanNode::Equals(const PlanNode *node) const {
         return false;
     }
     const TablePlanNode *that = dynamic_cast<const TablePlanNode *>(node);
-    return table_ == that->table_ && LeafPlanNode::Equals(that);
+    return is_primary_ == that->is_primary_ &&
+           db_ == that->db_ && table_ == that->table_ && LeafPlanNode::Equals(that);
 }
 void RenamePlanNode::Print(std::ostream &output,
                            const std::string &org_tab) const {
@@ -530,6 +532,8 @@ bool WindowPlanNode::Equals(const PlanNode *node) const {
     }
     const WindowPlanNode *that = dynamic_cast<const WindowPlanNode *>(node);
     return this->name == that->name &&
+           this->instance_not_in_window() == that->instance_not_in_window() &&
+           this->exclude_current_time() == that->exclude_current_time() &&
            SqlEquals(this->frame_node_, that->frame_node_) &&
            this->orders_ == that->orders_ && this->keys_ == that->keys_ &&
            PlanListEquals(this->union_tables_, that->union_tables_) &&

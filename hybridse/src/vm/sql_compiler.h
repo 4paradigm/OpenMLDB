@@ -112,6 +112,9 @@ class SqlCompileInfo : public CompileInfo {
     virtual const std::string& GetRequestName() const {
         return sql_ctx.request_name;
     }
+    virtual const std::string& GetRequestDbName() const {
+        return sql_ctx.request_db_name;
+    }
     virtual const hybridse::vm::BatchRequestInfo& GetBatchRequestInfo() const {
         return sql_ctx.batch_request_info;
     }

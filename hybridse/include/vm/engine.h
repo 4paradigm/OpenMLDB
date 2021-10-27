@@ -235,9 +235,13 @@ class RequestRunSession : public RunSession {
     virtual const Schema& GetRequestSchema() const {
         return compile_info_->GetRequestSchema();
     }
-    /// \brief Return the name of request row
+    /// \brief Return the name of request table name
     virtual const std::string& GetRequestName() const {
         return compile_info_->GetRequestName();
+    }
+    /// \brief Return the name of request table db
+    virtual const std::string& GetRequestDbName() const {
+        return compile_info_->GetRequestDbName();
     }
 };
 
@@ -253,9 +257,13 @@ class BatchRequestRunSession : public RunSession {
     const Schema& GetRequestSchema() const {
         return compile_info_->GetRequestSchema();
     }
-    /// \brief Return the name of request row
+    /// \brief Return the name of request table name
     const std::string& GetRequestName() const {
         return compile_info_->GetRequestName();
+    }
+    /// \brief Return the name of request db name
+    const std::string& GetRequestDbName() const {
+        return compile_info_->GetRequestDbName();
     }
 
     /// \brief Run query in batch request mode.
