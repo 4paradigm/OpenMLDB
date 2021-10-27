@@ -136,6 +136,7 @@ class SaveFileOptions {
             fstream_.open(file_path_, std::ios::out);
         } else if (mode_ == "append") {
             fstream_.open(file_path_, std::ios::app);
+            fstream_ << std::endl;
         } else {
             openmldb_base_status->msg = "ERROR: This mode (" + mode_ + ") is not currently supported";
             openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
@@ -207,6 +208,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
             options->GetOfstream() << schemaString << std::endl;
         }
         if (result_set->Size() != 0) {
+            bool first = true;
             while (result_set->Next()) {
                 std::string rowString;
                 for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
@@ -279,11 +281,16 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                                 return;
                             }
                         }
-                        if (i != schema->GetColumnCnt()-1) {
-                            rowString.append(options->GetDelimiter());
+                    }
+                    if (i != schema->GetColumnCnt()-1) {
+                        rowString.append(options->GetDelimiter());
+                    } else {
+                        if (!first) {
+                            options->GetOfstream() << std::endl;
                         } else {
-                            options->GetOfstream() << rowString << std::endl;
+                            first = false;
                         }
+                        options->GetOfstream() << rowString;
                     }
                 }
             }
