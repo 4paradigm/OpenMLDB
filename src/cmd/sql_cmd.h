@@ -72,109 +72,78 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 bool performance_sensitive = true;
 
-// TODO(zekai): use getoption
-class SaveFileOptions {
+class OptionsParse {
  public:
-    SaveFileOptions(const std::string &file_path, std::shared_ptr<hybridse::node::OptionsMap> options_map,
-        ::openmldb::base::ResultMsg* openmldb_base_status) {
-        // TODO(zekai): Resolved file path like (file:////usr/test.csv) or (hdfs:////usr/test.csv)
-        file_path_ = file_path;
-        for (auto iter = options_map->begin(); iter != options_map->end(); iter++) {
+    OptionsParse(std::shared_ptr<hybridse::node::OptionsMap> options_map, ::openmldb::base::ResultMsg* status) {
+        for (hybridse::node::OptionsMap::iterator iter = options_map->begin(); iter != options_map->end(); iter++) {
             std::string key = iter->first;
             boost::to_lower(key);
             if (key == "format") {
-                if (iter->second->GetDataType() != hybridse::node::kVarchar) {
-                    openmldb_base_status->msg = "ERROR: The type of " + key + " mismatch, type should be string";
-                    openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                    return;
-                }
-                format_ = iter->second->GetAsString();
+                GetOption(iter, "format", hybridse::node::kVarchar, status,
+                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg* status) {
+                            format_ = node->GetAsString();
+                            if (format_ != "csv") {
+                                status->msg = "ERROR: Parse option format failed, only support csv";
+                                return false;
+                            }
+                            return true;
+                          });
             } else if (key == "mode") {
-                if (iter->second->GetDataType() != hybridse::node::kVarchar) {
-                    openmldb_base_status->msg = "ERROR: The type of " + key + " mismatch, type should be string";
-                    openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                    return;
-                }
-                mode_ = iter->second->GetAsString();
+                GetOption(iter, "mode", hybridse::node::kVarchar, status,
+                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg* status) {
+                            mode_ = node->GetAsString();
+                            if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
+                                status->msg = "ERROR: Parse option mode failed, unsupported " + mode_;
+                                return false;
+                            }
+                            return true;
+                          });
             } else if (key == "delimiter") {
-                if (iter->second->GetDataType() != hybridse::node::kVarchar) {
-                    openmldb_base_status->msg = "ERROR: The type of " + key + " mismatch, type should be string";
-                    openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                    return;
-                }
-                delimiter_ = iter->second->GetAsString();
+                GetOption(iter, "delimiter", hybridse::node::kVarchar, status,
+                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg* status) {
+                            delimiter_ = node->GetAsString();
+                            if (delimiter_.size() != 1) {
+                                status->msg = "ERROR: Parse option delimiter failed, invalid delimiter " + delimiter_;
+                                return false;
+                            }
+                            return true;
+                          });
             } else if (key == "null_value") {
-                if (iter->second->GetDataType() != hybridse::node::kVarchar) {
-                    openmldb_base_status->msg = "ERROR: The type of " + key + " mismatch, type should be string";
-                    openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                    return;
-                }
-                null_value_ = iter->second->GetAsString();
+                GetOption(iter, "null_value", hybridse::node::kVarchar, status,
+                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg* status) {
+                            null_value_ = node->GetAsString();
+                            // TODO(zekai): maybe add check for null_value
+                            return true;
+                          });
             } else if (key == "header") {
-                if (iter->second->GetDataType() != hybridse::node::kBool) {
-                    openmldb_base_status->msg = "ERROR: The type of " + key + " mismatch, type should be bool";
-                    openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                    return;
-                }
-                header_ = iter->second->GetBool();
+                GetOption(iter, "header", hybridse::node::kBool, status,
+                          [this](const hybridse::node::ConstNode *node, ::openmldb::base::ResultMsg* status) {
+                            header_ = node->GetBool();
+                            return true;
+                          });
             } else {
-                openmldb_base_status->msg = "ERROR: This option (" + key + ") is not currently supported";
-                openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
+                status->msg = "ERROR: This option " + key + " is not currently supported";
+                status->code = openmldb::base::kSQLCmdRunError;
+            }
+            if(!status->OK()) {
                 return;
             }
         }
-        // Check mode
-        if (mode_ == "error_if_exists") {
-            if (access(file_path_.c_str(), 0) == 0) {
-                openmldb_base_status->msg = "ERROR: File already exists";
-                openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                return;
-            } else {
-                fstream_.open(file_path_);
-            }
-        } else if (mode_ == "overwrite") {
-            fstream_.open(file_path_, std::ios::out);
-        } else if (mode_ == "append") {
-            fstream_.open(file_path_, std::ios::app);
-            fstream_ << std::endl;
-        } else {
-            openmldb_base_status->msg = "ERROR: This mode (" + mode_ + ") is not currently supported";
-            openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-            return;
-        }
-        // Check file
-        if (fstream_.is_open() == false) {
-            openmldb_base_status->msg = "ERROR: Fail to open file, please check file path";
-            openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-            return;
-        }
-        // Check format
-        if (format_ != "csv") {
-            openmldb_base_status->msg = "ERROR: This format (" + format_ + ") is not currently supported";
-            openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-            return;
-        }
     }
-    ~SaveFileOptions() {
-        fstream_.close();
+    std::string GetMode() const{
+        return mode_;
     }
-    std::string GetFormat() {
+    std::string GetFormat() const{
         return format_;
     }
-    std::string GetNullValue() {
+    std::string GetNullValue() const{
         return null_value_;
     }
-    std::string GetDelimiter() {
+    std::string GetDelimiter() const{
         return delimiter_;
-    }
-    std::string GetFilePath() {
-        return file_path_;
     }
     bool GetHeader() const {
         return header_;
-    }
-    std::ofstream& GetOfstream() {
-        return fstream_;
     }
 
  private:
@@ -182,30 +151,68 @@ class SaveFileOptions {
     std::string mode_ = "error_if_exists";
     std::string delimiter_ = ",";
     std::string null_value_ = "null";
-    std::string file_path_;
     bool header_ = true;
-    std::ofstream fstream_;
+    void GetOption(hybridse::node::OptionsMap::iterator& iter, const std::string& option_name,
+                   hybridse::node::DataType option_type, ::openmldb::base::ResultMsg* status,
+                   std::function<bool(const hybridse::node::ConstNode *node,
+                                      ::openmldb::base::ResultMsg* status)> const &f) {
+        auto node = iter->second;
+        if (node->GetDataType() != option_type) {
+            status->msg = "ERROR: Wrong type " + hybridse::node::DataTypeName(node->GetDataType()) + " for option " +
+                          option_name + ", it should be " + hybridse::node::DataTypeName(option_type);
+            status->code = openmldb::base::kSQLCmdRunError;
+            return;
+        }
+        if (!f(node, status)) {
+            status->code = openmldb::base::kSQLCmdRunError;
+            return;
+        }
+        return;
+    }
 };
 
 void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &file_path,
-    std::shared_ptr<hybridse::node::OptionsMap> options_map, ::openmldb::base::ResultMsg* openmldb_base_status) {
-    std::shared_ptr<openmldb::cmd::SaveFileOptions> options = std::make_shared<openmldb::cmd::SaveFileOptions>(
-        file_path, options_map, openmldb_base_status);
-    if (!result_set || !openmldb_base_status->OK()) {
+    std::shared_ptr<hybridse::node::OptionsMap> options_map, ::openmldb::base::ResultMsg* status) {
+    if (!result_set) {
         return;
     }
-    if (options->GetFormat() == "csv") {
+    std::shared_ptr<openmldb::cmd::OptionsParse> options_parse = std::make_shared<openmldb::cmd::OptionsParse>(
+        options_map, status);
+    if (!status->OK()) {
+        return;
+    }
+    std::ofstream fstream;
+    if (options_parse->GetMode() == "error_if_exists") {
+        if (access(file_path.c_str(), 0) == 0) {
+            status->msg = "ERROR: File already exists";
+            status->code = openmldb::base::kSQLCmdRunError;
+            return;
+        } else {
+            fstream.open(file_path);
+        }
+    } else if (options_parse->GetMode() == "overwrite") {
+        fstream.open(file_path, std::ios::out);
+    } else if (options_parse->GetMode() == "append") {
+        fstream.open(file_path, std::ios::app);
+        fstream << std::endl;
+    }
+    if (!fstream.is_open()) {
+        status->msg = "ERROR: Fail to open file, please check file path";
+        status->code = openmldb::base::kSQLCmdRunError;
+        return;
+    }
+    if (options_parse->GetFormat() == "csv") {
         auto *schema = result_set->GetSchema();
         // Add Header
-        if (options->GetHeader() == true) {
+        if (options_parse->GetHeader() == true) {
             std::string schemaString;
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 schemaString.append(schema->GetColumnName(i));
                 if (i != schema->GetColumnCnt()-1) {
-                    schemaString.append(options->GetDelimiter());
+                    schemaString.append(options_parse->GetDelimiter());
                 }
             }
-            options->GetOfstream() << schemaString << std::endl;
+            fstream << schemaString << std::endl;
         }
         if (result_set->Size() != 0) {
             bool first = true;
@@ -213,7 +220,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                 std::string rowString;
                 for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                     if (result_set->IsNULL(i)) {
-                        rowString.append(options->GetNullValue());
+                        rowString.append(options_parse->GetNullValue());
                     } else {
                         auto data_type = schema->GetColumnType(i);
                         switch (data_type) {
@@ -276,26 +283,26 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                                 break;
                             }
                             default: {
-                                openmldb_base_status->msg = "ERROR: In table, some types are not currently supported";
-                                openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
+                                status->msg = "ERROR: In table, some types are not currently supported";
+                                status->code = openmldb::base::kSQLCmdRunError;
                                 return;
                             }
                         }
                     }
                     if (i != schema->GetColumnCnt()-1) {
-                        rowString.append(options->GetDelimiter());
+                        rowString.append(options_parse->GetDelimiter());
                     } else {
                         if (!first) {
-                            options->GetOfstream() << std::endl;
+                            fstream << std::endl;
                         } else {
                             first = false;
                         }
-                        options->GetOfstream() << rowString;
+                        fstream << rowString;
                     }
                 }
             }
         }
-        openmldb_base_status->msg = "SUCCEED: Save successfully";
+        status->msg = "SUCCEED: Save successfully";
     }
 }
 
@@ -783,28 +790,6 @@ void SetVariable(const std::string key, const hybridse::node::ConstNode* value) 
     }
 }
 
-
-bool GetOption(const std::shared_ptr<hybridse::node::OptionsMap> &options, const std::string &option_name,
-               hybridse::node::DataType option_type,
-               std::function<bool(const hybridse::node::ConstNode *node)> const &f) {
-    auto it = options->find(option_name);
-    if (it == options->end()) {
-        // won't set option, but no error
-        return true;
-    }
-    auto node = it->second;
-    if (node->GetDataType() != option_type) {
-        std::cout << "wrong type " << hybridse::node::DataTypeName(node->GetDataType()) << " for option " << option_name
-                  << std::endl;
-        return false;
-    }
-    if (!f(node)) {
-        std::cout << "parse option " << option_name << " failed" << std::endl;
-        return false;
-    }
-    return true;
-}
-
 template <typename T>
 bool AppendColumnValue(const std::string &v, hybridse::sdk::DataType type, bool is_not_null,
                        const std::string &null_value, T row) {
@@ -916,43 +901,17 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
                           const std::shared_ptr<hybridse::node::OptionsMap> &options, std::string *error) {
     DCHECK(error);
 
+    ::openmldb::base::ResultMsg result_msg;
     // options, value is ConstNode
-    char delimiter = ',';
-    bool header = true;
-    std::string null_value{"null"}, format{"csv"};
-
-    if (!GetOption(options, "delimiter", hybridse::node::kVarchar,
-                   [&delimiter, error](const hybridse::node::ConstNode *node) {
-                       auto &s = node->GetAsString();
-                       if (s.size() != 1) {
-                           *error = "invalid delimiter " + s;
-                           return false;
-                       }
-                       delimiter = s[0];
-                       return true;
-                   }) ||
-        !GetOption(options, "header", hybridse::node::kBool,
-                   [&header](const hybridse::node::ConstNode *node) {
-                       header = node->GetBool();
-                       return true;
-                   }) ||
-        !GetOption(options, "null_value", hybridse::node::kVarchar,
-                   [&null_value](const hybridse::node::ConstNode *node) {
-                       null_value = node->GetAsString();
-                       return true;
-                   }) ||
-        !GetOption(options, "format", hybridse::node::kVarchar,
-                   [&format, error](const hybridse::node::ConstNode *node) {
-                       if (node->GetAsString() != "csv") {
-                           *error = "only support csv";
-                           return false;
-                       }
-                       return true;
-                   })) {
+    std::shared_ptr<openmldb::cmd::OptionsParse> options_parse = std::make_shared<openmldb::cmd::OptionsParse>(
+        options, &result_msg);
+    if (!result_msg.OK()) {
         return false;
     }
-    std::cout << "options: delimiter [" << delimiter << "], has header[" << header << "], null_value[" << null_value
-              << "], format[" << format << "]" << std::endl;
+    std::cout << "options: delimiter [" << options_parse->GetDelimiter()
+              << "], has header[" << options_parse->GetHeader()? "true" : "false"
+              << "], null_value[" << options_parse->GetNullValue()
+              << "], format[" << options_parse->GetFormat() << "]" << std::endl;
     // read csv
     if (!base::IsExists(file_path)) {
         *error = "file not exist";
@@ -970,14 +929,14 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
         return false;
     }
     std::vector<std::string> cols;
-    SplitCSVLineWithDelimiterForStrings(line, delimiter, &cols);
+    SplitCSVLineWithDelimiterForStrings(line, options_parse->GetDelimiter()[0], &cols);
     auto schema = sr->GetTableSchema(database, table);
     if (cols.size() != schema->GetColumnCnt()) {
         *error = "mismatch column size";
         return false;
     }
 
-    if (header) {
+    if (options_parse->GetHeader()) {
         // the first line is the column names, check if equal with table schema
         for (int i = 0; i < schema->GetColumnCnt(); ++i) {
             if (cols[i] != schema->GetColumnName(i)) {
@@ -1006,8 +965,8 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
 
     do {
         cols.clear();
-        SplitCSVLineWithDelimiterForStrings(line, delimiter, &cols);
-        if (!InsertOneRow(insert_placeholder, strColIdx, null_value, cols, error)) {
+        SplitCSVLineWithDelimiterForStrings(line, options_parse->GetDelimiter()[0], &cols);
+        if (!InsertOneRow(insert_placeholder, strColIdx, options_parse->GetNullValue(), cols, error)) {
             *error = "line [" + line + "] insert failed, " + *error;
             return false;
         }
@@ -1108,14 +1067,14 @@ void HandleSQL(const std::string &sql) {
                 std::cout << "ERROR: Please use database first" << std::endl;
                 return;
             }
-            ::hybridse::sdk::Status hybridse_sdk_status;
-            auto rs = sr->ExecuteSQL(db, query_sql, &hybridse_sdk_status);
+            ::hybridse::sdk::Status status;
+            auto rs = sr->ExecuteSQL(db, query_sql, &status);
             if (!rs) {
                 std::cout << "ERROR: Fail to execute query" << std::endl;
             } else {
-                ::openmldb::base::ResultMsg openmldb_base_status;
-                SaveResultSet(rs.get(), file_path, options_map, &openmldb_base_status);
-                std::cout << openmldb_base_status.GetMsg() << std::endl;
+                ::openmldb::base::ResultMsg result_msg;
+                SaveResultSet(rs.get(), file_path, options_map, &result_msg);
+                std::cout << result_msg.GetMsg() << std::endl;
             }
             return;
         }
