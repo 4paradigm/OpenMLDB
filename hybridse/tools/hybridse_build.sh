@@ -16,11 +16,9 @@
 set -eE
 
 # goto toplevel directory
-cd "$(dirname "$0")/.."
+pushd "$(dirname "$0")/.." # $ROOT/hybridse/
 
-# install thirdparty hybridse
-HYBRIDSE_THIRDPARTY="$(pwd)/thirdparty"
-../steps/setup_thirdparty.sh "${HYBRIDSE_THIRDPARTY}"
+./tools/third-party.sh
 
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac
@@ -31,3 +29,5 @@ rm -rf build
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="hybridse"
 make -j"$(nproc)"
+
+popd

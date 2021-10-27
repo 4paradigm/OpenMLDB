@@ -17,10 +17,7 @@ set -eE
 
 # goto toplevel directory
 cd "$(dirname "$0")/.."
-
-# install thirdparty hybrise
-HYBRIDSE_THIRDPARTY="$(pwd)/thirdparty"
-../steps/setup_thirdparty.sh "${HYBRIDSE_THIRDPARTY}"
+./tools/third-party.sh
 
 if uname -a | grep -q Darwin; then
     # in case coreutils not install on mac

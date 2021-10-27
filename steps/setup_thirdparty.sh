@@ -36,7 +36,61 @@ fetch() {
 
 pushd "$(dirname "$0")/.."
 ROOT=$(pwd)
+popd
 
+THIRDPARTY_PATH=
+
+function usage ()
+{
+    echo "Usage :  $0 [options] [--]
+
+    Options:
+    -h|help       Display this message
+    -p            Directory for thirdpary install
+    -f            Force download and install dependencies even file already exists.
+    -z            Download and setup zetasql, if value is 0, zetasql setup will skipped. Default 1
+"
+}    # ----------  end of function usage  ----------
+
+#-----------------------------------------------------------------------
+#  Handle command line arguments
+#-----------------------------------------------------------------------
+
+# when _SETUP_ZETASQL is 0, script won't setup zetasql
+_SETUP_ZETASQL=1
+# when _FORCE_SETUP is set, script won't check if thirdparty path already exist
+_FORCE_SETUP=
+while getopts ":hfz:p:" opt
+do
+  case $opt in
+
+    h)  usage; exit 0   ;;
+    f) _FORCE_SETUP=1 ;;
+    z) _SETUP_ZETASQL=$OPTARG ;;
+    p) THIRDPARTY_PATH=$OPTARG ;;
+
+    * )  echo -e "\n  Option does not exist : OPTARG\n"
+                usage; exit 1   ;;
+
+  esac    # --- end of case ---
+done
+shift $((OPTIND-1))
+
+# on local machine, one can tweak thirdparty path by passing extra argument
+if [ -z "$THIRDPARTY_PATH" ]; then
+  THIRDPARTY_PATH=$ROOT/thirdparty
+fi
+if [[ -d "$THIRDPARTY_PATH" && -z $_FORCE_SETUP ]]; then
+    echo "thirdparty path: $THIRDPARTY_PATH already exist, skip download deps"
+    exit 0
+fi
+
+mkdir -p "$THIRDPARTY_PATH"
+
+# get absolute path
+THIRDPARTY_PATH=$(cd "$THIRDPARTY_PATH" 2> /dev/null && pwd)
+
+pushd "$ROOT"
 ARCH=$(arch)
 
 THIRDPARTY_HOME=https://github.com/jingchen2222/hybridsql-asserts
@@ -45,34 +99,31 @@ ZETASQL_VERSION=0.2.1.beta9
 
 echo "Install thirdparty ... for $(uname -a)"
 
-# on local machine, one can tweak thirdparty path by passing extra argument
-THIRDPARTY_PATH=${1:-"$ROOT/thirdparty"}
 THIRDSRC_PATH="$ROOT/thirdsrc"
 
-if [ -d "$THIRDPARTY_PATH" ]; then
-    echo "thirdparty path: $THIRDPARTY_PATH already exist, skip download deps"
-    exit 0
-fi
-
-mkdir -p "$THIRDPARTY_PATH"
 mkdir -p "$THIRDSRC_PATH"
 
 pushd "${THIRDSRC_PATH}"
 
 if [[ "$OSTYPE" = "darwin"* ]]; then
-    fetch "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz" thirdparty.tar.gz
-    fetch "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-darwin-x86_64.tar.gz" libzetasql.tar.gz
+    THIRDPARY_URL="$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz"
+    ZETASQL_URL="$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-darwin-x86_64.tar.gz"
 elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
     if [[ $ARCH = 'x86_64' ]]; then
-        fetch "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz" thirdparty.tar.gz
-        fetch "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-x86_64.tar.gz" libzetasql.tar.gz
+        THIRDPARY_URL="$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz"
+        ZETASQL_URL="$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-x86_64.tar.gz"
     elif [[ $ARCH = 'aarch64' ]]; then
-        fetch "$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz" thirdparty.tar.gz
-        fetch "$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-aarch64.tar.gz" libzetasql.tar.gz
+        THIRDPARY_URL="$THIRDPARTY_HOME/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz"
+        ZETASQL_URL="$ZETASQL_HOME/releases/download/v$ZETASQL_VERSION/libzetasql-$ZETASQL_VERSION-linux-gnu-aarch64.tar.gz"
     fi
 fi
-popd
 
+fetch "$THIRDPARY_URL" thirdparty.tar.gz
 tar xzf "$THIRDSRC_PATH/thirdparty.tar.gz" -C "${THIRDPARTY_PATH}" --strip-components 1
-tar xzf "$THIRDSRC_PATH/libzetasql.tar.gz" -C "${THIRDPARTY_PATH}" --strip-components 1
+if [[ $_SETUP_ZETASQL != '0' ]] ; then
+    fetch "$ZETASQL_URL" libzetasql.tar.gz
+    tar xzf "$THIRDSRC_PATH/libzetasql.tar.gz" -C "${THIRDPARTY_PATH}" --strip-components 1
+fi
+
+popd
 popd

@@ -17,15 +17,9 @@ project(hybridsql-deps)
 
 include(ExternalProject)
 
-if (NOT DEFINED DEPS_PREFIX)
-  set(DEPS_PREFIX ${CMAKE_SOURCE_DIR}/../thirdparty)
-endif()
-set(DEPS_BUILD_DIR
-    "${CMAKE_CURRENT_SOURCE_DIR}/deps"
-    CACHE PATH "Dependencies build directory.")
-set(DEPS_DOWNLOAD_DIR
-    "${DEPS_BUILD_DIR}/downloads"
-    CACHE PATH "Dependencies download directory.")
+set(DEPS_INSTALL_DIR "${CMAKE_BINARY_DIR}/usr" CACHE PATH "Dependencies install directory")
+set(DEPS_BUILD_DIR "${CMAKE_BINARY_DIR}/build" CACHE PATH "Dependencies build directory.")
+set(DEPS_DOWNLOAD_DIR "${DEPS_BUILD_DIR}/downloads" CACHE PATH "Dependencies download directory.")
 
 option(USE_BUNDLED "Build dependencies from source" OFF)
 option(USE_BUNDLED_ZETASQL "Build zetasql from source" ${USE_BUNDLED})
@@ -40,29 +34,29 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif()
 
 if (NOT USE_BUNDLED_ZETASQL)
-  # download pre-compiled zetasql
+  # download pre-compiled zetasql from GitHub Release
   ExternalProject_Add(zetasql
     URL ${ZETASQL_URL}
     PREFIX ${DEPS_BUILD_DIR}
     DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/zetasql"
     DOWNLOAD_NO_EXTRACT True
-    INSTALL_DIR ${DEPS_PREFIX}
+    INSTALL_DIR ${DEPS_INSTALL_DIR}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND "")
   ExternalProject_Get_Property(zetasql DOWNLOADED_FILE)
-  add_custom_target(zetasql_extract ALL tar xzf ${DOWNLOADED_FILE} -C ${DEPS_PREFIX} --strip-components=1
-    COMMENT "Extracting zetasql from ${DOWNLOADED_FILE} into ${DEPS_PREFIX}")
+  add_custom_target(zetasql_extract ALL tar xzf ${DOWNLOADED_FILE} -C ${DEPS_INSTALL_DIR} --strip-components=1
+    COMMENT "Extracting zetasql from ${DOWNLOADED_FILE} into ${DEPS_INSTALL_DIR}")
   add_dependencies(zetasql_extract zetasql)
 else()
   ExternalProject_Add(zetasql
-    GIT_REPOSITORY https://github.com/aceforeverd/zetasql.git
-    GIT_TAG origin/build/add-version-number
+    GIT_REPOSITORY ${ZETASQL_HOME}
+    GIT_TAG origin/feat/hybridse-zetasql
     PREFIX ${DEPS_BUILD_DIR}
-    INSTALL_DIR ${DEPS_PREFIX}
+    INSTALL_DIR ${DEPS_INSTALL_DIR}
     BUILD_IN_SOURCE True
     CONFIGURE_COMMAND ""
     BUILD_COMMAND bash build_zetasql_parser.sh
-    INSTALL_COMMAND bash pack_zetasql.sh ${DEPS_PREFIX}
-    )
+    INSTALL_COMMAND bash pack_zetasql.sh ${DEPS_INSTALL_DIR}
+  )
 endif()
