@@ -448,10 +448,14 @@ TEST_F(APIServerTest, procedure) {
     }
 
     // call procedure, without schema
-    {
+    for (int idx = 0; idx < 2; idx++) {
         brpc::Controller cntl;
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
-        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+        if (idx == 0) {
+            cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+        } else {
+            cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/deployments/" + sp_name;
+        }
         cntl.request_attachment().append(R"({
         "common_cols":["bb", 23, 1590738994000],
         "input": [[123, 5.1, 6.1, "2021-08-01"],[234, 5.2, 6.2, "2021-08-02"]],
