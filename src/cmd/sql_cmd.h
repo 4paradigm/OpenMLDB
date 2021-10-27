@@ -895,12 +895,9 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
                 return base::Status(base::ReturnCode::kError, "table " + kv.first + " index col is not exist");
             }
             column_key.set_index_name("INDEX_" + std::to_string(::baidu::common::timer::now_time() + add_index_num));
-            /*if (!column_key.has_ttl()) {
+            if (!column_key.has_ttl()) {
                 return base::Status(base::ReturnCode::kError, "table " + kv.first + " has not ttl");
-            }*/
-            auto ttl =  column_key.mutable_ttl();
-            ttl->set_abs_ttl(0);
-            ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
+            }
             add_index_num++;
             std::string msg;
             if (!ns->AddIndex(kv.first, column_key, &cols, msg)) {
