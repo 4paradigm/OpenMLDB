@@ -46,7 +46,9 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.window.skew.opt", doc="Enable window skew optimization or not")
   var enableWindowSkewOpt: Boolean = false
 
-  // Window skew optimization
+  @ConfigOption(name="openmldb.window.skew.opt.broadcastJoin", doc="Window skew optimization will cache reused tables")
+  var windowSkewOptBroadcastJoin: Boolean = true
+
   @ConfigOption(name="openmldb.window.skew.expanded.all.opt",
     doc="Enable window skew optimization expanded all data")
   var enableWindowSkewExpandedAllOpt: Boolean = true
