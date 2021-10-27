@@ -23,9 +23,4 @@ HYBRIDSE_ROOT=$(pwd)
 cmake -S "$HYBRIDSE_ROOT/../third-party" -B "$HYBRIDSE_ROOT/.deps"
 cmake --build "$HYBRIDSE_ROOT/.deps"
 
-# install dependencies from hybridsql-asserts
-# TODO: managed all dependencies directly from cmake
-HYBRIDSE_THIRDPARTY="$HYBRIDSE_ROOT/.deps/usr"
-../steps/setup_thirdparty.sh -p "${HYBRIDSE_THIRDPARTY}" -z 0 -f
-
 popd
