@@ -24,7 +24,6 @@ import com._4paradigm.hybridse.node.{ExprListNode, JoinType}
 import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper, PhysicalJoinNode}
 import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkRowUtil, SparkUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.slf4j.LoggerFactory
@@ -158,9 +157,9 @@ object JoinPlan {
         val distinctRdd = joined.repartition(indexCol).rdd.mapPartitions(
           partitionIter => {
             if (isAsc) {
-              SparkRowUtil.getRows(partitionIter, indexColIdx,  timeIdxInJoined, timeColType, true).toIterator
+              SparkRowUtil.getMinOrMaxRows(partitionIter, indexColIdx,  timeIdxInJoined, timeColType, true).toIterator
             } else {
-              SparkRowUtil.getRows(partitionIter, indexColIdx, timeIdxInJoined, timeColType, false).toIterator
+              SparkRowUtil.getMinOrMaxRows(partitionIter, indexColIdx, timeIdxInJoined, timeColType, false).toIterator
             }
           }
         )

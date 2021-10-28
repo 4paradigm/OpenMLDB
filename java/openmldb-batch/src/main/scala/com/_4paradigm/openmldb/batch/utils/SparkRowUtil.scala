@@ -53,7 +53,7 @@ object SparkRowUtil {
   }
 
   // Get max(or min) rows in each partition
-  def getRows(iterator: Iterator[Row], groupByColIndex: Int,
+  def getMinOrMaxRows(iterator: Iterator[Row], groupByColIndex: Int,
               orderByColIndex: Int, orderByColType: DataType, max: Boolean): mutable.ArrayBuffer[Row] = {
     val flagValue = if (max) {
       Long.MinValue
