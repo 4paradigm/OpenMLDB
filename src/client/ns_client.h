@@ -75,6 +75,8 @@ class NsClient : public Client {
                    std::vector<::openmldb::nameserver::TableInfo>& tables,  // NOLINT
                    std::string& msg);                                       // NOLINT
 
+    base::Status ShowDBTable(const std::string& db_name, std::vector<::openmldb::nameserver::TableInfo>* tables);
+
     bool ShowTable(const std::string& name, const std::string& db, bool show_all,
                    std::vector<::openmldb::nameserver::TableInfo>& tables,  // NOLINT
                    std::string& msg);                                       // NOLINT

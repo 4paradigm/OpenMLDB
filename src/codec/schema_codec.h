@@ -207,10 +207,9 @@ class SchemaCodec {
         }
     }
 
-    static openmldb::base::ResultMsg GetCdColumns(
+    static openmldb::base::Status GetCdColumns(
         const Schema& schema, const std::map<std::string, std::string>& cd_columns_map,
         ::google::protobuf::RepeatedPtrField<::openmldb::api::Columns>* cd_columns) {
-        openmldb::base::ResultMsg rm;
         std::map<std::string, ::openmldb::type::DataType> name_type_map;
         for (const auto& col_desc : schema) {
             name_type_map.insert(std::make_pair(col_desc.name(), col_desc.data_type()));
@@ -218,9 +217,7 @@ class SchemaCodec {
         for (const auto& kv : cd_columns_map) {
             auto iter = name_type_map.find(kv.first);
             if (iter == name_type_map.end()) {
-                rm.code = -1;
-                rm.msg = "query failed! col_name " + kv.first + " not exist";
-                return rm;
+                return openmldb::base::Status(-1, "query failed! col_name " + kv.first + " not exist");
             }
             ::openmldb::api::Columns* index = cd_columns->Add();
             index->add_name(kv.first);
@@ -228,9 +225,7 @@ class SchemaCodec {
                 continue;
             }
         }
-        rm.code = 0;
-        rm.msg = "ok";
-        return rm;
+        return openmldb::base::Status();
     }
 
  private:
