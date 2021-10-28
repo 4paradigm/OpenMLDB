@@ -199,7 +199,7 @@ class StandaloneEnv {
     ~StandaloneEnv() = default;
     bool SetUp() {
         srand(time(nullptr));
-        FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
+        FLAGS_db_root_path = "/tmp/mini_cluster" + std::to_string(GenRand());
         if (!StartTablet(&tb_server_)) {
             LOG(WARNING) << "fail to start tablet";
             return false;
