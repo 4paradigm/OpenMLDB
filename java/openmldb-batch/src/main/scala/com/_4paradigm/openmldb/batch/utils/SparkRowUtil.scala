@@ -71,7 +71,7 @@ object SparkRowUtil {
       val row = iterator.next()
       val currentPartitionKey = row.getLong(groupByColIndex)
       // Determine whether it is in the same partition
-      if (lastRowPartitionKey != flagValue && currentPartitionKey != lastRowPartitionKey) {
+      if (currentPartitionKey != lastRowPartitionKey) {
         // Add the max(or min) row
         resultRows += resultRow
         first = true
