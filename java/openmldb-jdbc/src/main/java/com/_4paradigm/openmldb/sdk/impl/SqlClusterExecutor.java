@@ -116,7 +116,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     @Override
     public java.sql.ResultSet executeSQL(String db, String sql) {
         Status status = new Status();
-        ResultSet rs = sqlRouter.ExecuteSQL(db, sql, status);
+        ResultSet rs = sqlRouter.ExecuteSQL(db, sql, status, option.getPerformanceSensitive());
         if (status.getCode() != 0) {
             logger.error("executeSQL fail: {}", status.getMsg());
         }
@@ -197,7 +197,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     @Override
     public Schema getInputSchema(String dbName, String sql) throws SQLException {
         Status status = new Status();
-        ExplainInfo explain = sqlRouter.Explain(dbName, sql, status);
+        ExplainInfo explain = sqlRouter.Explain(dbName, sql, status, option.getPerformanceSensitive());
         if (status.getCode() != 0 || explain == null) {
             String msg = status.getMsg();
             status.delete();
