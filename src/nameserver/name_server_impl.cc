@@ -9928,7 +9928,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const api::Creat
                 sp_table_map[sp_name].push_back(std::make_pair(depend_table.db_name(), depend_table.table_name()));
                 table_sp_map[depend_table.table_name()].push_back(std::make_pair(sp_db_name, sp_name));
             }
-            db_sp_info_map_[db_name][sp_name] = sp_info;
+            db_sp_info_map_[sp_db_name][sp_name] = sp_info;
         }
         NotifyTableChanged();
         PDLOG(INFO, "create db store procedure success! db_name [%s] sp_name [%s] sql [%s]", sp_db_name.c_str(),
