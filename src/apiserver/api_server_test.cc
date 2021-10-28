@@ -536,7 +536,7 @@ TEST_F(APIServerTest, no_common) {
     {
         brpc::Controller cntl;
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
-        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/deployments/" + sp_name;
         cntl.request_attachment().append(R"({
         "input": [["bb", 23, 123, 5.1, 6.1, 1590738994000, "2021-08-01"],
                   ["bb", 23, 234, 5.2, 6.2, 1590738994000, "2021-08-02"]],

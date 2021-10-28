@@ -1398,20 +1398,28 @@ void ClusterSQLClient() {
     Shell();
 }
 
-void StandAloneSQLClient() {
+bool InitSDK() {
     // connect to nameserver
     if (FLAGS_host.empty() || FLAGS_port == 0) {
         std::cout << "host or port is missing" << std::endl;
+        return false;
     }
     cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "Fail to connect to db" << std::endl;
-        return;
+        return false;
     }
     sr = new ::openmldb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
         std::cout << "Fail to connect to db" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+void StandAloneSQLClient() {
+    if (!InitSDK()) {
         return;
     }
     Shell();
