@@ -265,7 +265,7 @@ class FilterGenerator : public PredicateFun {
     std::shared_ptr<DataHandler> Filter(
         std::shared_ptr<PartitionHandler> table, const Row& parameter);
     bool operator()(const Row& row, const Row& parameter) const override {
-        if (!Valid()) {
+        if (!condition_gen_.Valid()) {
             return true;
         }
         return condition_gen_.Gen(row, parameter);
