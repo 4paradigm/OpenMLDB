@@ -435,6 +435,14 @@ TEST_F(EngineCompileTest, EngineGetDependentTableTest) {
             ASSERT_EQ(tables.size(), pair.second.size());
         }
     }
+    // GetDependentTables fail
+    {
+        base::Status get_status;
+        EngineOptions options;
+        Engine engine(std::shared_ptr<Catalog>(), options);
+        std::string sqlstr = "SELECT * from t1;";
+        ASSERT_FALSE(engine.GetDependentTables(sqlstr, "simple_db", kBatchMode, nullptr, get_status));
+    }
 }
 
 TEST_F(EngineCompileTest, RouterTest) {
