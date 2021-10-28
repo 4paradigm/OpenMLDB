@@ -10015,14 +10015,16 @@ void NameServerImpl::DropProcedure(RpcController* controller, const api::DropPro
         }
     }
     DropProcedureOnTablet(db_name, sp_name);
-    std::string sp_data_path = zk_path_.db_sp_data_path_ + "/" + db_name + "." + sp_name;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (!zk_client_->DeleteNode(sp_data_path)) {
-            PDLOG(WARNING, "delete storage procedure zk node[%s] failed!", sp_data_path.c_str());
-            response->set_code(::openmldb::base::ReturnCode::kDelZkFailed);
-            response->set_msg("delete storage procedure zk node failed");
-            return;
+        if (IsClusterMode()) {
+            std::string sp_data_path = zk_path_.db_sp_data_path_ + "/" + db_name + "." + sp_name;
+            if (!zk_client_->DeleteNode(sp_data_path)) {
+                PDLOG(WARNING, "delete storage procedure zk node[%s] failed!", sp_data_path.c_str());
+                response->set_code(::openmldb::base::ReturnCode::kDelZkFailed);
+                response->set_msg("delete storage procedure zk node failed");
+                return;
+            }
         }
         auto& sp_table_map = db_sp_table_map_[db_name];
         auto& table_vec = sp_table_map[sp_name];

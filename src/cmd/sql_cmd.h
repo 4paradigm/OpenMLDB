@@ -849,6 +849,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
         table_map.emplace(table.name(), table);
     }
     auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
+    std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
     for (auto& kv : index_map) {
         auto it = table_map.find(kv.first);
         if (it == table_map.end()) {
@@ -862,7 +863,9 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             }
             index_cols_set.emplace_back(std::move(col_set));
         }
+        int cur_index_num = it->second.column_key_size();
         int add_index_num = 0;
+        std::vector<::openmldb::common::ColumnKey> new_indexs;
         for (auto& column_key : kv.second) {
             int same_cnt = 0;
             for (const auto& col_set : index_cols_set) {
@@ -894,7 +897,8 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             if (cols.empty()) {
                 return base::Status(base::ReturnCode::kError, "table " + kv.first + " index col is not exist");
             }
-            column_key.set_index_name("INDEX_" + std::to_string(::baidu::common::timer::now_time() + add_index_num));
+            column_key.set_index_name("INDEX_" + std::to_string(cur_index_num + add_index_num) + "_" +
+                    std::to_string(::baidu::common::timer::now_time()));
             if (!column_key.has_ttl()) {
                 return base::Status(base::ReturnCode::kError, "table " + kv.first + " has not ttl");
             }
@@ -903,9 +907,11 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             if (!ns->AddIndex(kv.first, column_key, &cols, msg)) {
                 return base::Status(base::ReturnCode::kError, "table " + kv.first + " add index failed");
             }
+            new_indexs.push_back(column_key);
         }
+        new_index_map.emplace(kv.first, std::move(new_indexs));
     }
-    for (auto& kv : index_map) {
+    for (auto& kv : new_index_map) {
         auto it = table_map.find(kv.first);
         if (it == table_map.end()) {
             continue;
@@ -1243,6 +1249,8 @@ void HandleSQL(const std::string &sql) {
             auto status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
             if (!status.OK()) {
                 std::cout << status.msg << std::endl;
+            } else {
+                std::cout << "SUCCEED: deploy successfully" << std::endl;
             }
             return;
         }
