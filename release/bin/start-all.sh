@@ -16,7 +16,7 @@
 # limitations under the License.
 
 set -e
-export COMPONENTS="tablet nameserver"
+export COMPONENTS="tablet nameserver apiserver"
 BASEDIR="$(dirname "$( cd "$( dirname "$0"  )" && pwd )")"
 OS="$(uname -a | awk '{print $1}' | tr '[:upper:]' '[:lower:]')"
 cd "$BASEDIR"
