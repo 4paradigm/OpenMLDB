@@ -36,81 +36,65 @@ object SparkRowUtil {
     }
   }
 
-  def maxRows(iterator: Iterator[Row], groupByColIndex: Int, orderByColIndex: Int, orderByColType: DataType)
-  : mutable.ArrayBuffer[Row] = {
-    val resultRows = new mutable.ArrayBuffer[Row]()
-    var lastRowPartitionKey: Long = Long.MinValue
+  def compareValue(x: Long, y: Long, max: Boolean): Boolean = {
+    if (max) {
+      if (x > y) {
+        true
+      } else {
+        false
+      }
+    } else {
+      if (x < y) {
+        true
+      } else {
+        false
+      }
+    }
+  }
 
-    var maxValue: Long = Long.MinValue
-    var maxRow: Row = null
+  // Get max(or min) rows in each partition
+  def getRows(iterator: Iterator[Row], groupByColIndex: Int,
+              orderByColIndex: Int, orderByColType: DataType, max: Boolean): mutable.ArrayBuffer[Row] = {
+    val flagValue = if (max) {
+      Long.MinValue
+    } else {
+      Long.MaxValue
+    }
+    val resultRows = new mutable.ArrayBuffer[Row]()
+    var lastRowPartitionKey: Long = flagValue
+
+    var temValue: Long = flagValue
+    var resultRow: Row = null
     var first = true
 
     while (iterator.hasNext) {
       val row = iterator.next()
       val currentPartitionKey = row.getLong(groupByColIndex)
       // Determine whether it is in the same partition
-      if (lastRowPartitionKey != Long.MinValue && currentPartitionKey != lastRowPartitionKey) {
-        // Add the row
-        resultRows += maxRow
+      if (lastRowPartitionKey != flagValue && currentPartitionKey != lastRowPartitionKey) {
+        // Add the max(or min) row
+        resultRows += resultRow
         first = true
       }
       val value = if (row.isNullAt(orderByColIndex)) {
-        Long.MinValue
+        flagValue
       } else {
         SparkRowUtil.getLongFromIndex(orderByColIndex, orderByColType, row)
       }
-      if (first || value > maxValue) {
-        maxRow = row
-        maxValue = value
+      if (first || compareValue(value, temValue, max)) {
+        resultRow = row
+        temValue = value
         first = false
       }
       lastRowPartitionKey = currentPartitionKey
     }
 
     // Add the row in last partition
-    if (maxRow != null) {
-      resultRows += maxRow
+    if (resultRow != null) {
+      resultRows += resultRow
     }
 
     resultRows
   }
 
-  def minRows(iterator: Iterator[Row], groupByColIndex: Int, orderByColIndex: Int, orderByColType: DataType)
-  : mutable.ArrayBuffer[Row] = {
-    val resultRows = new mutable.ArrayBuffer[Row]()
-    var lastRowPartitionKey: Long = Long.MaxValue
-
-    var minValue: Long = Long.MaxValue
-    var minRow: Row = null
-    var first = true
-
-    while (iterator.hasNext) {
-      val row = iterator.next()
-      val currentPartitionKey = row.getLong(groupByColIndex)
-      // Determine whether it is in the same partition
-      if (lastRowPartitionKey != Long.MaxValue && currentPartitionKey != lastRowPartitionKey) {
-        // Add the row
-        resultRows += minRow
-        first = true
-      }
-      val value = if (row.isNullAt(orderByColIndex)) {
-        Long.MaxValue
-      } else {
-        SparkRowUtil.getLongFromIndex(orderByColIndex, orderByColType, row)
-      }
-      if (first || value < minValue) {
-        minRow = row
-        minValue = value
-        first = false
-      }
-      lastRowPartitionKey = currentPartitionKey
-    }
-
-    // Add the row in last partition
-    if (minRow != null) {
-      resultRows += minRow
-    }
-
-    resultRows
-  }
 }

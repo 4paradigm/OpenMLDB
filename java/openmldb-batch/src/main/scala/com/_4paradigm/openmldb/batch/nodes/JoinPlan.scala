@@ -158,9 +158,9 @@ object JoinPlan {
         val distinctRdd = joined.repartition(indexCol).rdd.mapPartitions(
           partitionIter => {
             if (isAsc) {
-              SparkRowUtil.maxRows(partitionIter, indexColIdx,  timeIdxInJoined, timeColType).toIterator
+              SparkRowUtil.getRows(partitionIter, indexColIdx,  timeIdxInJoined, timeColType, true).toIterator
             } else {
-              SparkRowUtil.minRows(partitionIter, indexColIdx, timeIdxInJoined, timeColType).toIterator
+              SparkRowUtil.getRows(partitionIter, indexColIdx, timeIdxInJoined, timeColType, false).toIterator
             }
           }
         )
