@@ -28,9 +28,9 @@
 #include "base/glog_wapper.h"
 #include "base/status.h"
 #include "base/strings.h"
-#include "gflags/gflags.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
+#include "gflags/gflags.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -66,7 +66,7 @@ using ::openmldb::base::ReturnCode;
 namespace openmldb {
 namespace nameserver {
 
-const std::string OFFLINE_LEADER_ENDPOINT =  "OFFLINE_LEADER_ENDPOINT"; // NOLINT
+const std::string OFFLINE_LEADER_ENDPOINT = "OFFLINE_LEADER_ENDPOINT";  // NOLINT
 constexpr uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
 void NameServerImpl::CheckSyncExistTable(const std::string& alias,
@@ -3687,15 +3687,14 @@ bool NameServerImpl::SetTableInfo(std::shared_ptr<::openmldb::nameserver::TableI
     std::string table_value;
     table_info->SerializeToString(&table_value);
     if (!table_info->db().empty()) {
-        if (!zk_client_->CreateNode(zk_path_.db_table_data_path_ + "/" +
-                    std::to_string(table_info->tid()), table_value)) {
+        if (!zk_client_->CreateNode(zk_path_.db_table_data_path_ + "/" + std::to_string(table_info->tid()),
+                                    table_value)) {
             PDLOG(WARNING, "create db table node[%s/%u] failed! value[%s] value_size[%u]",
                   zk_path_.db_table_data_path_.c_str(), table_info->tid(), table_value.c_str(), table_value.length());
             return false;
         }
         PDLOG(INFO, "create db table node[%s/%u] success! value[%s] value_size[%u]",
-                zk_path_.db_table_data_path_.c_str(),
-                table_info->tid(), table_value.c_str(), table_value.length());
+              zk_path_.db_table_data_path_.c_str(), table_info->tid(), table_value.c_str(), table_value.length());
         {
             std::lock_guard<std::mutex> lock(mu_);
             db_table_info_[table_info->db()].insert(std::make_pair(table_info->name(), table_info));
@@ -3704,8 +3703,8 @@ bool NameServerImpl::SetTableInfo(std::shared_ptr<::openmldb::nameserver::TableI
     } else {
         if (!zk_client_->CreateNode(zk_path_.table_data_path_ + "/" + table_info->name(), table_value)) {
             PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]",
-                    zk_path_.table_data_path_.c_str(),
-                    table_info->name().c_str(), table_value.c_str(), table_value.length());
+                  zk_path_.table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(),
+                  table_value.length());
             return false;
         }
         PDLOG(INFO, "create table node[%s/%s] success! value[%s] value_size[%u]", zk_path_.table_data_path_.c_str(),
@@ -3906,14 +3905,14 @@ bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
         }
         PDLOG(INFO, "create table node[%s/%s] success!", zk_path_.table_data_path_.c_str(), table_info->name().c_str());
     } else {
-        if (!zk_client_->CreateNode(zk_path_.db_table_data_path_ + "/" +
-                    std::to_string(table_info->tid()), table_value)) {
-            PDLOG(WARNING, "create object db table node[%s/%s] failed!",
-                    zk_path_.db_table_data_path_.c_str(), table_info->name().c_str());
+        if (!zk_client_->CreateNode(zk_path_.db_table_data_path_ + "/" + std::to_string(table_info->tid()),
+                                    table_value)) {
+            PDLOG(WARNING, "create object db table node[%s/%s] failed!", zk_path_.db_table_data_path_.c_str(),
+                  table_info->name().c_str());
             return false;
         }
-        PDLOG(INFO, "create db table node[%s/%s] success!",
-                zk_path_.db_table_data_path_.c_str(), table_info->name().c_str());
+        PDLOG(INFO, "create db table node[%s/%s] success!", zk_path_.db_table_data_path_.c_str(),
+              table_info->name().c_str());
     }
     return true;
 }
@@ -3958,9 +3957,8 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
             if (SetTableInfo(table_info)) {
                 if (task_ptr) {
                     task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
-                    PDLOG(INFO,
-                          "set task type success, op_id [%lu] task_tpye [%s] task_status [%s]",
-                          task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
+                    PDLOG(INFO, "set task type success, op_id [%lu] task_tpye [%s] task_status [%s]", task_ptr->op_id(),
+                          ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                           ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
                 }
             } else {
@@ -9578,7 +9576,7 @@ void NameServerImpl::ShowDatabase(RpcController* controller, const GeneralReques
     }
     {
         std::lock_guard<std::mutex> lock(mu_);
-        for (auto db : databases_) {
+        for (const auto& db : databases_) {
             response->add_db(db);
         }
     }
@@ -9871,7 +9869,7 @@ bool NameServerImpl::RegisterName() {
     return true;
 }
 
-void NameServerImpl::CreateProcedure(RpcController* controller, const CreateProcedureRequest* request,
+void NameServerImpl::CreateProcedure(RpcController* controller, const api::CreateProcedureRequest* request,
                                      GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
@@ -9880,8 +9878,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const CreateProc
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::shared_ptr<::openmldb::nameserver::ProcedureInfo> sp_info =
-        std::make_shared<::openmldb::nameserver::ProcedureInfo>();
+    auto sp_info = std::make_shared<api::ProcedureInfo>();
     sp_info->CopyFrom(request->sp_info());
     const std::string& sp_db_name = sp_info->db_name();
     const std::string& sp_name = sp_info->sp_name();
@@ -9931,6 +9928,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const CreateProc
                 sp_table_map[sp_name].push_back(std::make_pair(depend_table.db_name(), depend_table.table_name()));
                 table_sp_map[depend_table.table_name()].push_back(std::make_pair(sp_db_name, sp_name));
             }
+            db_sp_info_map_[db_name][sp_name] = sp_info;
         }
         NotifyTableChanged();
         PDLOG(INFO, "create db store procedure success! db_name [%s] sp_name [%s] sql [%s]", sp_db_name.c_str(),
@@ -10001,7 +9999,7 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
     }
 }
 
-void NameServerImpl::DropProcedure(RpcController* controller, const DropProcedureRequest* request,
+void NameServerImpl::DropProcedure(RpcController* controller, const api::DropProcedureRequest* request,
                                    GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
@@ -10054,6 +10052,11 @@ void NameServerImpl::DropProcedure(RpcController* controller, const DropProcedur
             }
         }
         sp_table_map.erase(sp_name);
+        // if db's map is empty, delete the db
+        db_sp_info_map_[db_name].erase(sp_name);
+        if (db_sp_info_map_[db_name].empty()) {
+            db_sp_info_map_.erase(db_name);
+        }
         NotifyTableChanged();
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -10063,6 +10066,9 @@ void NameServerImpl::DropProcedure(RpcController* controller, const DropProcedur
 bool NameServerImpl::RecoverProcedureInfo() {
     db_table_sp_map_.clear();
     db_sp_table_map_.clear();
+    // TODO(hw): db_sp_info_map_ can't recover now
+    db_sp_info_map_.clear();
+
     std::vector<std::string> db_sp_vec;
     if (!zk_client_->GetChildren(zk_path_.db_sp_data_path_, db_sp_vec)) {
         if (zk_client_->IsExistNode(zk_path_.db_sp_data_path_) != 0) {
@@ -10084,8 +10090,7 @@ bool NameServerImpl::RecoverProcedureInfo() {
         std::string uncompressed;
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
 
-        std::shared_ptr<::openmldb::nameserver::ProcedureInfo> sp_info =
-            std::make_shared<::openmldb::nameserver::ProcedureInfo>();
+        auto sp_info = std::make_shared<api::ProcedureInfo>();
         if (!sp_info->ParseFromString(uncompressed)) {
             LOG(WARNING) << "parse store procedure info failed! sp node: " << sp_node;
             continue;
@@ -10130,8 +10135,73 @@ bool NameServerImpl::AllocateTableId(uint32_t* id) {
     return true;
 }
 
-uint64_t NameServerImpl::GetTerm() const {
-    return term_;
+uint64_t NameServerImpl::GetTerm() const { return term_; }
+
+void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowProcedureRequest* request,
+                                   api::ShowProcedureResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    response->set_code(base::ReturnCode::kOk);
+    response->set_msg("ok");
+
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    // empty(unset or set empty string) means 'show all'
+    auto& db_name = request->db_name();
+    auto& sp_name = request->sp_name();
+
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        // show all
+        if (db_name.empty()) {
+            for (auto& db : db_sp_info_map_) {
+                auto& db_nm = db.first;
+                for (auto& sp : db.second) {
+                    auto& sp_nm = sp.first;
+                    auto& info = sp.second;
+                    DCHECK_EQ(db_nm, info->db_name());
+                    DCHECK_EQ(sp_nm, info->sp_name());
+                    auto add = response->add_sp_info();
+                    add->CopyFrom(*info);
+                }
+            }
+            return;
+        }
+        // only find one db
+        if (db_sp_info_map_.find(db_name) == db_sp_info_map_.end()) {
+            response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
+            response->set_msg("database not found");
+            PDLOG(WARNING, "database[%s] not found", db_name);
+            return;
+        }
+        auto& sp_map = db_sp_info_map_[db_name];
+        // db_sp_info_map_ won't have empty map of one db
+        DCHECK(!sp_map.empty()) << "db " << db_name << " 's sp map is empty";
+        // if no sp name, show all sp in this db
+        if (sp_name.empty()) {
+            for (auto& sp : sp_map) {
+                auto& sp_nm = sp.first;
+                auto& info = sp.second;
+                DCHECK_EQ(db_name, info->db_name());
+                DCHECK_EQ(sp_nm, info->sp_name());
+                auto add = response->add_sp_info();
+                add->CopyFrom(*info);
+            }
+            return;
+        }
+        if (sp_map.find(sp_name) == sp_map.end()) {
+            response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
+            response->set_msg("sp not found");
+            PDLOG(WARNING, "db %s sp[%s] not found", db_name, sp_name);
+            return;
+        }
+        // only return the specified one
+        auto add = response->add_sp_info();
+        add->CopyFrom(*sp_map[sp_name]);
+    }
 }
 
 }  // namespace nameserver

@@ -35,6 +35,7 @@ struct ResultMsg {
 };
 
 enum ReturnCode {
+    // TODO(zekai): Add some notes, it is hard to use these error codes
     kOk = 0,
     kTableIsNotExist = 100,
     kTableAlreadyExists = 101,
@@ -166,6 +167,9 @@ enum ReturnCode {
     kDatabaseAlreadyExists = 801,
     kDatabaseNotFound = 802,
     kDatabaseNotEmpty = 803,
+
+    // sql_cmd
+    kSQLCmdRunError = 901,
 
     kSQLCompileError = 1000,
     kSQLRunError = 1001

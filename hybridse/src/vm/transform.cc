@@ -1533,7 +1533,7 @@ Status BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan) {
     ::hybridse::codegen::FnIRBuilder builder(module_);
     ::llvm::Function* fn = nullptr;
     Status status;
-    bool ok = builder.Build(fn_plan->fn_def_, &fn, status);
+    builder.Build(fn_plan->fn_def_, &fn, status);
     CHECK_STATUS(status)
 
     type::Type column_type;

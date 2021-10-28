@@ -27,30 +27,38 @@
 
 namespace hybridse {
 namespace codec {
+
 static const uint32_t SEED = 0xe17a1465;
+
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
     explicit StringRef(const char* str)
         : size_(nullptr == str ? 0 : strlen(str)), data_(str) {}
+    explicit StringRef(uint32_t size, const char* data) : size_(size), data_(data) {}
+
     explicit StringRef(const std::string& str)
         : size_(str.size()), data_(str.data()) {}
-    StringRef(uint32_t size, const char* data) : size_(size), data_(data) {}
+
     ~StringRef() {}
+
     const inline bool IsNull() const { return nullptr == data_; }
     const std::string ToString() const {
         return size_ == 0 ? "" : std::string(data_, size_);
     }
+
     static int compare(const StringRef& a, const StringRef& b) {
         const size_t min_len = (a.size_ < b.size_) ? a.size_ : b.size_;
         int r = memcmp(a.data_, b.data_, min_len);
         if (r == 0) {
-            if (a.size_ < b.size_)
+            if (a.size_ < b.size_) {
                 r = -1;
-            else if (a.size_ > b.size_)
+            } else if (a.size_ > b.size_) {
                 r = +1;
+            }
         }
         return r;
     }
+
     uint32_t size_;
     const char* data_;
 };

@@ -18,8 +18,8 @@ if(TESTING_ENABLE)
 
     set(HYBRIDSE_CASE_LIBS base_test hybridse_core hybridse_flags yaml-cpp)
 
-    add_executable(cluster_sdk_test cluster_sdk_test.cc)
-    target_link_libraries(cluster_sdk_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)
+    add_executable(db_sdk_test db_sdk_test.cc)
+    target_link_libraries(db_sdk_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)
 
     add_executable(sql_router_test sql_router_test.cc)
     target_link_libraries(sql_router_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)

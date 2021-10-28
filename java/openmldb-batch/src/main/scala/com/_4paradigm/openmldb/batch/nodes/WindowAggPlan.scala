@@ -171,10 +171,6 @@ object WindowAggPlan {
       }
       logger.info("Generate distribution dataframe")
 
-      if (ctx.getConf.windowSkewOptCache) {
-        distributionDf.cache()
-      }
-
       distributionDf
     } else {
       // Use skew config
@@ -196,9 +192,14 @@ object WindowAggPlan {
       -1
     }
 
+    if (ctx.getConf.windowSkewOptCache) {
+      distributionDf.cache()
+    }
+
     // 2. Add "part" column and "expand" column by joining the distribution table
     val addColumnsDf = SkewDataFrameUtils.genAddColumnsDf(inputDf, distributionDf, quantile.intValue(),
-      repartitionColIndexes, orderByColIndex, partitionKeyColName, partIdColName, expandedRowColName)
+      repartitionColIndexes, orderByColIndex, partitionKeyColName, partIdColName, expandedRowColName,
+      ctx.getConf.windowSkewOptBroadcastJoin)
     logger.info("Generate percentile_tag dataframe")
 
     if (ctx.getConf.windowSkewOptCache) {

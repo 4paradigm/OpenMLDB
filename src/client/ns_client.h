@@ -48,7 +48,7 @@ struct TabletInfo {
 class NsClient : public Client {
  public:
     explicit NsClient(const std::string& endpoint, const std::string& real_endpoint);
-    ~NsClient() = default;
+    ~NsClient() override = default;
 
     int Init() override;
 
@@ -219,6 +219,9 @@ class NsClient : public Client {
                        std::string& msg);  // NOLINT
 
     bool CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_info, uint64_t request_timeout, std::string* msg);
+
+    bool ShowProcedure(const std::string& db_name, const std::string& sp_name, std::vector<api::ProcedureInfo>* infos,
+                       std::string* msg);
 
  private:
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> client_;
