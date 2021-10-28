@@ -786,6 +786,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status, false)) {
         return base::Status(base::ReturnCode::kError, sql_status.msg);
     }
+    // pack ProcedureInfo
     ::openmldb::api::ProcedureInfo sp_info;
     sp_info.set_db_name(db);
     sp_info.set_sp_name(deploy_node->Name());
@@ -827,9 +828,12 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     str_stream << ") BEGIN " << select_sql << " END;";
 
     sp_info.set_sql(str_stream.str());
+    sp_info.set_type(::openmldb::type::ProcedureType::kReqDeployment);
 
+    // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = cs->GetNsClient();
+    // TODO(denglong): support muti db
     auto ret = ns->ShowDBTable(db, &tables);
     if (!ret.OK()) {
         return base::Status(base::ReturnCode::kError, "get table failed " + ret.msg );
@@ -845,11 +849,17 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>> table_schema_map;
     std::map<std::string, ::openmldb::nameserver::TableInfo> table_map;
     for (const auto& table : tables) {
-        table_schema_map.emplace(table.name(), table.column_desc());
-        table_map.emplace(table.name(), table);
+        for (const auto& pair : table_pair) {
+            if (table.name() == pair.second) {
+                table_schema_map.emplace(table.name(), table.column_desc());
+                table_map.emplace(table.name(), table);
+                break;
+            }
+        }
     }
     auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
+    // add index
     for (auto& kv : index_map) {
         auto it = table_map.find(kv.first);
         if (it == table_map.end()) {
@@ -911,6 +921,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
         }
         new_index_map.emplace(kv.first, std::move(new_indexs));
     }
+    // load new index data to table
     for (auto& kv : new_index_map) {
         auto it = table_map.find(kv.first);
         if (it == table_map.end()) {
@@ -922,7 +933,6 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             return base::Status(base::ReturnCode::kError, "table " + kv.first + " load data failed");
         }
     }
-    sp_info.set_type(::openmldb::type::ProcedureType::kReqDeployment);
     std::string msg;
     if (!ns->CreateProcedure(sp_info, FLAGS_request_timeout_ms, &msg)) {
         return base::Status(base::ReturnCode::kError, msg);

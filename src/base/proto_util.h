@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
-
+#ifndef SRC_BASE_PROTO_UTIL_H_
+#define SRC_BASE_PROTO_UTIL_H_
 #include <string>
 
 #include "base/status.h"
@@ -57,3 +57,4 @@ void SetResponseOK(Response* response) {
 
 }  // namespace base
 }  // namespace openmldb
+#endif  // SRC_BASE_PROTO_UTIL_H_
