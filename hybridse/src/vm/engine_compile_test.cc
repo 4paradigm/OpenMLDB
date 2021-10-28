@@ -355,19 +355,21 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
 TEST_F(EngineCompileTest, EngineGetDependentTableTest) {
     {
         std::vector<std::pair<std::string, std::set<std::pair<std::string, std::string>>>> pairs;
-        pairs.push_back(std::make_pair("SELECT col1, col2 from t1;",
-                                       std::set<std::pair<std::string, std::string>>({std::make_pair("simple_db", "t1")})));
-        pairs.push_back(std::make_pair(
-            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
-            "last join t2 "
-            "order by t2.col5 on t1.col1 = t2.col2;",
-            std::set<std::pair<std::string, std::string>>({std::make_pair("simple_db", "t1"), std::make_pair("simple_db", "t2")})));
+        pairs.push_back(std::make_pair("SELECT col1, col2 from t1;", std::set<std::pair<std::string, std::string>>(
+                                                                         {std::make_pair("simple_db", "t1")})));
+        pairs.push_back(
+            std::make_pair("SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
+                           "last join t2 "
+                           "order by t2.col5 on t1.col1 = t2.col2;",
+                           std::set<std::pair<std::string, std::string>>(
+                               {std::make_pair("simple_db", "t1"), std::make_pair("simple_db", "t2")})));
 
-        pairs.push_back(std::make_pair(
-            "SELECT t1.COL1, t1.COL2, db2.t2.COL1, db2.t2.COL2 FROM t1 "
-            "last join db2.t2 "
-            "order by db2.t2.col5 on t1.col1 = db2.t2.col2;",
-            std::set<std::pair<std::string, std::string>>({std::make_pair("simple_db", "t1"), std::make_pair("db2", "t2")})));
+        pairs.push_back(
+            std::make_pair("SELECT t1.COL1, t1.COL2, db2.t2.COL1, db2.t2.COL2 FROM t1 "
+                           "last join db2.t2 "
+                           "order by db2.t2.col5 on t1.col1 = db2.t2.col2;",
+                           std::set<std::pair<std::string, std::string>>(
+                               {std::make_pair("simple_db", "t1"), std::make_pair("db2", "t2")})));
 
         pairs.push_back(std::make_pair(
             "SELECT db1.t1.COL1, db1.t1.COL2, db2.t2.COL1, db2.t2.COL2 FROM db1.t1 "
@@ -375,24 +377,26 @@ TEST_F(EngineCompileTest, EngineGetDependentTableTest) {
             "order by db2.t2.col5 on db1.t1.col1 = db2.t2.col2;",
             std::set<std::pair<std::string, std::string>>({std::make_pair("db1", "t1"), std::make_pair("db2", "t2")})));
 
-        pairs.push_back(std::make_pair(
-            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
-            "last join t2 "
-            "order by t2.col5 on t1.col1 = t2.col2;",
-            std::set<std::pair<std::string, std::string>>({std::make_pair("simple_db", "t1"), std::make_pair("simple_db", "t2")})));
-        pairs.push_back(std::make_pair(
-            "SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5,\n"
-            "      test_sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER "
-            "w1 as w1_col3_sum,\n"
-            "      sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER "
-            "w1 as w1_t2_col2_sum,\n"
-            "      sum(t1.col5) OVER w1 as w1_col5_sum,\n"
-            "      str1 as t2_str1 FROM t1\n"
-            "      last join t2 order by t2.col5 on t1.col1=t2.col1 and "
-            "t1.col5 = t2.col5\n"
-            "      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 "
-            "ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
-            std::set<std::pair<std::string, std::string>>({std::make_pair("simple_db", "t1"), std::make_pair("simple_db", "t2")})));
+        pairs.push_back(
+            std::make_pair("SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
+                           "last join t2 "
+                           "order by t2.col5 on t1.col1 = t2.col2;",
+                           std::set<std::pair<std::string, std::string>>(
+                               {std::make_pair("simple_db", "t1"), std::make_pair("simple_db", "t2")})));
+        pairs.push_back(
+            std::make_pair("SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5,\n"
+                           "      test_sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER "
+                           "w1 as w1_col3_sum,\n"
+                           "      sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER "
+                           "w1 as w1_t2_col2_sum,\n"
+                           "      sum(t1.col5) OVER w1 as w1_col5_sum,\n"
+                           "      str1 as t2_str1 FROM t1\n"
+                           "      last join t2 order by t2.col5 on t1.col1=t2.col1 and "
+                           "t1.col5 = t2.col5\n"
+                           "      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 "
+                           "ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
+                           std::set<std::pair<std::string, std::string>>(
+                               {std::make_pair("simple_db", "t1"), std::make_pair("simple_db", "t2")})));
 
         for (auto pair : pairs) {
             base::Status get_status;
@@ -411,7 +415,6 @@ TEST_F(EngineCompileTest, EngineGetDependentTableTest) {
                 ASSERT_EQ(iter->second, iter2->second);
             }
         }
-
     }
 
     // const select

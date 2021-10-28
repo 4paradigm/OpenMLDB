@@ -672,7 +672,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureIn
     ar.Member("dbs");
     auto dbs = sp_info->GetDbs();
     ar.StartArray();
-    for (auto& db: dbs) {
+    for (auto& db : dbs) {
         ar& db;
     }
     ar.EndArray();

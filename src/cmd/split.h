@@ -21,6 +21,9 @@
 #ifndef SRC_CMD_SPLIT_H_
 #define SRC_CMD_SPLIT_H_
 
+#include <string>
+#include <vector>
+
 #include "absl/strings/ascii.h"
 
 namespace openmldb::cmd {
