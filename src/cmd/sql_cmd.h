@@ -1037,7 +1037,7 @@ void HandleSQL(const std::string &sql) {
             std::string mu_script = sql;
             mu_script.replace(0u, 7u, empty);
             ::hybridse::sdk::Status status;
-            auto info = sr->Explain(db, mu_script, &status);
+            auto info = sr->Explain(db, mu_script, &status, performance_sensitive);
             if (!info) {
                 std::cout << "ERROR: Fail to get explain info" << std::endl;
                 return;
@@ -1109,7 +1109,7 @@ void HandleSQL(const std::string &sql) {
                 return;
             }
             ::hybridse::sdk::Status hybridse_sdk_status;
-            auto rs = sr->ExecuteSQL(db, query_sql, &hybridse_sdk_status);
+            auto rs = sr->ExecuteSQL(db, query_sql, &hybridse_sdk_status, performance_sensitive);
             if (!rs) {
                 std::cout << "ERROR: Fail to execute query" << std::endl;
             } else {

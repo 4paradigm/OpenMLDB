@@ -125,7 +125,7 @@ class SQLClusterRouter : public SQLRouter {
 
     std::shared_ptr<TableReader> GetTableReader();
     std::shared_ptr<ExplainInfo> Explain(const std::string& db, const std::string& sql,
-                                         ::hybridse::sdk::Status* status) override;
+                                         ::hybridse::sdk::Status* status, bool performance_sensitive = true) override;
 
     std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db, const std::string& sql,
                                                  ::hybridse::sdk::Status* status) override;
