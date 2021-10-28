@@ -57,7 +57,7 @@ void SqlCompiler::KeepIR(SqlContext& ctx, llvm::Module* m) {
     llvm::raw_string_ostream ss(ctx.ir);
     ss << *m;
     ss.flush();
-    LOG(INFO) << "keep ir length: " << ctx.ir.size();
+    DLOG(INFO) << "keep ir length: " << ctx.ir.size();
 }
 
 bool SqlCompiler::Compile(SqlContext& ctx, Status& status) {  // NOLINT

@@ -84,7 +84,8 @@ class SQLRouter {
     virtual std::shared_ptr<openmldb::sdk::TableReader> GetTableReader() = 0;
 
     virtual std::shared_ptr<ExplainInfo> Explain(const std::string& db, const std::string& sql,
-                                                 ::hybridse::sdk::Status* status) = 0;
+                                                 ::hybridse::sdk::Status* status,
+                                                 bool performance_sensitive = true) = 0;
 
     virtual std::shared_ptr<openmldb::sdk::SQLRequestRow> GetRequestRow(const std::string& db, const std::string& sql,
                                                                         hybridse::sdk::Status* status) = 0;

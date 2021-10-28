@@ -23,7 +23,6 @@
 
 #include <string>
 #include <vector>
-
 #include "absl/strings/ascii.h"
 
 namespace openmldb::cmd {
