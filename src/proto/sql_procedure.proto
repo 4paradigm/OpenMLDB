@@ -32,9 +32,8 @@ message ProcedureInfo {
     repeated openmldb.common.ColumnDesc output_schema = 5;
     optional string main_table = 6;
     optional string main_db = 7;
-    repeated string tables = 8; // dependent tables
-    repeated string dbs = 9; // dependent dbs
-    optional openmldb.type.ProcedureType type = 10 [default = kReqProcedure];
+    repeated openmldb.common.DbTableNamePair tables = 8; // dependent tables
+    optional openmldb.type.ProcedureType type = 9 [default = kReqProcedure];
 }
 
 message CreateProcedureRequest {

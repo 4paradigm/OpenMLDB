@@ -1390,8 +1390,9 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedureP
         return false;
     }
     for (auto& table : tables) {
-        sp_info.add_dbs(table.first);
-        sp_info.add_tables(table.second);
+        auto pair = sp_info.add_tables();
+        pair->set_db_name(table.first);
+        pair->set_table_name(table.second);
     }
     // send request to ns client
     if (!ns_ptr->CreateProcedure(sp_info, options_.request_timeout, msg)) {

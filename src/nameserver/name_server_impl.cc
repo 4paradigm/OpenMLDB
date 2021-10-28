@@ -3057,7 +3057,7 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
                         std::stringstream ss;
                         ss << "table has associated procedure: ";
                         for (uint32_t i = 0; i < sp_vec.size(); i++) {
-                            ss << sp_vec[i];
+                            ss << sp_vec[i].first << "." << sp_vec[i].second;
                             if (i != sp_vec.size() - 1) {
                                 ss << ", ";
                             }
@@ -3076,7 +3076,7 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
     if (!GetTableInfo(request->name(), request->db(), &table_info)) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist!");
-        PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
+        PDLOG(WARNING, "table[%s.%s] is not exist!", request->db().c_str(), request->name().c_str());
         return;
     }
     DropTableFun(request, response, table_info);
@@ -9883,23 +9883,23 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const CreateProc
     std::shared_ptr<::openmldb::nameserver::ProcedureInfo> sp_info =
         std::make_shared<::openmldb::nameserver::ProcedureInfo>();
     sp_info->CopyFrom(request->sp_info());
-    const std::string& db_name = sp_info->db_name();
+    const std::string& sp_db_name = sp_info->db_name();
     const std::string& sp_name = sp_info->sp_name();
-    const std::string sp_data_path = zk_path_.db_sp_data_path_ + "/" + db_name + "." + sp_name;
+    const std::string sp_data_path = zk_path_.db_sp_data_path_ + "/" + sp_db_name + "." + sp_name;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (databases_.find(db_name) == databases_.end()) {
+        if (databases_.find(sp_db_name) == databases_.end()) {
             response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
             response->set_msg("database not found");
-            PDLOG(WARNING, "database[%s] not found", db_name);
+            PDLOG(WARNING, "database[%s] not found", sp_db_name);
             return;
         } else {
-            const auto& sp_table_map = db_sp_table_map_[db_name];
+            const auto& sp_table_map = db_sp_table_map_[sp_db_name];
             auto sp_table_iter = sp_table_map.find(sp_name);
             if (sp_table_iter != sp_table_map.end()) {
                 response->set_code(::openmldb::base::ReturnCode::kProcedureAlreadyExists);
                 response->set_msg("store procedure already exists");
-                PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
+                PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), sp_db_name.c_str());
                 return;
             }
         }
@@ -9925,21 +9925,21 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const CreateProc
         }
         {
             std::lock_guard<std::mutex> lock(mu_);
-            auto& sp_table_map = db_sp_table_map_[db_name];
-            auto& table_sp_map = db_table_sp_map_[db_name];
+            auto& sp_table_map = db_sp_table_map_[sp_db_name];
             for (const auto& depend_table : sp_info->tables()) {
-                sp_table_map[sp_name].push_back(depend_table);
-                table_sp_map[depend_table].push_back(sp_name);
+                auto& table_sp_map = db_table_sp_map_[depend_table.db_name()];
+                sp_table_map[sp_name].push_back(std::make_pair(depend_table.db_name(), depend_table.table_name()));
+                table_sp_map[depend_table.table_name()].push_back(std::make_pair(sp_db_name, sp_name));
             }
         }
         NotifyTableChanged();
-        PDLOG(INFO, "create db store procedure success! db_name [%s] sp_name [%s] sql [%s]", db_name.c_str(),
+        PDLOG(INFO, "create db store procedure success! db_name [%s] sp_name [%s] sql [%s]", sp_db_name.c_str(),
               sp_name.c_str(), sp_info->sql().c_str());
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
     } while (0);
-    DropProcedureOnTablet(db_name, sp_name);
+    DropProcedureOnTablet(sp_db_name, sp_name);
 }
 
 bool NameServerImpl::CreateProcedureOnTablet(const ::openmldb::api::CreateProcedureRequest& sp_request,
@@ -10042,13 +10042,15 @@ void NameServerImpl::DropProcedure(RpcController* controller, const DropProcedur
             return;
         }
         auto& sp_table_map = db_sp_table_map_[db_name];
-        auto& table_vec = sp_table_map[sp_name];
-        auto& table_sp_map = db_table_sp_map_[db_name];
-        for (const auto& table : table_vec) {
-            auto& sp_vec = table_sp_map[table];
-            sp_vec.erase(std::remove(sp_vec.begin(), sp_vec.end(), sp_name), sp_vec.end());
+        auto& db_table_pairs = sp_table_map[sp_name];
+        auto db_sp_pair = std::make_pair(db_name, sp_name);
+        // erase depend table from db_table_sp_map_ if there is no associated procedures.
+        for (const auto& db_table : db_table_pairs) {
+            auto& table_sp_map = db_table_sp_map_[db_table.first];
+            auto& sp_vec = table_sp_map[db_table.second];
+            sp_vec.erase(std::remove(sp_vec.begin(), sp_vec.end(), db_sp_pair), sp_vec.end());
             if (sp_vec.empty()) {
-                table_sp_map.erase(table);
+                table_sp_map.erase(db_table.second);
             }
         }
         sp_table_map.erase(sp_name);
@@ -10088,19 +10090,25 @@ bool NameServerImpl::RecoverProcedureInfo() {
             LOG(WARNING) << "parse store procedure info failed! sp node: " << sp_node;
             continue;
         }
-        const std::string& db_name = sp_info->db_name();
+        const std::string& sp_db_name = sp_info->db_name();
         const std::string& sp_name = sp_info->sp_name();
         const std::string& sql = sp_info->sql();
-        if (databases_.find(db_name) != databases_.end()) {
-            auto& sp_table_map = db_sp_table_map_[db_name];
-            auto& table_sp_map = db_table_sp_map_[db_name];
+        if (databases_.find(sp_db_name) != databases_.end()) {
+            auto& sp_table_map = db_sp_table_map_[sp_db_name];
             for (const auto& depend_table : sp_info->tables()) {
-                sp_table_map[sp_name].push_back(depend_table);
-                table_sp_map[depend_table].push_back(sp_name);
+                // sp_db_name
+                //  -> sp_name
+                //      -> (depend_table.db_name, depend_table.table_name)
+                sp_table_map[sp_name].push_back(std::make_pair(depend_table.db_name(), depend_table.table_name()));
+                auto& table_sp_map = db_table_sp_map_[depend_table.db_name()];
+                // depend_table.db_name
+                //      -> depend_table.table_name
+                //          -> (sp_db_name, sp_name)
+                table_sp_map[depend_table.table_name()].push_back(std::make_pair(sp_db_name, sp_name));
             }
-            LOG(INFO) << "recover store procedure " << sp_name << " with sql " << sql << " in db " << db_name;
+            LOG(INFO) << "recover store procedure " << sp_name << " with sql " << sql << " in db " << sp_db_name;
         } else {
-            LOG(WARNING) << "db " << db_name << " not exist for sp " << sp_name;
+            LOG(WARNING) << "db " << sp_db_name << " not exist for sp " << sp_name;
         }
     }
     return true;
