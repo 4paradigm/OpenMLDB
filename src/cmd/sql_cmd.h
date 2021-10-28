@@ -72,7 +72,7 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 bool performance_sensitive = true;
 
-//TODO(zekai): refactor status
+// TODO(zekai): refactor status
 class FileOptionsParser {
  public:
     FileOptionsParser() {
@@ -164,7 +164,6 @@ class FileOptionsParser {
             status->code = openmldb::base::kSQLCmdRunError;
             return;
         }
-        return;
     }
 };
 
@@ -927,6 +926,7 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
     openmldb::cmd::ReadFileOptionsParser options_parse;
     options_parse.Parse(options, &result_msg);
     if (!result_msg.OK()) {
+        std::cout << result_msg.msg << std::endl;
         return false;
     }
     std::cout << "options: delimiter [" << options_parse.GetDelimiter() << "], has header["
