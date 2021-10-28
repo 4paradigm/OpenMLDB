@@ -578,6 +578,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
                 std::cout << "ERROR: Please enter database first" << std::endl;
                 return;
             }
+            // TODO: Should support table name with database name
             auto table = cs->GetTableInfo(db, cmd_node->GetArgs()[0]);
             if (table == nullptr) {
                 std::cerr << "table " << cmd_node->GetArgs()[0] << " does not exist" << std::endl;
@@ -1071,6 +1072,7 @@ void HandleSQL(const std::string &sql) {
             return;
         }
         case hybridse::node::kPlanTypeInsert: {
+            // TODO: Should support table name with database name
             if (db.empty()) {
                 std::cout << "ERROR: Please use database first" << std::endl;
                 return;
@@ -1086,14 +1088,10 @@ void HandleSQL(const std::string &sql) {
         }
         case hybridse::node::kPlanTypeFuncDef:
         case hybridse::node::kPlanTypeQuery: {
-            if (db.empty()) {
-                std::cout << "ERROR: Please use database first" << std::endl;
-                return;
-            }
             ::hybridse::sdk::Status status;
             auto rs = sr->ExecuteSQL(db, sql, &status, performance_sensitive);
             if (!rs) {
-                std::cout << "ERROR: Fail to execute query" << std::endl;
+                std::cout << "ERROR: " << status.msg << std::endl;
             } else {
                 PrintResultSet(std::cout, rs.get());
             }
@@ -1104,10 +1102,6 @@ void HandleSQL(const std::string &sql) {
             const std::string& query_sql = select_into_plan_node->QueryStr();
             const std::string& file_path = select_into_plan_node->OutFile();
             const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
-            if (db.empty()) {
-                std::cout << "ERROR: Please use database first" << std::endl;
-                return;
-            }
             ::hybridse::sdk::Status hybridse_sdk_status;
             auto rs = sr->ExecuteSQL(db, query_sql, &hybridse_sdk_status, performance_sensitive);
             if (!rs) {
