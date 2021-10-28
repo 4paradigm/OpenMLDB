@@ -89,18 +89,19 @@ class FileOptionsParser {
         check_map_.insert(std::make_pair(
             "delimiter", std::make_pair(
                              [this](const hybridse::node::ConstNode *node) {
-                                 delimiter_ = node->GetAsString();
-                                 if (delimiter_.size() != 1) {
+                                 auto str = node->GetAsString();
+                                 if (str.size() != 1) {
                                      return false;
+                                 } else {
+                                     delimiter_ = str[0];
+                                     return true;
                                  }
-                                 return true;
                              },
                              hybridse::node::kVarchar)));
         check_map_.insert(std::make_pair(
             "null_value", std::make_pair(
                               [this](const hybridse::node::ConstNode *node) {
                                   null_value_ = node->GetAsString();
-                                  // TODO(zekai): maybe add check for null_value
                                   return true;
                               },
                               hybridse::node::kVarchar)));
@@ -134,12 +135,12 @@ class FileOptionsParser {
     }
     std::string GetFormat() const { return format_; }
     std::string GetNullValue() const { return null_value_; }
-    std::string GetDelimiter() const { return delimiter_; }
+    char GetDelimiter() const { return delimiter_; }
     bool GetHeader() const { return header_; }
 
  private:
     std::string format_ = "csv";
-    std::string delimiter_ = ",";
+    char delimiter_ = ",";
     std::string null_value_ = "null";
     bool header_ = true;
     ::openmldb::base::ResultMsg status_;
@@ -946,7 +947,7 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
         return false;
     }
     std::vector<std::string> cols;
-    SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter()[0], &cols);
+    SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
     auto schema = sr->GetTableSchema(database, table);
     if (cols.size() != schema->GetColumnCnt()) {
         *error = "mismatch column size";
@@ -982,7 +983,7 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
 
     do {
         cols.clear();
-        SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter()[0], &cols);
+        SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
         if (!InsertOneRow(insert_placeholder, strColIdx, options_parse.GetNullValue(), cols, error)) {
             *error = "line [" + line + "] insert failed, " + *error;
             return false;
