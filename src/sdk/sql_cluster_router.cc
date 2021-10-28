@@ -170,10 +170,10 @@ class BatchQueryFutureImpl : public QueryFuture {
 };
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
-    : options_(options), cluster_sdk_(nullptr), input_lru_cache_(), mu_(), rand_(::baidu::common::timer::now_time()) {}
+    : options_(options), cluster_sdk_(nullptr), mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
-    : options_(), cluster_sdk_(sdk), input_lru_cache_(), mu_(), rand_(::baidu::common::timer::now_time()) {}
+    : options_(), cluster_sdk_(sdk), mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
 
@@ -431,7 +431,7 @@ bool SQLClusterRouter::GetInsertInfo(const std::string& db, const std::string& s
 DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                                                 const std::map<uint32_t, uint32_t>& column_map,
                                                 ::hybridse::node::ExprListNode* row, uint32_t* str_length) {
-    if (row == NULL || str_length == NULL) {
+    if (row == nullptr || str_length == nullptr) {
         LOG(WARNING) << "row or str length is NULL";
         return {};
     }
@@ -477,14 +477,14 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::name
             if (primary->IsNull()) {
                 if (column.not_null()) {
                     LOG(WARNING) << "column " << column.name() << " can't be null";
-                    return DefaultValueMap();
+                    return {};
                 }
                 val = std::make_shared<::hybridse::node::ConstNode>(*primary);
             } else {
                 val = NodeAdapter::TransformDataType(*primary, column.data_type());
                 if (!val) {
                     LOG(WARNING) << "default value type mismatch, column " << column.name();
-                    return DefaultValueMap();
+                    return {};
                 }
             }
             default_map->insert(std::make_pair(idx, val));
@@ -503,27 +503,33 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(const std::string& db, cons
     if (it != input_lru_cache_.end()) {
         auto value = it->second.get(sql);
         if (value != boost::none) {
+            // check cache validation, the name is the same, but the tid may be different
+            auto cached_info = value.value()->table_info;
+            auto current_info = cluster_sdk_->GetTableInfo(db, cached_info->name());
+            if (cached_info->tid() != current_info->tid()) {
+                return {};
+            }
             return value.value();
         }
     }
     return {};
 }
 
-void SQLClusterRouter::SetCache(const std::string& db, const std::string& sql, std::shared_ptr<SQLCache> router_cache) {
+void SQLClusterRouter::SetCache(const std::string& db, const std::string& sql,
+                                const std::shared_ptr<SQLCache>& router_cache) {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = input_lru_cache_.find(db);
     if (it == input_lru_cache_.end()) {
-        boost::compute::detail::lru_cache<std::string, std::shared_ptr<::openmldb::sdk::SQLCache>> sql_cache(
-            options_.max_sql_cache_size);
+        decltype(input_lru_cache_)::mapped_type sql_cache(options_.max_sql_cache_size);
         input_lru_cache_.insert(std::make_pair(db, sql_cache));
         it = input_lru_cache_.find(db);
     }
-    it->second.insert(sql, router_cache);
+    it->second.upsert(sql, router_cache);
 }
 
 std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string& db, const std::string& sql,
                                                                ::hybridse::sdk::Status* status) {
-    if (status == NULL) {
+    if (status == nullptr) {
         return {};
     }
     std::shared_ptr<SQLCache> cache = GetCache(db, sql);
