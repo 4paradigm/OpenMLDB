@@ -582,7 +582,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
                 std::cout << "ERROR: Please enter database first" << std::endl;
                 return;
             }
-            // TODO: Should support table name with database name
+            // TODO(denglong): Should support table name with database name
             auto table = cs->GetTableInfo(db, cmd_node->GetArgs()[0]);
             if (table == nullptr) {
                 std::cerr << "table " << cmd_node->GetArgs()[0] << " does not exist" << std::endl;
@@ -934,11 +934,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             return base::Status(base::ReturnCode::kError, "table " + kv.first + " load data failed");
         }
     }
-    std::string msg;
-    if (!ns->CreateProcedure(sp_info, FLAGS_request_timeout_ms, &msg)) {
-        return base::Status(base::ReturnCode::kError, msg);
-    }
-    return {};
+    return ns->CreateProcedure(sp_info, FLAGS_request_timeout_ms);
 }
 
 // TODO(zekai): use status instead of printf
@@ -1217,19 +1213,33 @@ void HandleSQL(const std::string &sql) {
             std::cout << info->GetPhysicalPlan() << std::endl;
             return;
         }
-        case hybridse::node::kPlanTypeCreate:
+        case hybridse::node::kPlanTypeCreate: {
+            if (db.empty()) {
+                std::cout << "ERROR: Please use database first" << std::endl;
+                return;
+            }
+            auto create_node = dynamic_cast<hybridse::node::CreatePlanNode*>(node);
+            auto status = sr->HandleSQLCreateTable(create_node, db, cs->GetNsClient());
+            if (status.OK()) {
+                sr->RefreshCatalog();
+                std::cout << "SUCCEED: Create successfully" << std::endl;
+            }  else {
+                std::cout << "ERROR: " << status.msg << std::endl;
+            }
+            return;
+        }
         case hybridse::node::kPlanTypeCreateSp: {
             if (db.empty()) {
                 std::cout << "ERROR: Please use database first" << std::endl;
                 return;
             }
-            ::hybridse::sdk::Status status;
-            bool ok = sr->ExecuteDDL(db, sql, &status);
-            if (!ok) {
-                std::cout << "ERROR: Fail to execute ddl" << std::endl;
-            } else {
+            auto create_node = dynamic_cast<hybridse::node::CreateProcedurePlanNode*>(node);
+            auto status = sr->HandleSQLCreateProcedure(create_node, db, sql, cs->GetNsClient());
+            if (status.OK()) {
                 sr->RefreshCatalog();
                 std::cout << "SUCCEED: Create successfully" << std::endl;
+            } else {
+                std::cout << "ERROR: " << status.msg << std::endl;
             }
             return;
         }
@@ -1243,7 +1253,7 @@ void HandleSQL(const std::string &sql) {
             return;
         }
         case hybridse::node::kPlanTypeInsert: {
-            // TODO: Should support table name with database name
+            // TODO(denglong): Should support table name with database name
             if (db.empty()) {
                 std::cout << "ERROR: Please use database first" << std::endl;
                 return;
