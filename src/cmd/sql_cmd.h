@@ -72,48 +72,16 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::SQLClusterRouter *sr = nullptr;
 bool performance_sensitive = true;
 
-// TODO(zekai): refactor status
+// TODO(zekai): refactor status and error code
 class FileOptionsParser {
  public:
     FileOptionsParser() {
-        check_map_.insert(std::make_pair(
-            "format", std::make_pair(
-                          [this](const hybridse::node::ConstNode *node) {
-                              format_ = node->GetAsString();
-                              if (format_ != "csv") {
-                                  return false;
-                              }
-                              return true;
-                          },
-                          hybridse::node::kVarchar)));
-        check_map_.insert(std::make_pair(
-            "delimiter", std::make_pair(
-                             [this](const hybridse::node::ConstNode *node) {
-                                 auto str = node->GetAsString();
-                                 if (str.size() != 1) {
-                                     return false;
-                                 } else {
-                                     delimiter_ = str[0];
-                                     return true;
-                                 }
-                             },
-                             hybridse::node::kVarchar)));
-        check_map_.insert(std::make_pair(
-            "null_value", std::make_pair(
-                              [this](const hybridse::node::ConstNode *node) {
-                                  null_value_ = node->GetAsString();
-                                  return true;
-                              },
-                              hybridse::node::kVarchar)));
-        check_map_.insert(std::make_pair(
-            "header", std::make_pair(
-                          [this](const hybridse::node::ConstNode *node) {
-                              header_ = node->GetBool();
-                              return true;
-                          },
-                          hybridse::node::kBool)));
+        check_map_.insert(std::make_pair("format", CheckFormat()));
+        check_map_.insert(std::make_pair("delimiter", CheckDelimiter()));
+        check_map_.insert(std::make_pair("null_value", CheckNullValue()));
+        check_map_.insert(std::make_pair("header", CheckHeader()));
     }
-    ::openmldb::base::ResultMsg* Parse(std::shared_ptr<hybridse::node::OptionsMap> options_map) {
+    ::openmldb::base::ResultMsg Parse(std::shared_ptr<hybridse::node::OptionsMap> options_map) {
         for (hybridse::node::OptionsMap::iterator iter = options_map->begin(); iter != options_map->end(); iter++) {
             std::string key = iter->first;
             boost::to_lower(key);
@@ -121,47 +89,87 @@ class FileOptionsParser {
             if (pair == check_map_.end()) {
                 status_.msg = "ERROR: This option " + key + " is not currently supported";
                 status_.code = openmldb::base::kSQLCmdRunError;
+                return status_;
             }
-            GetOption(iter->second, key, pair->second.first, pair->second.second);
+            if (!GetOption(iter->second, key, pair->second.first, pair->second.second)) {
+                return status_;
+            }
         }
-        return &status_;
-    }
-    void InsertCheckMap(
-        const std::string option_name,
-        std::pair<std::function<bool(const hybridse::node::ConstNode *node)>,
-                  hybridse::node::DataType>
-            pair) {
-        check_map_.insert(std::make_pair(option_name, pair));
+        return status_;
     }
     std::string GetFormat() const { return format_; }
     std::string GetNullValue() const { return null_value_; }
     char GetDelimiter() const { return delimiter_; }
     bool GetHeader() const { return header_; }
 
- private:
-    std::string format_ = "csv";
-    char delimiter_ = ",";
-    std::string null_value_ = "null";
-    bool header_ = true;
-    ::openmldb::base::ResultMsg status_;
+ protected:
     std::map<std::string,
-             std::pair<std::function<bool(const hybridse::node::ConstNode *node)>,
-                       hybridse::node::DataType>>
+             std::pair<std::function<bool(const hybridse::node::ConstNode *node)>, hybridse::node::DataType>>
         check_map_;
-    void GetOption(
-        const hybridse::node::ConstNode *node, const std::string &option_name,
-        std::function<bool(const hybridse::node::ConstNode *node)> const &f,  hybridse::node::DataType option_type) {
+
+ private:
+    ::openmldb::base::ResultMsg status_;
+    // Default options
+    std::string format_ = "csv";
+    std::string null_value_ = "null";
+    char delimiter_ = ',';
+    bool header_ = true;
+
+    bool GetOption(const hybridse::node::ConstNode *node, const std::string &option_name,
+                   std::function<bool(const hybridse::node::ConstNode *node)> const &f,
+                   hybridse::node::DataType option_type) {
         if (node->GetDataType() != option_type) {
             status_.msg = "ERROR: Wrong type " + hybridse::node::DataTypeName(node->GetDataType()) + " for option " +
                           option_name + ", it should be " + hybridse::node::DataTypeName(option_type);
             status_.code = openmldb::base::kSQLCmdRunError;
-            return;
+            return false;
         }
         if (!f(node)) {
             status_.msg = "ERROR: Parse option " + option_name + " failed";
             status_.code = openmldb::base::kSQLCmdRunError;
-            return;
+            return false;
         }
+        return true;
+    }
+    std::pair<std::function<bool(const hybridse::node::ConstNode *node)>, hybridse::node::DataType> CheckFormat() {
+        return std::make_pair(
+            [this](const hybridse::node::ConstNode *node) {
+                format_ = node->GetAsString();
+                if (format_ != "csv") {
+                    return false;
+                }
+                return true;
+            },
+            hybridse::node::kVarchar);
+    }
+    std::pair<std::function<bool(const hybridse::node::ConstNode *node)>, hybridse::node::DataType> CheckDelimiter() {
+        return std::make_pair(
+            [this](const hybridse::node::ConstNode *node) {
+                auto str = node->GetAsString();
+                if (str.size() != 1) {
+                    return false;
+                } else {
+                    delimiter_ = str[0];
+                    return true;
+                }
+            },
+            hybridse::node::kVarchar);
+    }
+    std::pair<std::function<bool(const hybridse::node::ConstNode *node)>, hybridse::node::DataType> CheckNullValue() {
+        return std::make_pair(
+            [this](const hybridse::node::ConstNode *node) {
+                null_value_ = node->GetAsString();
+                return true;
+            },
+            hybridse::node::kVarchar);
+    }
+    std::pair<std::function<bool(const hybridse::node::ConstNode *node)>, hybridse::node::DataType> CheckHeader() {
+        return std::make_pair(
+            [this](const hybridse::node::ConstNode *node) {
+                header_ = node->GetBool();
+                return true;
+            },
+            hybridse::node::kBool);
     }
 };
 
@@ -172,21 +180,22 @@ class ReadFileOptionsParser : public FileOptionsParser {
 
 class WriteFileOptionsParser : public FileOptionsParser {
  public:
-    WriteFileOptionsParser() {
-        InsertCheckMap("mode", std::make_pair(
-                                   [this](const hybridse::node::ConstNode *node) {
-                                       mode_ = node->GetAsString();
-                                       if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
-                                           return false;
-                                       }
-                                       return true;
-                                   },
-                                   hybridse::node::kVarchar));
-    }
+    WriteFileOptionsParser() { check_map_.insert(std::make_pair("mode", CheckMode())); }
     std::string GetMode() const { return mode_; }
 
  private:
     std::string mode_ = "error_if_exists";
+    std::pair<std::function<bool(const hybridse::node::ConstNode *node)>, hybridse::node::DataType> CheckMode() {
+        return std::make_pair(
+            [this](const hybridse::node::ConstNode *node) {
+                mode_ = node->GetAsString();
+                if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
+                    return false;
+                }
+                return true;
+            },
+            hybridse::node::kVarchar);
+    }
 };
 
 void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &file_path,
@@ -196,8 +205,9 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
     }
     openmldb::cmd::WriteFileOptionsParser options_parse;
     auto st = options_parse.Parse(options_map);
-    if (!st->OK()) {
-        status->msg = st->msg;
+    if (!st.OK()) {
+        status->msg = st.msg;
+        status->code = st.code;
         return;
     }
     std::ofstream fstream;
@@ -228,7 +238,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 schemaString.append(schema->GetColumnName(i));
                 if (i != schema->GetColumnCnt() - 1) {
-                    schemaString.append(options_parse.GetDelimiter());
+                    schemaString = schemaString + options_parse.GetDelimiter();
                 }
             }
             fstream << schemaString << std::endl;
@@ -309,7 +319,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                         }
                     }
                     if (i != schema->GetColumnCnt() - 1) {
-                        rowString.append(options_parse.GetDelimiter());
+                        rowString = rowString + options_parse.GetDelimiter();
                     } else {
                         if (!first) {
                             fstream << std::endl;
@@ -568,7 +578,6 @@ void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo &sp_info) {
     PrintProcedureSchema("Output Schema", sp_info.GetOutputSchema(), std::cout);
 }
 
-// TODO(zekai): use status instead of cout
 void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
     switch (cmd_node->GetCmdType()) {
         case hybridse::node::kCmdShowDatabases: {
@@ -576,7 +585,6 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             std::vector<std::string> dbs;
             auto ns = cs->GetNsClient();
             if (!ns) {
-                // TODO(zekai): use status instead of cout
                 std::cout << "ERROR: Fail to connect to db" << std::endl;
             }
             ns->ShowDatabase(&dbs, error);
@@ -772,7 +780,6 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
     }
 }
 
-// TODO(zekai): use status instead of cout
 void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node) {
     ::openmldb::common::ColumnKey column_key;
     hybridse::base::Status status;
@@ -795,7 +802,6 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     }
 }
 
-// TODO(zekai): use status instead of printf
 void SetVariable(const std::string key, const hybridse::node::ConstNode *value) {
     if (key == "performance_sensitive") {
         if (value->GetDataType() == hybridse::node::kBool) {
@@ -923,8 +929,8 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
     // options, value is ConstNode
     openmldb::cmd::ReadFileOptionsParser options_parse;
     auto st = options_parse.Parse(options);
-    if (!st->OK()) {
-        std::cout << st->msg << std::endl;
+    if (!st.OK()) {
+        std::cout << st.msg << std::endl;
         return false;
     }
     std::cout << "options: delimiter [" << options_parse.GetDelimiter() << "], has header["
