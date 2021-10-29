@@ -15,70 +15,55 @@
 cmake_minimum_required(VERSION 3.10)
 project(hybridsql-deps)
 
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+
 include(ExternalProject)
 
-set(DEPS_INSTALL_DIR "${CMAKE_BINARY_DIR}/usr" CACHE PATH "Dependencies install directory.")
 set(DEPS_BUILD_DIR "${CMAKE_BINARY_DIR}/build" CACHE PATH "Dependencies build directory.")
+
 set(DEPS_DOWNLOAD_DIR "${DEPS_BUILD_DIR}/downloads" CACHE PATH "Dependencies download directory.")
+set(DEPS_INSTALL_DIR "${CMAKE_BINARY_DIR}/usr" CACHE PATH "Dependencies install directory.")
+set(SRC_INSTALL_DIR "${CMAKE_BINARY_DIR}/src" CACHE PATH "Source code install directory.")
 
-option(USE_BUNDLED "Build dependencies from source" OFF)
-option(USE_BUNDLED_ZETASQL "Build zetasql from source" ${USE_BUNDLED})
-option(USE_BUNDLED_HYBRIDSQL_ASSERTS "Build hybridsql asserts from source" OFF)
+# By default, thirdparty dependencies was fetched/build into the same directory
+# with OpenMLDB
+option(BUILD_BUNDLED "Build dependencies from source" OFF)
+option(BUILD_BUNDLED_ZETASQL "Build zetasql from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_HYBRIDSQL_ASSERTS "Build hybridsql asserts from source" OFF)
+option(USE_BUNDLED_SRC "Use bundled hybridsql asserts source" ON)
 
-set(ZETASQL_HOME https://github.com/aceforeverd/zetasql)
-set(ZETASQL_VERSION 0.2.1.beta9)
-set(ZETASQL_TAG origin/feat/hybridse-zetasql)
+message(STATUS "Install bundled dependencies into ${DEPS_INSTALL_DIR}")
+
 set(HYBRIDSQL_ASSERTS_HOME https://github.com/jingchen2222/hybridsql-asserts)
-set(HYBRIDSQL_ASSERTS_VERSION 0.4.0)
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  if (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-    set(ARCH_NAME aarch64)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+    set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz")
+    set(HYBRIDSQL_ASSERTS_HASH 128e2147903c6b4f5649284326c60ba048ff369f2925f9957f2973a515c65d75)
   else()
-    set(ARCH_NAME x86_64)
+    set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz")
+    set(HYBRIDSQL_ASSERTS_HASH 6f62e3906b2409fc190d09569857d259b2a1cbd363bdd550dfc5e204805d7719)
   endif()
-
-  set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-${ARCH_NAME}.tar.gz")
-  set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v${HYBRIDSQL_ASSERTS_VERSION}/thirdparty-2021-08-03-linux-gnu-${ARCH_NAME}.tar.gz")
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz")
-  set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v${HYBRIDSQL_ASSERTS_VERSION}/thirdparty-2021-08-03-darwin-x86_64.tar.gz")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz")
+  set(HYBRIDSQL_ASSERTS_HASH 505cf5068d8d9bd2eed5496d5eda7f83f18f3f2053b064a446876998fad0dc04)
 endif()
 
-if (NOT USE_BUNDLED_ZETASQL)
-  message(STATUS "Download pre-compiled zetasql from ${ZETASQL_URL}")
-  # download pre-compiled zetasql from GitHub Release
-  ExternalProject_Add(zetasql
-    URL ${ZETASQL_URL}
-    PREFIX ${DEPS_BUILD_DIR}
-    DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/zetasql"
-    DOWNLOAD_NO_EXTRACT True
-    INSTALL_DIR ${DEPS_INSTALL_DIR}
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND "")
-  ExternalProject_Get_Property(zetasql DOWNLOADED_FILE)
-  add_custom_target(zetasql-extract ALL tar xzf ${DOWNLOADED_FILE} -C ${DEPS_INSTALL_DIR} --strip-components=1
-    COMMENT "Extracting zetasql ${DOWNLOADED_FILE} into ${DEPS_INSTALL_DIR}")
-  add_dependencies(zetasql-extract zetasql)
-else()
-  message(STATUS "Compile zetasql from source: ${ZETASQL_HOME}@${ZETASQL_TAG}")
-  ExternalProject_Add(zetasql
-    GIT_REPOSITORY ${ZETASQL_HOME}
-    GIT_TAG ${ZETASQL_TAG}
-    PREFIX ${DEPS_BUILD_DIR}
-    INSTALL_DIR ${DEPS_INSTALL_DIR}
-    BUILD_IN_SOURCE True
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND bash build_zetasql_parser.sh
-    INSTALL_COMMAND bash pack_zetasql.sh -i ${DEPS_INSTALL_DIR}
-  )
-endif()
+set(HYBRIDSQL_ASSERTS_SRC_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz")
+set(HYBRIDSQL_ASSERTS_SRC_HASH 6bd44f5d870d6a4e52ed4c8748cc4a53ceff8744609db36d0a722d3d88c51a00)
 
-if (NOT USE_BUNDLED_HYBRIDSQL_ASSERTS)
-  message(STATUS "Download pre-compiled hybridsql assert from ${HYBRIDSQL_ASSERTS_URL}")
-  ExternalProject_Add(hybridsql-asserts
+# Fetch Zetasql
+include(FetchZetasql)
+
+# Fetch hybridsql asserts
+if(NOT BUILD_BUNDLED_HYBRIDSQL_ASSERTS)
+  message(
+    STATUS
+      "Download pre-compiled hybridsql assert from ${HYBRIDSQL_ASSERTS_URL}")
+  ExternalProject_Add(
+    hybridsql-asserts
     URL ${HYBRIDSQL_ASSERTS_URL}
+    URL_HASH SHA256=${HYBRIDSQL_ASSERTS_HASH}
     PREFIX ${DEPS_BUILD_DIR}
     DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/hybridsql-asserts"
     DOWNLOAD_NO_EXTRACT True
@@ -87,9 +72,34 @@ if (NOT USE_BUNDLED_HYBRIDSQL_ASSERTS)
     BUILD_COMMAND ""
     INSTALL_COMMAND "")
   ExternalProject_Get_Property(hybridsql-asserts DOWNLOADED_FILE)
-  add_custom_target(hybridsql-asserts-extract ALL tar xzf ${DOWNLOADED_FILE} -C ${DEPS_INSTALL_DIR} --strip-components=1
+  add_custom_target(
+    hybridsql-asserts-extract ALL
+    tar xzf ${DOWNLOADED_FILE} -C ${DEPS_INSTALL_DIR} --strip-components=1
     COMMENT "Extracting hybridsql asserts ${DOWNLOADED_FILE} into ${DEPS_INSTALL_DIR}")
   add_dependencies(hybridsql-asserts-extract hybridsql-asserts)
 else()
-  message(FATAL_ERROR "Build hybridsql asserts from source is unsupported currently.")
+  message(
+    FATAL_ERROR "Build hybridsql asserts from source is unsupported currently.")
+endif()
+
+if (USE_BUNDLED_SRC)
+  message(STATUS "Install source code into ${SRC_INSTALL_DIR}")
+  message(STATUS "Download hybridsql source code from ${HYBRIDSQL_ASSERTS_SRC_URL}")
+  ExternalProject_Add(
+    hybridsql-asserts-src
+    URL ${HYBRIDSQL_ASSERTS_SRC_URL}
+    URL_HASH SHA256=${HYBRIDSQL_ASSERTS_SRC_HASH}
+    PREFIX ${DEPS_BUILD_DIR}
+    DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/hybridsql-asserts-src"
+    DOWNLOAD_NO_EXTRACT True
+    INSTALL_DIR ${SRC_INSTALL_DIR}
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND "")
+  ExternalProject_Get_Property(hybridsql-asserts-src DOWNLOADED_FILE)
+  add_custom_target(
+    hybridsql-asserts-src-extract ALL
+    tar xzf ${DOWNLOADED_FILE} -C ${SRC_INSTALL_DIR} --strip-components=1
+    COMMENT "Extracting hybridsql asserts source ${DOWNLOADED_FILE} into ${SRC_INSTALL_DIR}")
+  add_dependencies(hybridsql-asserts-src-extract hybridsql-asserts-src)
 endif()

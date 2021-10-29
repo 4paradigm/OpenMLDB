@@ -20,7 +20,7 @@ pushd "$(dirname "$0")/.." # $ROOT/hybridse/
 HYBRIDSE_ROOT=$(pwd)
 
 # install cmake managed dependencies
-cmake -S "$HYBRIDSE_ROOT/../third-party" -B "$HYBRIDSE_ROOT/.deps"
+cmake -S "$HYBRIDSE_ROOT/../third-party" -B "$HYBRIDSE_ROOT/.deps" -DUSE_BUNDLED_SRC=OFF
 cmake --build "$HYBRIDSE_ROOT/.deps"
 
 popd
