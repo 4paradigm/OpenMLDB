@@ -298,8 +298,9 @@ class ConditionFilter : public FnComponent {
         return;
     }
 
-    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
-                             node::NodeManager *nm, ConditionFilter *out) const;
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer, node::NodeManager *nm,
+                             ConditionFilter *out) const;
+
  private:
     const node::ExprNode *condition_;
 };

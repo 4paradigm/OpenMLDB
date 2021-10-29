@@ -53,6 +53,7 @@ class ConditionOptimized : public TransformUpPysicalPass {
     static bool MakeConstEqualExprPair(
         const std::pair<node::ExprNode*, node::ExprNode*> expr_pair,
         const SchemasContext* right_schemas_ctx, ExprPair* output);
+
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
     bool JoinConditionOptimized(PhysicalBinaryNode* in, Join* join);

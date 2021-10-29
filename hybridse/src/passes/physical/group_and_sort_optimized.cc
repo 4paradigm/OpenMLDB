@@ -366,10 +366,9 @@ bool GroupAndSortOptimized::FilterOptimized(
         if (nullptr != filter->condition_.condition()) {
             condition_list->AddChild(const_cast<node::ExprNode*>(filter->condition_.condition()));
         }
-        for(auto i = 0; i < filter->left_key().keys()->GetChildNum(); i++) {
+        for (auto i = 0; i < filter->left_key().keys()->GetChildNum(); i++) {
             condition_list->AddChild(node_manager_->MakeBinaryExprNode(
-                filter->left_key().keys()->GetChild(i),
-                filter->right_key().keys()->GetChild(i), node::kFnOpEq));
+                filter->left_key().keys()->GetChild(i), filter->right_key().keys()->GetChild(i), node::kFnOpEq));
         }
         filter->right_key_.set_keys(node_manager_->MakeExprList());
         filter->left_key_.set_keys(node_manager_->MakeExprList());
