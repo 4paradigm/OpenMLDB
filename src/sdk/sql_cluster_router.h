@@ -190,6 +190,108 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(
         const std::string& db, const std::string& table_name) override;
 
+    std::vector<std::string> ExecuteDDLParse(
+        const std::string& sql, const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& table_map) override;
+
+    static bool toSQLType(openmldb::type::DataType data_type, std::string &sql_type) {
+        switch (data_type) {
+            case openmldb::type::DataType::kBool:
+                sql_type = "bool";
+                return true;
+            case openmldb::type::DataType::kSmallInt:
+                sql_type = "smallint";
+                return true;
+            case openmldb::type::DataType::kInt:
+                sql_type = "int";
+                return true;
+            case openmldb::type::DataType::kBigInt:
+                sql_type = "bigint";
+                return true;
+            case openmldb::type::DataType::kFloat:
+                sql_type = "float";
+                return true;
+            case openmldb::type::DataType::kDouble:
+                sql_type = "double";
+                return true;
+            case openmldb::type::DataType::kTimestamp:
+                sql_type = "timestamp";
+                return true;
+            case openmldb::type::DataType::kDate:
+                sql_type = "date";
+                return true;
+            case openmldb::type::DataType::kString:
+            case openmldb::type::DataType::kVarchar:
+                sql_type = "string";
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static bool getTTL(openmldb::type::TTLType ttl_type, ::google::protobuf::uint64 abs_ttl,
+                       ::google::protobuf::uint64 lat_ttl, std::string ttl) {
+        unsigned long expire;
+        switch (ttl_type) {
+            case openmldb::type::TTLType::kAbsoluteTime:
+                expire = 1L;
+                if (abs_ttl % 60000L == 0L) {
+                    expire = abs_ttl / 60000L;
+                } else {
+                    expire += abs_ttl / 60000L;
+                }
+                ttl = std::to_string(expire).append("m");
+                return true;
+            case openmldb::type::TTLType::kAbsAndLat:
+                expire = 1L;
+                if (abs_ttl % 60000L == 0L) {
+                    expire = abs_ttl / 60000L;
+                } else {
+                    expire += abs_ttl / 60000L;
+                }
+                ttl = "(" + std::to_string(expire) + "m, " + std::to_string(lat_ttl) + ")";
+                return true;
+            case openmldb::type::TTLType::kLatestTime:
+                ttl = std::to_string(lat_ttl);
+                return true;
+            case openmldb::type::TTLType::kAbsOrLat:
+                expire = 1L;
+                if (abs_ttl % 60000L == 0L) {
+                    expire = abs_ttl / 60000L;
+                } else {
+                    expire += abs_ttl / 60000L;
+                }
+                ttl = "(" + std::to_string(expire) + "m, " + std::to_string(lat_ttl) + ")";
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static std::string toIndexString(const std::string ts, const std::string key_name, openmldb::type::TTLType ttl_type,
+                              const std::string expire) {
+        std::string index;
+        if (ts.empty()) {
+            index = "\tindex(key=(";
+            index = index.append(key_name);
+            index = index.append("), ttl=");
+            index = index.append(expire);
+            index = index.append(", ttl_type=");
+            index = index.append(openmldb::type::TTLType_Name(ttl_type));
+            index = index.append(")");
+        } else {
+            index = "\tindex(key=(";
+            index = index.append(key_name);
+            index = index.append("), ttl=");
+            index = index.append(expire);
+            index = index.append(", ttl_type=");
+            index = index.append(openmldb::type::TTLType_Name(ttl_type));
+            index = index.append(", ts=`");
+            index = index.append(ts);
+            index = index.append("`)");
+        }
+        return index;
+    }
+
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 

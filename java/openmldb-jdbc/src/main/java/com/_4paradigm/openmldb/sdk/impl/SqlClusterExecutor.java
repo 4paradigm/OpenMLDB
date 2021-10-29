@@ -21,7 +21,7 @@ import com._4paradigm.openmldb.common.LibraryLoader;
 import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
-import com._4paradigm.openmldb.sdk.*;
+import com._4paradigm.openmldb.sdk.DataType;
 import com._4paradigm.openmldb.sdk.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -262,6 +262,40 @@ public class SqlClusterExecutor implements SqlExecutor {
         procedureInfo.delete();
         return spInfo;
     }
+
+  @Override
+  public List<CreateTableDesc> genDDL(String sql, List<DataBaseDesc> dataBases)
+          throws SQLException {
+    if (null == dataBases || dataBases.isEmpty()) {
+      return null;
+    }
+    List<CreateTableDesc> results = new ArrayList<>();
+    for (DataBaseDesc dataBase : dataBases) {
+      CreateTableDesc createTableDesc = new CreateTableDesc();
+      TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
+      List<TableDesc> tableDescList = dataBase.getTableDescList();
+      for (TableDesc tableDesc : tableDescList) {
+        String tableName = tableDesc.getTableName();
+        List<ColumnDesc> columnDescList = tableDesc.getColumnDescList();
+        ColumnDescVector columnDescVector = new ColumnDescVector();
+        for (ColumnDesc columnDesc : columnDescList) {
+          ColumnDescPair columnDescPair = new ColumnDescPair(columnDesc.getColumnName(),
+                  DataType.toOpenMLDBType(columnDesc.getColumnType()));
+          columnDescVector.add(columnDescPair);
+        }
+        TableColumnDescPair tableColumnDescPair = new TableColumnDescPair(tableName,
+                columnDescVector);
+        tableColumnDescPairVector.add(tableColumnDescPair);
+      }
+      VectorString ddlList = sqlRouter.ExecuteDDLParse(sql, tableColumnDescPairVector);
+      String[] ddl = new String[ddlList.size()];
+      createTableDesc.setDdl(ddlList.toArray(ddl));
+      createTableDesc.setDbName(dataBase.getDbName());
+      results.add(createTableDesc);
+    }
+
+    return results;
+  }
 
     @Override
     public boolean createDB(String db) {

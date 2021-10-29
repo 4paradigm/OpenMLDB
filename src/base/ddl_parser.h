@@ -36,8 +36,8 @@ class DDLParser {
  public:
     static IndexMap ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db);
 
-    static IndexMap ExtractIndexes(const std::string& sql,
-        const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas);
+    template <typename T>
+    static IndexMap ExtractIndexes(const std::string& sql, const T& schemas);
 
     static IndexMap ExtractIndexesForBatch(const std::string& sql, const ::hybridse::type::Database& db);
 
@@ -54,9 +54,8 @@ class DDLParser {
     static bool GetPlan(const std::string& sql, const hybridse::type::Database& db,
                         hybridse::vm::RunSession* session);
 
-    static void AddTables(
-        const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schema,
-        hybridse::type::Database* db);
+    template <typename T>
+    static void AddTables(const T& schema, hybridse::type::Database* db);
 };
 }  // namespace openmldb::base
 

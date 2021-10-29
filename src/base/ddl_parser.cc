@@ -167,9 +167,8 @@ IndexMap DDLParser::ExtractIndexes(const std::string& sql, const ::hybridse::typ
     return ExtractIndexes(sql, db, &session);
 }
 
-IndexMap DDLParser::ExtractIndexes(
-    const std::string& sql,
-    const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas) {
+template <typename T>
+IndexMap DDLParser::ExtractIndexes(const std::string& sql, const T& schemas) {
     ::hybridse::type::Database db;
     std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
     db.set_name(tmp_db);
@@ -237,9 +236,8 @@ bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& 
     return true;
 }
 
-void DDLParser::AddTables(
-    const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schema,
-    hybridse::type::Database* db) {
+template <typename T>
+void DDLParser::AddTables(const T& schema, hybridse::type::Database* db) {
     for (auto& table : schema) {
         // add to database
         auto def = db->add_tables();

@@ -413,6 +413,60 @@ TEST_F(SQLClusterTest, get_table_schema) {
     ASSERT_TRUE(router->DropDB(db, &status));
 }
 
+TEST_F(SQLClusterTest, execute_DDL_parse) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    auto sql = "SELECT\n"
+        "  a.itemId as itemId,\n"
+        "  a.ip as ip,\n"
+        "  a.query as query,\n"
+        "  a.mcuid as mcuid,\n"
+        "  b.brandName as name,\n"
+        "  b.brandId as brandId,\n"
+        "  c.actionValue as label\n"
+        "FROM a\n"
+        "  LAST JOIN c ON c.itemId = a.itemId\n"
+        "  LAST JOIN b ON a.itemId = b.id;";
+
+    std::map<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>> table_map;
+
+    // table a
+    std::pair<std::string, hybridse::sdk::DataType> table_a_item_id = std::make_pair("itemId", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_ip = std::make_pair("ip", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_query = std::make_pair("query", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_mcu_id = std::make_pair("mcuid", hybridse::sdk::DataType::kTypeString);
+    std::vector<std::pair<std::string, hybridse::sdk::DataType>> table_a_column_list;
+    table_a_column_list.push_back(table_a_item_id);
+    table_a_column_list.push_back(table_a_ip);
+    table_a_column_list.push_back(table_a_query);
+    table_a_column_list.push_back(table_a_mcu_id);
+    table_map.insert(std::make_pair("a", table_a_column_list));
+
+    // table b
+    std::pair<std::string, hybridse::sdk::DataType> table_b_id = std::make_pair("id", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_b_brand_name = std::make_pair("brandName", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_b_brand_id = std::make_pair("brandId", hybridse::sdk::DataType::kTypeString);
+    std::vector<std::pair<std::string, hybridse::sdk::DataType>> table_b_column_list;
+    table_b_column_list.push_back(table_b_id);
+    table_b_column_list.push_back(table_b_brand_name);
+    table_b_column_list.push_back(table_b_brand_id);
+    table_map.insert(std::make_pair("b", table_b_column_list));
+
+    // table c
+    std::pair<std::string, hybridse::sdk::DataType> table_c_item_id = std::make_pair("itemId", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_c_action_value = std::make_pair("actionValue", hybridse::sdk::DataType::kTypeDouble);
+    std::vector<std::pair<std::string, hybridse::sdk::DataType>> table_c_column_list;
+    table_c_column_list.push_back(table_c_item_id);
+    table_c_column_list.push_back(table_c_action_value);
+    table_map.insert(std::make_pair("c", table_c_column_list));
+
+    std::vector<std::string> ddl_list = router->ExecuteDDLParse(sql, table_map);
+    ASSERT_EQ(3, ddl_list.size());
+}
+
 }  // namespace sdk
 }  // namespace openmldb
 

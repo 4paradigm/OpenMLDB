@@ -61,5 +61,7 @@ public interface SqlExecutor {
 
     ProcedureInfo showProcedure(String dbName, String proName) throws SQLException;
 
+    List<CreateTableDesc> genDDL(String sql, List<DataBaseDesc> dataBases) throws SQLException;
+
     void close();
 }

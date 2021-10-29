@@ -20,6 +20,7 @@
 #include <string>
 #include <utility>
 
+#include "base/ddl_parser.h"
 #include "boost/none.hpp"
 #include "brpc/channel.h"
 #include "common/timer.h"
@@ -1547,6 +1548,88 @@ std::shared_ptr<hybridse::sdk::Schema> SQLClusterRouter::GetTableSchema(
         LOG(ERROR) << "Failed to convert schema for " + table_name + "in db " + db;
     }
     return {};
+}
+
+std::vector<std::string> SQLClusterRouter::ExecuteDDLParse(
+    const std::string& sql,
+    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>&
+        table_map) {
+    using openmldb::base::DDLParser;
+    std::map<std::string, std::vector<openmldb::common::ColumnDesc>> table_desc_map;
+    for (const auto& table_item : table_map) {
+        std::string table_name = table_item.first;
+        std::vector<std::pair<std::string, hybridse::sdk::DataType>> column_list = table_item.second;
+        std::vector<openmldb::common::ColumnDesc> column_desc_list;
+        for (const auto& column_map : column_list) {
+            openmldb::common::ColumnDesc column_desc;
+            std::string column_name = column_map.first;
+            hybridse::sdk::DataType column_type = column_map.second;
+            column_desc.set_name(column_name);
+            openmldb::type::DataType data_type;
+            if (!openmldb::catalog::SchemaAdapter::ConvertType(column_type, &data_type)) {
+                return {};
+            }
+            column_desc.set_data_type(data_type);
+            column_desc_list.push_back(column_desc);
+        }
+        table_desc_map.insert(std::make_pair(table_name, column_desc_list));
+    }
+
+    openmldb::base::IndexMap index_map = openmldb::base::DDLParser::ExtractIndexes(sql, table_desc_map);
+    std::vector<std::string> ddl_vector;
+    for (const auto& table_item : table_desc_map) {
+        std::string ddl = "CREATE TABLE IF NOT EXISTS ";
+        std::string table_name = table_item.first;
+        ddl = ddl.append(table_name);
+        ddl = ddl.append("(\n");
+        LOG(INFO) << "table_name is " + table_name;
+        auto column_desc_list = table_item.second;
+        for (const auto& column_desc : column_desc_list) {
+            const auto column_name = column_desc.name();
+            const auto data_type = column_desc.data_type();
+            std::string column_type;
+            if (!SQLClusterRouter::toSQLType(data_type, column_type)) {
+                LOG(ERROR) << "can not find this type " + openmldb::type::DataType_Name(data_type);
+                return {};
+            }
+            ddl = ddl.append("\t");
+            ddl = ddl.append(column_name);
+            ddl = ddl.append(" ");
+            ddl = ddl.append(column_type);
+            ddl = ddl.append(",\n");
+        }
+        std::string index_table = index_map.find(table_name)->first;
+        if (index_map.count(table_name) != 0) {
+            auto column_key_list = index_map.find(table_name)->second;
+            if (!column_key_list.empty()) {
+                for (const auto column_key : column_key_list) {
+                    auto col_name_list = column_key.col_name();
+                    std::string key_name;
+                    for (const auto col_name : col_name_list) {
+                        key_name = col_name;
+                        key_name = key_name.append(",");
+                    }
+                    key_name = key_name.substr(0, key_name.find_last_of(','));
+                    const auto ttl = column_key.ttl();
+                    auto ttl_type = ttl.ttl_type();
+                    // TODO get zero
+                    auto abs_ttl = ttl.abs_ttl();
+                    auto lat_ttl = ttl.lat_ttl();
+                    std::string expire;
+                    SQLClusterRouter::getTTL(ttl_type, abs_ttl, lat_ttl, expire);
+                    const auto ts = column_key.ts_name();
+                    ddl = ddl.append(SQLClusterRouter::toIndexString(ts, key_name, ttl_type, expire));
+                    ddl = ddl.append(",\n");
+                }
+            }
+        }
+
+        ddl = ddl.substr(0, ddl.find_last_of(','));
+        ddl = ddl.append("\n);");
+        LOG(INFO) << "ddl is " + ddl;
+        ddl_vector.push_back(ddl);
+    }
+    return ddl_vector;
 }
 
 }  // namespace sdk
