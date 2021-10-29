@@ -244,6 +244,9 @@ class TabletClient : public Client {
                           const ::openmldb::common::ColumnKey& column_key, uint32_t idx,
                           std::shared_ptr<TaskInfo> task_info);
 
+    bool ExtractMultiIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+                          const std::vector<::openmldb::common::ColumnKey>& column_key_vec);
+
     bool CancelOP(const uint64_t op_id);
 
     bool UpdateRealEndpointMap(const std::map<std::string, std::string>& map);

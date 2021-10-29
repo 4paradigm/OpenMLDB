@@ -120,7 +120,7 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
                        kTypeError, "Tuple idx out of range: ", idx);
             SetOutputType(input_type->GetGenericType(idx));
             SetNullable(input_type->IsGenericNullable(idx));
-        } catch (std::invalid_argument err) {
+        } catch (std::invalid_argument& err) {
             return Status(common::kTypeError,
                           "Invalid Tuple index: " + this->GetColumnName());
         }

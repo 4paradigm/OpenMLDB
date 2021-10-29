@@ -1609,7 +1609,7 @@ Status BatchModeTransformer::GenRequestWindow(RequestWindowOp* window,
 Status BatchModeTransformer::GenSort(Sort* sort, const SchemasContext* schemas_ctx) {
     if (nullptr != sort->orders_ && !node::ExprListNullOrEmpty(sort->orders()->order_expressions())) {
         node::ExprListNode exprs;
-        for (int i = 0; i < sort->orders_->order_expressions_->GetChildNum(); i++) {
+        for (uint32_t i = 0; i < sort->orders_->order_expressions_->GetChildNum(); i++) {
             auto expr = sort->orders_->GetOrderExpressionExpr(i);
             if (nullptr != expr) {
                 exprs.AddChild(const_cast<node::ExprNode*>(expr));

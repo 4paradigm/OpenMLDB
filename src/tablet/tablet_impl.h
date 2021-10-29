@@ -205,6 +205,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void ExtractIndexData(RpcController* controller, const ::openmldb::api::ExtractIndexDataRequest* request,
                           ::openmldb::api::GeneralResponse* response, Closure* done);
 
+    void ExtractMultiIndexData(RpcController* controller, const ::openmldb::api::ExtractMultiIndexDataRequest* request,
+                          ::openmldb::api::GeneralResponse* response, Closure* done);
+
     void AddIndex(RpcController* controller, const ::openmldb::api::AddIndexRequest* request,
                   ::openmldb::api::GeneralResponse* response, Closure* done);
 
@@ -226,8 +229,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void UpdateRealEndpointMap(RpcController* controller, const openmldb::api::UpdateRealEndpointMapRequest* request,
                                openmldb::api::GeneralResponse* response, Closure* done);
-
-    inline void SetServer(brpc::Server* server) { server_ = server; }
 
     // get on value from specified ttl type index
     int32_t GetIndex(const ::openmldb::api::GetRequest* request, const ::openmldb::api::TableMeta& meta,
@@ -385,6 +386,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
         return startup_mode_ == ::openmldb::type::StartupMode::kCluster;
     }
 
+    std::string GetDBPath(const std::string& root_path, uint32_t tid, uint32_t pid);
+
  private:
     void RunRequestQuery(RpcController* controller, const openmldb::api::QueryRequest& request,
                          ::hybridse::vm::RequestRunSession& session,                  // NOLINT
@@ -407,7 +410,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     BulkLoadMgr bulk_load_mgr_;
-    brpc::Server* server_;  // TODO(hw): need?
     std::vector<std::string> mode_root_paths_;
     std::vector<std::string> mode_recycle_root_paths_;
     std::atomic<bool> follower_;

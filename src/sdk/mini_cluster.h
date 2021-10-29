@@ -40,6 +40,7 @@
 #include "tablet/tablet_impl.h"
 
 DECLARE_string(endpoint);
+DECLARE_string(tablet);
 DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
@@ -62,7 +63,7 @@ class MiniCluster {
  public:
     explicit MiniCluster(int32_t zk_port)
         : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {}
-    ~MiniCluster() {}
+    ~MiniCluster() = default;
     bool SetUp(int tablet_num = 2) {
         if (tablet_num > MAX_TABLET_NUM) {
             return false;
@@ -190,6 +191,99 @@ class MiniCluster {
     ::openmldb::client::NsClient* ns_client_;
     std::map<std::string, ::openmldb::tablet::TabletImpl*> tablets_;
     std::map<std::string, ::openmldb::client::TabletClient*> tb_clients_;
+};
+
+class StandaloneEnv {
+ public:
+    StandaloneEnv() : ns_(), ns_client_(nullptr), tb_client_(nullptr) {}
+    ~StandaloneEnv() = default;
+    bool SetUp() {
+        srand(time(nullptr));
+        FLAGS_db_root_path = "/tmp/mini_cluster" + std::to_string(GenRand());
+        if (!StartTablet(&tb_server_)) {
+            LOG(WARNING) << "fail to start tablet";
+            return false;
+        }
+        sleep(1);
+        FLAGS_tablet = tb_endpoint_;
+        ns_port_ = GenRand();
+        std::string ns_endpoint = "127.0.0.1:" + std::to_string(ns_port_);
+        ::openmldb::nameserver::NameServerImpl* nameserver = new ::openmldb::nameserver::NameServerImpl();
+        bool ok = nameserver->Init("", "", ns_endpoint, "");
+        if (!ok) {
+            return false;
+        }
+        brpc::ServerOptions options;
+        if (ns_.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+            LOG(WARNING) << "fail to start ns";
+            return false;
+        }
+        if (ns_.Start(ns_endpoint.c_str(), &options) != 0) {
+            return false;
+        }
+        sleep(2);
+        ns_client_ = new ::openmldb::client::NsClient(ns_endpoint, "");
+        if (ns_client_->Init() != 0) {
+            LOG(WARNING) << "fail to init ns client";
+            return false;
+        }
+        LOG(INFO) << "start standalone env";
+        LOG(INFO) << "----- ns " << ns_endpoint;
+        LOG(INFO) << "----- tb " << tb_endpoint_;
+        return true;
+    }
+
+    void Close() {
+        ns_.Stop(10);
+        tb_server_.Stop(10);
+        delete tb_client_;
+    }
+
+    ::openmldb::client::NsClient* GetNsClient() { return ns_client_; }
+
+    ::openmldb::client::TabletClient* GetTabletClient() {
+        return tb_client_;
+    }
+
+    uint64_t GetNsPort() const { return ns_port_; }
+
+    const std::string& GetTbEndpoint() const { return tb_endpoint_; }
+
+ private:
+    uint64_t GenRand() { return rand() % 1000 + 10000; }
+
+    bool StartTablet(brpc::Server* tb_server) {
+        std::string tb_endpoint = "127.0.0.1:" + std::to_string(GenRand());
+        tb_endpoint_ = tb_endpoint;
+        ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
+        bool ok = tablet->Init("", "", tb_endpoint, "");
+        if (!ok) {
+            return false;
+        }
+        brpc::ServerOptions ts_opt;
+        if (tb_server->AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+            LOG(WARNING) << "fail to start tablet";
+            return false;
+        }
+        if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
+            return false;
+        }
+        sleep(2);
+        auto* client = new ::openmldb::client::TabletClient(tb_endpoint, tb_endpoint);
+        if (client->Init() < 0) {
+            LOG(WARNING) << "fail to init client";
+            return false;
+        }
+        tb_client_ = client;
+        return true;
+    }
+
+    brpc::Server ns_;
+    brpc::Server tb_server_;
+    std::string tb_endpoint_;
+    uint64_t ns_port_ = 0;
+    ::openmldb::client::NsClient* ns_client_;
+    ::openmldb::client::TabletClient* tb_client_;
 };
 
 }  // namespace sdk

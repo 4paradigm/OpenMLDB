@@ -24,17 +24,8 @@
 namespace openmldb {
 namespace base {
 
-struct ResultMsg {
-    ResultMsg(int code_i, std::string msg_i) : code(code_i), msg(msg_i) {}
-    ResultMsg() : code(0), msg("ok") {}
-    inline bool OK() const { return code == 0; }
-    inline const std::string& GetMsg() const { return msg; }
-    inline int GetCode() const { return code; }
-    int code;
-    std::string msg;
-};
-
 enum ReturnCode {
+    kError = -1,
     // TODO(zekai): Add some notes, it is hard to use these error codes
     kOk = 0,
     kTableIsNotExist = 100,
@@ -144,7 +135,7 @@ enum ReturnCode {
     kIsFollowerCluster = 453,
     kCurNameserverIsNotLeaderMdoe = 454,
     kShowtableErrorWhenAddReplicaCluster = 455,
-    kNameserverIsFollowerAndRequestHasNoZoneInfo = 501,
+    kNoZoneInfo = 501,
     kZoneInfoMismathch = 502,
     kCreateTableForReplicaClusterFailed = 503,
     kAddTaskInReplicaClusterNsFailed = 504,
@@ -175,6 +166,15 @@ enum ReturnCode {
     kSQLRunError = 1001
 };
 
+struct Status {
+    Status(int code_i, std::string msg_i) : code(code_i), msg(msg_i) {}
+    Status() : code(ReturnCode::kOk), msg("ok") {}
+    inline bool OK() const { return code == ReturnCode::kOk; }
+    inline const std::string& GetMsg() const { return msg; }
+    inline int GetCode() const { return code; }
+    int code;
+    std::string msg;
+};
 }  // namespace base
 }  // namespace openmldb
 

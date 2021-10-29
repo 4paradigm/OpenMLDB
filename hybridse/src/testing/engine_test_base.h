@@ -123,10 +123,10 @@ class EngineTestRunner {
     Status Compile();
     virtual void InitSqlCase();
     virtual bool InitEngineCatalog() = 0;
-    virtual bool InitTable(const std::string table_name) = 0;
-    virtual bool AddRowsIntoTable(const std::string table_name,
+    virtual bool InitTable(const std::string& db, const std::string& table_name) = 0;
+    virtual bool AddRowsIntoTable(const std::string& db, const std::string& table_name,
                                   const std::vector<Row>& rows) = 0;
-    virtual bool AddRowIntoTable(const std::string table_name,
+    virtual bool AddRowIntoTable(const std::string& db, const std::string& table_name,
                                  const Row& rows) = 0;
     virtual Status PrepareParameter();
     virtual Status PrepareData() = 0;
@@ -172,7 +172,9 @@ class BatchEngineTestRunner : public EngineTestRunner {
             }
             if (!rows.empty()) {
                 std::string table_name = sql_case_.inputs_[i].name_;
-                CHECK_TRUE(AddRowsIntoTable(table_name, rows),
+                std::string table_db_name =
+                    sql_case_.inputs_[i].db_.empty() ? sql_case_.db() : sql_case_.inputs_[i].db_;
+                CHECK_TRUE(AddRowsIntoTable(table_db_name, table_name, rows),
                            common::kTablePutFailed, "Fail to add rows into table ",
                            table_name);
             }
@@ -210,6 +212,8 @@ class RequestEngineTestRunner : public EngineTestRunner {
             std::dynamic_pointer_cast<RequestRunSession>(session_);
         CHECK_TRUE(request_session != nullptr, common::kNullPointer);
         std::string request_name = request_session->GetRequestName();
+        std::string request_db_name =
+            request_session->GetRequestDbName().empty() ? sql_case_.db() : request_session->GetRequestDbName();
 
         if (has_batch_request) {
             CHECK_TRUE(1 <= sql_case_.batch_request_.rows_.size(), common::kSqlCaseError,
@@ -220,8 +224,10 @@ class RequestEngineTestRunner : public EngineTestRunner {
         }
         for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
             std::string input_name = sql_case_.inputs_[i].name_;
+            std::string table_db_name =
+                sql_case_.inputs_[i].db_.empty() ? sql_case_.db() : sql_case_.inputs_[i].db_;
 
-            if (input_name == request_name && !has_batch_request) {
+            if ((table_db_name == request_db_name) && (input_name == request_name) && !has_batch_request) {
                 CHECK_TRUE(sql_case_.ExtractInputData(request_rows_, i),
                            common::kSqlCaseError, "Extract case request rows failed");
                 continue;
@@ -241,12 +247,12 @@ class RequestEngineTestRunner : public EngineTestRunner {
                             store_rows.push_back(row);
                         }
                     }
-                    CHECK_TRUE(AddRowsIntoTable(input_name, store_rows),
+                    CHECK_TRUE(AddRowsIntoTable(table_db_name, input_name, store_rows),
                                common::kTablePutFailed,
                                "Fail to add rows into table ", input_name);
 
                 } else {
-                    CHECK_TRUE(AddRowsIntoTable(input_name, rows),
+                    CHECK_TRUE(AddRowsIntoTable(table_db_name, input_name, rows),
                                common::kTablePutFailed,
                                "Fail to add rows into table ", input_name);
                 }
@@ -262,6 +268,7 @@ class RequestEngineTestRunner : public EngineTestRunner {
         auto request_session =
             std::dynamic_pointer_cast<RequestRunSession>(session_);
         std::string request_name = request_session->GetRequestName();
+        std::string request_db_name = request_session->GetRequestDbName();
         CHECK_TRUE(parameter_rows_.empty(), common::kUnSupport, "Request do not support parameterized query currently")
         Row parameter = parameter_rows_.empty() ? Row() : parameter_rows_[0];
         for (auto in_row : request_rows_) {
@@ -272,8 +279,8 @@ class RequestEngineTestRunner : public EngineTestRunner {
                 return Status(common::kRunError, "Run request session failed");
             }
             if (!has_batch_request) {
-                CHECK_TRUE(AddRowIntoTable(request_name, in_row), common::kTablePutFailed,
-                           "Fail add row into table ", request_name);
+                CHECK_TRUE(AddRowIntoTable(request_db_name, request_name, in_row), common::kTablePutFailed,
+                           "Fail add row into table ", request_db_name, ".", request_name);
             }
             outputs->push_back(out_row);
         }
@@ -311,18 +318,23 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
 
         std::vector<Row> original_request_data;
         std::string request_name = request_session->GetRequestName();
+        std::string request_db_name =
+            request_session->GetRequestDbName().empty() ? sql_case_.db() : request_session->GetRequestDbName();
         auto& request_schema = request_session->GetRequestSchema();
         for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
             auto input = sql_case_.inputs()[i];
             std::vector<Row> rows;
             sql_case_.ExtractInputData(rows, i);
             if (!rows.empty()) {
-                if (sql_case_.inputs_[i].name_ == request_name &&
+                std::string table_name = sql_case_.inputs_[i].name_;
+                std::string table_db_name =
+                    sql_case_.inputs_[i].db_.empty() ? sql_case_.db() : sql_case_.inputs_[i].db_;
+                if ((table_db_name == request_db_name && table_name == request_name) &&
                     !has_batch_request) {
                     original_request_data.push_back(rows.back());
                     rows.pop_back();
                 }
-                std::string table_name = sql_case_.inputs_[i].name_;
+
                 size_t repeat = sql_case_.inputs()[i].repeat_;
                 if (repeat > 1) {
                     size_t row_num = rows.size();
@@ -334,9 +346,9 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
                         offset += row_num;
                     }
                 }
-                CHECK_TRUE(AddRowsIntoTable(table_name, rows),
+                CHECK_TRUE(AddRowsIntoTable(table_db_name, table_name, rows),
                            common::kTablePutFailed, "Fail to add rows into table ",
-                           table_name);
+                           table_db_name, ".", table_name);
             }
         }
 
