@@ -40,6 +40,8 @@ DEFINE_string(cmd, "", "Set cmd");
 DECLARE_string(host);
 DECLARE_int32(port);
 
+::openmldb::sdk::StandaloneEnv env;
+
 namespace openmldb {
 namespace cmd {
 
@@ -171,12 +173,6 @@ TEST_F(SqlCmdTest, select_into_outfile) {
 }
 
 TEST_F(SqlCmdTest, deploy) {
-    ::openmldb::sdk::StandaloneEnv env;
-    env.SetUp();
-    FLAGS_host = "127.0.0.1";
-    FLAGS_port = env.GetNsPort();
-    InitSDK();
-
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql = "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
@@ -195,6 +191,28 @@ TEST_F(SqlCmdTest, deploy) {
     hybridse::node::PlanNode *node = plan_trees[0];
     auto status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
     ASSERT_TRUE(status.OK());
+    std::string msg;
+    ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
+}
+
+TEST_F(SqlCmdTest, create_without_index_col) {
+    HandleSQL("create database test2;");
+    HandleSQL("use test2;");
+    std::string create_sql = "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+                             "c8 date, index(ts=c7));";
+    hybridse::node::NodeManager node_manager;
+    hybridse::base::Status sql_status;
+    hybridse::node::PlanNodeList plan_trees;
+    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(create_sql, plan_trees, &node_manager, sql_status);
+    ASSERT_EQ(0, sql_status.code);
+    hybridse::node::PlanNode *node = plan_trees[0];
+    auto status = sr->HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node),
+            "test2", cs->GetNsClient());
+    ASSERT_TRUE(status.OK());
+    std::string msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
 }  // namespace cmd
@@ -210,6 +228,11 @@ int main(int argc, char** argv) {
     int ok = ::openmldb::cmd::mc_->SetUp(1);
     sleep(1);
     srand(time(NULL));
+    env.SetUp();
+    FLAGS_host = "127.0.0.1";
+    FLAGS_port = env.GetNsPort();
+    ::openmldb::cmd::InitSDK();
+
     ok = RUN_ALL_TESTS();
     ::openmldb::cmd::mc_->Close();
     return ok;
