@@ -22,15 +22,6 @@ public class SdkOption {
     private long sessionTimeout = 10000;
     private Boolean enableDebug = false;
     private long requestTimeout = 60000;
-    private Boolean performanceSensitive = true;
-
-    public Boolean getPerformanceSensitive() {
-        return performanceSensitive;
-    }
-
-    public void setPerformanceSensitive(Boolean performanceSensitive) {
-        this.performanceSensitive = performanceSensitive;
-    }
 
     public String getZkCluster() {
         return zkCluster;
