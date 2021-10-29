@@ -173,6 +173,9 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     bool Init(const ClientManager &client_manager);
 
+    // TODO(denglong): guarantee threadsafe
+    bool UpdateIndex(const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs);
+
     const ::hybridse::vm::Schema *GetSchema() override { return &schema_; }
 
     const std::string &GetName() override { return table_st_.GetName(); }
@@ -247,6 +250,8 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
     bool AddDB(const ::hybridse::type::Database &db);
 
     bool AddTable(const ::openmldb::api::TableMeta &meta, std::shared_ptr<::openmldb::storage::Table> table);
+
+    bool UpdateTableMeta(const ::openmldb::api::TableMeta &meta);
 
     bool UpdateTableInfo(const ::openmldb::nameserver::TableInfo& table_info);
 

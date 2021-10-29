@@ -37,6 +37,8 @@
 
 DEFINE_bool(interactive, true, "Set interactive");
 DEFINE_string(cmd, "", "Set cmd");
+DECLARE_string(host);
+DECLARE_int32(port);
 
 namespace openmldb {
 namespace cmd {
@@ -52,7 +54,7 @@ class SqlCmdTest : public ::testing::Test {
 };
 
 static void ExecuteSelectInto(const std::string& db, const std::string& sql, std::shared_ptr<sdk::SQLRouter> router,
-                              ::openmldb::base::ResultMsg* openmldb_base_status) {
+                              ::openmldb::base::Status* openmldb_base_status) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status hybridse_base_status;
     hybridse::node::PlanNodeList plan_trees;
@@ -94,7 +96,7 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     ASSERT_TRUE(router->ExecuteInsert(db, insert, &hybridse_sdk_status));
     ASSERT_TRUE(router->RefreshCatalog());
 
-    ::openmldb::base::ResultMsg openmldb_base_status;
+    ::openmldb::base::Status openmldb_base_status;
     // True
     std::string select_into_sql = "select * from " + name + " into outfile '" + file_path + "'";
     ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
@@ -166,6 +168,33 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     ASSERT_TRUE(!openmldb_base_status.OK());
 
     remove(file_path.c_str());
+}
+
+TEST_F(SqlCmdTest, deploy) {
+    ::openmldb::sdk::StandaloneEnv env;
+    env.SetUp();
+    FLAGS_host = "127.0.0.1";
+    FLAGS_port = env.GetNsPort();
+    InitSDK();
+
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+                             "c8 date, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
+    HandleSQL(create_sql);
+    HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+
+    std::string deploy_sql = "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+
+    hybridse::node::NodeManager node_manager;
+    hybridse::base::Status sql_status;
+    hybridse::node::PlanNodeList plan_trees;
+    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(deploy_sql, plan_trees, &node_manager, sql_status);
+    ASSERT_EQ(0, sql_status.code);
+    hybridse::node::PlanNode *node = plan_trees[0];
+    auto status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
+    ASSERT_TRUE(status.OK());
 }
 
 }  // namespace cmd

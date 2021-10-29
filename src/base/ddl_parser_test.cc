@@ -16,9 +16,23 @@
 
 #include "base/ddl_parser.h"
 
+#include "codec/schema_codec.h"
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 namespace openmldb::base {
+
+std::ostream& operator<<(std::ostream& os, IndexMap& index_map) {
+    for (auto& indexes : index_map) {
+        os << " {" << indexes.first << "[";
+        for (auto& ck : indexes.second) {
+            os << ck.ShortDebugString() << ", ";
+        }
+        os << "]} ";
+    }
+    return os;
+}
+
 class DDLParserTest : public ::testing::Test {
  public:
     void SetUp() override {

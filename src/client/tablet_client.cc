@@ -1104,10 +1104,14 @@ bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common
     bool ok = client_.SendRequest(&openmldb::api::TabletServer_Stub::AddIndex, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
-        task_info->set_status(::openmldb::api::TaskStatus::kFailed);
+        if (task_info) {
+            task_info->set_status(::openmldb::api::TaskStatus::kFailed);
+        }
         return false;
     }
-    task_info->set_status(::openmldb::api::TaskStatus::kDone);
+    if (task_info) {
+        task_info->set_status(::openmldb::api::TaskStatus::kDone);
+    }
     return true;
 }
 
@@ -1188,6 +1192,25 @@ bool TabletClient::ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partiti
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     bool ok = client_.SendRequest(&openmldb::api::TabletServer_Stub::ExtractIndexData, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::ExtractMultiIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+        const std::vector<::openmldb::common::ColumnKey>& column_key_vec) {
+    ::openmldb::api::ExtractMultiIndexDataRequest request;
+    ::openmldb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_partition_num(partition_num);
+    for (const auto& column_key : column_key_vec) {
+        auto cur_column_key = request.add_column_key();
+        cur_column_key->CopyFrom(column_key);
+    }
+    bool ok = client_.SendRequest(&openmldb::api::TabletServer_Stub::ExtractMultiIndexData, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;

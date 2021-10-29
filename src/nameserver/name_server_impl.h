@@ -155,8 +155,8 @@ class NameServerImpl : public NameServer {
                              std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, uint64_t cur_term,
                              uint32_t tid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
-    ::openmldb::base::ResultMsg CreateOfflineTable(const std::string& db_name, const std::string& table_name,
-                                                   const std::string& partition_key, const Schema& schema);
+    ::openmldb::base::Status CreateOfflineTable(const std::string& db_name, const std::string& table_name,
+                const std::string& partition_key, const Schema& schema);
 
     void RefreshTablet(uint32_t tid);
 
@@ -313,8 +313,7 @@ class NameServerImpl : public NameServer {
                        std::string& msg);                                                                   // NOLINT
 
     int CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, bool is_leader,
-                            std::map<uint32_t, std::vector<std::string>>& endpoint_map,  // NOLINT
-                            uint64_t term);
+                            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term); // NOLINT
 
     void CheckZkClient();
 
@@ -379,7 +378,9 @@ class NameServerImpl : public NameServer {
 
     static int CheckTableMeta(const TableInfo& table_info);
 
-    int FillColumnKey(TableInfo& table_info);  // NOLINT
+    int FillColumnKey(TableInfo* table_info);
+
+    int AddDefaultIndex(TableInfo* table_info);
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
@@ -743,6 +744,8 @@ class NameServerImpl : public NameServer {
                           openmldb::common::VersionPair* new_pair);
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
+
+    std::shared_ptr<TabletInfo> GetTablet(const std::string& endpoint);
 
     bool AllocateTableId(uint32_t* id);
 

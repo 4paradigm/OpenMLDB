@@ -221,9 +221,9 @@ Status SchemasContext::ResolveColumnIndexByName(
         CHECK_TRUE(iter != column_name_map_.end(), kColumnNotFound,
                    "Fail to find column `", column_name, "`");
         bool found = false;
-        size_t cur_column_id;
-        size_t cur_col_idx;
-        size_t cur_schema_idx;
+        size_t cur_column_id = 0;
+        size_t cur_col_idx = 0;
+        size_t cur_schema_idx = 0;
         for (auto& pair : iter->second) {
             auto source = GetSchemaSource(pair.first);
             if (source->GetSourceDB() == (db_name.empty() ? default_db_name_ : db_name) &&
