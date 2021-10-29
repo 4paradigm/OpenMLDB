@@ -122,7 +122,7 @@ class SQLClusterRouter : public SQLRouter {
     bool ExecuteInsert(const std::string& db, const std::string& sql, std::shared_ptr<SQLInsertRows> rows,
                        hybridse::sdk::Status* status) override;
 
-    std::shared_ptr<SQLRouterOptions> GetSQLRouterOption();
+    void SetPerformanceSensitive(const bool performance_sensitive);
 
     std::shared_ptr<TableReader> GetTableReader();
 

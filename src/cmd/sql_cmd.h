@@ -773,7 +773,7 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
 void SetVariable(const std::string key, const hybridse::node::ConstNode* value) {
     if (key == "performance_sensitive") {
         if (value->GetDataType() == hybridse::node::kBool) {
-            sr->GetSQLRouterOption()->performance_sensitive = value->GetBool();
+            sr->SetPerformanceSensitive(value->GetBool());
             printf("Success to set %s as %s\n", key.c_str(), value->GetBool() ? "true": "false");
         } else {
             printf("The type of %s should be bool\n", key.c_str());

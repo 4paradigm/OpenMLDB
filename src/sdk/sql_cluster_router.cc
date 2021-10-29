@@ -808,8 +808,8 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     return tablet->GetClient();
 }
 
-std::shared_ptr<SQLRouterOptions> SQLClusterRouter::GetSQLRouterOption() {
-    return std::make_shared<SQLRouterOptions>(options_);
+void SQLClusterRouter::SetPerformanceSensitive(const bool performance_sensitive) {
+    options_.performance_sensitive = performance_sensitive;
 }
 
 std::shared_ptr<TableReader> SQLClusterRouter::GetTableReader() {
