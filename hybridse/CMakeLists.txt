@@ -52,34 +52,7 @@ option(JAVASDK_ENABLE "Enable javasdk" ON)
 option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 
-# thirdparty snippets inspired from neovim: https://github.com/neovim/neovim/blob/master/CMakeLists.txt
-if(DEFINED ENV{DEPS_BUILD_DIR})
-    set(DEPS_PREFIX "$ENV{DEPS_BUILD_DIR}/usr" CACHE PATH "Path prefix for finding dependencies")
-else()
-    set(DEPS_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/.deps/usr" CACHE PATH "Path prefix for finding dependencies")
-    if(NOT EXISTS ${DEPS_PREFIX} AND (DEFINED ENV{CLION_IDE} OR DEFINED ENV{VisualStudioEdition}))
-        # When running from within CLion or Visual Studio,
-        # build bundled dependencies automatically.
-        #
-        # after success, built dependencies are installed into ${PROJECT_BINARY_DIR}/.deps/usr
-        # refer more in third-party/CMakeLists.txt
-        message(STATUS "Building dependencies...")
-        set(DEPS_BUILD_DIR ${PROJECT_BINARY_DIR}/.deps)
-        file(MAKE_DIRECTORY ${DEPS_BUILD_DIR})
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -G ${CMAKE_GENERATOR}
-                -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-                -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-                -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
-                ${PROJECT_SOURCE_DIR}/../third-party
-            WORKING_DIRECTORY ${DEPS_BUILD_DIR})
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} --build ${DEPS_BUILD_DIR}
-            --config ${CMAKE_BUILD_TYPE})
-        set(DEPS_PREFIX ${DEPS_BUILD_DIR}/usr)
-    endif()
-endif()
-
+set(DEPS_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/.deps/usr" CACHE PATH "Path prefix for finding dependencies")
 if (NOT DEFINED CMAKE_PREFIX_PATH)
     set(CMAKE_PREFIX_PATH ${DEPS_PREFIX})
 endif()
@@ -260,6 +233,7 @@ endif ()
 if (CMAKE_INSTALL_PREFIX STREQUAL "")
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
 endif ()
+message(STATUS "Hybridse will install to ${CMAKE_INSTALL_PREFIX}")
 install(TARGETS hybridse_core hybridse_sdk hybridse_flags
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

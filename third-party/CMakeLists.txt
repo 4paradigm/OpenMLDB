@@ -72,6 +72,7 @@ if(NOT BUILD_BUNDLED_HYBRIDSQL_ASSERTS)
     BUILD_COMMAND ""
     INSTALL_COMMAND "")
   ExternalProject_Get_Property(hybridsql-asserts DOWNLOADED_FILE)
+  # TODO(#614): avoid extract every time run build even there is no version update
   add_custom_target(
     hybridsql-asserts-extract ALL
     tar xzf ${DOWNLOADED_FILE} -C ${DEPS_INSTALL_DIR} --strip-components=1

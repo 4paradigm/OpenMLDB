@@ -100,7 +100,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/thirdparty)
+    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
 endif()
 
 set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags boost_filesystem boost_date_time boost_regex)
