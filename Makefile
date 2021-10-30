@@ -18,12 +18,57 @@ NPROC := $(shell (nproc))
 
 CMAKE_PRG ?= $(shell (command -v cmake3 || echo cmake))
 CMAKE_BUILD_TYPE ?= Release
-CMAKE_FLAGS := -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+
+# General cmake flags for all OpenMLDB target
+CMAKE_FLAGS ?=
+CMAKE_FLAGS += -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+
+SQL_CASE_BASE_DIR ?= $(MAKEFILE_DIR)
+
+# Extra cmake flags for OpenMLDB
+OPENMLDB_CMAKE_FLAGS ?=
+ifdef SQL_PYSDK_ENABLE
+    OPENMLDB_CMAKE_FLAGS += -DSQL_PYSDK_ENABLE=$(SDL_PYSDK_ENABLE)
+endif
+ifdef SQL_JAVASDK_ENABLE
+    OPENMLDB_CMAKE_FLAGS += -DSQL_JAVASDK_ENABLE=$(SQL_JAVASDK_ENABLE)
+endif
+ifdef TESTING_ENABLE
+    OPENMLDB_CMAKE_FLAGS += -DTESTING_ENABLE=$(TESTING_ENABLE)
+endif
+
+
+# Extra cmake flags for HybridSE
+HYBRIDSE_CMAKE_FLAGS ?=
+ifdef JAVASDK_ENABLE
+    HYBRIDSE_CMAKE_FLAGS += -DJAVASDK_ENABLE=$(JAVASDK_ENABLE)
+endif
+ifdef PYSDK_ENABLE
+    HYBRIDSE_CMAKE_FLAGS += -DPYSDK_ENABLE=$(PYSDK_ENABLE)
+endif
+ifdef CORE_TESTING_ENABLE
+    HYBRIDSE_CMAKE_FLAGS += -DCORE_TESTING_ENABLE=$(CORE_TESTING_ENABLE)
+endif
+ifdef TESTING_ENABLE
+    HYBRIDSE_CMAKE_FLAGS += -DTESTING_ENABLE=$(TESTING_ENABLE)
+endif
+ifdef EXAMPLES_ENABLE
+    HYBRIDSE_CMAKE_FLAGS += -DEXAMPLES_ENABLE=$(EXAMPLES_ENABLE)
+endif
+ifdef EXAMPLES_TESTING_ENABLE
+    HYBRIDSE_CMAKE_FLAGS += -DEXAMPLES_TESTING_ENABLE=$(EXAMPLES_TESTING_ENABLE)
+endif
+
+
+# Extra cmake flags for third-party
+THIRD_PARTY_CMAKE_FLAGS ?=
 
 
 all:
-	@echo working on it: $(MAKEFILE_DIR) : $(shell (nproc))
-	@echo cmake_build_type: $(CMAKE_BUILD_TYPE)
+	@echo cmake flags : $(HYBRIDSE_CMAKE_FLAGS)
+
+# TODO: add OpenMLDB coverage
+coverage: hybridse-coverage
 
 OPENMLDB_BUILD_DIR := $(MAKEFILE_DIR)/build
 
@@ -31,7 +76,7 @@ openmldb-build: openmldb-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) -- -j$(NPROC)
 
 openmldb-configure: hybridse-install
-	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) $(CMAKE_FLAGS)
+	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) $(CMAKE_FLAGS) $(OPENMLDB_CMAKE_FLAGS)
 
 openmldb-clean:
 	rm -rf "$(OPENMLDB_BUILD_DIR)"
@@ -59,13 +104,20 @@ hybridse-install: hybridse-build
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target install
 
 hybridse-test: hybridse-build
-	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target test -- -j$(NPROC)
+	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target test -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) 
 
 hybridse-build: hybridse-configure
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 
 hybridse-configure: third-party
-	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_INSTALL_PREFIX=$(HYBRIDSE_INSTALL_DIR) $(CMAKE_FLAGS)
+	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_INSTALL_PREFIX=$(HYBRIDSE_INSTALL_DIR) $(CMAKE_FLAGS) $(HYBRIDSE_CMAKE_FLAGS)
+
+hybridse-coverage: hybridse-coverage-configure
+	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
+
+hybridse-coverage-configure: third-party
+	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON -DEXAMPLES_ENABLE=ON -DEXAMPLES_TESTING_ENABLE=ON
+
 
 hybridse-clean:
 	rm -rf "$(HYBRIDSE_BUILD_DIR)"
@@ -83,75 +135,75 @@ javafmt:
 
 shfmt:
 	@if command -v shfmt; then\
-		git ls-files | grep --regexp "\.sh$$" | xargs -I {} shfmt -i 4 -w {}; \
-		exit 0; \
-	else \
-		echo "SKIP: shfmt (shfmt not found)"; \
-	fi
+	    git ls-files | grep --regexp "\.sh$$" | xargs -I {} shfmt -i 4 -w {}; \
+	    exit 0; \
+	    else \
+	    echo "SKIP: shfmt (shfmt not found)"; \
+	    fi
 
 cppfmt:
 	@if command -v clang-format; then \
-		git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} clang-format -i -style=file {} ; \
-		exit 0; \
-	else \
-		echo "SKIP: cppfmt (clang-format not found)"; \
-	fi
+	    git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} clang-format -i -style=file {} ; \
+	    exit 0; \
+	    else \
+	    echo "SKIP: cppfmt (clang-format not found)"; \
+	    fi
 
 pyfmt:
 	@if command -v yapf; then \
-		git ls-files | grep --regexp "\.py$$" | xargs -I {} yapf -i --style=google {}; \
-		exit 0; \
-	else \
-		echo "SKIP: pyfmt (yapf not found)"; \
-	fi
+	    git ls-files | grep --regexp "\.py$$" | xargs -I {} yapf -i --style=google {}; \
+	    exit 0; \
+	    else \
+	    echo "SKIP: pyfmt (yapf not found)"; \
+	    fi
 
 configfmt: yamlfmt jsonfmt
 
 yamlfmt:
 	@if command -v prettier; then \
-		git ls-files | grep --regexp "\(\.yaml\|\.yml\)$$" | xargs -I {} prettier -w {}; \
-		exit 0; \
-	else \
-		echo "SKIP: yamlfmt (prettier not found)"; \
-	fi
+	    git ls-files | grep --regexp "\(\.yaml\|\.yml\)$$" | xargs -I {} prettier -w {}; \
+	    exit 0; \
+	    else \
+	    echo "SKIP: yamlfmt (prettier not found)"; \
+	    fi
 
 jsonfmt:
 	@if command -v prettier; then \
-		git ls-files | grep --regexp "\.json$$" | xargs -I {} prettier -w {}; \
-		exit 0; \
-	else \
-		echo "SKIP: jsonfmt (prettier not found)"; \
-	fi
+	    git ls-files | grep --regexp "\.json$$" | xargs -I {} prettier -w {}; \
+	    exit 0; \
+	    else \
+	    echo "SKIP: jsonfmt (prettier not found)"; \
+	    fi
 
 xmlfmt:
 	@if command -v prettier; then \
-		git ls-files | grep --regexp "\.xml$$" | xargs -I {} prettier --plugin=@prettier/plugin-xml --plugin-search-dir=./node_modules -w {}; \
-		exit 0; \
-	else \
-		echo "SKIP: xmlfmt (prettier not found)"; \
-	fi
+	    git ls-files | grep --regexp "\.xml$$" | xargs -I {} prettier --plugin=@prettier/plugin-xml --plugin-search-dir=./node_modules -w {}; \
+	    exit 0; \
+	    else \
+	    echo "SKIP: xmlfmt (prettier not found)"; \
+	    fi
 
 
 cpplint:
 	@if command -v cpplint; then \
-		git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} cpplint {} ; \
-	else \
-		echo "SKIP: cpplint (cpplint not found)"; \
-	fi
+	    git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} cpplint {} ; \
+	    else \
+	    echo "SKIP: cpplint (cpplint not found)"; \
+	    fi
 
 shlint:
 	@if command -v shellcheck; then \
-		git ls-files | grep --regexp "\.sh$$" | xargs -I {} shellcheck {}; \
-	else \
-		echo "SKIP: shlint (shellcheck not found)"; \
-	fi
+	    git ls-files | grep --regexp "\.sh$$" | xargs -I {} shellcheck {}; \
+	    else \
+	    echo "SKIP: shlint (shellcheck not found)"; \
+	    fi
 
 javalint:
 	@cd java && mvn -pl hybridse-sdk -Dplugin.violationSeverity=warning checkstyle:check
 
 pylint:
 	@if command -v pylint; then \
-		git ls-files | grep --regexp "\.py$$" | xargs -I {} pylint {}; \
-	else \
-		echo "SKIP: pylint (pylint not found)"; \
-	fi
+	    git ls-files | grep --regexp "\.py$$" | xargs -I {} pylint {}; \
+	    else \
+	    echo "SKIP: pylint (pylint not found)"; \
+	    fi
