@@ -20,19 +20,19 @@ DECLARE_int32(request_timeout_ms);
 namespace openmldb {
 namespace client {
 
-::openmldb::base::ResultMsg NearLineTabletClient::CreateTable(const std::string& db_name, const std::string& table_name,
+::openmldb::base::Status NearLineTabletClient::CreateTable(const std::string& db_name, const std::string& table_name,
         const std::string& partition_key, const Schema& schema) {
     if (db_name.empty()) {
-        return ::openmldb::base::ResultMsg(-1, "db name is empty");
+        return ::openmldb::base::Status(-1, "db name is empty");
     }
     if (table_name.empty()) {
-        return ::openmldb::base::ResultMsg(-1, "table name is empty");
+        return ::openmldb::base::Status(-1, "table name is empty");
     }
     if (partition_key.empty()) {
-        return ::openmldb::base::ResultMsg(-1, "partition key is empty");
+        return ::openmldb::base::Status(-1, "partition key is empty");
     }
     if (schema.size() == 0) {
-        return ::openmldb::base::ResultMsg(-1, "schema is empty");
+        return ::openmldb::base::Status(-1, "schema is empty");
     }
     ::openmldb::nltablet::CreateTableRequest request;
     ::openmldb::nltablet::CreateTableResponse response;
@@ -45,9 +45,9 @@ namespace client {
     bool ok = client_.SendRequest(&::openmldb::nltablet::NLTabletServer_Stub::CreateTable, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
-        return ::openmldb::base::ResultMsg();
+        return ::openmldb::base::Status();
     }
-    return ::openmldb::base::ResultMsg(response.code(), response.msg());
+    return ::openmldb::base::Status(response.code(), response.msg());
 }
 
 }  // namespace client

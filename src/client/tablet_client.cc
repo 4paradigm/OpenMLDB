@@ -47,7 +47,7 @@ TabletClient::~TabletClient() {}
 int TabletClient::Init() { return client_.Init(); }
 
 bool TabletClient::Query(const std::string& db, const std::string& sql, const std::string& row, brpc::Controller* cntl,
-                         openmldb::api::QueryResponse* response, const bool is_debug) {
+                         openmldb::api::QueryResponse* response, const bool is_debug, bool performance_sensitive) {
     if (cntl == NULL || response == NULL) return false;
     ::openmldb::api::QueryRequest request;
     request.set_sql(sql);
@@ -56,6 +56,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql, const st
     request.set_is_debug(is_debug);
     request.set_row_size(row.size());
     request.set_row_slices(1);
+    request.set_is_performance_sensitive(performance_sensitive);
     auto& io_buf = cntl->request_attachment();
     if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()), row.size(), &io_buf)) {
         LOG(WARNING) << "Encode row buffer failed";
@@ -72,7 +73,8 @@ bool TabletClient::Query(const std::string& db, const std::string& sql, const st
 bool TabletClient::Query(const std::string& db, const std::string& sql,
                          const std::vector<openmldb::type::DataType>& parameter_types,
                          const std::string& parameter_row,
-                         brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug) {
+                         brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug,
+                         bool performance_sensitive) {
     if (cntl == NULL || response == NULL) return false;
     ::openmldb::api::QueryRequest request;
     request.set_sql(sql);
@@ -81,7 +83,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     request.set_is_debug(is_debug);
     request.set_parameter_row_size(parameter_row.size());
     request.set_parameter_row_slices(1);
-    request.set_is_performance_sensitive(true);
+    request.set_is_performance_sensitive(performance_sensitive);
     for (auto& type : parameter_types) {
         request.add_parameter_types(type);
     }
@@ -1102,10 +1104,14 @@ bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common
     bool ok = client_.SendRequest(&openmldb::api::TabletServer_Stub::AddIndex, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
-        task_info->set_status(::openmldb::api::TaskStatus::kFailed);
+        if (task_info) {
+            task_info->set_status(::openmldb::api::TaskStatus::kFailed);
+        }
         return false;
     }
-    task_info->set_status(::openmldb::api::TaskStatus::kDone);
+    if (task_info) {
+        task_info->set_status(::openmldb::api::TaskStatus::kDone);
+    }
     return true;
 }
 
@@ -1186,6 +1192,25 @@ bool TabletClient::ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partiti
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     bool ok = client_.SendRequest(&openmldb::api::TabletServer_Stub::ExtractIndexData, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::ExtractMultiIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+        const std::vector<::openmldb::common::ColumnKey>& column_key_vec) {
+    ::openmldb::api::ExtractMultiIndexDataRequest request;
+    ::openmldb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_partition_num(partition_num);
+    for (const auto& column_key : column_key_vec) {
+        auto cur_column_key = request.add_column_key();
+        cur_column_key->CopyFrom(column_key);
+    }
+    bool ok = client_.SendRequest(&openmldb::api::TabletServer_Stub::ExtractMultiIndexData, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;

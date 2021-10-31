@@ -906,12 +906,14 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLRequest(co
     return rs;
 }
 std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
-                                                                         ::hybridse::sdk::Status* status) {
-    return ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
+                                                                         ::hybridse::sdk::Status* status,
+                                                                         bool performance_sensitive) {
+    return ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status,
+        performance_sensitive);
 }
 std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParameterized(
     const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
-    ::hybridse::sdk::Status* status) {
+    ::hybridse::sdk::Status* status, bool performance_sensitive) {
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
@@ -929,7 +931,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     }
     DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
     if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
-                       options_.enable_debug)) {
+                       options_.enable_debug, performance_sensitive)) {
         status->msg = response->msg();
         status->code = -1;
         return {};
@@ -1138,12 +1140,13 @@ bool SQLClusterRouter::GetSQLPlan(const std::string& sql, ::hybridse::node::Node
 bool SQLClusterRouter::RefreshCatalog() { return cluster_sdk_->Refresh(); }
 
 std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, const std::string& sql,
-                                                       ::hybridse::sdk::Status* status) {
+                                                       ::hybridse::sdk::Status* status,
+                                                       bool performance_sensitive) {
     ::hybridse::vm::ExplainOutput explain_output;
     ::hybridse::base::Status vm_status;
     ::hybridse::codec::Schema parameter_schema;
     bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode, parameter_schema,
-                                                 &explain_output, &vm_status);
+                                                 &explain_output, &vm_status, performance_sensitive);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;

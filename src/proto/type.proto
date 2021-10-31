@@ -67,3 +67,9 @@ enum StartupMode {
     kStandalone = 1;
     kCluster = 2;
 }
+
+enum ProcedureType {
+    kUnknow = -1;
+    kReqProcedure = 0;
+    kReqDeployment = 1;
+}

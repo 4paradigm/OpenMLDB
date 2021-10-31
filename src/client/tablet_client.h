@@ -67,10 +67,12 @@ class TabletClient : public Client {
 
     bool Query(const std::string& db, const std::string& sql,
                const std::vector<openmldb::type::DataType>& parameter_types, const std::string& parameter_row,
-               brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug = false);
+               brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug = false,
+               bool performance_sensitive = true);
 
     bool Query(const std::string& db, const std::string& sql, const std::string& row, brpc::Controller* cntl,
-               ::openmldb::api::QueryResponse* response, const bool is_debug = false);
+               ::openmldb::api::QueryResponse* response, const bool is_debug = false,
+               bool performance_sensitive = true);
 
     bool SQLBatchRequestQuery(const std::string& db, const std::string& sql,
                               std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch>, brpc::Controller* cntl,
@@ -241,6 +243,9 @@ class TabletClient : public Client {
     bool ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
                           const ::openmldb::common::ColumnKey& column_key, uint32_t idx,
                           std::shared_ptr<TaskInfo> task_info);
+
+    bool ExtractMultiIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
+                          const std::vector<::openmldb::common::ColumnKey>& column_key_vec);
 
     bool CancelOP(const uint64_t op_id);
 

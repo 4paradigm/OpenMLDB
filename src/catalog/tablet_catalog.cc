@@ -59,13 +59,6 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
         LOG(WARNING) << "fail to covert schema to sql schema";
         return false;
     }
-
-    ok = SchemaAdapter::ConvertIndex(table_st_.GetColumnKey(), &index_list_);
-    if (!ok) {
-        LOG(WARNING) << "fail to conver index to sql index";
-        return false;
-    }
-
     // init types var
     for (int32_t i = 0; i < schema_.size(); i++) {
         const ::hybridse::type::ColumnDef& column = schema_.Get(i);
@@ -76,6 +69,21 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
         types_.insert(std::make_pair(column.name(), col_info));
     }
 
+    if (!UpdateIndex(table_st_.GetColumnKey())) {
+        LOG(WARNING) << "fail to update index";
+        return false;
+    }
+    table_client_manager_ = std::make_shared<TableClientManager>(table_st_, client_manager);
+    DLOG(INFO) << "init table handler for table " << GetName() << " in db " << GetDatabase() << " done";
+    return true;
+}
+
+bool TabletTableHandler::UpdateIndex(
+        const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs) {
+    if (!SchemaAdapter::ConvertIndex(indexs, &index_list_)) {
+        LOG(WARNING) << "fail to conver index to sql index";
+        return false;
+    }
     // init index hint
     for (int32_t i = 0; i < index_list_.size(); i++) {
         const ::hybridse::type::IndexDef& index_def = index_list_.Get(i);
@@ -102,8 +110,6 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
         }
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
-    table_client_manager_ = std::make_shared<TableClientManager>(table_st_, client_manager);
-    DLOG(INFO) << "init table handler for table " << GetName() << " in db " << GetDatabase() << " done";
     return true;
 }
 
@@ -130,7 +136,7 @@ std::unique_ptr<::hybridse::codec::WindowIterator> TabletTableHandler::GetWindow
     return std::unique_ptr<::hybridse::codec::WindowIterator>();
 }
 
-// TODO(chenjing): 基于segment 优化Get(int pos) 操作
+// TODO(chenjing): optimize Get(int pos) base segment
 const ::hybridse::codec::Row TabletTableHandler::Get(int32_t pos) {
     auto iter = GetIterator();
     while (pos-- > 0 && iter->Valid()) {
@@ -370,6 +376,28 @@ bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_n
     }
     sp_map.erase(it);
     return true;
+}
+
+bool TabletCatalog::UpdateTableMeta(const ::openmldb::api::TableMeta& meta) {
+    const std::string& db_name = meta.db();
+    const std::string& table_name = meta.name();
+    std::shared_ptr<TabletTableHandler> handler;
+    {
+        std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
+        auto db_it = tables_.find(db_name);
+        if (db_it == tables_.end()) {
+            LOG(WARNING) << "db " << db_name << " is not exist";
+            return false;
+        }
+        auto it = db_it->second.find(table_name);
+        if (it == db_it->second.end()) {
+            LOG(WARNING) << "table " << table_name << " is not exist in db " << db_name;
+            return false;
+        } else {
+            handler = it->second;
+        }
+    }
+    return handler->UpdateIndex(meta.column_key());
 }
 
 bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& table_info) {

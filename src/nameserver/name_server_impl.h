@@ -26,6 +26,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/hash.h"
@@ -49,9 +50,6 @@ namespace nameserver {
 
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
-using ::openmldb::api::CreateProcedureRequest;
-using ::openmldb::api::DropProcedureRequest;
-using ::openmldb::api::ProcedureInfo;
 using ::openmldb::client::NsClient;
 using ::openmldb::client::TabletClient;
 using ::openmldb::zk::DistLock;
@@ -65,7 +63,7 @@ const uint32_t INVALID_PID = UINT32_MAX;
 struct EndpointInfo {
     ::openmldb::type::EndpointState state_ = ::openmldb::type::EndpointState::kOffline;
     uint64_t ctime_ = 0;
-    bool Health() { return state_ == ::openmldb::type::EndpointState::kHealthy; }
+    bool Health() const { return state_ == ::openmldb::type::EndpointState::kHealthy; }
 };
 
 // tablet info
@@ -76,7 +74,7 @@ struct TabletInfo {
     std::shared_ptr<TabletClient> client_;
     uint64_t ctime_;
 
-    bool Health() { return state_ == ::openmldb::type::EndpointState::kHealthy; }
+    bool Health() const { return state_ == ::openmldb::type::EndpointState::kHealthy; }
 };
 
 struct NearLineTabletInfo : public EndpointInfo {
@@ -90,9 +88,9 @@ typedef std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>
 typedef boost::function<void()> TaskFun;
 
 struct Task {
-    Task(const std::string& endpoint, std::shared_ptr<::openmldb::api::TaskInfo> task_info)
-        : endpoint_(endpoint), task_info_(task_info) {}
-    ~Task() {}
+    Task(std::string endpoint, std::shared_ptr<::openmldb::api::TaskInfo> task_info)
+        : endpoint_(std::move(endpoint)), task_info_(std::move(task_info)) {}
+    ~Task() = default;
     std::string endpoint_;
     std::shared_ptr<::openmldb::api::TaskInfo> task_info_;
     std::vector<std::shared_ptr<Task>> sub_task_;
@@ -132,7 +130,7 @@ class NameServerImpl : public NameServer {
  public:
     NameServerImpl();
 
-    ~NameServerImpl();
+    ~NameServerImpl() override;
 
     bool Init(const std::string& real_endpoint);
     bool Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint,
@@ -142,9 +140,7 @@ class NameServerImpl : public NameServer {
 
     NameServerImpl& operator=(const NameServerImpl&) = delete;
 
-    inline bool IsClusterMode() const {
-        return startup_mode_ == ::openmldb::type::StartupMode::kCluster;
-    }
+    inline bool IsClusterMode() const { return startup_mode_ == ::openmldb::type::StartupMode::kCluster; }
 
     void DeleteOPTask(RpcController* controller, const ::openmldb::api::DeleteTaskRequest* request,
                       ::openmldb::api::GeneralResponse* response, Closure* done);
@@ -159,7 +155,7 @@ class NameServerImpl : public NameServer {
                              std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, uint64_t cur_term,
                              uint32_t tid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
-    ::openmldb::base::ResultMsg CreateOfflineTable(const std::string& db_name, const std::string& table_name,
+    ::openmldb::base::Status CreateOfflineTable(const std::string& db_name, const std::string& table_name,
                 const std::string& partition_key, const Schema& schema);
 
     void RefreshTablet(uint32_t tid);
@@ -173,8 +169,8 @@ class NameServerImpl : public NameServer {
     void CreateTable(RpcController* controller, const CreateTableRequest* request, GeneralResponse* response,
                      Closure* done);
 
-    void CreateProcedure(RpcController* controller, const CreateProcedureRequest* request, GeneralResponse* response,
-                         Closure* done);
+    void CreateProcedure(RpcController* controller, const api::CreateProcedureRequest* request,
+                         GeneralResponse* response, Closure* done);
 
     void DropTableInternel(const DropTableRequest& request, GeneralResponse& response,  // NOLINT
                            std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
@@ -193,6 +189,9 @@ class NameServerImpl : public NameServer {
 
     void ShowTable(RpcController* controller, const ShowTableRequest* request, ShowTableResponse* response,
                    Closure* done);
+
+    void ShowProcedure(RpcController* controller, const api::ShowProcedureRequest* request,
+                       api::ShowProcedureResponse* response, Closure* done);
 
     void MakeSnapshotNS(RpcController* controller, const MakeSnapshotNSRequest* request, GeneralResponse* response,
                         Closure* done);
@@ -314,8 +313,7 @@ class NameServerImpl : public NameServer {
                        std::string& msg);                                                                   // NOLINT
 
     int CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, bool is_leader,
-                            std::map<uint32_t, std::vector<std::string>>& endpoint_map,  // NOLINT
-                            uint64_t term);
+                            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term); // NOLINT
 
     void CheckZkClient();
 
@@ -351,10 +349,9 @@ class NameServerImpl : public NameServer {
 
     bool RegisterName();
 
-    bool CreateProcedureOnTablet(const ::openmldb::api::CreateProcedureRequest& sp_request,
-                                 std::string& err_msg);  // NOLINT
+    bool CreateProcedureOnTablet(const api::CreateProcedureRequest& sp_request, std::string& err_msg);  // NOLINT
 
-    void DropProcedure(RpcController* controller, const DropProcedureRequest* request, GeneralResponse* response,
+    void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
 
  private:
@@ -381,7 +378,9 @@ class NameServerImpl : public NameServer {
 
     static int CheckTableMeta(const TableInfo& table_info);
 
-    int FillColumnKey(TableInfo& table_info);  // NOLINT
+    int FillColumnKey(TableInfo* table_info);
+
+    int AddDefaultIndex(TableInfo* table_info);
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
@@ -746,6 +745,8 @@ class NameServerImpl : public NameServer {
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 
+    std::shared_ptr<TabletInfo> GetTablet(const std::string& endpoint);
+
     bool AllocateTableId(uint32_t* id);
 
     uint64_t GetTerm() const;
@@ -784,6 +785,9 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::string> sdk_endpoint_map_;
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_sp_table_map_;
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_table_sp_map_;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<api::ProcedureInfo>>>
+        db_sp_info_map_;
+
     ::openmldb::type::StartupMode startup_mode_;
 };
 

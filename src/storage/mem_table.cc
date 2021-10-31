@@ -625,6 +625,24 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             }
             ts_vec.push_back(ts_iter->second);
         }
+        auto cols = GetSchema();
+        if (!cols) {
+            return false;
+        }
+        std::map<std::string, ColumnDef> schema;
+        for (int idx = 0; idx < cols->size(); idx++) {
+            const auto& col = cols->Get(idx);
+            schema.emplace(col.name(), ColumnDef(col.name(), idx, col.data_type(), col.not_null()));
+        }
+        std::vector<ColumnDef> col_vec;
+        for (const auto& col_name : column_key.col_name()) {
+            auto it = schema.find(col_name);
+            if (it == schema.end()) {
+                PDLOG(WARNING, "not found col_name[%s]. tid %u pid %u", col_name.c_str(), id_, pid_);
+                return false;
+            }
+            col_vec.push_back(it->second);
+        }
         uint32_t inner_id = table_index_.GetAllInnerIndex()->size();
         Segment** seg_arr = new Segment*[seg_cnt_];
         if (!ts_vec.empty()) {
@@ -640,7 +658,8 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
                       FLAGS_absolute_default_skiplist_height, id_, pid_);
             }
         }
-        index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1);
+        index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1,
+                IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec);
         if (table_index_.AddIndex(index_def) < 0) {
             PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
             return false;

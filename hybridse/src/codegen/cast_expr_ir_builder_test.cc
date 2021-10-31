@@ -479,7 +479,7 @@ void CastExprCheck(CASTTYPE exp_value, std::string src_type_str,
                 return;
             }
             ExprCheck<CASTTYPE, udf::Nullable<codec::StringRef>>(
-                cast_func, exp_value, codec::StringRef(src_value_str));
+                cast_func, exp_value, codec::StringRef(src_value_str.size(), src_value_str.data()));
             break;
         }
         default: {
@@ -597,7 +597,7 @@ void CastExprCheck(std::string cast_type_str, std::string cast_value_str,
                     nullptr, src_type_str, src_value_str);
             } else {
                 CastExprCheck<codec::StringRef>(
-                    codec::StringRef(cast_value_str), src_type_str,
+                    codec::StringRef(cast_value_str.size(), cast_value_str.data()), src_type_str,
                     src_value_str);
             }
             break;

@@ -67,8 +67,8 @@ DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
-DEFINE_string(role, "tablet | nameserver | client | ns_client | sql_client | apiserver",
-              "Set the openmldb role for start");
+DEFINE_string(role, "",
+              "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
@@ -260,7 +260,6 @@ void StartTablet() {
     }
     server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
-    tablet->SetServer(&server);
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
     if (real_endpoint.empty()) {
         real_endpoint = FLAGS_endpoint;
@@ -340,7 +339,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
     return 0;
 }
 
-::openmldb::base::ResultMsg PutSchemaData(const ::openmldb::nameserver::TableInfo& table_info, uint64_t ts,
+::openmldb::base::Status PutSchemaData(const ::openmldb::nameserver::TableInfo& table_info, uint64_t ts,
                                           const std::vector<std::string>& input_value) {
     std::string value;
     ::openmldb::codec::SDKCodec codec(table_info);
@@ -348,11 +347,11 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
     const int part_size = table_info.table_partition_size();
     if (table_info.partition_key_size() > 0) {
         if (codec.EncodeDimension(input_value, 0, &dimensions) < 0) {
-            return ::openmldb::base::ResultMsg(-1, "Encode dimension error");
+            return ::openmldb::base::Status(-1, "Encode dimension error");
         }
         std::string key;
         if (codec.CombinePartitionKey(input_value, &key) < 0) {
-            return ::openmldb::base::ResultMsg(-1, "combine partition key error");
+            return ::openmldb::base::Status(-1, "combine partition key error");
         }
         uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % part_size);
         if (pid != 0) {
@@ -362,15 +361,15 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
         }
     } else {
         if (codec.EncodeDimension(input_value, part_size, &dimensions) < 0) {
-            return ::openmldb::base::ResultMsg(-1, "Encode dimension error");
+            return ::openmldb::base::Status(-1, "Encode dimension error");
         }
     }
     if (codec.EncodeRow(input_value, &value) < 0) {
-        return ::openmldb::base::ResultMsg(-1, "Encode data error");
+        return ::openmldb::base::Status(-1, "Encode data error");
     }
     std::vector<uint64_t> ts_dimensions;
     if (codec.EncodeTsDimension(input_value, &ts_dimensions) < 0) {
-        return ::openmldb::base::ResultMsg(-1, "Encode ts dimension error");
+        return ::openmldb::base::Status(-1, "Encode ts dimension error");
     }
     if (table_info.compress_type() == ::openmldb::type::CompressType::kSnappy) {
         std::string compressed;
@@ -381,11 +380,10 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
     const uint32_t fmt_ver = table_info.format_version();
     PutData(tid, dimensions, ts_dimensions, ts, value, table_info.table_partition(), fmt_ver);
 
-    return ::openmldb::base::ResultMsg(0, "ok");
+    return ::openmldb::base::Status(0, "ok");
 }
 
-int SplitPidGroup(const std::string& pid_group,
-                  std::set<uint32_t>& pid_set) {  // NOLINT
+int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) {  // NOLINT
     try {
         if (::openmldb::base::IsNumber(pid_group)) {
             pid_set.insert(boost::lexical_cast<uint32_t>(pid_group));
@@ -4854,6 +4852,7 @@ void StartAPIServer() {
 int main(int argc, char* argv[]) {
     ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+
     if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
@@ -4870,6 +4869,7 @@ int main(int argc, char* argv[]) {
 #endif
     } else {
         std::cout << "client start in stand-alone mode" << std::endl;
+        // TODO(hw): standalonesdk refresh every 2s, too many logs in Debug mode
         ::openmldb::cmd::StandAloneSQLClient();
     }
     return 0;
