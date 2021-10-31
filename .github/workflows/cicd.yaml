@@ -22,9 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: build
-        # -e can't catch the error when the command is a port of list-constructs, so we should add `|| exit`
         run: |
-          make openmldb-build SQL_PYSDK_ENABLE=OFF SQL_JAVASDK_ENABLE=OFF TESTING_ENABLE=ON
+          make build SQL_PYSDK_ENABLE=OFF SQL_JAVASDK_ENABLE=OFF TESTING_ENABLE=ON
 
       - name: pack OpenMLDB
         if: ${{ github.event_name == 'push' }}
