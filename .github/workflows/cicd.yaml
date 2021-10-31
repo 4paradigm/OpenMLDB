@@ -11,7 +11,6 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  HYBRIDSE_SOURCE: local
 
 jobs:
   build_and_cpp_ut:
@@ -25,10 +24,7 @@ jobs:
       - name: build
         # -e can't catch the error when the command is a port of list-constructs, so we should add `|| exit`
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../ || exit
-          rm -rf thirdparty
+          make openmldb-build SQL_PYSDK_ENABLE=OFF SQL_JAVASDK_ENABLE=OFF TESTING_ENABLE=ON
 
       - name: pack OpenMLDB
         if: ${{ github.event_name == 'push' }}
@@ -65,14 +61,11 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     steps:
       - uses: actions/checkout@v2
-      - name: build
-        run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_sdk_test && cd ../ || exit
+
       - name: run sql_sdk_test
         run: |
-          bash steps/ut.sh sql_sdk_test 0
+          make sdktest SQL_PYSDK_ENABLE=OFF SQL_JAVASDK_ENABLE=OFF TESTING_ENABLE=ON
+
       - name: upload unit test results
         if: always()
         uses: actions/upload-artifact@v2
@@ -87,14 +80,11 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     steps:
       - uses: actions/checkout@v2
-      - name: build
-        run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_cluster_test && cd ../ || exit
+
       - name: run sql_cluster_test
         run: |
-          bash steps/ut.sh sql_cluster_test 0
+          make clustertest SQL_PYSDK_ENABLE=OFF SQL_JAVASDK_ENABLE=OFF TESTING_ENABLE=ON
+
       - name: upload unit test results
         if: always()
         uses: actions/upload-artifact@v2
@@ -112,9 +102,8 @@ jobs:
 
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../ || exit
+          make javasdk SQL_PYSDK_ENABLE=OFF SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=OFF
+
       - name: run java modules smoke test
         run: |
           sh steps/ut_zookeeper.sh start
@@ -141,9 +130,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: build pysdk and sqlalchemy
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../ || exit
+          make pythonsdk SQL_PYSDK_ENABLE=ON SQL_JAVASDK_ENABLE=OFF TESTING_ENABLE=OFF
       - name: test sqlalchemy
         run: |
           python3 -m easy_install nose pip
@@ -236,7 +223,7 @@ jobs:
 
       - name: upload to maven
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make third-party
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=$(echo "$VERSION" | sed -e 's/^v//')
           ./steps/package_openmldb_javasdk.sh "$VERSION"
@@ -277,7 +264,7 @@ jobs:
 
       - name: upload to maven
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make third-party
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=$(echo "$VERSION" | sed -e 's/^v//')
           ./steps/package_openmldb_javasdk.sh "$VERSION"

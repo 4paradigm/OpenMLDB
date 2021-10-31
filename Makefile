@@ -64,25 +64,42 @@ endif
 THIRD_PARTY_CMAKE_FLAGS ?=
 
 
-all:
-	@echo cmake flags : $(HYBRIDSE_CMAKE_FLAGS)
+all: build
 
 # TODO: add OpenMLDB coverage
 coverage: hybridse-coverage
 
 OPENMLDB_BUILD_DIR := $(MAKEFILE_DIR)/build
 
-openmldb-build: openmldb-configure
+build: configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) -- -j$(NPROC)
 
-openmldb-configure: hybridse-install
+sdktest-build: configure
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target sql_sdk_test -- -j$(NPROC)
+
+sdktest: sdktest-build
+	bash steps/ut.sh sql_sdk_test 0
+
+clustertest-build: configure
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target sql_cluster_test -- -j$(NPROC)
+
+clustertest: clustertest-build
+	bash steps/ut.sh sql_cluster_test 0
+
+javasdk: configure
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target sql_javasdk_package openmldb -- -j$(NPROC)
+
+pythonsdk: configure
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target sqlalchemy_openmldb openmldb -- -j$(NPROC)
+
+configure: hybridse-install
 	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) $(CMAKE_FLAGS) $(OPENMLDB_CMAKE_FLAGS)
 
 openmldb-clean:
 	rm -rf "$(OPENMLDB_BUILD_DIR)"
 
-THIRD_PARTY_BUILD_DIR := $(MAKEFILE_DIR)/.deps
-THIRD_PARTY_SRC_DIR := $(MAKEFILE_DIR)/thirdsrc
+THIRD_PARTY_BUILD_DIR ?= $(MAKEFILE_DIR)/.deps
+THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
 THIRD_PARTY_DIR := $(THIRD_PARTY_BUILD_DIR)/usr
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
@@ -90,7 +107,7 @@ third-party: third-party-configure
 	$(CMAKE_PRG) --build .deps
 
 third-party-configure:
-	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR)
+	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
 
 third-party-clean:
 	rm -rf "$(THIRD_PARTY_BUILD_DIR)" "$(THIRD_PARTY_SRC_DIR)"
@@ -113,10 +130,11 @@ hybridse-configure: third-party
 	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_INSTALL_PREFIX=$(HYBRIDSE_INSTALL_DIR) $(CMAKE_FLAGS) $(HYBRIDSE_CMAKE_FLAGS)
 
 hybridse-coverage: hybridse-coverage-configure
+	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 
 hybridse-coverage-configure: third-party
-	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON -DEXAMPLES_ENABLE=ON -DEXAMPLES_TESTING_ENABLE=ON
+	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE_ENABLE=ON $(HYBRIDSE_CMAKE_FLAGS)
 
 
 hybridse-clean:
