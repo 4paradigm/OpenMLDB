@@ -58,6 +58,12 @@ endif
 ifdef EXAMPLES_TESTING_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DEXAMPLES_TESTING_ENABLE=$(EXAMPLES_TESTING_ENABLE)
 endif
+ifdef COVERAGE_ENABLE
+    HYBRIDSE_CMAKE_FLAGS += -DCOVERAGE_ENABLE=$(COVERAGE_ENABLE)
+endif
+ifdef SANITIZER_ENABLE
+    HYBRIDSE_CMAKE_FLAGS += -DSANITIZER_ENABLE=$(SANITIZER_ENABLE)
+endif
 
 
 # Extra cmake flags for third-party
@@ -92,7 +98,9 @@ javasdk: configure
 pythonsdk: configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target sqlalchemy_openmldb openmldb -- -j$(NPROC)
 
-configure: hybridse-install
+configure:
+	# turn off testing and example build for hybridse to save time & space
+	$(MAKE) hybridse-install TESTING_ENABLE=OFF EXAMPLES_ENABLE=OFF
 	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) $(CMAKE_FLAGS) $(OPENMLDB_CMAKE_FLAGS)
 
 openmldb-clean:
@@ -103,13 +111,13 @@ THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
 THIRD_PARTY_DIR := $(THIRD_PARTY_BUILD_DIR)/usr
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
-third-party: third-party-configure
+thirdparty: thirdparty-configure
 	$(CMAKE_PRG) --build .deps
 
-third-party-configure:
+thirdparty-configure:
 	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
 
-third-party-clean:
+thirdparty-clean:
 	rm -rf "$(THIRD_PARTY_BUILD_DIR)" "$(THIRD_PARTY_SRC_DIR)"
 
 HYBRIDSE_BUILD_DIR := $(MAKEFILE_DIR)/hybridse/build
@@ -126,23 +134,22 @@ hybridse-test: hybridse-build
 hybridse-build: hybridse-configure
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 
-hybridse-configure: third-party
+hybridse-configure: thirdparty
 	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_INSTALL_PREFIX=$(HYBRIDSE_INSTALL_DIR) $(CMAKE_FLAGS) $(HYBRIDSE_CMAKE_FLAGS)
 
 hybridse-coverage: hybridse-coverage-configure
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 
-hybridse-coverage-configure: third-party
-	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE_ENABLE=ON $(HYBRIDSE_CMAKE_FLAGS)
-
+hybridse-coverage-configure:
+	$(MAKE) hybridse-configure CMAKE_BUILD_TYPE=Debug COVERAGE_ENABLE=ON
 
 hybridse-clean:
 	rm -rf "$(HYBRIDSE_BUILD_DIR)"
 
 clean: hybridse-clean openmldb-clean
 
-distclean: clean third-party-clean
+distclean: clean thirdparty-clean
 
 lint: cpplint shlint javalint pylint
 

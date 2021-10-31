@@ -21,6 +21,10 @@ jobs:
       OS: linux
     steps:
       - uses: actions/checkout@v2
+      - name: setup thirdparty
+        run: |
+          make third-party
+
       - name: build
         run: |
           make build SQL_PYSDK_ENABLE=OFF SQL_JAVASDK_ENABLE=OFF TESTING_ENABLE=ON

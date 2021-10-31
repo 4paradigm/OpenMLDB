@@ -65,6 +65,7 @@ src/version.h
 src/config.h
 java/openmldb-native/src/main/resources
 java/openmldb-native/src/main/java
+java/openmldb-common/src/main/java/com/_4paradigm/openmldb/proto/
 java/openmldb-import/src/main/java/com/_4paradigm/openmldb/proto/
 java/openmldb-nearline-tablet/src/main/java/com/_4paradigm/openmldb/proto/
 java/openmldb-taskmanager/src/main/java/com/_4paradigm/openmldb/proto/
