@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: setup thirdparty
         run: |
-          make third-party
+          make thirdparty
 
       - name: build
         run: |
@@ -226,7 +226,7 @@ jobs:
 
       - name: upload to maven
         run: |
-          make third-party
+          make thirdparty
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=$(echo "$VERSION" | sed -e 's/^v//')
           ./steps/package_openmldb_javasdk.sh "$VERSION"
@@ -267,7 +267,7 @@ jobs:
 
       - name: upload to maven
         run: |
-          make third-party
+          make thirdparty
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=$(echo "$VERSION" | sed -e 's/^v//')
           ./steps/package_openmldb_javasdk.sh "$VERSION"
