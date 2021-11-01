@@ -175,7 +175,7 @@ TEST_F(SqlCmdTest, deploy) {
     env.SetUp();
     FLAGS_host = "127.0.0.1";
     FLAGS_port = env.GetNsPort();
-    InitSDK();
+    StandAloneInit();
 
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
