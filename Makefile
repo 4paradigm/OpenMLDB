@@ -14,19 +14,18 @@
 
 MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR  := $(dir $(MAKEFILE_PATH))
-NPROC := $(shell (nproc))
+NPROC ?= $(shell (nproc))
 
 CMAKE_PRG ?= $(shell (command -v cmake3 || echo cmake))
 CMAKE_BUILD_TYPE ?= Release
+CMAKE_FLAGS := -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
-# General cmake flags for all OpenMLDB target
-CMAKE_FLAGS ?=
-CMAKE_FLAGS += -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+CMAKE_EXTRA_FLAGS ?=
 
 SQL_CASE_BASE_DIR ?= $(MAKEFILE_DIR)
 
 # Extra cmake flags for OpenMLDB
-OPENMLDB_CMAKE_FLAGS ?=
+OPENMLDB_CMAKE_FLAGS := $(CMAKE_FLAGS)
 ifdef SQL_PYSDK_ENABLE
     OPENMLDB_CMAKE_FLAGS += -DSQL_PYSDK_ENABLE=$(SQL_PYSDK_ENABLE)
 endif
@@ -39,7 +38,7 @@ endif
 
 
 # Extra cmake flags for HybridSE
-HYBRIDSE_CMAKE_FLAGS ?=
+HYBRIDSE_CMAKE_FLAGS := $(CMAKE_FLAGS)
 ifdef JAVASDK_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DJAVASDK_ENABLE=$(JAVASDK_ENABLE)
 endif
@@ -68,7 +67,6 @@ endif
 
 # Extra cmake flags for third-party
 THIRD_PARTY_CMAKE_FLAGS ?=
-
 
 all: build
 
@@ -101,7 +99,7 @@ pythonsdk: configure
 # turn off testing and example build for hybridse to save time & space
 configure:
 	$(MAKE) hybridse-install TESTING_ENABLE=OFF EXAMPLES_ENABLE=OFF
-	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) $(CMAKE_FLAGS) $(OPENMLDB_CMAKE_FLAGS)
+	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 openmldb-clean:
 	rm -rf "$(OPENMLDB_BUILD_DIR)"
@@ -140,7 +138,7 @@ hybridse-build: hybridse-configure
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 
 hybridse-configure: thirdparty
-	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_INSTALL_PREFIX=$(HYBRIDSE_INSTALL_DIR) $(CMAKE_FLAGS) $(HYBRIDSE_CMAKE_FLAGS)
+	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_INSTALL_PREFIX=$(HYBRIDSE_INSTALL_DIR) $(HYBRIDSE_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 hybridse-coverage: hybridse-coverage-configure
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
