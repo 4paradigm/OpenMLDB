@@ -119,10 +119,10 @@ thirdparty-configure:
 
 thirdparty-clean: thirdparty-build-clean thirdparty-src-clean
 
-thirdparty-build-clean:
+thirdpartybuild-clean:
 	rm -rf "$(THIRD_PARTY_BUILD_DIR)"
 
-thirdparty-src-clean:
+thirdpartysrc-clean:
 	rm -rf "$(THIRD_PARTY_SRC_DIR)"
 
 HYBRIDSE_BUILD_DIR := $(MAKEFILE_DIR)/hybridse/build
