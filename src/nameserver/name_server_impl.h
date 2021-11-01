@@ -783,11 +783,18 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::string> real_ep_map_;
     std::map<std::string, std::string> remote_real_ep_map_;
     std::map<std::string, std::string> sdk_endpoint_map_;
-    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_sp_table_map_;
-    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_table_sp_map_;
+    // database
+    //    -> procedure
+    //       -> (db_name, table_name)
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>>>
+        db_sp_table_map_;
+    // database
+    //      -> table
+    //          -> (da_name, procedure_name)
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>>>
+        db_table_sp_map_;
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<api::ProcedureInfo>>>
         db_sp_info_map_;
-
     ::openmldb::type::StartupMode startup_mode_;
 };
 

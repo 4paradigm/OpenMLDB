@@ -37,7 +37,10 @@ message VersionPair {
     optional int32 id = 1;
     optional int32 field_count = 2;
 }
-
+message DbTableNamePair {
+    required string db_name = 1;
+    required string table_name = 2;
+}
 message ColumnDesc {
     required string name = 1;
     optional openmldb.type.DataType data_type = 2;

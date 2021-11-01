@@ -715,6 +715,16 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureIn
     WriteSchema(ar, "output_schema", sp_info->GetOutputSchema(), false);
     WriteSchema(ar, "output_common_cols", sp_info->GetOutputSchema(), true);
 
+    // Write db names
+    ar.Member("dbs");
+    auto dbs = sp_info->GetDbs();
+    ar.StartArray();
+    for (auto& db : dbs) {
+        ar& db;
+    }
+    ar.EndArray();
+
+    // Write table names
     ar.Member("tables");
     auto tables = sp_info->GetTables();
     ar.StartArray();

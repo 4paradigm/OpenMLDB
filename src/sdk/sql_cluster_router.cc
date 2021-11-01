@@ -1380,8 +1380,9 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to get dependent tables: " + status.msg);
     }
     for (auto& table : tables) {
-        sp_info.add_dbs(table.first);
-        sp_info.add_tables(table.second);
+        auto pair = sp_info.add_tables();
+        pair->set_db_name(table.first);
+        pair->set_table_name(table.second);
     }
     // send request to ns client
     return ns_ptr->CreateProcedure(sp_info, options_.request_timeout);
