@@ -1260,15 +1260,18 @@ base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* c
         case hybridse::node::kCmdDropTable: {
             const std::string& name = cmd_node->GetArgs()[0];
             ret = ns_ptr->DropTable(db, name, msg);
+            break;
         }
         case hybridse::node::kCmdDropIndex: {
             const std::string& index_name = cmd_node->GetArgs()[0];
             const std::string& table_name = cmd_node->GetArgs()[1];
             ret = ns_ptr->DeleteIndex(db, table_name, index_name, msg);
+            break;
         }
         case hybridse::node::kCmdDropSp: {
             const std::string& sp_name = cmd_node->GetArgs()[0];
             ret = ns_ptr->DropProcedure(db, sp_name, msg);
+            break;
         }
         default: {
             return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute script with unsupported type");
