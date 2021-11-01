@@ -117,8 +117,13 @@ thirdparty: thirdparty-configure
 thirdparty-configure:
 	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
 
-thirdparty-clean:
-	rm -rf "$(THIRD_PARTY_BUILD_DIR)" "$(THIRD_PARTY_SRC_DIR)"
+thirdparty-clean: thirdparty-build-clean thirdparty-src-clean
+
+thirdparty-build-clean:
+	rm -rf "$(THIRD_PARTY_BUILD_DIR)"
+
+thirdparty-src-clean:
+	rm -rf "$(THIRD_PARTY_SRC_DIR)"
 
 HYBRIDSE_BUILD_DIR := $(MAKEFILE_DIR)/hybridse/build
 HYBRIDSE_INSTALL_DIR := $(THIRD_PARTY_DIR)/hybridse

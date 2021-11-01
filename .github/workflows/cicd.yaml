@@ -28,6 +28,9 @@ jobs:
       - name: build
         run: |
           make build SQL_PYSDK_ENABLE=OFF SQL_JAVASDK_ENABLE=OFF TESTING_ENABLE=ON
+          # GitHub runner disk space is limited
+          # delete thirdparty build directory to save disk space
+          make thirdparty-build-clean
 
       - name: pack OpenMLDB
         if: ${{ github.event_name == 'push' }}
