@@ -94,7 +94,7 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db, E
     }
 
     for (auto iter = logical_plan.cbegin(); iter != logical_plan.cend(); iter++) {
-        if (!GetDependentTables(*iter, db_tables, status)) {
+        if (!GetDependentTables(*iter, db, db_tables, status)) {
             return false;
         }
     }
@@ -109,7 +109,8 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db, E
  * @param status
  * @return
  */
-bool Engine::GetDependentTables(node::PlanNode* node, std::set<std::pair<std::string, std::string>>* db_tables,
+bool Engine::GetDependentTables(node::PlanNode* node, const std::string& default_db,
+                                std::set<std::pair<std::string, std::string>>* db_tables,
                                 base::Status& status) {  // NOLINT
     if (nullptr == db_tables) {
         status.code = common::kNullPointer;
@@ -121,13 +122,14 @@ bool Engine::GetDependentTables(node::PlanNode* node, std::set<std::pair<std::st
         switch (node->GetType()) {
             case node::kPlanTypeTable: {
                 const node::TablePlanNode* table_node = dynamic_cast<const node::TablePlanNode*>(node);
-                db_tables->insert(std::make_pair(table_node->db_, table_node->table_));
+                db_tables->insert(std::make_pair(table_node->db_.empty() ? default_db : table_node->db_,
+                                                 table_node->table_));
                 return true;
             }
             default: {
                 if (node->GetChildrenSize() > 0) {
                     for (auto child : node->GetChildren()) {
-                        if (!GetDependentTables(child, db_tables, status)) {
+                        if (!GetDependentTables(child, default_db, db_tables, status)) {
                             return false;
                         }
                     }
@@ -281,7 +283,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
         std::set<std::pair<std::string, std::string>> tables;
         base::Status status;
         for (auto iter = ctx.logical_plan.cbegin(); iter != ctx.logical_plan.cend(); iter++) {
-            if (!GetDependentTables(*iter, &tables, status)) {
+            if (!GetDependentTables(*iter, db, &tables, status)) {
                 DLOG(WARNING) << "Fail to get dependent tables ";
                 break;
             }
