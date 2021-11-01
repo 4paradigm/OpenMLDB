@@ -496,7 +496,7 @@ void PrintItemTable(std::ostream& stream, const std::vector<std::string>& head,
         return;
     }
     DLOG(INFO) << "table size " << items.size() << "-" << items[0].size();
-    DCHECK(head.size() == items[0].size());
+    DCHECK(transpose ? (head.size() == items.size()) : (head.size() == items[0].size()));
     ::hybridse::base::TextTable t('-', ' ', ' ');
     std::for_each(head.begin(), head.end(), [&t](auto& item) { t.add(item); });
     t.end_of_row();
@@ -1117,14 +1117,15 @@ bool AppendColumnValue(const std::string& v, hybridse::sdk::DataType type, bool 
     }
 }
 
-bool InsertOneRow(const std::string& insert_placeholder, const std::vector<int>& str_col_idx,
-                  const std::string& null_value, const std::vector<std::string>& cols, std::string* error) {
+bool InsertOneRow(const std::string& database, const std::string& insert_placeholder,
+                  const std::vector<int>& str_col_idx, const std::string& null_value,
+                  const std::vector<std::string>& cols, std::string* error) {
     if (cols.empty()) {
         return false;
     }
 
     hybridse::sdk::Status status;
-    auto row = sr->GetInsertRow(db, insert_placeholder, &status);
+    auto row = sr->GetInsertRow(database, insert_placeholder, &status);
     if (!row) {
         *error = status.msg;
         return false;
@@ -1152,7 +1153,7 @@ bool InsertOneRow(const std::string& insert_placeholder, const std::vector<int>&
         }
     }
 
-    bool ok = sr->ExecuteInsert(db, insert_placeholder, row, &status);
+    bool ok = sr->ExecuteInsert(database, insert_placeholder, row, &status);
     if (!ok) {
         *error = "insert row failed";
         return false;
@@ -1164,17 +1165,22 @@ bool InsertOneRow(const std::string& insert_placeholder, const std::vector<int>&
 bool HandleLoadDataInfile(const std::string& database, const std::string& table, const std::string& file_path,
                           const std::shared_ptr<hybridse::node::OptionsMap>& options, std::string* error) {
     DCHECK(error);
+    std::string real_db = database.empty() ? db : database;
+    if (real_db.empty()) {
+        *error = "no db in sql and no use db";
+        return false;
+    }
 
-    // options, value is ConstNode
     openmldb::cmd::ReadFileOptionsParser options_parse;
     auto st = options_parse.Parse(options);
     if (!st.OK()) {
         std::cout << st.msg << std::endl;
         return false;
     }
-    std::cout << "options: delimiter [" << options_parse.GetDelimiter() << "], has header["
-              << (options_parse.GetHeader() ? "true" : "false") << "], null_value[" << options_parse.GetNullValue()
-              << "], format[" << options_parse.GetFormat() << "]" << std::endl;
+    std::cout << "load " << file_path << " to " << real_db << "-" << table << ", options: delimiter ["
+              << options_parse.GetDelimiter() << "], has header[" << (options_parse.GetHeader() ? "true" : "false")
+              << "], null_value[" << options_parse.GetNullValue() << "], format[" << options_parse.GetFormat() << "]"
+              << std::endl;
     // read csv
     if (!base::IsExists(file_path)) {
         *error = "file not exist";
@@ -1219,21 +1225,23 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
     }
     hybridse::sdk::Status status;
     std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
-    std::vector<int> strColIdx;
+    std::vector<int> str_cols_idx;
     for (int i = 0; i < schema->GetColumnCnt(); ++i) {
         if (schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
-            strColIdx.emplace_back(i);
+            str_cols_idx.emplace_back(i);
         }
     }
-
+    uint64_t i = 0;
     do {
         cols.clear();
         SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
-        if (!InsertOneRow(insert_placeholder, strColIdx, options_parse.GetNullValue(), cols, error)) {
+        if (!InsertOneRow(real_db, insert_placeholder, str_cols_idx, options_parse.GetNullValue(), cols, error)) {
             *error = "line [" + line + "] insert failed, " + *error;
             return false;
         }
+        ++i;
     } while (std::getline(file, line));
+    LOG(INFO) << " load " << i << "rows";
     return true;
 }
 
