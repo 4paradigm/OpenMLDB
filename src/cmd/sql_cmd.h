@@ -1241,7 +1241,7 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
         }
         ++i;
     } while (std::getline(file, line));
-    LOG(INFO) << " load " << i << "rows";
+    LOG(INFO) << "load " << i << " rows";
     return true;
 }
 
