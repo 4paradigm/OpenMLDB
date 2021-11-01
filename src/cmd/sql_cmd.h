@@ -598,6 +598,20 @@ bool ParseNamesFromArgs(const std::vector<std::string>& args, std::string* db_na
     return true;
 }
 
+bool CheckAnswerIfInteractive(std::string drop_type, std::string name) {
+    if (FLAGS_interactive) {
+        printf("Drop %s %s? yes/no\n", drop_type.c_str(), name.c_str());
+        std::string input;
+        std::cin >> input;
+        std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+        if (input != "yes") {
+            printf("'Drop %s' cmd is canceled!\n", name.c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
 // TODO(zekai): use status instead of cout
 void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
     std::shared_ptr<client::NsClient> ns;
@@ -685,15 +699,8 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                 return;
             }
             std::string name = cmd_node->GetArgs()[0];
-            if (FLAGS_interactive) {
-                printf("Drop table %s? yes/no\n", name.c_str());
-                std::string input;
-                std::cin >> input;
-                std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-                if (input != "yes") {
-                    printf("'Drop %s' cmd is canceled!\n", name.c_str());
-                    return;
-                }
+            if (!CheckAnswerIfInteractive("table", name)) {
+                return;
             }
             std::string error;
             bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DropTable(name, error));
@@ -708,15 +715,10 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
         case hybridse::node::kCmdDropIndex: {
             std::string index_name = cmd_node->GetArgs()[0];
             std::string table_name = cmd_node->GetArgs()[1];
-            std::string error;
-            printf("Drop index %s on %s? yes/no\n", index_name.c_str(), table_name.c_str());
-            std::string input;
-            std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-            if (input != "yes") {
-                printf("'Drop index %s on %s' cmd is canceled!\n", index_name.c_str(), table_name.c_str());
+            if (!CheckAnswerIfInteractive("index", index_name + " on " + table_name)) {
                 return;
             }
+            std::string error;
             bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DeleteIndex(table_name, index_name, error));
             if (ok) {
                 std::cout << "SUCCEED: Drop index successfully" << std::endl;
@@ -760,15 +762,10 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                 return;
             }
             std::string sp_name = cmd_node->GetArgs()[0];
-            std::string error;
-            printf("Drop store procedure %s? yes/no\n", sp_name.c_str());
-            std::string input;
-            std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-            if (input != "yes") {
-                printf("'Drop %s' cmd is canceled!\n", sp_name.c_str());
+            if (!CheckAnswerIfInteractive("procedure", sp_name)) {
                 return;
             }
+            std::string error;
             bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DropProcedure(db, sp_name, error));
             if (ok) {
                 std::cout << "SUCCEED: Drop successfully" << std::endl;
@@ -830,16 +827,9 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                 std::cout << (sp ? "not a deployment" : "not found") << std::endl;
                 return;
             }
-
-            printf("Drop deployment %s? yes/no\n", deploy_name.c_str());
-            std::string input;
-            std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-            if (input != "yes") {
-                printf("'Drop %s' cmd is canceled!\n", deploy_name.c_str());
+            if (!CheckAnswerIfInteractive("deployment", deploy_name)) {
                 return;
             }
-
             bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DropProcedure(db, deploy_name, error));
             if (ok) {
                 std::cout << "SUCCEED: Drop successfully" << std::endl;
