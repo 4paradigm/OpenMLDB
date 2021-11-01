@@ -21,8 +21,8 @@ import com._4paradigm.openmldb.common.LibraryLoader;
 import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
-import com._4paradigm.openmldb.sdk.DataType;
 import com._4paradigm.openmldb.sdk.Schema;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -263,39 +263,35 @@ public class SqlClusterExecutor implements SqlExecutor {
         return spInfo;
     }
 
-  @Override
-  public List<CreateTableDesc> genDDL(String sql, List<DataBaseDesc> dataBases)
+    @Override
+    public List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
           throws SQLException {
-    if (null == dataBases || dataBases.isEmpty()) {
-      return null;
-    }
-    List<CreateTableDesc> results = new ArrayList<>();
-    for (DataBaseDesc dataBase : dataBases) {
-      CreateTableDesc createTableDesc = new CreateTableDesc();
-      TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
-      List<TableDesc> tableDescList = dataBase.getTableDescList();
-      for (TableDesc tableDesc : tableDescList) {
-        String tableName = tableDesc.getTableName();
-        List<ColumnDesc> columnDescList = tableDesc.getColumnDescList();
-        ColumnDescVector columnDescVector = new ColumnDescVector();
-        for (ColumnDesc columnDesc : columnDescList) {
-          ColumnDescPair columnDescPair = new ColumnDescPair(columnDesc.getColumnName(),
-                  DataType.toOpenMLDBType(columnDesc.getColumnType()));
-          columnDescVector.add(columnDescPair);
+        if (null == tableSchema || tableSchema.isEmpty()) {
+          return null;
         }
-        TableColumnDescPair tableColumnDescPair = new TableColumnDescPair(tableName,
-                columnDescVector);
-        tableColumnDescPairVector.add(tableColumnDescPair);
-      }
-      VectorString ddlList = sqlRouter.ExecuteDDLParse(sql, tableColumnDescPairVector);
-      String[] ddl = new String[ddlList.size()];
-      createTableDesc.setDdl(ddlList.toArray(ddl));
-      createTableDesc.setDbName(dataBase.getDbName());
-      results.add(createTableDesc);
+        List<String> results = new ArrayList<>();
+        for (String database : tableSchema.keySet()) {
+            Map<String, Schema> schemaMap = tableSchema.get(database);
+            TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
+            for (String table : schemaMap.keySet()) {
+                Schema schema = schemaMap.get(table);
+                ColumnDescVector columnDescVector = new ColumnDescVector();
+                List<Column> columnList = schema.getColumnList();
+                for (Column column : columnList) {
+                    String columnName = column.getColumnName();
+                    int sqlType = column.getSqlType();
+                    ColumnDescPair columnDescPair = new ColumnDescPair(columnName, Common.toDataType(sqlType));
+                    columnDescVector.add(columnDescPair);
+                }
+                TableColumnDescPair tableColumnDescPair = new TableColumnDescPair(table,
+                        columnDescVector);
+                tableColumnDescPairVector.add(tableColumnDescPair);
+            }
+            VectorString ddlList = sqlRouter.ExecuteDDLParse(sql, tableColumnDescPairVector);
+            results.addAll(ddlList);
+        }
+        return results;
     }
-
-    return results;
-  }
 
     @Override
     public boolean createDB(String db) {

@@ -1582,16 +1582,12 @@ std::vector<std::string> SQLClusterRouter::ExecuteDDLParse(
         std::string table_name = table_item.first;
         ddl = ddl.append(table_name);
         ddl = ddl.append("(\n");
-        LOG(INFO) << "table_name is " + table_name;
+        DLOG(INFO) << "table_name is " + table_name;
         auto column_desc_list = table_item.second;
         for (const auto& column_desc : column_desc_list) {
             const auto column_name = column_desc.name();
             const auto data_type = column_desc.data_type();
-            std::string column_type;
-            if (!SQLClusterRouter::toSQLType(data_type, column_type)) {
-                LOG(ERROR) << "can not find this type " + openmldb::type::DataType_Name(data_type);
-                return {};
-            }
+            std::string column_type = openmldb::codec::DATA_TYPE_STR_MAP.find(data_type)->second;
             ddl = ddl.append("\t");
             ddl = ddl.append(column_name);
             ddl = ddl.append(" ");
@@ -1615,10 +1611,10 @@ std::vector<std::string> SQLClusterRouter::ExecuteDDLParse(
                     // TODO get zero
                     auto abs_ttl = ttl.abs_ttl();
                     auto lat_ttl = ttl.lat_ttl();
-                    std::string expire;
-                    SQLClusterRouter::getTTL(ttl_type, abs_ttl, lat_ttl, expire);
+                    std::string* expire;
+                    SQLClusterRouter::GetTTL(ttl_type, abs_ttl, lat_ttl, expire);
                     const auto ts = column_key.ts_name();
-                    ddl = ddl.append(SQLClusterRouter::toIndexString(ts, key_name, ttl_type, expire));
+                    ddl = ddl.append(SQLClusterRouter::ToIndexString(ts, key_name, ttl_type, *expire));
                     ddl = ddl.append(",\n");
                 }
             }
@@ -1626,7 +1622,7 @@ std::vector<std::string> SQLClusterRouter::ExecuteDDLParse(
 
         ddl = ddl.substr(0, ddl.find_last_of(','));
         ddl = ddl.append("\n);");
-        LOG(INFO) << "ddl is " + ddl;
+        DLOG(INFO) << "ddl is " + ddl;
         ddl_vector.push_back(ddl);
     }
     return ddl_vector;
