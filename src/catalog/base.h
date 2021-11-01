@@ -43,6 +43,7 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
     const std::string& GetSql() const override { return sql_; }
 
     const std::vector<std::string>& GetTables() const override { return tables_; }
+    const std::vector<std::string>& GetDbs() const override { return dbs_; }
 
     const std::string& GetMainTable() const override { return main_table_; }
     const std::string& GetMainDb() const override { return main_db_; }
@@ -56,6 +57,7 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
     ::hybridse::sdk::SchemaImpl input_schema_;
     ::hybridse::sdk::SchemaImpl output_schema_;
     std::vector<std::string> tables_;
+    std::vector<std::string> dbs_;
     std::string main_table_;
     std::string main_db_;
     ::hybridse::sdk::ProcedureType type_;

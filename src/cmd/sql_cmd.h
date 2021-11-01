@@ -919,8 +919,9 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
         return {base::ReturnCode::kError, "get dependent table failed"};
     }
     for (auto& table : table_pair) {
-        sp_info.add_dbs(table.first);
-        sp_info.add_tables(table.second);
+        auto db_table = sp_info.add_tables();
+        db_table->set_db_name(table.first);
+        db_table->set_table_name(table.second);
     }
     std::stringstream str_stream;
     str_stream << "CREATE PROCEDURE " << deploy_node->Name() << " (";

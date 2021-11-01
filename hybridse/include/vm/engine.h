@@ -385,8 +385,8 @@ class Engine {
     EngineOptions GetEngineOptions();
 
  private:
-    bool GetDependentTables(node::PlanNode* node, std::set<std::pair<std::string, std::string>>* db_tables,
-                            base::Status& status);  // NOLINT
+    bool GetDependentTables(node::PlanNode* node, const std::string& default_db,
+                            std::set<std::pair<std::string, std::string>>* db_tables, base::Status& status);  // NOLINT
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
                                                 EngineMode engine_mode,
