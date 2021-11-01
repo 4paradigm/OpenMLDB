@@ -70,14 +70,7 @@ if(NOT BUILD_BUNDLED_HYBRIDSQL_ASSERTS)
     INSTALL_DIR ${DEPS_INSTALL_DIR}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
-    INSTALL_COMMAND "")
-  ExternalProject_Get_Property(hybridsql-asserts DOWNLOADED_FILE)
-  # TODO(#614): avoid extract every time run build even there is no version update
-  add_custom_target(
-    hybridsql-asserts-extract ALL
-    tar xzf ${DOWNLOADED_FILE} -C ${DEPS_INSTALL_DIR} --strip-components=1
-    COMMENT "Extracting hybridsql asserts ${DOWNLOADED_FILE} into ${DEPS_INSTALL_DIR}")
-  add_dependencies(hybridsql-asserts-extract hybridsql-asserts)
+    INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
 else()
   message(
     FATAL_ERROR "Build hybridsql asserts from source is unsupported currently.")
@@ -96,11 +89,5 @@ if (USE_BUNDLED_SRC)
     INSTALL_DIR ${SRC_INSTALL_DIR}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
-    INSTALL_COMMAND "")
-  ExternalProject_Get_Property(hybridsql-asserts-src DOWNLOADED_FILE)
-  add_custom_target(
-    hybridsql-asserts-src-extract ALL
-    tar xzf ${DOWNLOADED_FILE} -C ${SRC_INSTALL_DIR} --strip-components=1
-    COMMENT "Extracting hybridsql asserts source ${DOWNLOADED_FILE} into ${SRC_INSTALL_DIR}")
-  add_dependencies(hybridsql-asserts-src-extract hybridsql-asserts-src)
+    INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${SRC_INSTALL_DIR} --strip-components=1")
 endif()

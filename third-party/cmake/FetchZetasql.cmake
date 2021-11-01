@@ -43,11 +43,7 @@ if (NOT BUILD_BUNDLED_ZETASQL)
     INSTALL_DIR ${DEPS_INSTALL_DIR}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
-    INSTALL_COMMAND "")
-  ExternalProject_Get_Property(zetasql DOWNLOADED_FILE)
-  add_custom_target(zetasql-extract ALL tar xzf ${DOWNLOADED_FILE} -C ${DEPS_INSTALL_DIR} --strip-components=1
-    COMMENT "Extracting zetasql ${DOWNLOADED_FILE} into ${DEPS_INSTALL_DIR}")
-  add_dependencies(zetasql-extract zetasql)
+    INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
 else()
   find_program(bazel REQUIRED DOC "Building zetasql require bazel")
   message(STATUS "Compile zetasql from source: ${ZETASQL_HOME}@${ZETASQL_TAG}")
