@@ -231,7 +231,7 @@ int main(int argc, char** argv) {
     env.SetUp();
     FLAGS_host = "127.0.0.1";
     FLAGS_port = env.GetNsPort();
-    ::openmldb::cmd::InitSDK();
+    ::openmldb::cmd::StandAloneInit();
 
     ok = RUN_ALL_TESTS();
     ::openmldb::cmd::mc_->Close();
