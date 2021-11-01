@@ -33,6 +33,9 @@ class NodeAdapter {
     static bool TransformToColumnKey(hybridse::node::ColumnIndexNode* column_index,
             const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
             common::ColumnKey* index, hybridse::base::Status* status);
+
+    static int64_t ConvertToMin(int64_t time);
+    static constexpr int64_t MIN_TIME = 1;
 };
 
 }  // namespace sdk

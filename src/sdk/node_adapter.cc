@@ -32,7 +32,7 @@ namespace sdk {
 using hybridse::plan::PlanAPI;
 
 bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node,
-        ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status) {
+                                      ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status) {
     if (create_node == NULL || table == NULL || status == NULL) return false;
     std::string table_name = create_node->GetTableName();
     const hybridse::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
@@ -205,8 +205,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
 
 // If column_names is not empty, check the column key names
 bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_index,
-        const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
-        common::ColumnKey* index, hybridse::base::Status* status) {
+                                       const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
+                                       common::ColumnKey* index, hybridse::base::Status* status) {
     if (column_index == nullptr) {
         return false;
     }
@@ -295,6 +295,13 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
         index->set_ts_name(column_index->GetTs());
     }
     return true;
+}
+
+int64_t NodeAdapter::ConvertToMin(int64_t time) {
+    if (time == 0) {
+        return 0;
+    }
+    return std::max(NodeAdapter::MIN_TIME, time / 60000);
 }
 
 }  // namespace sdk

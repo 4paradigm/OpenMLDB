@@ -195,37 +195,16 @@ class SQLClusterRouter : public SQLRouter {
 
     static bool GetTTL(openmldb::type::TTLType ttl_type, ::google::protobuf::uint64 abs_ttl,
                        ::google::protobuf::uint64 lat_ttl, std::string* ttl) {
-        unsigned long expire = 0L;
         switch (ttl_type) {
             case openmldb::type::TTLType::kAbsoluteTime:
-                expire = 1L;
-                if (abs_ttl % 60000L == 0L) {
-                    expire = abs_ttl / 60000L;
-                } else {
-                    expire += abs_ttl / 60000L;
-                }
-                *ttl = std::to_string(expire).append("m");
+                *ttl = std::to_string(abs_ttl).append("m");
                 return true;
             case openmldb::type::TTLType::kAbsAndLat:
-                expire = 1L;
-                if (abs_ttl % 60000L == 0L) {
-                    expire = abs_ttl / 60000L;
-                } else {
-                    expire += abs_ttl / 60000L;
-                }
-                *ttl = "(" + std::to_string(expire) + "m, " + std::to_string(lat_ttl) + ")";
+            case openmldb::type::TTLType::kAbsOrLat:
+                *ttl = "(" + std::to_string(abs_ttl) + "m, " + std::to_string(lat_ttl) + ")";
                 return true;
             case openmldb::type::TTLType::kLatestTime:
                 *ttl = std::to_string(lat_ttl);
-                return true;
-            case openmldb::type::TTLType::kAbsOrLat:
-                expire = 1L;
-                if (abs_ttl % 60000L == 0L) {
-                    expire = abs_ttl / 60000L;
-                } else {
-                    expire += abs_ttl / 60000L;
-                }
-                *ttl = "(" + std::to_string(expire) + "m, " + std::to_string(lat_ttl) + ")";
                 return true;
             default:
                 return false;
@@ -235,13 +214,15 @@ class SQLClusterRouter : public SQLRouter {
     static std::string ToIndexString(const std::string ts, const std::string key_name, openmldb::type::TTLType ttl_type,
                               const std::string& expire) {
         std::string index;
+        std::string ttl_type_str;
+        SQLClusterRouter::ToTTLTypeString(ttl_type, &ttl_type_str);
         if (ts.empty()) {
             index = "\tindex(key=(";
             index = index.append(key_name);
             index = index.append("), ttl=");
             index = index.append(expire);
             index = index.append(", ttl_type=");
-            index = index.append(openmldb::type::TTLType_Name(ttl_type));
+            index = index.append(ttl_type_str);
             index = index.append(")");
         } else {
             index = "\tindex(key=(";
@@ -249,12 +230,32 @@ class SQLClusterRouter : public SQLRouter {
             index = index.append("), ttl=");
             index = index.append(expire);
             index = index.append(", ttl_type=");
-            index = index.append(openmldb::type::TTLType_Name(ttl_type));
+            index = index.append(ttl_type_str);
             index = index.append(", ts=`");
             index = index.append(ts);
             index = index.append("`)");
         }
         return index;
+    }
+
+    static bool ToTTLTypeString(openmldb::type::TTLType ttl_type, std::string* ttl_type_str) {
+        switch (ttl_type){
+            case openmldb::type::TTLType::kAbsoluteTime:
+                *ttl_type_str = "absolute";
+                return true;
+            case openmldb::type::TTLType::kLatestTime:
+                *ttl_type_str = "latest";
+                return true;
+            case openmldb::type::TTLType::kAbsAndLat:
+                *ttl_type_str = "absandlat";
+                return true;
+            case openmldb::type::TTLType::kAbsOrLat:
+                *ttl_type_str = "absorlat";
+                return true;
+            default:
+                DLOG(ERROR) << "Can Not Found This TTL Type: " + openmldb::type::TTLType_Name(ttl_type);
+                return false;
+        }
     }
 
  private:

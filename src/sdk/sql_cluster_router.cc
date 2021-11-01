@@ -1611,10 +1611,10 @@ std::vector<std::string> SQLClusterRouter::ExecuteDDLParse(
                     // TODO get zero
                     auto abs_ttl = ttl.abs_ttl();
                     auto lat_ttl = ttl.lat_ttl();
-                    std::string* expire;
-                    SQLClusterRouter::GetTTL(ttl_type, abs_ttl, lat_ttl, expire);
+                    std::string expire;
+                    SQLClusterRouter::GetTTL(ttl_type, abs_ttl, lat_ttl, &expire);
                     const auto ts = column_key.ts_name();
-                    ddl = ddl.append(SQLClusterRouter::ToIndexString(ts, key_name, ttl_type, *expire));
+                    ddl = ddl.append(SQLClusterRouter::ToIndexString(ts, key_name, ttl_type, expire));
                     ddl = ddl.append(",\n");
                 }
             }

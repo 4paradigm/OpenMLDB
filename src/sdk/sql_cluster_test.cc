@@ -443,7 +443,7 @@ TEST_F(SQLClusterTest, execute_DDL_parse) {
     table_a_column_list.push_back(table_a_ip);
     table_a_column_list.push_back(table_a_query);
     table_a_column_list.push_back(table_a_mcu_id);
-    table_map.insert(std::make_pair("a", table_a_column_list));
+    table_map.insert(std::make_pair("a", table_a_coluExecuteDDLParsemn_list));
 
     // table b
     std::pair<std::string, hybridse::sdk::DataType> table_b_id = std::make_pair("id", hybridse::sdk::DataType::kTypeString);

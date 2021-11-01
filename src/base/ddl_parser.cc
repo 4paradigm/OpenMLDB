@@ -29,6 +29,7 @@
 #include "vm/engine.h"
 #include "vm/physical_op.h"
 #include "vm/simple_catalog.h"
+#include "sdk/node_adapter.h"
 
 namespace openmldb::base {
 
@@ -167,8 +168,7 @@ IndexMap DDLParser::ExtractIndexes(const std::string& sql, const ::hybridse::typ
     return ExtractIndexes(sql, db, &session);
 }
 
-template <typename T>
-IndexMap DDLParser::ExtractIndexes(const std::string& sql, const T& schemas) {
+IndexMap DDLParser::ExtractIndexes(const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
     ::hybridse::type::Database db;
     std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
     db.set_name(tmp_db);
@@ -308,7 +308,7 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
         DLOG_ASSERT(type != hybridse::node::kFrameRowsMergeRowsRange) << "merge type, how to parse?";
         DLOG_ASSERT(frame->frame_rows() == nullptr && frame->GetHistoryRangeStart() < 0);
         // GetHistoryRangeStart is negative, ttl needs uint64
-        ttl_st_ptr->set_abs_ttl(std::max(MIN_TIME, -1 * frame->GetHistoryRangeStart()));
+        ttl_st_ptr->set_abs_ttl(openmldb::sdk::NodeAdapter::ConvertToMin(-1 * frame->GetHistoryRangeStart()));
         ttl_st_ptr->set_ttl_type(type::TTLType::kAbsoluteTime);
     }
     DLOG(INFO) << latest_record_ << " update ttl " << index_map_[latest_record_]->DebugString();

@@ -36,8 +36,8 @@ class DDLParser {
  public:
     static IndexMap ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db);
 
-    template <typename T>
-    static IndexMap ExtractIndexes(const std::string& sql, const T& schemas);
+    static IndexMap ExtractIndexes(const std::string& sql,
+                                   const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
 
     static IndexMap ExtractIndexesForBatch(const std::string& sql, const ::hybridse::type::Database& db);
 
