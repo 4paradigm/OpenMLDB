@@ -29,8 +29,8 @@
 #include "base/glog_wapper.h"
 #include "base/hash.h"
 #include "base/ip.h"
-#include "base/kv_iterator.h"
 #include "base/linenoise.h"
+#include "base/kv_iterator.h"
 #include "base/server_name.h"
 #include "base/strings.h"
 #if defined(__linux__) || defined(__mac_tablet__)
@@ -60,6 +60,7 @@ using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDe
 using TabletClient = openmldb::client::TabletClient;
 
 DECLARE_string(endpoint);
+DECLARE_string(nameserver);
 DECLARE_int32(port);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
@@ -4824,14 +4825,34 @@ void StartAPIServer() {
     }
 
     auto api_service = std::make_unique<::openmldb::apiserver::APIServerImpl>();
-    ::openmldb::sdk::ClusterOptions cluster_options;
-    cluster_options.zk_cluster = FLAGS_zk_cluster;
-    cluster_options.zk_path = FLAGS_zk_root_path;
-    if (!api_service->Init(cluster_options)) {
-        PDLOG(WARNING, "Fail to init");
-        exit(1);
+    if (!FLAGS_nameserver.empty()) {
+        std::vector<std::string> vec;
+        boost::split(vec, FLAGS_nameserver, boost::is_any_of(":"));
+        if (vec.size() != 2) {
+            PDLOG(WARNING, "Invalid nameserver format");
+            exit(1);
+        }
+        int32_t port = 0;
+        try {
+             port = boost::lexical_cast<uint32_t>(vec[1]);
+        } catch (std::exception const& e) {
+            PDLOG(WARNING, "Invalid nameserver format");
+            exit(1);
+        }
+        auto sdk = new ::openmldb::sdk::StandAloneSDK(vec[0], port);
+        if (!sdk->Init() || !api_service->Init(sdk)) {
+            PDLOG(WARNING, "Fail to init");
+            exit(1);
+        }
+    } else {
+        ::openmldb::sdk::ClusterOptions cluster_options;
+        cluster_options.zk_cluster = FLAGS_zk_cluster;
+        cluster_options.zk_path = FLAGS_zk_root_path;
+        if (!api_service->Init(cluster_options)) {
+            PDLOG(WARNING, "Fail to init");
+            exit(1);
+        }
     }
-
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;

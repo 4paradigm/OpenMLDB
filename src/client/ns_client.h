@@ -220,7 +220,7 @@ class NsClient : public Client {
     bool DropProcedure(const std::string& db_name, const std::string& sp_name,
                        std::string& msg);  // NOLINT
 
-    bool CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_info, uint64_t request_timeout, std::string* msg);
+    base::Status CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_info, uint64_t request_timeout);
 
     bool ShowProcedure(const std::string& db_name, const std::string& sp_name, std::vector<api::ProcedureInfo>* infos,
                        std::string* msg);

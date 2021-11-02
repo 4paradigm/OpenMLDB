@@ -48,6 +48,8 @@ class DBSDK {
     // create engine, then build the catalog
     // TODO(hw): should prevent double init
     virtual bool Init() = 0;
+
+    virtual bool IsClusterMode() const = 0;
     bool Refresh() { return BuildCatalog(); }
 
     inline uint64_t GetClusterVersion() { return cluster_version_.load(std::memory_order_relaxed); }
@@ -124,6 +126,7 @@ class ClusterSDK : public DBSDK {
 
     ~ClusterSDK() override;
     bool Init() override;
+    bool IsClusterMode() const override { return true; }
 
  protected:
     bool BuildCatalog() override;
@@ -152,6 +155,8 @@ class StandAloneSDK : public DBSDK {
 
     ~StandAloneSDK() override { pool_.Stop(false); }
     bool Init() override;
+
+    bool IsClusterMode() const override { return false; }
 
  protected:
     // Before connecting to ns, we only have the host&port

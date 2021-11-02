@@ -190,6 +190,17 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(
         const std::string& db, const std::string& table_name) override;
 
+    base::Status HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* plan,
+            const std::string& db, const std::string& sql,
+            std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
+
+    base::Status HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
+            std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
+
+    base::Status HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
+            std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
+
+
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 
@@ -217,16 +228,6 @@ class SQLClusterRouter : public SQLRouter {
     DefaultValueMap GetDefaultMap(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                                   const std::map<uint32_t, uint32_t>& column_map, ::hybridse::node::ExprListNode* row,
                                   uint32_t* str_length);
-
-    bool HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* plan,
-            const std::string& db, const std::string& sql,
-            std::shared_ptr<::openmldb::client::NsClient> ns_ptr, std::string* msg);
-
-    bool HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
-            std::shared_ptr<::openmldb::client::NsClient> ns_ptr, std::string* msg);
-
-    bool HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
-            std::shared_ptr<::openmldb::client::NsClient> ns_ptr, std::string* msg);
 
     inline bool CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema);
 
