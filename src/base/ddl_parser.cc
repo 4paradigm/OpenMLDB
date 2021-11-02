@@ -29,7 +29,6 @@
 #include "vm/engine.h"
 #include "vm/physical_op.h"
 #include "vm/simple_catalog.h"
-#include "sdk/node_adapter.h"
 
 namespace openmldb::base {
 
