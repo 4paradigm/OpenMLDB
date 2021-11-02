@@ -28,14 +28,11 @@ namespace sdk {
 class NodeAdapter {
  public:
     static bool TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
-            ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status);
+                                    ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status);
 
     static bool TransformToColumnKey(hybridse::node::ColumnIndexNode* column_index,
-            const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
-            common::ColumnKey* index, hybridse::base::Status* status);
-
-    static int64_t ConvertToMinute(long time_ms);
-    static constexpr int64_t MIN_TIME = 1;
+                                     const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
+                                     common::ColumnKey* index, hybridse::base::Status* status);
 };
 
 }  // namespace sdk
