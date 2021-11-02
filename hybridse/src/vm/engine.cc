@@ -129,7 +129,7 @@ bool Engine::GetDependentTables(const node::PlanNode* node, const std::string& d
             case node::kPlanTypeProject: {
                 const node::ProjectPlanNode* project_plan = dynamic_cast<const node::ProjectPlanNode*>(node);
                 if (!project_plan->project_list_vec_.empty()) {
-                    for (node::PlanNode* item: project_plan->project_list_vec_) {
+                    for (node::PlanNode* item : project_plan->project_list_vec_) {
                         node::ProjectListNode* project_list = dynamic_cast<node::ProjectListNode*>(item);
                         if (nullptr != project_list->GetW()) {
                             if (!project_list->GetW()->union_tables().empty()) {
@@ -150,7 +150,6 @@ bool Engine::GetDependentTables(const node::PlanNode* node, const std::string& d
                     }
                 }
                 return true;
-
             }
             default: {
                 if (node->GetChildrenSize() > 0) {
