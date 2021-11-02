@@ -24,6 +24,9 @@ if(TESTING_ENABLE)
     add_executable(sql_router_test sql_router_test.cc)
     target_link_libraries(sql_router_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)
 
+    add_executable(sql_standalone_sdk_test sql_standalone_sdk_test.cc)
+    target_link_libraries(sql_standalone_sdk_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+
     add_executable(sql_sdk_test sql_sdk_test.cc)
     target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 

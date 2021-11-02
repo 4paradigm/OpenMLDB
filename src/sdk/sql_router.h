@@ -26,6 +26,7 @@
 #include "sdk/sql_insert_row.h"
 #include "sdk/sql_request_row.h"
 #include "sdk/table_reader.h"
+#include "sdk/db_sdk.h"
 
 namespace openmldb {
 namespace sdk {
@@ -143,6 +144,7 @@ class SQLRouter {
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
+std::shared_ptr<SQLRouter> NewStandAloneSQLRouter(DBSDK* db_sdk);
 
 }  // namespace sdk
 }  // namespace openmldb
