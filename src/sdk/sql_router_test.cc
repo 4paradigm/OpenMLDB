@@ -1002,6 +1002,118 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
     ASSERT_TRUE(ok);
 }
 
+TEST_F(SQLRouterTest, execute_DDL_parse) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string sql =
+        "SELECT\n behaviourTable.itemId as itemId,\n  behaviourTable.ip as ip,\n  behaviourTable.query as query,\n  "
+        "behaviourTable.mcuid as mcuid,\n adinfo.brandName as name,\n  adinfo.brandId as brandId,\n "
+        "feedbackTable.actionValue as label\n FROM behaviourTable\n LAST JOIN feedbackTable ON feedbackTable.itemId = "
+        "behaviourTable.itemId\n LAST JOIN adinfo ON behaviourTable.itemId = adinfo.id;";
+
+    std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>> table_map;
+    // table a
+    std::pair<std::string, hybridse::sdk::DataType> table_a_item_id =
+        std::make_pair("itemId", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_reqId =
+        std::make_pair("reqId", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_tags =
+        std::make_pair("tags", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_instanceKey =
+        std::make_pair("instanceKey", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_eventTime =
+        std::make_pair("eventTime", hybridse::sdk::DataType::kTypeTimestamp);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_ip =
+        std::make_pair("ip", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_browser =
+        std::make_pair("browser", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_query =
+        std::make_pair("query", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_mcu_id =
+        std::make_pair("mcuid", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_weight =
+        std::make_pair("weight", hybridse::sdk::DataType::kTypeDouble);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_page =
+        std::make_pair("page", hybridse::sdk::DataType::kTypeInt32);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_rank =
+        std::make_pair("rank", hybridse::sdk::DataType::kTypeInt32);
+    std::pair<std::string, hybridse::sdk::DataType> table_a_i_rank =
+        std::make_pair("_i_rank", hybridse::sdk::DataType::kTypeString);
+    std::vector<std::pair<std::string, hybridse::sdk::DataType>> table_a_column_list;
+    table_a_column_list.push_back(table_a_item_id);
+    table_a_column_list.push_back(table_a_reqId);
+    table_a_column_list.push_back(table_a_tags);
+    table_a_column_list.push_back(table_a_ip);
+    table_a_column_list.push_back(table_a_query);
+    table_a_column_list.push_back(table_a_instanceKey);
+    table_a_column_list.push_back(table_a_eventTime);
+    table_a_column_list.push_back(table_a_browser);
+    table_a_column_list.push_back(table_a_mcu_id);
+    table_a_column_list.push_back(table_a_weight);
+    table_a_column_list.push_back(table_a_page);
+    table_a_column_list.push_back(table_a_rank);
+    table_a_column_list.push_back(table_a_i_rank);
+    std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>> table_a =
+        std::make_pair("behaviourTable", table_a_column_list);
+    table_map.push_back(table_a);
+
+    // table b
+    std::pair<std::string, hybridse::sdk::DataType> table_b_id =
+        std::make_pair("id", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_b_ingestionTime =
+        std::make_pair("ingestionTime", hybridse::sdk::DataType::kTypeTimestamp);
+    std::pair<std::string, hybridse::sdk::DataType> table_b_brand_name =
+        std::make_pair("brandName", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_b_name =
+        std::make_pair("name", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_b_brand_id =
+        std::make_pair("brandId", hybridse::sdk::DataType::kTypeString);
+    std::vector<std::pair<std::string, hybridse::sdk::DataType>> table_b_column_list;
+    table_b_column_list.push_back(table_b_id);
+    table_b_column_list.push_back(table_b_brand_name);
+    table_b_column_list.push_back(table_b_brand_id);
+    table_b_column_list.push_back(table_b_name);
+    table_b_column_list.push_back(table_b_ingestionTime);
+    std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>> table_b =
+        std::make_pair("adinfo", table_b_column_list);
+    table_map.push_back(table_b);
+
+    // table c
+    std::pair<std::string, hybridse::sdk::DataType> table_c_item_id =
+        std::make_pair("itemId", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_c_reqId =
+        std::make_pair("reqId", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_c_instanceKey =
+        std::make_pair("instanceKey", hybridse::sdk::DataType::kTypeString);
+    std::pair<std::string, hybridse::sdk::DataType> table_c_eventTime =
+        std::make_pair("eventTime", hybridse::sdk::DataType::kTypeTimestamp);
+    std::pair<std::string, hybridse::sdk::DataType> table_c_ingestionTime =
+        std::make_pair("ingestionTime", hybridse::sdk::DataType::kTypeTimestamp);
+    std::pair<std::string, hybridse::sdk::DataType> table_c_action_value =
+        std::make_pair("actionValue", hybridse::sdk::DataType::kTypeDouble);
+    std::vector<std::pair<std::string, hybridse::sdk::DataType>> table_c_column_list;
+    table_c_column_list.push_back(table_c_item_id);
+    table_c_column_list.push_back(table_c_reqId);
+    table_c_column_list.push_back(table_c_instanceKey);
+    table_c_column_list.push_back(table_c_eventTime);
+    table_c_column_list.push_back(table_c_ingestionTime);
+    table_c_column_list.push_back(table_c_action_value);
+    std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>> table_c =
+        std::make_pair("feedbackTable", table_c_column_list);
+    table_map.push_back(table_c);
+
+    std::vector<std::string> ddl_list = router->ExecuteDDLParse(sql, table_map);
+    ASSERT_EQ(3, ddl_list.size());
+    EXPECT_EQ(
+        "CREATE TABLE IF NOT EXISTS adinfo(\n\tid string,\n\tbrandName string,\n\tbrandId string,\n\tname "
+        "string,\n\tingestionTime timestamp,\n\tindex(key=(id), ttl=0m, ttl_type=absolute)\n);",
+        ddl_list.at(0));
+}
+
+
 }  // namespace sdk
 }  // namespace openmldb
 

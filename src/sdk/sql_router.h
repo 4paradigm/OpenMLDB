@@ -172,10 +172,10 @@ class SQLRouter {
      *              index(key=col1, ttl=60)
      *          )",
      *          "CREATE TABLE IF NOT EXISTS table2(
-    *              col1 string,
-    *              col2 bigint,
-    *              index(key=col1, ttl=60)
-    *          )"
+     *              col1 string,
+     *              col2 bigint,
+     *              index(key=col1, ttl=60)
+     *          )"
      *      ]
      */
     virtual std::vector<std::string> ExecuteDDLParse(

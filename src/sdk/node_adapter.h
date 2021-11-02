@@ -34,7 +34,7 @@ class NodeAdapter {
             const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
             common::ColumnKey* index, hybridse::base::Status* status);
 
-    static int64_t ConvertToMin(int64_t time);
+    static int64_t ConvertToMinute(int64_t time_ms);
     static constexpr int64_t MIN_TIME = 1;
 };
 

@@ -297,11 +297,11 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
     return true;
 }
 
-int64_t NodeAdapter::ConvertToMin(int64_t time) {
-    if (time == 0) {
-        return 0;
+int64_t NodeAdapter::ConvertToMinute(int64_t time_ms) {
+    if (time_ms == 0) {
+        return 1;
     }
-    return std::max(NodeAdapter::MIN_TIME, time / 60000);
+    return std::max(NodeAdapter::MIN_TIME, time_ms / 60000 + (time_ms % 60000 ? 1 : 0));
 }
 
 }  // namespace sdk

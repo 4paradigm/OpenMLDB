@@ -308,7 +308,7 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
         DLOG_ASSERT(type != hybridse::node::kFrameRowsMergeRowsRange) << "merge type, how to parse?";
         DLOG_ASSERT(frame->frame_rows() == nullptr && frame->GetHistoryRangeStart() < 0);
         // GetHistoryRangeStart is negative, ttl needs uint64
-        ttl_st_ptr->set_abs_ttl(openmldb::sdk::NodeAdapter::ConvertToMin(-1 * frame->GetHistoryRangeStart()));
+        ttl_st_ptr->set_abs_ttl(openmldb::sdk::NodeAdapter::ConvertToMinute(-1 * frame->GetHistoryRangeStart()));
         ttl_st_ptr->set_ttl_type(type::TTLType::kAbsoluteTime);
     }
     DLOG(INFO) << latest_record_ << " update ttl " << index_map_[latest_record_]->DebugString();
