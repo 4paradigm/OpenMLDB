@@ -76,7 +76,7 @@ class SQLSDKTest : public openmldb::test::SQLCaseTest {
                                 const bool performance_sensitive = true);
     static void RunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints,
-                                const bool performance_sensitive=true);
+                                const bool performance_sensitive = true);
     static void CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                 std::shared_ptr<SQLRouter> router, bool is_batch = false);
     static void DropProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT

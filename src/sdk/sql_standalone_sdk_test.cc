@@ -650,7 +650,7 @@ TEST_F(SQLSDKTest, table_reader_async_scan) {
     ASSERT_EQ(1609212669000l, rs->GetInt64Unsafe(1));
     ASSERT_FALSE(rs->Next());
 }
-//TEST_F(SQLSDKTest, create_table) {
+// TEST_F(SQLSDKTest, create_table) {
 //    auto router = router_;
 //    ASSERT_TRUE(router != nullptr);
 //    std::string db = GenRand("db");
