@@ -315,9 +315,9 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
 
 int64_t NodeAdapter::ConvertToMinute(int64_t time_ms) {
     if (time_ms == 0) {
-        return 1;
+        return MIN_TIME;
     }
-    return std::max(NodeAdapter::MIN_TIME, time_ms / 60000 + (time_ms % 60000 ? 1 : 0));
+    return time_ms / 60000 + (time_ms % 60000 ? 1 : 0);
 }
 
 }  // namespace sdk
