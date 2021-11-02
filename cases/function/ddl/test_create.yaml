@@ -172,6 +172,7 @@ cases:
   -
     id: 14
     desc: 创建index不指定col
+    mode: standalone-unsupport
     sqlDialect: ["HybridSQL"]
     sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(ts=c4,ttl=0m));
     expect:
