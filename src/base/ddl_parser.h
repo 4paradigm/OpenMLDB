@@ -37,6 +37,9 @@ class DDLParser {
     static IndexMap ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db);
 
     static IndexMap ExtractIndexes(const std::string& sql,
+        const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas);
+
+    static IndexMap ExtractIndexes(const std::string& sql,
                                    const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
 
     static IndexMap ExtractIndexesForBatch(const std::string& sql, const ::hybridse::type::Database& db);

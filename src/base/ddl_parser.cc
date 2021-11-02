@@ -168,6 +168,16 @@ IndexMap DDLParser::ExtractIndexes(const std::string& sql, const ::hybridse::typ
     return ExtractIndexes(sql, db, &session);
 }
 
+IndexMap DDLParser::ExtractIndexes(
+    const std::string& sql,
+    const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas) {
+    ::hybridse::type::Database db;
+    std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
+    db.set_name(tmp_db);
+    AddTables(schemas, &db);
+    return ExtractIndexes(sql, db);
+}
+
 IndexMap DDLParser::ExtractIndexes(const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
     ::hybridse::type::Database db;
     std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
