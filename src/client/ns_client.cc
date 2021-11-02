@@ -236,9 +236,7 @@ bool NsClient::AddTableField(const std::string& table_name, const ::openmldb::co
     return false;
 }
 
-bool NsClient::CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_info, uint64_t request_timeout,
-                               std::string* msg) {
-    if (msg == nullptr) return false;
+base::Status NsClient::CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_info, uint64_t request_timeout) {
     ::openmldb::api::CreateProcedureRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     ::openmldb::api::ProcedureInfo* sp_info_ptr = request.mutable_sp_info();
@@ -246,11 +244,10 @@ bool NsClient::CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_info, ui
     request.set_timeout_ms(request_timeout);
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateProcedure, &request, &response,
                                   request_timeout, 1);
-    *msg = response.msg();
     if (!ok || response.code() != 0) {
-        return false;
+        return base::Status(base::ReturnCode::kError, response.msg());
     }
-    return true;
+    return {};
 }
 
 bool NsClient::CreateTable(const ::openmldb::nameserver::TableInfo& table_info, std::string& msg) {

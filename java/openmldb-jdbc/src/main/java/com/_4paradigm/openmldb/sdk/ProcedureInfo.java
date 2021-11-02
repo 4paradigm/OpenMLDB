@@ -27,6 +27,7 @@ public class ProcedureInfo {
     private Schema outputSchema;
     private String mainTable;
     private List<String> inputTables = new ArrayList<>();
+    private List<String> inputDbs= new ArrayList<>();
 
     public ProcedureInfo() {
     }
@@ -77,6 +78,14 @@ public class ProcedureInfo {
 
     public void setInputTables(List<String> inputTables) {
         this.inputTables = inputTables;
+    }
+
+    public List<String> getInputDbs() {
+        return inputDbs;
+    }
+
+    public void setInputDbs(List<String> dbs) {
+        this.inputDbs = dbs;
     }
 
     public String getMainTable() {

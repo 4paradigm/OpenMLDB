@@ -17,22 +17,23 @@
 #ifndef SRC_CMD_SQL_CMD_H_
 #define SRC_CMD_SQL_CMD_H_
 #include <algorithm>
+#include <fstream>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <iostream>
-#include <fstream>
 
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "base/linenoise.h"
 #include "base/texttable.h"
-#include "codec/schema_codec.h"
 #include "catalog/schema_adapter.h"
+#include "cmd/display.h"
 #include "cmd/split.h"
+#include "codec/schema_codec.h"
 #include "gflags/gflags.h"
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
@@ -40,7 +41,6 @@
 #include "sdk/db_sdk.h"
 #include "sdk/node_adapter.h"
 #include "sdk/sql_cluster_router.h"
-#include "cmd/display.h"
 #include "version.h"  // NOLINT
 
 DEFINE_string(database, "", "Set database");
@@ -72,144 +72,175 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
                             OPENMLDB_COMMIT_ID;
 
 std::string db = "";  // NOLINT
-::openmldb::sdk::DBSDK *cs = nullptr;
-::openmldb::sdk::SQLClusterRouter *sr = nullptr;
+::openmldb::sdk::DBSDK* cs = nullptr;
+::openmldb::sdk::SQLClusterRouter* sr = nullptr;
 bool performance_sensitive = true;
 
-// TODO(zekai): use getoption
-class SaveFileOptions {
+// TODO(zekai): refactor status and error code
+class FileOptionsParser {
  public:
-    SaveFileOptions(const std::string &file_path, std::shared_ptr<hybridse::node::OptionsMap> options_map,
-        ::openmldb::base::Status* openmldb_base_status) {
-        // TODO(zekai): Resolved file path like (file:////usr/test.csv) or (hdfs:////usr/test.csv)
-        file_path_ = file_path;
-        for (auto iter = options_map->begin(); iter != options_map->end(); iter++) {
-            std::string key = iter->first;
+    FileOptionsParser() {
+        check_map_.insert(std::make_pair("format", std::make_pair(CheckFormat(), hybridse::node::kVarchar)));
+        check_map_.insert(std::make_pair("delimiter", std::make_pair(CheckDelimiter(), hybridse::node::kVarchar)));
+        check_map_.insert(std::make_pair("null_value", std::make_pair(CheckNullValue(), hybridse::node::kVarchar)));
+        check_map_.insert(std::make_pair("header", std::make_pair(CheckHeader(), hybridse::node::kBool)));
+    }
+    ::openmldb::base::Status Parse(const std::shared_ptr<hybridse::node::OptionsMap>& options_map) {
+        for (const auto& item : *options_map) {
+            std::string key = item.first;
             boost::to_lower(key);
-            if (key == "format") {
-                if (iter->second->GetDataType() != hybridse::node::kVarchar) {
-                    openmldb_base_status->msg = "ERROR: The type of " + key + " mismatch, type should be string";
-                    openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                    return;
-                }
-                format_ = iter->second->GetAsString();
-            } else if (key == "mode") {
-                if (iter->second->GetDataType() != hybridse::node::kVarchar) {
-                    openmldb_base_status->msg = "ERROR: The type of " + key + " mismatch, type should be string";
-                    openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                    return;
-                }
-                mode_ = iter->second->GetAsString();
-            } else if (key == "delimiter") {
-                if (iter->second->GetDataType() != hybridse::node::kVarchar) {
-                    openmldb_base_status->msg = "ERROR: The type of " + key + " mismatch, type should be string";
-                    openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                    return;
-                }
-                delimiter_ = iter->second->GetAsString();
-            } else if (key == "null_value") {
-                if (iter->second->GetDataType() != hybridse::node::kVarchar) {
-                    openmldb_base_status->msg = "ERROR: The type of " + key + " mismatch, type should be string";
-                    openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                    return;
-                }
-                null_value_ = iter->second->GetAsString();
-            } else if (key == "header") {
-                if (iter->second->GetDataType() != hybridse::node::kBool) {
-                    openmldb_base_status->msg = "ERROR: The type of " + key + " mismatch, type should be bool";
-                    openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                    return;
-                }
-                header_ = iter->second->GetBool();
-            } else {
-                openmldb_base_status->msg = "ERROR: This option (" + key + ") is not currently supported";
-                openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                return;
+            auto pair = check_map_.find(key);
+            if (pair == check_map_.end()) {
+                status_.msg = "ERROR: This option " + key + " is not currently supported";
+                status_.code = openmldb::base::kSQLCmdRunError;
+                return status_;
+            }
+            if (!GetOption(item.second, key, pair->second.first, pair->second.second)) {
+                return status_;
             }
         }
-        // Check mode
-        if (mode_ == "error_if_exists") {
-            if (access(file_path_.c_str(), 0) == 0) {
-                openmldb_base_status->msg = "ERROR: File already exists";
-                openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-                return;
-            } else {
-                fstream_.open(file_path_);
-            }
-        } else if (mode_ == "overwrite") {
-            fstream_.open(file_path_, std::ios::out);
-        } else if (mode_ == "append") {
-            fstream_.open(file_path_, std::ios::app);
-            fstream_ << std::endl;
-        } else {
-            openmldb_base_status->msg = "ERROR: This mode (" + mode_ + ") is not currently supported";
-            openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-            return;
-        }
-        // Check file
-        if (fstream_.is_open() == false) {
-            openmldb_base_status->msg = "ERROR: Fail to open file, please check file path";
-            openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-            return;
-        }
-        // Check format
-        if (format_ != "csv") {
-            openmldb_base_status->msg = "ERROR: This format (" + format_ + ") is not currently supported";
-            openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
-            return;
-        }
+        return status_;
     }
-    ~SaveFileOptions() {
-        fstream_.close();
-    }
-    std::string GetFormat() {
-        return format_;
-    }
-    std::string GetNullValue() {
-        return null_value_;
-    }
-    std::string GetDelimiter() {
-        return delimiter_;
-    }
-    std::string GetFilePath() {
-        return file_path_;
-    }
-    bool GetHeader() const {
-        return header_;
-    }
-    std::ofstream& GetOfstream() {
-        return fstream_;
-    }
+    std::string GetFormat() const { return format_; }
+    std::string GetNullValue() const { return null_value_; }
+    char GetDelimiter() const { return delimiter_; }
+    bool GetHeader() const { return header_; }
+
+ protected:
+    std::map<std::string,
+             std::pair<std::function<bool(const hybridse::node::ConstNode* node)>, hybridse::node::DataType>>
+        check_map_;
 
  private:
+    ::openmldb::base::Status status_;
+    // Default options
     std::string format_ = "csv";
-    std::string mode_ = "error_if_exists";
-    std::string delimiter_ = ",";
     std::string null_value_ = "null";
-    std::string file_path_;
+    char delimiter_ = ',';
     bool header_ = true;
-    std::ofstream fstream_;
+
+    bool GetOption(const hybridse::node::ConstNode* node, const std::string& option_name,
+                   std::function<bool(const hybridse::node::ConstNode* node)> const& f,
+                   hybridse::node::DataType option_type) {
+        if (node->GetDataType() != option_type) {
+            status_.msg = "ERROR: Wrong type " + hybridse::node::DataTypeName(node->GetDataType()) + " for option " +
+                          option_name + ", it should be " + hybridse::node::DataTypeName(option_type);
+            status_.code = openmldb::base::kSQLCmdRunError;
+            return false;
+        }
+        if (!f(node)) {
+            status_.msg = "ERROR: Parse option " + option_name + " failed";
+            status_.code = openmldb::base::kSQLCmdRunError;
+            return false;
+        }
+        return true;
+    }
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckFormat() {
+        return [this](const hybridse::node::ConstNode* node) {
+            format_ = node->GetAsString();
+            if (format_ != "csv") {
+                return false;
+            }
+            return true;
+        };
+    }
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckDelimiter() {
+        return [this](const hybridse::node::ConstNode* node) {
+            auto str = node->GetAsString();
+            if (str.size() != 1) {
+                return false;
+            } else {
+                delimiter_ = str[0];
+                return true;
+            }
+        };
+    }
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckNullValue() {
+        return [this](const hybridse::node::ConstNode* node) {
+            null_value_ = node->GetAsString();
+            return true;
+        };
+    }
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckHeader() {
+        return [this](const hybridse::node::ConstNode* node) {
+            header_ = node->GetBool();
+            return true;
+        };
+    }
 };
 
-void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &file_path,
-    std::shared_ptr<hybridse::node::OptionsMap> options_map, ::openmldb::base::Status* openmldb_base_status) {
-    std::shared_ptr<openmldb::cmd::SaveFileOptions> options = std::make_shared<openmldb::cmd::SaveFileOptions>(
-        file_path, options_map, openmldb_base_status);
-    if (!result_set || !openmldb_base_status->OK()) {
+class ReadFileOptionsParser : public FileOptionsParser {
+ public:
+    ReadFileOptionsParser() = default;
+};
+
+class WriteFileOptionsParser : public FileOptionsParser {
+ public:
+    WriteFileOptionsParser() {
+        check_map_.insert(std::make_pair("mode", std::make_pair(CheckMode(), hybridse::node::kVarchar)));
+    }
+    std::string GetMode() const { return mode_; }
+
+ private:
+    std::string mode_ = "error_if_exists";
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckMode() {
+        return [this](const hybridse::node::ConstNode* node) {
+            mode_ = node->GetAsString();
+            if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
+                return false;
+            }
+            return true;
+        };
+    }
+};
+
+void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& file_path,
+                   const std::shared_ptr<hybridse::node::OptionsMap>& options_map, ::openmldb::base::Status* status) {
+    if (!result_set) {
         return;
     }
-    if (options->GetFormat() == "csv") {
-        auto *schema = result_set->GetSchema();
+    openmldb::cmd::WriteFileOptionsParser options_parse;
+    auto st = options_parse.Parse(options_map);
+    if (!st.OK()) {
+        status->msg = st.msg;
+        status->code = st.code;
+        return;
+    }
+    std::ofstream fstream;
+    if (options_parse.GetMode() == "error_if_exists") {
+        if (access(file_path.c_str(), 0) == 0) {
+            status->msg = "ERROR: File already exists";
+            status->code = openmldb::base::kSQLCmdRunError;
+            return;
+        } else {
+            fstream.open(file_path);
+        }
+    } else if (options_parse.GetMode() == "overwrite") {
+        fstream.open(file_path, std::ios::out);
+    } else if (options_parse.GetMode() == "append") {
+        fstream.open(file_path, std::ios::app);
+        fstream << std::endl;
+        if (options_parse.GetHeader()) {
+            std::cout << "WARNING: In the middle of output file will have header" << std::endl;
+        }
+    }
+    if (!fstream.is_open()) {
+        status->msg = "ERROR: Fail to open file, please check file path";
+        status->code = openmldb::base::kSQLCmdRunError;
+        return;
+    }
+    if (options_parse.GetFormat() == "csv") {
+        auto* schema = result_set->GetSchema();
         // Add Header
-        if (options->GetHeader() == true) {
+        if (options_parse.GetHeader()) {
             std::string schemaString;
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 schemaString.append(schema->GetColumnName(i));
-                if (i != schema->GetColumnCnt()-1) {
-                    schemaString.append(options->GetDelimiter());
+                if (i != schema->GetColumnCnt() - 1) {
+                    schemaString = schemaString + options_parse.GetDelimiter();
                 }
             }
-            options->GetOfstream() << schemaString << std::endl;
+            fstream << schemaString << std::endl;
         }
         if (result_set->Size() != 0) {
             bool first = true;
@@ -217,7 +248,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                 std::string rowString;
                 for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                     if (result_set->IsNULL(i)) {
-                        rowString.append(options->GetNullValue());
+                        rowString.append(options_parse.GetNullValue());
                     } else {
                         auto data_type = schema->GetColumnType(i);
                         switch (data_type) {
@@ -280,36 +311,36 @@ void SaveResultSet(::hybridse::sdk::ResultSet *result_set, const std::string &fi
                                 break;
                             }
                             default: {
-                                openmldb_base_status->msg = "ERROR: In table, some types are not currently supported";
-                                openmldb_base_status->code = openmldb::base::kSQLCmdRunError;
+                                status->msg = "ERROR: In table, some types are not currently supported";
+                                status->code = openmldb::base::kSQLCmdRunError;
                                 return;
                             }
                         }
                     }
-                    if (i != schema->GetColumnCnt()-1) {
-                        rowString.append(options->GetDelimiter());
+                    if (i != schema->GetColumnCnt() - 1) {
+                        rowString = rowString + options_parse.GetDelimiter();
                     } else {
                         if (!first) {
-                            options->GetOfstream() << std::endl;
+                            fstream << std::endl;
                         } else {
                             first = false;
                         }
-                        options->GetOfstream() << rowString;
+                        fstream << rowString;
                     }
                 }
             }
         }
-        openmldb_base_status->msg = "SUCCEED: Save successfully";
+        status->msg = "SUCCEED: Save successfully";
     }
 }
 
-void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set) {
+void PrintResultSet(std::ostream& stream, ::hybridse::sdk::ResultSet* result_set) {
     if (!result_set || result_set->Size() == 0) {
         stream << "Empty set" << std::endl;
         return;
     }
     ::hybridse::base::TextTable t('-', ' ', ' ');
-    auto *schema = result_set->GetSchema();
+    auto* schema = result_set->GetSchema();
     // Add Header
     for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
         t.add(schema->GetColumnName(i));
@@ -392,7 +423,7 @@ void PrintResultSet(std::ostream &stream, ::hybridse::sdk::ResultSet *result_set
     stream << result_set->Size() << " rows in set" << std::endl;
 }
 
-void PrintTableIndex(std::ostream &stream, const ::hybridse::vm::IndexList &index_list) {
+void PrintTableIndex(std::ostream& stream, const ::hybridse::vm::IndexList& index_list) {
     ::hybridse::base::TextTable t('-', ' ', ' ');
     t.add("#");
     t.add("name");
@@ -402,11 +433,11 @@ void PrintTableIndex(std::ostream &stream, const ::hybridse::vm::IndexList &inde
     t.add("ttl_type");
     t.end_of_row();
     for (int i = 0; i < index_list.size(); i++) {
-        const ::hybridse::type::IndexDef &index = index_list.Get(i);
+        const ::hybridse::type::IndexDef& index = index_list.Get(i);
         t.add(std::to_string(i + 1));
         t.add(index.name());
         t.add(index.first_keys(0));
-        const std::string &ts_name = index.second_key();
+        const std::string& ts_name = index.second_key();
         if (ts_name.empty()) {
             t.add("-");
         } else {
@@ -434,7 +465,7 @@ void PrintTableIndex(std::ostream &stream, const ::hybridse::vm::IndexList &inde
     stream << t;
 }
 
-void PrintTableSchema(std::ostream &stream, const ::hybridse::vm::Schema &schema) {
+void PrintTableSchema(std::ostream& stream, const ::hybridse::vm::Schema& schema) {
     if (schema.empty()) {
         stream << "Empty set" << std::endl;
         return;
@@ -448,7 +479,7 @@ void PrintTableSchema(std::ostream &stream, const ::hybridse::vm::Schema &schema
     t.end_of_row();
 
     for (auto i = 0; i < schema.size(); i++) {
-        const auto &column = schema.Get(i);
+        const auto& column = schema.Get(i);
         t.add(std::to_string(i + 1));
         t.add(column.name());
         t.add(::hybridse::type::Type_Name(column.type()));
@@ -458,21 +489,33 @@ void PrintTableSchema(std::ostream &stream, const ::hybridse::vm::Schema &schema
     stream << t;
 }
 
-void PrintItems(std::ostream &stream, const std::string &head, const std::vector<std::string> &items) {
+void PrintItemTable(std::ostream& stream, const std::vector<std::string>& head,
+                    const std::vector<std::vector<std::string>>& items, bool transpose) {
     if (items.empty()) {
         stream << "Empty set" << std::endl;
         return;
     }
-
+    DLOG(INFO) << "table size " << items.size() << "-" << items[0].size();
+    DCHECK(transpose ? (head.size() == items.size()) : (head.size() == items[0].size()));
     ::hybridse::base::TextTable t('-', ' ', ' ');
-    t.add(head);
+    std::for_each(head.begin(), head.end(), [&t](auto& item) { t.add(item); });
     t.end_of_row();
-    for (const auto &item : items) {
-        t.add(item);
-        t.end_of_row();
+    if (transpose) {
+        // flip along the major diagonal (top left to bottom right)
+        for (size_t i = 0; i < items[0].size(); ++i) {
+            // print the i column
+            std::for_each(items.begin(), items.end(), [&t, &i](auto& row) { t.add(row[i]); });
+            t.end_of_row();
+        }
+    } else {
+        for (const auto& line : items) {
+            std::for_each(line.begin(), line.end(), [&t](auto& item) { t.add(item); });
+            t.end_of_row();
+        }
     }
+
     stream << t;
-    auto items_size = items.size();
+    auto items_size = transpose ? items[0].size() : items.size();
     if (items_size > 1) {
         stream << items_size << " rows in set" << std::endl;
     } else {
@@ -480,34 +523,15 @@ void PrintItems(std::ostream &stream, const std::string &head, const std::vector
     }
 }
 
-void PrintItems(const std::vector<std::pair<std::string, std::string>> &items, std::ostream &stream) {
-    if (items.empty()) {
-        stream << "Empty set" << std::endl;
-        return;
-    }
-
-    ::hybridse::base::TextTable t('-', ' ', ' ');
-    t.add("DB");
-    t.add("SP");
-    t.end_of_row();
-    for (const auto &item : items) {
-        t.add(item.first);
-        t.add(item.second);
-        t.end_of_row();
-    }
-    stream << t;
-    auto items_size = items.size();
-    if (items_size > 1) {
-        stream << items_size << " rows in set" << std::endl;
-    } else {
-        stream << items_size << " row in set" << std::endl;
-    }
+void PrintItemTable(std::ostream& stream, const std::vector<std::string>& head,
+                    const std::vector<std::vector<std::string>>& items) {
+    PrintItemTable(stream, head, items, false);
 }
 
-void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema &sdk_schema, std::ostream &stream) {
+void PrintProcedureSchema(const std::string& head, const ::hybridse::sdk::Schema& sdk_schema, std::ostream& stream) {
     try {
-        const auto &schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl &>(sdk_schema);
-        auto &schema = schema_impl.GetSchema();
+        const auto& schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl&>(sdk_schema);
+        auto& schema = schema_impl.GetSchema();
         if (schema.empty()) {
             stream << "Empty set" << std::endl;
             return;
@@ -522,7 +546,7 @@ void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema
         t.end_of_row();
 
         for (auto i = 0; i < schema.size(); i++) {
-            const auto &column = schema.Get(i);
+            const auto& column = schema.Get(i);
             t.add(std::to_string(i + 1));
             t.add(column.name());
             t.add(::hybridse::type::Type_Name(column.type()));
@@ -530,35 +554,77 @@ void PrintProcedureSchema(const std::string &head, const ::hybridse::sdk::Schema
             t.end_of_row();
         }
         stream << t << std::endl;
-    } catch (std::bad_cast &) {
+    } catch (std::bad_cast&) {
         return;
     }
 }
 
-void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo &sp_info) {
-    std::vector<std::pair<std::string, std::string>> vec;
-    std::pair<std::string, std::string> pair = std::make_pair(sp_info.GetDbName(), sp_info.GetSpName());
-    vec.push_back(pair);
-    PrintItems(vec, std::cout);
+void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
+    std::vector<std::vector<std::string>> vec;
+    vec.push_back({sp_info.GetDbName(), sp_info.GetSpName()});
+    PrintItemTable(std::cout, {"DB", "SP"}, vec);
     std::vector<std::string> items{sp_info.GetSql()};
-    PrintItems(std::cout, "SQL", items);
+    PrintItemTable(std::cout, {"SQL"}, {items}, true);
     PrintProcedureSchema("Input Schema", sp_info.GetInputSchema(), std::cout);
     PrintProcedureSchema("Output Schema", sp_info.GetOutputSchema(), std::cout);
 }
 
+std::shared_ptr<client::NsClient> GetAndCheckNSClient(std::string* error) {
+    DCHECK(error);
+    auto ns_client = cs->GetNsClient();
+    if (!ns_client) {
+        *error = "ERROR: Failed to connect nameserver";
+    }
+    return ns_client;
+}
+
+bool ParseNamesFromArgs(const std::vector<std::string>& args, std::string* db_name, std::string* sp_name,
+                        std::string* error) {
+    if (args.size() == 1) {
+        // only sp name, no db_name
+        if (db.empty()) {
+            *error = "ERROR: Please enter database first";
+            return false;
+        }
+        *db_name = db;
+        *sp_name = args[0];
+    } else if (args.size() == 2) {
+        *db_name = args[0];
+        *sp_name = args[1];
+    } else {
+        *error = "ERROR: Invalid args";
+        return false;
+    }
+    return true;
+}
+
+bool CheckAnswerIfInteractive(std::string drop_type, std::string name) {
+    if (FLAGS_interactive) {
+        printf("Drop %s %s? yes/no\n", drop_type.c_str(), name.c_str());
+        std::string input;
+        std::cin >> input;
+        std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+        if (input != "yes") {
+            printf("'Drop %s' cmd is canceled!\n", name.c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
 // TODO(zekai): use status instead of cout
-void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
+void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
+    std::shared_ptr<client::NsClient> ns;
     switch (cmd_node->GetCmdType()) {
         case hybridse::node::kCmdShowDatabases: {
             std::string error;
             std::vector<std::string> dbs;
-            auto ns = cs->GetNsClient();
-            if (!ns) {
-                // TODO(zekai): use status instead of cout
-                std::cout << "ERROR: Fail to connect to db" << std::endl;
+            auto ok = (ns = GetAndCheckNSClient(&error)) && (ns->ShowDatabase(&dbs, error));
+            if (ok) {
+                PrintItemTable(std::cout, {"Databases"}, {dbs}, true);
+            } else {
+                std::cout << error << std::endl;
             }
-            ns->ShowDatabase(&dbs, error);
-            PrintItems(std::cout, "Databases", dbs);
             return;
         }
 
@@ -573,7 +639,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             for (; it != tables.end(); ++it) {
                 table_names.push_back((*it)->name());
             }
-            PrintItems(std::cout, "Tables", table_names);
+            PrintItemTable(std::cout, {"Tables"}, {table_names}, true);
             return;
         }
 
@@ -582,7 +648,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
                 std::cout << "ERROR: Please enter database first" << std::endl;
                 return;
             }
-            // TODO: Should support table name with database name
+            // TODO(denglong): Should support table name with database name
             auto table = cs->GetTableInfo(db, cmd_node->GetArgs()[0]);
             if (table == nullptr) {
                 std::cerr << "table " << cmd_node->GetArgs()[0] << " does not exist" << std::endl;
@@ -596,9 +662,8 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
 
         case hybridse::node::kCmdCreateDatabase: {
             std::string name = cmd_node->GetArgs()[0];
-            auto ns = cs->GetNsClient();
             std::string error;
-            bool ok = ns->CreateDatabase(name, error);
+            bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->CreateDatabase(name, error));
             if (ok) {
                 std::cout << "SUCCEED: Create database successfully" << std::endl;
             } else {
@@ -609,8 +674,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
         case hybridse::node::kCmdUseDatabase: {
             std::string name = cmd_node->GetArgs()[0];
             std::string error;
-            auto ns = cs->GetNsClient();
-            bool ok = ns->Use(name, error);
+            bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->Use(name, error));
             if (!ok) {
                 std::cout << error << std::endl;
             } else {
@@ -622,11 +686,10 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
         case hybridse::node::kCmdDropDatabase: {
             std::string name = cmd_node->GetArgs()[0];
             std::string error;
-            auto ns = cs->GetNsClient();
-            if (!ns->DropDatabase(name, error)) {
-                std::cout << error << std::endl;
-            } else {
+            if ((ns = GetAndCheckNSClient(&error)) && (ns->DropDatabase(name, error))) {
                 std::cout << "SUCCEED: Drop successfully" << std::endl;
+            } else {
+                std::cout << error << std::endl;
             }
             break;
         }
@@ -636,19 +699,11 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
                 return;
             }
             std::string name = cmd_node->GetArgs()[0];
-            if (FLAGS_interactive) {
-                printf("Drop table %s? yes/no\n", name.c_str());
-                std::string input;
-                std::cin >> input;
-                std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-                if (input != "yes") {
-                    printf("'Drop %s' cmd is canceled!\n", name.c_str());
-                    return;
-                }
+            if (!CheckAnswerIfInteractive("table", name)) {
+                return;
             }
-            auto ns = cs->GetNsClient();
             std::string error;
-            bool ok = ns->DropTable(name, error);
+            bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DropTable(name, error));
             if (ok) {
                 std::cout << "SUCCEED: Drop successfully" << std::endl;
                 sr->RefreshCatalog();
@@ -660,17 +715,11 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
         case hybridse::node::kCmdDropIndex: {
             std::string index_name = cmd_node->GetArgs()[0];
             std::string table_name = cmd_node->GetArgs()[1];
-            std::string error;
-            printf("Drop index %s on %s? yes/no\n", index_name.c_str(), table_name.c_str());
-            std::string input;
-            std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-            if (input != "yes") {
-                printf("'Drop index %s on %s' cmd is canceled!\n", index_name.c_str(), table_name.c_str());
+            if (!CheckAnswerIfInteractive("index", index_name + " on " + table_name)) {
                 return;
             }
-            auto ns = cs->GetNsClient();
-            bool ok = ns->DeleteIndex(table_name, index_name, error);
+            std::string error;
+            bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DeleteIndex(table_name, index_name, error));
             if (ok) {
                 std::cout << "SUCCEED: Drop index successfully" << std::endl;
             } else {
@@ -679,29 +728,18 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
             break;
         }
         case hybridse::node::kCmdShowCreateSp: {
-            auto &args = cmd_node->GetArgs();
+            std::string error;
+
+            auto& args = cmd_node->GetArgs();
             std::string db_name, sp_name;
-            if (args.size() == 1) {
-                // only sp name, no db_name
-                if (db.empty()) {
-                    std::cout << "ERROR: Please enter database first" << std::endl;
-                    return;
-                } else {
-                    db_name = db;
-                }
-                sp_name = args[0];
-            } else if (args.size() == 2) {
-                db_name = args[0];
-                sp_name = args[1];
-            } else {
-                std::cout << "ERROR: Invalid args for show create procedure" << std::endl;
+            if (!ParseNamesFromArgs(args, &db_name, &sp_name, &error)) {
+                std::cout << error << std::endl;
                 return;
             }
 
-            std::string error;
             std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cs->GetProcedureInfo(db_name, sp_name, &error);
             if (!sp_info) {
-                std::cout << "ERROR: Fail to show procdure. error msg: " << error << std::endl;
+                std::cout << "ERROR: Fail to show procedure. error msg: " << error << std::endl;
                 return;
             }
             PrintProcedureInfo(*sp_info);
@@ -710,12 +748,12 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
         case hybridse::node::kCmdShowProcedures: {
             std::string error;
             std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos = cs->GetProcedureInfo(&error);
-            std::vector<std::pair<std::string, std::string>> pairs;
-            pairs.reserve(sp_infos.size());
-            for (auto &sp_info : sp_infos) {
-                pairs.emplace_back(sp_info->GetDbName(), sp_info->GetSpName());
+            std::vector<std::vector<std::string>> lines;
+            lines.reserve(sp_infos.size());
+            for (auto& sp_info : sp_infos) {
+                lines.push_back({sp_info->GetDbName(), sp_info->GetSpName()});
             }
-            PrintItems(pairs, std::cout);
+            PrintItemTable(std::cout, {"DB", "SP"}, lines);
             break;
         }
         case hybridse::node::kCmdDropSp: {
@@ -724,21 +762,79 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
                 return;
             }
             std::string sp_name = cmd_node->GetArgs()[0];
-            std::string error;
-            printf("Drop store procedure %s? yes/no\n", sp_name.c_str());
-            std::string input;
-            std::cin >> input;
-            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-            if (input != "yes") {
-                printf("'Drop %s' cmd is canceled!\n", sp_name.c_str());
+            if (!CheckAnswerIfInteractive("procedure", sp_name)) {
                 return;
             }
-            auto ns = cs->GetNsClient();
-            bool ok = ns->DropProcedure(db, sp_name, error);
+            std::string error;
+            bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DropProcedure(db, sp_name, error));
             if (ok) {
                 std::cout << "SUCCEED: Drop successfully" << std::endl;
             } else {
                 std::cout << "ERROR: Failed to drop. error msg: " << error << std::endl;
+            }
+            break;
+        }
+        case hybridse::node::kCmdShowDeployment: {
+            std::string error;
+            std::string db_name, deploy_name;
+            auto& args = cmd_node->GetArgs();
+            if (!ParseNamesFromArgs(args, &db_name, &deploy_name, &error)) {
+                std::cout << error << std::endl;
+                return;
+            }
+            std::vector<api::ProcedureInfo> sps;
+            auto sp = cs->GetProcedureInfo(db_name, deploy_name, &error);
+            // check if deployment
+            if (!sp || sp->GetType() != hybridse::sdk::kReqDeployment) {
+                std::cout << (sp ? "not a deployment" : "not found") << std::endl;
+                return;
+            }
+            PrintProcedureInfo(*sp);
+            break;
+        }
+        case hybridse::node::kCmdShowDeployments: {
+            std::string error;
+            if (db.empty()) {
+                std::cout << "please enter database first" << std::endl;
+                return;
+            }
+            // ns client get all procedures of one db
+            std::vector<api::ProcedureInfo> sps;
+            auto ok = (ns = GetAndCheckNSClient(&error)) && (ns->ShowProcedure(db, "", &sps, &error));
+            if (!ok) {
+                std::cout << error << std::endl;
+                return;
+            }
+            std::vector<std::vector<std::string>> lines;
+            for (auto& sp_info : sps) {
+                if (sp_info.type() == type::kReqDeployment) {
+                    lines.push_back({sp_info.db_name(), sp_info.sp_name()});
+                }
+            }
+            PrintItemTable(std::cout, {"DB", "SP"}, lines);
+            break;
+        }
+        case hybridse::node::kCmdDropDeployment: {
+            if (db.empty()) {
+                std::cout << "ERROR: Please enter database first" << std::endl;
+                return;
+            }
+            std::string deploy_name = cmd_node->GetArgs()[0];
+            std::string error;
+            // check if deployment, avoid deleting the normal procedure
+            auto sp = cs->GetProcedureInfo(db, deploy_name, &error);
+            if (!sp || sp->GetType() != hybridse::sdk::kReqDeployment) {
+                std::cout << (sp ? "not a deployment" : "not found") << std::endl;
+                return;
+            }
+            if (!CheckAnswerIfInteractive("deployment", deploy_name)) {
+                return;
+            }
+            bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DropProcedure(db, deploy_name, error));
+            if (ok) {
+                std::cout << "SUCCEED: Drop successfully" << std::endl;
+            } else {
+                std::cout << "ERROR: Failed to drop. error: " << error << std::endl;
             }
             break;
         }
@@ -751,8 +847,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node) {
     }
 }
 
-// TODO(zekai): use status instead of cout
-void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node) {
+void HandleCreateIndex(const hybridse::node::CreateIndexNode* create_index_node) {
     ::openmldb::common::ColumnKey column_key;
     hybridse::base::Status status;
     if (!::openmldb::sdk::NodeAdapter::TransformToColumnKey(create_index_node->index_, {}, &column_key, &status)) {
@@ -764,7 +859,11 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
     DLOG(INFO) << column_key.DebugString();
 
     std::string error;
-    auto ns = cs->GetNsClient();
+    auto ns = GetAndCheckNSClient(&error);
+    if (!ns) {
+        std::cout << error << std::endl;
+        return;
+    }
     bool ok = ns->AddIndex(create_index_node->table_name_, column_key, nullptr, error);
     if (ok) {
         std::cout << "SUCCEED: Create index successfully" << std::endl;
@@ -776,16 +875,16 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode *create_index_node)
 
 base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     if (db.empty()) {
-        return base::Status(base::ReturnCode::kError, "please use database first");
+        return {base::ReturnCode::kError, "please use database first"};
     }
     if (deploy_node == nullptr) {
-        return base::Status(base::ReturnCode::kError, "illegal deploy statement");
+        return {base::ReturnCode::kError, "illegal deploy statement"};
     }
     std::string select_sql = deploy_node->StmtStr() + ";";
     hybridse::vm::ExplainOutput explain_output;
     hybridse::base::Status sql_status;
     if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status, false)) {
-        return base::Status(base::ReturnCode::kError, sql_status.msg);
+        return {base::ReturnCode::kError, sql_status.msg};
     }
     // pack ProcedureInfo
     ::openmldb::api::ProcedureInfo sp_info;
@@ -800,26 +899,27 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     auto input_schema = sp_info.mutable_input_schema();
     auto output_schema = sp_info.mutable_output_schema();
     if (!openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, input_schema) ||
-            !openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, output_schema)) {
-        return base::Status(base::ReturnCode::kError, "convert schema failed");
+        !openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, output_schema)) {
+        return {base::ReturnCode::kError, "convert schema failed"};
     }
 
     std::set<std::pair<std::string, std::string>> table_pair;
     ::hybridse::base::Status status;
     if (!cs->GetEngine()->GetDependentTables(select_sql, db, ::hybridse::vm::kBatchMode, &table_pair, status)) {
-        return base::Status(base::ReturnCode::kError, "get dependent table failed");
+        return {base::ReturnCode::kError, "get dependent table failed"};
     }
     for (auto& table : table_pair) {
-        sp_info.add_dbs(table.first);
-        sp_info.add_tables(table.second);
+        auto db_table = sp_info.add_tables();
+        db_table->set_db_name(table.first);
+        db_table->set_table_name(table.second);
     }
     std::stringstream str_stream;
-    str_stream << "CREATE PROCEDURE "  << deploy_node->Name()  << " (";
+    str_stream << "CREATE PROCEDURE " << deploy_node->Name() << " (";
     for (int idx = 0; idx < input_schema->size(); idx++) {
         const auto& col = input_schema->Get(idx);
         auto it = codec::DATA_TYPE_STR_MAP.find(col.data_type());
         if (it == codec::DATA_TYPE_STR_MAP.end()) {
-            return base::Status(base::ReturnCode::kError, "illegal data type");
+            return {base::ReturnCode::kError, "illegal data type"};
         }
         str_stream << col.name() << " " << it->second;
         if (idx != input_schema->size() - 1) {
@@ -834,18 +934,18 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = cs->GetNsClient();
-    // TODO(denglong): support muti db
+    // TODO(denglong): support multi db
     auto ret = ns->ShowDBTable(db, &tables);
     if (!ret.OK()) {
-        return base::Status(base::ReturnCode::kError, "get table failed " + ret.msg );
+        return {base::ReturnCode::kError, "get table failed " + ret.msg};
     }
     auto tablet_accessor = cs->GetTablet();
     if (!tablet_accessor) {
-        return base::Status(base::ReturnCode::kError, "cannot connect tablet");
+        return {base::ReturnCode::kError, "cannot connect tablet"};
     }
     auto tablet_client = tablet_accessor->GetClient();
     if (!tablet_client) {
-        return base::Status(base::ReturnCode::kError, "tablet client is null");
+        return {base::ReturnCode::kError, "tablet client is null"};
     }
     std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>> table_schema_map;
     std::map<std::string, ::openmldb::nameserver::TableInfo> table_map;
@@ -864,7 +964,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     for (auto& kv : index_map) {
         auto it = table_map.find(kv.first);
         if (it == table_map.end()) {
-            return base::Status(base::ReturnCode::kError, "table " + kv.first + "is not exist");
+            return {base::ReturnCode::kError, "table " + kv.first + "is not exist"};
         }
         std::vector<std::set<std::string>> index_cols_set;
         for (const auto& column_key : it->second.column_key()) {
@@ -906,17 +1006,17 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
                 }
             }
             if (cols.empty()) {
-                return base::Status(base::ReturnCode::kError, "table " + kv.first + " index col is not exist");
+                return {base::ReturnCode::kError, "table " + kv.first + " index col is not exist"};
             }
             column_key.set_index_name("INDEX_" + std::to_string(cur_index_num + add_index_num) + "_" +
-                    std::to_string(::baidu::common::timer::now_time()));
+                                      std::to_string(::baidu::common::timer::now_time()));
             if (!column_key.has_ttl()) {
-                return base::Status(base::ReturnCode::kError, "table " + kv.first + " has not ttl");
+                return {base::ReturnCode::kError, "table " + kv.first + " has not ttl"};
             }
             add_index_num++;
             std::string msg;
             if (!ns->AddIndex(kv.first, column_key, &cols, msg)) {
-                return base::Status(base::ReturnCode::kError, "table " + kv.first + " add index failed");
+                return {base::ReturnCode::kError, "table " + kv.first + " add index failed"};
             }
             new_indexs.push_back(column_key);
         }
@@ -931,22 +1031,17 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
         uint32_t tid = it->second.tid();
         uint32_t pid = 0;
         if (!tablet_client->ExtractMultiIndexData(tid, pid, it->second.table_partition_size(), kv.second)) {
-            return base::Status(base::ReturnCode::kError, "table " + kv.first + " load data failed");
+            return {base::ReturnCode::kError, "table " + kv.first + " load data failed"};
         }
     }
-    std::string msg;
-    if (!ns->CreateProcedure(sp_info, FLAGS_request_timeout_ms, &msg)) {
-        return base::Status(base::ReturnCode::kError, msg);
-    }
-    return {};
+    return ns->CreateProcedure(sp_info, FLAGS_request_timeout_ms);
 }
 
-// TODO(zekai): use status instead of printf
-void SetVariable(const std::string key, const hybridse::node::ConstNode* value) {
+void SetVariable(const std::string& key, const hybridse::node::ConstNode* value) {
     if (key == "performance_sensitive") {
         if (value->GetDataType() == hybridse::node::kBool) {
             performance_sensitive = value->GetBool();
-            printf("Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true": "false");
+            printf("Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true" : "false");
         } else {
             printf("The type of %s should be bool\n", key.c_str());
         }
@@ -955,31 +1050,9 @@ void SetVariable(const std::string key, const hybridse::node::ConstNode* value) 
     }
 }
 
-
-bool GetOption(const std::shared_ptr<hybridse::node::OptionsMap> &options, const std::string &option_name,
-               hybridse::node::DataType option_type,
-               std::function<bool(const hybridse::node::ConstNode *node)> const &f) {
-    auto it = options->find(option_name);
-    if (it == options->end()) {
-        // won't set option, but no error
-        return true;
-    }
-    auto node = it->second;
-    if (node->GetDataType() != option_type) {
-        std::cout << "wrong type " << hybridse::node::DataTypeName(node->GetDataType()) << " for option " << option_name
-                  << std::endl;
-        return false;
-    }
-    if (!f(node)) {
-        std::cout << "parse option " << option_name << " failed" << std::endl;
-        return false;
-    }
-    return true;
-}
-
 template <typename T>
-bool AppendColumnValue(const std::string &v, hybridse::sdk::DataType type, bool is_not_null,
-                       const std::string &null_value, T row) {
+bool AppendColumnValue(const std::string& v, hybridse::sdk::DataType type, bool is_not_null,
+                       const std::string& null_value, T row) {
     // check if null
     if (v == null_value) {
         if (is_not_null) {
@@ -1035,25 +1108,26 @@ bool AppendColumnValue(const std::string &v, hybridse::sdk::DataType type, bool 
             default:
                 return false;
         }
-    } catch (std::exception const &e) {
+    } catch (std::exception const& e) {
         return false;
     }
 }
 
-bool InsertOneRow(const std::string &insert_placeholder, const std::vector<int> &str_col_idx,
-                  const std::string &null_value, const std::vector<std::string> &cols, std::string *error) {
+bool InsertOneRow(const std::string& database, const std::string& insert_placeholder,
+                  const std::vector<int>& str_col_idx, const std::string& null_value,
+                  const std::vector<std::string>& cols, std::string* error) {
     if (cols.empty()) {
         return false;
     }
 
     hybridse::sdk::Status status;
-    auto row = sr->GetInsertRow(db, insert_placeholder, &status);
+    auto row = sr->GetInsertRow(database, insert_placeholder, &status);
     if (!row) {
         *error = status.msg;
         return false;
     }
     // build row from cols
-    auto &schema = row->GetSchema();
+    auto& schema = row->GetSchema();
     auto cnt = schema->GetColumnCnt();
     if (cnt != static_cast<int>(cols.size())) {
         *error = "col size mismatch";
@@ -1075,7 +1149,7 @@ bool InsertOneRow(const std::string &insert_placeholder, const std::vector<int> 
         }
     }
 
-    bool ok = sr->ExecuteInsert(db, insert_placeholder, row, &status);
+    bool ok = sr->ExecuteInsert(database, insert_placeholder, row, &status);
     if (!ok) {
         *error = "insert row failed";
         return false;
@@ -1084,47 +1158,25 @@ bool InsertOneRow(const std::string &insert_placeholder, const std::vector<int> 
 }
 
 // Only csv format
-bool HandleLoadDataInfile(const std::string &database, const std::string &table, const std::string &file_path,
-                          const std::shared_ptr<hybridse::node::OptionsMap> &options, std::string *error) {
+bool HandleLoadDataInfile(const std::string& database, const std::string& table, const std::string& file_path,
+                          const std::shared_ptr<hybridse::node::OptionsMap>& options, std::string* error) {
     DCHECK(error);
-
-    // options, value is ConstNode
-    char delimiter = ',';
-    bool header = true;
-    std::string null_value{"null"}, format{"csv"};
-
-    if (!GetOption(options, "delimiter", hybridse::node::kVarchar,
-                   [&delimiter, error](const hybridse::node::ConstNode *node) {
-                       auto &s = node->GetAsString();
-                       if (s.size() != 1) {
-                           *error = "invalid delimiter " + s;
-                           return false;
-                       }
-                       delimiter = s[0];
-                       return true;
-                   }) ||
-        !GetOption(options, "header", hybridse::node::kBool,
-                   [&header](const hybridse::node::ConstNode *node) {
-                       header = node->GetBool();
-                       return true;
-                   }) ||
-        !GetOption(options, "null_value", hybridse::node::kVarchar,
-                   [&null_value](const hybridse::node::ConstNode *node) {
-                       null_value = node->GetAsString();
-                       return true;
-                   }) ||
-        !GetOption(options, "format", hybridse::node::kVarchar,
-                   [&format, error](const hybridse::node::ConstNode *node) {
-                       if (node->GetAsString() != "csv") {
-                           *error = "only support csv";
-                           return false;
-                       }
-                       return true;
-                   })) {
+    std::string real_db = database.empty() ? db : database;
+    if (real_db.empty()) {
+        *error = "no db in sql and no use db";
         return false;
     }
-    std::cout << "options: delimiter [" << delimiter << "], has header[" << header << "], null_value[" << null_value
-              << "], format[" << format << "]" << std::endl;
+
+    openmldb::cmd::ReadFileOptionsParser options_parse;
+    auto st = options_parse.Parse(options);
+    if (!st.OK()) {
+        std::cout << st.msg << std::endl;
+        return false;
+    }
+    std::cout << "load " << file_path << " to " << real_db << "-" << table << ", options: delimiter ["
+              << options_parse.GetDelimiter() << "], has header[" << (options_parse.GetHeader() ? "true" : "false")
+              << "], null_value[" << options_parse.GetNullValue() << "], format[" << options_parse.GetFormat() << "]"
+              << std::endl;
     // read csv
     if (!base::IsExists(file_path)) {
         *error = "file not exist";
@@ -1142,14 +1194,14 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
         return false;
     }
     std::vector<std::string> cols;
-    SplitCSVLineWithDelimiterForStrings(line, delimiter, &cols);
-    auto schema = sr->GetTableSchema(database, table);
+    SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
+    auto schema = sr->GetTableSchema(real_db, table);
     if (static_cast<int>(cols.size()) != schema->GetColumnCnt()) {
         *error = "mismatch column size";
         return false;
     }
 
-    if (header) {
+    if (options_parse.GetHeader()) {
         // the first line is the column names, check if equal with table schema
         for (int i = 0; i < schema->GetColumnCnt(); ++i) {
             if (cols[i] != schema->GetColumnName(i)) {
@@ -1169,25 +1221,27 @@ bool HandleLoadDataInfile(const std::string &database, const std::string &table,
     }
     hybridse::sdk::Status status;
     std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
-    std::vector<int> strColIdx;
+    std::vector<int> str_cols_idx;
     for (int i = 0; i < schema->GetColumnCnt(); ++i) {
         if (schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
-            strColIdx.emplace_back(i);
+            str_cols_idx.emplace_back(i);
         }
     }
-
+    uint64_t i = 0;
     do {
         cols.clear();
-        SplitCSVLineWithDelimiterForStrings(line, delimiter, &cols);
-        if (!InsertOneRow(insert_placeholder, strColIdx, null_value, cols, error)) {
+        SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
+        if (!InsertOneRow(real_db, insert_placeholder, str_cols_idx, options_parse.GetNullValue(), cols, error)) {
             *error = "line [" + line + "] insert failed, " + *error;
             return false;
         }
+        ++i;
     } while (std::getline(file, line));
+    LOG(INFO) << "load " << i << " rows";
     return true;
 }
 
-void HandleSQL(const std::string &sql) {
+void HandleSQL(const std::string& sql) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
     hybridse::node::PlanNodeList plan_trees;
@@ -1197,10 +1251,10 @@ void HandleSQL(const std::string &sql) {
         std::cout << sql_status.msg << std::endl;
         return;
     }
-    hybridse::node::PlanNode *node = plan_trees[0];
+    hybridse::node::PlanNode* node = plan_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeCmd: {
-            auto *cmd = dynamic_cast<hybridse::node::CmdPlanNode *>(node);
+            auto* cmd = dynamic_cast<hybridse::node::CmdPlanNode*>(node);
             HandleCmd(cmd);
             return;
         }
@@ -1217,19 +1271,33 @@ void HandleSQL(const std::string &sql) {
             std::cout << info->GetPhysicalPlan() << std::endl;
             return;
         }
-        case hybridse::node::kPlanTypeCreate:
+        case hybridse::node::kPlanTypeCreate: {
+            if (db.empty()) {
+                std::cout << "ERROR: Please use database first" << std::endl;
+                return;
+            }
+            auto create_node = dynamic_cast<hybridse::node::CreatePlanNode*>(node);
+            auto status = sr->HandleSQLCreateTable(create_node, db, cs->GetNsClient());
+            if (status.OK()) {
+                sr->RefreshCatalog();
+                std::cout << "SUCCEED: Create successfully" << std::endl;
+            }  else {
+                std::cout << "ERROR: " << status.msg << std::endl;
+            }
+            return;
+        }
         case hybridse::node::kPlanTypeCreateSp: {
             if (db.empty()) {
                 std::cout << "ERROR: Please use database first" << std::endl;
                 return;
             }
-            ::hybridse::sdk::Status status;
-            bool ok = sr->ExecuteDDL(db, sql, &status);
-            if (!ok) {
-                std::cout << "ERROR: Fail to execute ddl" << std::endl;
-            } else {
+            auto create_node = dynamic_cast<hybridse::node::CreateProcedurePlanNode*>(node);
+            auto status = sr->HandleSQLCreateProcedure(create_node, db, sql, cs->GetNsClient());
+            if (status.OK()) {
                 sr->RefreshCatalog();
                 std::cout << "SUCCEED: Create successfully" << std::endl;
+            } else {
+                std::cout << "ERROR: " << status.msg << std::endl;
             }
             return;
         }
@@ -1238,12 +1306,12 @@ void HandleSQL(const std::string &sql) {
                 std::cout << "ERROR: Please use database first" << std::endl;
                 return;
             }
-            auto *create_index_node = dynamic_cast<hybridse::node::CreateIndexPlanNode *>(node);
+            auto* create_index_node = dynamic_cast<hybridse::node::CreateIndexPlanNode*>(node);
             HandleCreateIndex(create_index_node->create_index_node_);
             return;
         }
         case hybridse::node::kPlanTypeInsert: {
-            // TODO: Should support table name with database name
+            // TODO(denglong): Should support table name with database name
             if (db.empty()) {
                 std::cout << "ERROR: Please use database first" << std::endl;
                 return;
@@ -1278,12 +1346,12 @@ void HandleSQL(const std::string &sql) {
             return;
         }
         case hybridse::node::kPlanTypeSelectInto: {
-            auto *select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode *>(node);
+            auto* select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode*>(node);
             const std::string& query_sql = select_into_plan_node->QueryStr();
             const std::string& file_path = select_into_plan_node->OutFile();
             const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
-            ::hybridse::sdk::Status hybridse_sdk_status;
-            auto rs = sr->ExecuteSQL(db, query_sql, &hybridse_sdk_status, performance_sensitive);
+            ::hybridse::sdk::Status status;
+            auto rs = sr->ExecuteSQL(db, query_sql, &status, performance_sensitive);
             if (!rs) {
                 std::cout << "ERROR: Fail to execute query" << std::endl;
             } else {
@@ -1294,12 +1362,12 @@ void HandleSQL(const std::string &sql) {
             return;
         }
         case hybridse::node::kPlanTypeSet: {
-            auto *set_node = dynamic_cast<hybridse::node::SetPlanNode *>(node);
+            auto* set_node = dynamic_cast<hybridse::node::SetPlanNode*>(node);
             SetVariable(set_node->Key(), set_node->Value());
             return;
         }
         case hybridse::node::kPlanTypeLoadData: {
-            auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode *>(node);
+            auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
             std::string error;
             if (!HandleLoadDataInfile(plan->Db(), plan->Table(), plan->File(), plan->Options(), &error)) {
                 std::cout << "load data failed, err: " << error << std::endl;
@@ -1337,7 +1405,7 @@ void Shell() {
             std::string error;
             ns->Use(db, error);
         } else {
-            char *line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
+            char* line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
             if (line == nullptr) {
                 return;
             }
@@ -1392,7 +1460,7 @@ void ClusterSQLClient() {
     Shell();
 }
 
-bool InitSDK() {
+bool StandAloneInit() {
     // connect to nameserver
     if (FLAGS_host.empty() || FLAGS_port == 0) {
         std::cout << "host or port is missing" << std::endl;
@@ -1413,7 +1481,7 @@ bool InitSDK() {
 }
 
 void StandAloneSQLClient() {
-    if (!InitSDK()) {
+    if (!StandAloneInit()) {
         return;
     }
     Shell();
