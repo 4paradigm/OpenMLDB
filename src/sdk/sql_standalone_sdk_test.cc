@@ -846,11 +846,13 @@ int main(int argc, char** argv) {
         std::cout << "Fail to connect to db" << std::endl;
         return -1;
     }
-    ::openmldb::sdk::router_ = openmldb::sdk::NewStandAloneSQLRouter(cs);
-    if (!::openmldb::sdk::router_) {
-        std::cout << "Fail to init standalone sql router" << std::endl;
+    auto router = std::make_shared<openmldb::sdk::SQLClusterRouter>(cs);
+    if (!router->Init()) {
+        LOG(WARNING) << "Fail to init standalone sql router";
         return -1;
     }
+    ::openmldb::sdk::router_ = router;
+
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ok = RUN_ALL_TESTS();
     return ok;

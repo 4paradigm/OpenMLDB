@@ -30,13 +30,6 @@ std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options) 
     }
     return router;
 }
-std::shared_ptr<SQLRouter> NewStandAloneSQLRouter(DBSDK* db_sdk) {
-    auto router = std::make_shared<SQLClusterRouter>(db_sdk);
-    if (!router->Init()) {
-        LOG(WARNING) << "Fail to init standalone sql router";
-        return std::shared_ptr<SQLRouter>();
-    }
-    return router;
-}
+
 }  // namespace sdk
 }  // namespace openmldb
