@@ -634,7 +634,6 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
         return false;
     }
     // TODO(wangtaize) update ns client to thread safe
-    std::string err;
 
     // parse sql to judge whether is create procedure case
     hybridse::node::NodeManager node_manager;
@@ -649,17 +648,16 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
         return false;
     }
     hybridse::node::PlanNode* node = plan_trees[0];
-    bool ok = false;
+    base::Status ret;
     if (node->GetType() == hybridse::node::kPlanTypeCreateSp) {
-        ok = HandleSQLCreateProcedure(dynamic_cast<hybridse::node::CreateProcedurePlanNode*>(node),
-                db, sql, ns_ptr, &err);
+        ret = HandleSQLCreateProcedure(dynamic_cast<hybridse::node::CreateProcedurePlanNode*>(node), db, sql, ns_ptr);
     } else if (node->GetType() == hybridse::node::kPlanTypeCreate) {
-        ok = HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), db, ns_ptr, &err);
+        ret = HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), db, ns_ptr);
     } else {
-        ok = HandleSQLCmd(dynamic_cast<hybridse::node::CmdPlanNode*>(node), db, ns_ptr, &err);
+        ret = HandleSQLCmd(dynamic_cast<hybridse::node::CmdPlanNode*>(node), db, ns_ptr);
     }
-    if (!ok) {
-        status->msg = "fail to execute sql " + sql + " for error " + err;
+    if (!ret.OK()) {
+        status->msg = "fail to execute sql " + sql + " for error " + ret.msg;
         LOG(WARNING) << status->msg;
         status->code = -1;
         return false;
@@ -1251,67 +1249,66 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(co
     return sp_info;
 }
 
-bool SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
-        std::shared_ptr<::openmldb::client::NsClient> ns_ptr, std::string* msg) {
-    if (cmd_node == nullptr || ns_ptr == nullptr || msg == nullptr) {
-        *msg = "fail to execute plan : null pointer";
-        return false;
+base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
+        std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
+    if (cmd_node == nullptr || ns_ptr == nullptr) {
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "null pointer");
     }
+    bool ret = true;
+    std::string msg;
     switch (cmd_node->GetCmdType()) {
         case hybridse::node::kCmdDropTable: {
             const std::string& name = cmd_node->GetArgs()[0];
-            return ns_ptr->DropTable(db, name, *msg);
+            ret = ns_ptr->DropTable(db, name, msg);
+            break;
         }
         case hybridse::node::kCmdDropIndex: {
             const std::string& index_name = cmd_node->GetArgs()[0];
             const std::string& table_name = cmd_node->GetArgs()[1];
-            return ns_ptr->DeleteIndex(db, table_name, index_name, *msg);
+            ret = ns_ptr->DeleteIndex(db, table_name, index_name, msg);
+            break;
         }
         case hybridse::node::kCmdDropSp: {
             const std::string& sp_name = cmd_node->GetArgs()[0];
-            return ns_ptr->DropProcedure(db, sp_name, *msg);
+            ret = ns_ptr->DropProcedure(db, sp_name, msg);
+            break;
         }
         default: {
-            *msg = "fail to execute script with unsupported type";
-            return false;
+            return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute script with unsupported type");
         }
     }
-    return true;
+    if (!ret) {
+        return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
+    }
+    return {};
 }
 
-bool SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node,
+base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node,
                                                 const std::string& db,
-                                                std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
-                                                std::string* msg) {
-    if (create_node == nullptr || ns_ptr == nullptr || msg == nullptr) {
-        *msg = "fail to execute plan : null pointer";
-        return false;
+                                                std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
+    if (create_node == nullptr || ns_ptr == nullptr) {
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : null pointer");
     }
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db);
     hybridse::base::Status sql_status;
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, &sql_status);
+    bool allow_empty_col_index = cluster_sdk_->IsClusterMode() ? false : true;
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, allow_empty_col_index, &table_info, &sql_status);
     if (sql_status.code != 0) {
-        *msg = sql_status.msg;
-        return false;
+        return base::Status(sql_status.code, sql_status.msg);
     }
-    if (!ns_ptr->CreateTable(table_info, *msg)) {
-        *msg = "create table failed, msg: " + *msg;
-        return false;
+    std::string msg;
+    if (!ns_ptr->CreateTable(table_info, msg)) {
+        return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }
-    return true;
+    return {};
 }
 
-bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* create_sp,
+base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* create_sp,
                                                 const std::string& db, const std::string& sql,
-                                                std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
-                                                std::string* msg) {
-    if (msg == nullptr) {
-        return false;
-    }
+                                                std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
     if (create_sp == nullptr) {
-        *msg = "fail to execute plan : CreateProcedurePlanNode null";
-        return false;
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "CreateProcedurePlanNode null");
     }
     // construct sp_info
     hybridse::base::Status sql_status;
@@ -1322,28 +1319,26 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedureP
     RtidbSchema* schema = sp_info.mutable_input_schema();
     for (auto input : create_sp->GetInputParameterList()) {
         if (input == nullptr) {
-            *msg = "fail to execute plan : InputParameterNode null";
-            return false;
+            return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : InputParameterNode null");
         }
         if (input->GetType() == hybridse::node::kInputParameter) {
             hybridse::node::InputParameterNode* input_ptr = (hybridse::node::InputParameterNode*)input;
             if (input_ptr == nullptr) {
-                *msg = "cast InputParameterNode failed";
-                return false;
+                return base::Status(base::ReturnCode::kSQLCmdRunError, "cast InputParameterNode failed");
             }
             openmldb::common::ColumnDesc* col_desc = schema->Add();
             col_desc->set_name(input_ptr->GetColumnName());
             openmldb::type::DataType rtidb_type;
             bool ok = ::openmldb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(), &rtidb_type);
             if (!ok) {
-                *msg = "convert type failed";
-                return false;
+                return base::Status(base::ReturnCode::kSQLCmdRunError, "convert type failed");
             }
             col_desc->set_data_type(rtidb_type);
             col_desc->set_is_constant(input_ptr->GetIsConstant());
         } else {
-            *msg = "fail to execute script with unsupported type" + hybridse::node::NameOfSqlNodeType(input->GetType());
-            return false;
+            return base::Status(base::ReturnCode::kSQLCmdRunError,
+                    "fail to execute script with unsupported type " +
+                    hybridse::node::NameOfSqlNodeType(input->GetType()));
         }
     }
     // get input schema, check input parameter, and fill sp_info
@@ -1363,24 +1358,20 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedureP
                                                 input_common_column_indices, &explain_output, &sql_status);
     }
     if (!ok) {
-        *msg = "fail to explain sql" + sql_status.msg;
-        return false;
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to explain sql" + sql_status.msg);
     }
     RtidbSchema rtidb_input_schema;
     if (!openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
-        *msg = "convert input schema failed";
-        return false;
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "convert input schema failed");
     }
     if (!CheckParameter(*schema, rtidb_input_schema)) {
-        *msg = "check input parameter failed";
-        return false;
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "check input parameter failed");
     }
     sp_info.mutable_input_schema()->CopyFrom(*schema);
     // get output schema, and fill sp_info
     RtidbSchema rtidb_output_schema;
     if (!openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
-        *msg = "convert output schema failed";
-        return false;
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "convert output schema failed");
     }
     sp_info.mutable_output_schema()->CopyFrom(rtidb_output_schema);
     sp_info.set_main_db(explain_output.request_db_name);
@@ -1389,8 +1380,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedureP
     std::set<std::pair<std::string, std::string>> tables;
     ::hybridse::base::Status status;
     if (!cluster_sdk_->GetEngine()->GetDependentTables(sql, db, ::hybridse::vm::kRequestMode, &tables, status)) {
-        LOG(WARNING) << "fail to get dependent tables: " << status.msg;
-        return false;
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to get dependent tables: " + status.msg);
     }
     for (auto& table : tables) {
         auto pair = sp_info.add_tables();
@@ -1398,12 +1388,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreateProcedureP
         pair->set_table_name(table.second);
     }
     // send request to ns client
-    if (!ns_ptr->CreateProcedure(sp_info, options_.request_timeout, msg)) {
-        *msg = "create procedure failed, msg: " + *msg;
-        return false;
-    }
-
-    return true;
+    return ns_ptr->CreateProcedure(sp_info, options_.request_timeout);
 }
 
 bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema) {
