@@ -262,6 +262,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
         if (column_index->GetAbsTTL() == -2) {
             ttl_st->set_abs_ttl(0);
         } else {
+            // TODO(hw): should use max(1min, abs_ttl)
             ttl_st->set_abs_ttl(column_index->GetAbsTTL() / 60000);
         }
     } else if (ttl_st->ttl_type() == openmldb::type::kLatestTime) {
