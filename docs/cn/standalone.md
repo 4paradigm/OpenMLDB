@@ -59,32 +59,46 @@ sh bin/stop-all.sh
 ```
 > USE demo_db;
 > SET PERFORMANCE_SENSITIVE = false;
-> SELECT * FROM demo_table1 where c1='abcd';
+> SELECT sum(c5) as sum FROM demo_table1 where c3=11;
+ ----------
+  sum
+ ----------
+  3.600000
+ ----------
+
+1 rows in set
 ```
 ### 生成方案SQL
 ```
-SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 ### 批量计算特征
 ```
 > USE demo_db;
-> SET PERFORMANCE_SENSITIVE = false;
-> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
+> SET performance_sensitive=false;
+> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 ```
 ### SQL方案上线
 ```
 > USE demo_db;
-> DEPLOY demo_data_service SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+> DEPLOY demo_data_service SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 上线后可以查看和删除SQL方案
 ```
 > USE demo_db;
 > SHOW DEPLOYMENTS;
+ --------- -------------------
+  DB        SP
+ --------- -------------------
+  demo_db   demo_data_service
+ --------- -------------------
+1 row in set
 > DROP DEPLOYMENT demo_data_service;
 ```
 ### 实时特征计算
 ```
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
-"input": [['aaa', 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]],
+"input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
 }'
 ```
+URL中ip和port是conf/apiserver.flags中配置的endpoint
