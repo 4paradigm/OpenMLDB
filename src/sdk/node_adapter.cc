@@ -313,7 +313,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
     return true;
 }
 
-int64_t NodeAdapter::ConvertToMinute(int64_t time_ms) {
+int64_t NodeAdapter::ConvertToMinute(long time_ms) {
     if (time_ms == 0) {
         return MIN_TIME;
     }
