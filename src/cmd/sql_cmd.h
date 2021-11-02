@@ -536,7 +536,7 @@ void PrintProcedureSchema(const std::string& head, const ::hybridse::sdk::Schema
             stream << "Empty set" << std::endl;
             return;
         }
-        stream << head << std::endl;
+        stream << "# " << head << std::endl;
 
         ::hybridse::base::TextTable t('-', ' ', ' ');
         t.add("#");
