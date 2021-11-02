@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Common {
-
     public static int type2SqlType(DataType dataType) throws SQLException {
         if (dataType == DataType.kTypeBool) {
             return Types.BOOLEAN;
@@ -49,8 +48,7 @@ public class Common {
         }
     }
 
-    public static com._4paradigm.openmldb.sdk.Schema convertSchema(
-            com._4paradigm.openmldb.Schema schema) throws SQLException {
+    public static com._4paradigm.openmldb.sdk.Schema convertSchema(com._4paradigm.openmldb.Schema schema) throws SQLException {
         if (schema == null || schema.GetColumnCnt() == 0) {
             throw new SQLException("schema is null or empty");
         }
