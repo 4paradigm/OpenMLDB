@@ -117,12 +117,12 @@ object JoinPlan {
 
       // Handle the duplicated column names to get Spark Column by index
       val allColumns = new mutable.ArrayBuffer[Column]()
-      for (i <- 0 until leftDf.schema.size) {
+      for (i <- leftDf.schema.indices) {
         if (i != indexColIdx) {
           allColumns += SparkColumnUtil.getColumnFromIndex(leftDf, i)
         }
       }
-      for (i <- 0 until rightDf.schema.size) {
+      for (i <- rightDf.schema.indices) {
         allColumns += SparkColumnUtil.getColumnFromIndex(rightDf, i)
       }
 
@@ -142,27 +142,35 @@ object JoinPlan {
       // Resolve order by column index
       if (hasOrderby) {
         val orderExpr = node.join.right_sort.orders.GetOrderExpression(0)
-        val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
         // Get the time column index from right table
         val timeColIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, node.GetProducer(1))
         assert(timeColIdx >= 0)
 
         val timeIdxInJoined = timeColIdx + leftDf.schema.size
-        val timeColType = rightDf.schema(timeColIdx).dataType
 
         val isAsc = node.join.right_sort.is_asc
 
         val indexCol = SparkColumnUtil.getColumnFromIndex(joined, indexColIdx)
 
-        val distinctRdd = joined.repartition(indexCol).rdd.mapPartitions(
-          partitionIter => {
+        val distinctRdd = joined.repartition(indexCol).rdd.map({
+          row => (row.getLong(indexColIdx), row)
+        }).reduceByKey({
+          (row1, row2) =>
             if (isAsc) {
-              SparkRowUtil.getMinOrMaxRows(partitionIter, indexColIdx,  timeIdxInJoined, timeColType, true).toIterator
+              if (row1.getLong(timeIdxInJoined) > row2.getLong(timeIdxInJoined)) {
+                row1
+              } else {
+                row2
+              }
             } else {
-              SparkRowUtil.getMinOrMaxRows(partitionIter, indexColIdx, timeIdxInJoined, timeColType, false).toIterator
+              if (row1.getLong(timeIdxInJoined) < row2.getLong(timeIdxInJoined)) {
+                row1
+              } else {
+                row2
+              }
             }
-          }
-        )
+        }).values
+
         val distinctDf = ctx.getSparkSession.createDataFrame(distinctRdd, joined.schema)
         distinctDf.drop(indexName)
       } else {
