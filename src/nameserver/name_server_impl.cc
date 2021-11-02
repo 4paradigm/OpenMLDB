@@ -10159,9 +10159,7 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
         }
         // only find one db
         if (db_sp_info_map_.find(db_name) == db_sp_info_map_.end()) {
-            response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
-            response->set_msg("database not found");
-            PDLOG(WARNING, "database[%s] not found", db_name);
+            // db_sp_info_map_ has no entry of db, just means no sp in db, return empty sp info array.
             return;
         }
         auto& sp_map = db_sp_info_map_[db_name];

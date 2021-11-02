@@ -536,9 +536,9 @@ void PrintProcedureSchema(const std::string& head, const ::hybridse::sdk::Schema
             stream << "Empty set" << std::endl;
             return;
         }
+        stream << head << std::endl;
 
         ::hybridse::base::TextTable t('-', ' ', ' ');
-
         t.add("#");
         t.add("Field");
         t.add("Type");
@@ -1281,7 +1281,7 @@ void HandleSQL(const std::string& sql) {
             if (status.OK()) {
                 sr->RefreshCatalog();
                 std::cout << "SUCCEED: Create successfully" << std::endl;
-            }  else {
+            } else {
                 std::cout << "ERROR: " << status.msg << std::endl;
             }
             return;
