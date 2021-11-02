@@ -152,10 +152,6 @@ bool Engine::GetDependentTables(const node::PlanNode* node, const std::string& d
                 return true;
 
             }
-            case node::kPlanTypeWindow: {
-
-                return true;
-            }
             default: {
                 if (node->GetChildrenSize() > 0) {
                     for (auto child : node->GetChildren()) {
