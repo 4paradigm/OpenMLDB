@@ -153,17 +153,17 @@ object JoinPlan {
         val indexCol = SparkColumnUtil.getColumnFromIndex(joined, indexColIdx)
 
         val distinctRdd = joined.repartition(indexCol).rdd.map({
-          row => (row.getLong(indexColIdx), row)
+          row => (row.getAs[Long](indexColIdx), row)
         }).reduceByKey({
           (row1, row2) =>
             if (isAsc) {
-              if (row1.getLong(timeIdxInJoined) > row2.getLong(timeIdxInJoined)) {
+              if (row1.getAs[Long](timeIdxInJoined) > row2.getAs[Long](timeIdxInJoined)) {
                 row1
               } else {
                 row2
               }
             } else {
-              if (row1.getLong(timeIdxInJoined) < row2.getLong(timeIdxInJoined)) {
+              if (row1.getAs[Long](timeIdxInJoined) < row2.getAs[Long](timeIdxInJoined)) {
                 row1
               } else {
                 row2
