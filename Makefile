@@ -97,6 +97,7 @@ pythonsdk: configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target sqlalchemy_openmldb openmldb -- -j$(NPROC)
 
 # turn off testing and example build for hybridse to save time & space
+# TODO(#625): embedded hybridse into OpenMLDB instead glued in this Makefile
 configure:
 	$(MAKE) hybridse-install TESTING_ENABLE=OFF EXAMPLES_ENABLE=OFF
 	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
