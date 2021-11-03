@@ -185,7 +185,7 @@ TEST_F(ASTNodeConverterTest, InvalidASTIntervalLiteralTest) {
         ASSERT_EQ("Invalid interval literal: 1abds", status.msg);
     }
 }
-TEST_F(ASTNodeConverterTest, InvalidASTBollLiteralTest) {
+TEST_F(ASTNodeConverterTest, InvalidASTBoolLiteralTest) {
     node::NodeManager node_manager;
     {
         zetasql::ASTBooleanLiteral expression;
@@ -194,6 +194,38 @@ TEST_F(ASTNodeConverterTest, InvalidASTBollLiteralTest) {
         base::Status status = ConvertExprNode(&expression, &node_manager, &output);
         ASSERT_FALSE(status.isOK());
         ASSERT_EQ("Invalid bool literal: InvalidBool", status.msg);
+    }
+    {
+        zetasql::ASTBooleanLiteral expression;
+        expression.set_image("");
+        node::ExprNode* output = nullptr;
+        base::Status status = ConvertExprNode(&expression, &node_manager, &output);
+        ASSERT_FALSE(status.isOK());
+        ASSERT_EQ("Invalid bool literal: ", status.msg);
+    }
+}
+
+TEST_F(ASTNodeConverterTest, ASTBoolLiteralTest) {
+    node::NodeManager node_manager;
+    {
+        zetasql::ASTBooleanLiteral expression;
+        expression.set_image("False");
+        node::ExprNode* output = nullptr;
+        base::Status status = ConvertExprNode(&expression, &node_manager, &output);
+        ASSERT_TRUE(status.isOK());
+        ASSERT_EQ(node::kExprPrimary, output->GetExprType());
+        ASSERT_EQ(node::kBool, dynamic_cast<node::ConstNode*>(output)->GetDataType());
+        ASSERT_EQ(false, dynamic_cast<node::ConstNode*>(output)->GetBool());
+    }
+    {
+        zetasql::ASTBooleanLiteral expression;
+        expression.set_image("false");
+        node::ExprNode* output = nullptr;
+        base::Status status = ConvertExprNode(&expression, &node_manager, &output);
+        ASSERT_TRUE(status.isOK());
+        ASSERT_EQ(node::kExprPrimary, output->GetExprType());
+        ASSERT_EQ(node::kBool, dynamic_cast<node::ConstNode*>(output)->GetDataType());
+        ASSERT_EQ(false, dynamic_cast<node::ConstNode*>(output)->GetBool());
     }
 }
 
