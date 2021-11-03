@@ -62,7 +62,7 @@ object JoinPlan {
     val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, hasOrderby)
     logger.info("Enable native last join or not: " + ctx.getConf.enableNativeLastJoin)
 
-    val indexName = "__JOIN_INDEX__-" + System.currentTimeMillis()
+    val indexName = "__JOIN_INDEX__" + System.currentTimeMillis()
 
     val leftDf: DataFrame = {
       if (joinType == JoinType.kJoinTypeLeft) {
@@ -145,7 +145,6 @@ object JoinPlan {
         // Get the time column index from right table
         val timeColIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, node.GetProducer(1))
         assert(timeColIdx >= 0)
-
         val timeIdxInJoined = timeColIdx + leftDf.schema.size
 
         val isAsc = node.join.right_sort.is_asc
@@ -153,7 +152,7 @@ object JoinPlan {
         val indexCol = SparkColumnUtil.getColumnFromIndex(joined, indexColIdx)
 
         val distinctRdd = joined.repartition(indexCol).rdd.map({
-          row => (row.getAs[Long](indexColIdx), row)
+          row => (row.getLong(indexColIdx), row)
         }).reduceByKey({
           (row1, row2) =>
             if (isAsc) {
