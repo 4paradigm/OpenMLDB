@@ -156,7 +156,7 @@ object JoinPlan {
           row => (row.getLong(indexColIdx), row)
         }).reduceByKey({
           (row1, row2) =>
-            val dataType = joined.schema.fields(timeIdxInJoined).dataType
+            val dataType = row1.schema.fields(timeIdxInJoined).dataType
             val data1 = SparkRowUtil.getLongFromIndex(timeIdxInJoined, dataType, row1)
             val data2 = SparkRowUtil.getLongFromIndex(timeIdxInJoined, dataType, row2)
             if (isAsc) {
