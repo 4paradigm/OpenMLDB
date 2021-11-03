@@ -30,7 +30,7 @@ echo 0 > $TMPFILE
 if [ $# -eq 0 ];
 then
     # shellcheck disable=SC2010
-    ls build/bin/ | grep test | grep -v "sql_sdk_test\|sql_cluster_test\|sql_standalone_sdk_test"| grep -v grep | while read line
+    ls build/bin/ | grep test | grep -v "sql_sdk_test\|sql_cluster_test\|sql_standalone_sdk_test"| grep -v grep | while read -r line
     do 
         ./build/bin/"$line" --gtest_output=xml:./reports/"$line".xml 2>/tmp/"${line}"."${USER}".log 1>&2
         RET=$?
