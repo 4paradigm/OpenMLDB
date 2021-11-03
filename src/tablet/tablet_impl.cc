@@ -680,12 +680,12 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
 
 int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::string& msg) {
     msg.clear();
-    if (table_meta->name().size() <= 0) {
+    if (table_meta->name().empty()) {
         msg = "table name is empty";
         return -1;
     }
     if (table_meta->tid() <= 0) {
-        msg = "tid is zero";
+        msg = "tid is negative, invalid";
         return -1;
     }
     std::map<std::string, ::openmldb::type::DataType> column_map;

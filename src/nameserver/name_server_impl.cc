@@ -2326,8 +2326,9 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     return 0;
 }
 
-int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, bool is_leader,
-                                        std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
+int NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
+                                        bool is_leader, std::map<uint32_t, std::vector<std::string>>& endpoint_map,
+                                        uint64_t term) {
     ::openmldb::type::CompressType compress_type = ::openmldb::type::CompressType::kNoCompress;
     if (table_info->compress_type() == ::openmldb::type::kSnappy) {
         compress_type = ::openmldb::type::CompressType::kSnappy;
@@ -2335,8 +2336,8 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_db(table_info->db());
     table_meta.set_name(table_info->name());
-    table_meta.set_tid(table_info->tid());
-    table_meta.set_seg_cnt(table_info->seg_cnt());
+    table_meta.set_tid(static_cast<::google::protobuf::int32>(table_info->tid()));
+    table_meta.set_seg_cnt(static_cast<::google::protobuf::int32>(table_info->seg_cnt()));
     table_meta.set_compress_type(compress_type);
     table_meta.set_format_version(table_info->format_version());
     if (table_info->has_key_entry_max_height()) {
@@ -2362,7 +2363,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::
     }
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         uint32_t pid = table_info->table_partition(idx).pid();
-        table_meta.set_pid(pid);
+        table_meta.set_pid(static_cast<::google::protobuf::int32>(pid));
         table_meta.clear_replicas();
         for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
             if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader() != is_leader) {
@@ -2381,8 +2382,8 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::
                 term_pair->set_offset(0);
                 table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
                 table_meta.set_term(term);
-                for (const auto& endpoint : endpoint_map[pid]) {
-                    table_meta.add_replicas(endpoint);
+                for (const auto& e : endpoint_map[pid]) {
+                    table_meta.add_replicas(e);
                 }
             } else {
                 if (endpoint_map.find(pid) == endpoint_map.end()) {
@@ -3797,7 +3798,7 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
                 pid_set.insert(table_info->table_partition(idx).pid());
             }
             auto iter = pid_set.rbegin();
-            if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
+            if (*iter != static_cast<uint32_t>(table_info->table_partition_size()) - 1) {
                 base::SetResponseStatus(base::ReturnCode::kInvalidParameter, "invalid parameter", response);
                 PDLOG(WARNING, "pid is not start with zero and consecutive");
                 return;
@@ -3820,7 +3821,8 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             LOG(WARNING) << response->msg() << " table: " << table_info->name();
             return;
         }
-        if (tid <= 0) {
+        // tid in ::openmldb::api::TableMeta is int32
+        if (static_cast<::google::protobuf::int32>(tid) <= 0) {
             base::SetResponseStatus(base::ReturnCode::kCreateTableFailed, "allocated table id is invalid!", response);
             LOG(WARNING) << response->msg() << " table: " << table_info->name();
             return;
