@@ -99,7 +99,7 @@ mode | 模式 | String | error_if_exists | error_if_exists/overwrite/append
 > SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' option (mode = 'overwrite', delimiter=',');
 ```
 ### SQL方案上线
-降探索好的SQL方案Deploy到线上
+将探索好的SQL方案Deploy到线上
 ```
 > USE demo_db;
 > DEPLOY demo_data_service SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -117,6 +117,15 @@ mode | 模式 | String | error_if_exists | error_if_exists/overwrite/append
 > DROP DEPLOYMENT demo_data_service;
 ```
 ### 实时特征计算
+url的格式为:
+```
+http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
+        \___________/      \____/              \_____________/
+              |               |                        |
+        APIServer地址     Database名字            Deployment名字
+```
+输入数据是一个json，把一行数据放到input的value中  
+示例:
 ```
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
 "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
