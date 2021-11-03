@@ -814,7 +814,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                     lines.push_back({sp_info.db_name(), sp_info.sp_name()});
                 }
             }
-            PrintItemTable(std::cout, {"DB", "SP"}, lines);
+            PrintItemTable(std::cout, {"DB", "Deployment"}, lines);
             break;
         }
         case hybridse::node::kCmdDropDeployment: {
