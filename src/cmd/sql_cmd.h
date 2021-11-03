@@ -1016,6 +1016,15 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             if (!column_key.has_ttl()) {
                 return {base::ReturnCode::kError, "table " + kv.first + " has not ttl"};
             }
+            if (column_key.ttl().abs_ttl() > 0) {
+                // convert ttl from millsecond to minute
+                auto ttl = column_key.mutable_ttl();
+                if (ttl->abs_ttl() % (60 * 1000) == 0) {
+                    ttl->set_abs_ttl(ttl->abs_ttl() / (60 * 1000));
+                } else {
+                    ttl->set_abs_ttl(ttl->abs_ttl() / (60 * 1000) + 1);
+                }
+            }
             add_index_num++;
             std::string msg;
             if (!ns->AddIndex(kv.first, column_key, &cols, msg)) {
@@ -1023,7 +1032,9 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             }
             new_indexs.push_back(column_key);
         }
-        new_index_map.emplace(kv.first, std::move(new_indexs));
+        if (!new_indexs.empty()) {
+            new_index_map.emplace(kv.first, std::move(new_indexs));
+        }
     }
     // load new index data to table
     for (auto& kv : new_index_map) {
