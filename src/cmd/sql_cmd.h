@@ -536,9 +536,9 @@ void PrintProcedureSchema(const std::string& head, const ::hybridse::sdk::Schema
             stream << "Empty set" << std::endl;
             return;
         }
+        stream << "# " << head << std::endl;
 
         ::hybridse::base::TextTable t('-', ' ', ' ');
-
         t.add("#");
         t.add("Field");
         t.add("Type");
@@ -560,9 +560,12 @@ void PrintProcedureSchema(const std::string& head, const ::hybridse::sdk::Schema
 }
 
 void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
-    std::vector<std::vector<std::string>> vec;
-    vec.push_back({sp_info.GetDbName(), sp_info.GetSpName()});
-    PrintItemTable(std::cout, {"DB", "SP"}, vec);
+    std::vector<std::string> vec{sp_info.GetDbName(), sp_info.GetSpName()};
+    std::string type_name = "SP";
+    if (sp_info.GetType() == hybridse::sdk::kReqDeployment) {
+        type_name = "Deployment";
+    }
+    PrintItemTable(std::cout, {"DB", type_name}, {vec}, true);
     std::vector<std::string> items{sp_info.GetSql()};
     PrintItemTable(std::cout, {"SQL"}, {items}, true);
     PrintProcedureSchema("Input Schema", sp_info.GetInputSchema(), std::cout);
@@ -1281,7 +1284,7 @@ void HandleSQL(const std::string& sql) {
             if (status.OK()) {
                 sr->RefreshCatalog();
                 std::cout << "SUCCEED: Create successfully" << std::endl;
-            }  else {
+            } else {
                 std::cout << "ERROR: " << status.msg << std::endl;
             }
             return;
