@@ -685,7 +685,7 @@ int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::
         return -1;
     }
     if (table_meta->tid() <= 0) {
-        msg = "tid is negative, invalid";
+        msg = "tid <= 0, invalid";
         return -1;
     }
     std::map<std::string, ::openmldb::type::DataType> column_map;
