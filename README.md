@@ -21,8 +21,9 @@ English version|[中文版](README_cn.md)
 
 OpenMLDB is an open-source database particularly designed to efficiently provide consistent data for machine learning.  A database for machine learning consists of two major tasks: feature extraction and feature store, which is served as data provisioning for offline training and online inference. Without OpenMLDB, there are two separate systems for online and offline data provisioning, which cost significant effort to verify the online-offline consistency. On the contrary, OpenMLDB supports the unified SQL programming and its execution engine for both online and offline data provisioning. As a result, the online-offline consistency is inherently guaranteed. Moreover, the system is carefully designed and optimized to ensure the efficiency. By taking advantages of OpenMLDB, SQL engineers are now able to write SQL scripts only to efficiently provide consistent data to machine learning, and an offline model can be immediately deployed for online serving with little cost involved.
 <p align="center">
- <img src="images/workflow.png" alt="image-20211103103052252" style="zoom: 55%;" />
+ <img src="images/workflow.png" alt="image-20211103103052252" width=850 />
  </p>
+
 
 
 The above figure illustrates the OpenMLDB workflow. SQL engineers first write SQL scripts for offline feature extraction, which provides data for offline model training. When the model quality is satisfied, the online feature extraction and store can be enabled immediately for online serving without additional efforts involved. Thanks to the unified SQL programming and execution engine, the online-offline consistency verification is eliminated, which is inherently guaranteed by OpenMLDB. Furthermore, certain optimization techniques (e.g., data skew optimization and in-memory indexing for offline and online feature extraction, respectively) are adopted to ensure that the performance requirement can be met for both offline training and online inference. In summary, OpenMLDB enables SQL as the only programming interface for consistent and efficient data provisioning for both offline model training and online inference serving.
@@ -72,10 +73,10 @@ We list a few highlight features that we have planned in the future releases. Pl
 You may join the below communities for feedback and discussion
 
 - **Github Issues and Discussions**: If you are a serious user or developer, you are most welcome to join our discussion on Github. **Issues** are used to report bugs and collect new requirements. **Discussions** are mostly used by our project maintainers to publish and comment RFCs.
-- <mark>**Slack Workspace**</mark>: You may find useful information of release notes, user support, development discussion and even more from our various Slack channels. 
+- **[Slack Workspace](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)**: You may find useful information of release notes, user support, development discussion and even more from our various Slack channels. 
 - <mark>**Forum (Chinese)**: (coming soon)</mark>
-- **Wechat Groups (Chinese)**:
-  <img src="images/wechat.png" alt="img" style="zoom: 25%;" />  
+- **WeChat Groups (Chinese)**:
+  <img src="images/wechat.png" alt="img" width=100 />  
 
 ## 8. Publications & Blogs
 
