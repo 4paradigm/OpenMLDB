@@ -237,7 +237,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 schemaString.append(schema->GetColumnName(i));
                 if (i != schema->GetColumnCnt() - 1) {
-                    schemaString = schemaString + options_parse.GetDelimiter();
+                    schemaString += options_parse.GetDelimiter();
                 }
             }
             fstream << schemaString << std::endl;
@@ -318,7 +318,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
                         }
                     }
                     if (i != schema->GetColumnCnt() - 1) {
-                        rowString = rowString + options_parse.GetDelimiter();
+                        rowString += options_parse.GetDelimiter();
                     } else {
                         if (!first) {
                             fstream << std::endl;
@@ -565,7 +565,7 @@ void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
     if (sp_info.GetType() == hybridse::sdk::kReqDeployment) {
         type_name = "Deployment";
     }
-    PrintItemTable(std::cout, {"DB", type_name}, {vec}, true);
+    PrintItemTable(std::cout, {"DB", type_name}, {vec});
     std::vector<std::string> items{sp_info.GetSql()};
     PrintItemTable(std::cout, {"SQL"}, {items}, true);
     PrintProcedureSchema("Input Schema", sp_info.GetInputSchema(), std::cout);
@@ -601,7 +601,7 @@ bool ParseNamesFromArgs(const std::vector<std::string>& args, std::string* db_na
     return true;
 }
 
-bool CheckAnswerIfInteractive(std::string drop_type, std::string name) {
+bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& name) {
     if (FLAGS_interactive) {
         printf("Drop %s %s? yes/no\n", drop_type.c_str(), name.c_str());
         std::string input;

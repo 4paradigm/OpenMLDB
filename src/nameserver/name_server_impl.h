@@ -156,7 +156,7 @@ class NameServerImpl : public NameServer {
                              uint32_t tid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
     ::openmldb::base::Status CreateOfflineTable(const std::string& db_name, const std::string& table_name,
-                const std::string& partition_key, const Schema& schema);
+                                                const std::string& partition_key, const Schema& schema);
 
     void RefreshTablet(uint32_t tid);
 
@@ -313,7 +313,7 @@ class NameServerImpl : public NameServer {
                        std::string& msg);                                                                   // NOLINT
 
     int CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, bool is_leader,
-                            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term); // NOLINT
+                            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);  // NOLINT
 
     void CheckZkClient();
 
@@ -764,8 +764,8 @@ class NameServerImpl : public NameServer {
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;
     ::baidu::common::ThreadPool task_thread_pool_;
-    uint32_t table_index_;
-    uint64_t term_;
+    uint32_t table_index_ = 0;
+    uint64_t term_ = 0;
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::list<std::shared_ptr<OPData>> done_op_list_;
