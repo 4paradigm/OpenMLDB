@@ -72,3 +72,8 @@ using openmldb::sdk::TableReader;
 %include "sdk/sql_request_row.h"
 %include "sdk/sql_insert_row.h"
 %include "sdk/table_reader.h"
+
+%template(ColumnDescPair) std::pair<std::string, hybridse::sdk::DataType>;
+%template(ColumnDescVector) std::vector<std::pair<std::string, hybridse::sdk::DataType>>;
+%template(TableColumnDescPair) std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>;
+%template(TableColumnDescPairVector) std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>;

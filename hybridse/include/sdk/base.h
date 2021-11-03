@@ -145,6 +145,7 @@ class ProcedureInfo {
     virtual const hybridse::sdk::Schema& GetInputSchema() const = 0;
     virtual const hybridse::sdk::Schema& GetOutputSchema() const = 0;
     virtual const std::vector<std::string>& GetTables() const = 0;
+    virtual const std::vector<std::string>& GetDbs() const = 0;
     virtual const std::string& GetMainTable() const = 0;
     virtual const std::string& GetMainDb() const = 0;
     virtual ProcedureType GetType() const = 0;

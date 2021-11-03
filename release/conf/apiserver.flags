@@ -1,8 +1,9 @@
 # apiserver.conf
 --endpoint=127.0.0.1:8080
 --role=apiserver
---zk_cluster=127.0.0.1:7181
---zk_root_path=/openmldb_cluster
+--nameserver=127.0.0.1:6527
+#--zk_cluster=127.0.0.1:7181
+#--zk_root_path=/openmldb_cluster
 
 --openmldb_log_dir=./logs
 --log_file_count=24

@@ -713,7 +713,7 @@ bool MemTable::DeleteIndex(const std::string& idx_name) {
 ::hybridse::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
-        LOG(WARNING) << "index" << index << "  not found. tid " << id_ << " pid " << pid_;
+        LOG(WARNING) << "index id " << index << "  not found. tid " << id_ << " pid " << pid_;
         return NULL;
     }
     uint64_t expire_time = 0;
