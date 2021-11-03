@@ -152,21 +152,21 @@ object JoinPlan {
 
         val indexCol = SparkColumnUtil.getColumnFromIndex(joined, indexColIdx)
 
-        val distinctRdd = joined.repartition(indexCol).rdd.map({
+        val distinctRdd = joined.rdd.map({
           row => (row.getLong(indexColIdx), row)
         }).reduceByKey({
           (row1, row2) =>
-            val dataType = row1.schema.fields(timeIdxInJoined).dataType
-            val data1 = SparkRowUtil.getLongFromIndex(timeIdxInJoined, dataType, row1)
-            val data2 = SparkRowUtil.getLongFromIndex(timeIdxInJoined, dataType, row2)
+            val timeColDataType = row1.schema.fields(timeIdxInJoined).dataType
+            val rowTimeValue1 = SparkRowUtil.getLongFromIndex(timeIdxInJoined, timeColDataType, row1)
+            val rowTimeValue2 = SparkRowUtil.getLongFromIndex(timeIdxInJoined, timeColDataType, row2)
             if (isAsc) {
-              if (data1 > data2) {
+              if (rowTimeValue1 > rowTimeValue2) {
                 row1
               } else {
                 row2
               }
             } else {
-              if (data1 < data2) {
+              if (rowTimeValue1 < rowTimeValue2) {
                 row1
               } else {
                 row2
