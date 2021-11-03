@@ -2,16 +2,16 @@
 
 ## 部署
 ### 修改配置文件
-1. 如果需要在其他节点执行命令和访问http, 需要把127.0.0.1替换成实际ip地址
+1. 如果需要在其他节点执行命令和访问http, 需要把127.0.0.1替换成机器ip地址
 2. 如果端口被占用需要改成其他端口
 
 * conf/tablet.flags
    ```
-   --endpoint=127.0.0.1:9527
+   --endpoint=127.0.0.1:9921
    ```
 * conf/nameserver.flags
    ```
-   --endpoint=127.0.0.1:6321
+   --endpoint=127.0.0.1:6527
    # 和conf/tablet.flags中endpoint保持一致
    --tablet=127.0.0.1:9921
    #--zk_cluster=127.0.0.1:7181
@@ -35,7 +35,7 @@ sh bin/stop-all.sh
 ### 启动CLI
 ```
 # host为conf/nameserver.flags中配置endpoint的ip, port为对应的port
-./openmldb --host 127.0.0.1 --port 6321
+./openmldb --host 127.0.0.1 --port 6527
 ```
 ### 创建DB
 ```
@@ -54,6 +54,16 @@ sh bin/stop-all.sh
 > USE demo_db;
 > LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1;
 ```
+可以通过option指定额外的配置
+Name | Meaning | Type |  Default | Options
+-- | -- | -- |  --  | --
+delimiter | 分隔符| String | , | Any char
+header | 是否有header| Boolean | true | true/false
+null_value | null值 | String | null | Any String
+```
+> LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1 options (delimiter=',', header=false);
+```
+**注**: 分隔符只支持单个字符
 ### 分析数据
 对数据集进行离线分析，为编写SQL语句进行特征抽取提供参考
 ```
@@ -78,7 +88,18 @@ SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTI
 > SET performance_sensitive=false;
 > SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 ```
+可以通过option指定额外的配置
+Name | Meaning | Type |  Default | Options
+-- | -- | -- |  --  | --
+delimiter | 分隔符| String | , | Any char
+header | 是否有header| Boolean | true | true/false
+null_value | null值 | String | null | Any String
+mode | 模式 | String | error_if_exists | error_if_exists/overwrite/append
+```
+> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' option (mode = 'overwrite', delimiter=',');
+```
 ### SQL方案上线
+降探索好的SQL方案Deploy到线上
 ```
 > USE demo_db;
 > DEPLOY demo_data_service SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -88,7 +109,7 @@ SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTI
 > USE demo_db;
 > SHOW DEPLOYMENTS;
  --------- -------------------
-  DB        SP
+  DB        Deployment
  --------- -------------------
   demo_db   demo_data_service
  --------- -------------------
