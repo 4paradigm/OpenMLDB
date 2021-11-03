@@ -22,11 +22,12 @@ import com._4paradigm.hybridse.codec.RowView
 import com._4paradigm.hybridse.sdk.{HybridSeException, JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.node.{ExprListNode, JoinType}
 import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper, PhysicalJoinNode}
-import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkUtil}
+import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkRowUtil, SparkUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
-import org.apache.spark.sql.types.{StructType, TimestampType}
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.slf4j.LoggerFactory
+
 import scala.collection.mutable
 
 
@@ -155,11 +156,9 @@ object JoinPlan {
           row => (row.getLong(indexColIdx), row)
         }).reduceByKey({
           (row1, row2) =>
-            val (data1, data2) = if (row1.schema.fields(timeIdxInJoined).dataType == TimestampType) {
-              (row1.getTimestamp(timeIdxInJoined).getTime, row2.getTimestamp(timeIdxInJoined).getTime)
-            } else {
-              (row1.getLong(timeIdxInJoined),row2.getLong(timeIdxInJoined))
-            }
+            val dataType = joined.schema.fields(timeIdxInJoined).dataType
+            val data1 = SparkRowUtil.getLongFromIndex(timeIdxInJoined, dataType, row1)
+            val data2 = SparkRowUtil.getLongFromIndex(timeIdxInJoined, dataType, row2)
             if (isAsc) {
               if (data1 > data2) {
                 row1
