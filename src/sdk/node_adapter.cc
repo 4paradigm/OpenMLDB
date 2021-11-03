@@ -23,17 +23,17 @@
 #include <utility>
 #include <vector>
 
+#include "base/ddl_parser.h"
 #include "codec/schema_codec.h"
 #include "plan/plan_api.h"
 
-namespace openmldb {
-namespace sdk {
+namespace openmldb::sdk {
 
 using hybridse::plan::PlanAPI;
 
 bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
                                       ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status) {
-    if (create_node == NULL || table == NULL || status == NULL) return false;
+    if (create_node == nullptr || table == nullptr || status == nullptr) return false;
     std::string table_name = create_node->GetTableName();
     const hybridse::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
     const hybridse::node::NodePointVector& distribution_list = create_node->GetDistributionList();
@@ -61,43 +61,43 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     for (auto column_desc : column_desc_list) {
         switch (column_desc->GetType()) {
             case hybridse::node::kColumnDesc: {
-                auto* column_def = (hybridse::node::ColumnDefNode*)column_desc;
-                ::openmldb::common::ColumnDesc* column_desc = table->add_column_desc();
-                if (column_names.find(column_desc->name()) != column_names.end()) {
+                auto* column_def = dynamic_cast<hybridse::node::ColumnDefNode*>(column_desc);
+                ::openmldb::common::ColumnDesc* add_column_desc = table->add_column_desc();
+                if (column_names.find(add_column_desc->name()) != column_names.end()) {
                     status->msg = "CREATE common: COLUMN NAME " + column_def->GetColumnName() + " duplicate";
                     status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
-                column_desc->set_name(column_def->GetColumnName());
-                column_desc->set_not_null(column_def->GetIsNotNull());
-                column_names.insert(std::make_pair(column_def->GetColumnName(), column_desc));
+                add_column_desc->set_name(column_def->GetColumnName());
+                add_column_desc->set_not_null(column_def->GetIsNotNull());
+                column_names.insert(std::make_pair(column_def->GetColumnName(), add_column_desc));
                 switch (column_def->GetColumnType()) {
                     case hybridse::node::kBool:
-                        column_desc->set_data_type(openmldb::type::DataType::kBool);
+                        add_column_desc->set_data_type(openmldb::type::DataType::kBool);
                         break;
                     case hybridse::node::kInt16:
-                        column_desc->set_data_type(openmldb::type::DataType::kSmallInt);
+                        add_column_desc->set_data_type(openmldb::type::DataType::kSmallInt);
                         break;
                     case hybridse::node::kInt32:
-                        column_desc->set_data_type(openmldb::type::DataType::kInt);
+                        add_column_desc->set_data_type(openmldb::type::DataType::kInt);
                         break;
                     case hybridse::node::kInt64:
-                        column_desc->set_data_type(openmldb::type::DataType::kBigInt);
+                        add_column_desc->set_data_type(openmldb::type::DataType::kBigInt);
                         break;
                     case hybridse::node::kFloat:
-                        column_desc->set_data_type(openmldb::type::DataType::kFloat);
+                        add_column_desc->set_data_type(openmldb::type::DataType::kFloat);
                         break;
                     case hybridse::node::kDouble:
-                        column_desc->set_data_type(openmldb::type::DataType::kDouble);
+                        add_column_desc->set_data_type(openmldb::type::DataType::kDouble);
                         break;
                     case hybridse::node::kTimestamp:
-                        column_desc->set_data_type(openmldb::type::DataType::kTimestamp);
+                        add_column_desc->set_data_type(openmldb::type::DataType::kTimestamp);
                         break;
                     case hybridse::node::kVarchar:
-                        column_desc->set_data_type(openmldb::type::DataType::kVarchar);
+                        add_column_desc->set_data_type(openmldb::type::DataType::kVarchar);
                         break;
                     case hybridse::node::kDate:
-                        column_desc->set_data_type(openmldb::type::DataType::kDate);
+                        add_column_desc->set_data_type(openmldb::type::DataType::kDate);
                         break;
                     default: {
                         status->msg = "CREATE common: column type " +
@@ -181,7 +181,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
         for (auto partition_meta : distribution_list) {
             switch (partition_meta->GetType()) {
                 case hybridse::node::kPartitionMeta: {
-                    auto* p_meta_node = (hybridse::node::PartitionMetaNode*)partition_meta;
+                    auto* p_meta_node = dynamic_cast<hybridse::node::PartitionMetaNode*>(partition_meta);
                     const std::string& ep = p_meta_node->GetEndpoint();
                     if (std::find(ep_vec.begin(), ep_vec.end(), ep) != ep_vec.end()) {
                         status->msg =
@@ -224,6 +224,10 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
     if (column_index == nullptr) {
         return false;
     }
+
+    std::stringstream ss;
+    column_index->Print(ss, "");
+    LOG(INFO) << ss.str();
     index->set_index_name(column_index->GetName());
 
     for (const auto& key : column_index->GetKey()) {
@@ -255,15 +259,16 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
     }
     if (ttl_st->ttl_type() == openmldb::type::kAbsoluteTime) {
         if (column_index->GetAbsTTL() == -1 || column_index->GetLatTTL() != -2) {
-            status->msg = "CREATE common: abs ttl format error";
+            status->msg = "CREATE common: abs ttl format error or set lat ttl";
             status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         if (column_index->GetAbsTTL() == -2) {
             ttl_st->set_abs_ttl(0);
         } else {
-            // TODO(hw): should use max(1min, abs_ttl)
-            ttl_st->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+            // set abs_ttl to 0, it means no gc
+            // otherwise, convert it(ms) to minutes, >= 1 min
+            ttl_st->set_abs_ttl(base::AbsTTLConvert(column_index->GetAbsTTL(), true));
         }
     } else if (ttl_st->ttl_type() == openmldb::type::kLatestTime) {
         if (column_index->GetLatTTL() == -1 || column_index->GetAbsTTL() != -2) {
@@ -274,7 +279,8 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
         if (column_index->GetLatTTL() == -2) {
             ttl_st->set_lat_ttl(0);
         } else {
-            ttl_st->set_lat_ttl(column_index->GetLatTTL());
+            // latest 0 also means no gc
+            ttl_st->set_lat_ttl(base::LatTTLConvert(column_index->GetLatTTL(), true));
         }
     } else {
         if (column_index->GetAbsTTL() == -1) {
@@ -285,7 +291,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
         if (column_index->GetAbsTTL() == -2) {
             ttl_st->set_abs_ttl(0);
         } else {
-            ttl_st->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+            ttl_st->set_abs_ttl(base::AbsTTLConvert(column_index->GetAbsTTL(), true));
         }
         if (column_index->GetLatTTL() == -1) {
             status->msg = "CREATE common: lat ttl format error for " + type::TTLType_Name(ttl_st->ttl_type());
@@ -295,7 +301,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
         if (column_index->GetLatTTL() == -2) {
             ttl_st->set_lat_ttl(0);
         } else {
-            ttl_st->set_lat_ttl(column_index->GetLatTTL());
+            ttl_st->set_lat_ttl(base::LatTTLConvert(column_index->GetLatTTL(), true));
         }
     }
     if (!column_index->GetTs().empty()) {
@@ -313,5 +319,4 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
     return true;
 }
 
-}  // namespace sdk
-}  // namespace openmldb
+}  // namespace openmldb::sdk

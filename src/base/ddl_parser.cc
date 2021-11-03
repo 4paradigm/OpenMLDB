@@ -264,14 +264,6 @@ void DDLParser::AddTables(const T& schema, hybridse::type::Database* db) {
     }
 }
 
-uint64_t ConvertToMinute(uint64_t time_ms) {
-    if (time_ms == 0) {
-        // default Min minute is 1
-        return 1;
-    }
-    return time_ms / 60000 + (time_ms % 60000 ? 1 : 0);
-}
-
 bool IndexMapBuilder::CreateIndex(const std::string& table, const hybridse::node::ExprListNode* keys,
                                   const hybridse::node::OrderByNode* ts, const SchemasContext* ctx) {
     // we encode table, keys and ts to one string
@@ -289,9 +281,35 @@ bool IndexMapBuilder::CreateIndex(const std::string& table, const hybridse::node
     DLOG(INFO) << "create index with unset ttl: " << index;
 
     // default TTLSt is abs and ttl=0, rows will never expire.
+    // default TTLSt debug string is {}, but if we get, they will be the default values.
     index_map_[index] = new common::TTLSt;
     latest_record_ = index;
     return true;
+}
+
+int64_t AbsTTLConvert(int64_t time_ms, bool zero_eq_unbounded) {
+    if (zero_eq_unbounded && time_ms == 0) {
+        return 0;
+    }
+    return time_ms == 0 ? 1 : (time_ms / 60000 + (time_ms % 60000 ? 1 : 0));
+}
+
+int64_t LatTTLConvert(int64_t lat, bool zero_eq_unbounded) {
+    if (zero_eq_unbounded && lat == 0) {
+        return 0;
+    }
+
+    return lat == 0 ? 1 : lat;
+}
+
+// history_range_start == INT64_MIN: unbounded
+// history_range_start == 0: not unbounded
+// NOTICE: do not convert invalid range/rows start. It'll get 0 from `GetHistoryRangeStart`.
+int64_t AbsTTLConvert(int64_t history_range_start) {
+    return history_range_start == INT64_MIN ? 0 : AbsTTLConvert(-1 * history_range_start, false);
+}
+int64_t LatTTLConvert(int64_t history_rows_start) {
+    return history_rows_start == INT64_MIN ? 0 : LatTTLConvert(-1 * history_rows_start, false);
 }
 
 bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
@@ -307,43 +325,34 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
         return true;
     }
 
-    auto frame = range.frame();
-    // TODO(hw): distinguish UNBOUNDED from 0, ref FrameExtent
-    auto start = -1 * frame->GetHistoryRangeStart();
-    auto rows_start = frame->GetHistoryRowsStartPreceding();
-
-    DCHECK(start >= 0 && rows_start >= 0);
-
     std::stringstream ss;
     range.frame()->Print(ss, "");
-    DLOG(INFO) << "frame info: " << ss.str() << ", get start points: " << start << ", " << rows_start;
+    DLOG(INFO) << "frame info: " << ss.str();
 
     auto ttl_st_ptr = index_map_[latest_record_];
+    auto frame = range.frame();
     auto type = frame->frame_type();
     switch (type) {
         case hybridse::node::kFrameRows:
-            DCHECK(frame->frame_rows() && frame->frame_range() == nullptr);
-            ttl_st_ptr->set_lat_ttl(rows_start);
             ttl_st_ptr->set_ttl_type(type::TTLType::kLatestTime);
+            ttl_st_ptr->set_lat_ttl(LatTTLConvert(frame->GetHistoryRowsStart()));
             break;
         case hybridse::node::kFrameRange:
         case hybridse::node::kFrameRowsRange:
-            DCHECK(frame->frame_rows() == nullptr && frame->frame_range());
-            // GetHistoryRangeStart is negative, ttl needs uint64
-            ttl_st_ptr->set_abs_ttl(ConvertToMinute(start));
             ttl_st_ptr->set_ttl_type(type::TTLType::kAbsoluteTime);
+            ttl_st_ptr->set_abs_ttl(AbsTTLConvert(frame->GetHistoryRangeStart()));
             break;
         case hybridse::node::kFrameRowsMergeRowsRange:
-            DCHECK(frame->frame_rows() && frame->frame_range());
             // use abs and ttl, only >abs_ttl and > lat_ttl will be expired
-            ttl_st_ptr->set_lat_ttl(rows_start);
-            ttl_st_ptr->set_abs_ttl(ConvertToMinute(start));
             ttl_st_ptr->set_ttl_type(type::TTLType::kAbsAndLat);
+            ttl_st_ptr->set_abs_ttl(AbsTTLConvert(frame->GetHistoryRangeStart()));
+            ttl_st_ptr->set_lat_ttl(LatTTLConvert(frame->GetHistoryRowsStart()));
             break;
         default:
             LOG(WARNING) << "invalid type";
             return false;
     }
+
     DLOG(INFO) << latest_record_ << " update ttl " << index_map_[latest_record_]->DebugString();
     // to avoid double update
     latest_record_.clear();
@@ -526,6 +535,7 @@ void GroupAndSortOptimizedParser::TransformParse(PhysicalOpNode* in) {
     switch (in->GetOpType()) {
         case PhysicalOpType::kPhysicalOpGroupBy: {
             auto group_op = dynamic_cast<hybridse::vm::PhysicalGroupNode*>(in);
+            DCHECK(group_op);
             PhysicalOpNode* new_producer;
             if (GroupOptimizedParse(group_op->schemas_ctx(), group_op->GetProducer(0), &group_op->group_,
                                     &new_producer)) {
@@ -536,6 +546,7 @@ void GroupAndSortOptimizedParser::TransformParse(PhysicalOpNode* in) {
         }
         case PhysicalOpType::kPhysicalOpProject: {
             auto project_op = dynamic_cast<hybridse::vm::PhysicalProjectNode*>(in);
+            DCHECK(project_op);
             if (hybridse::vm::ProjectType::kWindowAggregation == project_op->project_type_) {
                 auto window_agg_op = dynamic_cast<hybridse::vm::PhysicalWindowAggrerationNode*>(project_op);
                 CHECK_NOTNULL(window_agg_op);
@@ -586,7 +597,7 @@ void GroupAndSortOptimizedParser::TransformParse(PhysicalOpNode* in) {
         }
         case PhysicalOpType::kPhysicalOpRequestUnion: {
             auto union_op = dynamic_cast<hybridse::vm::PhysicalRequestUnionNode*>(in);
-
+            DCHECK(union_op);
             PhysicalOpNode* new_producer;
             if (!union_op->instance_not_in_window()) {
                 if (KeysAndOrderFilterOptimizedParse(union_op->schemas_ctx(), union_op->GetProducer(1),
@@ -611,6 +622,7 @@ void GroupAndSortOptimizedParser::TransformParse(PhysicalOpNode* in) {
         }
         case PhysicalOpType::kPhysicalOpRequestJoin: {
             auto* join_op = dynamic_cast<hybridse::vm::PhysicalRequestJoinNode*>(in);
+            DCHECK(join_op);
             PhysicalOpNode* new_producer;
             // Optimized Right Table Partition
             if (JoinKeysOptimizedParse(join_op->schemas_ctx(), join_op->GetProducer(1), &join_op->join_,
@@ -622,7 +634,8 @@ void GroupAndSortOptimizedParser::TransformParse(PhysicalOpNode* in) {
             break;
         }
         case PhysicalOpType::kPhysicalOpJoin: {
-            auto* join_op = dynamic_cast<hybridse::vm::PhysicalRequestJoinNode*>(in);
+            auto* join_op = dynamic_cast<hybridse::vm::PhysicalJoinNode*>(in);
+            DCHECK(join_op);
             PhysicalOpNode* new_producer;
             // Optimized Right Table Partition
             if (JoinKeysOptimizedParse(join_op->schemas_ctx(), join_op->GetProducer(1), &join_op->join_,
@@ -635,6 +648,7 @@ void GroupAndSortOptimizedParser::TransformParse(PhysicalOpNode* in) {
         }
         case PhysicalOpType::kPhysicalOpFilter: {
             auto* filter_op = dynamic_cast<hybridse::vm::PhysicalFilterNode*>(in);
+            DCHECK(filter_op);
             PhysicalOpNode* new_producer;
             if (FilterOptimizedParse(filter_op->schemas_ctx(), filter_op->GetProducer(0), &filter_op->filter_,
                                      &new_producer)) {

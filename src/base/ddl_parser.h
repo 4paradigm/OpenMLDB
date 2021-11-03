@@ -30,6 +30,10 @@ class PhysicalOpNode;
 
 namespace openmldb::base {
 
+// convert ms to minutes, ceil
+int64_t AbsTTLConvert(int64_t time_ms, bool zero_eq_unbounded);
+int64_t LatTTLConvert(int64_t time_ms, bool zero_eq_unbounded);
+
 using IndexMap = std::map<std::string, std::vector<::openmldb::common::ColumnKey>>;
 
 class DDLParser {
