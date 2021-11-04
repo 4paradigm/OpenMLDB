@@ -343,7 +343,10 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     ASSERT_EQ(oos.str(), exp);
 }
 
-void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog, const std::string& sql, int err_code) {
+void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog,
+                           const std::string& sql,
+                           int err_code,
+                           const std::string& err_msg) {
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
 
     ::hybridse::node::NodeManager manager;
@@ -363,12 +366,13 @@ void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog, const std::s
     PhysicalOpNode* physical_plan = nullptr;
 
     status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
-    EXPECT_EQ(err_code, status.code) << status;
+    EXPECT_EQ(err_code, status.code);
+    EXPECT_EQ(err_msg.c_str(), status.msg);
 }
 
 // physical plan transform will fail if the partition key of a window is not in the supported type list
 //  which is [bool, intxx, data, timestamp, string]
-TEST_F(TransformTest, PhysicalPlanFailOnPartitionType) {
+TEST_F(TransformTest, PhysicalPlanFailOnWindowPartitionType) {
     hybridse::type::Database db;
     auto catalog = BuildSimpleCatalog(db);
     db.set_name("db");
@@ -383,8 +387,30 @@ TEST_F(TransformTest, PhysicalPlanFailOnPartitionType) {
     const std::string sql = R"sql(SELECT sum(col1) OVER w1 as w1_c4_sum FROM t1
                                   WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);)sql";
 
-    PhysicalPlanFailCheck(catalog, sql, common::kPhysicalPlanError);
+    PhysicalPlanFailCheck(catalog, sql, common::kPhysicalPlanError,
+                          "unsupported group key, type is float. should be bool, intxx, string, date or timestamp");
 }
+
+// physical plan transform will fail if the group key is not in the supported type list
+//  which is [bool, intxx, data, timestamp, string]
+TEST_F(TransformTest, PhysicalPlanFailOnGroupType) {
+    hybridse::type::Database db;
+    auto catalog = BuildSimpleCatalog(db);
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_catalog("db");
+
+    AddTable(db, table_def);
+    catalog->AddDatabase(db);
+
+    const std::string sql = "SELECT col1, col2, col3 FROM t1 GROUP BY col3";
+
+    PhysicalPlanFailCheck(catalog, sql, common::kPhysicalPlanError,
+                          "unsupported group key, type is float. should be bool, intxx, string, date or timestamp");
+}
+
 
 TEST_F(TransformTest, TransfromConditionsTest) {
     std::vector<std::pair<std::string, std::vector<std::string>>> sql_exp;
@@ -741,21 +767,21 @@ INSTANTIATE_TEST_SUITE_P(
             "PROJECT(type=GroupAggregation, group_keys=(col1,col2))\n"
             "  DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
-            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
-            "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col3))\n"
-            "  GROUP_BY(group_keys=(col3))\n"
+            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col6;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col6))\n"
+            "  GROUP_BY(group_keys=(col6))\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
-            "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
-            "PROJECT(type=GroupAggregation, group_keys=(col3,col2,col1))\n"
-            "  GROUP_BY(group_keys=(col3))\n"
+            "SELECT sum(col1) as col1sum FROM t1 group by col6, col2, col1;",
+            "PROJECT(type=GroupAggregation, group_keys=(col6,col2,col1))\n"
+            "  GROUP_BY(group_keys=(col6))\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
             "SELECT sum(col1) as col1sum FROM (select c1 as col1, c2 as col2 , "
-            "c3 as col3 from tc) group by col3, col2, col1;",
-            "PROJECT(type=GroupAggregation, group_keys=(col3,col2,col1))\n"
-            "  GROUP_BY(group_keys=(col3))\n"
-            "    SIMPLE_PROJECT(sources=(c1 -> col1, c2 -> col2, c3 -> col3))\n"
+            "c6 as col6 from tc) group by col6, col2, col1;",
+            "PROJECT(type=GroupAggregation, group_keys=(col6,col2,col1))\n"
+            "  GROUP_BY(group_keys=(col6))\n"
+            "    SIMPLE_PROJECT(sources=(c1 -> col1, c2 -> col2, c6 -> col6))\n"
             "      DATA_PROVIDER(type=Partition, table=tc, "
             "index=index12_tc)")));
 INSTANTIATE_TEST_SUITE_P(
@@ -802,10 +828,10 @@ INSTANTIATE_TEST_SUITE_P(
                        "PROJECT(type=GroupAggregation, group_keys=(col1))\n"
                        "  FILTER_BY(condition=20 = col2, left_keys=(), right_keys=(), index_keys=)\n"
                        "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
-        std::make_pair("SELECT sum(col1) as col1sum FROM t1 where col1 = 10 and col2 = 20 group by col1, col2, col3;",
-                       "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col3))\n"
+        std::make_pair("SELECT sum(col1) as col1sum FROM t1 where col1 = 10 and col2 = 20 group by col1, col2, col6;",
+                       "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col6))\n"
                        "  FILTER_BY(condition=10 = col1 AND 20 = col2, left_keys=(), right_keys=(), index_keys=)\n"
-                       "    GROUP_BY(group_keys=(col3))\n"
+                       "    GROUP_BY(group_keys=(col6))\n"
                        "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair("SELECT sum(col1) as col1sum FROM (select c1 as col1, c2 as col2 , "
                        "c3 as col3 from tc) where col1 = 10 and col2 = 20 group by col2, col1;",

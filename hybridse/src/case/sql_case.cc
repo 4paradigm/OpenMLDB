@@ -120,29 +120,7 @@ bool SqlCase::TypeParse(const std::string& org_type_str,
 }
 
 const std::string SqlCase::TypeString(hybridse::type::Type type) {
-    switch (type) {
-        case type::kInt16:
-            return "smallint";
-        case type::kInt32:
-            return "int";
-        case type::kInt64:
-            return "bigint";
-        case type::kFloat:
-            return "float";
-        case type::kDouble:
-            return "double";
-        case type::kVarchar:
-            return "string";
-        case type::kTimestamp:
-            return "timestamp";
-        case type::kDate:
-            return "date";
-        case type::kBool:
-            return "bool";
-        default: {
-            return "unknow";
-        }
-    }
+    return sdk::TypeName(type);
 }
 bool SqlCase::ExtractTableDef(const std::vector<std::string>& columns,
                               const std::vector<std::string>& indexs,

@@ -777,6 +777,9 @@ Status BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
     PhysicalOpNode* left = nullptr;
     CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &left));
 
+    // check group key is in supported list
+    CHECK_STATUS(CheckPartitionColumn(node->by_list_, left->schemas_ctx()));
+
     if (kPhysicalOpDataProvider == left->GetOpType()) {
         auto data_op = dynamic_cast<PhysicalDataProviderNode*>(left);
         if (kProviderTypeRequest == data_op->provider_type_) {
@@ -1775,7 +1778,8 @@ Status BatchModeTransformer::CheckPartitionColumn(const node::ExprListNode* part
                         case type::kTimestamp:
                             break;
                         default: {
-                            CHECK_TRUE(false, common::kPhysicalPlanError, "unsupported group key by type ", type);
+                            CHECK_TRUE(false, common::kPhysicalPlanError, "unsupported group key, type is ",
+                                       sdk::TypeName(type), ". should be bool, intxx, string, date or timestamp");
                         }
                     }
                 }
