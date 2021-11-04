@@ -298,7 +298,10 @@ TEST_F(DDLParserTest, mergeNode) {
     ASSERT_EQ(index_map.size(), 1);
     auto index = index_map.begin()->second;
     ASSERT_EQ(index.size(), 1);
-    ASSERT_EQ(index.begin()->ttl().ttl_type(), type::TTLType::kAbsAndLat);
+    auto ttl = index.begin()->ttl();
+    ASSERT_EQ(ttl.ttl_type(), type::TTLType::kAbsAndLat);
+    ASSERT_EQ(ttl.abs_ttl(), 1);
+    ASSERT_EQ(ttl.lat_ttl(), 2);
 }
 
 }  // namespace openmldb::base

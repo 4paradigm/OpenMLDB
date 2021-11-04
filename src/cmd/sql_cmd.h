@@ -1016,15 +1016,6 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             if (!column_key.has_ttl()) {
                 return {base::ReturnCode::kError, "table " + kv.first + " has not ttl"};
             }
-            if (column_key.ttl().abs_ttl() > 0) {
-                // convert ttl from millsecond to minute
-                auto ttl = column_key.mutable_ttl();
-                if (ttl->abs_ttl() % (60 * 1000) == 0) {
-                    ttl->set_abs_ttl(ttl->abs_ttl() / (60 * 1000));
-                } else {
-                    ttl->set_abs_ttl(ttl->abs_ttl() / (60 * 1000) + 1);
-                }
-            }
             add_index_num++;
             std::string msg;
             if (!ns->AddIndex(kv.first, column_key, &cols, msg)) {

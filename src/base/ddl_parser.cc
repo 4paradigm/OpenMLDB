@@ -308,6 +308,7 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
     }
 
     auto frame = range.frame();
+    // TODO(hw): distinguish UNBOUNDED from 0, ref FrameExtent
     auto start = -1 * frame->GetHistoryRangeStart();
     auto rows_start = frame->GetHistoryRowsStartPreceding();
 
