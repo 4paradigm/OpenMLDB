@@ -202,7 +202,8 @@ class SQLClusterRouter : public SQLRouter {
 
 
     std::vector<std::string> ExecuteDDLParse(
-        const std::string& sql, const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& table_map) override;
+        const std::string& sql, const std::vector<std::pair<std::string,
+        std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& table_map) override;
 
     static bool GetTTL(openmldb::type::TTLType ttl_type, ::google::protobuf::uint64 abs_ttl,
                        ::google::protobuf::uint64 lat_ttl, std::string* ttl) {
@@ -250,7 +251,7 @@ class SQLClusterRouter : public SQLRouter {
     }
 
     static bool ToTTLTypeString(openmldb::type::TTLType ttl_type, std::string* ttl_type_str) {
-        switch (ttl_type){
+        switch (ttl_type) {
             case openmldb::type::TTLType::kAbsoluteTime:
                 *ttl_type_str = "absolute";
                 return true;

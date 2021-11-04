@@ -177,7 +177,8 @@ IndexMap DDLParser::ExtractIndexes(
     return ExtractIndexes(sql, db);
 }
 
-IndexMap DDLParser::ExtractIndexes(const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
+IndexMap DDLParser::ExtractIndexes(const std::string& sql,
+        const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
     ::hybridse::type::Database db;
     std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
     db.set_name(tmp_db);
@@ -260,7 +261,7 @@ void DDLParser::AddTables(const T& schema, hybridse::type::Database* db) {
     }
 }
 
-int64_t ConvertToMinute(long time_ms) {
+uint64_t ConvertToMinute(uint64_t time_ms) {
     if (time_ms == 0) {
         // default Min minute is 1
         return 1;
