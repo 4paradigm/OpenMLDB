@@ -116,7 +116,7 @@ We can also show and drop deployment like this:
 > DROP DEPLOYMENT demo_data_service;
 ```
 ### Online feature extraction
-We can use restful api executing online feature extraction
+We can use restful api to execute online feature extraction  
 The format of url as follows:
 ```
 http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
