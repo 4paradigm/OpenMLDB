@@ -227,7 +227,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
 
     std::stringstream ss;
     column_index->Print(ss, "");
-    LOG(INFO) << ss.str();
+    DLOG(INFO) << ss.str();
     index->set_index_name(column_index->GetName());
 
     for (const auto& key : column_index->GetKey()) {

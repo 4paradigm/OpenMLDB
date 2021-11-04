@@ -451,8 +451,9 @@ TEST_F(DDLParserTest, twoTable) {
     auto ttl2 = t2_index->second.begin()->ttl();
     ASSERT_EQ(ttl1.ttl_type(), type::TTLType::kAbsoluteTime);
     ASSERT_EQ(ttl1.abs_ttl(), 1);
-
-
+    // default ttl
+    ASSERT_EQ(ttl2.ttl_type(), type::TTLType::kAbsoluteTime);
+    ASSERT_EQ(ttl2.abs_ttl(), 0);
 }
 
 }  // namespace openmldb::base
