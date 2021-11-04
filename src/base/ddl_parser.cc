@@ -264,7 +264,7 @@ void DDLParser::AddTables(const T& schema, hybridse::type::Database* db) {
     }
 }
 
-int64_t ConvertToMinute(long time_ms) {
+uint64_t ConvertToMinute(uint64_t time_ms) {
     if (time_ms == 0) {
         // default Min minute is 1
         return 1;

@@ -911,10 +911,15 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     if (!cs->GetEngine()->GetDependentTables(select_sql, db, ::hybridse::vm::kBatchMode, &table_pair, status)) {
         return {base::ReturnCode::kError, "get dependent table failed"};
     }
+    std::set<std::string> db_set;
     for (auto& table : table_pair) {
+        db_set.insert(table.first);
         auto db_table = sp_info.add_tables();
         db_table->set_db_name(table.first);
         db_table->set_table_name(table.second);
+    }
+    if (db_set.size() > 1) {
+        return {base::ReturnCode::kError, "unsupport multi database"};
     }
     std::stringstream str_stream;
     str_stream << "CREATE PROCEDURE " << deploy_node->Name() << " (";
@@ -963,12 +968,28 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     }
     auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
-    // add index
+    // check ts col
     for (auto& kv : index_map) {
         auto it = table_map.find(kv.first);
         if (it == table_map.end()) {
             return {base::ReturnCode::kError, "table " + kv.first + "is not exist"};
         }
+        std::set<std::string> ts_set;
+        for (const auto& column_key : it->second.column_key()) {
+            if (!column_key.ts_name().empty()) {
+                ts_set.insert(column_key.ts_name());
+            }
+        }
+        for (auto& column_key : kv.second) {
+            if (!column_key.ts_name().empty() && ts_set.count(column_key.ts_name()) == 0) {
+                return {base::ReturnCode::kError,
+                    "ts col " + column_key.ts_name() + " is not exist in table " +kv.first};
+            }
+        }
+    }
+    // add index
+    for (auto& kv : index_map) {
+        auto it = table_map.find(kv.first);
         std::vector<std::set<std::string>> index_cols_set;
         for (const auto& column_key : it->second.column_key()) {
             std::set<std::string> col_set;
@@ -1333,7 +1354,7 @@ void HandleSQL(const std::string& sql) {
         case hybridse::node::kPlanTypeDeploy: {
             auto status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
             if (!status.OK()) {
-                std::cout << status.msg << std::endl;
+                std::cout << "ERROR: " << status.msg << std::endl;
             } else {
                 std::cout << "SUCCEED: deploy successfully" << std::endl;
             }
