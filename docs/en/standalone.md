@@ -2,8 +2,8 @@
 
 ## Deployment
 ### Modify Config
-1. Replace 127.0.0.1 with the real IP if may be accessed in another node
-2. If the specific port is unavailable, change to another port
+1. Please replace 127.0.0.1 with the server IP if you want to access remotely
+2. (Optional) Please change the port number if it is occupied by another service
 
 * conf/tablet.flags
    ```
@@ -27,7 +27,7 @@
 ```bash
 sh bin/start-all.sh
 ```
-If want to stop, execute the command as follows 
+If you want to stop, execute the command as follows 
 ```bash
 sh bin/stop-all.sh
 ```
@@ -47,14 +47,14 @@ sh bin/stop-all.sh
 > USE demo_db;
 > CREATE TABLE demo_table1(c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, index(ts=c7));
 ```
-**Note**: Specify at least one index and set the ts column which is used for orderby
+**Note**: Specify at least one index and set the ts column which is used for ORDERBY.
 ### Import Data
 Only support csv file format
 ```sql
 > USE demo_db;
 > LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1;
 ```
-Use option for advanced setting
+Alternatively, you may use the below options for the advanced usage.
 Name | Type |  Default | Options
 -- | -- |  --  | --
 delimiter | String | , | Any char
@@ -63,9 +63,9 @@ null_value | String | null | Any String
 ```sql
 > LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1 options (delimiter=',', header=false);
 ```
-**Node**: Only support single character for delimiter
+**Node**: Only support single character for delimiter.
 ### Data exploration
-Analyze data to provide reference for writing the SQL of feature extraction
+Below demonstrates a data exploration task.
 ```sql
 > USE demo_db;
 > SET PERFORMANCE_SENSITIVE = false;
@@ -88,7 +88,7 @@ SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTI
 > SET performance_sensitive=false;
 > SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 ```
-Use option for advanced setting
+Alternatively, you may use the below options for the advanced usage.
 Name | Type |  Default | Options
 -- | -- |  --  | --
 delimiter | String | , | Any char
@@ -116,15 +116,15 @@ We can also show and drop deployment like this:
 > DROP DEPLOYMENT demo_data_service;
 ```
 ### Online feature extraction
-We can use restful api to execute online feature extraction  
-The format of url as follows:
+We can use RESTful APIs to execute online feature extraction.  
+The format of url is as follows:
 ```
 http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
         \___________/      \____/              \_____________/
               |               |                        |
        APIServer endpoint  Database name        Deployment name
 ```
-Input data is json format，we should pack row into input values  
+As input data is in the json format, we should pack rows into input values.  
 Ex:
 ```bash
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
