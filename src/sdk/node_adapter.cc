@@ -32,7 +32,7 @@ namespace sdk {
 using hybridse::plan::PlanAPI;
 
 bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
-        ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status) {
+                                      ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status) {
     if (create_node == NULL || table == NULL || status == NULL) return false;
     std::string table_name = create_node->GetTableName();
     const hybridse::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
@@ -126,7 +126,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         const auto& ts_name = column_index->GetTs();
                         for (const auto& kv : column_names) {
                             if (kv.first != ts_name && kv.second->data_type() != openmldb::type::DataType::kFloat &&
-                                    kv.second->data_type() != openmldb::type::DataType::kDouble) {
+                                kv.second->data_type() != openmldb::type::DataType::kDouble) {
                                 index->add_col_name(kv.first);
                                 has_generate_index = true;
                                 break;
@@ -219,8 +219,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
 
 // If column_names is not empty, check the column key names
 bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_index,
-        const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
-        common::ColumnKey* index, hybridse::base::Status* status) {
+                                       const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,
+                                       common::ColumnKey* index, hybridse::base::Status* status) {
     if (column_index == nullptr) {
         return false;
     }

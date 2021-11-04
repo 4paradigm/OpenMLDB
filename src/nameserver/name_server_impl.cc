@@ -503,20 +503,11 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::openmldb::nameserver::
 }
 
 NameServerImpl::NameServerImpl()
-    : mu_(),
-      tablets_(),
-      table_info_(),
-      db_table_info_(),
-      nsc_(),
-      zone_info_(),
-      zk_client_(NULL),
-      zk_path_(),
-      dist_lock_(NULL),
+    : zk_client_(nullptr),
+      dist_lock_(nullptr),
       thread_pool_(1),
       task_thread_pool_(FLAGS_name_server_task_pool_size),
-      cv_(),
       rand_(0xdeadbeef),
-      session_term_(0),
       startup_mode_(::openmldb::type::StartupMode::kStandalone) {}
 
 NameServerImpl::~NameServerImpl() {
@@ -2178,8 +2169,8 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
                                        : FLAGS_latest_ttl_max;
                 uint64_t ttl = column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max ? column_key.ttl().abs_ttl()
                                                                                    : column_key.ttl().lat_ttl();
-                PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
-                      ttl, ::openmldb::type::TTLType_Name(column_key.ttl().ttl_type()).c_str(), max_ttl);
+                PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", ttl,
+                      ::openmldb::type::TTLType_Name(column_key.ttl().ttl_type()).c_str(), max_ttl);
                 return -1;
             }
         }
@@ -2335,8 +2326,9 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     return 0;
 }
 
-int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, bool is_leader,
-                                        std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
+int NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
+                                        bool is_leader, std::map<uint32_t, std::vector<std::string>>& endpoint_map,
+                                        uint64_t term) {
     ::openmldb::type::CompressType compress_type = ::openmldb::type::CompressType::kNoCompress;
     if (table_info->compress_type() == ::openmldb::type::kSnappy) {
         compress_type = ::openmldb::type::CompressType::kSnappy;
@@ -2344,8 +2336,8 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_db(table_info->db());
     table_meta.set_name(table_info->name());
-    table_meta.set_tid(table_info->tid());
-    table_meta.set_seg_cnt(table_info->seg_cnt());
+    table_meta.set_tid(static_cast<::google::protobuf::int32>(table_info->tid()));
+    table_meta.set_seg_cnt(static_cast<::google::protobuf::int32>(table_info->seg_cnt()));
     table_meta.set_compress_type(compress_type);
     table_meta.set_format_version(table_info->format_version());
     if (table_info->has_key_entry_max_height()) {
@@ -2371,7 +2363,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::
     }
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         uint32_t pid = table_info->table_partition(idx).pid();
-        table_meta.set_pid(pid);
+        table_meta.set_pid(static_cast<::google::protobuf::int32>(pid));
         table_meta.clear_replicas();
         for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
             if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader() != is_leader) {
@@ -2390,8 +2382,8 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::
                 term_pair->set_offset(0);
                 table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
                 table_meta.set_term(term);
-                for (const auto& endpoint : endpoint_map[pid]) {
-                    table_meta.add_replicas(endpoint);
+                for (const auto& e : endpoint_map[pid]) {
+                    table_meta.add_replicas(e);
                 }
             } else {
                 if (endpoint_map.find(pid) == endpoint_map.end()) {
@@ -3720,8 +3712,7 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
                                  GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        base::SetResponseStatus(base::ReturnCode::kNameserverIsNotLeader,
-                "nameserver is not leader", response);
+        base::SetResponseStatus(base::ReturnCode::kNameserverIsNotLeader, "nameserver is not leader", response);
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
@@ -3729,7 +3720,7 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             base::SetResponseStatus(base::ReturnCode::kNoZoneInfo,
-                    "nameserver is for follower cluster, and request has no zone info", response);
+                                    "nameserver is for follower cluster, and request has no zone info", response);
             PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
@@ -3807,15 +3798,15 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
                 pid_set.insert(table_info->table_partition(idx).pid());
             }
             auto iter = pid_set.rbegin();
-            if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
+            if (*iter != static_cast<uint32_t>(table_info->table_partition_size()) - 1) {
                 base::SetResponseStatus(base::ReturnCode::kInvalidParameter, "invalid parameter", response);
                 PDLOG(WARNING, "pid is not start with zero and consecutive");
                 return;
             }
         } else {
             if (SetPartitionInfo(*table_info) < 0) {
-                base::SetResponseStatus(base::ReturnCode::kSetPartitionInfoFailed,
-                        "set partition info failed", response);
+                base::SetResponseStatus(base::ReturnCode::kSetPartitionInfoFailed, "set partition info failed",
+                                        response);
                 PDLOG(WARNING, "set partition info failed");
                 return;
             }
@@ -3827,7 +3818,13 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
     } else {
         if (!AllocateTableId(&tid)) {
             base::SetResponseStatus(base::ReturnCode::kCreateTableFailed, "allocate table id failed!", response);
-            PDLOG(WARNING, "allocate table id failed! table %s", table_info->name().c_str());
+            LOG(WARNING) << response->msg() << " table: " << table_info->name();
+            return;
+        }
+        // tid in ::openmldb::api::TableMeta is int32
+        if (static_cast<::google::protobuf::int32>(tid) <= 0) {
+            base::SetResponseStatus(base::ReturnCode::kCreateTableFailed, "allocated table id is invalid!", response);
+            LOG(WARNING) << response->msg() << " table: " << table_info->name();
             return;
         }
         table_info->set_tid(tid);
@@ -3841,11 +3838,10 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kCreateTableRemote, task_ptr,
                           rep_cluster_op_id_vec) < 0) {
                 base::SetResponseStatus(base::ReturnCode::kAddTaskInReplicaClusterNsFailed,
-                        "add task in replica cluster ns failed", response);
+                                        "add task in replica cluster ns failed", response);
                 return;
             }
-            PDLOG(INFO,
-                  "add task in replica cluster ns success, op_id [%lu] task_tpye [%s] task_status [%s]",
+            PDLOG(INFO, "add task in replica cluster ns success, op_id [%lu] task_tpye [%s] task_status [%s]",
                   task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                   ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
@@ -3860,9 +3856,8 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
     }
 }
 
-::openmldb::base::Status NameServerImpl::CreateOfflineTable(const std::string& db_name,
-                                                               const std::string& table_name,
-                                                               const std::string& partition_key, const Schema& schema) {
+::openmldb::base::Status NameServerImpl::CreateOfflineTable(const std::string& db_name, const std::string& table_name,
+                                                            const std::string& partition_key, const Schema& schema) {
     if (nearline_tablet_.client_ && nearline_tablet_.Health()) {
         auto ret = nearline_tablet_.client_->CreateTable(db_name, table_name, partition_key, schema);
         if (ret.OK()) {
@@ -8989,7 +8984,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     }
     if ((uint32_t)table_info->table_partition_size() > FLAGS_name_server_task_max_concurrency) {
         base::SetResponseStatus(ReturnCode::kTooManyPartition,
-                "partition num is greater than name_server_task_max_concurrency", response);
+                                "partition num is greater than name_server_task_max_concurrency", response);
         LOG(WARNING) << "parition num[" << table_info->table_partition_size()
                      << "] is greater than name_server_task_max_concurrency[" << FLAGS_name_server_task_max_concurrency
                      << "] table " << name;
@@ -9059,7 +9054,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         bool ok = AddFieldToTablet(add_cols, table_info, &new_pair);
         if (!ok) {
             base::SetResponseStatus(ReturnCode::kFailToUpdateTablemetaForAddingField,
-                    "fail to update tableMeta for adding field", response);
+                                    "fail to update tableMeta for adding field", response);
             LOG(WARNING) << "update tablemeta fail";
             return;
         }
@@ -9899,7 +9894,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const api::Creat
             ::snappy::Compress(sp_value.c_str(), sp_value.length(), &compressed);
             if (!zk_client_->CreateNode(sp_data_path, compressed)) {
                 PDLOG(WARNING, "create db store procedure node[%s] failed! value[%s] value size[%lu]",
-                        sp_data_path.c_str(), sp_value.c_str(), compressed.length());
+                      sp_data_path.c_str(), sp_value.c_str(), compressed.length());
                 response->set_code(::openmldb::base::ReturnCode::kCreateZkFailed);
                 response->set_msg("create zk node failed");
                 break;
@@ -10159,9 +10154,7 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
         }
         // only find one db
         if (db_sp_info_map_.find(db_name) == db_sp_info_map_.end()) {
-            response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
-            response->set_msg("database not found");
-            PDLOG(WARNING, "database[%s] not found", db_name);
+            // db_sp_info_map_ has no entry of db, just means no sp in db, return empty sp info array.
             return;
         }
         auto& sp_map = db_sp_info_map_[db_name];

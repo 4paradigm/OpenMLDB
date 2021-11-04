@@ -24,7 +24,6 @@ import com._4paradigm.hybridse.node.{ExprListNode, JoinType}
 import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper, PhysicalJoinNode}
 import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkRowUtil, SparkUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.slf4j.LoggerFactory
@@ -64,7 +63,7 @@ object JoinPlan {
     val supportNativeLastJoin = SparkUtil.supportNativeLastJoin(joinType, hasOrderby)
     logger.info("Enable native last join or not: " + ctx.getConf.enableNativeLastJoin)
 
-    val indexName = "__JOIN_INDEX__-" + System.currentTimeMillis()
+    val indexName = "__JOIN_INDEX__" + System.currentTimeMillis()
 
     val leftDf: DataFrame = {
       if (joinType == JoinType.kJoinTypeLeft) {
@@ -119,16 +118,16 @@ object JoinPlan {
 
       // Handle the duplicated column names to get Spark Column by index
       val allColumns = new mutable.ArrayBuffer[Column]()
-      for (i <- 0 until leftDf.schema.size) {
+      for (i <- leftDf.schema.indices) {
         if (i != indexColIdx) {
           allColumns += SparkColumnUtil.getColumnFromIndex(leftDf, i)
         }
       }
-      for (i <- 0 until rightDf.schema.size) {
+      for (i <- rightDf.schema.indices) {
         allColumns += SparkColumnUtil.getColumnFromIndex(rightDf, i)
       }
 
-      val allColWrap = functions.struct(allColumns:_*)
+      val allColWrap = functions.struct(allColumns: _*)
       joinConditions += functions.callUDF(regName, allColWrap)
     }
 
@@ -136,7 +135,7 @@ object JoinPlan {
       throw new HybridSeException("No join conditions specified")
     }
 
-    val joined = leftDf.join(rightDf, joinConditions.reduce(_ && _),  "left")
+    val joined = leftDf.join(rightDf, joinConditions.reduce(_ && _), "left")
 
     val result = if (joinType == JoinType.kJoinTypeLeft) {
       joined
@@ -144,51 +143,42 @@ object JoinPlan {
       // Resolve order by column index
       if (hasOrderby) {
         val orderExpr = node.join.right_sort.orders.GetOrderExpression(0)
-        val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
         // Get the time column index from right table
         val timeColIdx = SparkColumnUtil.resolveOrderColumnIndex(orderExpr, node.GetProducer(1))
         assert(timeColIdx >= 0)
-
         val timeIdxInJoined = timeColIdx + leftDf.schema.size
-        val timeColType = rightDf.schema(timeColIdx).dataType
 
         val isAsc = node.join.right_sort.is_asc
 
-        // Disable scalastyle for importing Spark implicits
-        // scalastyle:off
-        import spark.implicits._
-        // scalastyle:on
-        val distinct = joined
-          .groupByKey {
-            row => row.getLong(indexColIdx)
-          }
-          .mapGroups {
-            case (_, iter) =>
-              val timeExtractor = SparkRowUtil.createOrderKeyExtractor(
-                timeIdxInJoined, timeColType, nullable=false)
+        val indexCol = SparkColumnUtil.getColumnFromIndex(joined, indexColIdx)
 
-              if (isAsc) {
-                iter.maxBy(row => {
-                  if (row.isNullAt(timeIdxInJoined)) {
-                    Long.MinValue
-                  } else {
-                    timeExtractor.apply(row)
-                  }
-                })
+        val distinctRdd = joined.rdd.map({
+          row => (row.getLong(indexColIdx), row)
+        }).reduceByKey({
+          (row1, row2) =>
+            val timeColDataType = row1.schema.fields(timeIdxInJoined).dataType
+            val rowTimeValue1 = SparkRowUtil.getLongFromIndex(timeIdxInJoined, timeColDataType, row1)
+            val rowTimeValue2 = SparkRowUtil.getLongFromIndex(timeIdxInJoined, timeColDataType, row2)
+            if (isAsc) {
+              if (rowTimeValue1 > rowTimeValue2) {
+                row1
               } else {
-                iter.minBy(row => {
-                  if (row.isNullAt(timeIdxInJoined)) {
-                    Long.MaxValue
-                  } else {
-                    timeExtractor.apply(row)
-                  }
-                })
+                row2
               }
-          }(RowEncoder(joined.schema))
-        distinct.drop(indexName)
+            } else {
+              if (rowTimeValue1 < rowTimeValue2) {
+                row1
+              } else {
+                row2
+              }
+            }
+        }).values
+
+        val distinctDf = ctx.getSparkSession.createDataFrame(distinctRdd, joined.schema)
+        distinctDf.drop(indexName)
       } else {
         if (supportNativeLastJoin && ctx.getConf.enableNativeLastJoin) {
-          leftDf.join(rightDf, joinConditions.reduce(_ && _),  "last")
+          leftDf.join(rightDf, joinConditions.reduce(_ && _), "last")
         } else {
           joined.dropDuplicates(indexName).drop(indexName)
         }

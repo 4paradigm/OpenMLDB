@@ -47,10 +47,8 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   protected var encoder = new SparkRowCodec(config.inputSchemaSlices)
   private var decoder = new SparkRowCodec(config.outputSchemaSlices)
 
-  // order key extractor
+  // order key field
   private val orderField = config.inputSchema(config.orderIdx)
-  private val orderKeyExtractor = SparkRowUtil.createOrderKeyExtractor(
-    config.orderIdx, orderField.dataType, orderField.nullable)
 
   // append slices cnt = needAppendInput ? inputSchemaSlices.size : 0
   private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.length else 0
@@ -147,7 +145,6 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     if (!window.BufferData(key, nativeInputRow)) {
       logger.error(s"BufferData Fail, please check order key: $key")
     }
-    nativeInputRow.delete()
 
     // release swig jni objects
     nativeInputRow.delete()
@@ -182,7 +179,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   }
 
   def extractKey(curRow: Row): Long = {
-    this.orderKeyExtractor.apply(curRow)
+    SparkRowUtil.getLongFromIndex(config.orderIdx, orderField.dataType, curRow)
   }
 
   def delete(): Unit = {

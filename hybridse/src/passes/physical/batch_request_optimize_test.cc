@@ -145,7 +145,7 @@ void CheckOptimizePlan(const SqlCase& sql_case_org,
         return;
     }
 
-    auto catalog = std::make_shared<SimpleCatalog>();
+    auto catalog = std::make_shared<SimpleCatalog>(true);
     InitSimpleCataLogFromSqlCase(sql_case, catalog);
     EngineOptions options;
     options.set_compile_only(true);

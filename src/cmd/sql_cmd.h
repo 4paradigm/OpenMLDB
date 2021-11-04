@@ -237,7 +237,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
             for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
                 schemaString.append(schema->GetColumnName(i));
                 if (i != schema->GetColumnCnt() - 1) {
-                    schemaString = schemaString + options_parse.GetDelimiter();
+                    schemaString += options_parse.GetDelimiter();
                 }
             }
             fstream << schemaString << std::endl;
@@ -318,7 +318,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
                         }
                     }
                     if (i != schema->GetColumnCnt() - 1) {
-                        rowString = rowString + options_parse.GetDelimiter();
+                        rowString += options_parse.GetDelimiter();
                     } else {
                         if (!first) {
                             fstream << std::endl;
@@ -536,9 +536,9 @@ void PrintProcedureSchema(const std::string& head, const ::hybridse::sdk::Schema
             stream << "Empty set" << std::endl;
             return;
         }
+        stream << "# " << head << std::endl;
 
         ::hybridse::base::TextTable t('-', ' ', ' ');
-
         t.add("#");
         t.add("Field");
         t.add("Type");
@@ -560,9 +560,12 @@ void PrintProcedureSchema(const std::string& head, const ::hybridse::sdk::Schema
 }
 
 void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
-    std::vector<std::vector<std::string>> vec;
-    vec.push_back({sp_info.GetDbName(), sp_info.GetSpName()});
-    PrintItemTable(std::cout, {"DB", "SP"}, vec);
+    std::vector<std::string> vec{sp_info.GetDbName(), sp_info.GetSpName()};
+    std::string type_name = "SP";
+    if (sp_info.GetType() == hybridse::sdk::kReqDeployment) {
+        type_name = "Deployment";
+    }
+    PrintItemTable(std::cout, {"DB", type_name}, {vec});
     std::vector<std::string> items{sp_info.GetSql()};
     PrintItemTable(std::cout, {"SQL"}, {items}, true);
     PrintProcedureSchema("Input Schema", sp_info.GetInputSchema(), std::cout);
@@ -598,7 +601,7 @@ bool ParseNamesFromArgs(const std::vector<std::string>& args, std::string* db_na
     return true;
 }
 
-bool CheckAnswerIfInteractive(std::string drop_type, std::string name) {
+bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& name) {
     if (FLAGS_interactive) {
         printf("Drop %s %s? yes/no\n", drop_type.c_str(), name.c_str());
         std::string input;
@@ -811,7 +814,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                     lines.push_back({sp_info.db_name(), sp_info.sp_name()});
                 }
             }
-            PrintItemTable(std::cout, {"DB", "SP"}, lines);
+            PrintItemTable(std::cout, {"DB", "Deployment"}, lines);
             break;
         }
         case hybridse::node::kCmdDropDeployment: {
@@ -908,10 +911,15 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     if (!cs->GetEngine()->GetDependentTables(select_sql, db, ::hybridse::vm::kBatchMode, &table_pair, status)) {
         return {base::ReturnCode::kError, "get dependent table failed"};
     }
+    std::set<std::string> db_set;
     for (auto& table : table_pair) {
+        db_set.insert(table.first);
         auto db_table = sp_info.add_tables();
         db_table->set_db_name(table.first);
         db_table->set_table_name(table.second);
+    }
+    if (db_set.size() > 1) {
+        return {base::ReturnCode::kError, "unsupport multi database"};
     }
     std::stringstream str_stream;
     str_stream << "CREATE PROCEDURE " << deploy_node->Name() << " (";
@@ -960,12 +968,28 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     }
     auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
-    // add index
+    // check ts col
     for (auto& kv : index_map) {
         auto it = table_map.find(kv.first);
         if (it == table_map.end()) {
             return {base::ReturnCode::kError, "table " + kv.first + "is not exist"};
         }
+        std::set<std::string> ts_set;
+        for (const auto& column_key : it->second.column_key()) {
+            if (!column_key.ts_name().empty()) {
+                ts_set.insert(column_key.ts_name());
+            }
+        }
+        for (auto& column_key : kv.second) {
+            if (!column_key.ts_name().empty() && ts_set.count(column_key.ts_name()) == 0) {
+                return {base::ReturnCode::kError,
+                    "ts col " + column_key.ts_name() + " is not exist in table " +kv.first};
+            }
+        }
+    }
+    // add index
+    for (auto& kv : index_map) {
+        auto it = table_map.find(kv.first);
         std::vector<std::set<std::string>> index_cols_set;
         for (const auto& column_key : it->second.column_key()) {
             std::set<std::string> col_set;
@@ -1020,7 +1044,9 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             }
             new_indexs.push_back(column_key);
         }
-        new_index_map.emplace(kv.first, std::move(new_indexs));
+        if (!new_indexs.empty()) {
+            new_index_map.emplace(kv.first, std::move(new_indexs));
+        }
     }
     // load new index data to table
     for (auto& kv : new_index_map) {
@@ -1281,7 +1307,7 @@ void HandleSQL(const std::string& sql) {
             if (status.OK()) {
                 sr->RefreshCatalog();
                 std::cout << "SUCCEED: Create successfully" << std::endl;
-            }  else {
+            } else {
                 std::cout << "ERROR: " << status.msg << std::endl;
             }
             return;
@@ -1328,7 +1354,7 @@ void HandleSQL(const std::string& sql) {
         case hybridse::node::kPlanTypeDeploy: {
             auto status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
             if (!status.OK()) {
-                std::cout << status.msg << std::endl;
+                std::cout << "ERROR: " << status.msg << std::endl;
             } else {
                 std::cout << "SUCCEED: deploy successfully" << std::endl;
             }

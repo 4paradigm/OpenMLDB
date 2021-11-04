@@ -35,7 +35,7 @@ bool ConditionOptimized::JoinConditionOptimized(PhysicalBinaryNode* in,
         return false;
     }
     node::ExprListNode and_conditions;
-    if (!TransfromAndConditionList(join->condition_.condition_,
+    if (!TransfromAndConditionList(join->condition_.condition(),
                                    &and_conditions)) {
         return false;
     }
@@ -65,7 +65,7 @@ bool ConditionOptimized::JoinConditionOptimized(PhysicalBinaryNode* in,
 bool ConditionOptimized::FilterConditionOptimized(PhysicalOpNode* in,
                                                   Filter* filter) {
     node::ExprListNode and_conditions;
-    if (!TransfromAndConditionList(filter->condition_.condition_,
+    if (!TransfromAndConditionList(filter->condition_.condition(),
                                    &and_conditions)) {
         return false;
     }

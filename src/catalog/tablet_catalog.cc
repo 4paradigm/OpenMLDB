@@ -26,7 +26,7 @@
 #include "catalog/schema_adapter.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-DECLARE_bool(enable_distsql);
+
 DECLARE_bool(enable_localtablet);
 namespace openmldb {
 namespace catalog {

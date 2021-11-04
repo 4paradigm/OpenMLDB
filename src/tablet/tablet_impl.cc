@@ -148,28 +148,12 @@ bool TabletImpl::Init(const std::string& real_endpoint) {
 
 bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint,
                       const std::string& real_endpoint) {
-    ::hybridse::vm::EngineOptions options;
-    options.set_cluster_optimized(FLAGS_enable_distsql);
-    engine_ = std::unique_ptr<::hybridse::vm::Engine>(new ::hybridse::vm::Engine(catalog_, options));
-    catalog_->SetLocalTablet(
-        std::shared_ptr<::hybridse::vm::Tablet>(new ::hybridse::vm::LocalTablet(engine_.get(), sp_cache_)));
-    std::set<std::string> snapshot_compression_set{"off", "zlib", "snappy"};
-    if (snapshot_compression_set.find(FLAGS_snapshot_compression) == snapshot_compression_set.end()) {
-        LOG(WARNING) << "wrong snapshot_compression: " << FLAGS_snapshot_compression;
-        return false;
-    }
-    std::set<std::string> file_compression_set{"off", "zlib", "lz4"};
-    if (file_compression_set.find(FLAGS_file_compression) == file_compression_set.end()) {
-        LOG(WARNING) << "wrong FLAGS_file_compression: " << FLAGS_file_compression;
-        return false;
-    }
     zk_cluster_ = zk_cluster;
     zk_path_ = zk_path;
     endpoint_ = endpoint;
     notify_path_ = zk_path + "/table/notify";
     sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
     ::openmldb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_);
-
     ::openmldb::base::SplitString(FLAGS_recycle_bin_root_path, ",", mode_recycle_root_paths_);
     if (!zk_cluster.empty()) {
         zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
@@ -184,6 +168,25 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         startup_mode_ = ::openmldb::type::StartupMode::kStandalone;
     }
 
+    ::hybridse::vm::EngineOptions options;
+    if (IsClusterMode()) {
+        options.set_cluster_optimized(FLAGS_enable_distsql);
+    } else {
+        options.set_cluster_optimized(false);
+    }
+    engine_ = std::unique_ptr<::hybridse::vm::Engine>(new ::hybridse::vm::Engine(catalog_, options));
+    catalog_->SetLocalTablet(
+        std::shared_ptr<::hybridse::vm::Tablet>(new ::hybridse::vm::LocalTablet(engine_.get(), sp_cache_)));
+    std::set<std::string> snapshot_compression_set{"off", "zlib", "snappy"};
+    if (snapshot_compression_set.find(FLAGS_snapshot_compression) == snapshot_compression_set.end()) {
+        LOG(WARNING) << "wrong snapshot_compression: " << FLAGS_snapshot_compression;
+        return false;
+    }
+    std::set<std::string> file_compression_set{"off", "zlib", "lz4"};
+    if (file_compression_set.find(FLAGS_file_compression) == file_compression_set.end()) {
+        LOG(WARNING) << "wrong FLAGS_file_compression: " << FLAGS_file_compression;
+        return false;
+    }
     if (FLAGS_make_snapshot_time < 0 || FLAGS_make_snapshot_time > 23) {
         PDLOG(WARNING, "make_snapshot_time[%d] is illegal.", FLAGS_make_snapshot_time);
         return false;
@@ -677,12 +680,12 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
 
 int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::string& msg) {
     msg.clear();
-    if (table_meta->name().size() <= 0) {
+    if (table_meta->name().empty()) {
         msg = "table name is empty";
         return -1;
     }
     if (table_meta->tid() <= 0) {
-        msg = "tid is zero";
+        msg = "tid <= 0, invalid";
         return -1;
     }
     std::map<std::string, ::openmldb::type::DataType> column_map;
