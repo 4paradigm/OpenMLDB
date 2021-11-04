@@ -2,7 +2,7 @@
 
 ## Deployment
 ### Modify Config
-1. Please replace 127.0.0.1 with the server IP if you want to access remotely
+1. Please replace `127.0.0.1` with the server IP if you want to access remotely
 2. (Optional) Please change the port number if it is occupied by another service
 
 * conf/tablet.flags
@@ -47,7 +47,7 @@ sh bin/stop-all.sh
 > USE demo_db;
 > CREATE TABLE demo_table1(c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, index(ts=c7));
 ```
-**Note**: Specify at least one index and set the ts column which is used for ORDERBY. The ts column is the key in index option and can be setted with timestamp or bigint column only. 
+**Note**: Specify at least one index and set the `ts` column which is used for ORDERBY. The `ts` column is the key in `index` option and can be setted with `timestamp` or `bigint` column only. 
 ### Import Data
 Only support csv file format
 ```sql
@@ -124,11 +124,11 @@ http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
               |               |                        |
        APIServer endpoint  Database name        Deployment name
 ```
-As input data is in the json format, we should pack rows into input values.  
+As input data is in the json format, we should pack rows into `input` values.  
 Ex:
 ```bash
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
 "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
 }'
 ```
-The ip and port in url is endpoint in conf/apiserver.flags
+The ip and port in url is `endpoint` in `conf/apiserver.flags`

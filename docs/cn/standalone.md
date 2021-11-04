@@ -2,7 +2,7 @@
 
 ## 部署
 ### 修改配置文件
-1. 如果需要在其他节点执行命令和访问http, 需要把127.0.0.1替换成机器ip地址
+1. 如果需要在其他节点执行命令和访问http, 需要把`127.0.0.1`替换成机器ip地址
 2. 如果端口被占用需要改成其他端口
 
 * conf/tablet.flags
@@ -47,7 +47,7 @@ sh bin/stop-all.sh
 > USE demo_db;
 > CREATE TABLE demo_table1(c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, index(ts=c7));
 ```
-**注**: 需要至少指定一个index并设置ts列。ts列是用来做orderby的那一列
+**注**: 需要至少指定一个index并设置`ts`列。`ts`列是用来做ORDERBY的那一列
 ### 导入数据
 只支持导入本地csv文件
 ```sql
@@ -124,11 +124,11 @@ http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
               |               |                        |
         APIServer地址     Database名字            Deployment名字
 ```
-输入数据是一个json，把一行数据放到input的value中  
+输入数据是一个json，把一行数据放到`input`的value中  
 示例:
 ```bash
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
 "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
 }'
 ```
-URL中ip和port是conf/apiserver.flags中配置的endpoint
+URL中ip和port是`conf/apiserver.flags`中配置的`endpoint`
