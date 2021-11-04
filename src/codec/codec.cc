@@ -924,12 +924,12 @@ bool RowProject::Init() {
             max_idx_ = idx;
         }
     }
-    for (const auto it : vers_schema_) {
-        if (max_idx_ >= (uint32_t)it.second->size()) {
+    for (const auto& sch : vers_schema_) {
+        if (max_idx_ >= static_cast<uint32_t>(sch.second->size())) {
             continue;
         }
-        std::shared_ptr<RowView> rv = std::make_shared<RowView>(*it.second);
-        vers_views_.insert(std::make_pair(it.first, rv));
+        std::shared_ptr<RowView> rv = std::make_shared<RowView>(*sch.second);
+        vers_views_.insert(std::make_pair(sch.first, rv));
     }
     if (vers_views_.empty()) {
         LOG(WARNING) << "empty row views";
