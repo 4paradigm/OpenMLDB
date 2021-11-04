@@ -93,14 +93,15 @@ bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common
     decltype(common_cols_v.Size()) non_common_idx = 0, common_idx = 0;
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
         // if element is null, GetStringLength() will get 0
-        if (sch->GetColumnType(i) != hybridse::sdk::kTypeString) {
-            continue;
-        }
         if (sch->IsConstant(i)) {
-            str_len_sum += common_cols_v[common_idx].GetStringLength();
+            if (sch->GetColumnType(i) == hybridse::sdk::kTypeString) {
+                str_len_sum += common_cols_v[common_idx].GetStringLength();
+            }
             ++common_idx;
         } else {
-            str_len_sum += non_common_cols_v[non_common_idx].GetStringLength();
+            if (sch->GetColumnType(i) == hybridse::sdk::kTypeString) {
+                str_len_sum += non_common_cols_v[non_common_idx].GetStringLength();
+            }
             ++non_common_idx;
         }
     }
