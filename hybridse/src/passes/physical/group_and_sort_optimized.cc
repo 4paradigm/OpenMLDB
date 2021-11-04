@@ -475,26 +475,6 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
                     return false;
                 }
 
-                size_t schema_idx = 0;
-                size_t col_idx = 0;
-                if (root_schemas_ctx->ResolveColumnRefIndex(column, &schema_idx, &col_idx).isOK()) {
-                    auto type = root_schemas_ctx->GetSchemaSource(schema_idx)->GetColumnType(col_idx);
-                    switch (type) {
-                        case type::kBool:
-                        case type::kInt16:
-                        case type::kInt32:
-                        case type::kInt64:
-                        case type::kVarchar:
-                        case type::kDate:
-                        case type::kTimestamp:
-                            break;
-                        default: {
-                            this->status_.code = common::kPhysicalPlanError;
-                            this->status_.msg = absl::StrCat("unsupported group key by type ", type);
-                            LOG(ERROR) << "unsupported group key by type " << type;
-                        }
-                    }
-                }
                 result_bitmap_mapping[columns.size()] = i;
                 columns.push_back(source_column_name);
                 break;

@@ -197,7 +197,7 @@ class BatchModeTransformer {
     virtual Status TransformProjectOp(node::ProjectListNode* node,
                                       PhysicalOpNode* depend, bool append_input,
                                       PhysicalOpNode** output);
-    virtual Status ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
+    virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
 
     template <typename Op, typename... Args>
     Status CreateOp(Op** op, Args&&... args) {
@@ -225,6 +225,7 @@ class BatchModeTransformer {
 
     base::Status CheckTimeOrIntegerOrderColumn(
         const node::OrderByNode* orders, const SchemasContext* schemas_ctx);
+    Status CheckPartitionColumn(const node::ExprListNode* partition, const SchemasContext* ctx);
 
     base::Status ExtractGroupKeys(vm::PhysicalOpNode* depend, const node::ExprListNode** keys);
     node::NodeManager* node_manager_;
@@ -270,7 +271,7 @@ class RequestModeTransformer : public BatchModeTransformer {
                                PhysicalOpNode** primary_source);
 
  protected:
-    Status ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
+    void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
     Status TransformProjectOp(node::ProjectListNode* node,
                                       PhysicalOpNode* depend, bool append_input,
                                       PhysicalOpNode** output) override;
