@@ -1,9 +1,9 @@
-# 单机版使用文档
+# Standalone Mode Guideline
 
-## 部署
-### 修改配置文件
-1. 如果需要在其他节点执行命令和访问http, 需要把127.0.0.1替换成机器ip地址
-2. 如果端口被占用需要改成其他端口
+## Deployment
+### Modify Config
+1. Replace 127.0.0.1 with the real IP if may be accessed in another node
+2. If the specific port is unavailable, change to another port
 
 * conf/tablet.flags
    ```
@@ -12,7 +12,7 @@
 * conf/nameserver.flags
    ```
    --endpoint=127.0.0.1:6527
-   # 和conf/tablet.flags中endpoint保持一致
+   # set the same value as the endpoint in conf/tablet.flags
    --tablet=127.0.0.1:9921
    #--zk_cluster=127.0.0.1:7181
    #--zk_root_path=/openmldb_cluste
@@ -20,52 +20,52 @@
 * conf/apiserver.flags
    ```
    --endpoint=127.0.0.1:8080
-   # 和conf/nameserver.flags中endpoint保存一致
+   # set the same value as the endpoint in conf/nameserver.flags
    --nameserver=127.0.0.1:6527
    ```
-### 启动服务
-```
+### Start service
+```bash
 sh bin/start-all.sh
 ```
-如需停止, 执行如下命令 
-```
+If want to stop, execute the command as follows 
+```bash
 sh bin/stop-all.sh
 ```
-## 使用
-### 启动CLI
+## Usage
+### Start CLI
 ```bash
-# host为conf/nameserver.flags中配置endpoint的ip, port为对应的port
+# The value of host and port is the endpoint in conf/nameserver.flags
 ./openmldb --host 127.0.0.1 --port 6527
 ```
-### 创建DB
+### Create DB
 ```sql
 > CREATE DATABASE demo_db;
 ```
 
-### 创建表
+### Create Table
 ```sql
 > USE demo_db;
 > CREATE TABLE demo_table1(c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, index(ts=c7));
 ```
-**注**: 需要至少指定一个index并设置ts列。ts列是用来做orderby的那一列
-### 导入数据
-只支持导入本地csv文件
+**Note**: Specify at least one index and set the ts column which is used for orderby
+### Import Data
+Only support csv file format
 ```sql
 > USE demo_db;
 > LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1;
 ```
-可以通过option指定额外的配置
-Name | Meaning | Type |  Default | Options
--- | -- | -- |  --  | --
-delimiter | 分隔符| String | , | Any char
-header | 是否有header| Boolean | true | true/false
-null_value | null值 | String | null | Any String
+Use option for advanced setting
+Name | Type |  Default | Options
+-- | -- |  --  | --
+delimiter | String | , | Any char
+header | Boolean | true | true/false
+null_value | String | null | Any String
 ```sql
 > LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1 options (delimiter=',', header=false);
 ```
-**注**: 分隔符只支持单个字符
-### 分析数据
-对数据集进行离线分析，为编写SQL语句进行特征抽取提供参考
+**Node**: Only support single character for delimiter
+### Data exploration
+Analyze data to provide reference for writing the SQL of feature extraction
 ```sql
 > USE demo_db;
 > SET PERFORMANCE_SENSITIVE = false;
@@ -78,33 +78,32 @@ null_value | null值 | String | null | Any String
 
 1 rows in set
 ```
-### 生成方案SQL
+### Generate SQL
 ```sql
 SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
-### 批量计算特征
+### Offline feature extraction
 ```sql
 > USE demo_db;
 > SET performance_sensitive=false;
 > SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 ```
-可以通过option指定额外的配置
-Name | Meaning | Type |  Default | Options
--- | -- | -- |  --  | --
-delimiter | 分隔符| String | , | Any char
-header | 是否有header| Boolean | true | true/false
-null_value | null值 | String | null | Any String
-mode | 模式 | String | error_if_exists | error_if_exists/overwrite/append
+Use option for advanced setting
+Name | Type |  Default | Options
+-- | -- |  --  | --
+delimiter | String | , | Any char
+header | Boolean | true | true/false
+null_value | String | null | Any String
+mode | String | error_if_exists | error_if_exists/overwrite/append
 ```sql
 > SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' option (mode = 'overwrite', delimiter=',');
 ```
-### SQL方案上线
-将探索好的SQL方案Deploy到线上
+### Deploy SQL to online
 ```sql
 > USE demo_db;
 > DEPLOY demo_data_service SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
-上线后可以查看和删除SQL方案
+We can also show and drop deployment like this:
 ```sql
 > USE demo_db;
 > SHOW DEPLOYMENTS;
@@ -116,19 +115,20 @@ mode | 模式 | String | error_if_exists | error_if_exists/overwrite/append
 1 row in set
 > DROP DEPLOYMENT demo_data_service;
 ```
-### 实时特征计算
-url的格式为:
+### Online feature extraction
+We can use restful api executing online feature extraction
+The format of url as follows:
 ```
 http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
         \___________/      \____/              \_____________/
               |               |                        |
-        APIServer地址     Database名字            Deployment名字
+       APIServer endpoint  Database name        Deployment name
 ```
-输入数据是一个json，把一行数据放到input的value中  
-示例:
+Input data is json format，we should pack row into input values  
+Ex:
 ```bash
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
 "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
 }'
 ```
-URL中ip和port是conf/apiserver.flags中配置的endpoint
+The ip and port in url is endpoint in conf/apiserver.flags
