@@ -983,7 +983,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
         for (auto& column_key : kv.second) {
             if (!column_key.ts_name().empty() && ts_set.count(column_key.ts_name()) == 0) {
                 return {base::ReturnCode::kError,
-                    "ts col " + column_key.ts_name() + " is not exist in table " +kv.first};
+                        "ts col " + column_key.ts_name() + " is not exist in table " + kv.first};
             }
         }
     }
@@ -1222,6 +1222,10 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
     std::vector<std::string> cols;
     SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
     auto schema = sr->GetTableSchema(real_db, table);
+    if (!schema) {
+        *error = "table is not exist";
+        return false;
+    }
     if (static_cast<int>(cols.size()) != schema->GetColumnCnt()) {
         *error = "mismatch column size";
         return false;
