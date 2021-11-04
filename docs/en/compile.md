@@ -26,7 +26,7 @@
     make -j5 openmldb
     ```
 
-## Compile OpenMLDB Spark Distribution
+## Optimized Spark Distribution for OpenMLDB (Optional)
 
 [OpenMLDB Spark Distribution](https://github.com/4paradigm/spark) is the fork of [Apache Spark](https://github.com/apache/spark) which has more optimization for machine learning scenarios. It provides native LastJoin implementation and achieves 10x~100x performance improvement. You can use OpenMLDB Spark Distribution just like the standard Spark with the same Java/Scala/Python/SQL APIs.
 
