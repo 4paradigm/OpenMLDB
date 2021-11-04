@@ -711,7 +711,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                 std::cout << "SUCCEED: Drop successfully" << std::endl;
                 sr->RefreshCatalog();
             } else {
-                std::cout << "ERROR: Failed to drop: " << error << std::endl;
+                std::cout << "ERROR: Failed to drop, " << error << std::endl;
             }
             break;
         }
@@ -726,7 +726,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             if (ok) {
                 std::cout << "SUCCEED: Drop index successfully" << std::endl;
             } else {
-                std::cout << "ERROR: Fail to drop index: " << error << std::endl;
+                std::cout << "ERROR: Fail to drop index, " << error << std::endl;
             }
             break;
         }
@@ -742,7 +742,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
 
             std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cs->GetProcedureInfo(db_name, sp_name, &error);
             if (!sp_info) {
-                std::cout << "ERROR: Fail to show procedure: " << error << std::endl;
+                std::cout << "ERROR: Fail to show procedure, " << error << std::endl;
                 return;
             }
             PrintProcedureInfo(*sp_info);
@@ -773,7 +773,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             if (ok) {
                 std::cout << "SUCCEED: Drop successfully" << std::endl;
             } else {
-                std::cout << "ERROR: Failed to drop: " << error << std::endl;
+                std::cout << "ERROR: Failed to drop, " << error << std::endl;
             }
             break;
         }
@@ -854,7 +854,7 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode* create_index_node)
     ::openmldb::common::ColumnKey column_key;
     hybridse::base::Status status;
     if (!::openmldb::sdk::NodeAdapter::TransformToColumnKey(create_index_node->index_, {}, &column_key, &status)) {
-        std::cout << "ERROR: Failed to create index: " << status.msg << std::endl;
+        std::cout << "ERROR: Failed to create index, " << status.msg << std::endl;
         return;
     }
     // `create index` must set the index name.
@@ -871,7 +871,7 @@ void HandleCreateIndex(const hybridse::node::CreateIndexNode* create_index_node)
     if (ok) {
         std::cout << "SUCCEED: Create index successfully" << std::endl;
     } else {
-        std::cout << "ERROR: Failed to create index: " << error << std::endl;
+        std::cout << "ERROR: Failed to create index, " << error << std::endl;
         return;
     }
 }
