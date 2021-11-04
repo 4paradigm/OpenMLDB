@@ -225,7 +225,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
         }
     }
     if (!fstream.is_open()) {
-        status->msg = "ERROR: Fail to open file, please check file path";
+        status->msg = "ERROR: Failed to open file, please check file path";
         status->code = openmldb::base::kSQLCmdRunError;
         return;
     }
@@ -726,7 +726,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             if (ok) {
                 std::cout << "SUCCEED: Drop index successfully" << std::endl;
             } else {
-                std::cout << "ERROR: Fail to drop index, " << error << std::endl;
+                std::cout << "ERROR: Failed to drop index, " << error << std::endl;
             }
             break;
         }
@@ -742,7 +742,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
 
             std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cs->GetProcedureInfo(db_name, sp_name, &error);
             if (!sp_info) {
-                std::cout << "ERROR: Fail to show procedure, " << error << std::endl;
+                std::cout << "ERROR: Failed to show procedure, " << error << std::endl;
                 return;
             }
             PrintProcedureInfo(*sp_info);
@@ -1293,7 +1293,7 @@ void HandleSQL(const std::string& sql) {
             ::hybridse::sdk::Status status;
             auto info = sr->Explain(db, mu_script, &status, performance_sensitive);
             if (!info) {
-                std::cout << "ERROR: Fail to get explain info" << std::endl;
+                std::cout << "ERROR: Failed to get explain info" << std::endl;
                 return;
             }
             std::cout << info->GetPhysicalPlan() << std::endl;
@@ -1347,7 +1347,7 @@ void HandleSQL(const std::string& sql) {
             ::hybridse::sdk::Status status;
             bool ok = sr->ExecuteInsert(db, sql, &status);
             if (!ok) {
-                std::cout << "ERROR: Fail to execute insert" << std::endl;
+                std::cout << "ERROR: Failed to execute insert" << std::endl;
             } else {
                 std::cout << "SUCCEED: Insert successfully" << std::endl;
             }
@@ -1381,7 +1381,7 @@ void HandleSQL(const std::string& sql) {
             ::hybridse::sdk::Status status;
             auto rs = sr->ExecuteSQL(db, query_sql, &status, performance_sensitive);
             if (!rs) {
-                std::cout << "ERROR: Fail to execute query" << std::endl;
+                std::cout << "ERROR: Failed to execute query" << std::endl;
             } else {
                 ::openmldb::base::Status openmldb_base_status;
                 SaveResultSet(rs.get(), file_path, options_map, &openmldb_base_status);
@@ -1475,12 +1475,12 @@ void ClusterSQLClient() {
     cs = new ::openmldb::sdk::ClusterSDK(copt);
     bool ok = cs->Init();
     if (!ok) {
-        std::cout << "ERROR: Fail to connect to db" << std::endl;
+        std::cout << "ERROR: Failed to connect to db" << std::endl;
         return;
     }
     sr = new ::openmldb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
-        std::cout << "ERROR: Fail to connect to db" << std::endl;
+        std::cout << "ERROR: Failed to connect to db" << std::endl;
         return;
     }
     Shell();
@@ -1495,12 +1495,12 @@ bool StandAloneInit() {
     cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
     bool ok = cs->Init();
     if (!ok) {
-        std::cout << "ERROR: Fail to connect to db" << std::endl;
+        std::cout << "ERROR: Failed to connect to db" << std::endl;
         return false;
     }
     sr = new ::openmldb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
-        std::cout << "ERROR: Fail to connect to db" << std::endl;
+        std::cout << "ERROR: Failed to connect to db" << std::endl;
         return false;
     }
     return true;
