@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "passes/physical/physical_pass.h"
 
 namespace hybridse {
@@ -100,10 +101,11 @@ class TransformUpPysicalPass : public PhysicalPass {
      */
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** out) = 0;
 
-    Status Apply(PhysicalPlanContext* ctx, PhysicalOpNode* in,
-                 PhysicalOpNode** out) override {
+    Status Apply(PhysicalPlanContext* ctx, PhysicalOpNode* in, PhysicalOpNode** out) override {
         return base::Status(common::kPlanError, "Not implemented");
     }
+
+    const Status& GetStatus() const { return status_; }
 
  protected:
     PhysicalPlanContext* plan_ctx_;
@@ -111,6 +113,9 @@ class TransformUpPysicalPass : public PhysicalPass {
     const std::string db_;
     std::shared_ptr<Catalog> catalog_;
     std::unordered_map<int, bool> visited_ids_;
+
+    // last status information of this physical pass
+    base::Status status_ = base::Status::OK();
 };
 
 }  // namespace passes

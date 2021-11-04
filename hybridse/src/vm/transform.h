@@ -197,7 +197,7 @@ class BatchModeTransformer {
     virtual Status TransformProjectOp(node::ProjectListNode* node,
                                       PhysicalOpNode* depend, bool append_input,
                                       PhysicalOpNode** output);
-    virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
+    virtual Status ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
 
     template <typename Op, typename... Args>
     Status CreateOp(Op** op, Args&&... args) {
@@ -270,15 +270,15 @@ class RequestModeTransformer : public BatchModeTransformer {
                                PhysicalOpNode** primary_source);
 
  protected:
-    void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
-    virtual Status TransformProjectOp(node::ProjectListNode* node,
+    Status ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
+    Status TransformProjectOp(node::ProjectListNode* node,
                                       PhysicalOpNode* depend, bool append_input,
-                                      PhysicalOpNode** output);
-    virtual Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
-                                          PhysicalOpNode** output);
-    virtual Status TransformJoinOp(const node::JoinPlanNode* node,
-                                   PhysicalOpNode** output);
-    virtual Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output);
+                                      PhysicalOpNode** output) override;
+    Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
+                                          PhysicalOpNode** output) override;
+    Status TransformJoinOp(const node::JoinPlanNode* node,
+                                   PhysicalOpNode** output) override;
+    Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output) override;
 
  private:
     bool enable_batch_request_opt_;

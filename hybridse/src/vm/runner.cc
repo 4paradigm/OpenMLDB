@@ -3155,8 +3155,10 @@ const std::string KeyGenerator::Gen(const Row& row, const Row& parameter) {
                     keys.append(std::to_string(buf));
                 break;
             }
-            default:
-                continue;
+            default: {
+                DLOG(ERROR) << "unsupported: partition key of type float, double, blob or null";
+                break;
+            }
         }
     }
     return keys;

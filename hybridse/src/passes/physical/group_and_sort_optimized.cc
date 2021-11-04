@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "passes/physical/group_and_sort_optimized.h"
+#include <absl/strings/str_cat.h>
 
 #include <map>
 #include <memory>
@@ -211,9 +212,13 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
  * otherwise:
  *   - `left_key`, `index_key` corresponding to Key group & Key hash
  */
-bool GroupAndSortOptimized::KeysOptimized(
-    const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key,
-    Key* index_key, Key* right_key, Sort* sort, PhysicalOpNode** new_in) {
+bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx,
+                                          PhysicalOpNode* in,
+                                          Key* left_key,
+                                          Key* index_key,
+                                          Key* right_key,
+                                          Sort* sort,
+                                          PhysicalOpNode** new_in) {
     if (nullptr == left_key || nullptr == index_key || !left_key->ValidKey()) {
         return false;
     }
@@ -453,6 +458,27 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
                 if (!ResolveColumnToSourceColumnName(column, root_schemas_ctx,
                                                      &source_column_name)) {
                     return false;
+                }
+
+                size_t schema_idx = 0;
+                size_t col_idx = 0;
+                if (root_schemas_ctx->ResolveColumnRefIndex(column, &schema_idx, &col_idx).isOK()) {
+                    auto type = root_schemas_ctx->GetSchemaSource(schema_idx)->GetColumnType(col_idx);
+                    switch (type) {
+                        case type::kBool:
+                        case type::kInt16:
+                        case type::kInt32:
+                        case type::kInt64:
+                        case type::kVarchar:
+                        case type::kDate:
+                        case type::kTimestamp:
+                            break;
+                        default: {
+                            this->status_.code = common::kPhysicalPlanError;
+                            this->status_.msg = absl::StrCat("unsupported group key by type ", type);
+                            LOG(ERROR) << "unsupported group key by type " << type;
+                        }
+                    }
                 }
                 result_bitmap_mapping[columns.size()] = i;
                 columns.push_back(source_column_name);

@@ -1153,7 +1153,7 @@ Status BatchModeTransformer::TransformProjectOp(
     }
 }
 
-void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
+Status BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
                                        PhysicalOpNode** output) {
     // do not change physical plan if pass failed
     *output = node;
@@ -1175,6 +1175,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
             case PhysicalPlanPassType::kPassGroupAndSortOptimized: {
                 GroupAndSortOptimized pass(&plan_ctx_);
                 transformed = pass.Apply(cur_op, &new_op);
+                CHECK_STATUS(pass.GetStatus());
                 break;
             }
             case PhysicalPlanPassType::kPassLeftJoinOptimized: {
@@ -1218,10 +1219,13 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
         Status status = pass.Apply(&plan_ctx_, *output, &pruned_op);
         if (!status.isOK()) {
             DLOG(WARNING) << status;
-            return;
+            // TODO(aceforeverd): fix return status
+            return Status::OK();
         }
         *output = pruned_op;
     }
+
+    return Status::OK();
 }
 
 std::string BatchModeTransformer::ExtractSchemaName(PhysicalOpNode* in) {
@@ -1496,7 +1500,7 @@ Status BatchModeTransformer::TransformPhysicalPlan(
                            << physical_plan->GetTreeString();
 
                 PhysicalOpNode* optimized_physical_plan = nullptr;
-                ApplyPasses(physical_plan, &optimized_physical_plan);
+                CHECK_STATUS(ApplyPasses(physical_plan, &optimized_physical_plan));
 
                 DLOG(INFO) << "After optimization: \n"
                            << optimized_physical_plan->GetTreeString();
@@ -2011,19 +2015,20 @@ Status RequestModeTransformer::TransformProjectOp(
     }
 }
 
-void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
+Status RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
                                          PhysicalOpNode** output) {
     PhysicalOpNode* optimized = nullptr;
+    Status s = Status::OK();
     this->BatchModeTransformer::ApplyPasses(node, &optimized);
     if (optimized == nullptr) {
         *output = node;
         DLOG(WARNING) << "Final optimized result is null";
-        return;
+        return s;
     }
     if (!enable_batch_request_opt_ ||
         batch_request_info_.common_column_indices.empty()) {
         *output = optimized;
-        return;
+        return s;
     }
     LOG(INFO) << "Before batch request optimization:\n" << *optimized;
     PhysicalOpNode* batch_request_plan = nullptr;
@@ -2033,9 +2038,9 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
         this->GetPlanContext(), optimized, &batch_request_plan);
     if (!status.isOK()) {
         DLOG(WARNING) << "Fail to perform batch request optimization: "
-                     << status;
+                     << s;
         *output = optimized;
-        return;
+        return s;
     }
     LOG(INFO) << "After batch request optimization:\n" << *batch_request_plan;
     batch_request_optimizer.ExtractCommonNodeSet(
@@ -2043,7 +2048,7 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
     batch_request_info_.output_common_column_indices =
         batch_request_optimizer.GetOutputCommonColumnIndices();
     *output = batch_request_plan;
-    return;
+    return s;
 }
 
 }  // namespace vm
