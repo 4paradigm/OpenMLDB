@@ -37,14 +37,12 @@
 #include "passes/physical/simple_project_optimized.h"
 #include "passes/physical/window_column_pruning.h"
 
-using ::hybridse::base::Status;
-using ::hybridse::common::kPlanError;
-using ::hybridse::common::kCodegenError;
-
 namespace hybridse {
 namespace vm {
 
-using hybridse::passes::CheckExprDependOnChildOnly;
+using ::hybridse::base::Status;
+using ::hybridse::common::kPlanError;
+using ::hybridse::common::kCodegenError;
 using hybridse::passes::ClusterOptimized;
 using hybridse::passes::CommonColumnOptimize;
 using hybridse::passes::ConditionOptimized;
@@ -542,9 +540,9 @@ Status BatchModeTransformer::CreateRequestUnionNode(
     return Status::OK();
 }
 
-Status BatchModeTransformer::TransformWindowOp(
-    PhysicalOpNode* depend, const node::WindowPlanNode* w_ptr,
-    PhysicalOpNode** output) {
+Status BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
+                                               const node::WindowPlanNode* w_ptr,
+                                               PhysicalOpNode** output) {
     // sanity check
     CHECK_TRUE(depend != nullptr && output != nullptr, kPlanError,
                "Depend node or output node is null");
@@ -612,14 +610,14 @@ Status BatchModeTransformer::TransformWindowOp(
                     auto child_schemas_ctx =
                         join_op->GetProducer(0)->schemas_ctx();
                     if (!node::ExprListNullOrEmpty(groups)) {
-                        CHECK_STATUS(CheckExprDependOnChildOnly(
+                        CHECK_STATUS(passes::CheckExprDependOnChildOnly(
                                          groups, child_schemas_ctx),
                                      "Fail to handle window: group "
                                      "expression should belong to left table");
                     }
                     if (nullptr != orders &&
                         !node::ExprListNullOrEmpty(orders->order_expressions_)) {
-                        CHECK_STATUS(CheckExprDependOnChildOnly(
+                        CHECK_STATUS(passes::CheckExprDependOnChildOnly(
                                          orders->order_expressions_, child_schemas_ctx),
                                      "Fail to handle window: group "
                                      "expression should belong to left table");
@@ -1116,9 +1114,10 @@ base::Status BatchModeTransformer::ExtractGroupKeys(vm::PhysicalOpNode* depend, 
     *keys = dynamic_cast<PhysicalGroupNode*>(depend)->group().keys_;
     return base::Status::OK();
 }
-Status BatchModeTransformer::TransformProjectOp(
-    node::ProjectListNode* project_list, PhysicalOpNode* node,
-    bool append_input, PhysicalOpNode** output) {
+Status BatchModeTransformer::TransformProjectOp(node::ProjectListNode* project_list,
+                                                PhysicalOpNode* node,
+                                                bool append_input,
+                                                PhysicalOpNode** output) {
     auto depend = node;
     if (nullptr == depend) {
         return CreatePhysicalConstProjectNode(project_list, output);
@@ -1776,7 +1775,7 @@ Status BatchModeTransformer::CheckPartitionColumn(const node::ExprListNode* part
                         case type::kTimestamp:
                             break;
                         default: {
-                            CHECK_TRUE(false, kPlanError, "unsupported group key by type ", type);
+                            CHECK_TRUE(false, common::kPhysicalPlanError, "unsupported group key by type ", type);
                         }
                     }
                 }

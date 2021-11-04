@@ -343,6 +343,49 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     ASSERT_EQ(oos.str(), exp);
 }
 
+void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog, const std::string& sql, int err_code) {
+    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
+
+    ::hybridse::node::NodeManager manager;
+    ::hybridse::node::PlanNodeList plan_trees;
+    ::hybridse::base::Status status;
+
+    // logical plan consider pass
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &manager, status)) << status;
+    ASSERT_EQ(common::kOk, status.code);
+
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_op_generator", *ctx);
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
+    BatchModeTransformer transform(&manager, "db", catalog, nullptr, m.get(), lib);
+
+    transform.AddDefaultPasses();
+    PhysicalOpNode* physical_plan = nullptr;
+
+    status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
+    EXPECT_EQ(err_code, status.code) << status;
+}
+
+// physical plan transform will fail if the partition key of a window is not in the supported type list
+//  which is [bool, intxx, data, timestamp, string]
+TEST_F(TransformTest, PhysicalPlanFailOnPartitionType) {
+    hybridse::type::Database db;
+    auto catalog = BuildSimpleCatalog(db);
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_catalog("db");
+
+    AddTable(db, table_def);
+    catalog->AddDatabase(db);
+
+    const std::string sql = R"sql(SELECT sum(col1) OVER w1 as w1_c4_sum FROM t1
+                                  WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);)sql";
+
+    PhysicalPlanFailCheck(catalog, sql, common::kPhysicalPlanError);
+}
+
 TEST_F(TransformTest, TransfromConditionsTest) {
     std::vector<std::pair<std::string, std::vector<std::string>>> sql_exp;
 
@@ -803,12 +846,12 @@ INSTANTIATE_TEST_SUITE_P(
                        "col1, "
                        "sum(col3) OVER w1 as w1_col3_sum, "
                        "sum(col2) OVER w1 as w1_col2_sum "
-                       "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+                       "FROM t1 WINDOW w1 AS (PARTITION BY col6 ORDER BY col5 "
                        "ROWS_RANGE BETWEEN 3 "
                        "PRECEDING AND CURRENT ROW) limit 10;",
                        "LIMIT(limit=10, optimized)\n"
                        "  PROJECT(type=WindowAggregation, limit=10)\n"
-                       "    +-WINDOW(partition_keys=(col3), orders=(col5 ASC), "
+                       "    +-WINDOW(partition_keys=(col6), orders=(col5 ASC), "
                        "range=(col5, "
                        "-3, 0))\n"
                        "    DATA_PROVIDER(table=t1)")));
