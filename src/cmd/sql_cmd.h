@@ -1224,6 +1224,10 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
     std::vector<std::string> cols;
     SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
     auto schema = sr->GetTableSchema(real_db, table);
+    if (!schema) {
+        *error = "table is not exist";
+        return false;
+    }
     if (static_cast<int>(cols.size()) != schema->GetColumnCnt()) {
         *error = "mismatch column size";
         return false;
