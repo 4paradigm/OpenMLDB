@@ -983,7 +983,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
         for (auto& column_key : kv.second) {
             if (!column_key.ts_name().empty() && ts_set.count(column_key.ts_name()) == 0) {
                 return {base::ReturnCode::kError,
-                    "ts col " + column_key.ts_name() + " is not exist in table " +kv.first};
+                        "ts col " + column_key.ts_name() + " is not exist in table " + kv.first};
             }
         }
     }
@@ -1064,15 +1064,17 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
 }
 
 void SetVariable(const std::string& key, const hybridse::node::ConstNode* value) {
-    if (key == "performance_sensitive") {
+    std::string lower_key = key;
+    boost::to_lower(lower_key);
+    if (lower_key == "performance_sensitive") {
         if (value->GetDataType() == hybridse::node::kBool) {
             performance_sensitive = value->GetBool();
-            printf("Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true" : "false");
+            printf("SUCCEED: Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true" : "false");
         } else {
-            printf("The type of %s should be bool\n", key.c_str());
+            printf("ERROR: The type of %s should be bool\n", key.c_str());
         }
     } else {
-        printf("The variable key %s is not supported\n", key.c_str());
+        printf("ERROR: The variable key %s is not supported\n", key.c_str());
     }
 }
 
@@ -1199,7 +1201,7 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
         std::cout << st.msg << std::endl;
         return false;
     }
-    std::cout << "load " << file_path << " to " << real_db << "-" << table << ", options: delimiter ["
+    std::cout << "Load " << file_path << " to " << real_db << "-" << table << ", options: delimiter ["
               << options_parse.GetDelimiter() << "], has header[" << (options_parse.GetHeader() ? "true" : "false")
               << "], null_value[" << options_parse.GetNullValue() << "], format[" << options_parse.GetFormat() << "]"
               << std::endl;
@@ -1210,7 +1212,7 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
     }
     std::ifstream file(file_path);
     if (!file.is_open()) {
-        *error = "open failed";
+        *error = "open file failed";
         return false;
     }
 
@@ -1263,7 +1265,7 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
         }
         ++i;
     } while (std::getline(file, line));
-    LOG(INFO) << "load " << i << " rows";
+    std::cout << "Load " << i << " rows";
     return true;
 }
 
@@ -1396,10 +1398,10 @@ void HandleSQL(const std::string& sql) {
             auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
             std::string error;
             if (!HandleLoadDataInfile(plan->Db(), plan->Table(), plan->File(), plan->Options(), &error)) {
-                std::cout << "load data failed, err: " << error << std::endl;
+                std::cout << "ERROR: Load data failed, err: " << error << std::endl;
                 return;
             }
-            std::cout << "load data succeed" << std::endl;
+            std::cout << "SUCCEED: Load data succeed" << std::endl;
             return;
         }
         default: {
@@ -1449,7 +1451,6 @@ void Shell() {
         sql.append(buffer);
         if (sql == "quit;" || sql == "exit;" || sql == "quit" || sql == "exit") {
             std::cout << "Bye" << std::endl;
-            sql.clear();
             return;
         }
         if (sql.back() == ';') {
@@ -1475,12 +1476,12 @@ void ClusterSQLClient() {
     cs = new ::openmldb::sdk::ClusterSDK(copt);
     bool ok = cs->Init();
     if (!ok) {
-        std::cout << "Fail to connect to db" << std::endl;
+        std::cout << "ERROR: Fail to connect to db" << std::endl;
         return;
     }
     sr = new ::openmldb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
-        std::cout << "Fail to connect to db" << std::endl;
+        std::cout << "ERROR: Fail to connect to db" << std::endl;
         return;
     }
     Shell();
@@ -1489,18 +1490,18 @@ void ClusterSQLClient() {
 bool StandAloneInit() {
     // connect to nameserver
     if (FLAGS_host.empty() || FLAGS_port == 0) {
-        std::cout << "host or port is missing" << std::endl;
+        std::cout << "ERROR: Host or port is missing" << std::endl;
         return false;
     }
     cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
     bool ok = cs->Init();
     if (!ok) {
-        std::cout << "Fail to connect to db" << std::endl;
+        std::cout << "ERROR: Fail to connect to db" << std::endl;
         return false;
     }
     sr = new ::openmldb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
-        std::cout << "Fail to connect to db" << std::endl;
+        std::cout << "ERROR: Fail to connect to db" << std::endl;
         return false;
     }
     return true;
