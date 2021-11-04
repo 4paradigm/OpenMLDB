@@ -54,7 +54,7 @@ OpenMLDB 为基于大数据的实际业务场景提供了高性能的集群模�
 
 ## 5. 使用文档
 
-<mark>:point_right: 快速上手 </mark>
+:point_right: [快速上手](docs/cn/quickstart.md) 
 
 ## 6. 开发计划
 
@@ -67,7 +67,7 @@ OpenMLD 社区持续进行开发迭代，在此列出我们已经初步规划好
 
 ## 7. 社区
 
-<mark>**技术论坛**：</mark>你可以在我们的论坛上获得社区第一时间的技术支持，也可以跟我们反馈任何建议。
+**技术论坛**：（即将上线）
 
 **Github Issues 和 Discussions**: 如果你是一个严肃的开发者，我们非常欢迎加入我们 Github 上的开发者社区，近距离参与我们的开发迭代。Github Issues 主要用来搜集 bugs 以及反馈新特性需求；Github Discussions 主要用来给开发团队发布并且讨论 RFCs。
 

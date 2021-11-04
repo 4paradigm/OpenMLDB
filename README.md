@@ -57,7 +57,7 @@ This demo shows the entire workflow of building a machine learning application b
 
 ## 5. Documentation
 
-<mark>:point_right: Quick Start</mark>
+:point_right: [Quick Start](docs/en/quickstart.md)
 
 ## 6. Roadmap
 
@@ -76,7 +76,7 @@ You may join our community for feedback and discussion
 
 - **Github Issues and Discussions**: If you are a serious developer, you are most welcome to join our discussion on Github. **Issues** are used to report bugs and collect new requirements. **Discussions** are mostly used by our project maintainers to publish and comment RFCs.
 
-- <mark>**Forum (Chinese)**: (coming soon)</mark>
+- **Forum (Chinese)**: (coming soon)
 
 - **WeChat Groups (Chinese)**:
 
