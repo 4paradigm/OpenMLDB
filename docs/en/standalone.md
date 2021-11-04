@@ -47,7 +47,7 @@ sh bin/stop-all.sh
 > USE demo_db;
 > CREATE TABLE demo_table1(c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, index(ts=c7));
 ```
-**Note**: Specify at least one index and set the ts column which is used for ORDERBY.
+**Note**: Specify at least one index and set the ts column which is used for ORDERBY. The ts column is the key in index option and can be setted with timestamp or bigint column only. 
 ### Import Data
 Only support csv file format
 ```sql
