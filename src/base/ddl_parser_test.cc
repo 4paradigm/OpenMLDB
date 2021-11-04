@@ -61,6 +61,23 @@ class DDLParserTest : public ::testing::Test {
                                   "col5", "int64", "col6", "string"}));
     }
 
+    static bool AddColumnToTable(const std::string& col_name, const std::string& col_type,
+                                 hybridse::type::TableDef* table) {
+        // copy to trim
+        auto name = col_name;
+        auto type = col_type;
+        boost::trim(name);
+        boost::trim(type);
+        auto col = table->add_columns();
+        col->set_name(name);
+        auto t = codec::DATA_TYPE_MAP.find(type);
+        if (t == codec::DATA_TYPE_MAP.end()) {
+            return false;
+        }
+        col->set_type(codec::SchemaCodec::ConvertType(t->second));
+        return true;
+    }
+
     // , , {name, type, name, type, ...}
     static bool AddTableToDB(::hybridse::type::Database* db, const std::string& table_name,
                              std::initializer_list<std::string> cols_def) {
@@ -70,13 +87,26 @@ class DDLParserTest : public ::testing::Test {
         for (std::size_t i = 0; i < cols_def.size(); i += 2) {
             auto name = array[i];
             auto type = array[i + 1];
-            auto col = table->add_columns();
-            col->set_name(name);
-            auto t = codec::DATA_TYPE_MAP.find(type);
-            if (t == codec::DATA_TYPE_MAP.end()) {
-                return false;
-            }
-            col->set_type(codec::SchemaCodec::ConvertType(t->second));
+            EXPECT_TRUE(AddColumnToTable(name, type, table));
+        }
+        return true;
+    }
+    // , , "col:type,col:type,..."
+    static bool AddTableToDB(::hybridse::type::Database* db, const std::string& table_name,
+                             const std::string& cols_def) {
+        auto table = db->add_tables();
+        table->set_name(table_name);
+        std::vector<std::string> cols;
+        boost::split(cols, cols_def, boost::is_any_of(","));
+        for (auto& col : cols) {
+            // name: type
+            std::vector<std::string> vec;
+            boost::split(vec, col, boost::is_any_of(":"));
+            EXPECT_EQ(vec.size(), 2);
+
+            auto name = vec[0];
+            auto type = vec[1];
+            EXPECT_TRUE(AddColumnToTable(name, type, table));
         }
         return true;
     }
@@ -250,6 +280,28 @@ TEST_F(DDLParserTest, renameColumns) {
     auto index_map = DDLParser::ExtractIndexes(sql, db);
     ASSERT_FALSE(index_map.empty());
     LOG(INFO) << index_map;
+}
+
+TEST_F(DDLParserTest, mergeNode) {
+    AddTableToDB(&db, "t1", "id:int, pk1:string, col1:int32, std_ts:timestamp");
+    auto sql =
+        "SELECT id, pk1, col1, std_ts,\n"
+        "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as "
+        "w1_col1_sum,\n"
+        "      sum(col1) OVER w2 as w2_col1_sum,\n"
+        "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as "
+        "w3_col1_sum\n"
+        "      FROM t1\n"
+        "      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    auto index_map = DDLParser::ExtractIndexes(sql, db);
+    LOG(INFO) << index_map;
+    ASSERT_EQ(index_map.size(), 1);
+    auto index = index_map.begin()->second;
+    ASSERT_EQ(index.size(), 1);
+    auto ttl = index.begin()->ttl();
+    ASSERT_EQ(ttl.ttl_type(), type::TTLType::kAbsAndLat);
+    ASSERT_EQ(ttl.abs_ttl(), 1);
+    ASSERT_EQ(ttl.lat_ttl(), 2);
 }
 
 }  // namespace openmldb::base

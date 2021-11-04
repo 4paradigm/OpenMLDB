@@ -20,6 +20,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "proto/common.pb.h"
@@ -47,7 +48,7 @@ constexpr const char* DB_NAME = "ddl_parser_db";
 // Ref hybridse/src/passes/physical/group_and_sort_optimized.cc:651
 // // TODO(hw): hybridse should open this method
 bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
-        std::string* source_name);
+                                     std::string* source_name);
 
 class IndexMapBuilder {
  public:
@@ -87,7 +88,6 @@ class IndexMapBuilder {
     }
 
  private:
-    static constexpr int64_t MIN_TIME = 60 * 1000;
     static constexpr char KEY_MARK = ':';
     static constexpr char KEY_SEP = ',';
     static constexpr char TS_MARK = ';';
@@ -104,7 +104,11 @@ class GroupAndSortOptimizedParser {
 
     // LRD
     void Parse(PhysicalOpNode* cur_op) {
-        LOG_ASSERT(cur_op != nullptr);
+        if (!cur_op) {
+            LOG(DFATAL) << "parse nullptr";
+            return;
+        }
+
         // just parse, won't modify, but need to cast ptr, so we use non-const producers.
         auto& producers = cur_op->producers();
         for (auto& producer : producers) {
@@ -178,7 +182,7 @@ IndexMap DDLParser::ExtractIndexes(
 }
 
 IndexMap DDLParser::ExtractIndexes(const std::string& sql,
-        const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
+                                   const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
     ::hybridse::type::Database db;
     std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
     db.set_name(tmp_db);
@@ -203,7 +207,7 @@ std::string DDLParser::Explain(const std::string& sql, const ::hybridse::type::D
 }
 
 IndexMap DDLParser::ExtractIndexes(const std::string& sql, const hybridse::type::Database& db,
-                               hybridse::vm::RunSession* session) {
+                                   hybridse::vm::RunSession* session) {
     // To show index-based-optimization -> IndexSupport() == true -> whether to do LeftJoinOptimized
     // tablet catalog supports index, so we should add index support too
     auto cp = db;
@@ -225,8 +229,7 @@ IndexMap DDLParser::ParseIndexes(hybridse::vm::PhysicalOpNode* node) {
     return parser.GetIndexes();
 }
 
-bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& db,
-                    hybridse::vm::RunSession* session) {
+bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session) {
     // TODO(hw): engine is input, do not create in here
     auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
     catalog->AddDatabase(db);
@@ -305,10 +308,11 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
     }
 
     auto frame = range.frame();
-    auto start = frame->GetHistoryRangeStart();
-    auto rows_start = frame->GetHistoryRowsStart();
+    // TODO(hw): distinguish UNBOUNDED from 0, ref FrameExtent
+    auto start = -1 * frame->GetHistoryRangeStart();
+    auto rows_start = frame->GetHistoryRowsStartPreceding();
 
-    DLOG_ASSERT(start <= 0 && rows_start <= 0);
+    DCHECK(start >= 0 && rows_start >= 0);
 
     std::stringstream ss;
     range.frame()->Print(ss, "");
@@ -316,18 +320,29 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
 
     auto ttl_st_ptr = index_map_[latest_record_];
     auto type = frame->frame_type();
-    if (type == hybridse::node::kFrameRows) {
-        // frame_rows is valid
-        DLOG_ASSERT(frame->frame_range() == nullptr && frame->GetHistoryRowsStartPreceding() > 0);
-        ttl_st_ptr->set_lat_ttl(frame->GetHistoryRowsStartPreceding());
-        ttl_st_ptr->set_ttl_type(type::TTLType::kLatestTime);
-    } else {
-        // frame_range is valid
-        DLOG_ASSERT(type != hybridse::node::kFrameRowsMergeRowsRange) << "merge type, how to parse?";
-        DLOG_ASSERT(frame->frame_rows() == nullptr && frame->GetHistoryRangeStart() < 0);
-        // GetHistoryRangeStart is negative, ttl needs uint64
-        ttl_st_ptr->set_abs_ttl(ConvertToMinute(-1 * frame->GetHistoryRangeStart()));
-        ttl_st_ptr->set_ttl_type(type::TTLType::kAbsoluteTime);
+    switch (type) {
+        case hybridse::node::kFrameRows:
+            DCHECK(frame->frame_rows() && frame->frame_range() == nullptr);
+            ttl_st_ptr->set_lat_ttl(rows_start);
+            ttl_st_ptr->set_ttl_type(type::TTLType::kLatestTime);
+            break;
+        case hybridse::node::kFrameRange:
+        case hybridse::node::kFrameRowsRange:
+            DCHECK(frame->frame_rows() == nullptr && frame->frame_range());
+            // GetHistoryRangeStart is negative, ttl needs uint64
+            ttl_st_ptr->set_abs_ttl(ConvertToMinute(start));
+            ttl_st_ptr->set_ttl_type(type::TTLType::kAbsoluteTime);
+            break;
+        case hybridse::node::kFrameRowsMergeRowsRange:
+            DCHECK(frame->frame_rows() && frame->frame_range());
+            // use abs and ttl, only >abs_ttl and > lat_ttl will be expired
+            ttl_st_ptr->set_lat_ttl(rows_start);
+            ttl_st_ptr->set_abs_ttl(ConvertToMinute(start));
+            ttl_st_ptr->set_ttl_type(type::TTLType::kAbsAndLat);
+            break;
+        default:
+            LOG(WARNING) << "invalid type";
+            return false;
     }
     DLOG(INFO) << latest_record_ << " update ttl " << index_map_[latest_record_]->DebugString();
     // to avoid double update
@@ -417,7 +432,7 @@ std::pair<std::string, common::ColumnKey> IndexMapBuilder::Decode(const std::str
     std::vector<std::string> keys;
     boost::split(keys, keys_str, boost::is_any_of(std::string(1, KEY_SEP)));
     for (auto& key : keys) {
-        DLOG_ASSERT(!key.empty());
+        DCHECK(!key.empty());
         column_key.add_col_name(key);
     }
     // if no ts hint, do not set. No ts in index is OK
@@ -471,7 +486,7 @@ bool GroupAndSortOptimizedParser::KeysOptimizedParse(const SchemasContext* root_
                 return true;
             } else {
                 auto partition_op = dynamic_cast<hybridse::vm::PhysicalPartitionProviderNode*>(scan_op);
-                DLOG_ASSERT(partition_op != nullptr);
+                DCHECK(partition_op != nullptr);
                 auto index_name = partition_op->index_name_;
                 // Apply key columns and order column optimization with given index name
                 // Return false if given index do not match the keys and order column
