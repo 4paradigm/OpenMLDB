@@ -1173,8 +1173,10 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
                 break;
             }
             case PhysicalPlanPassType::kPassGroupAndSortOptimized: {
-                GroupAndSortOptimized pass(&plan_ctx_);
-                transformed = pass.Apply(cur_op, &new_op);
+                if (catalog_->IndexSupport()) {
+                    GroupAndSortOptimized pass(&plan_ctx_);
+                    transformed = pass.Apply(cur_op, &new_op);
+                }
                 break;
             }
             case PhysicalPlanPassType::kPassLeftJoinOptimized: {
@@ -1575,9 +1577,9 @@ Status BatchModeTransformer::GenFilter(Filter* filter, PhysicalOpNode* in) {
 
 Status BatchModeTransformer::GenConditionFilter(
     ConditionFilter* filter, const SchemasContext* schemas_ctx) {
-    if (nullptr != filter->condition_) {
+    if (nullptr != filter->condition()) {
         node::ExprListNode expr_list;
-        expr_list.AddChild(const_cast<node::ExprNode*>(filter->condition_));
+        expr_list.AddChild(const_cast<node::ExprNode*>(filter->condition()));
         CHECK_STATUS(plan_ctx_.InitFnDef(&expr_list, schemas_ctx, true, filter))
     }
     return Status::OK();
