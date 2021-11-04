@@ -19,7 +19,7 @@ English version|[中文版](README_cn.md)
 
 ## 1. Introduction
 
-OpenMLDB is an open-source database particularly designed to efficiently provide consistent data for machine learning.  A database for machine learning consists of two major tasks: feature extraction and feature store, which is served as data provisioning for offline training and online inference. Without OpenMLDB, there are two separate systems for online and offline data provisioning, which cost significant effort to verify the online-offline consistency. On the contrary, OpenMLDB supports the unified SQL programming and its execution engine for both online and offline data provisioning. As a result, the online-offline consistency is inherently guaranteed. Moreover, the system is carefully designed and optimized to ensure the efficiency. By taking advantages of OpenMLDB, SQL engineers are now able to write SQL scripts only to efficiently provide consistent data to machine learning, and an offline model can be immediately deployed for online serving with little cost involved.
+OpenMLDB is an open-source database particularly designed to efficiently provide consistent data for machine learning.  A database for machine learning consists of two major tasks: feature extraction and feature store, which are served as data provisioning for offline training and online inference. Without OpenMLDB, there are two separate systems for online and offline data provisioning, which cost significant effort to verify the online-offline consistency. On the contrary, OpenMLDB supports the unified SQL programming and its execution engine for both online and offline data provisioning. As a result, the online-offline consistency is inherently guaranteed. Moreover, the system is carefully designed and optimized to ensure the efficiency. By taking advantages of OpenMLDB, database engineers are now able to write SQL scripts only to efficiently provide consistent data to machine learning, and an offline model can be immediately deployed for online serving with little cost involved.
 <p align="center">
  <img src="images/workflow.png" alt="image-20211103103052252" width=850 />
  </p>
@@ -45,19 +45,19 @@ You can read our publications and blogs for more technical detail.
 
 ### 2.4. Cluster and Standalone Modes
 
-OpenMLDB can be operated under the powerful cluster mode, which is suitable for large-scale datasets and real-world applications. The cluster mode provides the scalability and high-availability. Moreover, since version 0.3.0, we introduce a lightweight standalone mode running on a single node, which is ideal for small businesses or the demonstration purpose. <mark>You can understand more detail about the standalone mode here.</mark>
+OpenMLDB can be operated under the powerful cluster mode, which is suitable for large-scale datasets and real-world applications. The cluster mode provides the scalability and high-availability. Moreover, since version 0.3.0, we introduce a lightweight standalone mode running on a single node, which is ideal for small businesses and demonstration. :point_right: [Read more detail about the standalone mode](docs/en/standalone.md).
 
 ## 3. Demo
 
-This demo shows the entire workflow of building a machine learning application based on OpenMLDB. Please read more detail [here](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/demo). 
+This demo shows the entire workflow of building a machine learning application based on OpenMLDB. :point_right: [Please read more detail here.](demo/predict-taxi-trip-duration-nb/demo)
 
 ## 4. Build & Install
 
-[Read more](docs/en/compile.md)
+:point_right: [Read more](docs/en/compile.md)
 
 ## 5. Documentation
 
-<mark>Quick Start</mark>
+<mark>:point_right: Quick Start</mark>
 
 ## 6. Roadmap
 
@@ -70,12 +70,16 @@ We list a few highlight features that we have planned in the future releases. Pl
 
 ## 7. Community
 
-You may join the below communities for feedback and discussion
+You may join our community for feedback and discussion
 
-- **Github Issues and Discussions**: If you are a serious user or developer, you are most welcome to join our discussion on Github. **Issues** are used to report bugs and collect new requirements. **Discussions** are mostly used by our project maintainers to publish and comment RFCs.
 - **[Slack Workspace](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)**: You may find useful information of release notes, user support, development discussion and even more from our various Slack channels. 
+
+- **Github Issues and Discussions**: If you are a serious developer, you are most welcome to join our discussion on Github. **Issues** are used to report bugs and collect new requirements. **Discussions** are mostly used by our project maintainers to publish and comment RFCs.
+
 - <mark>**Forum (Chinese)**: (coming soon)</mark>
+
 - **WeChat Groups (Chinese)**:
+
   <img src="images/wechat.png" alt="img" width=100 />  
 
 ## 8. Publications & Blogs
