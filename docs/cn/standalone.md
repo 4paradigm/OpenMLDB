@@ -61,7 +61,7 @@ delimiter | 分隔符| String | , | Any char
 header | 是否有header| Boolean | true | true/false
 null_value | null值 | String | null | Any String
 ```sql
-> LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1 options (delimiter=',', header=false);
+> LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1 OPTIONS (delimiter=',', header=false);
 ```
 **注**: 分隔符只支持单个字符
 ### 分析数据
@@ -96,7 +96,7 @@ header | 是否有header| Boolean | true | true/false
 null_value | null值 | String | null | Any String
 mode | 模式 | String | error_if_exists | error_if_exists/overwrite/append
 ```sql
-> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' option (mode = 'overwrite', delimiter=',');
+> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' OPTIONS (mode = 'overwrite', delimiter=',');
 ```
 ### SQL方案上线
 将探索好的SQL方案Deploy到线上

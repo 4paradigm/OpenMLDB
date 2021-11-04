@@ -61,7 +61,7 @@ delimiter | String | , | Any char
 header | Boolean | true | true/false
 null_value | String | null | Any String
 ```sql
-> LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1 options (delimiter=',', header=false);
+> LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1 OPTIONS (delimiter=',', header=false);
 ```
 **Node**: Only support single character for delimiter.
 ### Data exploration
@@ -96,7 +96,7 @@ header | Boolean | true | true/false
 null_value | String | null | Any String
 mode | String | error_if_exists | error_if_exists/overwrite/append
 ```sql
-> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' option (mode = 'overwrite', delimiter=',');
+> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' OPTIONS (mode = 'overwrite', delimiter=',');
 ```
 ### Deploy SQL to online
 ```sql
