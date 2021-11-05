@@ -352,6 +352,34 @@ inline const std::string DataTypeName(const DataType &type) {
     return "";
 }
 
+inline const std::string TypeName(type::Type type) {
+    switch (type) {
+        case type::kInt16:
+            return "smallint";
+        case type::kInt32:
+            return "int";
+        case type::kInt64:
+            return "bigint";
+        case type::kFloat:
+            return "float";
+        case type::kDouble:
+            return "double";
+        case type::kVarchar:
+            return "string";
+        case type::kTimestamp:
+            return "timestamp";
+        case type::kDate:
+            return "date";
+        case type::kBool:
+            return "bool";
+        case type::kBlob:
+            return "blob";
+        case type::kNull:
+            return "null";
+    }
+    return "unknown";
+}
+
 /**
  * Convert string to corresponding DataType. e.g. "i32" => kInt32
  *

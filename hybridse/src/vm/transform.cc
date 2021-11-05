@@ -747,8 +747,9 @@ Status BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     CHECK_STATUS(CreateOp<PhysicalJoinNode>(&join_op, left, right,
                                             node->join_type_, node->orders_,
                                             node->condition_));
-    CHECK_STATUS(
-        CheckTimeOrIntegerOrderColumn(node->orders_, join_op->schemas_ctx()));
+
+    CHECK_STATUS(CheckTimeOrIntegerOrderColumn(node->orders_, join_op->schemas_ctx()));
+
     *output = join_op;
     return Status::OK();
 }
@@ -883,11 +884,9 @@ Status BatchModeTransformer::TransformDistinctOp(
     return Status::OK();
 }
 
-Status BatchModeTransformer::TransformQueryPlan(
-    const ::hybridse::node::PlanNode* node,
-    ::hybridse::vm::PhysicalOpNode** output) {
-    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
-               "Input node or output node is null");
+Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode* node,
+                                                ::hybridse::vm::PhysicalOpNode** output) {
+    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
     return TransformPlanOp(node->GetChildren()[0], output);
 }
 
@@ -1346,13 +1345,44 @@ Status BatchModeTransformer::ValidateWindowIndexOptimization(
                kPlanError, "Window node hasn't been optimzied")
     return Status::OK();
 }
+
+// 1. validate plan is currently supported
+//    - for join plan, every right key's type is in the supported list: [bool, intxx, string, date, timestamp]
+// 2. validate if plan is optimized for performance sensitive mode
+//    - query condition hit to a table index
+//    - not aggregation over table
 Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
+    CHECK_TRUE(nullptr != node, kPlanError, "Invalid physical node: null");
+    CHECK_STATUS(ValidatePlanSupported(node));
     if (performance_sensitive_mode_) {
         CHECK_STATUS(ValidateIndexOptimization(node),
                      "Fail to support physical plan in "
                      "performance sensitive mode");
         CHECK_STATUS(ValidateNotAggregationOverTable(node),
                      "Fail to support aggregation over table in performance sensitive mode")
+    }
+    return Status::OK();
+}
+
+Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
+    switch (in->GetOpType()) {
+        case kPhysicalOpJoin: {
+            const auto& join_op = dynamic_cast<const PhysicalJoinNode*>(in);
+            CHECK_STATUS(CheckPartitionColumn(join_op->join().right_key().keys(), join_op->schemas_ctx()));
+            break;
+        }
+        case kPhysicalOpRequestJoin: {
+            break;
+        }
+        case kPhysicalOpProject: {
+            const auto project_op = dynamic_cast<const PhysicalProjectNode*>(in);
+            CHECK_TRUE(project_op->GetProducerCnt() > 0, kPlanError, "Invalid Project Op with no producers");
+            CHECK_STATUS(ValidatePlanSupported(project_op->GetProducer(0)));
+            break;
+        }
+        default: {
+            break;
+        }
     }
     return Status::OK();
 }
@@ -1471,11 +1501,9 @@ Status BatchModeTransformer::ValidateIndexOptimization(PhysicalOpNode* in) {
     return Status::OK();
 }
 
-Status BatchModeTransformer::TransformPhysicalPlan(
-    const ::hybridse::node::PlanNodeList& trees,
-    ::hybridse::vm::PhysicalOpNode** output) {
-    CHECK_TRUE(module_ != nullptr && !trees.empty(), kPlanError,
-               "Module or logical trees is empty");
+Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanNodeList& trees,
+                                                   ::hybridse::vm::PhysicalOpNode** output) {
+    CHECK_TRUE(module_ != nullptr && !trees.empty(), kPlanError, "Module or logical trees is empty");
 
     auto it = trees.begin();
     for (; it != trees.end(); ++it) {
@@ -1483,46 +1511,36 @@ Status BatchModeTransformer::TransformPhysicalPlan(
         switch (node->GetType()) {
             case ::hybridse::node::kPlanTypeFuncDef: {
                 const ::hybridse::node::FuncDefPlanNode* func_def_plan =
-                    dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(
-                        node);
-                CHECK_STATUS(GenFnDef(func_def_plan),
-                             "Fail to compile user function def");
+                    dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(node);
+                CHECK_STATUS(GenFnDef(func_def_plan), "Fail to compile user function def");
                 *output = nullptr;
                 break;
             }
             case ::hybridse::node::kPlanTypeUnion:
             case ::hybridse::node::kPlanTypeQuery: {
                 PhysicalOpNode* physical_plan = nullptr;
-                CHECK_STATUS(TransformQueryPlan(node, &physical_plan),
-                             "Fail to transform query statement");
+                CHECK_STATUS(TransformQueryPlan(node, &physical_plan), "Fail to transform query statement");
 
-                DLOG(INFO) << "Before optimization: \n"
-                           << physical_plan->GetTreeString();
+                DLOG(INFO) << "Before optimization: \n" << physical_plan->GetTreeString();
 
                 PhysicalOpNode* optimized_physical_plan = nullptr;
                 ApplyPasses(physical_plan, &optimized_physical_plan);
 
-                DLOG(INFO) << "After optimization: \n"
-                           << optimized_physical_plan->GetTreeString();
+                DLOG(INFO) << "After optimization: \n" << optimized_physical_plan->GetTreeString();
                 CHECK_STATUS(ValidatePlan(optimized_physical_plan));
                 std::set<PhysicalOpNode*> node_visited_dict;
-                CHECK_STATUS(
-                    InitFnInfo(optimized_physical_plan, &node_visited_dict),
-                    "Fail to generate functions for physical plan");
+                CHECK_STATUS(InitFnInfo(optimized_physical_plan, &node_visited_dict),
+                             "Fail to generate functions for physical plan");
                 *output = optimized_physical_plan;
                 break;
             }
             case ::hybridse::node::kPlanTypeCreateSp: {
                 const ::hybridse::node::CreateProcedurePlanNode* sp_plan =
-                    dynamic_cast<
-                        const ::hybridse::node::CreateProcedurePlanNode*>(node);
-                return TransformPhysicalPlan(sp_plan->GetInnerPlanNodeList(),
-                                             output);
+                    dynamic_cast<const ::hybridse::node::CreateProcedurePlanNode*>(node);
+                return TransformPhysicalPlan(sp_plan->GetInnerPlanNodeList(), output);
             }
             default: {
-                return Status(kPlanError,
-                              "Plan type not supported: " +
-                                  node::NameOfPlanNodeType(node->GetType()));
+                return Status(kPlanError, "Plan type not supported: " + node::NameOfPlanNodeType(node->GetType()));
             }
         }
     }
@@ -1778,8 +1796,8 @@ Status BatchModeTransformer::CheckPartitionColumn(const node::ExprListNode* part
                         case type::kTimestamp:
                             break;
                         default: {
-                            CHECK_TRUE(false, common::kPhysicalPlanError, "unsupported group key, type is ",
-                                       sdk::TypeName(type), ". should be bool, intxx, string, date or timestamp");
+                            FAIL_STATUS(common::kPhysicalPlanError, "unsupported group key, type is ",
+                                       node::TypeName(type), ". should be bool, intxx, string, date or timestamp");
                         }
                     }
                 }
@@ -1930,8 +1948,8 @@ Status RequestModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
         &request_join_op, left, right, node->join_type_, node->orders_,
         node->condition_));
 
-    CHECK_STATUS(CheckTimeOrIntegerOrderColumn(node->orders_,
-                                               request_join_op->schemas_ctx()));
+    CHECK_STATUS(CheckTimeOrIntegerOrderColumn(node->orders_, request_join_op->schemas_ctx()));
+
     *output = request_join_op;
     return Status::OK();
 }

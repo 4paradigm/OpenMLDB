@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #include "passes/physical/group_and_sort_optimized.h"
-#include <absl/strings/str_cat.h>
 
 #include <map>
 #include <memory>
@@ -442,12 +441,13 @@ bool GroupAndSortOptimized::TransformGroupExpr(
     return TransformKeysAndOrderExpr(root_schemas_ctx, groups, nullptr,
                                      table_handler, index_name, output_bitmap);
 }
-bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
-    const SchemasContext* root_schemas_ctx, const node::ExprListNode* groups,
-    const node::OrderByNode* order, std::shared_ptr<TableHandler> table_handler,
-    std::string* index_name, std::vector<bool>* output_bitmap) {
-    if (nullptr == groups || nullptr == output_bitmap ||
-        nullptr == index_name) {
+bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root_schemas_ctx,
+                                                      const node::ExprListNode* groups,
+                                                      const node::OrderByNode* order,
+                                                      std::shared_ptr<TableHandler> table_handler,
+                                                      std::string* index_name,
+                                                      std::vector<bool>* output_bitmap) {
+    if (nullptr == groups || nullptr == output_bitmap || nullptr == index_name) {
         DLOG(WARNING) << "fail to transform keys expr : key expr or output "
                          "or index_name ptr is null";
         return false;
@@ -456,8 +456,7 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
     if (nullptr == order) {
         DLOG(INFO) << "keys optimized: " << node::ExprString(groups);
     } else {
-        DLOG(INFO) << "keys and order optimized: keys="
-                   << node::ExprString(groups)
+        DLOG(INFO) << "keys and order optimized: keys=" << node::ExprString(groups)
                    << ", order=" << node::ExprString(order);
     }
     std::vector<std::string> columns;
@@ -470,8 +469,7 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
             case node::kExprColumnRef: {
                 auto column = dynamic_cast<node::ColumnRefNode*>(group);
                 std::string source_column_name;
-                if (!ResolveColumnToSourceColumnName(column, root_schemas_ctx,
-                                                     &source_column_name)) {
+                if (!ResolveColumnToSourceColumnName(column, root_schemas_ctx, &source_column_name)) {
                     return false;
                 }
 
@@ -491,8 +489,7 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
             if (nullptr != expr && expr->GetExprType() == node::kExprColumnRef) {
                 auto column = dynamic_cast<const node::ColumnRefNode*>(expr);
                 std::string source_column_name;
-                if (!ResolveColumnToSourceColumnName(column, root_schemas_ctx,
-                                                     &source_column_name)) {
+                if (!ResolveColumnToSourceColumnName(column, root_schemas_ctx, &source_column_name)) {
                     return false;
                 }
                 order_columns.push_back(source_column_name);
@@ -505,8 +502,7 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(
 
     std::vector<bool> match_bitmap;
     std::vector<bool> state_bitmap(columns.size(), true);
-    if (!MatchBestIndex(columns, order_columns, table_handler, &state_bitmap,
-                        index_name, &match_bitmap)) {
+    if (!MatchBestIndex(columns, order_columns, table_handler, &state_bitmap, index_name, &match_bitmap)) {
         return false;
     }
     if (match_bitmap.size() != columns.size()) {

@@ -108,9 +108,9 @@ class BatchModeTransformer {
                          bool cluster_optimized_mode, bool enable_expr_opt, bool enable_window_parallelization);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
-    virtual Status TransformPhysicalPlan(
-        const ::hybridse::node::PlanNodeList& trees,
-        ::hybridse::vm::PhysicalOpNode** output);
+
+    virtual Status TransformPhysicalPlan(const ::hybridse::node::PlanNodeList& trees,
+                                         ::hybridse::vm::PhysicalOpNode** output);
     virtual Status TransformQueryPlan(const ::hybridse::node::PlanNode* node,
                                       ::hybridse::vm::PhysicalOpNode** output);
     virtual Status ValidatePlan(PhysicalOpNode* in);
@@ -198,6 +198,8 @@ class BatchModeTransformer {
                                       PhysicalOpNode* depend, bool append_input,
                                       PhysicalOpNode** output);
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
+
+    Status ValidatePlanSupported(const PhysicalOpNode* in);
 
     template <typename Op, typename... Args>
     Status CreateOp(Op** op, Args&&... args) {
