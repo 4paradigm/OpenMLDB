@@ -1198,7 +1198,7 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
     openmldb::cmd::ReadFileOptionsParser options_parse;
     auto st = options_parse.Parse(options);
     if (!st.OK()) {
-        std::cout << st.msg << std::endl;
+        *error = st.msg;
         return false;
     }
     std::cout << "Load " << file_path << " to " << real_db << "-" << table << ", options: delimiter ["
@@ -1402,7 +1402,7 @@ void HandleSQL(const std::string& sql) {
             auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
             std::string error;
             if (!HandleLoadDataInfile(plan->Db(), plan->Table(), plan->File(), plan->Options(), &error)) {
-                std::cout << "ERROR: Load data failed: " << error << std::endl;
+                std::cout << "ERROR: Load data failed. " << error << std::endl;
                 return;
             }
             return;
