@@ -43,32 +43,35 @@ We propose a few techniques to improve the performance for both offline and onli
 
 You can read our publications and blogs for more technical detail.
 
-### 2.4. Cluster and Standalone Modes
+### 2.4 Integrated CLI
 
-OpenMLDB can be operated under the powerful cluster mode, which is suitable for large-scale datasets and real-world applications. The cluster mode provides the scalability and high-availability. Moreover, since version 0.3.0, we introduce a lightweight standalone mode running on a single node, which is ideal for small businesses and demonstration. :point_right: [Read more detail about the standalone mode](docs/en/standalone.md).
+We provide an integrated and powerful CLI for SQL programming, online and offline task management, and database administration. Developers who are familiar with database's CLIs should be very comfortable with our tool.
 
-## 3. Demo
+*Note that, the CLI of current release 0.3.0 only supports the cluster mode partially. It will be fully supported in the next release of 0.4.0* 
 
-This demo shows the entire workflow of building a machine learning application based on OpenMLDB. :point_right: [Please read more detail here.](demo/predict-taxi-trip-duration-nb/demo)
-
-## 4. Build & Install
+## 3. Build & Install
 
 :point_right: [Read more](docs/en/compile.md)
 
-## 5. Documentation
+## 4. Quickstart & Demo
 
-:point_right: [Quick Start](docs/en/quickstart.md)
+Since OpenMLDB v0.3.0, we introduce two operating modes, which are cluster mode and standalone mode. The cluster mode is suitable for large-scale datasets and real-world applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone mode running on a single node is ideal for small businesses and demonstration. 
 
-## 6. Roadmap
+We demonstrate the workflow of using the cluster and standalone modes:
+
+- Cluster mode: please read the :point_right: [quickstart guide](docs/en/cluster.md) and :point_right: [related demo code](demo/predict-taxi-trip-duration-nb/demo)
+- Standalone mode: please read the :point_right: [quickstart guide with demo code](docs/en/standalone.md).
+
+## 5. Roadmap
 
 We list a few highlight features that we have planned in the future releases. Please join our community to understand more about our planning and discuss your ideas.
 
 | Version | Est. release date | Highlight features                                           |
 | ------- | ----------------- | ------------------------------------------------------------ |
-| 0.4.0   | End of 2021       | - Integrated CLI for both offline and online SQL programming |
-| 0.5.0   | 2022 Q1           | - Monitoring tools for online serving <br />- Kafka/Pulsar connector support for online data source |
+| 0.4.0   | End of 2021       | - Full support of standalone and cluster modes in integrated CLI, for SQL programming and job management |
+| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Kafka/Pulsar connector support for online data source |
 
-## 7. Community
+## 6. Community
 
 You may join our community for feedback and discussion
 
@@ -82,7 +85,7 @@ You may join our community for feedback and discussion
 
   <img src="images/wechat.png" alt="img" width=100 />  
 
-## 8. Publications & Blogs
+## 7. Publications & Blogs
 
 - Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
 - [In-Depth Interpretation of the Latest VLDB 2021 Paper: Artificial Intelligence Driven Real-Time Decision System Database and Optimization Based on Persistent Memory](https://medium.com/@fengxindai0/in-depth-interpretation-of-the-latest-vldb-2021-paper-artificial-intelligence-driven-real-time-f2a818bcf2b2)

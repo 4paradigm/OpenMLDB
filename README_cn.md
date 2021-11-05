@@ -40,32 +40,35 @@ OpenMLDB 是一个开源机器学习数据库，为机器学习应用高效供�
 
 你可以阅读我们的学术论文和技术博客来理解更多的关于 OpenMLDB 的技术细节。
 
-### 2.4 集群和单机模式
+### 2.4 命令行客户端
 
-OpenMLDB 为基于大数据的实际业务场景提供了高性能的集群模式，具备高可扩展和高可用的特点。另外，自 0.3.0 版本开始，也引入了单机部署模式。单机模式更适合于小数据场景或者测试试用目的，可以更加方便的部署、开发和使用。:point_right: [点击这里了解更多](docs/cn/standalone.md)
+我们提供了一个强大的整合的命令行客户端。基于命令行，用户可以完成 SQL 开发，线上线下任务管理，数据库管理等任务。对于熟悉传统数据库命令工具的开发者来说，使用 OpenMLDB 的命令行客户端将会非常易用。
 
-## 3. Demo
+*注意，当前版本 0.3.0 的命令行客户端对于集群模式仅做部分功能支持。将会在下一个版本 0.4.0 中做完全支持。*
 
-本 demo 演示了基于 OpenMLDB 的一个机器学习应用的完整开发流程。:point_right: [点击这里](demo/predict-taxi-trip-duration-nb/demo)
-
-## 4. 编译和安装
+## 3. 编译和安装
 
 :point_right: [点击这里](docs/en/compile.md)
 
-## 5. 使用文档
+## 4. Quickstart & Demo
 
-:point_right: [快速上手](docs/cn/quickstart.md) 
+从 0.3.0 版本开始，OpenMLDB 引入了两种部署工作模式：集群模式和单机模式。集群模式为基于大数据的实际业务场景提供了高性能的集群模式，具备高可扩展和高可用的特点。单机模式更适合于小数据场景或者测试试用目的，可以更加方便的部署、开发和使用。
 
-## 6. 开发计划
+我们演示基于这两种模式的 demo 和快速上手指南：
+
+- 集群模式：请阅读 :point_right: [快速上手指南](docs/cn/cluster.md)，以及 :point_right: [相关的 demo 代码](demo/predict-taxi-trip-duration-nb/demo)
+- 单机模式：请阅读  :point_right: [快速上手和相关 demo 代码](docs/cn/standalone.md)
+
+## 5. 开发计划
 
 OpenMLD 社区持续进行开发迭代，在此列出我们已经初步规划好的在未来版本的主要支持特性，如果想详细了解我们的计划，或者提供任何的建议，请加入我们的社区来跟我们互动。
 
 | 版本号 | 预期发布日期 | 主要特性                                                     |
 | ------ | ------------ | ------------------------------------------------------------ |
-| 0.4.0  | End of 2021  | - 统一的离线和在线 SQL 开发、运行和管理命令行界面            |
+| 0.4.0  | End of 2021  | - CLI 完全支持单机和集群模式，用来做统一的 SQL 开发和任务管理 |
 | 0.5.0  | 2022 Q1      | - 在线服务监控模块<br />- 支持第三方在线数据流引入，包括 Kafka 和 Pulsar |
 
-## 7. 社区
+## 6. 社区
 
 **技术论坛**：（即将上线）
 
@@ -77,7 +80,7 @@ OpenMLD 社区持续进行开发迭代，在此列出我们已经初步规划好
 
 [**Slack Workspace**](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)：你也可以在 Slack 上找到我们，通过即时通信的方式获得关于 OpenMLDB 使用上的帮助。
 
-## 8. 更多参考资料
+## 7. 更多参考资料
 
 * Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
 * [第四范式OpenMLDB优化创新论文被国际数据库顶会VLDB录用](https://zhuanlan.zhihu.com/p/401513878)
