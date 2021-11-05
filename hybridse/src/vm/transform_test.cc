@@ -379,16 +379,15 @@ TEST_F(TransformTest, PhysicalPlanFailOnWindowPartitionType) {
 
     hybridse::type::TableDef table_def;
     BuildTableDef(table_def);
-    table_def.set_catalog("db");
-
     AddTable(db, table_def);
+
     catalog->AddDatabase(db);
 
     const std::string sql = R"sql(SELECT sum(col1) OVER w1 as w1_c4_sum FROM t1
                                   WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);)sql";
 
     PhysicalPlanFailCheck(catalog, sql, common::kPhysicalPlanError,
-                          "unsupported group key, type is float. should be bool, intxx, string, date or timestamp");
+                          "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
 }
 
 // physical plan transform will fail if the group key is not in the supported type list
@@ -400,15 +399,39 @@ TEST_F(TransformTest, PhysicalPlanFailOnGroupType) {
 
     hybridse::type::TableDef table_def;
     BuildTableDef(table_def);
-    table_def.set_catalog("db");
-
     AddTable(db, table_def);
+
     catalog->AddDatabase(db);
 
     const std::string sql = "SELECT col1, col2, col3 FROM t1 GROUP BY col3";
 
     PhysicalPlanFailCheck(catalog, sql, common::kPhysicalPlanError,
-                          "unsupported group key, type is float. should be bool, intxx, string, date or timestamp");
+                          "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
+}
+
+
+// physical plan transform will fail if the right key of a join op is not in the supported type list
+//  which is [bool, intxx, data, timestamp, string]
+TEST_F(TransformTest, PhysicalPlanFailOnRightKeyTypeOfJoin) {
+    hybridse::type::Database db;
+    auto catalog = BuildSimpleCatalog(db);
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    hybridse::type::TableDef table_def2;
+    BuildTableT2Def(table_def2);
+    AddTable(db, table_def2);
+
+    catalog->AddDatabase(db);
+
+    const std::string sql = R"sql(SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
+              last join t2 order by t2.col5 on t1.col4 = t2.col4 AND t1.col5 = t2.col5;)sql";
+
+    PhysicalPlanFailCheck(catalog, sql, common::kPhysicalPlanError,
+                          "unsupported partition key: 't2.col4', type is double, should be bool, intxx, string, date or timestamp");
 }
 
 

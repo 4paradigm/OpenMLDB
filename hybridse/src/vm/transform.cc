@@ -1796,8 +1796,9 @@ Status BatchModeTransformer::CheckPartitionColumn(const node::ExprListNode* part
                         case type::kTimestamp:
                             break;
                         default: {
-                            FAIL_STATUS(common::kPhysicalPlanError, "unsupported group key, type is ",
-                                       node::TypeName(type), ". should be bool, intxx, string, date or timestamp");
+                            FAIL_STATUS(common::kPhysicalPlanError, "unsupported partition key: '",
+                                        column->GetExprString(), "', type is ", node::TypeName(type),
+                                        ", should be bool, intxx, string, date or timestamp");
                         }
                     }
                 }
