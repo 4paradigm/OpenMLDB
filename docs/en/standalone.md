@@ -1,4 +1,4 @@
-# Standalone Mode Guideline
+# QuickStart (Standalone Version)
 
 ## Deployment
 ### Modify Config
@@ -49,7 +49,7 @@ sh bin/stop-all.sh
 ```
 **Note**: Specify at least one index and set the `ts` column which is used for ORDERBY. The `ts` column is the key in `index` option and can be setted with `timestamp` or `bigint` column only. 
 ### Import Data
-Only support csv file format
+Only support csv file format (a sample csv file can be downloaded [here](../../demo/standalone/data/data.csv))
 ```sql
 > USE demo_db;
 > LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1;
@@ -73,7 +73,7 @@ Below demonstrates a data exploration task.
  ----------
   sum
  ----------
-  3.600000
+  56.000004
  ----------
 
 1 rows in set

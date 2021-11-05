@@ -1,12 +1,12 @@
-# Compile OpenMLDB
+# Build & Install
 
-## Compile on Linux
+## Build on Linux
 1. Download source code
     ```bash
     git clone git@github.com:4paradigm/OpenMLDB.git
     cd OpenMLDB
     ```
-2. Download docker image
+2. Download docker image, which is used to provide necessary tools and dependencies for building
     ```bash
     docker pull ghcr.io/4paradigm/hybridsql:0.4.0
     ```
@@ -14,12 +14,12 @@
     ```bash
     docker run -v `pwd`:/OpenMLDB -it ghcr.io/4paradigm/hybridsql:0.4.0 bash
     ```
-4. DownLoad dependencies and init env(init only once)
+4. Download dependencies and initialize env (done once only)
     ```bash
     cd /OpenMLDB
     bash steps/init_env.sh  
-    ``` 
-5. Compile OpenMLDB
+    ```
+5. Build OpenMLDB
     ```bash
     mkdir build && cd build
     cmake ..
