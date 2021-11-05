@@ -3,7 +3,7 @@
 ## Concept
 
 OpenMLDB supports execution under different levels of performance sensitivity.
-When `performance_sensitive` mode is enabled, complex SQL queries can not be executed without index-optimization.
+When `performance_sensitive` mode is enabled, complex SQL queries cannot be executed without index-optimization.
 When `performance_sensitive` mode is disabled, most SQL queries can be executed with no restrictions.
 
 For instance:
@@ -21,7 +21,7 @@ CREATE table t1(
 SELECT col1, col2, SUM(col3) over w1 as w1_sum_col3 from t1 
 window w1 as (PARTITION BY col1 ORDER BY col4 ROWS BETWEEN 100 PRECEDING AND CURRENT ROW);
 ```
-- can not be executed when we enable `performance_sensitive` mode, since the SQL fail to be optimized.
+- cannot be executed when we enable `performance_sensitive` mode, since the SQL fail to be optimized.
 - can be executed when we disable `performance_sensitive` mode.
 
 ### Case 2: the following SQL
