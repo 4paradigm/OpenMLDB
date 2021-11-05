@@ -28,7 +28,7 @@ OpenMLDB 是一个开源机器学习数据库，为机器学习应用高效供�
 
 ### 2.1 SQL 编程
 
-我们相信，基于 SQL 语言的简洁高效的设计和广泛使用，SQL 将会是特征工程的最适合的编程语言。因此，OpenMLDB 使得开发者仅仅需要使用 SQL，就能完成线上线下的特征计算和存取的全部任务。此外，我们也对标准 SQL 语法做了若干扩展（我们称之为 `FeSQL`），使得可以针对特征计算场景做到更加强大高效。
+我们相信，基于 SQL 语言的简洁高效的设计和广泛使用，SQL 将会是特征工程的最适合的编程语言。因此，OpenMLDB 使得开发者仅仅需要使用 SQL，就能完成线上线下的特征计算和存取的全部任务。此外，我们也对标准 SQL 语法做了若干扩展，使得可以针对特征计算场景做到更加强大高效。
 
 ### 2.2 线上线下一致性
 
@@ -38,11 +38,11 @@ OpenMLDB 是一个开源机器学习数据库，为机器学习应用高效供�
 
 为了保证线下和线上特征计算存取的高性能，我们提出了具有针对性的系统优化技术。基于我们的优化，离线特征计算的性能显著好于现有的开源大数据处理框架。而对于性能延迟非常敏感的线上服务，我们可以在高吞吐压力下提供几十毫秒量级的延迟，满足线上预估服务的性能要求。
 
-你可以阅读我们的学术论文和技术博客来理解更多的关于 OpenMLDB 的技术细节。
+你可以阅读我们的学术论文和技术博客（章节 7. 学术论文和技术博客）来理解更多的关于 OpenMLDB 的技术细节。
 
 ### 2.4 命令行客户端
 
-我们提供了一个强大的整合的命令行客户端。基于命令行，用户可以完成 SQL 开发，线上线下任务管理，数据库管理等任务。对于熟悉传统数据库命令工具的开发者来说，使用 OpenMLDB 的命令行客户端将会非常易用。
+我们提供了一个强大的整合的命令行客户端。基于命令行，用户可以完成 SQL 开发，任务管理，线上线下部署，数据库管理等任务。对于熟悉传统数据库命令工具的开发者来说，使用 OpenMLDB 的命令行客户端将会非常易用。
 
 *注意，当前版本 0.3.0 的命令行客户端对于集群模式仅做部分功能支持。将会在下一个版本 0.4.0 中做完全支持。*
 
@@ -65,7 +65,7 @@ OpenMLD 社区持续进行开发迭代，在此列出我们已经初步规划好
 
 | 版本号 | 预期发布日期 | 主要特性                                                     |
 | ------ | ------------ | ------------------------------------------------------------ |
-| 0.4.0  | End of 2021  | - CLI 完全支持单机和集群模式，用来做统一的 SQL 开发和任务管理 |
+| 0.4.0  | End of 2021  | - CLI 完全支持单机和集群模式的所有功能                       |
 | 0.5.0  | 2022 Q1      | - 在线服务监控模块<br />- 支持第三方在线数据流引入，包括 Kafka 和 Pulsar |
 
 ## 6. 社区
@@ -80,7 +80,7 @@ OpenMLD 社区持续进行开发迭代，在此列出我们已经初步规划好
 
 [**Slack Workspace**](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)：你也可以在 Slack 上找到我们，通过即时通信的方式获得关于 OpenMLDB 使用上的帮助。
 
-## 7. 更多参考资料
+## 7. 学术论文和技术博客
 
 * Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
 * [第四范式OpenMLDB优化创新论文被国际数据库顶会VLDB录用](https://zhuanlan.zhihu.com/p/401513878)

@@ -31,7 +31,7 @@ The above figure illustrates the OpenMLDB workflow. SQL engineers first write SQ
 ## 2. Highlight Features
 ### 2.1. SQL Programming APIs 
 
-We believe SQL is the most suitable programming APIs for feature engineering because of its elegant design and popularity. OpenMLDB enables SQL as the only programming APIs for developers for both offline and online feature extraction. Besides, we extend the capability of standard SQL and make it more powerful for feature extraction. This customized SQL APIs is called as `FeSQL` in OpenMLDB.
+We believe SQL is the most suitable programming APIs for feature engineering because of its elegant design and popularity. OpenMLDB enables SQL as the only programming APIs for developers for both offline and online feature extraction. Besides, we extend the capability of standard SQL and make it more powerful for feature extraction. 
 
 ### 2.2 Online-Offline Consistency
 
@@ -41,11 +41,11 @@ Based on the SQL programming APIs, we design an unified execution engine for bot
 
 We propose a few techniques to improve the performance for both offline and online feature extraction. As a result, our offline feature extraction can be significantly faster than existing opensource bigdata processing frameworks. Moreover, our online service can provide low latency (tens of milliseconds) to meet the performance requirement of online inference.
 
-You can read our publications and blogs for more technical detail.
+You can read our below  section (7. Publications & Blogs) for more technical detail.
 
 ### 2.4 Integrated CLI
 
-We provide an integrated and powerful CLI for SQL programming, online and offline task management, and database administration. Developers who are familiar with database's CLIs should be very comfortable with our tool.
+We provide an integrated and powerful CLI for SQL programming, job management, online and offline deployment, and database administration. Developers who are familiar with database's CLIs should be very comfortable with our tool.
 
 *Note that, the CLI of current release 0.3.0 only supports the cluster mode partially. It will be fully supported in the next release of 0.4.0* 
 
@@ -68,7 +68,7 @@ We list a few highlight features that we have planned in the future releases. Pl
 
 | Version | Est. release date | Highlight features                                           |
 | ------- | ----------------- | ------------------------------------------------------------ |
-| 0.4.0   | End of 2021       | - Full support of standalone and cluster modes in integrated CLI, for SQL programming and job management |
+| 0.4.0   | End of 2021       | - Full support of standalone and cluster modes in integrated CLI |
 | 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Kafka/Pulsar connector support for online data source |
 
 ## 6. Community
