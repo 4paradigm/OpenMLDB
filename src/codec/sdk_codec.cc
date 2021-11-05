@@ -112,7 +112,7 @@ void SDKCodec::ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_sch
     }
     std::shared_ptr<Schema> origin_schema = std::make_shared<Schema>(schema_);
     version_schema_.insert(std::make_pair(1, origin_schema));
-    for (const auto pair : ver_schema) {
+    for (const auto& pair : ver_schema) {
         int32_t ver = pair.id();
         int32_t times = pair.field_count();
         std::shared_ptr<Schema> base_schema = std::make_shared<Schema>(schema_);
