@@ -64,7 +64,6 @@ function(compile_test DIR)
 endfunction(compile_test)
 
 compile_proto(type ${PROJECT_SOURCE_DIR})
-compile_proto(client ${PROJECT_SOURCE_DIR})
 compile_proto(common ${PROJECT_SOURCE_DIR})
 compile_proto(tablet ${PROJECT_SOURCE_DIR})
 compile_proto(name_server ${PROJECT_SOURCE_DIR})
@@ -86,7 +85,7 @@ compile_lib(log log "flags.cc")
 compile_lib(openmldb_sdk sdk "")
 compile_lib(apiserver apiserver "")
 
-add_library(openmldb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/api_server.pb.cc proto/nl_tablet.pb.cc proto/taskmanager.pb.cc)
+add_library(openmldb_proto STATIC proto/type.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/api_server.pb.cc proto/nl_tablet.pb.cc proto/taskmanager.pb.cc)
 
 add_library(openmldb_flags flags.cc)
 
@@ -118,7 +117,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 target_link_libraries(parse_log ${LINK_LIBS})
 
-add_executable(openmldb cmd/openmldb.cc proto/client.pb.cc base/linenoise.cc)
+add_executable(openmldb cmd/openmldb.cc base/linenoise.cc)
 target_link_libraries(openmldb ${BIN_LIBS})
 
 add_subdirectory(sdk)
