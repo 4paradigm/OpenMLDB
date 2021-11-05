@@ -273,15 +273,15 @@ INSTANTIATE_TEST_SUITE_P(
                                    "index_keys=(col1,col2))\n"
                                    "    DATA_PROVIDER(request=t1)\n"
                                    "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
-                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
+                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col6;",
                                    "PROJECT(type=Aggregation)\n"
-                                   "  REQUEST_UNION(partition_keys=(col3), orders=, "
+                                   "  REQUEST_UNION(partition_keys=(col6), orders=, "
                                    "index_keys=(col1,col2))\n"
                                    "    DATA_PROVIDER(request=t1)\n"
                                    "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
-                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
+                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col6, col2, col1;",
                                    "PROJECT(type=Aggregation)\n"
-                                   "  REQUEST_UNION(partition_keys=(col3), orders=, "
+                                   "  REQUEST_UNION(partition_keys=(col6), orders=, "
                                    "index_keys=(col2,col1))\n"
                                    "    DATA_PROVIDER(request=t1)\n"
                                    "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
