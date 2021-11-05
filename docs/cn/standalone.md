@@ -1,4 +1,4 @@
-# 单机版使用文档
+# 快速上手（单机版）
 
 ## 部署
 ### 修改配置文件
@@ -49,7 +49,7 @@ sh bin/stop-all.sh
 ```
 **注**: 需要至少指定一个index并设置`ts`列。`ts`列是用来做ORDERBY的那一列
 ### 导入数据
-只支持导入本地csv文件
+只支持导入本地csv文件（示例csv文件可以在[这里](../../demo/standalone/data/data.csv)下载）
 ```sql
 > USE demo_db;
 > LOAD DATA INFILE '/tmp/data.csv' INTO TABLE demo_table1;
@@ -73,7 +73,7 @@ null_value | null值 | String | null | Any String
  ----------
   sum
  ----------
-  3.600000
+  56.000004
  ----------
 
 1 rows in set
