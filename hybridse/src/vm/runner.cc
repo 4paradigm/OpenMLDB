@@ -3155,7 +3155,7 @@ const std::string KeyGenerator::Gen(const Row& row, const Row& parameter) {
                 break;
             }
             default: {
-                DLOG(ERROR) << "unsupported: partition key of type float, double, blob or null";
+                DLOG(ERROR) << "unsupported: partition key's type is " << node::TypeName(type);
                 break;
             }
         }
