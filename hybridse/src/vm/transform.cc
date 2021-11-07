@@ -778,9 +778,6 @@ Status BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
     PhysicalOpNode* left = nullptr;
     CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &left));
 
-    // check group key is in supported list
-    CHECK_STATUS(CheckPartitionColumn(node->by_list_, left->schemas_ctx()));
-
     if (kPhysicalOpDataProvider == left->GetOpType()) {
         auto data_op = dynamic_cast<PhysicalDataProviderNode*>(left);
         if (kProviderTypeRequest == data_op->provider_type_) {
@@ -1353,6 +1350,7 @@ Status BatchModeTransformer::ValidateWindowIndexOptimization(
 //    - not aggregation over table
 Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
     CHECK_TRUE(nullptr != node, kPlanError, "Invalid physical node: null");
+    // TODO: create a `visitor` method for nodes, single dfs applied
     CHECK_STATUS(ValidatePlanSupported(node));
     if (performance_sensitive_mode_) {
         CHECK_STATUS(ValidateIndexOptimization(node),
@@ -1365,19 +1363,64 @@ Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
 }
 
 Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
+    for (const auto child : in->GetProducers()) {
+        CHECK_STATUS(ValidatePlanSupported(child));
+    }
     switch (in->GetOpType()) {
         case kPhysicalOpJoin: {
             const auto& join_op = dynamic_cast<const PhysicalJoinNode*>(in);
-            CHECK_STATUS(CheckPartitionColumn(join_op->join().right_key().keys(), join_op->schemas_ctx()));
+            switch (join_op->join_.join_type()) {
+                case node::kJoinTypeLast:
+                case node::kJoinTypeLeft: {
+                    CHECK_STATUS(CheckPartitionColumn(join_op->join().right_key().keys(), join_op->schemas_ctx()));
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
             break;
         }
         case kPhysicalOpRequestJoin: {
+            const auto& join_op = dynamic_cast<const PhysicalRequestJoinNode*>(in);
+            switch (join_op->join_.join_type()) {
+                case node::kJoinTypeLast:
+                case node::kJoinTypeLeft: {
+                    CHECK_STATUS(CheckPartitionColumn(join_op->join().right_key().keys(), join_op->schemas_ctx()));
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+            break;
+        }
+        case kPhysicalOpGroupBy: {
+            const auto& group_op = dynamic_cast<const PhysicalGroupNode*>(in);
+            CHECK_STATUS(CheckPartitionColumn(group_op->group().keys(), group_op->schemas_ctx()));
             break;
         }
         case kPhysicalOpProject: {
-            const auto project_op = dynamic_cast<const PhysicalProjectNode*>(in);
-            CHECK_TRUE(project_op->GetProducerCnt() > 0, kPlanError, "Invalid Project Op with no producers");
-            CHECK_STATUS(ValidatePlanSupported(project_op->GetProducer(0)));
+            const auto& project_op = dynamic_cast<const PhysicalProjectNode*>(in);
+
+            switch (project_op->project_type_) {
+                case kWindowAggregation: {
+                    const auto& win_agg_op = dynamic_cast<const PhysicalWindowAggrerationNode*>(project_op);
+
+                    CHECK_STATUS(CheckPartitionColumn(win_agg_op->window_.partition().keys(),
+                                                      win_agg_op->GetProducer(0)->schemas_ctx()));
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+
+            break;
+        }
+        case kPhysicalOpRequestUnion: {
+            const auto& union_op = dynamic_cast<const PhysicalRequestUnionNode*>(in);
+            CHECK_STATUS(CheckPartitionColumn(union_op->window().partition().keys(), union_op->schemas_ctx()));
             break;
         }
         default: {
@@ -1776,7 +1819,9 @@ Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(const node::OrderByNo
 *   bool, intXX, string, date, kTimestamp
 */
 Status BatchModeTransformer::CheckPartitionColumn(const node::ExprListNode* partition, const SchemasContext* ctx) {
-    CHECK_TRUE(partition != nullptr, kPlanError, "empty partition");
+    if (partition == nullptr) {
+        return Status::OK();
+    }
     for (int i = 0; i < partition->GetChildNum(); ++i) {
         const auto child = partition->GetChild(i);
         switch (child->GetExprType()) {
@@ -1823,8 +1868,6 @@ Status BatchModeTransformer::CheckWindow(
     CHECK_STATUS(CheckHistoryWindowFrame(w_ptr));
 
     CHECK_STATUS(CheckTimeOrIntegerOrderColumn(w_ptr->GetOrders(), schemas_ctx));
-
-    CHECK_STATUS(CheckPartitionColumn(w_ptr->GetKeys(), schemas_ctx));
 
     return Status::OK();
 }

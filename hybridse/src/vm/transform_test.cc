@@ -297,7 +297,8 @@ TEST_P(TransformTest, TransformPhysicalPlanEnableWindowParalled) {
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    EXPECT_EQ(sql_case.expect().success_, transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
+    auto status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
+    EXPECT_EQ(sql_case.expect().success_, status.isOK()) << status;
 }
 
 void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
@@ -345,6 +346,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
 
 void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog,
                            const std::string& sql,
+                           const vm::EngineMode runner_mode,
                            int err_code,
                            const std::string& err_msg) {
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
@@ -353,20 +355,36 @@ void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog,
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status status;
 
+    bool is_batch_mode = runner_mode == kBatchMode;
+
     // logical plan consider pass
-    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &manager, status)) << status;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &manager, status, is_batch_mode)) << status;
     ASSERT_EQ(common::kOk, status.code);
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    BatchModeTransformer transform(&manager, "db", catalog, nullptr, m.get(), lib);
+    std::unique_ptr<BatchModeTransformer> transform;
+    switch (runner_mode) {
+        case kBatchMode: {
+            transform.reset(new BatchModeTransformer(&manager, "db", catalog, nullptr, m.get(), lib));
+            break;
+        }
+        case kRequestMode: {
+            transform.reset(new RequestModeTransformer(&manager, "db", catalog, nullptr, m.get(), lib, {}, false, false, false, false));
+            break;
+        }
+        default: {
+            ASSERT_TRUE(false) << "unsupported runner mode: " << runner_mode;
+            return;
+        }
+    }
 
-    transform.AddDefaultPasses();
+    transform->AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
 
-    status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
-    EXPECT_EQ(err_code, status.code);
+    status = transform->TransformPhysicalPlan(plan_trees, &physical_plan);
+    EXPECT_EQ(err_code, status.code) << status;
     EXPECT_EQ(err_msg.c_str(), status.msg);
 }
 
@@ -374,19 +392,20 @@ void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog,
 //  which is [bool, intxx, data, timestamp, string]
 TEST_F(TransformTest, PhysicalPlanFailOnWindowPartitionType) {
     hybridse::type::Database db;
-    auto catalog = BuildSimpleCatalog(db);
     db.set_name("db");
 
     hybridse::type::TableDef table_def;
     BuildTableDef(table_def);
     AddTable(db, table_def);
 
-    catalog->AddDatabase(db);
+    auto catalog = BuildSimpleCatalog(db);
 
     const std::string sql = R"sql(SELECT sum(col1) OVER w1 as w1_c4_sum FROM t1
                                   WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);)sql";
 
-    PhysicalPlanFailCheck(catalog, sql, common::kPhysicalPlanError,
+    PhysicalPlanFailCheck(catalog, sql, kBatchMode, common::kPhysicalPlanError,
+                          "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(catalog, sql, kRequestMode, common::kPhysicalPlanError,
                           "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
 }
 
@@ -394,18 +413,19 @@ TEST_F(TransformTest, PhysicalPlanFailOnWindowPartitionType) {
 //  which is [bool, intxx, data, timestamp, string]
 TEST_F(TransformTest, PhysicalPlanFailOnGroupType) {
     hybridse::type::Database db;
-    auto catalog = BuildSimpleCatalog(db);
     db.set_name("db");
 
     hybridse::type::TableDef table_def;
     BuildTableDef(table_def);
     AddTable(db, table_def);
 
-    catalog->AddDatabase(db);
+    auto catalog = BuildSimpleCatalog(db);
 
     const std::string sql = "SELECT col1, col2, col3 FROM t1 GROUP BY col3";
 
-    PhysicalPlanFailCheck(catalog, sql, common::kPhysicalPlanError,
+    PhysicalPlanFailCheck(catalog, sql, kBatchMode, common::kPhysicalPlanError,
+                          "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(catalog, sql, kRequestMode, common::kPhysicalPlanError,
                           "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
 }
 
@@ -414,7 +434,6 @@ TEST_F(TransformTest, PhysicalPlanFailOnGroupType) {
 //  which is [bool, intxx, data, timestamp, string]
 TEST_F(TransformTest, PhysicalPlanFailOnRightKeyTypeOfJoin) {
     hybridse::type::Database db;
-    auto catalog = BuildSimpleCatalog(db);
     db.set_name("db");
 
     hybridse::type::TableDef table_def;
@@ -425,12 +444,14 @@ TEST_F(TransformTest, PhysicalPlanFailOnRightKeyTypeOfJoin) {
     BuildTableT2Def(table_def2);
     AddTable(db, table_def2);
 
-    catalog->AddDatabase(db);
+    auto catalog = BuildSimpleCatalog(db);
 
     const std::string sql = R"sql(SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
               last join t2 order by t2.col5 on t1.col4 = t2.col4 AND t1.col5 = t2.col5;)sql";
 
-    PhysicalPlanFailCheck(catalog, sql, common::kPhysicalPlanError,
+    PhysicalPlanFailCheck(catalog, sql, kBatchMode, common::kPhysicalPlanError,
+                          "unsupported partition key: 't2.col4', type is double, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(catalog, sql, kRequestMode, common::kPhysicalPlanError,
                           "unsupported partition key: 't2.col4', type is double, should be bool, intxx, string, date or timestamp");
 }
 

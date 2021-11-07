@@ -209,8 +209,8 @@ void CheckTransformPhysicalPlan(const SqlCase& sql_case, bool is_cluster_optimiz
     //    m->print(::llvm::errs(), NULL);
 }
 
-TEST_P(TransformRequestModeTest, transform_physical_plan) { CheckTransformPhysicalPlan(GetParam(), false, &manager); }
-TEST_P(TransformRequestModeTest, cluster_transform_physical_plan) {
+TEST_P(TransformRequestModeTest, TransformPhysicalPlan) { CheckTransformPhysicalPlan(GetParam(), false, &manager); }
+TEST_P(TransformRequestModeTest, ClusterTransformPhysicalPlan) {
     CheckTransformPhysicalPlan(GetParam(), true, &manager);
 }
 class TransformRequestModePassOptimizedTest : public ::testing::TestWithParam<std::pair<std::string, std::string>> {
@@ -408,7 +408,7 @@ INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOp
                                            "      DATA_PROVIDER(request=t1)\n"
                                            "      DATA_PROVIDER(type=Partition, table=t1, "
                                            "index=index1)")));
-TEST_P(TransformRequestModePassOptimizedTest, pass_pass_optimized_test) {
+TEST_P(TransformRequestModePassOptimizedTest, PassPassOptimizedTest) {
     auto in_out = GetParam();
     hybridse::type::TableDef table_def;
     BuildTableDef(table_def);
