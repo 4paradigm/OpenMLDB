@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 #include "base/status.h"
+#include "node/node_manager.h"
 
 namespace openmldb {
 namespace cmd {
