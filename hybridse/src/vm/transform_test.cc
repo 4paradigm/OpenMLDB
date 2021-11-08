@@ -15,11 +15,13 @@
  */
 
 #include "vm/transform.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
@@ -40,12 +42,11 @@
 #include "node/node_manager.h"
 #include "passes/physical/condition_optimized.h"
 #include "plan/plan_api.h"
+#include "testing/test_base.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/simple_catalog.h"
 #include "vm/sql_compiler.h"
-#include "testing/test_base.h"
-
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
@@ -371,7 +372,8 @@ void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog,
             break;
         }
         case kRequestMode: {
-            transform.reset(new RequestModeTransformer(&manager, "db", catalog, nullptr, m.get(), lib, {}, false, false, false, false));
+            transform.reset(new RequestModeTransformer(&manager, "db",
+                                                       catalog, nullptr, m.get(), lib, {}, false, false, false, false));
             break;
         }
         default: {
@@ -403,10 +405,12 @@ TEST_F(TransformTest, PhysicalPlanFailOnWindowPartitionType) {
     const std::string sql = R"sql(SELECT sum(col1) OVER w1 as w1_c4_sum FROM t1
                                   WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);)sql";
 
-    PhysicalPlanFailCheck(catalog, sql, kBatchMode, common::kPhysicalPlanError,
-                          "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
-    PhysicalPlanFailCheck(catalog, sql, kRequestMode, common::kPhysicalPlanError,
-                          "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(
+        catalog, sql, kBatchMode, common::kPhysicalPlanError,
+        "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(
+        catalog, sql, kRequestMode, common::kPhysicalPlanError,
+        "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
 }
 
 // physical plan transform will fail if the group key is not in the supported type list
@@ -423,10 +427,12 @@ TEST_F(TransformTest, PhysicalPlanFailOnGroupType) {
 
     const std::string sql = "SELECT col1, col2, col3 FROM t1 GROUP BY col3";
 
-    PhysicalPlanFailCheck(catalog, sql, kBatchMode, common::kPhysicalPlanError,
-                          "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
-    PhysicalPlanFailCheck(catalog, sql, kRequestMode, common::kPhysicalPlanError,
-                          "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(
+        catalog, sql, kBatchMode, common::kPhysicalPlanError,
+        "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(
+        catalog, sql, kRequestMode, common::kPhysicalPlanError,
+        "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
 }
 
 
@@ -446,13 +452,16 @@ TEST_F(TransformTest, PhysicalPlanFailOnRightKeyTypeOfJoin) {
 
     auto catalog = BuildSimpleCatalog(db);
 
-    const std::string sql = R"sql(SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
+    const std::string sql =
+        R"sql(SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
               last join t2 order by t2.col5 on t1.col4 = t2.col4 AND t1.col5 = t2.col5;)sql";
 
-    PhysicalPlanFailCheck(catalog, sql, kBatchMode, common::kPhysicalPlanError,
-                          "unsupported partition key: 't2.col4', type is double, should be bool, intxx, string, date or timestamp");
-    PhysicalPlanFailCheck(catalog, sql, kRequestMode, common::kPhysicalPlanError,
-                          "unsupported partition key: 't2.col4', type is double, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(
+        catalog, sql, kBatchMode, common::kPhysicalPlanError,
+        "unsupported partition key: 't2.col4', type is double, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(
+        catalog, sql, kRequestMode, common::kPhysicalPlanError,
+        "unsupported partition key: 't2.col4', type is double, should be bool, intxx, string, date or timestamp");
 }
 
 
