@@ -19,7 +19,7 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
-project(rtidb)
+project(openmldb)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
@@ -184,7 +184,3 @@ link_directories(${CMAKE_PREFIX_PATH}/lib
     ${CMAKE_PREFIX_PATH}/hybridse/lib)
 
 add_subdirectory(src)
-add_custom_target(rtidbpy
-COMMAND make
-WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/swig
-)
