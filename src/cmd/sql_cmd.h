@@ -74,7 +74,6 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
 std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK* cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
-bool performance_sensitive = true;
 
 // TODO(zekai): refactor status and error code
 class FileOptionsParser {
@@ -1068,7 +1067,8 @@ void SetVariable(const std::string& key, const hybridse::node::ConstNode* value)
     boost::to_lower(lower_key);
     if (lower_key == "performance_sensitive") {
         if (value->GetDataType() == hybridse::node::kBool) {
-            performance_sensitive = value->GetBool();
+            bool performance_sensitive = value->GetBool();
+            sr->SetPerformanceSensitive(performance_sensitive);
             printf("SUCCEED: Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true" : "false");
         } else {
             printf("ERROR: The type of %s should be bool\n", key.c_str());
@@ -1295,7 +1295,7 @@ void HandleSQL(const std::string& sql) {
             std::string mu_script = sql;
             mu_script.replace(0u, 7u, empty);
             ::hybridse::sdk::Status status;
-            auto info = sr->Explain(db, mu_script, &status, performance_sensitive);
+            auto info = sr->Explain(db, mu_script, &status);
             if (!info) {
                 std::cout << "ERROR: Failed to get explain info" << std::endl;
                 return;
@@ -1369,7 +1369,7 @@ void HandleSQL(const std::string& sql) {
         case hybridse::node::kPlanTypeFuncDef:
         case hybridse::node::kPlanTypeQuery: {
             ::hybridse::sdk::Status status;
-            auto rs = sr->ExecuteSQL(db, sql, &status, performance_sensitive);
+            auto rs = sr->ExecuteSQL(db, sql, &status);
             if (!rs) {
                 std::cout << "ERROR: " << status.msg << std::endl;
             } else {
@@ -1383,7 +1383,7 @@ void HandleSQL(const std::string& sql) {
             const std::string& file_path = select_into_plan_node->OutFile();
             const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
             ::hybridse::sdk::Status status;
-            auto rs = sr->ExecuteSQL(db, query_sql, &status, performance_sensitive);
+            auto rs = sr->ExecuteSQL(db, query_sql, &status);
             if (!rs) {
                 std::cout << "ERROR: Failed to execute query" << std::endl;
             } else {
