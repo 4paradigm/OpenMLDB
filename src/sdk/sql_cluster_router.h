@@ -307,7 +307,7 @@ class SQLClusterRouter : public SQLRouter {
                         std::vector<openmldb::type::DataType>& parameter_types);  // NOLINT
 
  private:
-    bool performance_sensitive_ = true;
+    std::atomic<bool> performance_sensitive_ = true;
     SQLRouterOptions options_;
     DBSDK* cluster_sdk_;
     std::map<std::string, boost::compute::detail::lru_cache<std::string, std::shared_ptr<SQLCache>>> input_lru_cache_;
