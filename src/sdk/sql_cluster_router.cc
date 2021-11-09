@@ -928,7 +928,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     }
     DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
     if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
-                       options_.enable_debug, performance_sensitive_)) {
+                       options_.enable_debug, performance_sensitive_.load(std::memory_order_relaxed))) {
         status->msg = response->msg();
         status->code = -1;
         return {};
@@ -1141,8 +1141,9 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, co
     ::hybridse::vm::ExplainOutput explain_output;
     ::hybridse::base::Status vm_status;
     ::hybridse::codec::Schema parameter_schema;
-    bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode, parameter_schema,
-                                                 &explain_output, &vm_status, performance_sensitive_);
+    bool ok =
+        cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode, parameter_schema, &explain_output,
+                                           &vm_status, performance_sensitive_.load(std::memory_order_relaxed));
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;
