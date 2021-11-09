@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-debugs: []
+debugs: ["不同库相同表lastjoin"]
 cases:
-  - id: 1
+  - id: 0
     desc: Last Join tables from two databases 1 - default db is db1
     db: db1
     inputs:
@@ -40,7 +40,7 @@ cases:
         - [ "aa",2,13,1590738989000 ]
         - [ "bb",21,131,1590738990000 ]
         - [ "cc",41,151,1590738992000 ]
-  - id: 2
+  - id: 1
     desc: Last Join tables from two databases 2 - default db is db, explicit db1 and db2
     db: db
     inputs:
@@ -67,7 +67,7 @@ cases:
         - [ "aa",2,13,1590738989000 ]
         - [ "bb",21,131,1590738990000 ]
         - [ "cc",41,151,1590738992000 ]
-  - id: 3
+  - id: 2
     desc: Last join tables from 2 databases fail 1 - db2 is not exist
     db: db1
     inputs:
@@ -89,7 +89,7 @@ cases:
     sql: select db1.{0}.c1, db1.{0}.c2,db2.{1}.c3,db2.{1}.c4 from {0} last join db2.{1} ORDER BY db2.{1}.c3 on db1.{0}.c1=db2.{1}.c1;
     expect:
       success: false
-  - id: 4
+  - id: 3
     desc: Last join tables from 2 databases fail 2 - fail to resolve column {1}.c3 default db
     db: db1
     inputs:
@@ -111,35 +111,7 @@ cases:
     sql: select db1.{0}.c1, db1.{0}.c2, {1}.c3, {1}.c4 from {0} last join db2.{1} ORDER BY db2.{1}.c3 on db1.{0}.c1=db2.{1}.c1;
     expect:
       success: false
-  - id: 5
-    desc: Last Join tables from two databases with same table_name - default db is db, explicit db1 and db2
-    db: db
-    inputs:
-      - db: db1
-        columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
-        indexs: [ "index1:c1:c4" ]
-        name: t1
-        rows:
-          - [ "aa",2,3,1590738989000 ]
-          - [ "bb",21,31,1590738990000 ]
-          - [ "cc",41,51,1590738991000 ]
-      - db: db2
-        columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
-        indexs: [ "index1:c1:c3" ]
-        name: t1
-        rows:
-          - [ "aa",2,13,1590738989000 ]
-          - [ "bb",21,131,1590738990000 ]
-          - [ "cc",41,151,1590738992000 ]
-    sql: select db1.{0}.c1, db1.{0}.c2,db2.{1}.c3,db2.{1}.c4 from db1.{0} last join db2.{1} ORDER BY db2.{1}.c3 on db1.{0}.c1=db2.{1}.c1;
-    expect:
-      order: c1
-      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
-      rows:
-        - [ "aa",2,13,1590738989000 ]
-        - [ "bb",21,131,1590738990000 ]
-        - [ "cc",41,151,1590738992000 ]
-  - id: 5
+  - id: 4
     desc: 全部使用默认库
     db: db
     inputs:
@@ -163,7 +135,7 @@ cases:
         - [ "aa",2,13,1590738989000 ]
         - [ "bb",21,131,1590738990000 ]
         - [ "cc",41,151,1590738992000 ]
-  - id: 6
+  - id: 5
     desc: 指定当前库查询
     db: db
     inputs:
@@ -188,30 +160,6 @@ cases:
         - [ "bb",21,131,1590738990000 ]
         - [ "cc",41,151,1590738992000 ]
   - id: 6
-    desc: 指定当前库查询
-    db: db
-    inputs:
-      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
-        indexs: [ "index1:c1:c4" ]
-        rows:
-          - [ "aa",2,3,1590738989000 ]
-          - [ "bb",21,31,1590738990000 ]
-          - [ "cc",41,51,1590738991000 ]
-      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
-        indexs: [ "index1:c1:c3" ]
-        rows:
-          - [ "aa",2,13,1590738989000 ]
-          - [ "bb",21,131,1590738990000 ]
-          - [ "cc",41,151,1590738992000 ]
-    sql: select db.{0}.c1,db.{0}.c2,db.{1}.c3,db.{1}.c4 from db.{0} last join db.{1} ORDER BY db.{1}.c3 on db.{0}.c1=db.{1}.c1;
-    expect:
-      order: c1
-      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
-      rows:
-        - [ "aa",2,13,1590738989000 ]
-        - [ "bb",21,131,1590738990000 ]
-        - [ "cc",41,151,1590738992000 ]
-  - id: 7
     desc: 查询使用其他库
     db: db
     inputs:
@@ -223,15 +171,15 @@ cases:
           - ["aa",2,3,1590738989000]
           - ["bb",21,31,1590738990000]
           - ["cc",41,51,1590738991000]
-    sql: select * from (select c1, c2+1,c3+1 from db1.{0}) as t1;
+    sql: select * from (select c1, c2+1 as v1,c3+1 as v2 from db1.{0}) as t1;
     expect:
-      columns: ["c1 string", "c2 + 1 int", "c3 + 1 bigint"]
+      columns: ["c1 string", "v1 int", "v2 bigint"]
       order: c1
       rows:
         - ["aa", 3,4]
         - ["bb", 22,32]
         - ["cc", 42,52]
-  - id: 8
+  - id: 7
     desc: 子查询后的表使用默认库
     db: db
     inputs:
@@ -251,7 +199,7 @@ cases:
         - ["aa"]
         - ["bb"]
         - ["cc"]
-  - id: 9
+  - id: 8
     desc: 子查询后的表使用其他库
     db: db
     inputs:
@@ -266,7 +214,7 @@ cases:
     sql: select db1.t1.c1 from (select c1, c2+1,c3+1 from db1.{0}) as t1;
     expect:
       success: false
-  - id: 10
+  - id: 9
     desc: 使用子查询查不同库的数据然后lastjoin
     db: db
     inputs:
@@ -292,7 +240,7 @@ cases:
         - [ "aa",2,13,1590738989000 ]
         - [ "bb",21,131,1590738990000 ]
         - [ "cc",41,151,1590738992000 ]
-  - id: 11
+  - id: 10
     desc: 三表三个库拼表
     db: db
     inputs:
@@ -325,7 +273,7 @@ cases:
       rows:
         - [ "aa",2,1590738989000,1590738992000 ]
         - [ "bb",21,1590738992000,1590738991000 ]
-  - id: 12
+  - id: 11
     desc: 不等值拼接
     db: db
     inputs:
@@ -351,7 +299,7 @@ cases:
       rows:
         - [ "aa",2,3,1590738989000 ]
         - [ "bb",21,32,1590738993000 ]
-  - id: 13
+  - id: 12
     desc: 不同库相同表lastjoin
     db: db
     inputs:
@@ -380,7 +328,7 @@ cases:
         - [ "bb",21,131,1590738990000 ]
         - [ "cc",41,151,1590738992000 ]
   -
-    id: 14
+    id: 13
     desc: window rows使用其他库
     db: db
     inputs:
@@ -405,7 +353,7 @@ cases:
         - ["aa",22,93]
         - ["aa",23,96]
         - ["bb",24,34]
-  - id: 15
+  - id: 14
     desc: window ROWS_RANGE 使用其他库
     db: db
     inputs:

@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.standalone;
+package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -31,40 +31,24 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("CLI-DDL")
-public class DDLTest extends FedbTest {
+@Feature("deploy")
+public class DeploymentTest extends StandaloneTest {
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_create.yaml")
+    @Yaml(filePaths = "function/deploy/test_create_deploy.yaml")
     @Story("create")
     public void testCreate(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
     }
-
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
-    @Story("ttl")
-    public void testTTL(SQLCase testCase){
+    @Yaml(filePaths = "function/deploy/test_show_deploy.yaml")
+    @Story("show")
+    public void testShow(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
     }
-
-    // @Test(dataProvider = "getCase")
-    // @Yaml(filePaths = "function/ddl/test_options.yaml")
-    // @Story("options")
-    // public void testOptions(SQLCase testCase){
-    //     ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
-    // }
-
-    // @Test(dataProvider = "getCase")
-    // @Yaml(filePaths = "function/ddl/test_create_index.yaml")
-    // @Story("create_index")
-    // public void testCreateIndex(SQLCase testCase){
-    //     ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
-    // }
-
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
-    @Story("create_no_index")
-    public void testCreateNoIndex(SQLCase testCase){
+    @Yaml(filePaths = "function/deploy/test_drop_deploy.yaml")
+    @Story("drop")
+    public void testDrop(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
     }
 }

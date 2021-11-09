@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.standalone;
+package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
 
 import com._4paradigm.openmldb.java_sdk_test.command.OpenMLDBComamndFacade;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -37,7 +38,7 @@ import org.testng.annotations.Test;
  */
 @Slf4j
 @Feature("CLI-DML")
-public class DMLTest extends FedbTest {
+public class DMLTest extends StandaloneTest {
 
     // @Test(dataProvider = "getCase")
     // @Yaml(filePaths = "function/dml/test_insert.yaml")
@@ -54,7 +55,7 @@ public class DMLTest extends FedbTest {
     // }
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/insert_multi.yml")
+    @Yaml(filePaths = "function/dml/multi_insert.yaml")
     @Story("insert-multi")
     public void testInsertMulti(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
@@ -62,7 +63,7 @@ public class DMLTest extends FedbTest {
 
     @Story("insert-multi")
     @Test
-    public void testInsertMulti10000(){
+    public void testInsertMulti1000(){
         String createSql = "create table auto_multi_insert_1000 (id int not null,\n" +
                 "          c1 int not null,\n" +
                 "          c2 smallint not null,\n" +

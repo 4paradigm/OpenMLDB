@@ -13,25 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package com._4paradigm.openmldb.test_common.model;
+package com._4paradigm.openmldb.java_sdk_test.entity;
 
 import lombok.Data;
 
-import java.util.List;
-import java.util.Map;
-
 @Data
-public class ExpectDesc extends Table {
-    private String order;
-    private int count = -1;
-    private Boolean success = true;
-    private Map<String,Object> options;
-    private List<TableIndex> idxs;
-    private int indexCount = -1;
-    private OpenmldbDeployment deployment;
-    private OpenmldbDeployment deploymentContains;
-    private int deploymentCount = -1;
-    private List<String> diffTables;
-    private CatFile cat;
+public class OpenMLDBProcedureColumn2 {
+    private int id;
+    private String field;
+    private String type;
+    private boolean constant;   //true 可以为null
 }

@@ -28,7 +28,7 @@ public class DMLHandler extends AbstractSQLHandler{
     @Override
     public boolean preHandle(String sql) {
         String prefix = sql.split("\\s+")[0].toLowerCase();
-        return prefix.equals("insert")||prefix.equals("update")||prefix.equals("delete");
+        return prefix.equals("insert")||prefix.equals("update")||prefix.equals("delete")||prefix.equals("load");
     }
 
     @Override

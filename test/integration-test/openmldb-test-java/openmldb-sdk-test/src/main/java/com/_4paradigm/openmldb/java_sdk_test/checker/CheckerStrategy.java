@@ -70,6 +70,18 @@ public class CheckerStrategy {
         if (expect.getIndexCount() >= 0) {
             checkList.add(new IndexCountChecker(expect, fesqlResult));
         }
+        if(expect.getDeployment()!=null){
+            checkList.add(new DeploymentCheckerByCli(expect, fesqlResult));
+        }
+        if(expect.getDeploymentContains()!=null){
+            checkList.add(new DeploymentContainsCheckerByCli(expect, fesqlResult));
+        }
+        if(expect.getDeploymentCount()>=0){
+            checkList.add(new DeploymentCountCheckerByCli(expect, fesqlResult));
+        }
+        if(expect.getCat()!=null){
+            checkList.add(new CatCheckerByCli(expect, fesqlResult));
+        }
         return checkList;
     }
 

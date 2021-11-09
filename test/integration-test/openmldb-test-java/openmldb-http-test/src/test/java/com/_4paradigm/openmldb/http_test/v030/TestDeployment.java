@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com._4paradigm.openmldb.http_test.v230;
+package com._4paradigm.openmldb.http_test.v030;
 
-import com._4paradigm.openmldb.http_test.common.BaseTest;
 import com._4paradigm.openmldb.http_test.common.ClusterTest;
+import com._4paradigm.openmldb.http_test.common.StandaloneTest;
+import com._4paradigm.openmldb.http_test.executor.RestfulCliExecutor;
 import com._4paradigm.openmldb.http_test.executor.RestfulExecutor;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
 import com._4paradigm.openmldb.test_common.restful.model.RestfulCase;
@@ -24,26 +25,13 @@ import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.testng.annotations.Test;
 
-@Feature("show")
-public class TestShow extends ClusterTest {
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "/restful/v230/test_show_databases.yaml")
-    @Story("show databases")
-     public void testShowDatabase(RestfulCase restfulCase){
-        new RestfulExecutor(executor,restfulCase).run();
-    }
+@Feature("deployment")
+public class TestDeployment extends StandaloneTest {
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "/restful/v230/test_show_tables.yaml")
-    @Story("show table")
-    public void testShowTable(RestfulCase restfulCase){
-        new RestfulExecutor(executor,restfulCase).run();
-    }
-
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "/restful/v230/test_desc.yaml")
-    @Story("desc")
-    public void testDesc(RestfulCase restfulCase){
-        new RestfulExecutor(executor,restfulCase).run();
+    @Yaml(filePaths = "/restful/v030/test_execute_deployment.yaml")
+    @Story("ExecuteDeployment")
+    public void testExecute(RestfulCase restfulCase){
+        new RestfulCliExecutor(restfulCase).run();
     }
 }

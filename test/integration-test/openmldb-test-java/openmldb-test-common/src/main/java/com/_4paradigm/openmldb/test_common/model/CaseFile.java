@@ -146,11 +146,18 @@ public class CaseFile {
         List<SQLCase> sqlCases = new ArrayList<>();
         for(int i=0;i<dataProvider.size();i++){
             String data = dataProvider.get(i);
-            String sql = sqlCase.getSql();
-            sql = sql.replaceAll("d\\["+index+"\\]",data);
             SQLCase newSqlCase = SerializationUtils.clone(sqlCase);
-            //设置新的sql
-            newSqlCase.setSql(sql);
+            List<String> sqls = sqlCase.getSqls();
+            if(CollectionUtils.isNotEmpty(sqls)){
+                List<String> newSqls = sqls.stream().map(sql -> sql.replaceAll("d\\[" + index + "\\]", data)).collect(Collectors.toList());
+                newSqlCase.setSqls(newSqls);
+            }
+            String sql = sqlCase.getSql();
+            if(StringUtils.isNotEmpty(sql)){
+                sql = sql.replaceAll("d\\["+index+"\\]",data);
+                //设置新的sql
+                newSqlCase.setSql(sql);
+            }
             newSqlCase.setId(newSqlCase.getId()+"_"+i);
             newSqlCase.setDesc(newSqlCase.getDesc()+"_"+i);
             //根据expectProvider 生成新的 预期结果 只对第一级测dataProvider可以设置不同的expect

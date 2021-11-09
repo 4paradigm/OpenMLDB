@@ -34,43 +34,33 @@ import org.testng.annotations.Parameters;
  * @date 2020/6/11 2:02 PM
  */
 @Slf4j
-public class FedbTest extends BaseTest {
-    protected static SqlExecutor executor;
+public class StandaloneTest extends BaseTest {
+    // protected static SqlExecutor executor;
 
     @BeforeTest()
     @Parameters({"env","version","fedbPath"})
     public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String fedbPath) throws Exception {
         FedbGlobalVar.env = env;
-        if(env.equalsIgnoreCase("cluster")){
-            FEDBDeploy fedbDeploy = new FEDBDeploy(version);;
-            fedbDeploy.setFedbPath(fedbPath);
-            fedbDeploy.setCluster(true);
-            FedbGlobalVar.mainInfo = fedbDeploy.deployFEDB(2, 3);
-        }else if(env.equalsIgnoreCase("standalone")){
+        if(env.equalsIgnoreCase("standalone")){
             FEDBDeploy fedbDeploy = new FEDBDeploy(version);
             fedbDeploy.setFedbPath(fedbPath);
-            fedbDeploy.setCluster(false);
-            FedbGlobalVar.mainInfo = fedbDeploy.deployFEDB(2, 3);
+            FedbGlobalVar.mainInfo = fedbDeploy.deployFEDBByStandalone();
         }else{
             FedbGlobalVar.mainInfo = FEDBInfo.builder()
-                    .deployType(OpenMLDBDeployType.CLUSTER)
-                    .basePath("/home/zhaowei01/fedb-auto-test/tmp")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
-                    .zk_cluster("172.24.4.55:10000")
-                    .zk_root_path("/openmldb")
-                    .nsNum(2).tabletNum(3)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10001", "172.24.4.55:10002"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10003", "172.24.4.55:10004", "172.24.4.55:10005"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10006"))
+                    .deployType(OpenMLDBDeployType.STANDALONE)
+                    .basePath("/home/zhaowei01/fedb-auto-test/standalone")
+                    .fedbPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
+                    .nsNum(1).tabletNum(1)
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10000"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10001"))
+                    .host("172.24.4.55")
+                    .port(10000)
                     .build();
-            FedbGlobalVar.env = "standalone";
         }
         String caseEnv = System.getProperty("caseEnv");
         if (!StringUtils.isEmpty(caseEnv)) {
             FedbGlobalVar.env = caseEnv;
         }
         log.info("fedb global var env: {}", env);
-        FedbClient fesqlClient = new FedbClient(FedbGlobalVar.mainInfo);
-        executor = fesqlClient.getExecutor();
     }
 }

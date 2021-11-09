@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.v230;
-
+package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
 import io.qameta.allure.Feature;
+import io.qameta.allure.Step;
 import io.qameta.allure.Story;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.Test;
@@ -32,21 +33,14 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("DML")
-public class DMLTest extends FedbTest {
+@Feature("MultiDBTest")
+public class MultiDBTest extends StandaloneTest {
 
+    @Story("Standalone-CLI")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
-    @Story("insert")
-    public void testInsert(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    @Yaml(filePaths = {"function/multiple_databases/"})
+    @Step("{testCase.desc}")
+    public void testSelect(SQLCase testCase) throws Exception {
+        ExecutorFactory.build( testCase, SQLCaseType.kCLI).run();
     }
-
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
-    @Story("insert-prepared")
-    public void testInsertWithPrepared(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
-    }
-
 }

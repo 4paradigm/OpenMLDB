@@ -16,6 +16,7 @@
 package com._4paradigm.openmldb.java_sdk_test.command.chain;
 
 
+import ch.ethz.ssh2.crypto.digest.SHA1;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 
@@ -30,9 +31,13 @@ public class SqlChainManager {
         DMLHandler dmlHandler = new DMLHandler();
         DDLHandler ddlHandler = new DDLHandler();
         DescHandler descHandler = new DescHandler();
+        ShowDeploymentHandler showDeploymentHandler = new ShowDeploymentHandler();
+        ShowDeploymentsHandler showDeploymentsHandler = new ShowDeploymentsHandler();
         queryHandler.setNextHandler(dmlHandler);
         dmlHandler.setNextHandler(ddlHandler);
         ddlHandler.setNextHandler(descHandler);
+        descHandler.setNextHandler(showDeploymentHandler);
+        showDeploymentHandler.setNextHandler(showDeploymentsHandler);
         return queryHandler;
     }
 

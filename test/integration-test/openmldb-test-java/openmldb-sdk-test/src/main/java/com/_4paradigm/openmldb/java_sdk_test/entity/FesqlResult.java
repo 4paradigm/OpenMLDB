@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.entity;
 
+import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com.google.common.base.Joiner;
 import lombok.Data;
 import org.apache.commons.collections4.CollectionUtils;
@@ -37,6 +38,8 @@ public class FesqlResult {
     private List<String> columnNames;
     private List<String> columnTypes;
     private OpenMLDBSchema schema;
+    private OpenmldbDeployment deployment;
+    private List<OpenmldbDeployment> deployments;
 
     @Override
     public String toString() {

@@ -91,7 +91,7 @@ public class CommandExecutor extends BaseExecutor{
         logger.info("version:{} prepare begin",version);
         FesqlResult fesqlResult = OpenMLDBCommandUtil.createDB(fedbInfo,dbName);
         logger.info("version:{},create db:{},{}", version, dbName, fesqlResult.isOk());
-        FesqlResult res = OpenMLDBComamndFacade.createAndInsert(fedbInfo, dbName, fesqlCase.getInputs());
+        FesqlResult res = OpenMLDBCommandUtil.createAndInsert(fedbInfo, dbName, fesqlCase.getInputs());
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
         }
@@ -155,10 +155,9 @@ public class CommandExecutor extends BaseExecutor{
     @Override
     public void tearDown() {
         tearDown("mainVersion",FedbGlobalVar.mainInfo);
-        // tearDown("mainVersion",FedbGlobalVar.mainInfo);
-        // if(MapUtils.isNotEmpty(fedbInfoMap)) {
-        //     fedbInfoMap.entrySet().stream().forEach(e -> tearDown(e.getKey(), e.getValue()));
-        // }
+        if(MapUtils.isNotEmpty(fedbInfoMap)) {
+            fedbInfoMap.entrySet().stream().forEach(e -> tearDown(e.getKey(), e.getValue()));
+        }
     }
 
 
@@ -172,7 +171,8 @@ public class CommandExecutor extends BaseExecutor{
         for (InputDesc table : tables) {
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
-                // OpenmlDBCommandFactory.runNoInteractive(fedbInfo,dbName,drop);
+                String db = table.getDb().isEmpty() ? dbName : table.getDb();
+                // OpenmlDBCommandFactory.runNoInteractive(fedbInfo,db,drop);
             }
         }
     }

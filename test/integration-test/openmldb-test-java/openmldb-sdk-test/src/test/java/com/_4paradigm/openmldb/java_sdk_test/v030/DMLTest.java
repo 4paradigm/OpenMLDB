@@ -35,9 +35,9 @@ import org.testng.annotations.Test;
 @Feature("DML")
 public class DMLTest extends FedbTest {
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/insert_multi.yml")
-    @Story("insert-multi")
-    public void testInsertMulti(SQLCase testCase){
+    @Yaml(filePaths = "function/dml/multi_insert.yaml")
+    @Story("multi-insert")
+    public void testMultiInsert(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 }

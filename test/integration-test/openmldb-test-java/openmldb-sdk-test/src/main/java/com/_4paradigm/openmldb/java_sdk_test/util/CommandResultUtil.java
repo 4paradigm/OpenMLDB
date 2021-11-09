@@ -1,8 +1,8 @@
 package com._4paradigm.openmldb.java_sdk_test.util;
 
-import com._4paradigm.openmldb.java_sdk_test.entity.OpenMLDBColumn;
-import com._4paradigm.openmldb.java_sdk_test.entity.OpenMLDBIndex;
-import com._4paradigm.openmldb.java_sdk_test.entity.OpenMLDBSchema;
+import com._4paradigm.openmldb.java_sdk_test.entity.*;
+import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
+import com.google.common.base.Joiner;
 import org.apache.commons.collections4.CollectionUtils;
 import org.testng.collections.Lists;
 
@@ -24,7 +24,9 @@ public class CommandResultUtil {
     }
     private static boolean containsErrorMsg(String s){
         String tmp = s.toLowerCase();
-        return tmp.contains("fail")||tmp.contains("error")||tmp.contains("unknow")||tmp.contains("unsupported")||tmp.contains("not an astintervalliteral");
+        return tmp.contains("fail")||tmp.contains("error")||tmp.contains("unknow")||tmp.contains("unsupported")||
+                tmp.contains("not an astintervalliteral")||tmp.contains("already exists")||tmp.contains("not supported")
+                ||tmp.contains("not found")||tmp.contains("un-support")||tmp.contains("invalid");
     }
     public static OpenMLDBSchema parseSchema(List<String> lines){
         OpenMLDBSchema schema = new OpenMLDBSchema();
@@ -61,5 +63,60 @@ public class CommandResultUtil {
         schema.setIndexs(indexs);
         schema.setColumns(cols);
         return schema;
+    }
+    public static OpenmldbDeployment parseDeployment(List<String> lines){
+        OpenmldbDeployment deployment = new OpenmldbDeployment();
+        List<String> inColumns = new ArrayList<>();
+        List<String> outColumns = new ArrayList<>();
+        String[] db_sp = lines.get(3).split("\\s+");
+        deployment.setDbName(db_sp[0]);
+        deployment.setName(db_sp[1]);
+        for(int i=0;i<9;i++) {
+            lines.remove(0);
+        }
+        Iterator<String> it = lines.iterator();
+        String sql = "";
+        while(it.hasNext()) {
+            String line = it.next();
+            if (line.contains("row in set")) break;
+            if (line.startsWith("#") || line.startsWith("-")) continue;
+            sql += line+"\n";
+        }
+        deployment.setSql(sql);
+        while(it.hasNext()){
+            String line = it.next();
+            if (line.contains("Output Schema")) break;
+            if (line.startsWith("#") || line.startsWith("-")) continue;
+            String[] infos = line.split("\\s+");
+            String in = Joiner.on(",").join(infos);
+            inColumns.add(in);
+        }
+        while(it.hasNext()){
+            String line = it.next();
+            if(line.startsWith("#")||line.startsWith("-"))continue;
+            String[] infos = line.split("\\s+");
+            String out = Joiner.on(",").join(infos);
+            outColumns.add(out);
+        }
+        deployment.setInColumns(inColumns);
+        deployment.setOutColumns(outColumns);
+        return deployment;
+    }
+    public static List<OpenmldbDeployment> parseDeployments(List<String> lines){
+        List<OpenmldbDeployment> deployments = new ArrayList<>();
+        for(int i=0;i<3;i++) {
+            lines.remove(0);
+        }
+        Iterator<String> it = lines.iterator();
+        while(it.hasNext()){
+            String line = it.next();
+            OpenmldbDeployment deployment = new OpenmldbDeployment();
+            if (line.startsWith("-")) break;
+            String[] infos = line.split("\\s+");
+            deployment.setDbName(infos[0]);
+            deployment.setName(infos[1]);
+            deployments.add(deployment);
+        }
+        return deployments;
     }
 }

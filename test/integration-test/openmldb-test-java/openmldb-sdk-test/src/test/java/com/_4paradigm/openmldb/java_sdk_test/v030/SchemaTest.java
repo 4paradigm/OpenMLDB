@@ -1,9 +1,7 @@
 package com._4paradigm.openmldb.java_sdk_test.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.command.OpenMLDBComamndFacade;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Schema;
@@ -49,6 +47,7 @@ public class SchemaTest extends FedbTest {
                 .collect(Collectors.toList());
         List<String> expectList = Lists.newArrayList("c1 string","c2 int not null","c3 bigint","c4 smallint",
                 "c5 float","c6 double not null","7 timestamp not null","c8 date","c9 bool not null");
+        Assert.assertEquals(actualList,expectList);
         String deleteSql = "drop table "+tableName+";";
         FesqlUtil.sql(executor,FedbGlobalVar.dbName,deleteSql);
     }

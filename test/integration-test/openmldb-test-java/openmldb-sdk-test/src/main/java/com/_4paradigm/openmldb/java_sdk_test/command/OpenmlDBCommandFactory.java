@@ -55,26 +55,7 @@ public class OpenmlDBCommandFactory {
     }
 
     public static List<String> runNoInteractive(FEDBInfo fedbInfo, String dbName, String command){
-        return run(getNoInteractiveCommand(fedbInfo,dbName,command));
-    }
-
-    private static List<String> run(String command){
-        return run(command,1000,30);
-    }
-    private static List<String> run(String command, int time, int count){
-        int num = 0;
-        List<String> result;
-        do{
-            result = ExecutorUtil.run(command);
-            if((result.size()==0)||(result.size()==1&&result.get(0).equals("zk client init failed"))){
-                num++;
-                Tool.sleep(time);
-                log.info("command retry:"+num);
-            }else {
-                return result;
-            }
-        }while (num<count);
-        return result;
+        return CommandUtil.run(getNoInteractiveCommand(fedbInfo,dbName,command));
     }
 
 }

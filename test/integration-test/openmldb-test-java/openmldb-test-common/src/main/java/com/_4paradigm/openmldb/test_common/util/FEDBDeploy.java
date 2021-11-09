@@ -313,8 +313,10 @@ public class FEDBDeploy {
         try {
             int nsPort = LinuxUtil.getNoUsedPort();
             int tabletPort = LinuxUtil.getNoUsedPort();
+            int apiServerPort = LinuxUtil.getNoUsedPort();
             String nsEndpoint = ip+":"+nsPort;
             String tabletEndpoint = ip+":"+tabletPort;
+            String apiServerEndpoint = ip+":"+apiServerPort;
             String standaloneName = "/openmldb-standalone";
             List<String> commands = Lists.newArrayList(
                     "cp -r " + testPath + "/" + fedbName + " " + testPath + standaloneName,
@@ -324,7 +326,11 @@ public class FEDBDeploy {
                     "sed -i 's@--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/nameserver.flags",
                     "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/tablet.flags",
                     "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/tablet.flags",
-                    "sed -i 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/tablet.flags"
+                    "sed -i 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/tablet.flags",
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' "+testPath+standaloneName+"/conf/apiserver.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/apiserver.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint="+apiServerEndpoint+"#' "+testPath+standaloneName+"/conf/apiserver.flags",
+                    "sed -i 's#--nameserver=.*#--nameserver="+nsEndpoint+"#' "+testPath+standaloneName+"/conf/apiserver.flags"
             );
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(fedbPath)){
@@ -333,8 +339,9 @@ public class FEDBDeploy {
             ExecutorUtil.run("sh "+testPath+standaloneName+"/bin/start-all.sh");
             boolean nsOk = LinuxUtil.checkPortIsUsed(nsPort,3000,30);
             boolean tabletOk = LinuxUtil.checkPortIsUsed(tabletPort,3000,30);
-            if(nsOk&&tabletOk){
-                log.info(String.format("standalone 部署成功,nsPort：{},tabletPort:{}",nsPort,tabletPort));
+            boolean apiServerOk = LinuxUtil.checkPortIsUsed(apiServerPort,3000,30);
+            if(nsOk&&tabletOk&&apiServerOk){
+                log.info(String.format("standalone 部署成功,nsPort：{},tabletPort:{},apiServerPort:{}",nsPort,tabletPort,apiServerPort));
                 FEDBInfo fedbInfo = FEDBInfo.builder()
                         .deployType(OpenMLDBDeployType.STANDALONE)
                         .fedbPath(testPath+"/openmldb-standalone/bin/openmldb")
@@ -346,6 +353,7 @@ public class FEDBDeploy {
                         .port(nsPort)
                         .tabletNum(1)
                         .tabletEndpoints(Lists.newArrayList(tabletEndpoint))
+                        .apiServerEndpoints(Lists.newArrayList(apiServerEndpoint))
                         .build();
                 return fedbInfo;
             }
