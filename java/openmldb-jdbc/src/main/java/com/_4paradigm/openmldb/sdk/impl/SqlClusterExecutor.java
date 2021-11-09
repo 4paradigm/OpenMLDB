@@ -21,8 +21,8 @@ import com._4paradigm.openmldb.common.LibraryLoader;
 import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
-import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.sdk.Schema;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -259,8 +259,39 @@ public class SqlClusterExecutor implements SqlExecutor {
         spInfo.setOutputSchema(Common.convertSchema(procedureInfo.GetOutputSchema()));
         spInfo.setMainTable(procedureInfo.GetMainTable());
         spInfo.setInputTables(procedureInfo.GetTables());
+        spInfo.setInputDbs(procedureInfo.GetDbs());
         procedureInfo.delete();
         return spInfo;
+    }
+
+    @Override
+    public List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
+          throws SQLException {
+        if (null == tableSchema || tableSchema.isEmpty()) {
+          return null;
+        }
+        List<String> results = new ArrayList<>();
+        for (String database : tableSchema.keySet()) {
+            Map<String, Schema> schemaMap = tableSchema.get(database);
+            TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
+            for (String table : schemaMap.keySet()) {
+                Schema schema = schemaMap.get(table);
+                ColumnDescVector columnDescVector = new ColumnDescVector();
+                List<Column> columnList = schema.getColumnList();
+                for (Column column : columnList) {
+                    String columnName = column.getColumnName();
+                    int sqlType = column.getSqlType();
+                    ColumnDescPair columnDescPair = new ColumnDescPair(columnName, DataType.swigToEnum(sqlType));
+                    columnDescVector.add(columnDescPair);
+                }
+                TableColumnDescPair tableColumnDescPair = new TableColumnDescPair(table,
+                        columnDescVector);
+                tableColumnDescPairVector.add(tableColumnDescPair);
+            }
+            VectorString ddlList = sqlRouter.ExecuteDDLParse(sql, tableColumnDescPairVector);
+            results.addAll(ddlList);
+        }
+        return results;
     }
 
     @Override

@@ -20,16 +20,17 @@ import com._4paradigm.hybridse.sdk.HybridSeException
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{DataType, DateType, IntegerType, LongType, ShortType, TimestampType}
 
+import scala.collection.mutable
 
 object SparkRowUtil {
 
-  def createOrderKeyExtractor(keyIdx: Int, sparkType: DataType, nullable: Boolean): Row => Long = {
+  def getLongFromIndex(keyIdx: Int, sparkType: DataType, row: Row): Long = {
     sparkType match {
-      case ShortType => row: Row => row.getShort(keyIdx).toLong
-      case IntegerType => row: Row => row.getInt(keyIdx).toLong
-      case LongType => row: Row => row.getLong(keyIdx)
-      case TimestampType => row: Row => row.getTimestamp(keyIdx).getTime
-      case DateType => row: Row=>row.getDate(keyIdx).getTime
+      case ShortType => row.getShort(keyIdx).toLong
+      case IntegerType => row.getInt(keyIdx).toLong
+      case LongType => row.getLong(keyIdx)
+      case TimestampType => row.getTimestamp(keyIdx).getTime
+      case DateType => row.getDate(keyIdx).getTime
       case _ =>
         throw new HybridSeException(s"Illegal window key type: $sparkType")
     }

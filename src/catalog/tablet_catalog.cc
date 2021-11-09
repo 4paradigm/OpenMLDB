@@ -26,7 +26,7 @@
 #include "catalog/schema_adapter.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-DECLARE_bool(enable_distsql);
+
 DECLARE_bool(enable_localtablet);
 namespace openmldb {
 namespace catalog {
@@ -80,6 +80,8 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
 
 bool TabletTableHandler::UpdateIndex(
         const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs) {
+    index_list_.Clear();
+    index_hint_.clear();
     if (!SchemaAdapter::ConvertIndex(indexs, &index_list_)) {
         LOG(WARNING) << "fail to conver index to sql index";
         return false;

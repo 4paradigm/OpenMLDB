@@ -33,8 +33,10 @@ ProcedureInfoImpl::ProcedureInfoImpl(const ::openmldb::api::ProcedureInfo& proce
         openmldb::catalog::SchemaAdapter::ConvertSchema(procedure.output_schema(), &hybridse_out_schema);
         output_schema_.SetSchema(hybridse_out_schema);
     }
-    for (const auto& table : procedure.tables()) {
-        tables_.push_back(table);
+
+    for (const auto& namePair : procedure.tables()) {
+        dbs_.push_back(namePair.db_name());
+        tables_.push_back(namePair.table_name());
     }
     if (procedure.type() == ::openmldb::type::ProcedureType::kReqDeployment) {
         type_ = ::hybridse::sdk::ProcedureType::kReqDeployment;

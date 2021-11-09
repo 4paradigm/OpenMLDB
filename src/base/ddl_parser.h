@@ -30,6 +30,10 @@ class PhysicalOpNode;
 
 namespace openmldb::base {
 
+// convert ms to minutes, ceil
+int64_t AbsTTLConvert(int64_t time_ms, bool zero_eq_unbounded);
+int64_t LatTTLConvert(int64_t time_ms, bool zero_eq_unbounded);
+
 using IndexMap = std::map<std::string, std::vector<::openmldb::common::ColumnKey>>;
 
 class DDLParser {
@@ -38,6 +42,9 @@ class DDLParser {
 
     static IndexMap ExtractIndexes(const std::string& sql,
         const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas);
+
+    static IndexMap ExtractIndexes(const std::string& sql,
+                                   const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
 
     static IndexMap ExtractIndexesForBatch(const std::string& sql, const ::hybridse::type::Database& db);
 
@@ -54,9 +61,8 @@ class DDLParser {
     static bool GetPlan(const std::string& sql, const hybridse::type::Database& db,
                         hybridse::vm::RunSession* session);
 
-    static void AddTables(
-        const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schema,
-        hybridse::type::Database* db);
+    template <typename T>
+    static void AddTables(const T& schema, hybridse::type::Database* db);
 };
 }  // namespace openmldb::base
 

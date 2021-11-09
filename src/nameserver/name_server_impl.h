@@ -156,7 +156,7 @@ class NameServerImpl : public NameServer {
                              uint32_t tid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
     ::openmldb::base::Status CreateOfflineTable(const std::string& db_name, const std::string& table_name,
-                const std::string& partition_key, const Schema& schema);
+                                                const std::string& partition_key, const Schema& schema);
 
     void RefreshTablet(uint32_t tid);
 
@@ -312,8 +312,8 @@ class NameServerImpl : public NameServer {
                        const ::openmldb::nameserver::TableInfo& table_info_local, uint32_t pid, int& code,  // NOLINT
                        std::string& msg);                                                                   // NOLINT
 
-    int CreateTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, bool is_leader,
-                            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term); // NOLINT
+    int CreateTableOnTablet(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info, bool is_leader,
+                            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);  // NOLINT
 
     void CheckZkClient();
 
@@ -764,8 +764,8 @@ class NameServerImpl : public NameServer {
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;
     ::baidu::common::ThreadPool task_thread_pool_;
-    uint32_t table_index_;
-    uint64_t term_;
+    uint32_t table_index_ = 0;
+    uint64_t term_ = 0;
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::list<std::shared_ptr<OPData>> done_op_list_;
@@ -783,11 +783,18 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::string> real_ep_map_;
     std::map<std::string, std::string> remote_real_ep_map_;
     std::map<std::string, std::string> sdk_endpoint_map_;
-    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_sp_table_map_;
-    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> db_table_sp_map_;
+    // database
+    //    -> procedure
+    //       -> (db_name, table_name)
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>>>
+        db_sp_table_map_;
+    // database
+    //      -> table
+    //          -> (da_name, procedure_name)
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>>>
+        db_table_sp_map_;
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<api::ProcedureInfo>>>
         db_sp_info_map_;
-
     ::openmldb::type::StartupMode startup_mode_;
 };
 

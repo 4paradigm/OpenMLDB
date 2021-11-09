@@ -358,8 +358,23 @@ bool GroupAndSortOptimized::JoinKeysOptimized(
 bool GroupAndSortOptimized::FilterOptimized(
     const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Filter* filter,
     PhysicalOpNode** new_in) {
-    return FilterAndOrderOptimized(root_schemas_ctx, in, filter, nullptr,
+    bool hasOptimized = FilterAndOrderOptimized(root_schemas_ctx, in, filter, nullptr,
                                    new_in);
+    // construct filter condition after keys optimization
+    if (filter->left_key().ValidKey() && filter->right_key().ValidKey()) {
+        auto condition_list = node_manager_->MakeExprList();
+        if (nullptr != filter->condition_.condition()) {
+            condition_list->AddChild(const_cast<node::ExprNode*>(filter->condition_.condition()));
+        }
+        for (auto i = 0; i < filter->left_key().keys()->GetChildNum(); i++) {
+            condition_list->AddChild(node_manager_->MakeBinaryExprNode(
+                filter->left_key().keys()->GetChild(i), filter->right_key().keys()->GetChild(i), node::kFnOpEq));
+        }
+        filter->right_key_.set_keys(node_manager_->MakeExprList());
+        filter->left_key_.set_keys(node_manager_->MakeExprList());
+        filter->condition_.set_condition(node_manager_->MakeAndExpr(condition_list));
+    }
+    return hasOptimized;
 }
 bool GroupAndSortOptimized::FilterAndOrderOptimized(
     const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Filter* filter,

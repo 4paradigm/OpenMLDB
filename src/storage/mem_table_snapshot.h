@@ -33,9 +33,6 @@
 
 using ::openmldb::api::LogEntry;
 namespace openmldb {
-namespace base {
-class Status;
-}
 namespace storage {
 
 using ::openmldb::log::WriteHandle;
