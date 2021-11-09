@@ -32,6 +32,7 @@
 #include "base/texttable.h"
 #include "catalog/schema_adapter.h"
 #include "cmd/display.h"
+#include "cmd/file_option_parser.h"
 #include "cmd/split.h"
 #include "codec/schema_codec.h"
 #include "gflags/gflags.h"
@@ -75,124 +76,6 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK* cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
 bool performance_sensitive = true;
-
-// TODO(zekai): refactor status and error code
-class FileOptionsParser {
- public:
-    FileOptionsParser() {
-        check_map_.insert(std::make_pair("format", std::make_pair(CheckFormat(), hybridse::node::kVarchar)));
-        check_map_.insert(std::make_pair("delimiter", std::make_pair(CheckDelimiter(), hybridse::node::kVarchar)));
-        check_map_.insert(std::make_pair("null_value", std::make_pair(CheckNullValue(), hybridse::node::kVarchar)));
-        check_map_.insert(std::make_pair("header", std::make_pair(CheckHeader(), hybridse::node::kBool)));
-    }
-    ::openmldb::base::Status Parse(const std::shared_ptr<hybridse::node::OptionsMap>& options_map) {
-        for (const auto& item : *options_map) {
-            std::string key = item.first;
-            boost::to_lower(key);
-            auto pair = check_map_.find(key);
-            if (pair == check_map_.end()) {
-                status_.msg = "ERROR: This option " + key + " is not currently supported";
-                status_.code = openmldb::base::kSQLCmdRunError;
-                return status_;
-            }
-            if (!GetOption(item.second, key, pair->second.first, pair->second.second)) {
-                return status_;
-            }
-        }
-        return status_;
-    }
-    std::string GetFormat() const { return format_; }
-    std::string GetNullValue() const { return null_value_; }
-    char GetDelimiter() const { return delimiter_; }
-    bool GetHeader() const { return header_; }
-
- protected:
-    std::map<std::string,
-             std::pair<std::function<bool(const hybridse::node::ConstNode* node)>, hybridse::node::DataType>>
-        check_map_;
-
- private:
-    ::openmldb::base::Status status_;
-    // Default options
-    std::string format_ = "csv";
-    std::string null_value_ = "null";
-    char delimiter_ = ',';
-    bool header_ = true;
-
-    bool GetOption(const hybridse::node::ConstNode* node, const std::string& option_name,
-                   std::function<bool(const hybridse::node::ConstNode* node)> const& f,
-                   hybridse::node::DataType option_type) {
-        if (node->GetDataType() != option_type) {
-            status_.msg = "ERROR: Wrong type " + hybridse::node::DataTypeName(node->GetDataType()) + " for option " +
-                          option_name + ", it should be " + hybridse::node::DataTypeName(option_type);
-            status_.code = openmldb::base::kSQLCmdRunError;
-            return false;
-        }
-        if (!f(node)) {
-            status_.msg = "ERROR: Parse option " + option_name + " failed";
-            status_.code = openmldb::base::kSQLCmdRunError;
-            return false;
-        }
-        return true;
-    }
-    std::function<bool(const hybridse::node::ConstNode* node)> CheckFormat() {
-        return [this](const hybridse::node::ConstNode* node) {
-            format_ = node->GetAsString();
-            if (format_ != "csv") {
-                return false;
-            }
-            return true;
-        };
-    }
-    std::function<bool(const hybridse::node::ConstNode* node)> CheckDelimiter() {
-        return [this](const hybridse::node::ConstNode* node) {
-            auto str = node->GetAsString();
-            if (str.size() != 1) {
-                return false;
-            } else {
-                delimiter_ = str[0];
-                return true;
-            }
-        };
-    }
-    std::function<bool(const hybridse::node::ConstNode* node)> CheckNullValue() {
-        return [this](const hybridse::node::ConstNode* node) {
-            null_value_ = node->GetAsString();
-            return true;
-        };
-    }
-    std::function<bool(const hybridse::node::ConstNode* node)> CheckHeader() {
-        return [this](const hybridse::node::ConstNode* node) {
-            header_ = node->GetBool();
-            return true;
-        };
-    }
-};
-
-class ReadFileOptionsParser : public FileOptionsParser {
- public:
-    ReadFileOptionsParser() = default;
-};
-
-class WriteFileOptionsParser : public FileOptionsParser {
- public:
-    WriteFileOptionsParser() {
-        check_map_.insert(std::make_pair("mode", std::make_pair(CheckMode(), hybridse::node::kVarchar)));
-    }
-    std::string GetMode() const { return mode_; }
-
- private:
-    std::string mode_ = "error_if_exists";
-    std::function<bool(const hybridse::node::ConstNode* node)> CheckMode() {
-        return [this](const hybridse::node::ConstNode* node) {
-            mode_ = node->GetAsString();
-            if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
-                return false;
-            }
-            return true;
-        };
-    }
-};
 
 void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& file_path,
                    const std::shared_ptr<hybridse::node::OptionsMap>& options_map, ::openmldb::base::Status* status) {
@@ -250,72 +133,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
                     if (result_set->IsNULL(i)) {
                         rowString.append(options_parse.GetNullValue());
                     } else {
-                        auto data_type = schema->GetColumnType(i);
-                        switch (data_type) {
-                            case hybridse::sdk::kTypeInt16: {
-                                int16_t value = 0;
-                                result_set->GetInt16(i, &value);
-                                rowString.append(std::to_string(value));
-                                break;
-                            }
-                            case hybridse::sdk::kTypeInt32: {
-                                int32_t value = 0;
-                                result_set->GetInt32(i, &value);
-                                rowString.append(std::to_string(value));
-                                break;
-                            }
-                            case hybridse::sdk::kTypeInt64: {
-                                int64_t value = 0;
-                                result_set->GetInt64(i, &value);
-                                rowString.append(std::to_string(value));
-                                break;
-                            }
-                            case hybridse::sdk::kTypeFloat: {
-                                float value = 0;
-                                result_set->GetFloat(i, &value);
-                                rowString.append(std::to_string(value));
-                                break;
-                            }
-                            case hybridse::sdk::kTypeDouble: {
-                                double value = 0;
-                                result_set->GetDouble(i, &value);
-                                rowString.append(std::to_string(value));
-                                break;
-                            }
-                            case hybridse::sdk::kTypeString: {
-                                std::string val;
-                                result_set->GetString(i, &val);
-                                rowString.append(val);
-                                break;
-                            }
-                            case hybridse::sdk::kTypeTimestamp: {
-                                int64_t ts = 0;
-                                result_set->GetTime(i, &ts);
-                                rowString.append(std::to_string(ts));
-                                break;
-                            }
-                            case hybridse::sdk::kTypeDate: {
-                                int32_t year = 0;
-                                int32_t month = 0;
-                                int32_t day = 0;
-                                std::stringstream ss;
-                                result_set->GetDate(i, &year, &month, &day);
-                                ss << year << "-" << month << "-" << day;
-                                rowString.append(ss.str());
-                                break;
-                            }
-                            case hybridse::sdk::kTypeBool: {
-                                bool value = false;
-                                result_set->GetBool(i, &value);
-                                rowString.append(value ? "true" : "false");
-                                break;
-                            }
-                            default: {
-                                status->msg = "ERROR: In table, some types are not currently supported";
-                                status->code = openmldb::base::kSQLCmdRunError;
-                                return;
-                            }
-                        }
+                        rowString.append(result_set->GetAsString(i));
                     }
                     if (i != schema->GetColumnCnt() - 1) {
                         rowString += options_parse.GetDelimiter();
@@ -352,70 +170,7 @@ void PrintResultSet(std::ostream& stream, ::hybridse::sdk::ResultSet* result_set
                 t.add("NULL");
                 continue;
             }
-            auto data_type = schema->GetColumnType(i);
-            switch (data_type) {
-                case hybridse::sdk::kTypeInt16: {
-                    int16_t value = 0;
-                    result_set->GetInt16(i, &value);
-                    t.add(std::to_string(value));
-                    break;
-                }
-                case hybridse::sdk::kTypeInt32: {
-                    int32_t value = 0;
-                    result_set->GetInt32(i, &value);
-                    t.add(std::to_string(value));
-                    break;
-                }
-                case hybridse::sdk::kTypeInt64: {
-                    int64_t value = 0;
-                    result_set->GetInt64(i, &value);
-                    t.add(std::to_string(value));
-                    break;
-                }
-                case hybridse::sdk::kTypeFloat: {
-                    float value = 0;
-                    result_set->GetFloat(i, &value);
-                    t.add(std::to_string(value));
-                    break;
-                }
-                case hybridse::sdk::kTypeDouble: {
-                    double value = 0;
-                    result_set->GetDouble(i, &value);
-                    t.add(std::to_string(value));
-                    break;
-                }
-                case hybridse::sdk::kTypeString: {
-                    std::string val;
-                    result_set->GetString(i, &val);
-                    t.add(val);
-                    break;
-                }
-                case hybridse::sdk::kTypeTimestamp: {
-                    int64_t ts = 0;
-                    result_set->GetTime(i, &ts);
-                    t.add(std::to_string(ts));
-                    break;
-                }
-                case hybridse::sdk::kTypeDate: {
-                    int32_t year = 0;
-                    int32_t month = 0;
-                    int32_t day = 0;
-                    std::stringstream ss;
-                    result_set->GetDate(i, &year, &month, &day);
-                    ss << year << "-" << month << "-" << day;
-                    t.add(ss.str());
-                    break;
-                }
-                case hybridse::sdk::kTypeBool: {
-                    bool value = false;
-                    result_set->GetBool(i, &value);
-                    t.add(value ? "true" : "false");
-                    break;
-                }
-                default: {
-                    t.add("NA");
-                }
-            }
+            t.add(result_set->GetAsString(i));
         }
         t.end_of_row();
     }
