@@ -68,7 +68,7 @@ cd openmldb-tablet-2.2.0
 ```
 **注意：**
 * endpoint不能用0.0.0.0和127.0.0.1 
-* 如果此处使用的域名, 所有使用rtidb的client所在的机器都得配上对应的host. 不然会访问不到
+* 如果此处使用的域名, 所有使用openmldb的client所在的机器都得配上对应的host. 不然会访问不到
 * zk_cluster和zk_root_path配置和nameserver的保持一致
 #### 3 启动服务
 ```

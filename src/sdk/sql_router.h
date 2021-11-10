@@ -68,9 +68,12 @@ class SQLRouter {
     virtual ~SQLRouter() {}
 
     virtual bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) = 0;
+
     virtual bool CreateDB(const std::string& db, hybridse::sdk::Status* status) = 0;
 
     virtual bool DropDB(const std::string& db, hybridse::sdk::Status* status) = 0;
+
+    virtual void SetPerformanceSensitive(const bool performance_sensitive) = 0;
 
     virtual bool ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) = 0;
 
@@ -85,8 +88,7 @@ class SQLRouter {
     virtual std::shared_ptr<openmldb::sdk::TableReader> GetTableReader() = 0;
 
     virtual std::shared_ptr<ExplainInfo> Explain(const std::string& db, const std::string& sql,
-                                                 ::hybridse::sdk::Status* status,
-                                                 bool performance_sensitive = true) = 0;
+                                                 ::hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<openmldb::sdk::SQLRequestRow> GetRequestRow(const std::string& db, const std::string& sql,
                                                                         hybridse::sdk::Status* status) = 0;
@@ -105,12 +107,11 @@ class SQLRouter {
         hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
-                                                                 hybridse::sdk::Status* status,
-                                                                 bool performance_sensitive = true) = 0;
+                                                                 hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
-        hybridse::sdk::Status* status, bool performance_sensitive = true) = 0;
+        hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLBatchRequest(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRowBatch> row_batch,
@@ -139,8 +140,8 @@ class SQLRouter {
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<openmldb::sdk::SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(
-        const std::string& db, const std::string& table_name) = 0;
+    virtual std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
+                                                                  const std::string& table_name) = 0;
     /*
      * return ddl statements
      * schemas example:
