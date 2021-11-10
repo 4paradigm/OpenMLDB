@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.v230;
+package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;

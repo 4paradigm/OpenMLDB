@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.v230;
+package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
+
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -31,31 +32,21 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("Express")
-public class ExpressTest extends FedbTest {
+@Feature("DML")
+public class DMLTest extends FedbTest {
 
-    @Story("batch")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/expression/")
-    public void testExpress(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
+    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
+    @Story("insert")
+    public void testInsert(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
-    @Story("request")
+
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/expression/")
-    public void testExpressRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
+    @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
+    @Story("insert-prepared")
+    public void testInsertWithPrepared(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
     }
-    @Story("requestWithSp")
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/expression/")
-    public void testExpressRequestModeWithSp(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
-    }
-    @Story("requestWithSpAysn")
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/expression/")
-    public void testExpressRequestModeWithSpAysn(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
-    }
+
 }

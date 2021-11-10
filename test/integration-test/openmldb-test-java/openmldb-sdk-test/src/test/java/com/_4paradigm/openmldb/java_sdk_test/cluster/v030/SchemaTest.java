@@ -1,4 +1,4 @@
-package com._4paradigm.openmldb.java_sdk_test.v030;
+package com._4paradigm.openmldb.java_sdk_test.cluster.v030;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;

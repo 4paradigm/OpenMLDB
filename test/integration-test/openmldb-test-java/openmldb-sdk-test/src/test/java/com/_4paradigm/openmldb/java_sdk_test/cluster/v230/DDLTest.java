@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.v030;
-
+package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -32,12 +31,33 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("DML")
-public class DMLTest extends FedbTest {
+@Feature("DDL")
+public class DDLTest extends FedbTest {
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/multi_insert.yaml")
-    @Story("multi-insert")
-    public void testMultiInsert(SQLCase testCase){
+    @Yaml(filePaths = "function/ddl/test_create.yaml")
+    @Story("create")
+    public void testCreate(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
+    @Story("ttl")
+    public void testTTL(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_options.yaml")
+    @Story("options")
+    public void testOptions(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+
+    // @Test(dataProvider = "getCase")
+    // @Yaml(filePaths = "function/ddl/test_create_index.yaml")
+    // @Story("create_index")
+    // public void testCreateIndex(SQLCase testCase){
+    //     ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+    // }
 }

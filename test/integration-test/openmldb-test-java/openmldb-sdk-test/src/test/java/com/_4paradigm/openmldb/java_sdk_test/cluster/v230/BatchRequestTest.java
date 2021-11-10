@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.v230;
-
+package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -24,29 +23,26 @@ import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
-import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.Test;
 
-/**
- * @author zhaowei
- * @date 2020/6/11 2:53 PM
- */
-@Slf4j
-@Feature("DML")
-public class DMLTest extends FedbTest {
-
+@Feature("BatchTest")
+public class BatchRequestTest extends FedbTest {
+    @Story("BatchRequest")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
-    @Story("insert")
-    public void testInsert(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    @Yaml(filePaths = "function/test_batch_request.yaml")
+    public void testBatchRequest(SQLCase testCase) {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequest).run();
     }
-
+    @Story("SPBatchRequest")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
-    @Story("insert-prepared")
-    public void testInsertWithPrepared(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
+    @Yaml(filePaths = "function/test_batch_request.yaml")
+    public void testSPBatchRequest(SQLCase testCase) {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequestWithSp).run();
     }
-
+    @Story("SPBatchRequestAsyn")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/test_batch_request.yaml")
+    public void testSPBatchRequestAsyn(SQLCase testCase) {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequestWithSpAsync).run();
+    }
 }

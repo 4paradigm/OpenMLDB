@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.v230;
+package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -31,33 +31,31 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("DDL")
-public class DDLTest extends FedbTest {
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_create.yaml")
-    @Story("create")
-    public void testCreate(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
-    }
+@Feature("Express")
+public class ExpressTest extends FedbTest {
 
+    @Story("batch")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
-    @Story("ttl")
-    public void testTTL(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    @Yaml(filePaths = "function/expression/")
+    public void testExpress(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
-
+    @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_options.yaml")
-    @Story("options")
-    public void testOptions(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    @Yaml(filePaths = "function/expression/")
+    public void testExpressRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
-
-    // @Test(dataProvider = "getCase")
-    // @Yaml(filePaths = "function/ddl/test_create_index.yaml")
-    // @Story("create_index")
-    // public void testCreateIndex(SQLCase testCase){
-    //     ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
-    // }
+    @Story("requestWithSp")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/expression/")
+    public void testExpressRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
+    }
+    @Story("requestWithSpAysn")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/expression/")
+    public void testExpressRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
+    }
 }
