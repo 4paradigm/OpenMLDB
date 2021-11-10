@@ -179,6 +179,7 @@ public class FEDBDeploy {
                     "sed -i 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
                     "sed -i 's@#--zk_cluster=.*@--zk_cluster=" + zk_endpoint + "@' " + testPath + ns_name + "/conf/nameserver.flags",
                     "sed -i 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
+                    "sed -i 's@#--tablet=.*@#--tablet=127.0.0.1:9921@' "+testPath+ns_name+"/conf/nameserver.flags",
                     "echo '--request_timeout_ms=60000' >> " + testPath + ns_name + "/conf/nameserver.flags"
             );
             if(useName){
@@ -272,7 +273,8 @@ public class FEDBDeploy {
                     "sed -i 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+apiserver_name+"/conf/apiserver.flags",
                     "sed -i 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags",
                     "sed -i 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+apiserver_name+"/conf/apiserver.flags",
-                    "sed -i 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags"
+                    "sed -i 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags",
+                    "sed -i 's@#--nameserver=.*@#--nameserver=127.0.0.1:6527@' "+testPath+apiserver_name+"/conf/apiserver.flags"
             );
             if(useName){
                 commands.add("sed -i 's/--endpoint=.*/#&/' " + testPath + apiserver_name + "/conf/apiserver.flags");
