@@ -43,10 +43,10 @@ public class SchemaTest extends FedbTest {
                 .map(column -> String.format("%s %s %s",
                         column.getColumnName(),
                         FesqlUtil.getColumnTypeByType(column.getSqlType()),
-                        column.isNotNull() ? "not null" : ""))
+                        column.isNotNull() ? "not null" : "").trim())
                 .collect(Collectors.toList());
         List<String> expectList = Lists.newArrayList("c1 string","c2 int not null","c3 bigint","c4 smallint",
-                "c5 float","c6 double not null","7 timestamp not null","c8 date","c9 bool not null");
+                "c5 float","c6 double not null","c7 timestamp not null","c8 date","c9 bool not null");
         Assert.assertEquals(actualList,expectList);
         String deleteSql = "drop table "+tableName+";";
         FesqlUtil.sql(executor,FedbGlobalVar.dbName,deleteSql);

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 db: multi_insert_db
-debugs: ["简单INSERT NULL value"]
+debugs: []
 cases:
   - id: 0
     desc: 简单INSERT

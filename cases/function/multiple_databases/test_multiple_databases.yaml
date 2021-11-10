@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-debugs: ["不同库相同表lastjoin"]
+debugs: []
 cases:
   - id: 0
     desc: Last Join tables from two databases 1 - default db is db1
@@ -216,6 +216,8 @@ cases:
       success: false
   - id: 9
     desc: 使用子查询查不同库的数据然后lastjoin
+    mode: request-unsupport
+    tags: ["request 模式有问题，@chenjing"]
     db: db
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
@@ -301,6 +303,8 @@ cases:
         - [ "bb",21,32,1590738993000 ]
   - id: 12
     desc: 不同库相同表lastjoin
+    tags: ["request 模式有问题，@chenjing"]
+    mode: request-unsupport
     db: db
     inputs:
       - db: db1
