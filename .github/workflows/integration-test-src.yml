@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       EXEC_TEST_TYPE:
-        description: 'Which tests need to be executed? The options are all, python, java, batch and apiserver'
+        description: 'Which tests need to be executed? The options are all, python, java, batch, cli, standalone-cli and apiserver'
         required: true
         default: 'all'
 env:
