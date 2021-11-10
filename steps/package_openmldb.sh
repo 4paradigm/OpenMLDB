@@ -31,7 +31,7 @@ cp -r release/bin "${package}"/bin
 cp -r tools "${package}"/tools
 ls -l build/bin/
 cp -r build/bin/openmldb "${package}"/bin/openmldb
-test -e build/bin/openmldb_mac &&  cp -r build/bin/openmldb_mac "${package}"/bin/openmldb_mac_cli
+
 cd "${package}"/bin
 cd ../..
 tar -cvzf "${package}".tar.gz "${package}"
