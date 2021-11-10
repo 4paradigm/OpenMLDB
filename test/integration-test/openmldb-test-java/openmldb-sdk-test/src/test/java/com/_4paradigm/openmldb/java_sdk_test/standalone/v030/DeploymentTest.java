@@ -37,18 +37,18 @@ public class DeploymentTest extends StandaloneTest {
     @Yaml(filePaths = "function/deploy/test_create_deploy.yaml")
     @Story("create")
     public void testCreate(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/deploy/test_show_deploy.yaml")
     @Story("show")
     public void testShow(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/deploy/test_drop_deploy.yaml")
     @Story("drop")
     public void testDrop(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
 }

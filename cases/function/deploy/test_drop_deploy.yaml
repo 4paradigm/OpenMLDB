@@ -48,6 +48,8 @@ cases:
     sqls:
       - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
       - drop deployment deploy_{0}11;
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: false
   -
@@ -64,6 +66,8 @@ cases:
     sqls:
       - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
       - drop deployments deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: false
   -
@@ -81,5 +85,7 @@ cases:
     sqls:
       - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
       - drop deployment db.deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: false

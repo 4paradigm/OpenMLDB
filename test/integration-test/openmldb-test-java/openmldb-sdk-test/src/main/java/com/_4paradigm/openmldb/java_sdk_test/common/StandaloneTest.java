@@ -53,6 +53,7 @@ public class StandaloneTest extends BaseTest {
                     .nsNum(1).tabletNum(1)
                     .nsEndpoints(Lists.newArrayList("172.24.4.55:10000"))
                     .tabletEndpoints(Lists.newArrayList("172.24.4.55:10001"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10002"))
                     .host("172.24.4.55")
                     .port(10000)
                     .build();

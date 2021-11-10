@@ -1,6 +1,5 @@
 package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -14,10 +13,10 @@ import org.testng.annotations.Test;
 @Feature("PerformanceInsensitive")
 public class TestPerformanceInsensitive extends StandaloneTest {
 
-    @Test(dataProvider = "getCase")
+    // @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/test_performance_insensitive/test_performance_insensitive.yaml")
     @Story("batch")
     public void testPerformanceInsensitive(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
 }

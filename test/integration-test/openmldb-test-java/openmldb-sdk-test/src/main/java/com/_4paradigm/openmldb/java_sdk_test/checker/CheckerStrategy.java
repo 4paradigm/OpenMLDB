@@ -42,7 +42,7 @@ public class CheckerStrategy {
         if (CollectionUtils.isNotEmpty(expect.getColumns())) {
             if(executorType==SQLCaseType.kSQLITE3 || executorType==SQLCaseType.kMYSQL){
                 checkList.add(new ColumnsCheckerByJBDC(expect, fesqlResult));
-            }else if(executorType==SQLCaseType.kCLI){
+            }else if(executorType==SQLCaseType.kCLI||executorType==SQLCaseType.kStandaloneCLI){
                 checkList.add(new ColumnsCheckerByCli(expect, fesqlResult));
             }else {
                 checkList.add(new ColumnsChecker(expect, fesqlResult));
@@ -51,7 +51,7 @@ public class CheckerStrategy {
         if (!expect.getRows().isEmpty()) {
             if(executorType==SQLCaseType.kSQLITE3){
                 checkList.add(new ResultCheckerByJDBC(expect, fesqlResult));
-            }else if(executorType==SQLCaseType.kCLI){
+            }else if(executorType==SQLCaseType.kCLI||executorType==SQLCaseType.kStandaloneCLI){
                 checkList.add(new ResultCheckerByCli(expect, fesqlResult));
             }else {
                 checkList.add(new ResultChecker(expect, fesqlResult));

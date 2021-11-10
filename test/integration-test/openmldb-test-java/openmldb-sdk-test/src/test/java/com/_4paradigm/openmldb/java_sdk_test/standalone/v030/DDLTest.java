@@ -38,22 +38,22 @@ public class DDLTest extends StandaloneTest {
     @Yaml(filePaths = "function/ddl/test_create.yaml")
     @Story("create")
     public void testCreate(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
 
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/ddl/test_ttl.yaml")
     @Story("ttl")
     public void testTTL(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
 
-    // @Test(dataProvider = "getCase")
-    // @Yaml(filePaths = "function/ddl/test_options.yaml")
-    // @Story("options")
-    // public void testOptions(SQLCase testCase){
-    //     ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
-    // }
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_options.yaml")
+    @Story("options")
+    public void testOptions(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
+    }
 
     // @Test(dataProvider = "getCase")
     // @Yaml(filePaths = "function/ddl/test_create_index.yaml")
@@ -66,6 +66,6 @@ public class DDLTest extends StandaloneTest {
     @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
     @Story("create_no_index")
     public void testCreateNoIndex(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
 }

@@ -32,6 +32,9 @@ cases:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - deploy {0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - show deployments;
+    tearDown:
+      - drop deployment deploy_{0};
+      - drop deployment {0};
     expect:
       deploymentCount: 2
   -
@@ -48,6 +51,8 @@ cases:
     sqls:
       - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
       - show deployment deploy_{0}11;
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: false
   -
@@ -64,6 +69,8 @@ cases:
     sqls:
       - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
       - show deployments deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: false
   -
@@ -81,5 +88,7 @@ cases:
     sqls:
       - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
       - show deployment db.deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: true

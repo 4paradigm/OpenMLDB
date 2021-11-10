@@ -44,15 +44,13 @@ public class MysqlExecutor extends JDBCExecutor{
         if(sqlDialect.contains(DBType.ANSISQL.name())|| sqlDialect.contains(DBType.MYSQL.name())){
             return true;
         }
-        log.info("skip case in mysql mode: {}", fesqlCase.getDesc());
-        reportLog.info("skip case in mysql mode: {}", fesqlCase.getDesc());
+        logger.info("skip case in mysql mode: {}", fesqlCase.getDesc());
         return false;
     }
 
     @Override
     public void prepare() {
-        log.info("mysql prepare begin");
-        reportLog.info("mysql prepare begin");
+        logger.info("mysql prepare begin");
         for(InputDesc inputDesc:fesqlCase.getInputs()) {
             String createSql = MysqlUtil.getCreateTableSql(inputDesc);
             JDBCUtil.executeUpdate(createSql, DBType.MYSQL);
@@ -61,14 +59,12 @@ public class MysqlExecutor extends JDBCExecutor{
                 throw new RuntimeException("fail to run MysqlExecutor: prepare fail");
             }
         }
-        log.info("mysql prepare end");
-        reportLog.info("mysql prepare end");
+        logger.info("mysql prepare end");
     }
 
     @Override
     public void execute() {
-        log.info("mysql execute begin");
-        reportLog.info("mysql execute begin");
+        logger.info("mysql execute begin");
         FesqlResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
@@ -83,14 +79,12 @@ public class MysqlExecutor extends JDBCExecutor{
             fesqlResult = JDBCUtil.executeQuery(sql,DBType.MYSQL);
         }
         mainResult = fesqlResult;
-        log.info("mysql execute end");
-        reportLog.info("mysql execute end");
+        logger.info("mysql execute end");
     }
 
     @Override
     public void tearDown() {
-        log.info("mysql,begin drop table");
-        reportLog.info("mysql,begin drop table");
+        logger.info("mysql,begin drop table");
         List<InputDesc> tables = fesqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;

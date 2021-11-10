@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.java_sdk_test.checker;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.java_sdk_test.util.Tool;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.restful.model.HttpResult;
 import com._4paradigm.openmldb.test_common.restful.util.HttpRequest;
@@ -52,6 +53,7 @@ public class OptionsChecker extends BaseChecker {
             tableName = fesqlResult.getTableNames().get(index);
         }
         String url = String.format("http://%s/dbs/%s/tables/%s",apiserverEndpoint,dbName,tableName);
+        Tool.sleep(3000);
         HttpResult httpResult = HttpRequest.get(url);
         String resultData = httpResult.getData();
         Object partitionNum = JsonPath.read(resultData, "$.table.partition_num");

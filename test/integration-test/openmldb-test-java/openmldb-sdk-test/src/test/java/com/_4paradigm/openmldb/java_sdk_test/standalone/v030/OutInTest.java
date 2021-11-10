@@ -18,7 +18,7 @@ public class OutInTest extends StandaloneTest {
     @Yaml(filePaths = "function/out_in/test_out_in.yaml")
     @Story("Out-In")
     public void testOutIn(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
 
 }

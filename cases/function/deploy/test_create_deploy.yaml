@@ -27,6 +27,8 @@ cases:
     sqls:
       - deploy deploy_{0} select * from {0};
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       deployment :
         name: deploy_{0}
@@ -68,6 +70,8 @@ cases:
     sqls:
       - deploy deploy_{0} select {0}.c1,{0}.c2,{1}.c4,{2}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1 last join {2} order by {2}.c4 on {0}.c1={2}.c1;
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       deployment :
         name: deploy_{0}
@@ -115,6 +119,8 @@ cases:
     sqls:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       deployment :
         name: deploy_{0}
@@ -158,6 +164,8 @@ cases:
     sqls:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       deployment :
         name: deploy_{0}
@@ -199,6 +207,8 @@ cases:
     sqls:
       - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       deployment :
         name: deploy_{0}
@@ -250,6 +260,8 @@ cases:
         w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
         last join {1} order by {1}.crd_lst_isu_dte on trx_fe.card_no = {1}.crd_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte;
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       deployment :
         name: deploy_{0}
@@ -340,6 +352,8 @@ cases:
     sqls:
       - deploy deploy_{0} select * from {0};
       - deploy deploy_{0} select * from {0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: false
   -
@@ -378,6 +392,8 @@ cases:
     sqls:
       - deploy {0} select * from {0};
       - show deployment {0};
+    tearDown:
+      - drop deployment {0};
     expect:
       success: true
   -
@@ -456,6 +472,8 @@ cases:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - desc {0};
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: true
   -
@@ -475,6 +493,8 @@ cases:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - desc {0};
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: true
   -
@@ -494,6 +514,8 @@ cases:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 rows_range BETWEEN 2h PRECEDING AND 1h PRECEDING);
       - desc {0};
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: true
   -
@@ -539,6 +561,8 @@ cases:
         w2 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
       - desc {0};
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: true
   -
@@ -558,6 +582,8 @@ cases:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - desc {0};
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: true
   -
@@ -577,5 +603,7 @@ cases:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - desc {0};
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
       success: true

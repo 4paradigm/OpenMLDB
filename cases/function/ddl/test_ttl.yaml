@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["指定ttl_type=absolute，数据过期"]
+debugs: []
 cases:
   -
     id: 0

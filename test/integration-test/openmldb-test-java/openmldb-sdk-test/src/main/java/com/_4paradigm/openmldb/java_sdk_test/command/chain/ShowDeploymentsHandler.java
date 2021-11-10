@@ -22,6 +22,7 @@ import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.CommandResultUtil;
 import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com.google.common.base.Joiner;
+import org.testng.collections.Lists;
 
 import java.util.List;
 
@@ -42,6 +43,8 @@ public class ShowDeploymentsHandler extends AbstractSQLHandler{
         fesqlResult.setDbName(dbName);
         if (ok && result.size()>3) {
             fesqlResult.setDeployments(CommandResultUtil.parseDeployments(result));
+        }else if(result.get(0).equals("Empty set")){
+            fesqlResult.setDeployments(Lists.newArrayList());
         }
         return fesqlResult;
     }

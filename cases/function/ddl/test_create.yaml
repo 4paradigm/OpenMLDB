@@ -117,6 +117,8 @@ cases:
     id: 6-2
     desc: 表名为非保留关键字
     sqlDialect: ["HybridSQL"]
+    inputs:
+      - name: table
     sql: create table table(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
     expect:
       success: true
@@ -175,7 +177,7 @@ cases:
     sqlDialect: ["HybridSQL"]
     sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(ts=c4,ttl=0m));
     expect:
-      success: false
+      success: true
   -
     id: 15
     desc: ts边界-指定的ts为string
@@ -409,6 +411,7 @@ cases:
     id: 38
     desc: create with replica num and distribution
     sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -423,6 +426,7 @@ cases:
     id: 39
     desc: create with replica num and distribution
     sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -437,6 +441,7 @@ cases:
     id: 40
     desc: create with replica num and distribution
     sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,

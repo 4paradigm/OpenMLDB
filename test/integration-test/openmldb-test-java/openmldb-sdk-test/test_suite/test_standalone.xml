@@ -2,11 +2,11 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
 <suite name="openmldb-standalone-test" parallel="false" thread-count="2">
     <test name="standalone">
-        <parameter name="env" value="qa"/>
-        <parameter name="version" value="0.2.3"/>
+        <parameter name="env" value="standalone"/>
+        <parameter name="version" value="0.3.0"/>
         <parameter name="fedbPath" value=""/>
         <packages>
-            <package name="com._4paradigm.openmldb.java_sdk_test.v230"/>
+            <package name="com._4paradigm.openmldb.java_sdk_test.standalone.v030"/>
         </packages>
     </test>
     <listeners>

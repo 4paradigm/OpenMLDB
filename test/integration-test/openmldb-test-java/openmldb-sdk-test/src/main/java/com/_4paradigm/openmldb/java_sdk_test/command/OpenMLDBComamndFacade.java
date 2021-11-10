@@ -35,6 +35,7 @@ public class OpenMLDBComamndFacade {
     public static FesqlResult sql(FEDBInfo fedbInfo, String dbName, String sql) {
         logger.info("sql:"+sql);
         sql = StringUtils.replace(sql,"\n"," ");
+        sql = sql.trim();
         FesqlResult fesqlResult = SqlChainManager.of().sql(fedbInfo, dbName, sql);
         logger.info("fesqlResult:"+fesqlResult);
         return fesqlResult;

@@ -40,25 +40,18 @@ import org.testng.annotations.Test;
 @Feature("CLI-DML")
 public class DMLTest extends StandaloneTest {
 
-    // @Test(dataProvider = "getCase")
-    // @Yaml(filePaths = "function/dml/test_insert.yaml")
-    // @Story("insert")
-    // public void testInsert(SQLCase testCase){
-    //     ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
-    // }
-
-    // @Test(dataProvider = "getCase")
-    // @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
-    // @Story("insert-prepared")
-    // public void testInsertWithPrepared(SQLCase testCase){
-    //     ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
-    // }
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/dml/test_insert.yaml")
+    @Story("insert")
+    public void testInsert(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
+    }
 
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/dml/multi_insert.yaml")
     @Story("insert-multi")
     public void testInsertMulti(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
 
     @Story("insert-multi")
