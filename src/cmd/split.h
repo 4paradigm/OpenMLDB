@@ -105,14 +105,15 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
         if (*line == enclosed) {  // Quoted value...
             start = ++line;
             end = start;
+            // Will get line until end if only one enclosed ['"']
             for (; *line; line++) {
-                if (*line == enclosed) {
+                // Support \ , so we can load data like "abc\"def\"ghi"
+                // TODO:(zekai) support \ in write too
+                if (*line == enclosed && *(line-1) != '\\') {
                     line++;
-                    if (*line != enclosed) {  // [""] is an escaped ["]
-                        break;                // but just ["] is end of value
-                    }
+                    break;
                 }
-                *end++ = *line;
+                end = line;
             }
             // All characters after the closing quote and before the comma
             // are ignored.
@@ -136,7 +137,7 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
         const bool need_another_column = (line + delimiter_len == end_of_line);
         if (need_another_column) cols->push_back(end);
 
-        assert(*line == '\0' || *line == delimiter[0]);
+        assert(*line == '\0' || memcmp(line, delimiter, delimiter_len));
     }
 }
 

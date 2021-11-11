@@ -36,7 +36,6 @@ class FileOptionsParser {
         check_map_.emplace("delimiter", std::make_pair(CheckDelimiter(), hybridse::node::kVarchar));
         check_map_.emplace("null_value", std::make_pair(CheckNullValue(), hybridse::node::kVarchar));
         check_map_.emplace("header", std::make_pair(CheckHeader(), hybridse::node::kBool));
-        check_map_.emplace("quote", std::make_pair(CheckQuote(), hybridse::node::kVarchar));
     }
 
     ::openmldb::base::Status Parse(const std::shared_ptr<hybridse::node::OptionsMap>& options_map) {

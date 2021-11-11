@@ -113,7 +113,7 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     data[length] = '\0';
     file.read(data, length);
     ASSERT_EQ(strcmp(data, "col1,col2\nkey1,null"), 0);
-    delete [] data;
+    delete[] data;
     file.close();
 
     // True
@@ -134,7 +134,7 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     append_data[append_length] = '\0';
     file.read(append_data, append_length);
     ASSERT_EQ(strcmp(append_data, "col1,col2\nkey1,null\ncol1,col2\nkey1,null"), 0);
-    delete [] append_data;
+    delete[] append_data;
     file.close();
 
     // Fail - File exists
@@ -188,7 +188,7 @@ TEST_F(SqlCmdTest, deploy) {
     hybridse::node::PlanNodeList plan_trees;
     hybridse::plan::PlanAPI::CreatePlanTreeFromScript(deploy_sql, plan_trees, &node_manager, sql_status);
     ASSERT_EQ(0, sql_status.code);
-    hybridse::node::PlanNode *node = plan_trees[0];
+    hybridse::node::PlanNode* node = plan_trees[0];
     auto status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
     ASSERT_TRUE(status.OK());
     std::string msg;
@@ -217,12 +217,53 @@ TEST_F(SqlCmdTest, create_without_index_col) {
     hybridse::node::PlanNodeList plan_trees;
     hybridse::plan::PlanAPI::CreatePlanTreeFromScript(create_sql, plan_trees, &node_manager, sql_status);
     ASSERT_EQ(0, sql_status.code);
-    hybridse::node::PlanNode *node = plan_trees[0];
-    auto status = sr->HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node),
-            "test2", cs->GetNsClient());
+    hybridse::node::PlanNode* node = plan_trees[0];
+    auto status =
+        sr->HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), "test2", cs->GetNsClient());
     ASSERT_TRUE(status.OK());
     std::string msg;
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+}
+
+TEST_F(SqlCmdTest, load_data) {
+    std::string read_file_path = "/tmp/data" + GenRand() + ".csv";
+    std::string write_file_path = "/tmp/data" + GenRand() + ".csv";
+    std::ofstream ofile;
+    std::ifstream ifile;
+    ofile.open(read_file_path);
+    ofile << " AA --- A --- A--" << std::endl;
+    ofile << " --- --- -" << std::endl;
+    ofile << " --- --- ---" << std::endl;
+    ofile << "\"AA --- A --- A--" << std::endl;
+    ofile << "\" --- \" --- A --- a-" << std::endl;
+    ofile << "\" ab\\\"cd\\\" \" --- as --- " << std::endl;
+
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+
+    std::string create_sql = "create table t1 (c1 string, c2 string, c3 string));";
+    HandleSQL(create_sql);
+
+    HandleSQL("Load data infile '" + read_file_path + "' OPTIONS( header = false, delimiter = '---');");
+    HandleSQL("select * from t1 into outfile '" + read_file_path + "'");
+
+
+    ifile.open(read_file_path);
+    ifile.seekg(0, ifile.end);
+    int length = ifile.tellg();
+    ifile.seekg(0, ifile.beg);
+    char* data = new char[length + 1];
+    data[length] = '\0';
+
+    ifile.read(data, length);
+    ASSERT_EQ(strcmp(data, "c1,c2,c3\n"
+                     "AA,A,A\n"
+                     ",,-\n"
+                     " --- ,A,a-\n"
+                     " ab\"cd\" ,as,"), 0);
+    delete[] data;
+    ifile.close();
+    ofile.close();
 }
 
 }  // namespace cmd
