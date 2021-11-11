@@ -12,7 +12,7 @@
 <!--            </class>-->
 <!--        </classes>-->
         <packages>
-            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v030"/>
+            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v230"/>
         </packages>
     </test>
     <listeners>
