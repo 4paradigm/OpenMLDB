@@ -73,5 +73,6 @@ public class FedbTest extends BaseTest {
         log.info("fedb global var env: {}", env);
         FedbClient fesqlClient = new FedbClient(FedbGlobalVar.mainInfo);
         executor = fesqlClient.getExecutor();
+        log.info("executor:{}",executor);
     }
 }

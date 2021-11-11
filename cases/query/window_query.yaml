@@ -752,7 +752,8 @@ cases:
   - id: 21
     desc: window query after last join with a table, index hasn't been optimized
     db: db1
-    mode: rtidb-unsupport
+    tags: ["离线有问题，@wangzekai"]
+    mode: rtidb-unsupport,offline-unsupport
     sql: |
        SELECT sum(t1.col1) over w1 as sum_t1_col1, str1 as t2_str1
        FROM t1
