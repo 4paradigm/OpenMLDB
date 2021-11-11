@@ -231,7 +231,7 @@ TEST_F(SqlCmdTest, load_data) {
     std::ofstream ofile;
     std::ifstream ifile;
     ofile.open(read_file_path);
-    ofile << " AA --- A --- A--" << std::endl;
+    ofile << " AA ---- A --- A--" << std::endl;
     ofile << " --- --- -" << std::endl;
     ofile << " --- --- ---" << std::endl;
     ofile << "\"AA --- A --- A--" << std::endl;
@@ -257,7 +257,7 @@ TEST_F(SqlCmdTest, load_data) {
 
     ifile.read(data, length);
     ASSERT_EQ(strcmp(data, "c1,c2,c3\n"
-                     "AA,A,A\n"
+                     "AA,-A,A\n"
                      ",,-\n"
                      " --- ,A,a-\n"
                      " ab\"cd\" ,as,"), 0);
