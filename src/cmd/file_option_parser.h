@@ -59,7 +59,6 @@ class FileOptionsParser {
     const std::string& GetNullValue() const { return null_value_; }
     const std::string& GetDelimiter() const { return delimiter_; }
     bool GetHeader() const { return header_; }
-    const char GetQuote() const { return quote_; }
 
  protected:
     std::map<std::string,
@@ -71,7 +70,6 @@ class FileOptionsParser {
     std::string format_ = "csv";
     std::string null_value_ = "null";
     std::string delimiter_ = ",";
-    char quote_ = '"';
     bool header_ = true;
 
     ::openmldb::base::Status GetOption(const hybridse::node::ConstNode* node, const std::string& option_name,
@@ -117,6 +115,15 @@ class FileOptionsParser {
             return true;
         };
     }
+};
+
+class ReadFileOptionsParser : public FileOptionsParser {
+ public:
+    ReadFileOptionsParser() { check_map_.emplace("quote", std::make_pair(CheckQuote(), hybridse::node::kVarchar)); };
+    const char GetQuote() const { return quote_; }
+
+ private:
+    char quote_ = '"';
     std::function<bool(const hybridse::node::ConstNode* node)> CheckQuote() {
         return [this](const hybridse::node::ConstNode* node) {
             auto tem = node->GetAsString();
@@ -128,11 +135,6 @@ class FileOptionsParser {
             }
         };
     }
-};
-
-class ReadFileOptionsParser : public FileOptionsParser {
- public:
-    ReadFileOptionsParser() = default;
 };
 
 class WriteFileOptionsParser : public FileOptionsParser {

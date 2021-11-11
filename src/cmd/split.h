@@ -98,7 +98,7 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
     char* start;
     int delimiter_len = strlen(delimiter);
 
-    for (; line < end_of_line; line += delimiter_len - 1) {
+    for (; line < end_of_line; line += delimiter_len) {
         // Skip leading whitespace, unless said whitespace is the part of delimiter.
         while (absl::ascii_isspace(*line) && *line != delimiter[0]) ++line;
 

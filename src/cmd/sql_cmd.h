@@ -958,8 +958,8 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
     }
     std::cout << "Load " << file_path << " to " << real_db << "-" << table << ", options: delimiter ["
               << options_parse.GetDelimiter() << "], has header[" << (options_parse.GetHeader() ? "true" : "false")
-              << "], null_value[" << options_parse.GetNullValue() << "], format[" << options_parse.GetFormat() << "]"
-              << std::endl;
+              << "], null_value[" << options_parse.GetNullValue() << "], format[" << options_parse.GetFormat()
+              << "], quote[" << options_parse.GetQuote() << "]" << std::endl;
     // read csv
     if (!base::IsExists(file_path)) {
         *error = "file not exist";
