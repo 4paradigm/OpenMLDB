@@ -148,7 +148,7 @@ public class FEDBDeploy {
         try {
             int port = LinuxUtil.getNoUsedPort();
             String[] commands = {
-                    "wget -P "+testPath+" "+ FedbDeployConfig.ZK_URL,
+                    "wget -P "+testPath+" "+ FedbDeployConfig.getZKUrl(version),
                     "tar -zxvf "+testPath+"/zookeeper-3.4.14.tar.gz -C "+testPath,
                     "cp "+testPath+"/zookeeper-3.4.14/conf/zoo_sample.cfg "+testPath+"/zookeeper-3.4.14/conf/zoo.cfg",
                     "sed -i 's#dataDir=/tmp/zookeeper#dataDir="+testPath+"/data#' "+testPath+"/zookeeper-3.4.14/conf/zoo.cfg",

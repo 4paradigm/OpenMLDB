@@ -39,7 +39,6 @@ public class MultiDBTest extends StandaloneTest {
     @Story("Standalone-CLI")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"function/multiple_databases/"})
-    @Step("{testCase.desc}")
     public void testSelect(SQLCase testCase) throws Exception {
         ExecutorFactory.build( testCase, SQLCaseType.kStandaloneCLI).run();
     }

@@ -3,7 +3,7 @@
 <suite name="fesql-v1" parallel="false" thread-count="2">
     <test name="fesql-v1-test">
         <parameter name="env" value="qa"/>
-        <parameter name="version" value="tmp"/>
+        <parameter name="version" value="0.3.0"/>
 <!--        <classes>-->
 <!--            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.FunctionTest">-->
 <!--                &lt;!&ndash;<methods>&ndash;&gt;-->
@@ -12,7 +12,7 @@
 <!--            </class>-->
 <!--        </classes>-->
         <packages>
-            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v230"/>
+            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v030"/>
         </packages>
     </test>
     <listeners>

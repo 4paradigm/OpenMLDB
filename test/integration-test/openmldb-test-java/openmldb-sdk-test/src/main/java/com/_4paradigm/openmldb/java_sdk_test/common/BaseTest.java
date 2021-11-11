@@ -50,7 +50,8 @@ public class BaseTest implements ITest {
             throw new RuntimeException("please add @Yaml");
         }
         FesqlDataProviderList dp = FesqlDataProviderList.dataProviderGenerator(casePaths);
-        return dp.getCases().toArray();
+        Object[] caseArray = dp.getCases().toArray();
+        return caseArray;
     }
 
     @BeforeMethod
