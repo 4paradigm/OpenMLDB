@@ -977,7 +977,7 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
         return false;
     }
     std::vector<std::string> cols;
-    SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
+    SplitLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
     auto schema = sr->GetTableSchema(real_db, table);
     if (!schema) {
         *error = "table is not exist";
@@ -1017,7 +1017,7 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
     uint64_t i = 0;
     do {
         cols.clear();
-        SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
+        SplitLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
         if (!InsertOneRow(real_db, insert_placeholder, str_cols_idx, options_parse.GetNullValue(), cols, error)) {
             *error = "line [" + line + "] insert failed, " + *error;
             return false;

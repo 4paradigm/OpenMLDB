@@ -92,7 +92,7 @@ char* strdup_with_new(const char* the_string) {
 // See //util/csv/parser.h for more complete documentation.
 //
 // ----------------------------------------------------------------------
-void SplitCSVLineWithDelimiter(char* line, const char* delimiter, std::vector<char*>* cols) {
+void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*>* cols) {
     char* end_of_line = line + strlen(line);
     char* end;
     char* start;
@@ -101,7 +101,8 @@ void SplitCSVLineWithDelimiter(char* line, const char* delimiter, std::vector<ch
         // Skip leading whitespace, unless said whitespace is the part of delimiter.
         while (absl::ascii_isspace(*line) && *line != delimiter[0]) ++line;
 
-        if (*line == '"') {  // Quoted value...
+        // TODO(zekai): Remove false when support enclosed
+        if (false && *line == '"') {  // Quoted value...
             start = ++line;
             end = start;
             for (; *line; line++) {
@@ -126,36 +127,35 @@ void SplitCSVLineWithDelimiter(char* line, const char* delimiter, std::vector<ch
                 if (!absl::ascii_isspace(end[-1])) break;
             }
         }
-        const bool need_another_column = (line + strlen(delimiter) == end_of_line);
         *end = '\0';
         cols->push_back(start);
         // If line was something like [paul,] (comma is the last character
         // and is not proceeded by whitespace or quote) then we are about
         // to eliminate the last column (which is empty). This would be
         // incorrect.
+        const bool need_another_column = (line + strlen(delimiter) == end_of_line);
         if (need_another_column) cols->push_back(end);
 
         assert(*line == '\0' || *line == delimiter[0]);
     }
 }
 
-void SplitCSVLine(char* line, std::vector<char*>* cols) { SplitCSVLineWithDelimiter(line, ",", cols); }
-
-void SplitCSVLineWithDelimiterForStrings(const std::string& line, const std::string& delimiter,
-                                         std::vector<std::string>* cols) {
+void SplitLineWithDelimiterForStrings(const std::string& line, const std::string& delimiter,
+                                      std::vector<std::string>* cols) {
     // Unfortunately, the interface requires char* instead of const char*
     // which requires copying the string.
     char* cline = strndup_with_new(line.c_str(), line.size());
     std::vector<char*> v;
-    SplitCSVLineWithDelimiter(cline, delimiter.c_str(), &v);
+    SplitLineWithDelimiter(cline, delimiter.c_str(), &v);
     for (auto& ci : v) {
         cols->push_back(ci);
     }
     delete[] cline;
 }
+void SplitCSVLine(char* line, std::vector<char*>* cols) { SplitLineWithDelimiter(line, ",", cols); }
 
 void SplitCSVLineForStrings(const std::string& line, std::vector<std::string>* cols) {
-    SplitCSVLineWithDelimiterForStrings(line, ",", cols);
+    SplitLineWithDelimiterForStrings(line, ",", cols);
 }
 
 }  // namespace openmldb::cmd
