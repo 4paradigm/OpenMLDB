@@ -5,10 +5,14 @@
         <parameter name="env" value="qa"/>
         <parameter name="version" value="0.3.0"/>
         <classes>
-            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v030.MultiDBTest">
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v030.DMLTest">
                 <!--<methods>-->
                     <!--<include name="testInsert" />-->
                 <!--</methods>-->
+            </class>
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v030.MultiDBTest">
+            </class>
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v030.SchemaTest">
             </class>
         </classes>
 <!--        <packages>-->
