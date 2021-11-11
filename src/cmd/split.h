@@ -96,8 +96,9 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
     char* end_of_line = line + strlen(line);
     char* end;
     char* start;
+    int delimiter_len = strlen(delimiter);
 
-    for (; line < end_of_line; line++) {
+    for (; line < end_of_line; line += delimiter_len - 1) {
         // Skip leading whitespace, unless said whitespace is the part of delimiter.
         while (absl::ascii_isspace(*line) && *line != delimiter[0]) ++line;
 
@@ -132,7 +133,7 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
         // and is not proceeded by whitespace or quote) then we are about
         // to eliminate the last column (which is empty). This would be
         // incorrect.
-        const bool need_another_column = (line + strlen(delimiter) == end_of_line);
+        const bool need_another_column = (line + delimiter_len == end_of_line);
         if (need_another_column) cols->push_back(end);
 
         assert(*line == '\0' || *line == delimiter[0]);
