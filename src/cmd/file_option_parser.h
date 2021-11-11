@@ -54,7 +54,7 @@ class FileOptionsParser {
     }
     const std::string& GetFormat() const { return format_; }
     const std::string& GetNullValue() const { return null_value_; }
-    char GetDelimiter() const { return delimiter_; }
+    const std::string& GetDelimiter() const { return delimiter_; }
     bool GetHeader() const { return header_; }
 
  protected:
@@ -66,7 +66,7 @@ class FileOptionsParser {
     // default options
     std::string format_ = "csv";
     std::string null_value_ = "null";
-    char delimiter_ = ',';
+    std::string delimiter_ = ",";
     bool header_ = true;
 
     ::openmldb::base::Status GetOption(const hybridse::node::ConstNode* node, const std::string& option_name,
@@ -95,13 +95,8 @@ class FileOptionsParser {
     }
     std::function<bool(const hybridse::node::ConstNode* node)> CheckDelimiter() {
         return [this](const hybridse::node::ConstNode* node) {
-            auto str = node->GetAsString();
-            if (str.size() != 1) {
-                return false;
-            } else {
-                delimiter_ = str[0];
-                return true;
-            }
+            delimiter_ = node->GetAsString();
+            return true;
         };
     }
     std::function<bool(const hybridse::node::ConstNode* node)> CheckNullValue() {
