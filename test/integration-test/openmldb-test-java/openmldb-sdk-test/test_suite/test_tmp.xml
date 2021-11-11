@@ -5,7 +5,7 @@
         <parameter name="env" value="qa"/>
         <parameter name="version" value="0.3.0"/>
 <!--        <classes>-->
-<!--            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.DMLTest">-->
+<!--            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.FunctionTest">-->
 <!--                &lt;!&ndash;<methods>&ndash;&gt;-->
 <!--                    &lt;!&ndash;<include name="testInsert" />&ndash;&gt;-->
 <!--                &lt;!&ndash;</methods>&ndash;&gt;-->
