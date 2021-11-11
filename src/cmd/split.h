@@ -107,13 +107,12 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
             end = start;
             // Will get line until end if only one enclosed ['"']
             for (; *line; line++) {
-                // Support \ , so we can load data like "abc\"def\"ghi"
-                // TODO:(zekai) support \ in write too
-                if (*line == enclosed && *(line-1) != '\\') {
+                end = line;
+                // TODO:(zekai) support Support \ , so we can load data like "abc\"def\"ghi"
+                if (*line == enclosed) {
                     line++;
                     break;
                 }
-                end = line;
             }
             // All characters after the closing quote and before the comma
             // are ignored.

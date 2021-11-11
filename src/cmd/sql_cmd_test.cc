@@ -27,6 +27,7 @@
 #include "base/glog_wapper.h"
 #include "case/sql_case.h"
 #include "catalog/schema_adapter.h"
+#include "cmd/split.h"
 #include "codec/fe_row_codec.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"
@@ -169,7 +170,12 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
     ASSERT_TRUE(!openmldb_base_status.OK());
 
-    remove(file_path.c_str());
+     // False - Type un-supproted
+     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (quote = '__')";
+     ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+     ASSERT_TRUE(!openmldb_base_status.OK());
+
+     remove(file_path.c_str());
 }
 
 TEST_F(SqlCmdTest, deploy) {
@@ -233,22 +239,18 @@ TEST_F(SqlCmdTest, load_data) {
     ofile.open(read_file_path);
     ofile << " AA ---- A --- A--" << std::endl;
     ofile << " --- --- -" << std::endl;
-    ofile << " --- --- ---" << std::endl;
-    ofile << "\"AA --- A --- A--" << std::endl;
     ofile << "\" --- \" --- A --- a-" << std::endl;
-    ofile << "\" ab\\\"cd\\\" \" --- as --- " << std::endl;
 
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
 
-    std::string create_sql = "create table t1 (c1 string, c2 string, c3 string));";
+    std::string create_sql = "create table t1 (c1 string, c2 string, c3 string);";
     HandleSQL(create_sql);
 
-    HandleSQL("Load data infile '" + read_file_path + "' OPTIONS( header = false, delimiter = '---');");
-    HandleSQL("select * from t1 into outfile '" + read_file_path + "'");
+    HandleSQL("Load data infile '" + read_file_path + "' into table t1 OPTIONS( header = false, delimiter = '---');");
+    HandleSQL("select * from t1 into outfile '" + write_file_path + "';");
 
-
-    ifile.open(read_file_path);
+    ifile.open(write_file_path);
     ifile.seekg(0, ifile.end);
     int length = ifile.tellg();
     ifile.seekg(0, ifile.beg);
@@ -256,14 +258,17 @@ TEST_F(SqlCmdTest, load_data) {
     data[length] = '\0';
 
     ifile.read(data, length);
-    ASSERT_EQ(strcmp(data, "c1,c2,c3\n"
-                     "AA,-A,A\n"
-                     ",,-\n"
-                     " --- ,A,a-\n"
-                     " ab\"cd\" ,as,"), 0);
+    ASSERT_EQ(strcmp(data, "c1,c2,c3\n,,-\n --- ,A,a-\nAA,- A,A--"), 0);
     delete[] data;
     ifile.close();
     ofile.close();
+
+    std::vector<std::string> cols;
+    openmldb::cmd::SplitLineWithDelimiterForStrings(" --- --- ---", "---", &cols, '"');
+    ASSERT_EQ(cols.size(), 4);
+    for (auto& line : cols) {
+        ASSERT_EQ(strcmp(line.c_str(), ""), 0);
+    }
 }
 
 }  // namespace cmd
