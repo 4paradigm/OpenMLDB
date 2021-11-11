@@ -259,6 +259,7 @@ cases:
   - id: 5
     desc: lastjoin+带参数Where,包含重复列名
     mode: request-unsupport, rtidb-unsupport
+    tags: ["TODO", "@chenjing", "0.3.0", "fail to compute where condition bug"]
     db: db1
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp", "c5 int"]

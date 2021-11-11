@@ -64,6 +64,27 @@ jobs:
           path: |
             reports/*.xml
 
+  sql_standalone_sdk_test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    steps:
+      - uses: actions/checkout@v2
+      - name: build
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_standalone_sdk_test && cd ../ || exit
+      - name: run sql_standalone_sdk_test
+        run: |
+          bash steps/ut.sh sql_standalone_sdk_test 0
+      - name: upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-ut-result-cpp-sdk-${{ github.sha }}
+          path: |
+            reports/*.xml
   sql_sdk_test:
     runs-on: ubuntu-latest
     container:

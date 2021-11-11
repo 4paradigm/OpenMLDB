@@ -25,7 +25,7 @@ namespace sdk {
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options) {
     auto router = std::make_shared<SQLClusterRouter>(options);
     if (!router->Init()) {
-        LOG(WARNING) << "fail to init sql cluster router";
+        LOG(WARNING) << "Fail to init sql cluster router";
         return std::shared_ptr<SQLRouter>();
     }
     return router;
