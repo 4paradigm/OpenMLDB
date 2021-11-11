@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @Feature("SchemaTest")
 public class SchemaTest extends FedbTest {
     @Story("schema-sdk")
-    @Test
+    // @Test
     public void testHaveIndexAndOption() throws SQLException {
         boolean dbOk = executor.createDB(FedbGlobalVar.dbName);
         log.info("create db:{},{}", FedbGlobalVar.dbName, dbOk);
