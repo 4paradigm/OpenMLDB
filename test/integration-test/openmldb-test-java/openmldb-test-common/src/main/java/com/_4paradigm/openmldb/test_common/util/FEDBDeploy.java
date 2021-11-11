@@ -297,7 +297,6 @@ public class FEDBDeploy {
             if(StringUtils.isNotEmpty(fedbPath)){
                 FEDBCommandUtil.cpRtidb(testPath+apiserver_name,fedbPath);
             }
-            ExecutorUtil.run("cat "+ testPath + apiserver_name + "/conf/apiserver.flags");
             ExecutorUtil.run("sh "+testPath+apiserver_name+"/bin/start.sh start apiserver");
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
             if(used){
