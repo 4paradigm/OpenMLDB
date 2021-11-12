@@ -35,9 +35,11 @@ source test/steps/read_properties.sh
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
     cd java/openmldb-batch || exit
+    BATCH_VERSION=$(mvn org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.version -q -DforceStdout)
     mvn clean install -Dmaven.test.skip=true -Dgpg.skip
     cd "${ROOT_DIR}" || exit
 fi
+echo "BATCH_VERSION:${BATCH_VERSION}"
 # install command tool
 cd test/test-tool/command-tool || exit
 mvn clean install -Dmaven.test.skip=true
