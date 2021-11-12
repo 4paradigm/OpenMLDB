@@ -98,6 +98,7 @@ TEST_P(SQLSDKTest, SqlSdkBatchTest) {
         FAIL() << "Fail new cluster sql router";
         return;
     }
+    router_->SetPerformanceSensitive(true);
     SQLSDKTest::RunBatchModeSDK(sql_case, router, {});
 }
 
@@ -132,6 +133,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkBatchTest) {
         return;
     }
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    router_->SetPerformanceSensitive(true);
     RunBatchModeSDK(sql_case, router_, {});
 }
 TEST_P(SQLSDKQueryTest, SqlSdkBatchNonPerformanceSensitiveTest) {
