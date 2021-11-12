@@ -303,8 +303,8 @@ cases:
         - [ "bb",21,32,1590738993000 ]
   - id: 12
     desc: 不同库相同表lastjoin
-    tags: ["request 模式有问题，@chenjing"]
-    mode: request-unsupport
+#    tags: ["request 模式有问题，@chenjing"]
+#    mode: request-unsupport
     db: db
     inputs:
       - db: db1

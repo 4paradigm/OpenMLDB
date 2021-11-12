@@ -49,13 +49,13 @@ public class MultiDBTest extends FedbTest {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
-    // @Test(dataProvider = "getCase")
+    @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"function/multiple_databases/"})
     public void testSelectRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
-    // @Test(dataProvider = "getCase")
+    @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"function/multiple_databases/"})
     public void testSelectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
