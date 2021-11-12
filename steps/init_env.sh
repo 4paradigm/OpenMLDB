@@ -36,15 +36,14 @@ echo "Install thirdparty ... for $(uname -a)"
 
 ./steps/setup_thirdparty.sh "$THIRDPARTY_PATH"
 
-echo -e "${GREEN}downloading thirdsrc.tar.gz${NC}"
-mkdir -p "$THIRDSRC_PATH"
-curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
-tar xzf thirdsrc.tar.gz -C "$THIRDSRC_PATH" --strip-components 1
-echo -e "${GREEN}set up thirdsrc done${NC}"
-
-if [ -d "$THIRDPARTY_PATH/hybridse" ]; then
-    echo "${GREEN}thirdparty/hybridse path: $THIRDPARTY_PATH/hybridse already exist, skip download/install deps${NC}"
-    exit 0
+if [ ! -d "$THIRDSRC_PATH/zookeeper-3.4.14" ]; then
+    echo -e "${GREEN}downloading thirdsrc.tar.gz${NC}"
+    mkdir -p "$THIRDSRC_PATH"
+    curl -SLo thirdsrc.tar.gz https://github.com/jingchen2222/hybridsql-asserts/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz
+    tar xzf thirdsrc.tar.gz -C "$THIRDSRC_PATH" --strip-components 1
+    echo -e "${GREEN}set up thirdsrc done${NC}"
+else
+    echo "thirdsrc already exist, skip download"
 fi
 
 echo "HYBRIDSE_SOURCE: $HYBRIDSE_SOURCE"
@@ -66,13 +65,17 @@ if [[ ${HYBRIDSE_SOURCE} = "local" ]]; then
 
     pushd "${ROOT}/hybridse/java"
     if [[ "$OSTYPE" = "darwin"* ]]; then
-        mvn install -Dmaven.test.skip=true -Pmacos -Dgpg.skip
+        mvn clean install -Dmaven.test.skip=true -Pmacos -Dgpg.skip
     elif [[ "$OSTYPE" = "linux-gnu"* ]]; then
-        mvn install -Dmaven.test.skip=true -Dgpg.skip
+        mvn clean install -Dmaven.test.skip=true -Dgpg.skip
     fi
     popd
 
 else
+    if [ -d "$THIRDPARTY_PATH/hybridse" ]; then
+        echo "${GREEN}thirdparty/hybridse path: $THIRDPARTY_PATH/hybridse already exist, skip download/install deps${NC}"
+        exit 0
+    fi
     echo "Download hybridse package"
     pushd "${THIRDSRC_PATH}"
 

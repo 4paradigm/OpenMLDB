@@ -83,7 +83,7 @@ bool SDKTableHandler::Init() {
         }
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
-    DLOG(INFO) << "init table handler for table " << name_ << " in db " << db_ << " done";
+    VLOG(5) << "init table handler for table " << name_ << " in db " << db_ << " done";
     return true;
 }
 

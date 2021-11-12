@@ -16,9 +16,23 @@
 
 #include "base/ddl_parser.h"
 
+#include "codec/schema_codec.h"
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 namespace openmldb::base {
+
+std::ostream& operator<<(std::ostream& os, IndexMap& index_map) {
+    for (auto& indexes : index_map) {
+        os << " {" << indexes.first << "[";
+        for (auto& ck : indexes.second) {
+            os << ck.ShortDebugString() << ", ";
+        }
+        os << "]} ";
+    }
+    return os;
+}
+
 class DDLParserTest : public ::testing::Test {
  public:
     void SetUp() override {
@@ -47,6 +61,23 @@ class DDLParserTest : public ::testing::Test {
                                   "col5", "int64", "col6", "string"}));
     }
 
+    static bool AddColumnToTable(const std::string& col_name, const std::string& col_type,
+                                 hybridse::type::TableDef* table) {
+        // copy to trim
+        auto name = col_name;
+        auto type = col_type;
+        boost::trim(name);
+        boost::trim(type);
+        auto col = table->add_columns();
+        col->set_name(name);
+        auto t = codec::DATA_TYPE_MAP.find(type);
+        if (t == codec::DATA_TYPE_MAP.end()) {
+            return false;
+        }
+        col->set_type(codec::SchemaCodec::ConvertType(t->second));
+        return true;
+    }
+
     // , , {name, type, name, type, ...}
     static bool AddTableToDB(::hybridse::type::Database* db, const std::string& table_name,
                              std::initializer_list<std::string> cols_def) {
@@ -56,13 +87,27 @@ class DDLParserTest : public ::testing::Test {
         for (std::size_t i = 0; i < cols_def.size(); i += 2) {
             auto name = array[i];
             auto type = array[i + 1];
-            auto col = table->add_columns();
-            col->set_name(name);
-            auto t = codec::DATA_TYPE_MAP.find(type);
-            if (t == codec::DATA_TYPE_MAP.end()) {
-                return false;
-            }
-            col->set_type(codec::SchemaCodec::ConvertType(t->second));
+            EXPECT_TRUE(AddColumnToTable(name, type, table));
+        }
+        return true;
+    }
+    // , , "col:type,col:type,..."
+    static bool AddTableToDB(::hybridse::type::Database* db, const std::string& table_name, const std::string& cols_def,
+                             const std::string& col_sep, const std::string& name_type_sep) {
+        auto table = db->add_tables();
+        table->set_name(table_name);
+        std::vector<std::string> cols;
+        boost::split(cols, cols_def, boost::is_any_of(col_sep));
+        for (auto col : cols) {
+            // name: type
+            std::vector<std::string> vec;
+            boost::trim(col);
+            boost::split(vec, col, boost::is_any_of(name_type_sep));
+            EXPECT_EQ(vec.size(), 2);
+
+            auto name = vec[0];
+            auto type = vec[1];
+            EXPECT_TRUE(AddColumnToTable(name, type, table));
         }
         return true;
     }
@@ -93,6 +138,11 @@ class DDLParserTest : public ::testing::Test {
                     index_def->set_ts_offset(0);
                 }
             }
+        }
+    }
+    void ClearAllIndex() {
+        for (auto& table : *db.mutable_tables()) {
+            table.clear_indexes();
         }
     }
 
@@ -136,10 +186,9 @@ TEST_F(DDLParserTest, joinExtract) {
     }
 
     {
+        ClearAllIndex();
         // left join
-        auto sql =
-            "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on "
-            "t1.col1 = t2.col3;";  // avoid index1_t2
+        auto sql = "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on t1.col1 = t2.col3;";
 
         auto index_map = DDLParser::ExtractIndexes(sql, db);
         ASSERT_FALSE(index_map.empty());
@@ -180,8 +229,8 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
     }
 
     {
-        // partition by col2 to avoid dup of the added index before
-        // abs < 1min preceding -> 1min start
+        ClearAllIndex();
+        // 0 < abs < 1min -> 1min
         auto sql =
             "SELECT "
             "col1, "
@@ -191,13 +240,82 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "ROWS_RANGE BETWEEN 3s "
             "PRECEDING AND CURRENT ROW) limit 10;";
         auto index_map = DDLParser::ExtractIndexes(sql, db);
-        ASSERT_FALSE(index_map.empty());
+        ASSERT_EQ(index_map.size(), 1);
         LOG(INFO) << index_map;
+        auto index = index_map.begin()->second;
+        ASSERT_EQ(index.size(), 1);
+        auto ttl = index.begin()->ttl();
+        ASSERT_EQ(ttl.ttl_type(), type::TTLType::kAbsoluteTime);
+        ASSERT_EQ(ttl.abs_ttl(), 1);
+        ASSERT_EQ(ttl.lat_ttl(), 0);
+
         AddIndexToDB(index_map, &db);
         LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
     }
 
     {
+        ClearAllIndex();
+        // abs 0 -> 1min start, only UNBOUNDED means never gc
+        auto sql =
+            "SELECT "
+            "col1, "
+            "sum(col3) OVER w1 as w1_col3_sum, "
+            "sum(col2) OVER w1 as w1_col2_sum "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "ROWS_RANGE BETWEEN 0s "
+            "PRECEDING AND CURRENT ROW) limit 10;";
+        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_FALSE(index_map.empty());
+        LOG(INFO) << index_map;
+        auto index = index_map.begin()->second;
+        ASSERT_EQ(index.size(), 1);
+        auto ttl = index.begin()->ttl();
+        ASSERT_EQ(ttl.ttl_type(), type::TTLType::kAbsoluteTime);
+        ASSERT_EQ(ttl.abs_ttl(), 1);
+        ASSERT_EQ(ttl.lat_ttl(), 0);
+
+        AddIndexToDB(index_map, &db);
+        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+    }
+
+    {
+        ClearAllIndex();
+        // UNBOUNDED abs -> abs ttl 0
+        auto sql =
+            "SELECT sum(col3) OVER w1 "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)";
+        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_FALSE(index_map.empty());
+        LOG(INFO) << index_map;
+        auto index = index_map.begin()->second;
+        ASSERT_EQ(index.size(), 1);
+        auto ttl = index.begin()->ttl();
+        ASSERT_EQ(ttl.ttl_type(), type::TTLType::kAbsoluteTime);
+        ASSERT_EQ(ttl.abs_ttl(), 0);
+        ASSERT_EQ(ttl.lat_ttl(), 0);
+    }
+
+    {
+        ClearAllIndex();
+        // x open preceding abs -> x - 1ms, doesn't matter
+        auto sql =
+            "SELECT sum(col3) OVER w1 as w1_col3_sum "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "ROWS_RANGE BETWEEN 3m OPEN PRECEDING AND CURRENT ROW)";
+        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_FALSE(index_map.empty());
+        LOG(INFO) << index_map;
+        auto index = index_map.begin()->second;
+        ASSERT_EQ(index.size(), 1);
+        auto ttl = index.begin()->ttl();
+        ASSERT_EQ(ttl.ttl_type(), type::TTLType::kAbsoluteTime);
+        ASSERT_EQ(ttl.abs_ttl(), 3);
+        ASSERT_EQ(ttl.lat_ttl(), 0);
+    }
+
+    {
+        ClearAllIndex();
         // latest
         auto sql =
             "SELECT "
@@ -210,19 +328,71 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
         auto index_map = DDLParser::ExtractIndexes(sql, db);
         ASSERT_FALSE(index_map.empty());
         LOG(INFO) << index_map;
+        auto index = index_map.begin()->second;
+        ASSERT_EQ(index.size(), 1);
+        auto ttl = index.begin()->ttl();
+        ASSERT_EQ(ttl.ttl_type(), type::TTLType::kLatestTime);
+        ASSERT_EQ(ttl.abs_ttl(), 0);
+        ASSERT_EQ(ttl.lat_ttl(), 3);
+
         AddIndexToDB(index_map, &db);
         LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
     }
 
     {
+        ClearAllIndex();
+        // latest 0, only UNBOUNDED means never gc
+        auto sql =
+            "SELECT "
+            "col1, "
+            "sum(col3) OVER w1 as w1_col3_sum, "
+            "sum(col2) OVER w1 as w1_col2_sum "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "ROWS BETWEEN 0 "
+            "PRECEDING AND CURRENT ROW) limit 10;";
+        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_FALSE(index_map.empty());
+        LOG(INFO) << index_map;
+        auto index = index_map.begin()->second;
+        ASSERT_EQ(index.size(), 1);
+        auto ttl = index.begin()->ttl();
+        ASSERT_EQ(ttl.ttl_type(), type::TTLType::kLatestTime);
+        ASSERT_EQ(ttl.abs_ttl(), 0);
+        ASSERT_EQ(ttl.lat_ttl(), 1);
+
+        AddIndexToDB(index_map, &db);
+        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+    }
+
+    {
+        ClearAllIndex();
+        // UNBOUNDED latest -> lat ttl 0
+        auto sql =
+            "SELECT sum(col3) OVER w1 as w1_col3_sum "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)";
+        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_FALSE(index_map.empty());
+        LOG(INFO) << index_map;
+        auto index = index_map.begin()->second;
+        ASSERT_EQ(index.size(), 1);
+        auto ttl = index.begin()->ttl();
+        ASSERT_EQ(ttl.ttl_type(), type::TTLType::kLatestTime);
+        ASSERT_EQ(ttl.abs_ttl(), 0);
+        ASSERT_EQ(ttl.lat_ttl(), 0);
+    }
+
+    {
+        ClearAllIndex();
         // no order by
         auto sql = "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;";
         // GROUP_BY node
         auto index_map = DDLParser::ExtractIndexesForBatch(sql, db);
-        LOG(INFO) << "result: " << index_map;
+        LOG(INFO) << "result for batch: " << index_map;
 
         // REQUEST_UNION node, this will use index(key=col1,no ts)
         index_map = DDLParser::ExtractIndexes(sql, db);
+        LOG(INFO) << "result: " << index_map;
     }
 }
 
@@ -236,6 +406,54 @@ TEST_F(DDLParserTest, renameColumns) {
     auto index_map = DDLParser::ExtractIndexes(sql, db);
     ASSERT_FALSE(index_map.empty());
     LOG(INFO) << index_map;
+}
+
+TEST_F(DDLParserTest, mergeNode) {
+    AddTableToDB(&db, "t1", "id:int, pk1:string, col1:int32, std_ts:timestamp", ",", ":");
+    auto sql =
+        "SELECT id, pk1, col1, std_ts,\n"
+        "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as "
+        "w1_col1_sum,\n"
+        "      sum(col1) OVER w2 as w2_col1_sum,\n"
+        "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as "
+        "w3_col1_sum\n"
+        "      FROM t1\n"
+        "      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    auto index_map = DDLParser::ExtractIndexes(sql, db);
+    LOG(INFO) << index_map;
+    ASSERT_EQ(index_map.size(), 1);
+    auto index = index_map.begin()->second;
+    ASSERT_EQ(index.size(), 1);
+    auto ttl = index.begin()->ttl();
+    ASSERT_EQ(ttl.ttl_type(), type::TTLType::kAbsAndLat);
+    ASSERT_EQ(ttl.abs_ttl(), 1);
+    ASSERT_EQ(ttl.lat_ttl(), 2);
+}
+TEST_F(DDLParserTest, twoTable) {
+    AddTableToDB(&db, "t1", "col0 string, col1 int32, col2 int16, col3 float, col4 double, col5 int64, col6 string",
+                 ",", " ");
+    AddTableToDB(&db, "t2", "str0 string, str1 string, col3 float, col4 double, col2 int16, col1 int32, col5 int64",
+                 ",", " ");
+    auto sql =
+        "SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5, sum(t1.col1) OVER w1 as w1_col1_sum, "
+        "sum(t1.col3) OVER w1 as w1_col3_sum, sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER w1 as "
+        "w1_t2_col2_sum, sum(t1.col5) OVER w1 as w1_col5_sum, str1 as t2_str1 FROM t1 last join t2 order by t2.col5 on "
+        "t1.col1=t2.col1 and t1.col5 = t2.col5 WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN "
+        "3 PRECEDING AND CURRENT ROW) limit 10;";
+    auto index_map = DDLParser::ExtractIndexes(sql, db);
+    LOG(INFO) << index_map;
+    ASSERT_EQ(index_map.size(), 2);
+    auto t1_index = index_map.find("t1");
+    auto t2_index = index_map.find("t2");
+    ASSERT_TRUE(t1_index != index_map.end() && t2_index != index_map.end());
+    ASSERT_TRUE(t1_index->second.size() == 1 && t2_index->second.size() == 1);
+    auto ttl1 = t1_index->second.begin()->ttl();
+    auto ttl2 = t2_index->second.begin()->ttl();
+    ASSERT_EQ(ttl1.ttl_type(), type::TTLType::kAbsoluteTime);
+    ASSERT_EQ(ttl1.abs_ttl(), 1);
+    // default ttl
+    ASSERT_EQ(ttl2.ttl_type(), type::TTLType::kAbsoluteTime);
+    ASSERT_EQ(ttl2.abs_ttl(), 0);
 }
 
 }  // namespace openmldb::base

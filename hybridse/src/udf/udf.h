@@ -22,6 +22,7 @@
 #include "boost/lexical_cast.hpp"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
+#include "node/node_manager.h"
 #include "proto/fe_type.pb.h"
 
 namespace hybridse {
@@ -277,7 +278,7 @@ uint32_t to_string_len(const V &v);
 
 }  // namespace v1
 
-void RegisterNativeUdfToModule();
+void RegisterNativeUdfToModule(hybridse::node::NodeManager* nm);
 }  // namespace udf
 }  // namespace hybridse
 

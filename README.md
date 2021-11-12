@@ -17,138 +17,78 @@
 English version|[中文版](README_cn.md)
 
 
-## What is OpenMLDB 
+## 1. Introduction
 
-OpenMLDB is an open-source database designed and optimized to enable data correctness & efficiency for machine learning driven applications. Besides the 10x faster ML application landing experience, OpenMLDB provides the unified computing & storage engines to reduce the complexity and cost of development and operation.
-
-## Who Uses OpenMLDB 
-The OpenMLDB project originated from several enterprise AI data products(RTiDB, SparkFE & FeDB) at 4Paradigm. OpenMLDB is now used in production to serve machine learning scenarios in many leading companies, with more than 120 industry landed use cases including content recommender system, ads CTR prediction, AIOps, anti-money laundering, anti-fraud recognition, intelligent marketing, etc. 
-
-## Features
-
-* **Consistency**
-
-    OpenMLDB ensures the consistency for online and offline. Data scientists can use OpenMLDB for feature extration which will avoid crossing data. The online and offline computation are consistent because of the use of the same LLVM IR for complication. To ensure the consistency of storage, OpenMLDB will synchronize data for offline and online. Users do not need to manage multiple data sources for online and offline, which may avoid the inconsistency from features or data.
-    
-* **High Performance**
-
-    OpenMLDB implements the native SQL compiler with C++ and LLVM. It contains tens of optimization passes for physical plans and expressions. It can generate optimized binary code for different hardware and optimize the memory layout for feature storage. The storage and cost for features can be 9x lower than the similar databases. The performance of real-time execution can be 9x better and the performance of batch processing can be 6x better.
-
-* **High Availability**
-
-    OpenMLDB supports distributed massive-parallel processing and database storage. It supports automatic failover to avoid the single point of failure.
-
-* **ANSI SQL Support**
-
-    OpenMLDB supports user-friendly SQL interface which is compatible with most ANSI SQL and extends syntax for AI scenarios. Take the time serial features as example, OpenMLDB not only supports the syntax of Over Window but also supports the new syntax for sliding window with instance table and real-time window aggregation with current row data.
-
-* **AI Optimization**
-
-    OpenMLDB is designed for optimizing AI scenarios. For storage we design the efficient data structure to storage features which gets better the utilization of space and performance than the similar products. For computation, we provide the usual methods for table join and the UDF/UDAF for most machine learning scenarios.
-
-* **Easy To Use**
-
-    OpenMLDB is easy to use just like any other standalone database. Not only data scientists but also application developers can use SQL to develop the machine learning applications which includes massive-parallel processing and real-time feature extraction. With this database it is easy for AI landing with lowest cost.
-
-## Performance
-
-Comparing with the mainstream databases, OpenMLDB achieves better performance for different size of data and computational complexity.
-
-![Online Benchmark](./images/online_benchmark.png)
-
-Comparing with the popular MPP system, using OpenMLDB for batch data process can achieve better performance and lower TCO especially with optimization for skew window data.
-
-![Offline Benchmark](./images/offline_benchmark.png)
-
-## QuickStart
-
-Take Predict Taxi Tour Duration as example, we can use OpenMLDB to develop and deploy ML applications easily. The demo code is [here](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/demo).
-
-```bash 
-# Start docker image (support linux/amd64 & linux/arm64 image)
-# try one of the mirror image from 
-#  - mirror.baidubce.com/4pdosc/openmldb:0.2.1
-#  - ghcr.io/4paradigm/openmldb:0.2.1
-# if you pull the image slowly
-docker run -it 4pdosc/openmldb:0.2.1 bash
-
-# Initilize the environment
-sh init.sh
- 
-# Import the data to OpenMLDB
-python3 import.py
- 
-# Run feature extraction and model training
-python3 train.py ./fe.sql /tmp/model.txt
- 
-# Start HTTP serevice for inference with OpenMLDB
-sh start_predict_server.sh ./fe.sql 8887 /tmp/model.txt
- 
-# Run inference with HTTP request
-python3 predict.py
-```
-
-## Build
-
-See [here](docs/en/compile.md)
-
-## Architecture 
-
-<div align=center><img src="./images/openmldb_architecture.png"/></div>
-
-## Status and Roadmap
-
-### Status of Project
+OpenMLDB is an open-source database particularly designed to efficiently provide consistent data for machine learning.  A database for machine learning consists of two major tasks: feature extraction and feature access, which are served as data provisioning for offline training and online inference. Without OpenMLDB, there are two separate systems for online and offline data provisioning, which cost significant effort to verify the online-offline consistency. On the contrary, OpenMLDB supports the unified SQL programming and its execution engine for both online and offline data provisioning. As a result, the online-offline consistency is inherently guaranteed. Moreover, the system is carefully designed and optimized to ensure the efficiency. By taking advantages of OpenMLDB, database engineers are now able to write SQL scripts only to efficiently provide consistent data to machine learning, and an offline model can be immediately deployed for online serving with little cost involved.
+<p align="center">
+ <img src="images/workflow.png" alt="image-20211103103052252" width=850 />
+ </p>
 
 
-* SQL compiler and optimizer[Complete]
-    * Support ANSI SQL compiler[Complete]
-    * Support optimizing physical plans and expressions[Complete]
-    * Support code generation for functions[Complete]
-* Front-end programming interfaces[In Process]
-    * Support JDBC protocol[Complete]
-    * Support C++、Python SDK[Complete]
-    * Support RESTful API[In Process]
-* Online/offline computaion engine[Complete]
-    * Support online database computaion engine[Complete]
-    * Support offline batch process computaion engine[Complete]
-* Unified storage engine[In Process]
-    * Support distributed memory storage[Complete]
-    * Support synchronization for online and offline data[In Process]
 
-### Roadmap
+The above figure illustrates the OpenMLDB workflow. SQL engineers first write SQL scripts for offline feature extraction, which provides data for offline model training. When the model quality is satisfied, the online feature extraction and access can be enabled immediately for online serving without additional efforts involved. Thanks to the unified SQL programming and execution engine, the online-offline consistency verification is eliminated, which is inherently guaranteed by OpenMLDB. Furthermore, certain optimization techniques (e.g., data skew optimization and in-memory indexing for offline and online feature extraction, respectively) are adopted to ensure that the performance requirement can be met for both offline training and online inference. In summary, OpenMLDB enables SQL as the only programming interface for consistent and efficient data provisioning for both offline model training and online inference serving.
 
-* SQL Compatibility
-    * Support more `Window` types and `Where`, `GroupBy` with complex expressions[2021H2]
-    * Support more SQL syntax and UDF/UDAF functions for AI scenarios[2021H2]
-* Performance Improvement
-    * Logical and physical plan optimization for batch mode and request mode data processing[2021H2]
-    * High-performance, distributed execution plan generation and codegen[2021H2]
-    * More classic SQL expression pass support[2022H1]
-    * Integrate the optimization passes for Native LastJoin which is used in AI scenarios[2021H2]
-    * Provide a new strategy of memory allocation to reduce memory fragmentation[2022H1]
-* Ecosystem Integration
-    * Adapt to various encoding format in row and column, be compatible with Apache Arrow[2021H2]
-    * Adapt to open source SQL compute framework like FlinkSQL[2022H1]
-    * Support popular programing languages，including C++, Java, Python, Go, Rust etc[2021H2]
-    * Support PMEM-based storage engine[2022H1]
-    * Support Flink/Kafka/Spark connector[2022H1]
+## 2. Highlight Features
+### 2.1. SQL Programming APIs 
 
-## Publication
+We believe SQL is the most suitable programming APIs for feature engineering because of its elegant design and popularity. OpenMLDB enables SQL as the only programming APIs for developers for both offline and online feature extraction. Besides, we extend the capability of standard SQL and make it more powerful for feature extraction. 
 
-* Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
+### 2.2 Online-Offline Consistency
 
-## Some Readings
+Based on the SQL programming APIs, we design an unified execution engine for both online and offline feature extraction. As a result, the online-offline consistency is inherently guaranteed by OpenMLDB with no other cost.
 
-[In-Depth Interpretation of the Latest VLDB 2021 Paper: Artificial Intelligence Driven Real-Time Decision System Database and Optimization Based on Persistent Memory](https://medium.com/@fengxindai0/in-depth-interpretation-of-the-latest-vldb-2021-paper-artificial-intelligence-driven-real-time-f2a818bcf2b2)
+### 2.3. Efficiency
 
-[Predictive maintenance — 5minutes demo of an end to end machine learning project](https://towardsdatascience.com/predictive-maintenance-5minutes-demo-of-an-end-to-end-machine-learning-project-60941f1c9793)
+We propose a few techniques to improve the performance for both offline and online feature extraction. As a result, our offline feature extraction can be significantly faster than existing opensource bigdata processing frameworks. Moreover, our online service can provide low latency (tens of milliseconds) to meet the performance requirement of online inference.
 
-[Compared to Native Spark 3.0, We Have Achieved Significant Optimization Effects in the AI Application Field](https://towardsdatascience.com/we-have-achieved-significant-optimization-effects-in-the-ai-application-field-compared-to-native-2a055e47250f)
+You can read our below  section (7. Publications & Blogs) for more technical detail.
 
-[MLOp Practice: Using OpenMLDB in the Real-Time Anti-Fraud Model for the Bank’s Online Transaction](https://towardsdatascience.com/practice-of-openmldbs-transaction-real-time-anti-fraud-model-in-the-bank-s-online-event-40ab41fec6d4)
+### 2.4 Integrated CLI
 
+We provide an integrated and powerful CLI for SQL programming, job management, online and offline deployment, and database administration. Developers who are familiar with database's CLIs should be very comfortable with our tool.
 
-## License
+*Note that, the CLI of current release 0.3.0 only supports the cluster mode partially. It will be fully supported in the next release of 0.4.0* 
 
-[Apache License 2.0](./LICENSE)
+## 3. Build & Install
+
+:point_right: [Read more](docs/en/compile.md)
+
+## 4. Quickstart & Demo
+
+Since OpenMLDB v0.3.0, we introduce two operating modes, which are cluster mode and standalone mode. The cluster mode is suitable for large-scale datasets and real-world applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone mode running on a single node is ideal for small businesses and demonstration. 
+
+We demonstrate the workflow of using the cluster and standalone modes:
+
+- Cluster mode: please read the :point_right: [quickstart guide](docs/en/cluster.md) and :point_right: [related demo code](demo/predict-taxi-trip-duration-nb/demo)
+- Standalone mode: please read the :point_right: [quickstart guide with demo code](docs/en/standalone.md).
+
+## 5. Roadmap
+
+We list a few highlight features that we have planned in the future releases. Please join our community to understand more about our planning and discuss your ideas.
+
+| Version | Est. release date | Highlight features                                           |
+| ------- | ----------------- | ------------------------------------------------------------ |
+| 0.4.0   | End of 2021       | - Full support of standalone and cluster modes in integrated CLI |
+| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Kafka/Pulsar connector support for online data source |
+
+## 6. Community
+
+You may join our community for feedback and discussion
+
+- **[Slack Workspace](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)**: You may find useful information of release notes, user support, development discussion and even more from our various Slack channels. 
+
+- **Github Issues and Discussions**: If you are a serious developer, you are most welcome to join our discussion on Github. **Issues** are used to report bugs and collect new requirements. **Discussions** are mostly used by our project maintainers to publish and comment RFCs.
+
+- **Forum (Chinese)**: (coming soon)
+
+- **WeChat Groups (Chinese)**:
+
+  <img src="images/wechat.png" alt="img" width=100 />  
+
+## 7. Publications & Blogs
+
+- Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
+- [In-Depth Interpretation of the Latest VLDB 2021 Paper: Artificial Intelligence Driven Real-Time Decision System Database and Optimization Based on Persistent Memory](https://medium.com/@fengxindai0/in-depth-interpretation-of-the-latest-vldb-2021-paper-artificial-intelligence-driven-real-time-f2a818bcf2b2)
+- [Predictive maintenance — 5 minutes demo of an end to end machine learning project](https://towardsdatascience.com/predictive-maintenance-5minutes-demo-of-an-end-to-end-machine-learning-project-60941f1c9793)
+- [Compared to Native Spark 3.0, We Have Achieved Significant Optimization Effects in the AI Application Field](https://towardsdatascience.com/we-have-achieved-significant-optimization-effects-in-the-ai-application-field-compared-to-native-2a055e47250f)
+- [MLOp Practice: Using OpenMLDB in the Real-Time Anti-Fraud Model for the Bank’s Online Transaction](https://towardsdatascience.com/practice-of-openmldbs-transaction-real-time-anti-fraud-model-in-the-bank-s-online-event-40ab41fec6d4)

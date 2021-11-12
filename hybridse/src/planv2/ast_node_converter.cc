@@ -1681,7 +1681,6 @@ base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int
                         ": invalid interval unit")
     }
     bool is_null = false;
-    const int size = interval_literal->image().size();
     codec::StringRef str_ref(interval_literal->image().size() - 1, interval_literal->image().data());
     udf::v1::string_to_bigint(&str_ref, val, &is_null);
 

@@ -50,6 +50,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
 static bool IsRequestSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
         mode.find("rtidb-unsupport") != std::string::npos ||
+        mode.find("performance-sensitive-unsupport") != std::string::npos ||
             mode.find("request-unsupport") != std::string::npos
         || mode.find("standalone-unsupport") != std::string::npos) {
         return false;
@@ -59,6 +60,7 @@ static bool IsRequestSupportMode(const std::string& mode) {
 static bool IsBatchRequestSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
         mode.find("rtidb-unsupport") != std::string::npos ||
+        mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("batch-request-unsupport") != std::string::npos ||
         mode.find("request-unsupport") != std::string::npos
         || mode.find("standalone-unsupport") != std::string::npos) {
@@ -69,8 +71,9 @@ static bool IsBatchRequestSupportMode(const std::string& mode) {
 static bool IsBatchSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
         mode.find("rtidb-unsupport") != std::string::npos ||
-        mode.find("batch-unsupport") != std::string::npos
-        || mode.find("standalone-unsupport") != std::string::npos) {
+        mode.find("batch-unsupport") != std::string::npos ||
+        mode.find("performance-sensitive-unsupport") != std::string::npos ||
+        mode.find("standalone-unsupport") != std::string::npos) {
         return false;
     }
     return true;
@@ -459,6 +462,9 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(sp_info->GetDbName(), db);
     ASSERT_EQ(sp_info->GetSpName(), sp_name);
     ASSERT_EQ(sp_info->GetMainTable(), "trans");
+    ASSERT_EQ(sp_info->GetMainDb(), db);
+    ASSERT_EQ(sp_info->GetDbs().size(), 1u);
+    ASSERT_EQ(sp_info->GetDbs().at(0), db);
     ASSERT_EQ(sp_info->GetTables().size(), 1u);
     ASSERT_EQ(sp_info->GetTables().at(0), "trans");
     auto& input_schema = sp_info->GetInputSchema();
@@ -493,12 +499,105 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_TRUE(output_schema.IsConstant(1));
     ASSERT_TRUE(!output_schema.IsConstant(2));
 
+    // fail to drop table before drop all associated procedures
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop table trans;", &status));
+
     // drop procedure
     std::string drop_sp_sql = "drop procedure " + sp_name + ";";
     ASSERT_TRUE(router->ExecuteDDL(db, drop_sp_sql, &status));
+    // success drop table after drop all associated procedures
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans;", &status));
 }
 
+
+TEST_F(SQLSDKQueryTest, drop_table_with_procedure_test) {
+    // create table trans
+    std::string ddl =
+        "create table trans(c1 string,\n"
+        "                   c3 int,\n"
+        "                   c4 bigint,\n"
+        "                   c5 float,\n"
+        "                   c6 double,\n"
+        "                   c7 timestamp,\n"
+        "                   c8 date,\n"
+        "                   index(key=c1, ts=c7));";
+    // create table trans2
+    std::string ddl2 =
+        "create table trans2(c1 string,\n"
+        "                   c3 int,\n"
+        "                   c4 bigint,\n"
+        "                   c5 float,\n"
+        "                   c6 double,\n"
+        "                   c7 timestamp,\n"
+        "                   c8 date,\n"
+        "                   index(key=c1, ts=c7));";
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.session_timeout = 30000;
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) {
+        FAIL() << "Fail new cluster sql router";
+    }
+    std::string db = "test_db1";
+    std::string db2 = "test_db2";
+    hybridse::sdk::Status status;
+
+    // create table test_db1.trans
+    router->CreateDB(db, &status);
+    router->ExecuteDDL(db, "drop table trans;", &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+    if (!router->ExecuteDDL(db, ddl, &status)) {
+        FAIL() << "fail to create table";
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    // create table test_db1.trans2
+    router->CreateDB(db, &status);
+    router->ExecuteDDL(db, "drop table trans2;", &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+    if (!router->ExecuteDDL(db, ddl2, &status)) {
+        FAIL() << "fail to create table";
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    // create table test_db2.trans
+    router->CreateDB(db2, &status);
+    router->ExecuteDDL(db2, "drop table trans;", &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+    if (!router->ExecuteDDL(db2, ddl, &status)) {
+        FAIL() << "fail to create table";
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+    // insert
+    std::string insert_sql = "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
+    // create procedure
+    std::string sp_name = "sp";
+    std::string sql =
+        "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS"
+        " (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    std::string sp_ddl =
+        "create procedure " + sp_name +
+        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, const c7 timestamp, c8 date" + ")" +
+        " begin " + sql + " end;";
+    if (!router->ExecuteDDL(db, sp_ddl, &status)) {
+        FAIL() << "fail to create procedure";
+    }
+    // fail to drop table test_db1.trans before drop all associated procedures
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop table trans;", &status));
+    // it's ok to drop test_db1.trans2 since there is no associated procedures
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans2;", &status));
+    // it's ok to drop test_db2.trans since there is no associated procedures
+    ASSERT_TRUE(router->ExecuteDDL(db2, "drop table trans;", &status));
+
+    // drop procedure
+    std::string drop_sp_sql = "drop procedure " + sp_name + ";";
+    ASSERT_TRUE(router->ExecuteDDL(db, drop_sp_sql, &status));
+    // success drop table test_db1.trans after drop all associated procedures
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans;", &status));
+}
 TEST_F(SQLSDKTest, table_reader_scan) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();

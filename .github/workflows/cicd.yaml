@@ -23,9 +23,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: build
-        # -e can't catch the error when the command is a port of list-constructs, so we should add `|| exit`
+        # -e can't catch the error when the command is a part of list-constructs, so we should add `|| exit`
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            VERSION=$(echo $VERSION | sed -e 's/^v//')
+            bash steps/prepare_release.sh $VERSION
+          fi
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) && cd ../ || exit
           rm -rf thirdparty
@@ -59,6 +64,27 @@ jobs:
           path: |
             reports/*.xml
 
+  sql_standalone_sdk_test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    steps:
+      - uses: actions/checkout@v2
+      - name: build
+        run: |
+          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=ON .. && make -j$(nproc) sql_standalone_sdk_test && cd ../ || exit
+      - name: run sql_standalone_sdk_test
+        run: |
+          bash steps/ut.sh sql_standalone_sdk_test 0
+      - name: upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-ut-result-cpp-sdk-${{ github.sha }}
+          path: |
+            reports/*.xml
   sql_sdk_test:
     runs-on: ubuntu-latest
     container:
@@ -142,6 +168,11 @@ jobs:
       - name: build pysdk and sqlalchemy
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            VERSION=$(echo $VERSION | sed -e 's/^v//')
+            bash steps/prepare_release.sh $VERSION
+          fi
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../ || exit
       - name: test sqlalchemy

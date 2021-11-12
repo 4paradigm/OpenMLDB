@@ -235,9 +235,13 @@ class RequestRunSession : public RunSession {
     virtual const Schema& GetRequestSchema() const {
         return compile_info_->GetRequestSchema();
     }
-    /// \brief Return the name of request row
+    /// \brief Return the name of request table name
     virtual const std::string& GetRequestName() const {
         return compile_info_->GetRequestName();
+    }
+    /// \brief Return the name of request table db
+    virtual const std::string& GetRequestDbName() const {
+        return compile_info_->GetRequestDbName();
     }
 };
 
@@ -253,9 +257,13 @@ class BatchRequestRunSession : public RunSession {
     const Schema& GetRequestSchema() const {
         return compile_info_->GetRequestSchema();
     }
-    /// \brief Return the name of request row
+    /// \brief Return the name of request table name
     const std::string& GetRequestName() const {
         return compile_info_->GetRequestName();
+    }
+    /// \brief Return the name of request db name
+    const std::string& GetRequestDbName() const {
+        return compile_info_->GetRequestDbName();
     }
 
     /// \brief Run query in batch request mode.
@@ -377,8 +385,8 @@ class Engine {
     EngineOptions GetEngineOptions();
 
  private:
-    bool GetDependentTables(node::PlanNode* node, std::set<std::pair<std::string, std::string>>* db_tables,
-                            base::Status& status);  // NOLINT
+    bool GetDependentTables(const node::PlanNode* node, const std::string& default_db,
+                            std::set<std::pair<std::string, std::string>>* db_tables, base::Status& status);  // NOLINT
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
                                                 EngineMode engine_mode,

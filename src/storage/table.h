@@ -110,10 +110,6 @@ class Table {
 
     inline void SetDiskused(uint64_t size) { diskused_.store(size, std::memory_order_relaxed); }
 
-    inline void SetSchema(const std::string& schema) { schema_.assign(schema); }
-
-    inline const std::string& GetSchema() { return schema_; }
-
     inline const ::openmldb::type::CompressType GetCompressType() { return compress_type_; }
 
     void AddVersionSchema(const ::openmldb::api::TableMeta& table_meta);
@@ -131,6 +127,14 @@ class Table {
             return nullptr;
         }
         return it->second;
+    }
+
+    std::shared_ptr<Schema> GetSchema() {
+        auto versions = std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
+        if (!versions->empty()) {
+            return versions->rbegin()->second;
+        }
+        return nullptr;
     }
 
     std::map<int32_t, std::shared_ptr<Schema>> GetAllVersionSchema() {
@@ -151,8 +155,6 @@ class Table {
 
     std::shared_ptr<IndexDef> GetPkIndex() { return table_index_.GetPkIndex(); }
 
-    inline std::map<std::string, uint8_t>& GetTSMapping() { return ts_mapping_; }
-
     void SetTTL(const ::openmldb::storage::UpdateTTLMeta& ttl_meta);
 
     inline void SetMakeSnapshotTime(int64_t time) { last_make_snapshot_time_ = time; }
@@ -172,7 +174,6 @@ class Table {
     uint64_t ttl_offset_;
     bool is_leader_;
     std::atomic<uint32_t> table_status_;
-    std::string schema_;
     std::map<std::string, uint8_t> ts_mapping_;
     TableIndex table_index_;
     ::openmldb::type::CompressType compress_type_;

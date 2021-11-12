@@ -292,16 +292,16 @@ class ConditionFilter : public FnComponent {
     }
     const node::ExprNode *condition() const { return condition_; }
     const std::string FnDetail() const { return fn_info_.fn_name(); }
-
     virtual void ResolvedRelatedColumns(
         std::vector<const node::ExprNode *> *columns) const {
         node::ColumnOfExpression(condition_, columns);
         return;
     }
 
-    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
-                             node::NodeManager *nm, ConditionFilter *out) const;
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer, node::NodeManager *nm,
+                             ConditionFilter *out) const;
 
+ private:
     const node::ExprNode *condition_;
 };
 
@@ -907,7 +907,7 @@ class Filter {
     }
     const std::string ToString() const {
         std::ostringstream oss;
-        oss << "condition=" << node::ExprString(condition_.condition_)
+        oss << "condition=" << node::ExprString(condition_.condition())
             << ", left_keys=" << node::ExprString(left_key_.keys())
             << ", right_keys=" << node::ExprString(right_key_.keys())
             << ", index_keys=" << node::ExprString(index_key_.keys());

@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export COMPONENTS="tablet nameserver"
+export COMPONENTS="tablet nameserver apiserver"
 BASEDIR="$(dirname "$( cd "$( dirname "$0"  )" && pwd )")"
 for COMPONENT in $COMPONENTS; do
     PID_FILE="$BASEDIR/bin/$COMPONENT.pid"

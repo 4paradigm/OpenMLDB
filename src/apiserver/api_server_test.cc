@@ -480,6 +480,178 @@ TEST_F(APIServerTest, procedure) {
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table trans;", &status));
 }
 
+TEST_F(APIServerTest, no_common) {
+    const auto env = APIServerTestEnv::Instance();
+
+    // create table
+    std::string ddl =
+        "create table trans(c1 string,\n"
+        "                   c3 int,\n"
+        "                   c4 bigint,\n"
+        "                   c5 float,\n"
+        "                   c6 double,\n"
+        "                   c7 timestamp,\n"
+        "                   c8 date,\n"
+        "                   index(key=c1, ts=c7));";
+    hybridse::sdk::Status status;
+    env->cluster_remote->ExecuteDDL(env->db, "drop table trans;", &status);
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
+
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+    // insert
+    std::string insert_sql = "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    ASSERT_TRUE(env->cluster_remote->ExecuteInsert(env->db, insert_sql, &status));
+    // create procedure
+    std::string sp_name = "sp";
+    std::string sql =
+        "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS"
+        " (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    std::string sp_ddl =
+        "create procedure " + sp_name +
+        " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
+        " begin " + sql + " end;";
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, sp_ddl, &status)) << "fail to create procedure";
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+
+    // show procedure
+    brpc::Controller show_cntl;  // default is GET
+    show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+    env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
+    ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
+    LOG(INFO) << "get sp resp: " << show_cntl.response_attachment();
+
+    butil::rapidjson::Document document;
+    if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
+        ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                           << ", raw resp: " << show_cntl.response_attachment().to_string();
+    }
+    ASSERT_EQ(0, document["code"].GetInt());
+    ASSERT_STREQ("ok", document["msg"].GetString());
+    ASSERT_EQ(7, document["data"]["input_schema"].Size());
+    ASSERT_EQ(3, document["data"]["output_schema"].Size());
+    ASSERT_EQ(0, document["data"]["output_common_cols"].Size());
+
+    // call procedure, without schema
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/deployments/" + sp_name;
+        cntl.request_attachment().append(R"({
+        "input": [["bb", 23, 123, 5.1, 6.1, 1590738994000, "2021-08-01"],
+                  ["bb", 23, 234, 5.2, 6.2, 1590738994000, "2021-08-02"]],
+        "need_schema": false
+    })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+
+        LOG(INFO) << "exec procedure resp:\n" << cntl.response_attachment().to_string();
+
+        // check resp data
+        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << cntl.response_attachment().to_string();
+        }
+        ASSERT_EQ(0, document["code"].GetInt());
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_TRUE(document["data"].FindMember("schema") == document["data"].MemberEnd());
+        ASSERT_EQ(2, document["data"]["data"].Size());
+        ASSERT_EQ(0, document["data"]["common_cols_data"].Size());
+    }
+
+    // drop procedure and table
+    std::string drop_sp_sql = "drop procedure " + sp_name + ";";
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, drop_sp_sql, &status));
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table trans;", &status));
+}
+
+TEST_F(APIServerTest, no_common_not_first_string) {
+    const auto env = APIServerTestEnv::Instance();
+
+    // create table
+    std::string ddl =
+        "create table trans(id int,\n"
+        "                   c1 string,\n"
+        "                   c3 int,\n"
+        "                   c4 bigint,\n"
+        "                   c5 float,\n"
+        "                   c6 double,\n"
+        "                   c7 timestamp,\n"
+        "                   c8 date,\n"
+        "                   index(key=c1, ts=c7));";
+    hybridse::sdk::Status status;
+    env->cluster_remote->ExecuteDDL(env->db, "drop table trans;", &status);
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
+
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+    // insert
+    std::string insert_sql = "insert into trans values(11,\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    ASSERT_TRUE(env->cluster_remote->ExecuteInsert(env->db, insert_sql, &status));
+    // create procedure
+    std::string sp_name = "sp1";
+    std::string sql = "SELECT id, c1, sum(c4) OVER (w1) AS w1_c4_sum FROM trans "
+        "WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 "
+        "ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);";
+
+    std::string sp_ddl =
+        "create procedure " + sp_name +
+        " (id int, c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
+        " begin " + sql + " end;";
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, sp_ddl, &status)) << "fail to create procedure";
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+
+    // show procedure
+    brpc::Controller show_cntl;  // default is GET
+    show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+    env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
+    ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
+    LOG(INFO) << "get sp resp: " << show_cntl.response_attachment();
+
+    butil::rapidjson::Document document;
+    if (document.Parse(show_cntl.response_attachment().to_string().c_str()).HasParseError()) {
+        ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                           << ", raw resp: " << show_cntl.response_attachment().to_string();
+    }
+    ASSERT_EQ(0, document["code"].GetInt());
+    ASSERT_STREQ("ok", document["msg"].GetString());
+    ASSERT_EQ(8, document["data"]["input_schema"].Size());
+    ASSERT_EQ(3, document["data"]["output_schema"].Size());
+    ASSERT_EQ(0, document["data"]["output_common_cols"].Size());
+
+    // call procedure, without schema
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+        cntl.request_attachment().append(R"({
+        "input": [[11, "bb", 23, 123, 5.1, 6.1, 1590738994000, "2021-08-01"],
+                  [11, "bb", 23, 234, 5.2, 6.2, 1590738994000, "2021-08-02"]],
+        "need_schema": false
+    })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+
+        LOG(INFO) << "exec procedure resp:\n" << cntl.response_attachment().to_string();
+
+        // check resp data
+        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << cntl.response_attachment().to_string();
+        }
+        ASSERT_EQ(0, document["code"].GetInt());
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_TRUE(document["data"].FindMember("schema") == document["data"].MemberEnd());
+        ASSERT_EQ(2, document["data"]["data"].Size());
+        ASSERT_EQ(0, document["data"]["common_cols_data"].Size());
+    }
+
+    // drop procedure and table
+    std::string drop_sp_sql = "drop procedure " + sp_name + ";";
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, drop_sp_sql, &status));
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table trans;", &status));
+}
+
 TEST_F(APIServerTest, getDBs) {
     const auto env = APIServerTestEnv::Instance();
     {

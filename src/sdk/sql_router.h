@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "sdk/base.h"
@@ -67,9 +68,12 @@ class SQLRouter {
     virtual ~SQLRouter() {}
 
     virtual bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) = 0;
+
     virtual bool CreateDB(const std::string& db, hybridse::sdk::Status* status) = 0;
 
     virtual bool DropDB(const std::string& db, hybridse::sdk::Status* status) = 0;
+
+    virtual void SetPerformanceSensitive(const bool performance_sensitive) = 0;
 
     virtual bool ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) = 0;
 
@@ -136,8 +140,50 @@ class SQLRouter {
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<openmldb::sdk::SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(
-        const std::string& db, const std::string& table_name) = 0;
+    virtual std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
+                                                                  const std::string& table_name) = 0;
+    /*
+     * return ddl statements
+     * schemas example:
+     * {
+     *  "table1" : [
+     *      {
+     *          "col1": "kTypeString"
+     *      }
+     *      {
+     *          "col2": "kTypeInt64"
+     *      }
+     *  ],
+     *  "table2": [
+     *      {
+     *          "col1": "kTypeString"
+     *      },
+     *      {
+     *          "col2": "kTypeInt64"
+     *      }
+     *  ]
+     * }
+     *
+     * enum ColumnType: hybridse::sdk::DataType
+     *
+     * return:
+     *      [
+     *          "CREATE TABLE IF NOT EXISTS table1(
+     *              col1 string,
+     *              col2 bigint,
+     *              index(key=col1, ttl=60)
+     *          )",
+     *          "CREATE TABLE IF NOT EXISTS table2(
+     *              col1 string,
+     *              col2 bigint,
+     *              index(key=col1, ttl=60)
+     *          )"
+     *      ]
+     */
+    virtual std::vector<std::string> ExecuteDDLParse(
+        const std::string& sql,
+        const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>&
+            schemas) = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

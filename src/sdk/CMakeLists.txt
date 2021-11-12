@@ -18,11 +18,14 @@ if(TESTING_ENABLE)
 
     set(HYBRIDSE_CASE_LIBS base_test yaml-cpp)
 
-    add_executable(cluster_sdk_test cluster_sdk_test.cc)
-    target_link_libraries(cluster_sdk_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)
+    add_executable(db_sdk_test db_sdk_test.cc)
+    target_link_libraries(db_sdk_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)
 
     add_executable(sql_router_test sql_router_test.cc)
     target_link_libraries(sql_router_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)
+
+    add_executable(sql_standalone_sdk_test sql_standalone_sdk_test.cc)
+    target_link_libraries(sql_standalone_sdk_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(sql_sdk_test sql_sdk_test.cc)
     target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
@@ -66,81 +69,6 @@ if(SQL_PYSDK_ENABLE)
                SUFFIX ".so")
       set_property(TARGET sql_router_sdk APPEND PROPERTY
         LINK_FLAGS "-flat_namespace -undefined suppress")
-        add_custom_command(OUTPUT
-        setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools import find_packages, setup" > setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.dist import Distribution" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "class BinaryDistribution(Distribution):" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  def is_pure(self):" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "    return False" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  def has_ext_modules(self):" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "    return True" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.command.install import install" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "class InstallPlatlib(install):" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "    def finalize_options(self):" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "        install.finalize_options(self)" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  name='openmldb'," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  version='${RTIDB_VERSION_MAJOR}.${RTIDB_VERSION_MEDIUM}.${RTIDB_VERSION_MINOR}.${RTIDB_VERSION_BUG}'," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  'openmldb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: MacOS'," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  ]," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo ")" >> setup.py
-        COMMENT "Generate setup.py at build time (to use generator expression)"
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
-        VERBATIM)
-    else()
-        add_custom_command(OUTPUT
-        setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools import find_packages, setup" > setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.dist import Distribution" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "class BinaryDistribution(Distribution):" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  def is_pure(self):" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "    return False" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  def has_ext_modules(self):" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "    return True" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.command.install import install" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "class InstallPlatlib(install):" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "    def finalize_options(self):" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "        install.finalize_options(self)" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  name='openmldb'," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  version='${RTIDB_VERSION_MAJOR}.${RTIDB_VERSION_MEDIUM}.${RTIDB_VERSION_MINOR}.${RTIDB_VERSION_BUG}'," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  'openmldb':['$<TARGET_FILE_NAME:sql_router_sdk>']," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: POSIX :: Linux'," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'" >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo "  ]," >> setup.py
-        COMMAND ${CMAKE_COMMAND} -E echo ")" >> setup.py
-        COMMENT "Generate setup.py at build time (to use generator expression)"
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
-        VERBATIM)
     endif()
 
     # Find if python module MODULE_NAME is available,
