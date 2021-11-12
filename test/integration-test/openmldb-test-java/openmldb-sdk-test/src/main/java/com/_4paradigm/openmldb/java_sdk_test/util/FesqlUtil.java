@@ -61,7 +61,7 @@ public class FesqlUtil {
     public static String buildSpSQLWithConstColumns(String spName,
                                                     String sql,
                                                     InputDesc input) throws SQLException {
-        StringBuilder builder = new StringBuilder("create procedure " + spName + "(\n");
+        StringBuilder builder = new StringBuilder("create procedure " + spName + "(");
         HashSet<Integer> commonColumnIndices = new HashSet<>();
         if (input.getCommon_column_indices() != null) {
             for (String str : input.getCommon_column_indices()) {
@@ -85,10 +85,10 @@ public class FesqlUtil {
                 builder.append(",");
             }
         }
-        builder.append(")\n");
-        builder.append("BEGIN\n");
-        builder.append(sql);
-        builder.append("\n");
+        builder.append(") ");
+        builder.append("BEGIN ");
+        builder.append(sql.trim());
+        builder.append(" ");
         builder.append("END;");
         sql = builder.toString();
         return sql;

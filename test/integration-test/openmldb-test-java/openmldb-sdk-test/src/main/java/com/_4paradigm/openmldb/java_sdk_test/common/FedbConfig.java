@@ -102,7 +102,6 @@ public class FedbConfig {
         if (StringUtils.isNotEmpty(init_env)) {
             INIT_VERSION_ENV = Boolean.parseBoolean(init_env);
         }
-        log.info("AAAAAAAAA");
     }
 
     public static boolean isCluster() {
