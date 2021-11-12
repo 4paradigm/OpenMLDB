@@ -52,6 +52,10 @@ class FileOptionsParser {
                 return status;
             }
         }
+        if (delimiter_.find_first_of(quote_) != std::string::npos) {
+            return {openmldb::base::kSQLCmdRunError,
+                    "delimiter[" + delimiter_ + "] can't include quote[" + quote_ + "]"};
+        }
         return {};
     }
 
@@ -101,8 +105,13 @@ class FileOptionsParser {
     }
     std::function<bool(const hybridse::node::ConstNode* node)> CheckDelimiter() {
         return [this](const hybridse::node::ConstNode* node) {
-            delimiter_ = node->GetAsString();
-            return true;
+            auto tem = node->GetAsString();
+            if (tem.size() == 1) {
+                return false;
+            } else {
+                delimiter_ = tem;
+                return true;
+            }
         };
     }
     std::function<bool(const hybridse::node::ConstNode* node)> CheckNullValue() {
@@ -132,7 +141,7 @@ class FileOptionsParser {
 
 class ReadFileOptionsParser : public FileOptionsParser {
  public:
-    ReadFileOptionsParser() { quote_ = '"'; };
+    ReadFileOptionsParser() { quote_ = '\0'; };
 };
 
 class WriteFileOptionsParser : public FileOptionsParser {

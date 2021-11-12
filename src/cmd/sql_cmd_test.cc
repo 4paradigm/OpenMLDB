@@ -175,6 +175,17 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
     ASSERT_TRUE(!openmldb_base_status.OK());
 
+    // False - Type un-supproted
+    select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (delimiter = '')";
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(!openmldb_base_status.OK());
+
+    // False - Delimiter can't include quote
+    select_into_sql =
+        "select * from " + name + " into outfile '" + file_path + "' options (quote = '_', delimiter = '__')";
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(!openmldb_base_status.OK());
+
     remove(file_path.c_str());
 }
 
@@ -256,7 +267,8 @@ TEST_F(SqlCmdTest, load_data) {
     std::string create_sql = "create table t1 (c1 string, c2 string, c3 string);";
     HandleSQL(create_sql);
 
-    HandleSQL("Load data infile '" + read_file_path + "' into table t1 OPTIONS( header = false, delimiter = '---');");
+    HandleSQL("load data infile '" + read_file_path +
+              "' into table t1 OPTIONS( header = false, delimiter = '---', quote = '\"');");
     HandleSQL("select * from t1 into outfile '" + write_file_path + "';");
 
     ifile.open(write_file_path);
@@ -271,19 +283,18 @@ TEST_F(SqlCmdTest, load_data) {
     delete[] data;
     ifile.close();
     ofile.close();
-
 }
 
 TEST_F(SqlCmdTest, split_line) {
     std::vector<std::string> cols;
-    openmldb::cmd::SplitLineWithDelimiterForStrings(" --- --- ---", "---", &cols, '"');
+    openmldb::cmd::SplitLineWithDelimiterForStrings(" --- --- ---", "---", &cols, '\0');
     ASSERT_EQ(cols.size(), 4);
     for (auto& line : cols) {
         ASSERT_EQ(strcmp(line.c_str(), ""), 0);
     }
     cols.clear();
 
-    openmldb::cmd::SplitLineWithDelimiterForStrings("- - ---ab---c b---", "---", &cols, '"');
+    openmldb::cmd::SplitLineWithDelimiterForStrings("- - ---ab---c b---", "---", &cols, '\0');
     ASSERT_EQ(cols.size(), 4);
     ASSERT_EQ(strcmp(cols[0].c_str(), "- -"), 0);
     ASSERT_EQ(strcmp(cols[1].c_str(), "ab"), 0);
@@ -298,11 +309,42 @@ TEST_F(SqlCmdTest, split_line) {
     ASSERT_EQ(strcmp(cols[2].c_str(), "c b"), 0);
     cols.clear();
 
-    openmldb::cmd::SplitLineWithDelimiterForStrings(" _ --- ab --- cd", "---", &cols, '"');
+    openmldb::cmd::SplitLineWithDelimiterForStrings("\" + + \"---+ +---c b", "---", &cols, '\0');
+    ASSERT_EQ(cols.size(), 3);
+    ASSERT_EQ(strcmp(cols[0].c_str(), "\" + + \""), 0);
+    ASSERT_EQ(strcmp(cols[1].c_str(), "+ +"), 0);
+    ASSERT_EQ(strcmp(cols[2].c_str(), "c b"), 0);
+    cols.clear();
+
+    openmldb::cmd::SplitLineWithDelimiterForStrings(" _ --- ab --- cd", "---", &cols, '\0');
     ASSERT_EQ(cols.size(), 3);
     ASSERT_EQ(strcmp(cols[0].c_str(), "_"), 0);
     ASSERT_EQ(strcmp(cols[1].c_str(), "ab"), 0);
     ASSERT_EQ(strcmp(cols[2].c_str(), "cd"), 0);
+    cols.clear();
+
+    openmldb::cmd::SplitLineWithDelimiterForStrings("ab cd ef", " ", &cols, '\0');
+    ASSERT_EQ(cols.size(), 3);
+    ASSERT_EQ(strcmp(cols[0].c_str(), "ab"), 0);
+    ASSERT_EQ(strcmp(cols[1].c_str(), "cd"), 0);
+    ASSERT_EQ(strcmp(cols[2].c_str(), "ef"), 0);
+    cols.clear();
+
+    openmldb::cmd::SplitLineWithDelimiterForStrings("ab  cd  ef", " ", &cols, '\0');
+    ASSERT_EQ(cols.size(), 5);
+    ASSERT_EQ(strcmp(cols[0].c_str(), "ab"), 0);
+    ASSERT_EQ(strcmp(cols[1].c_str(), ""), 0);
+    ASSERT_EQ(strcmp(cols[2].c_str(), "cd"), 0);
+    ASSERT_EQ(strcmp(cols[3].c_str(), ""), 0);
+    ASSERT_EQ(strcmp(cols[4].c_str(), "ef"), 0);
+    cols.clear();
+
+    openmldb::cmd::SplitLineWithDelimiterForStrings("\"ab \" cd  ef", " ", &cols, '"');
+    ASSERT_EQ(cols.size(), 4);
+    ASSERT_EQ(strcmp(cols[0].c_str(), "ab "), 0);
+    ASSERT_EQ(strcmp(cols[1].c_str(), "cd"), 0);
+    ASSERT_EQ(strcmp(cols[2].c_str(), ""), 0);
+    ASSERT_EQ(strcmp(cols[3].c_str(), "ef"), 0);
     cols.clear();
 }
 

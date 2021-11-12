@@ -102,7 +102,7 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
         // Skip leading whitespace, unless said whitespace is the part of delimiter.
         while (absl::ascii_isspace(*line) && *line != delimiter[0]) ++line;
 
-        if (*line == enclosed) {  // Quoted value...
+        if (enclosed != '\0' && *line == enclosed) {  // Quoted value...
             start = ++line;
             // Will get line until end if only one enclosed ['"']
             for (; *line; line++) {
