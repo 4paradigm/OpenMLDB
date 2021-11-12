@@ -427,9 +427,9 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
             }
             row_view.Reset(parameter_rows[0].buf());
             CovertHybridSERowToRequestRow(&row_view, parameter_row);
-            rs = router->ExecuteSQLParameterized(sql_case.db(), sql, parameter_row, &status, performance_sensitive);
+            rs = router->ExecuteSQLParameterized(sql_case.db(), sql, parameter_row, &status);
         } else {
-            rs = router->ExecuteSQL(sql_case.db(), sql, &status, performance_sensitive);
+            rs = router->ExecuteSQL(sql_case.db(), sql, &status);
         }
         if (!sql_case.expect().success_) {
             if ((rs)) {

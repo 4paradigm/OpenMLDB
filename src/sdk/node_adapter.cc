@@ -114,13 +114,13 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         return false;
                     }
                     auto val = TransformDataType(*dynamic_cast<hybridse::node::ConstNode*>(default_val),
-                                                 column_desc->data_type());
+                                                 add_column_desc->data_type());
                     if (!val) {
                         status->msg = "CREATE common: default value type mismatch";
                         status->code = hybridse::common::kTypeError;
                         return false;
                     }
-                    column_desc->set_default_value(DataToString(*val));
+                    add_column_desc->set_default_value(DataToString(*val));
                 }
                 break;
             }
