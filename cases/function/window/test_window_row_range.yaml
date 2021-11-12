@@ -62,6 +62,7 @@ cases:
   - id: 2
     desc: float为partition by - 未命中索引
     mode: rtidb-unsupport
+    tags: ["TODO", "@chenjing", "0.3.0", "window partition by float under non-performance-sensitive mode"]
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]
@@ -85,6 +86,7 @@ cases:
   - id: 3
     desc: double为partition by - 未命中索引
     mode: rtidb-unsupport
+    tags: ["TODO", "@chenjing", "0.3.0", "window partition by float under non-performance-sensitive mode"]
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]

@@ -72,9 +72,11 @@ class SQLSDKTest : public openmldb::test::SQLCaseTest {
     static void CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_view,
                                               std::shared_ptr<openmldb::sdk::SQLRequestRow> request_row);
     static void BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                                std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints);
+                                std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints,
+                                const bool performance_sensitive = true);
     static void RunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                                std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints);
+                                std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints,
+                                const bool performance_sensitive = true);
     static void CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                 std::shared_ptr<SQLRouter> router, bool is_batch = false);
     static void DropProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
@@ -387,7 +389,8 @@ void SQLSDKTest::CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_vie
     ASSERT_TRUE(request_row->Build());
 }
 void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints) {
+                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints,
+                                 const bool performance_sensitive) {
     DLOG(INFO) << "BatchExecuteSQL BEGIN";
     hybridse::sdk::Status status;
     DLOG(INFO) << "format sql begin";
@@ -424,9 +427,9 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
             }
             row_view.Reset(parameter_rows[0].buf());
             CovertHybridSERowToRequestRow(&row_view, parameter_row);
-            rs = router->ExecuteSQLParameterized(sql_case.db(), sql, parameter_row, &status);
+            rs = router->ExecuteSQLParameterized(sql_case.db(), sql, parameter_row, &status, performance_sensitive);
         } else {
-            rs = router->ExecuteSQL(sql_case.db(), sql, &status);
+            rs = router->ExecuteSQL(sql_case.db(), sql, &status, performance_sensitive);
         }
         if (!sql_case.expect().success_) {
             if ((rs)) {
@@ -465,12 +468,14 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
 }
 
 void SQLSDKTest::RunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints) {
+                                 std::shared_ptr<SQLRouter> router,
+                                 const std::vector<std::string>& tbEndpoints,
+                                 const bool performance_sensitive) {
     hybridse::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router);
     InsertTables(sql_case, router, kInsertAllInputs);
-    BatchExecuteSQL(sql_case, router, tbEndpoints);
+    BatchExecuteSQL(sql_case, router, tbEndpoints, performance_sensitive);
     DropTables(sql_case, router);
     LOG(INFO) << "RunBatchModeSDK ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
 }
