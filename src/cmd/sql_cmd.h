@@ -88,6 +88,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
         status->code = st.code;
         return;
     }
+    // Check file
     std::ofstream fstream;
     if (options_parse.GetMode() == "error_if_exists") {
         if (access(file_path.c_str(), 0) == 0) {
@@ -111,6 +112,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
         status->code = openmldb::base::kSQLCmdRunError;
         return;
     }
+    // Write data
     if (options_parse.GetFormat() == "csv") {
         auto* schema = result_set->GetSchema();
         // Add Header
@@ -132,7 +134,13 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
                     if (result_set->IsNULL(i)) {
                         rowString.append(options_parse.GetNullValue());
                     } else {
-                        rowString.append(result_set->GetAsString(i));
+                        if (options_parse.GetQuote() != '\0' &&
+                            schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+                            rowString.append(options_parse.GetQuote() + result_set->GetAsString(i) +
+                                             options_parse.GetQuote());
+                        } else {
+                            rowString.append(result_set->GetAsString(i));
+                        }
                     }
                     if (i != schema->GetColumnCnt() - 1) {
                         rowString += options_parse.GetDelimiter();

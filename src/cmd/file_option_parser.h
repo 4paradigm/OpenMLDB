@@ -65,6 +65,7 @@ class FileOptionsParser {
     std::map<std::string,
              std::pair<std::function<bool(const hybridse::node::ConstNode* node)>, hybridse::node::DataType>>
         check_map_;
+    char quote_;
 
  private:
     // default options
@@ -72,7 +73,6 @@ class FileOptionsParser {
     std::string null_value_ = "null";
     std::string delimiter_ = ",";
     bool header_ = true;
-    char quote_ = '"';
 
     ::openmldb::base::Status GetOption(const hybridse::node::ConstNode* node, const std::string& option_name,
                                        std::function<bool(const hybridse::node::ConstNode* node)> const& f,
@@ -132,12 +132,15 @@ class FileOptionsParser {
 
 class ReadFileOptionsParser : public FileOptionsParser {
  public:
-    ReadFileOptionsParser(){};
+    ReadFileOptionsParser() { quote_ = '"'; };
 };
 
 class WriteFileOptionsParser : public FileOptionsParser {
  public:
-    WriteFileOptionsParser() { check_map_.emplace("mode", std::make_pair(CheckMode(), hybridse::node::kVarchar)); }
+    WriteFileOptionsParser() {
+        quote_ = '\0';
+        check_map_.emplace("mode", std::make_pair(CheckMode(), hybridse::node::kVarchar));
+    }
     const std::string& GetMode() const { return mode_; }
 
  private:
