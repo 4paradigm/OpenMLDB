@@ -369,7 +369,6 @@ bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& n
     return true;
 }
 
-// TODO(zekai): use status instead of cout
 void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
     std::shared_ptr<client::NsClient> ns;
     switch (cmd_node->GetCmdType()) {

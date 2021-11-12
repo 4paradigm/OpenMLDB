@@ -36,6 +36,7 @@ class FileOptionsParser {
         check_map_.emplace("delimiter", std::make_pair(CheckDelimiter(), hybridse::node::kVarchar));
         check_map_.emplace("null_value", std::make_pair(CheckNullValue(), hybridse::node::kVarchar));
         check_map_.emplace("header", std::make_pair(CheckHeader(), hybridse::node::kBool));
+        check_map_.emplace("quote", std::make_pair(CheckQuote(), hybridse::node::kVarchar));
     }
 
     ::openmldb::base::Status Parse(const std::shared_ptr<hybridse::node::OptionsMap>& options_map) {
@@ -58,6 +59,7 @@ class FileOptionsParser {
     const std::string& GetNullValue() const { return null_value_; }
     const std::string& GetDelimiter() const { return delimiter_; }
     bool GetHeader() const { return header_; }
+    const char GetQuote() const { return quote_; }
 
  protected:
     std::map<std::string,
@@ -70,6 +72,7 @@ class FileOptionsParser {
     std::string null_value_ = "null";
     std::string delimiter_ = ",";
     bool header_ = true;
+    char quote_ = '"';
 
     ::openmldb::base::Status GetOption(const hybridse::node::ConstNode* node, const std::string& option_name,
                                        std::function<bool(const hybridse::node::ConstNode* node)> const& f,
@@ -114,15 +117,6 @@ class FileOptionsParser {
             return true;
         };
     }
-};
-
-class ReadFileOptionsParser : public FileOptionsParser {
- public:
-    ReadFileOptionsParser() { check_map_.emplace("quote", std::make_pair(CheckQuote(), hybridse::node::kVarchar)); };
-    const char GetQuote() const { return quote_; }
-
- private:
-    char quote_ = '"';
     std::function<bool(const hybridse::node::ConstNode* node)> CheckQuote() {
         return [this](const hybridse::node::ConstNode* node) {
             auto tem = node->GetAsString();
@@ -134,6 +128,11 @@ class ReadFileOptionsParser : public FileOptionsParser {
             }
         };
     }
+};
+
+class ReadFileOptionsParser : public FileOptionsParser {
+ public:
+    ReadFileOptionsParser(){};
 };
 
 class WriteFileOptionsParser : public FileOptionsParser {
