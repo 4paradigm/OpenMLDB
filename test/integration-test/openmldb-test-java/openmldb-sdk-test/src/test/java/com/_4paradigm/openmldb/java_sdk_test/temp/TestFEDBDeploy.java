@@ -51,7 +51,7 @@ public class TestFEDBDeploy {
     @Test
     public void testTmp(){
         FEDBDeploy deploy = new FEDBDeploy("tmp");
-        deploy.setCluster(false);
+        deploy.setCluster(true);
         FEDBInfo fedbInfo = deploy.deployFEDB(2, 3);
         System.out.println(fedbInfo);
     }
