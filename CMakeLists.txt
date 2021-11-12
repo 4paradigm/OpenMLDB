@@ -19,16 +19,15 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
-project(rtidb)
+project(openmldb)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif ()
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(OPENMLDB_VERSION_MAJOR 0)
-set(OPENMLDB_VERSION_MINOR 2)
-set(OPENMLDB_VERSION_BUG 3)
-set(OPENMLDB_COMMIT_ID 0)
+set(OPENMLDB_VERSION_MINOR 3)
+set(OPENMLDB_VERSION_BUG 0)
 
 function(get_commitid CODE_DIR COMMIT_ID)
     find_package(Git REQUIRED)
@@ -184,7 +183,3 @@ link_directories(${CMAKE_PREFIX_PATH}/lib
     ${CMAKE_PREFIX_PATH}/hybridse/lib)
 
 add_subdirectory(src)
-add_custom_target(rtidbpy
-COMMAND make
-WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/swig
-)

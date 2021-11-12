@@ -56,8 +56,7 @@ struct SQLCache {
         : table_info(table_info), default_map(default_map), column_schema(), str_length(str_length) {
         column_schema = openmldb::sdk::ConvertToSchema(table_info);
     }
-    SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema,
-             const ::hybridse::vm::Router& input_router)
+    SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema, const ::hybridse::vm::Router& input_router)
         : table_info(),
           default_map(),
           column_schema(column_schema),
@@ -113,6 +112,8 @@ class SQLClusterRouter : public SQLRouter {
 
     bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
 
+    void SetPerformanceSensitive(const bool performance_sensitive) override;
+
     bool ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status) override;
@@ -124,8 +125,9 @@ class SQLClusterRouter : public SQLRouter {
                        hybridse::sdk::Status* status) override;
 
     std::shared_ptr<TableReader> GetTableReader();
+
     std::shared_ptr<ExplainInfo> Explain(const std::string& db, const std::string& sql,
-                                         ::hybridse::sdk::Status* status, bool performance_sensitive = true) override;
+                                         ::hybridse::sdk::Status* status) override;
 
     std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db, const std::string& sql,
                                                  ::hybridse::sdk::Status* status) override;
@@ -142,13 +144,11 @@ class SQLClusterRouter : public SQLRouter {
                                                                 std::shared_ptr<SQLRequestRow> row,
                                                                 hybridse::sdk::Status* status) override;
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
-                                                         ::hybridse::sdk::Status* status,
-                                                         bool performance_sensitive = true) override;
+                                                         ::hybridse::sdk::Status* status) override;
     /// Execute batch SQL with parameter row
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(const std::string& db, const std::string& sql,
-                                                         std::shared_ptr<SQLRequestRow> parameter,
-                                                         ::hybridse::sdk::Status* status,
-                                                         bool performance_sensitive = true) override;
+                                                                      std::shared_ptr<SQLRequestRow> parameter,
+                                                                      ::hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLBatchRequest(const std::string& db, const std::string& sql,
                                                                      std::shared_ptr<SQLRequestRowBatch> row_batch,
@@ -187,22 +187,22 @@ class SQLClusterRouter : public SQLRouter {
         const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
         const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<SQLRequestRow>& parameter_row);
 
-    std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(
-        const std::string& db, const std::string& table_name) override;
+    std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
+                                                          const std::string& table_name) override;
 
-    base::Status HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* plan,
-            const std::string& db, const std::string& sql,
-            std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
+    base::Status HandleSQLCreateProcedure(hybridse::node::CreateProcedurePlanNode* plan, const std::string& db,
+                                          const std::string& sql, std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
 
     base::Status HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
-            std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
+                                      std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
 
     base::Status HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
-            std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
-
+                              std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
 
     std::vector<std::string> ExecuteDDLParse(
-        const std::string& sql, const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& table_map) override;
+        const std::string& sql,
+        const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>&
+            table_map) override;
 
     static bool GetTTL(openmldb::type::TTLType ttl_type, ::google::protobuf::uint64 abs_ttl,
                        ::google::protobuf::uint64 lat_ttl, std::string* ttl) {
@@ -223,7 +223,7 @@ class SQLClusterRouter : public SQLRouter {
     }
 
     static std::string ToIndexString(const std::string ts, const std::string key_name, openmldb::type::TTLType ttl_type,
-                              const std::string& expire) {
+                                     const std::string& expire) {
         std::string index;
         std::string ttl_type_str;
         SQLClusterRouter::ToTTLTypeString(ttl_type, &ttl_type_str);
@@ -250,7 +250,7 @@ class SQLClusterRouter : public SQLRouter {
     }
 
     static bool ToTTLTypeString(openmldb::type::TTLType ttl_type, std::string* ttl_type_str) {
-        switch (ttl_type){
+        switch (ttl_type) {
             case openmldb::type::TTLType::kAbsoluteTime:
                 *ttl_type_str = "absolute";
                 return true;
@@ -304,9 +304,10 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<openmldb::client::TabletClient> GetTablet(const std::string& db, const std::string& sp_name,
                                                               hybridse::sdk::Status* status);
     bool ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema> schema,
-                               std::vector<openmldb::type::DataType>& parameter_types);  // NOLINT
+                        std::vector<openmldb::type::DataType>& parameter_types);  // NOLINT
 
  private:
+    std::atomic<bool> performance_sensitive_ = true;
     SQLRouterOptions options_;
     DBSDK* cluster_sdk_;
     std::map<std::string, boost::compute::detail::lru_cache<std::string, std::shared_ptr<SQLCache>>> input_lru_cache_;

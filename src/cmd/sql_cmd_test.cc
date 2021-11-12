@@ -195,6 +195,16 @@ TEST_F(SqlCmdTest, deploy) {
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
+
+    create_sql = "create table auto_uxJFNZMi( id int, c1 string, c3 int, c4 bigint, c5 float, c6 double, "
+        "c7 timestamp, c8 date, index(key=(c1),ts=c4));";
+    HandleSQL(create_sql);
+    deploy_sql = "deploy deploy_auto_uxJFNZMi SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM auto_uxJFNZMi "
+        "WINDOW w1 AS (PARTITION BY auto_uxJFNZMi.c1 ORDER BY auto_uxJFNZMi.c7 "
+        "ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);";
+    status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
+    ASSERT_FALSE(status.OK());
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "auto_uxJFNZMi", msg));
 }
 
 TEST_F(SqlCmdTest, create_without_index_col) {

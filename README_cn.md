@@ -13,140 +13,78 @@
 [![maven central](https://img.shields.io/maven-central/v/com.4paradigm.openmldb/openmldb-jdbc)](https://mvnrepository.com/artifact/com.4paradigm.openmldb/openmldb-jdbc)
 [![pypi](https://img.shields.io/pypi/v/openmldb)](https://pypi.org/project/openmldb/)
 
-
 [English version](./README.md)|中文版
 
-## 介绍
+## 1. 介绍
 
-OpenMLDB是一个开源机器学习数据库，面向机器学习应用提供正确、高效数据供给。除了超过10倍的机器学习数据开发效率的提升，OpenMLDB也提供了统一的计算与存储引擎减少开发运维的复杂性与总体成本。 
+OpenMLDB 是一个开源机器学习数据库，为机器学习应用高效供给正确数据。 面向机器学习的数据库主要覆盖两方面功能，即特征计算和特征存取，一起来为机器学习线下模型训练和线上推理服务提供数据供给。传统上，一般会有两套分离的系统来作为线上务和线下模型训练的数据供给。因此，线上线下结果的一致性校验常常会花费大量的开发和沟通成本。与之相反，OpenMLDB 为机器学习的线上和线下的数据供给，提供了统一的 SQL 编程接口和底层执行引擎。因此，线上线下一致性在使用 OpenMLDB 后可以做到自动高效保证。另外，我们也针对线上线下的工作负载特点，特别做了系统层面的优化来保证运行效率。现在基于 OpenMLDB，开发者可以仅仅通过编写 SQL 脚本来实现高效正确的针对机器学习应用的数据供给，真正达到开发即上线的一步到位流程。
 
-## 谁在用OpenMLDB
+<p align="center">
+ <img src="images/workflow.png" alt="image-20211103103052252" width=850 />
+</p>
+上图显示了基于 OpenMLDB 的一个典型的开发部署流程。开发者首先基于 SQL 脚本进行离线的特征计算和模型开发。当模型质量达到满意以后，通过实时数据接入以后，OpenMLDB 可以立即切换到线上服务数据供给模式，而不需要任何额外的开发和人力成本。因此在整体流程中，由于 OpenMLDB 天然保障了线上线下的数据一致性，耗费大量开发和人力成本的数据一致性校验就不再需要。另外，我们也做了很多系统优化来保障整体性能，比如针对离线特征计算的窗口并行以及数据倾斜优化，以及针对线上服务的内存数据索引等。总结来说，基于 OpenMLDB，开发者只需要掌握 SQL 编程开发，即能保障机器学习的线上线下数据一致性供给，实现开发即上线的全流程。
 
-目前OpenMLDB已经在生产环境被诸多金融、零售头部公司用于机器学习应用数据供给，目前落地达120+应用场景，包含内容推荐、广告CTR预估、AIOps、金融反欺诈、交易反欺诈和营销等场景。
+## 2. 主要特性
 
+### 2.1 SQL 编程
 
-## 系统特性
+我们相信，基于 SQL 语言的简洁高效的设计和广泛使用，SQL 将会是特征工程的最适合的编程语言。因此，OpenMLDB 使得开发者仅仅需要使用 SQL，就能完成线上线下的特征计算和存取的全部任务。此外，我们也对标准 SQL 语法做了若干扩展，使得可以针对特征计算场景做到更加强大高效。
 
-* **一致性**
+### 2.2 线上线下一致性
 
-    OpenMLDB首先保证在线和离线特征计算一致性，科学家使用OpenMLDB建模生成的特征，可规避特征穿越等问题，上线后使用相同LLVM IR进行编译优化，保证与在线特征计算逻辑一致。其次保证数据存储一致性，数据从离线到在线进行实时同步，用户不需要为离线和在线管理不同数据源，也避免数据不一致对特征和模型带来的影响。
-    
-* **高性能**
+配合 SQL 编程接口，我们同样设计了底层统一的计算执行引擎。因此，线上线下一致性在基于 OpenMLDB 的编程流程中，得到了天然的保证而无需付出额外开发代价。
 
-    OpenMLDB基于C++和LLVM实现了原生SQL编译器，内置了数十种物理计划和表达式优化过程，可针对不同硬件环境动态生成二进制码，内存结构针对特征存储优化。最终特征存储空间和成本比同类产品可降低9倍，在线实时特征计算性能提升9倍，离线批处理计算性能比同类产品也提升6倍以上。
+### 2.3 高性能
 
-* **高可用**
+为了保证线下和线上特征计算存取的高性能，我们提出了具有针对性的系统优化技术。基于我们的优化，离线特征计算的性能显著好于现有的开源大数据处理框架。而对于性能延迟非常敏感的线上服务，我们可以在高吞吐压力下提供几十毫秒量级的延迟，满足线上预估服务的性能要求。
 
-    OpenMLDB的大规模并行计算服务和数据库存储服务，都支持多节点分布式高可用特性，可以自动Failover避免单点故障。
+你可以阅读我们的学术论文和技术博客（章节 7. 学术论文和技术博客）来理解更多的关于 OpenMLDB 的技术细节。
 
-* **SQL支持**
+### 2.4 命令行客户端
 
-    OpenMLDB支持用户友好的SQL接口，兼容大部分ANSI SQL语法以及针对AI场景拓展了新的SQL特性。以时序特征抽取为例，支持标准SQL的Over Window语法，还针对AI场景需求进行拓展，支持基于样本表滑窗的Window Union语法，实时计算引擎支持基于当前行的Request Mode窗口聚合计算。
+我们提供了一个强大的整合的命令行客户端。基于命令行，用户可以完成 SQL 开发，任务管理，线上线下部署，数据库管理等任务。对于熟悉传统数据库命令工具的开发者来说，使用 OpenMLDB 的命令行客户端将会非常易用。
 
-* **AI优化**
+*注意，当前版本 0.3.0 的命令行客户端对于集群模式仅做部分功能支持。将会在下一个版本 0.4.0 中做完全支持。*
 
-    OpenMLDB以面向ML应用开发优化为目标，架构设计以及实现上都针对AI进行大量优化。在存储方面以高效的数据结构存储特征数据，无论是内存利用率还是实时查询效率都比同类型产品高数倍，而计算方面提供了机器学习场景常用的特殊拼表操作以及特征抽取相关UDF/UDAF支持，基本满足生产环境下机器学习特征抽取和上线的应用需求。
+## 3. 编译和安装
 
-* **低门槛**
+:point_right: [点击这里](docs/en/compile.md)
 
-    OpenMLDB使用门槛与普通数据库接近，无论是建模科学家还是应用开发者都可以使用熟悉的SQL进行开发，并且同时支持ML应用落地所必须的离线大数据批处理服务以及在线特征计算服务，使用一个数据库产品就可以低成本实现AI落地闭环。
+## 4. Quickstart & Demo
 
-## 性能测试
+从 0.3.0 版本开始，OpenMLDB 引入了两种部署工作模式：集群模式和单机模式。集群模式为基于大数据的实际业务场景提供了高性能的集群模式，具备高可扩展和高可用的特点。单机模式更适合于小数据场景或者测试试用目的，可以更加方便的部署、开发和使用。
 
-与主流在线数据库产品相比，在不同的数据规模以及计算复杂度下，OpenMLDB的实时请求性能都比其他方案有数倍甚至数十倍的提升。
+我们演示基于这两种模式的 demo 和快速上手指南：
 
-![Online Benchmark](./images/online_benchmark.png)
+- 集群模式：请阅读 :point_right: [快速上手指南](docs/cn/cluster.md)，以及 :point_right: [相关的 demo 代码](demo/predict-taxi-trip-duration-nb/demo)
+- 单机模式：请阅读  :point_right: [快速上手和相关 demo 代码](docs/cn/standalone.md)
 
-在大数据批处理模式下，使用OpenMLDB进行特征抽取，相比业界最流行的MPP系统，离线性能在窗口数据倾斜优化下有数倍提升，大大降低离线计算的TCO。
+## 5. 开发计划
 
-![Offline Benchmark](./images/offline_benchmark.png)
+OpenMLD 社区持续进行开发迭代，在此列出我们已经初步规划好的在未来版本的主要支持特性，如果想详细了解我们的计划，或者提供任何的建议，请加入我们的社区来跟我们互动。
 
-## 快速开始
+| 版本号 | 预期发布日期 | 主要特性                                                     |
+| ------ | ------------ | ------------------------------------------------------------ |
+| 0.4.0  | End of 2021  | - CLI 完全支持单机和集群模式的所有功能                       |
+| 0.5.0  | 2022 Q1      | - 在线服务监控模块<br />- 支持第三方在线数据流引入，包括 Kafka 和 Pulsar |
 
-使用OpenMLDB快速开发和上线ML应用，以Kaggle比赛Predict Taxi Tour Duration项目为例。点击可[查看](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/demo)下文实例代码。
+## 6. 社区
 
-```bash
-# 启动docker镜像 (目前提供了 linux/amd64, linux/arm64 架构的镜像)
- # 如果下载慢，可以使用国内代理镜像: mirror.baidubce.com/4pdosc/openmldb:0.2.1
-# 也可以使用 GitHub 的镜像: ghcr.io/4paradigm/openmldb:0.2.1
-docker run -it 4pdosc/openmldb:0.2.1 bash
+**技术论坛**：（即将上线）
 
-# 初始化环境
-sh init.sh
+**Github Issues 和 Discussions**: 如果你是一个严肃的开发者，我们非常欢迎加入我们 Github 上的开发者社区，近距离参与我们的开发迭代。Github Issues 主要用来搜集 bugs 以及反馈新特性需求；Github Discussions 主要用来给开发团队发布并且讨论 RFCs。
 
-# 导入行程历史数据到OpenMLDB
-python3 import.py
+**微信交流群：**
 
-# 使用行程数据进行模型训练
-python3 train.py ./fe.sql /tmp/model.txt
+<img src="images/wechat.png" alt="img" width=100 />  
 
-# 使用训练的模型搭建链接OpenMLDB的实时推理HTTP服务
-sh start_predict_server.sh ./fe.sql 8887 /tmp/model.txt
+[**Slack Workspace**](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)：你也可以在 Slack 上找到我们，通过即时通信的方式获得关于 OpenMLDB 使用上的帮助。
 
-# 通过http请求发送一个推理请求
-python3 predict.py
-```
-
-## 编译
-
-点击[这里](docs/cn/compile.md)
-
-## 系统架构
-
-<div align=center><img src="./images/openmldb_architecture.png"/></div>
-
-## 项目状态与规划
-
-### 项目状态
-
-* SQL编译器和优化器[完成]
-    * 支持基础ANSI SQL语法解析[完成]
-    * 支持物理计划和表达式优化[完成]
-    * 支持计算函数代码生成[完成]
-* 前端编程接口[开发中]
-    * 支持标准JDBC协议[完成]
-    * 支持C++、Python SDK[完成]
-    * 支持RESTful API[开发中]
-* 在线离线计算引擎[完成]
-    * 在线数据库计算引擎[完成]
-    * 离线批处理计算引擎[完成]
-* 统一存储引擎[开发中]
-    * 分布式高性能内存存储[完成]
-    * 在线离线数据一致性同步[开发中]
-
-### 项目规划
-
-* SQL兼容
-    * 完善ANSI SQL支持，执行引擎支持GroupBy等语法[2021H2]
-    * 针对AI场景扩展特有的语法特性和UDAF函数[2021H2]
-* 性能优化
-    * 面向批式数据处理和在线数据处理场景的逻辑和物理计划优化[2021H2]
-    * 支持高性能分布式执行计划生成和代码生成[2021H2]
-    * 更多经典SQL表达式优化过程支持[2022H1]
-    * 离线计算引擎集成针对机器学习场景的Native LastJoin优化过程[2021H2]
-    * 存储引擎使用面向时序优化的内存分配和回收策略，能大幅减少内存碎片[2022H1]
-* 生态集成
-    * 适配多种行编码格式和列编码格式，兼容Apache Arrow格式和生态[2021H2]
-    * 适配流式等主流开源SQL计算框架，如优化FlinkSQL执行引擎等[2022H1]
-    * 支持主流编程语言接口，包括C++, Java, Python, Go, Rust SDK等[2021H2]
-    * 支持PMEM等新型存储硬件[2022H1]
-    * 存储引擎兼容Flink、Kafka、Spark connector[2022H1]
-
-## 学术论文
+## 7. 学术论文和技术博客
 
 * Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
+* [第四范式OpenMLDB优化创新论文被国际数据库顶会VLDB录用](https://zhuanlan.zhihu.com/p/401513878)
+* [OpenMLDB在银行上线事中交易反欺诈模型实践](https://zhuanlan.zhihu.com/p/389599785)
+* [OpenMLDB在AIOPS领域关于交易系统异常检测应用实践](https://zhuanlan.zhihu.com/p/393602288)
+* [5分钟完成硬件剩余寿命智能预测](https://zhuanlan.zhihu.com/p/399346826)
 
-## 博客介绍
-
-[第四范式OpenMLDB优化创新论文被国际数据库顶会VLDB录用](https://zhuanlan.zhihu.com/p/401513878)
-
-[OpenMLDB在银行上线事中交易反欺诈模型实践](https://zhuanlan.zhihu.com/p/389599785)
-
-[OpenMLDB在AIOPS领域关于交易系统异常检测应用实践](https://zhuanlan.zhihu.com/p/393602288)
-
-[5分钟完成硬件剩余寿命智能预测](https://zhuanlan.zhihu.com/p/399346826)
-
-
-## 许可证
-
-[Apache License 2.0](./LICENSE)

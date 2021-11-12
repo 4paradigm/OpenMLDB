@@ -32,7 +32,6 @@
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
 #include "common/tprinter.h"
-#include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
