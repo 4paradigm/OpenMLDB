@@ -170,23 +170,25 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
     ASSERT_TRUE(!openmldb_base_status.OK());
 
-     // False - Type un-supproted
-     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (quote = '__')";
-     ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-     ASSERT_TRUE(!openmldb_base_status.OK());
+    // False - Type un-supproted
+    select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (quote = '__')";
+    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
+    ASSERT_TRUE(!openmldb_base_status.OK());
 
-     remove(file_path.c_str());
+    remove(file_path.c_str());
 }
 
 TEST_F(SqlCmdTest, deploy) {
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
-    std::string create_sql = "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-                             "c8 date, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
+    std::string create_sql =
+        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
     HandleSQL(create_sql);
     HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
 
-    std::string deploy_sql = "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
+    std::string deploy_sql =
+        "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 
     hybridse::node::NodeManager node_manager;
@@ -202,10 +204,12 @@ TEST_F(SqlCmdTest, deploy) {
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
 
-    create_sql = "create table auto_uxJFNZMi( id int, c1 string, c3 int, c4 bigint, c5 float, c6 double, "
+    create_sql =
+        "create table auto_uxJFNZMi( id int, c1 string, c3 int, c4 bigint, c5 float, c6 double, "
         "c7 timestamp, c8 date, index(key=(c1),ts=c4));";
     HandleSQL(create_sql);
-    deploy_sql = "deploy deploy_auto_uxJFNZMi SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM auto_uxJFNZMi "
+    deploy_sql =
+        "deploy deploy_auto_uxJFNZMi SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM auto_uxJFNZMi "
         "WINDOW w1 AS (PARTITION BY auto_uxJFNZMi.c1 ORDER BY auto_uxJFNZMi.c7 "
         "ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);";
     status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
@@ -216,8 +220,9 @@ TEST_F(SqlCmdTest, deploy) {
 TEST_F(SqlCmdTest, create_without_index_col) {
     HandleSQL("create database test2;");
     HandleSQL("use test2;");
-    std::string create_sql = "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-                             "c8 date, index(ts=c7));";
+    std::string create_sql =
+        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date, index(ts=c7));";
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
     hybridse::node::PlanNodeList plan_trees;
@@ -237,7 +242,11 @@ TEST_F(SqlCmdTest, load_data) {
     std::ofstream ofile;
     std::ifstream ifile;
     ofile.open(read_file_path);
-    ofile << " AA ---- A --- A--" << std::endl;
+    ofile << "123---345---567" << std::endl;
+    ofile << "123---\"3 4 5\"---567" << std::endl;
+    ofile << "-- - --- abc --- de" << std::endl;
+    ofile << "- - --- abc --- de" << std::endl;
+    ofile << " AA --- - A --- A--" << std::endl;
     ofile << " --- --- -" << std::endl;
     ofile << "\" --- \" --- A --- a-" << std::endl;
 
@@ -258,7 +267,8 @@ TEST_F(SqlCmdTest, load_data) {
     data[length] = '\0';
 
     ifile.read(data, length);
-    ASSERT_EQ(strcmp(data, "c1,c2,c3\n,,-\n --- ,A,a-\nAA,- A,A--"), 0);
+    ASSERT_EQ(
+        strcmp(data, "c1,c2,c3\n,,-\n --- ,A,a-\n-- -,abc,de\nAA,- A,A--\n- -,abc,de\n123,3 4 5,567\n123,345,567"), 0);
     delete[] data;
     ifile.close();
     ofile.close();

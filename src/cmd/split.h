@@ -104,16 +104,15 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
 
         if (*line == enclosed) {  // Quoted value...
             start = ++line;
-            end = start;
             // Will get line until end if only one enclosed ['"']
             for (; *line; line++) {
-                end = line;
-                // TODO:(zekai) support Support \ , so we can load data like "abc\"def\"ghi"
+                // TODO:(zekai) Support \ , so we can load data like "abc\"def\"ghi"
                 if (*line == enclosed) {
                     line++;
                     break;
                 }
             }
+            end = line - 1;
             // All characters after the closing quote and before the comma
             // are ignored.
             line = strstr(line, delimiter);
@@ -124,7 +123,10 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
             if (!line) line = end_of_line;
             // Skip all trailing whitespace
             for (end = line; end > start; --end) {
-                if (!absl::ascii_isspace(end[-1])) break;
+                if (!absl::ascii_isspace(end[-1])) {
+                    DCHECK(memcmp(end-delimiter_len, delimiter, delimiter_len) != 0);
+                    break;
+                }
             }
         }
         *end = '\0';
@@ -134,9 +136,11 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
         // to eliminate the last column (which is empty). This would be
         // incorrect.
         const bool need_another_column = (line + delimiter_len == end_of_line);
-        if (need_another_column) cols->push_back(end);
-
-        assert(*line == '\0' || memcmp(line, delimiter, delimiter_len));
+        if (need_another_column) {
+            DCHECK(memcmp(line, delimiter, delimiter_len) == 0);
+            cols->push_back(end);
+        }
+        DCHECK(*line == '\0' || memcmp(line, delimiter, delimiter_len) == 0);
     }
 }
 
