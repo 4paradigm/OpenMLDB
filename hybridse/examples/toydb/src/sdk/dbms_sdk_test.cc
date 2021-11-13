@@ -699,20 +699,19 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
                 LOG(INFO) << create;
                 dbms_sdk->ExecuteQuery(db, create, &status);
                 ASSERT_EQ(0, static_cast<int>(status.code));
-            }
 
-
-            std::string insert;
-            ASSERT_TRUE(sql_case.BuildInsertSqlFromInput(i, &insert));
-            boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
-            LOG(INFO) << insert;
-            dbms_sdk->ExecuteQuery(db, insert, &status);
-            if (!sql_case.expect_.success_) {
-                ASSERT_NE(0, static_cast<int>(status.code));
-                LOG(INFO) << status.msg;
-                return;
-            } else {
-                ASSERT_EQ(0, static_cast<int>(status.code));
+                std::string insert;
+                ASSERT_TRUE(sql_case.BuildInsertSqlFromInput(i, &insert));
+                boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
+                LOG(INFO) << insert;
+                dbms_sdk->ExecuteQuery(db, insert, &status);
+                if (!sql_case.expect_.success_) {
+                    ASSERT_NE(0, static_cast<int>(status.code));
+                    LOG(INFO) << status.msg;
+                    return;
+                } else {
+                    ASSERT_EQ(0, static_cast<int>(status.code));
+                }
             }
         }
     }
