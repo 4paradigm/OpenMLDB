@@ -571,7 +571,7 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(rs);
     codec::RowView row_view(schema);
-    int order_idx = 0;
+    int order_idx = -1;
     for (int i = 0; i < schema.size(); i++) {
         if (schema.Get(i).name() == order_col) {
             order_idx = i;
@@ -587,7 +587,7 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
     int32_t index = 0;
     rs->Reset();
     while (rs->Next()) {
-        if (order_idx) {
+        if (order_idx >= 0) {
             std::string key = rs->GetAsString(order_idx);
             LOG(INFO) << "key : " << key;
             ASSERT_TRUE(rows_map.find(key) != rows_map.cend())
