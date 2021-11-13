@@ -579,10 +579,12 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
         }
     }
     std::map<std::string, std::pair<codec::Row, bool>> rows_map;
-    for (auto row : rows) {
-        row_view.Reset(row.buf());
-        std::string key = row_view.GetAsString(order_idx);
-        rows_map.insert(std::make_pair(key, std::make_pair(row, false)));
+    if (order_idx >= 0) {
+        for (auto row : rows) {
+            row_view.Reset(row.buf());
+            std::string key = row_view.GetAsString(order_idx);
+            rows_map.insert(std::make_pair(key, std::make_pair(row, false)));
+        }
     }
     int32_t index = 0;
     rs->Reset();
