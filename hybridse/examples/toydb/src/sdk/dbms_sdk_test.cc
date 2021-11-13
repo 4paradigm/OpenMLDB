@@ -693,12 +693,14 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
             }
             Status status;
             std::string create;
-            ASSERT_TRUE(sql_case.BuildCreateSqlFromInput(i, &create));
-            std::string placeholder = "{" + std::to_string(i) + "}";
-            boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
-            LOG(INFO) << create;
-            dbms_sdk->ExecuteQuery(db, create, &status);
-            ASSERT_EQ(0, static_cast<int>(status.code));
+            if (sql_case.BuildCreateSqlFromInput(i, &create) && !create.empty()) {
+                std::string placeholder = "{" + std::to_string(i) + "}";
+                boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
+                LOG(INFO) << create;
+                dbms_sdk->ExecuteQuery(db, create, &status);
+                ASSERT_EQ(0, static_cast<int>(status.code));
+            }
+
 
             std::string insert;
             ASSERT_TRUE(sql_case.BuildInsertSqlFromInput(i, &insert));
