@@ -229,9 +229,11 @@ jobs:
       OS: linux
     steps:
       - uses: actions/checkout@v2
-      - name: build hybridse
+      - name: build
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          mkdir -p build
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-batch-test.sh -b SRC
       - name: TEST Results
