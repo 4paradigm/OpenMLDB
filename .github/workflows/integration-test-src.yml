@@ -229,7 +229,7 @@ jobs:
       OS: linux
     steps:
       - uses: actions/checkout@v2
-      - name: build jsdk and package
+      - name: build hybridse
         run: |
           bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
       - name: test

@@ -18,12 +18,7 @@
 BATCH_VERSION=$1
 BUILD_MODE=$2
 ROOT_DIR=$(pwd)
-# 从源码编译
-if [[ "${BUILD_MODE}" == "SRC" ]]; then
-    cd java/openmldb-batch || exit
-    BATCH_VERSION=$(mvn org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.version -q -DforceStdout)
-fi
-echo "BATCH_VERSION:${BATCH_VERSION}"
+
 cd test/batch-test/openmldb-batch-test || exit
 # modify pom
 sed -i "s#<openmldb.batch.version>.*</openmldb.batch.version>#<openmldb.batch.version>${BATCH_VERSION}</openmldb.batch.version>#" pom.xml
