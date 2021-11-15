@@ -106,7 +106,7 @@ class FileOptionsParser {
     std::function<bool(const hybridse::node::ConstNode* node)> CheckDelimiter() {
         return [this](const hybridse::node::ConstNode* node) {
             auto tem = node->GetAsString();
-            if (tem.size() == 1) {
+            if (tem.size() == 0) {
                 return false;
             } else {
                 delimiter_ = tem;
@@ -129,11 +129,14 @@ class FileOptionsParser {
     std::function<bool(const hybridse::node::ConstNode* node)> CheckQuote() {
         return [this](const hybridse::node::ConstNode* node) {
             auto tem = node->GetAsString();
-            if (tem.size() != 1) {
-                return false;
-            } else {
+            if (tem.size() == 0) {
+                quote_ = '\0';
+                return true;
+            } else if (tem.size() == 1) {
                 quote_ = tem[0];
                 return true;
+            } else {
+                return false;
             }
         };
     }
