@@ -77,7 +77,7 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db, E
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().engine_mode = engine_mode;
-    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), options_.IsKeepIR(), false,
+    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), options_.IsKeepIr(), false,
                          options_.IsPlanOnly());
     bool ok = compiler.Parse(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
@@ -238,7 +238,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
         sql_context.batch_request_info.common_column_indices = batch_req_sess->common_column_indices();
     }
 
-    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), options_.IsKeepIR(), false,
+    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), options_.IsKeepIr(), false,
                          options_.IsPlanOnly());
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {

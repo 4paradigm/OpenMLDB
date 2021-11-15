@@ -47,9 +47,9 @@ class EngineOptions {
     EngineOptions();
 
     /// Set `true` to enable storing ir results into SqlContext, default `false`.
-    inline void SetKeepIR(bool flag) { this->keep_ir_ = flag; }
+    inline void SetKeepIr(bool flag) { this->keep_ir_ = flag; }
     /// Return if support to store ir results into SqlContext.
-    inline bool IsKeepIR() const { return this->keep_ir_; }
+    inline bool IsKeepIr() const { return this->keep_ir_; }
 
     /// Set `true` if only support to compile SQL, default `false`
     ///
