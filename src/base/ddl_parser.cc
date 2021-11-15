@@ -235,8 +235,8 @@ bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& 
     catalog->AddDatabase(db);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::hybridse::vm::EngineOptions options;
-    options.set_keep_ir(true);
-    options.set_compile_only(true);
+    options.SetKeepIr(true);
+    options.SetCompileOnly(true);
     session->SetPerformanceSensitive(false);
     auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
 
