@@ -1344,7 +1344,7 @@ Status BatchModeTransformer::ValidateWindowIndexOptimization(
 }
 
 // 1. validate plan is currently supported
-//    - for join plan, every right key's type is in the supported list: [bool, intxx, string, date, timestamp]
+//    - the right key used for partition, whose type should be one of: [bool, intxx, string, date, timestamp]
 // 2. validate if plan is optimized for performance sensitive mode
 //    - query condition hit to a table index
 //    - not aggregation over table
