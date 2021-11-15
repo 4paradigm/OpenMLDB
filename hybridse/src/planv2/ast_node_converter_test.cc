@@ -1027,6 +1027,8 @@ INSTANTIATE_TEST_SUITE_P(ASTSimpleSelectTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTJoinTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTHavingStatementTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
 }  // namespace plan
 }  // namespace hybridse
 
