@@ -172,6 +172,7 @@ cases:
   -
     id: 14
     desc: 创建index不指定col
+    mode: standalone-unsupport
     sqlDialect: ["HybridSQL"]
     sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(ts=c4,ttl=0m));
     expect:
@@ -396,6 +397,7 @@ cases:
     id: 37
     desc: create with replica num
     sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -408,6 +410,7 @@ cases:
   -
     id: 38
     desc: create with replica num and distribution
+    mode: standalone-unsupport
     sqlDialect: ["HybridSQL"]
     sql: |
       create table {auto} (
@@ -422,6 +425,7 @@ cases:
   -
     id: 39
     desc: create with replica num and distribution
+    mode: standalone-unsupport
     sqlDialect: ["HybridSQL"]
     sql: |
       create table {auto} (
@@ -436,6 +440,7 @@ cases:
   -
     id: 40
     desc: create with replica num and distribution
+    mode: standalone-unsupport
     sqlDialect: ["HybridSQL"]
     sql: |
       create table {auto} (
@@ -451,6 +456,7 @@ cases:
     id: 41
     desc: create with partition num
     sqlDialect: ["HybridSQL"]
+#    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -464,6 +470,7 @@ cases:
     id: 42
     desc: create with partition num
     sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,

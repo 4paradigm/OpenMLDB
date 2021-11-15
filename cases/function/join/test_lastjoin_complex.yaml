@@ -299,6 +299,7 @@ cases:
       success: false
   - id: 6-2
     desc: 两个子查询lastjoin-子查询带窗口特征-离线场景
+    tags: ["TODO", "@chenjing", "0.3.0", ""]
     mode: rtidb-unsupport
     inputs:
       -

@@ -155,8 +155,6 @@ class Table {
 
     std::shared_ptr<IndexDef> GetPkIndex() { return table_index_.GetPkIndex(); }
 
-    inline std::map<std::string, uint8_t>& GetTSMapping() { return ts_mapping_; }
-
     void SetTTL(const ::openmldb::storage::UpdateTTLMeta& ttl_meta);
 
     inline void SetMakeSnapshotTime(int64_t time) { last_make_snapshot_time_ = time; }

@@ -50,7 +50,6 @@
 #include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "common/tprinter.h"
-#include "proto/client.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
@@ -2135,111 +2134,8 @@ void HandleNSPut(const std::vector<std::string>& parts, ::openmldb::client::NsCl
     }
 }
 
-int SetTablePartition(const ::openmldb::client::TableInfo& table_info,
-                      ::openmldb::nameserver::TableInfo& ns_table_info) {  // NOLINT
-    if (table_info.table_partition_size() > 0) {
-        std::map<uint32_t, std::string> leader_map;
-        std::map<uint32_t, std::set<std::string>> follower_map;
-        for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
-            std::string pid_group = table_info.table_partition(idx).pid_group();
-            uint32_t start_index = 0;
-            uint32_t end_index = 0;
-            if (::openmldb::base::IsNumber(pid_group)) {
-                start_index = boost::lexical_cast<uint32_t>(pid_group);
-                end_index = start_index;
-            } else {
-                std::vector<std::string> vec;
-                boost::split(vec, pid_group, boost::is_any_of("-"));
-                if (vec.size() != 2 || !::openmldb::base::IsNumber(vec[0]) || !::openmldb::base::IsNumber(vec[1])) {
-                    printf("Fail to create table. pid_group[%s] format error.\n", pid_group.c_str());
-                    return -1;
-                }
-                start_index = boost::lexical_cast<uint32_t>(vec[0]);
-                end_index = boost::lexical_cast<uint32_t>(vec[1]);
-            }
-            for (uint32_t pid = start_index; pid <= end_index; pid++) {
-                if (table_info.table_partition(idx).is_leader()) {
-                    if (leader_map.find(pid) != leader_map.end()) {
-                        printf("Fail to create table. pid %u has two leader\n", pid);
-                        return -1;
-                    }
-                    leader_map.insert(std::make_pair(pid, table_info.table_partition(idx).endpoint()));
-                } else {
-                    if (follower_map.find(pid) == follower_map.end()) {
-                        follower_map.insert(std::make_pair(pid, std::set<std::string>()));
-                    }
-                    if (follower_map[pid].find(table_info.table_partition(idx).endpoint()) != follower_map[pid].end()) {
-                        printf(
-                            "Fail to create table. pid %u has same follower on "
-                            "%s\n",
-                            pid, table_info.table_partition(idx).endpoint().c_str());
-                        return -1;
-                    }
-                    follower_map[pid].insert(table_info.table_partition(idx).endpoint());
-                }
-            }
-        }
-        if (leader_map.empty()) {
-            printf("Fail to create table. has not leader pid\n");
-            return -1;
-        }
-        // check leader pid
-        auto iter = leader_map.rbegin();
-        if (iter->first != leader_map.size() - 1) {
-            printf(
-                "Fail to create table. pid is not start with zero and "
-                "consecutive\n");
-            return -1;
-        }
-
-        // check follower's leader
-        for (const auto& kv : follower_map) {
-            auto iter = leader_map.find(kv.first);
-            if (iter == leader_map.end()) {
-                printf("pid %u has not leader\n", kv.first);
-                return -1;
-            }
-            if (kv.second.find(iter->second) != kv.second.end()) {
-                printf("pid %u leader and follower at same endpoint %s\n", kv.first, iter->second.c_str());
-                return -1;
-            }
-        }
-
-        for (const auto& kv : leader_map) {
-            ::openmldb::nameserver::TablePartition* table_partition = ns_table_info.add_table_partition();
-            table_partition->set_pid(kv.first);
-            ::openmldb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
-            partition_meta->set_endpoint(kv.second);
-            partition_meta->set_is_leader(true);
-            auto iter = follower_map.find(kv.first);
-            if (iter == follower_map.end()) {
-                continue;
-            }
-            // add follower
-            for (const auto& endpoint : iter->second) {
-                ::openmldb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
-                partition_meta->set_endpoint(endpoint);
-                partition_meta->set_is_leader(false);
-            }
-        }
-        ns_table_info.set_partition_num(ns_table_info.table_partition_size());
-        ns_table_info.set_replica_num(ns_table_info.table_partition().Get(0).partition_meta_size());
-    } else {
-        if (table_info.has_partition_num()) {
-            ns_table_info.set_partition_num(table_info.partition_num());
-        }
-        if (table_info.has_replica_num()) {
-            ns_table_info.set_replica_num(table_info.replica_num());
-        }
-    }
-    return 0;
-}
-
-int SetColumnDesc(const ::openmldb::client::TableInfo& table_info,
-                  ::openmldb::nameserver::TableInfo& ns_table_info) {  // NOLINT
+int CheckSchema(const ::openmldb::nameserver::TableInfo& table_info) {
     std::map<std::string, ::openmldb::type::DataType> name_map;
-    std::set<std::string> index_set;
-    std::set<std::string> ts_col_set;
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
         if (table_info.column_desc(idx).name() == "" ||
             name_map.find(table_info.column_desc(idx).name()) != name_map.end()) {
@@ -2247,13 +2143,11 @@ int SetColumnDesc(const ::openmldb::client::TableInfo& table_info,
             return -1;
         }
         name_map.insert(std::make_pair(table_info.column_desc(idx).name(), table_info.column_desc(idx).data_type()));
-        ::openmldb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc();
-        column_desc->CopyFrom(table_info.column_desc(idx));
     }
 
-    // set column_key
-    index_set.clear();
+    std::set<std::string> index_set;
     std::set<std::string> key_set;
+    std::set<std::string> ts_col_set;
     for (int idx = 0; idx < table_info.column_key_size(); idx++) {
         if (!table_info.column_key(idx).has_index_name() || table_info.column_key(idx).index_name().size() == 0) {
             printf("not set index_name in column_key\n");
@@ -2302,10 +2196,7 @@ int SetColumnDesc(const ::openmldb::client::TableInfo& table_info,
                 return -1;
             }
         }
-        ::openmldb::common::ColumnKey* column_key = ns_table_info.add_column_key();
-        column_key->CopyFrom(table_info.column_key(idx));
     }
-
     if (index_set.empty()) {
         std::cout << "no index" << std::endl;
         return -1;
@@ -2314,8 +2205,7 @@ int SetColumnDesc(const ::openmldb::client::TableInfo& table_info,
 }
 
 int GenTableInfo(const std::string& path,
-                 ::openmldb::nameserver::TableInfo& ns_table_info) {  // NOLINT
-    ::openmldb::client::TableInfo table_info;
+                 ::openmldb::nameserver::TableInfo& table_info) {  // NOLINT
     int fd = open(path.c_str(), O_RDONLY);
     if (fd < 0) {
         std::cout << "can not open file " << path << std::endl;
@@ -2328,44 +2218,19 @@ int GenTableInfo(const std::string& path,
         return -1;
     }
 
-    ns_table_info.set_name(table_info.name());
-    std::string compress_type = table_info.compress_type();
-    std::transform(compress_type.begin(), compress_type.end(), compress_type.begin(), ::tolower);
-    if (compress_type == "knocompress" || compress_type == "nocompress" || compress_type == "no") {
-        ns_table_info.set_compress_type(::openmldb::type::CompressType::kNoCompress);
-    } else if (compress_type == "ksnappy" || compress_type == "snappy") {
-        ns_table_info.set_compress_type(::openmldb::type::CompressType::kSnappy);
-    } else {
-        printf("compress type %s is invalid\n", table_info.compress_type().c_str());
-        return -1;
-    }
     if (table_info.has_key_entry_max_height()) {
         if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
-            printf(
-                "Fail to create table. key_entry_max_height %u is greater than "
-                "the max heght %u\n",
+            printf("Fail to create table. key_entry_max_height %u is greater than the max heght %u\n",
                 table_info.key_entry_max_height(), FLAGS_skiplist_max_height);
             return -1;
         }
         if (table_info.key_entry_max_height() == 0) {
-            printf(
-                "Fail to create table. key_entry_max_height must be greater "
-                "than 0\n");
+            printf("Fail to create table. key_entry_max_height must be greater than 0\n");
             return -1;
         }
-        ns_table_info.set_key_entry_max_height(table_info.key_entry_max_height());
     }
-    ns_table_info.set_seg_cnt(table_info.seg_cnt());
-    ns_table_info.set_format_version(table_info.format_version());
-    if (SetTablePartition(table_info, ns_table_info) < 0) {
+    if (CheckSchema(table_info) < 0) {
         return -1;
-    }
-    if (SetColumnDesc(table_info, ns_table_info) < 0) {
-        return -1;
-    }
-
-    for (int idx = 0; idx < table_info.partition_key_size(); idx++) {
-        ns_table_info.add_partition_key(table_info.partition_key(idx));
     }
     return 0;
 }

@@ -79,7 +79,7 @@ class ResultSet {
                 return std::to_string(GetDoubleUnsafe(idx));
             }
             case kTypeBool: {
-                return std::to_string(GetBoolUnsafe(idx));
+                return GetBoolUnsafe(idx) ? "true" : "false";
             }
             case kTypeString: {
                 return GetStringUnsafe(idx);
