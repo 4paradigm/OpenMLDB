@@ -16,7 +16,6 @@
 
 
 BATCH_VERSION=$1
-BUILD_MODE=$2
 ROOT_DIR=$(pwd)
 
 cd test/batch-test/openmldb-batch-test || exit

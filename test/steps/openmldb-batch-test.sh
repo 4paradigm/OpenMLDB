@@ -46,7 +46,7 @@ mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 
 # modify config
-sh test/steps/modify_batch_config.sh "${BATCH_VERSION}" "${BUILD_MODE}"
+sh test/steps/modify_batch_config.sh "${BATCH_VERSION}"
 
 cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/ || exit
 mvn clean install -Dmaven.test.skip=true
