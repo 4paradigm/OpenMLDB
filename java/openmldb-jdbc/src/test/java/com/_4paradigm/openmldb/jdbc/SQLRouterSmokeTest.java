@@ -18,6 +18,9 @@ package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.*;
 
+import com._4paradigm.openmldb.sdk.Column;
+import com._4paradigm.openmldb.sdk.Common;
+import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
@@ -25,12 +28,17 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class SQLRouterSmokeTest {
 
-    private Random random = new Random(System.currentTimeMillis());
+    private final Random random = new Random(System.currentTimeMillis());
 
     @Test
     public void testSmoke() {
@@ -75,7 +83,7 @@ public class SQLRouterSmokeTest {
 
             // select
             String select1 = "select * from tsql1010;";
-            com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet)router.executeSQL(dbname, select1);
+            com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select1);
 
             Assert.assertEquals(2, rs1.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs1.GetInternalSchema().GetColumnType(0).toString());
@@ -244,6 +252,7 @@ public class SQLRouterSmokeTest {
             e.printStackTrace();
         }
     }
+
     @Test
     public void testInsertMeta() {
         SdkOption option = new SdkOption();
@@ -253,7 +262,7 @@ public class SQLRouterSmokeTest {
         SqlExecutor router = null;
         try {
             router = new SqlClusterExecutor(option);
-        }catch (Exception e) {
+        } catch (Exception e) {
             Assert.fail();
         }
         String dbname = "db" + random.nextInt(100000);
@@ -318,11 +327,11 @@ public class SQLRouterSmokeTest {
             java.sql.Date d3 = new java.sql.Date(2019 - 1900, 3 - 1, 3);
             java.sql.Date d4 = new java.sql.Date(2019 - 1900, 4 - 1, 4);
             java.sql.Date d5 = new java.sql.Date(2019 - 1900, 5 - 1, 5);
-            String date1 = String.format("%s-%02d-%02d", d1.getYear() + 1900, d1.getMonth()  + 1, d1.getDate());
+            String date1 = String.format("%s-%02d-%02d", d1.getYear() + 1900, d1.getMonth() + 1, d1.getDate());
             String fullInsert = String.format("insert into tsql1010 values(1000, '%s', 'guangdong', '广州', 1);", date1);
             ok = router.executeInsert(dbname, fullInsert);
             Assert.assertTrue(ok);
-            Object[][]datas = new Object[][]{
+            Object[][] datas = new Object[][]{
                     {1000l, d1, "guangdong", "广州", 1},
                     {1001l, d2, "jiangsu", "nanjing", 2},
                     {1002l, d3, "sandong", "jinan", 3},
@@ -398,7 +407,7 @@ public class SQLRouterSmokeTest {
                 Assert.assertEquals(datas[suffix][4], idx);
                 Assert.assertEquals(datas[suffix][2], rs1.getString(3));
                 Assert.assertEquals(datas[suffix][3], rs1.getString(4));
-                java.sql.Date tmpDate = (java.sql.Date)datas[suffix][1];
+                java.sql.Date tmpDate = (java.sql.Date) datas[suffix][1];
                 java.sql.Date getData = rs1.getDate(2);
                 Assert.assertEquals(tmpDate.getYear(), getData.getYear());
                 Assert.assertEquals(tmpDate.getDate(), getData.getDate());
@@ -429,7 +438,7 @@ public class SQLRouterSmokeTest {
 
     @Test
     public void testInsertPreparedStateBatch() {
-        Object[][] batchData = new Object[][] {
+        Object[][] batchData = new Object[][]{
                 {
                         "insert into tsql1010 values(?, ?, 'zhao', 1.0, null, 'z');",
                         new Object[][]{
@@ -437,14 +446,14 @@ public class SQLRouterSmokeTest {
                 },
                 {
                         "insert into tsql1010 values(?, ?, 'zhao', 1.0, null, 'z');",
-                        new Object[][] {
+                        new Object[][]{
                                 {1004l, 5l}, {1005l, 6l}, {1006l, 7l}, {1007l, 8l},}
                 },
                 {
-                    "insert into tsql1010 values(?, ?, ?, 2.0, null, ?);",
-                    "insert into tsql1010 values(1008, 9, 'zhao', 2.0, null, 'z');",
-                    "insert into tsql1010 values(1009, 10, 'zhao', 2.0, null, 'z');",
-                    "insert into tsql1010 values(1010, 11, 'zhao', 2.0, null, 'z');",
+                        "insert into tsql1010 values(?, ?, ?, 2.0, null, ?);",
+                        "insert into tsql1010 values(1008, 9, 'zhao', 2.0, null, 'z');",
+                        "insert into tsql1010 values(1009, 10, 'zhao', 2.0, null, 'z');",
+                        "insert into tsql1010 values(1010, 11, 'zhao', 2.0, null, 'z');",
                 }
         };
         SdkOption option = new SdkOption();
@@ -559,5 +568,20 @@ public class SQLRouterSmokeTest {
             e.printStackTrace();
             Assert.fail();
         }
+    }
+
+    @Test
+    public void testDDLParseMethods() throws SQLException {
+        Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
+        Schema sch = new Schema(Collections.singletonList(new Column("c1", Types.VARCHAR)));
+        Map<String, Schema> dbSchema = new HashMap<>();
+        dbSchema.put("t1", sch);
+        schemaMaps.put("db1", dbSchema);
+        List<String> ddls = SqlClusterExecutor.genDDL("select c1 from t1;", schemaMaps);
+        Assert.assertEquals(ddls.size(), 1);
+        List<Column> schema = SqlClusterExecutor.genOutputSchema("select c1 from t1;", schemaMaps).getColumnList();
+        Assert.assertEquals(schema.size(), 1);
+        Assert.assertEquals(schema.get(0).getColumnName(), "c1");
+        Assert.assertEquals(schema.get(0).getSqlType(), Types.VARCHAR);
     }
 }

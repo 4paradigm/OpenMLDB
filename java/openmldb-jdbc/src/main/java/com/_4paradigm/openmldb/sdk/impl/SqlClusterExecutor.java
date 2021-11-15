@@ -22,7 +22,9 @@ import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.Schema;
+
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,11 +33,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class SqlClusterExecutor implements SqlExecutor {
     static {
         String libname = "sql_jsdk";
         String osName = System.getProperty("os.name").toLowerCase();
+        // TODO(hw): what's the meaning?
         if (osName.equals("mac os x")) {
             LibraryLoader.loadLibrary(libname);
         } else {
@@ -44,11 +46,9 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
-    private SdkOption option;
     private SQLRouter sqlRouter;
 
     public SqlClusterExecutor(SdkOption option) throws SqlException {
-        this.option = option;
         SQLRouterOptions sqlOpt = new SQLRouterOptions();
         sqlOpt.setSession_timeout(option.getSessionTimeout());
         sqlOpt.setZk_cluster(option.getZkCluster());
@@ -58,8 +58,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
         sqlOpt.delete();
         if (sqlRouter == null) {
-            SqlException e = new SqlException("fail to create sql executer");
-            throw e;
+            throw new SqlException("fail to create sql executor");
         }
     }
 
@@ -122,7 +121,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
         status.delete();
         status = null;
-        return  new SQLResultSet(rs);
+        return new SQLResultSet(rs);
     }
 
     @Override
@@ -146,6 +145,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         RequestPreparedStatementImpl impl = new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
         return impl;
     }
+
     public PreparedStatement getPreparedStatement(String db, String sql) throws SQLException {
         PreparedStatementImpl impl = new PreparedStatementImpl(db, sql, this.sqlRouter);
         return impl;
@@ -264,34 +264,53 @@ public class SqlClusterExecutor implements SqlExecutor {
         return spInfo;
     }
 
-    @Override
-    public List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
-          throws SQLException {
+    static private TableColumnDescPairVector convertSchema(Map<String, Schema> tables) throws SQLException {
+        TableColumnDescPairVector result = new TableColumnDescPairVector();
+        for (Map.Entry<String, Schema> entry : tables.entrySet()) {
+            String table = entry.getKey();
+            Schema schema = entry.getValue();
+            ColumnDescVector columnDescVector = new ColumnDescVector();
+            List<Column> columnList = schema.getColumnList();
+            for (Column column : columnList) {
+                String columnName = column.getColumnName();
+                int sqlType = column.getSqlType();
+                columnDescVector.add(new ColumnDescPair(columnName, Common.sqlTypeToDataType(sqlType)));
+            }
+            result.add(new TableColumnDescPair(table, columnDescVector));
+        }
+        return result;
+    }
+
+    static public List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
+            throws SQLException {
         if (null == tableSchema || tableSchema.isEmpty()) {
-          return null;
+            return null;
         }
         List<String> results = new ArrayList<>();
-        for (String database : tableSchema.keySet()) {
-            Map<String, Schema> schemaMap = tableSchema.get(database);
-            TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
-            for (String table : schemaMap.keySet()) {
-                Schema schema = schemaMap.get(table);
-                ColumnDescVector columnDescVector = new ColumnDescVector();
-                List<Column> columnList = schema.getColumnList();
-                for (Column column : columnList) {
-                    String columnName = column.getColumnName();
-                    int sqlType = column.getSqlType();
-                    ColumnDescPair columnDescPair = new ColumnDescPair(columnName, DataType.swigToEnum(sqlType));
-                    columnDescVector.add(columnDescPair);
-                }
-                TableColumnDescPair tableColumnDescPair = new TableColumnDescPair(table,
-                        columnDescVector);
-                tableColumnDescPairVector.add(tableColumnDescPair);
-            }
-            VectorString ddlList = sqlRouter.ExecuteDDLParse(sql, tableColumnDescPairVector);
+        // TODO(hw): multi db is not supported now
+        for (Map.Entry<String, Map<String, Schema>> entry : tableSchema.entrySet()) {
+            Map<String, Schema> schemaMap = entry.getValue();
+            TableColumnDescPairVector tableColumnDescPairVector = convertSchema(schemaMap);
+            VectorString ddlList = sql_router_sdk.GenDDL(sql, tableColumnDescPairVector);
             results.addAll(ddlList);
         }
         return results;
+    }
+
+    static public Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+        if (null == tableSchema || tableSchema.isEmpty()) {
+            return null;
+        }
+        TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
+        // TODO(hw): multi db is not supported now, so we add all db-tables here
+        for (Map.Entry<String, Map<String, Schema>> entry : tableSchema.entrySet()) {
+            Map<String, Schema> schemaMap = entry.getValue();
+            tableColumnDescPairVector.addAll(convertSchema(schemaMap));
+        }
+        com._4paradigm.openmldb.Schema outputSchema = sql_router_sdk.GenOutputSchema(sql, tableColumnDescPairVector);
+        Schema ret = Common.convertSchema(outputSchema);
+        outputSchema.delete();
+        return ret;
     }
 
     @Override

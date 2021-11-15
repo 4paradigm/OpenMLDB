@@ -199,11 +199,6 @@ class SQLClusterRouter : public SQLRouter {
     base::Status HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
                               std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
 
-    std::vector<std::string> ExecuteDDLParse(
-        const std::string& sql,
-        const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>&
-            table_map) override;
-
     static bool GetTTL(openmldb::type::TTLType ttl_type, ::google::protobuf::uint64 abs_ttl,
                        ::google::protobuf::uint64 lat_ttl, std::string* ttl) {
         switch (ttl_type) {

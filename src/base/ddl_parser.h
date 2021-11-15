@@ -22,11 +22,12 @@
 
 #include "proto/common.pb.h"
 #include "proto/fe_type.pb.h"
+#include "sdk/base.h"
 
 namespace hybridse::vm {
 class RunSession;
 class PhysicalOpNode;
-}
+}  // namespace hybridse::vm
 
 namespace openmldb::base {
 
@@ -40,7 +41,8 @@ class DDLParser {
  public:
     static IndexMap ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db);
 
-    static IndexMap ExtractIndexes(const std::string& sql,
+    static IndexMap ExtractIndexes(
+        const std::string& sql,
         const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas);
 
     static IndexMap ExtractIndexes(const std::string& sql,
@@ -50,6 +52,11 @@ class DDLParser {
 
     static std::string Explain(const std::string& sql, const ::hybridse::type::Database& db);
 
+    static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(const std::string& sql,
+                                                                    const hybridse::type::Database& db);
+    static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(
+        const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
+
  private:
     // tables are in one db, and db name will be rewritten for simplicity
     static IndexMap ExtractIndexes(const std::string& sql, const hybridse::type::Database& db,
@@ -58,8 +65,7 @@ class DDLParser {
     // DLR
     static IndexMap ParseIndexes(hybridse::vm::PhysicalOpNode* node);
 
-    static bool GetPlan(const std::string& sql, const hybridse::type::Database& db,
-                        hybridse::vm::RunSession* session);
+    static bool GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session);
 
     template <typename T>
     static void AddTables(const T& schema, hybridse::type::Database* db);

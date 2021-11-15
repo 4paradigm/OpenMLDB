@@ -1003,12 +1003,19 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
     ASSERT_TRUE(ok);
 }
 
-TEST_F(SQLRouterTest, execute_DDL_parse) {
-    SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_->GetZkCluster();
-    sql_opt.zk_path = mc_->GetZkPath();
-    auto router = NewClusterSQLRouter(sql_opt);
-    ASSERT_TRUE(router != nullptr);
+class TableSchemaBuilder {
+ public:
+    TableSchemaBuilder(std::string table_name) : table_name_(table_name) {}
+    TableSchemaBuilder& AddCol(std::string name, hybridse::sdk::DataType type) {
+        cols_.emplace_back(name, type);
+        return *this;
+    }
+
+    std::string table_name_;
+    std::vector<std::pair<std::string, hybridse::sdk::DataType>> cols_;
+};
+
+TEST_F(SQLRouterTest, DDLParseMethods) {
     std::string sql =
         "SELECT\n behaviourTable.itemId as itemId,\n  behaviourTable.ip as ip,\n  behaviourTable.query as query,\n  "
         "behaviourTable.mcuid as mcuid,\n adinfo.brandName as name,\n  adinfo.brandId as brandId,\n "
@@ -1017,103 +1024,65 @@ TEST_F(SQLRouterTest, execute_DDL_parse) {
 
     std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>> table_map;
     // table a
-    std::pair<std::string, hybridse::sdk::DataType> table_a_item_id =
-        std::make_pair("itemId", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_reqId =
-        std::make_pair("reqId", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_tags =
-        std::make_pair("tags", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_instanceKey =
-        std::make_pair("instanceKey", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_eventTime =
-        std::make_pair("eventTime", hybridse::sdk::DataType::kTypeTimestamp);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_ip =
-        std::make_pair("ip", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_browser =
-        std::make_pair("browser", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_query =
-        std::make_pair("query", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_mcu_id =
-        std::make_pair("mcuid", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_weight =
-        std::make_pair("weight", hybridse::sdk::DataType::kTypeDouble);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_page =
-        std::make_pair("page", hybridse::sdk::DataType::kTypeInt32);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_rank =
-        std::make_pair("rank", hybridse::sdk::DataType::kTypeInt32);
-    std::pair<std::string, hybridse::sdk::DataType> table_a_i_rank =
-        std::make_pair("_i_rank", hybridse::sdk::DataType::kTypeString);
-    std::vector<std::pair<std::string, hybridse::sdk::DataType>> table_a_column_list;
-    table_a_column_list.push_back(table_a_item_id);
-    table_a_column_list.push_back(table_a_reqId);
-    table_a_column_list.push_back(table_a_tags);
-    table_a_column_list.push_back(table_a_ip);
-    table_a_column_list.push_back(table_a_query);
-    table_a_column_list.push_back(table_a_instanceKey);
-    table_a_column_list.push_back(table_a_eventTime);
-    table_a_column_list.push_back(table_a_browser);
-    table_a_column_list.push_back(table_a_mcu_id);
-    table_a_column_list.push_back(table_a_weight);
-    table_a_column_list.push_back(table_a_page);
-    table_a_column_list.push_back(table_a_rank);
-    table_a_column_list.push_back(table_a_i_rank);
-    std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>> table_a =
-        std::make_pair("behaviourTable", table_a_column_list);
-    table_map.push_back(table_a);
+    {
+        TableSchemaBuilder builder("behaviourTable");
+        builder.AddCol("itemId", hybridse::sdk::DataType::kTypeString)
+            .AddCol("reqId", hybridse::sdk::DataType::kTypeString)
+            .AddCol("tags", hybridse::sdk::DataType::kTypeString)
+            .AddCol("ip", hybridse::sdk::DataType::kTypeString)
+            .AddCol("query", hybridse::sdk::DataType::kTypeString)
+            .AddCol("instanceKey", hybridse::sdk::DataType::kTypeString)
+            .AddCol("eventTime", hybridse::sdk::DataType::kTypeTimestamp)
+            .AddCol("browser", hybridse::sdk::DataType::kTypeString)
+            .AddCol("mcuid", hybridse::sdk::DataType::kTypeString)
+            .AddCol("weight", hybridse::sdk::DataType::kTypeDouble)
+            .AddCol("page", hybridse::sdk::DataType::kTypeInt32)
+            .AddCol("rank", hybridse::sdk::DataType::kTypeInt32)
+            .AddCol("_i_rank", hybridse::sdk::DataType::kTypeString);
+        table_map.emplace_back(builder.table_name_, builder.cols_);
+    }
 
     // table b
-    std::pair<std::string, hybridse::sdk::DataType> table_b_id =
-        std::make_pair("id", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_b_ingestionTime =
-        std::make_pair("ingestionTime", hybridse::sdk::DataType::kTypeTimestamp);
-    std::pair<std::string, hybridse::sdk::DataType> table_b_brand_name =
-        std::make_pair("brandName", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_b_name =
-        std::make_pair("name", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_b_brand_id =
-        std::make_pair("brandId", hybridse::sdk::DataType::kTypeString);
-    std::vector<std::pair<std::string, hybridse::sdk::DataType>> table_b_column_list;
-    table_b_column_list.push_back(table_b_id);
-    table_b_column_list.push_back(table_b_brand_name);
-    table_b_column_list.push_back(table_b_brand_id);
-    table_b_column_list.push_back(table_b_name);
-    table_b_column_list.push_back(table_b_ingestionTime);
-    std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>> table_b =
-        std::make_pair("adinfo", table_b_column_list);
-    table_map.push_back(table_b);
+    {
+        TableSchemaBuilder builder("adinfo");
+        builder.AddCol("id", hybridse::sdk::DataType::kTypeString)
+            .AddCol("brandName", hybridse::sdk::DataType::kTypeString)
+            .AddCol("brandId", hybridse::sdk::DataType::kTypeString)
+            .AddCol("name", hybridse::sdk::DataType::kTypeString)
+            .AddCol("ingestionTime", hybridse::sdk::DataType::kTypeTimestamp);
+        table_map.emplace_back(builder.table_name_, builder.cols_);
+    }
 
     // table c
-    std::pair<std::string, hybridse::sdk::DataType> table_c_item_id =
-        std::make_pair("itemId", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_c_reqId =
-        std::make_pair("reqId", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_c_instanceKey =
-        std::make_pair("instanceKey", hybridse::sdk::DataType::kTypeString);
-    std::pair<std::string, hybridse::sdk::DataType> table_c_eventTime =
-        std::make_pair("eventTime", hybridse::sdk::DataType::kTypeTimestamp);
-    std::pair<std::string, hybridse::sdk::DataType> table_c_ingestionTime =
-        std::make_pair("ingestionTime", hybridse::sdk::DataType::kTypeTimestamp);
-    std::pair<std::string, hybridse::sdk::DataType> table_c_action_value =
-        std::make_pair("actionValue", hybridse::sdk::DataType::kTypeDouble);
-    std::vector<std::pair<std::string, hybridse::sdk::DataType>> table_c_column_list;
-    table_c_column_list.push_back(table_c_item_id);
-    table_c_column_list.push_back(table_c_reqId);
-    table_c_column_list.push_back(table_c_instanceKey);
-    table_c_column_list.push_back(table_c_eventTime);
-    table_c_column_list.push_back(table_c_ingestionTime);
-    table_c_column_list.push_back(table_c_action_value);
-    std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>> table_c =
-        std::make_pair("feedbackTable", table_c_column_list);
-    table_map.push_back(table_c);
+    {
+        TableSchemaBuilder builder("feedbackTable");
+        builder.AddCol("itemId", hybridse::sdk::DataType::kTypeString)
+            .AddCol("reqId", hybridse::sdk::DataType::kTypeString)
+            .AddCol("instanceKey", hybridse::sdk::DataType::kTypeString)
+            .AddCol("eventTime", hybridse::sdk::DataType::kTypeTimestamp)
+            .AddCol("ingestionTime", hybridse::sdk::DataType::kTypeTimestamp)
+            .AddCol("actionValue", hybridse::sdk::DataType::kTypeDouble);
+        table_map.emplace_back(builder.table_name_, builder.cols_);
+    }
 
-    std::vector<std::string> ddl_list = router->ExecuteDDLParse(sql, table_map);
+    std::vector<std::string> ddl_list = GenDDL(sql, table_map);
     ASSERT_EQ(3, ddl_list.size());
+    // sorted by table name, so adinfo is the first table
     EXPECT_EQ(
         "CREATE TABLE IF NOT EXISTS adinfo(\n\tid string,\n\tbrandName string,\n\tbrandId string,\n\tname "
         "string,\n\tingestionTime timestamp,\n\tindex(key=(id), ttl=0m, ttl_type=absolute)\n);",
         ddl_list.at(0));
-}
 
+    auto output_schema = GenOutputSchema(sql, table_map);
+    ASSERT_EQ(output_schema->GetColumnCnt(), 7);
+    std::vector<std::string> output_col_names;
+    output_col_names.reserve(output_schema->GetColumnCnt());
+    for (auto i = 0; i < output_schema->GetColumnCnt(); ++i) {
+        output_col_names.push_back(output_schema->GetColumnName(i));
+    }
+    std::vector<std::string> expected{"itemId", "ip", "query", "mcuid", "name", "brandId", "label"};
+    ASSERT_EQ(output_col_names, expected);
+}
 
 }  // namespace sdk
 }  // namespace openmldb
