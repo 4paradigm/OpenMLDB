@@ -59,7 +59,7 @@ TEST_F(EngineCompileTest, EngineLRUCacheTest) {
     // Simple Engine
     EngineOptions options;
     options.SetCompileOnly(true);
-    options.SetMaxSQLCacheSize(1);
+    options.SetMaxSqlCacheSize(1);
     Engine engine(catalog, options);
 
     std::string sql = "select col1, col2 from t1;";
@@ -110,8 +110,8 @@ TEST_F(EngineCompileTest, EngineLRUCacheTestWithPerformanceSensitive) {
 
     // Simple Engine
     EngineOptions options;
-    options.set_compile_only(true);
-    options.set_max_sql_cache_size(1);
+    options.SetCompileOnly(true);
+    options.SetMaxSqlCacheSize(1);
     Engine engine(catalog, options);
 
     std::string sql = "select col1, col2 from t1;";
@@ -159,7 +159,7 @@ TEST_F(EngineCompileTest, EngineWithParameterizedLRUCacheTest) {
     // Simple Engine
     EngineOptions options;
     options.SetCompileOnly(true);
-    options.SetMaxSQLCacheSize(1);
+    options.SetMaxSqlCacheSize(1);
     Engine engine(catalog, options);
 
     hybridse::codec::Schema parameter_schema;

@@ -101,11 +101,11 @@ class EngineOptions {
     }
 
     /// Set the maximum number of cache entries, default is `50`.
-    inline void SetMaxSQLCacheSize(uint32_t size) {
+    inline void SetMaxSqlCacheSize(uint32_t size) {
         max_sql_cache_size_ = size;
     }
     /// Return the maximum number of entries we can hold for compiling cache.
-    inline uint32_t GetMaxSQLCacheSize() const { return max_sql_cache_size_; }
+    inline uint32_t GetMaxSqlCacheSize() const { return max_sql_cache_size_; }
 
     /// Set `true` to enable spark unsafe row format, default `false`.
     EngineOptions* SetEnableSparkUnsaferowFormat(bool flag);

@@ -414,7 +414,7 @@ bool Engine::SetCacheLocked(const std::string& db, const std::string& sql, Engin
     using BoostLRU = boost::compute::detail::lru_cache<std::string, std::shared_ptr<CompileInfo>>;
     std::map<std::string, BoostLRU>::iterator db_iter = performance_sensitive_cache.find(db);
     if (db_iter == performance_sensitive_cache.end()) {
-        db_iter = performance_sensitive_cache.insert(db_iter, {db, BoostLRU(options_.GetMaxSQLCacheSize())});
+        db_iter = performance_sensitive_cache.insert(db_iter, {db, BoostLRU(options_.GetMaxSqlCacheSize())});
     }
     auto& lru = db_iter->second;
     auto value = lru.get(sql);
