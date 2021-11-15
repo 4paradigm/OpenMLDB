@@ -72,11 +72,9 @@ class SQLSDKTest : public openmldb::test::SQLCaseTest {
     static void CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_view,
                                               std::shared_ptr<openmldb::sdk::SQLRequestRow> request_row);
     static void BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                                std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints,
-                                const bool performance_sensitive = true);
+                                std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints);
     static void RunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                                std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints,
-                                const bool performance_sensitive = true);
+                                std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints);
     static void CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                 std::shared_ptr<SQLRouter> router, bool is_batch = false);
     static void DropProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
@@ -137,7 +135,7 @@ void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                           std::shared_ptr<SQLRouter> router) {
     std::unordered_set<std::string> input_dbs;
     if (sql_case.db().empty()) {
-        sql_case.db_ = hybridse::sqlcase::SqlCase::GenRand("auto_db") + std::to_string((int64_t)time(NULL));
+        sql_case.db_ = hybridse::sqlcase::SqlCase::GenRand("auto_db") + std::to_string(static_cast<int64_t>(time(NULL)));
     }
     input_dbs.insert(sql_case.db_);
 
@@ -169,7 +167,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
     // create and insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((int64_t)time(NULL)),
+            sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))),
                                     i);
         }
         std::string input_db_name = sql_case.inputs_[i].db_.empty() ? sql_case.db() : sql_case.inputs_[i].db_;
@@ -213,7 +211,7 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     DLOG(INFO) << "Create Procedure BEGIN";
     hybridse::sdk::Status status;
     if (sql_case.inputs()[0].name_.empty()) {
-        sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((int64_t)time(NULL)), 0);
+        sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))), 0);
     }
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
@@ -221,10 +219,10 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
     boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
-            std::to_string((int64_t)time(NULL)));
+            std::to_string(static_cast<int64_t>(time(NULL))));
     boost::trim(sql);
     LOG(INFO) << sql;
-    sql_case.sp_name_ = hybridse::sqlcase::SqlCase::GenRand("auto_sp") + std::to_string((int64_t)time(NULL));
+    sql_case.sp_name_ = hybridse::sqlcase::SqlCase::GenRand("auto_sp") + std::to_string(static_cast<int64_t>(time(NULL)));
     std::string create_sp;
     if (is_batch) {
         hybridse::type::TableDef batch_request_schema;
@@ -388,8 +386,7 @@ void SQLSDKTest::CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_vie
     ASSERT_TRUE(request_row->Build());
 }
 void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints,
-                                 const bool performance_sensitive) {
+                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints) {
     DLOG(INFO) << "BatchExecuteSQL BEGIN";
     hybridse::sdk::Status status;
     DLOG(INFO) << "format sql begin";
@@ -401,14 +398,13 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     }
     DLOG(INFO) << "format sql 1";
     boost::replace_all(sql, "{auto}",
-                       hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string((int64_t)time(NULL)));
+                       hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))));
     for (size_t endpoint_id = 0; endpoint_id < tbEndpoints.size(); endpoint_id++) {
         boost::replace_all(sql, "{tb_endpoint_" + std::to_string(endpoint_id) + "}", tbEndpoints.at(endpoint_id));
     }
     DLOG(INFO) << "format sql done";
     LOG(INFO) << sql;
-    std::string lower_sql = sql;
-    boost::to_lower(lower_sql);
+    std::string lower_sql = boost::to_lower_copy(sql);
     if (boost::algorithm::starts_with(lower_sql, "select")) {
         std::shared_ptr<hybridse::sdk::ResultSet> rs;
         router->SetPerformanceSensitive(performance_sensitive);
@@ -470,13 +466,12 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
 
 void SQLSDKTest::RunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                  std::shared_ptr<SQLRouter> router,
-                                 const std::vector<std::string>& tbEndpoints,
-                                 const bool performance_sensitive) {
+                                 const std::vector<std::string>& tbEndpoints) {
     hybridse::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router);
     InsertTables(sql_case, router, kInsertAllInputs);
-    BatchExecuteSQL(sql_case, router, tbEndpoints, performance_sensitive);
+    BatchExecuteSQL(sql_case, router, tbEndpoints);
     DropTables(sql_case, router);
     LOG(INFO) << "RunBatchModeSDK ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
 }
@@ -492,7 +487,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
     boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
-            std::to_string((int64_t)time(NULL)));
+            std::to_string(static_cast<int64_t>(time(NULL))));
     LOG(INFO) << sql;
     std::string lower_sql = sql;
     boost::to_lower(lower_sql);
@@ -642,7 +637,7 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
     boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
-            std::to_string((int64_t)time(NULL)));
+            std::to_string(static_cast<int64_t>(time(NULL))));
     LOG(INFO) << sql;
     std::string lower_sql = sql;
     boost::to_lower(lower_sql);
