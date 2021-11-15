@@ -281,7 +281,7 @@ public class SqlClusterExecutor implements SqlExecutor {
                 for (Column column : columnList) {
                     String columnName = column.getColumnName();
                     int sqlType = column.getSqlType();
-                    ColumnDescPair columnDescPair = new ColumnDescPair(columnName, DataType.swigToEnum(sqlType));
+                    ColumnDescPair columnDescPair = new ColumnDescPair(columnName, Common.sqlTypeToDataType(sqlType));
                     columnDescVector.add(columnDescPair);
                 }
                 TableColumnDescPair tableColumnDescPair = new TableColumnDescPair(table,
