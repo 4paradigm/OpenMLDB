@@ -75,3 +75,12 @@ cases:
   - id: set_statement
     desc: unsupported value type
     sql: SET SELECT_MODE = 1 + 2;
+  - id: group_complex_expression
+    desc: SELECT GROUP BY complex expression is unsupport
+    sql: SELECT COL1+COL2 FROM t1 group by COL1+COL2;
+  - id: having_clause_not_with_aggregated_query
+    desc: Having clause can't only be used in conjunction with aggregated query
+    sql: SELECT COL1 FROM t1 having SUM(COL1)>1;
+  - id: having_clause_not_functionally_dependent_on_group_by
+    desc: having nonaggregated condition is not functionally dependent on columns in GROUP BY clause
+    sql: SELECT SUM(COL1) FROM t1 GROUP BY COL1 having COL2>1;

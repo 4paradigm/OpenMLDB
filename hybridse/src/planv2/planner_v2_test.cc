@@ -1799,20 +1799,57 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
     auto expect_converted = [&](const std::string &sql, const int code, const std::string &msg) {
       base::Status status;
       node::PlanNodeList plan_trees;
-      ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true));
+      ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true)) << status;
       ASSERT_EQ(code, status.code) << status;
       ASSERT_EQ(msg, status.msg) << status;
       std::cout << msg << std::endl;
     };
 
-    expect_converted("SELECT COL1, COL2, SUM(COL3) from t1;", common::kPlanError,
-                     "Can't support table aggregation project and table row project simultaneously");
+
+    // Rule #1
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) over w1 from t1 GROUP BY COL1
+        WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
+        )",
+        common::kPlanError, "Can't support group clause and window clause simultaneously");
+    // Rule #2
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) over w1 from t1 HAVING SUM(COL2) >0
+        WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
+        )",
+        common::kPlanError, "Can't support having clause and window clause simultaneously");
+    // Rule #3
     expect_converted(
         R"(
         SELECT SUM(COL2) over w1,  SUM(COL3) from t1
         WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
         )",
         common::kPlanError, "Can't support table aggregation and window aggregation simultaneously");
+    // Rule #4
+    expect_converted(
+        "SELECT COL1, SUM(COL3) from t1 GROUP BY COL2;", common::kPlanError,
+        "Expression #0 of SELECT list is not in GROUP BY clause and contains nonaggregated column COL1 which is not "
+        "functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by");
+    // Rule #5
+    expect_converted("SELECT COL1, COL2, SUM(COL3) from t1;", common::kPlanError,
+                     "In aggregated query without GROUP BY, expression #0 of SELECT list contains nonaggregated "
+                     "project 'COL1'; this is incompatible with sql_mode=only_full_group_by");
+    // Rule #6
+    expect_converted(
+        "SELECT COL1, SUM(COL3) from t1 GROUP BY COL1 HAVING COL2 > 0;", common::kPlanError,
+        "Having clause is not in GROUP BY clause and contains nonaggregated column COL2 which is not functionally "
+        "dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by");
+    // Rule #7
+    expect_converted(
+        "SELECT COL1 from t1 HAVING COL2 > 0;", common::kPlanError,
+        "Having clause can only be used in conjunction with aggregated query");
+    // Rule #8
+    expect_converted("SELECT SUM(COL1) from t1 HAVING COL2 > 0;", common::kPlanError,
+                     "In aggregated query without GROUP BY, Having clause contains nonaggregated project 'COL2 > 0'; "
+                     "this is incompatible with sql_mode=only_full_group_by");
+    // TODO(chenjing): add boundary check rules tests
 }
 }  // namespace plan
 }  // namespace hybridse

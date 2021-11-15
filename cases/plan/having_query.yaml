@@ -14,14 +14,8 @@
 
 cases:
   - id: 1
-    desc: 简单SELECT后过滤,效果等同于先过滤再SELECT
-    sql: SELECT COL1 FROM t1 having COL1>1;
-  - id: 2
-    desc: 简单SELECT后过滤, 过滤条件表达式复杂
-    sql: SELECT COL1, COL2, COL3 FROM t1 HAVING COL1 > 10 and COL2 = 20 or COL1 =0;
-  - id: 3
     desc: 分组聚合后过滤
-    sql: SELECT SUM(COL2) as sum_col2 FROM t1 group by col1 having sum_col2 > 0;
+    sql: SELECT SUM(COL2) as sum_col2 FROM t1 group by col1 having SUM(COL2) > 0;
     expect:
       node_tree_str: |
         +-node[kQuery]: kQuerySelect
@@ -35,9 +29,13 @@ cases:
           |  +-expr[binary]
           |    +->[list]:
           |      +-0:
-          |      |  +-expr[column ref]
-          |      |    +-relation_name: <nil>
-          |      |    +-column_name: sum_col2
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL2
           |      +-1:
           |        +-expr[primary]
           |          +-value: 0
