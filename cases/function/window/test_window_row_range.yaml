@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs:
+debugs: []
 cases:
   - id: 0
     desc: string为partition by

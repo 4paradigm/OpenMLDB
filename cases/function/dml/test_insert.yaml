@@ -89,6 +89,7 @@ cases:
   -
     id: 5
     desc: 字符串类型插入空串
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -

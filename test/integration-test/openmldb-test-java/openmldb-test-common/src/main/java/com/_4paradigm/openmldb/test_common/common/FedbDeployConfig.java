@@ -41,5 +41,7 @@ public class FedbDeployConfig {
     public static String getUrl(String version){
         return CONFIG.getProperty(version, DeployUtil.getOpenMLDBUrl(version));
     }
-
+    public static String getZKUrl(String version){
+        return CONFIG.getProperty(version+"_zk_url", ZK_URL);
+    }
 }

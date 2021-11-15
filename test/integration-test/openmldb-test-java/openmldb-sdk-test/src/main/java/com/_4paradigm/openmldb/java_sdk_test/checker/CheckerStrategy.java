@@ -42,6 +42,8 @@ public class CheckerStrategy {
         if (CollectionUtils.isNotEmpty(expect.getColumns())) {
             if(executorType==SQLCaseType.kSQLITE3 || executorType==SQLCaseType.kMYSQL){
                 checkList.add(new ColumnsCheckerByJBDC(expect, fesqlResult));
+            }else if(executorType==SQLCaseType.kCLI||executorType==SQLCaseType.kStandaloneCLI){
+                checkList.add(new ColumnsCheckerByCli(expect, fesqlResult));
             }else {
                 checkList.add(new ColumnsChecker(expect, fesqlResult));
             }
@@ -49,6 +51,8 @@ public class CheckerStrategy {
         if (!expect.getRows().isEmpty()) {
             if(executorType==SQLCaseType.kSQLITE3){
                 checkList.add(new ResultCheckerByJDBC(expect, fesqlResult));
+            }else if(executorType==SQLCaseType.kCLI||executorType==SQLCaseType.kStandaloneCLI){
+                checkList.add(new ResultCheckerByCli(expect, fesqlResult));
             }else {
                 checkList.add(new ResultChecker(expect, fesqlResult));
             }
@@ -59,6 +63,24 @@ public class CheckerStrategy {
         }
         if(MapUtils.isNotEmpty(expect.getOptions())){
             checkList.add(new OptionsChecker(expect, fesqlResult));
+        }
+        if(CollectionUtils.isNotEmpty(expect.getIdxs())){
+            checkList.add(new IndexChecker(expect, fesqlResult));
+        }
+        if (expect.getIndexCount() >= 0) {
+            checkList.add(new IndexCountChecker(expect, fesqlResult));
+        }
+        if(expect.getDeployment()!=null){
+            checkList.add(new DeploymentCheckerByCli(expect, fesqlResult));
+        }
+        if(expect.getDeploymentContains()!=null){
+            checkList.add(new DeploymentContainsCheckerByCli(expect, fesqlResult));
+        }
+        if(expect.getDeploymentCount()>=0){
+            checkList.add(new DeploymentCountCheckerByCli(expect, fesqlResult));
+        }
+        if(expect.getCat()!=null){
+            checkList.add(new CatCheckerByCli(expect, fesqlResult));
         }
         return checkList;
     }
