@@ -48,30 +48,6 @@ public class Common {
         }
     }
 
-    public static DataType sqlTypeToDataType(int sqlType) throws SQLException {
-        if (sqlType == Types.BOOLEAN) {
-            return DataType.kTypeBool;
-        } else if (sqlType == Types.SMALLINT) {
-            return DataType.kTypeInt16;
-        } else if (sqlType == Types.INTEGER) {
-            return DataType.kTypeInt32;
-        } else if (sqlType == Types.BIGINT) {
-            return DataType.kTypeInt64;
-        } else if (sqlType == Types.FLOAT) {
-            return DataType.kTypeFloat;
-        } else if (sqlType == Types.DOUBLE) {
-            return DataType.kTypeDouble;
-        } else if (sqlType == Types.VARCHAR) {
-            return DataType.kTypeString;
-        } else if (sqlType == Types.DATE) {
-            return DataType.kTypeDate;
-        } else if (sqlType == Types.TIMESTAMP) {
-            return DataType.kTypeTimestamp;
-        } else {
-            throw new SQLException("Unexpected value: " + sqlType);
-        }
-    }
-
     public static com._4paradigm.openmldb.sdk.Schema convertSchema(com._4paradigm.openmldb.Schema schema) throws SQLException {
         if (schema == null || schema.GetColumnCnt() == 0) {
             throw new SQLException("schema is null or empty");
@@ -86,5 +62,30 @@ public class Common {
             columnList.add(column);
         }
         return new com._4paradigm.openmldb.sdk.Schema(columnList);
+    }
+
+    public static DataType sqlTypeToDataType(int sqlType) throws SQLException {
+        switch (sqlType) {
+            case Types.BOOLEAN:
+                return DataType.kTypeBool;
+            case Types.SMALLINT:
+                return DataType.kTypeInt16;
+            case Types.INTEGER:
+                return DataType.kTypeInt32;
+            case Types.BIGINT:
+                return DataType.kTypeInt64;
+            case Types.FLOAT:
+                return DataType.kTypeFloat;
+            case Types.DOUBLE:
+                return DataType.kTypeDouble;
+            case Types.VARCHAR:
+                return DataType.kTypeString;
+            case Types.DATE:
+                return DataType.kTypeDate;
+            case Types.TIMESTAMP:
+                return DataType.kTypeTimestamp;
+            default:
+                throw new SQLException("Unexpected Values: " + sqlType);
+        }
     }
 }

@@ -37,12 +37,10 @@ public abstract class BaseExecutor implements IExecutor {
     protected Logger logger = new LogProxy(log);
     protected HttpResult httpResult;
     protected RestfulCase restfulCase;
-    protected SqlExecutor executor;
     protected FesqlResult fesqlResult;
     protected List<String> tableNames;
 
-    public BaseExecutor(SqlExecutor executor,RestfulCase restfulCase){
-        this.executor = executor;
+    public BaseExecutor(RestfulCase restfulCase){
         this.restfulCase = restfulCase;
     }
     @Override

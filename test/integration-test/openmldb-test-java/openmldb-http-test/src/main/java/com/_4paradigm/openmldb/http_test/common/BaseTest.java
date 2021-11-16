@@ -41,7 +41,6 @@ import java.util.List;
 @Slf4j
 public class BaseTest {
     protected Logger reportLog = new LogProxy(log);
-    protected SqlExecutor executor;
     @DataProvider(name = "getCase")
     public Object[] getCaseByYaml(Method method) throws FileNotFoundException {
         String[] casePaths = method.getAnnotation(Yaml.class).filePaths();
@@ -51,42 +50,5 @@ public class BaseTest {
         List<RestfulCaseFile> caseFileList = RestfulCaseFileList.generatorCaseFileList(casePaths);
         List<RestfulCase> cases = RestfulCaseFileList.getCases(caseFileList);
         return cases.toArray();
-    }
-
-    @BeforeTest()
-    @Parameters({"env", "version", "fedbPath"})
-    public void beforeTest(@Optional("qa") String env, @Optional("main") String version, @Optional("") String fedbPath) throws Exception {
-        RestfulGlobalVar.env = env;
-        String caseEnv = System.getProperty("caseEnv");
-        if (!StringUtils.isEmpty(caseEnv)) {
-            RestfulGlobalVar.env = caseEnv;
-        }
-        log.info("fedb global var env: {}", RestfulGlobalVar.env);
-        if (env.equalsIgnoreCase("cluster")) {
-            FEDBDeploy fedbDeploy = new FEDBDeploy(version);
-            fedbDeploy.setFedbPath(fedbPath);
-            fedbDeploy.setCluster(true);
-            RestfulGlobalVar.mainInfo = fedbDeploy.deployFEDB(2, 3);
-        } else if (env.equalsIgnoreCase("standalone")) {
-            FEDBDeploy fedbDeploy = new FEDBDeploy(version);
-            fedbDeploy.setFedbPath(fedbPath);
-            fedbDeploy.setCluster(false);
-            RestfulGlobalVar.mainInfo = fedbDeploy.deployFEDB(2, 3);
-        } else {
-            RestfulGlobalVar.mainInfo = FEDBInfo.builder()
-                    .basePath("/home/zhaowei01/fedb-auto-test/0.2.2")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/0.2.2/openmldb-ns-1/bin/openmldb")
-                    .zk_cluster("172.24.4.55:10000")
-                    .zk_root_path("/openmldb")
-                    .nsNum(2).tabletNum(3)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10001", "172.24.4.55:10002"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10003", "172.24.4.55:10004", "172.24.4.55:10005"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10006"))
-                    .build();
-            FedbGlobalVar.env = "cluster";
-        }
-        FedbClient fesqlClient = new FedbClient(RestfulGlobalVar.mainInfo);
-        executor = fesqlClient.getExecutor();
-        System.out.println("fesqlClient = " + fesqlClient);
     }
 }
