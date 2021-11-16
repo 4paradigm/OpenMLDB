@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+
 #include "base/status.h"
 #include "node/node_manager.h"
 
@@ -35,6 +36,7 @@ class FileOptionsParser {
         check_map_.emplace("delimiter", std::make_pair(CheckDelimiter(), hybridse::node::kVarchar));
         check_map_.emplace("null_value", std::make_pair(CheckNullValue(), hybridse::node::kVarchar));
         check_map_.emplace("header", std::make_pair(CheckHeader(), hybridse::node::kBool));
+        check_map_.emplace("quote", std::make_pair(CheckQuote(), hybridse::node::kVarchar));
     }
 
     ::openmldb::base::Status Parse(const std::shared_ptr<hybridse::node::OptionsMap>& options_map) {
@@ -50,34 +52,42 @@ class FileOptionsParser {
                 return status;
             }
         }
+        if (delimiter_.find_first_of(quote_) != std::string::npos) {
+            return {openmldb::base::kSQLCmdRunError,
+                    "delimiter[" + delimiter_ + "] can't include quote[" + quote_ + "]"};
+        }
         return {};
     }
+
     const std::string& GetFormat() const { return format_; }
     const std::string& GetNullValue() const { return null_value_; }
-    char GetDelimiter() const { return delimiter_; }
+    const std::string& GetDelimiter() const { return delimiter_; }
     bool GetHeader() const { return header_; }
+    const char GetQuote() const { return quote_; }
 
  protected:
     std::map<std::string,
              std::pair<std::function<bool(const hybridse::node::ConstNode* node)>, hybridse::node::DataType>>
         check_map_;
+    char quote_;
 
  private:
     // default options
     std::string format_ = "csv";
     std::string null_value_ = "null";
-    char delimiter_ = ',';
+    std::string delimiter_ = ",";
     bool header_ = true;
 
     ::openmldb::base::Status GetOption(const hybridse::node::ConstNode* node, const std::string& option_name,
-                   std::function<bool(const hybridse::node::ConstNode* node)> const& f,
-                   hybridse::node::DataType option_type) {
+                                       std::function<bool(const hybridse::node::ConstNode* node)> const& f,
+                                       hybridse::node::DataType option_type) {
         if (node == nullptr) {
             return {base::kSQLCmdRunError, "node is nullptr"};
         }
         if (node->GetDataType() != option_type) {
-            return {openmldb::base::kSQLCmdRunError, "wrong type " + hybridse::node::DataTypeName(node->GetDataType())
-                + " for option " + option_name + ", it should be " + hybridse::node::DataTypeName(option_type)};
+            return {openmldb::base::kSQLCmdRunError, "wrong type " + hybridse::node::DataTypeName(node->GetDataType()) +
+                                                         " for option " + option_name + ", it should be " +
+                                                         hybridse::node::DataTypeName(option_type)};
         }
         if (!f(node)) {
             return {base::kSQLCmdRunError, "parse option " + option_name + " failed"};
@@ -95,11 +105,11 @@ class FileOptionsParser {
     }
     std::function<bool(const hybridse::node::ConstNode* node)> CheckDelimiter() {
         return [this](const hybridse::node::ConstNode* node) {
-            auto str = node->GetAsString();
-            if (str.size() != 1) {
+            auto tem = node->GetAsString();
+            if (tem.size() == 0) {
                 return false;
             } else {
-                delimiter_ = str[0];
+                delimiter_ = tem;
                 return true;
             }
         };
@@ -116,16 +126,31 @@ class FileOptionsParser {
             return true;
         };
     }
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckQuote() {
+        return [this](const hybridse::node::ConstNode* node) {
+            auto tem = node->GetAsString();
+            if (tem.size() == 0) {
+                quote_ = '\0';
+                return true;
+            } else if (tem.size() == 1) {
+                quote_ = tem[0];
+                return true;
+            } else {
+                return false;
+            }
+        };
+    }
 };
 
 class ReadFileOptionsParser : public FileOptionsParser {
  public:
-    ReadFileOptionsParser() = default;
+    ReadFileOptionsParser() { quote_ = '\0'; };
 };
 
 class WriteFileOptionsParser : public FileOptionsParser {
  public:
     WriteFileOptionsParser() {
+        quote_ = '\0';
         check_map_.emplace("mode", std::make_pair(CheckMode(), hybridse::node::kVarchar));
     }
     const std::string& GetMode() const { return mode_; }
