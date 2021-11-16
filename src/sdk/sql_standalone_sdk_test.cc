@@ -86,7 +86,7 @@ static bool IsBatchNonPerformanceSensitiveSupportMode(const std::string& mode) {
     }
     return true;
 }
-TEST_P(SQLSDKTest, sql_sdk_batch_test) {
+TEST_P(SQLSDKTest, SqlSdkBatchTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsBatchSupportMode(sql_case.mode())) {
@@ -101,7 +101,7 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     SQLSDKTest::RunBatchModeSDK(sql_case, router, {});
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkRequestTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -112,7 +112,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     RunRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKQueryTest, sql_sdk_batch_request_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkBatchRequestTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
@@ -124,7 +124,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_request_test) {
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkBatchTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsBatchSupportMode(sql_case.mode())) {
@@ -134,7 +134,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
     RunBatchModeSDK(sql_case, router_, {});
 }
-TEST_P(SQLSDKQueryTest, sql_sdk_batch_non_performance_sensitive_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkBatchNonPerformanceSensitiveTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsBatchNonPerformanceSensitiveSupportMode(sql_case.mode())) {
@@ -146,9 +146,11 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_non_performance_sensitive_test) {
         FAIL() << "Fail new cluster sql router";
         return;
     }
-    SQLSDKTest::RunBatchModeSDK(sql_case, router, {}, false);
+    router->SetPerformanceSensitive(false);
+    SQLSDKTest::RunBatchModeSDK(sql_case, router, {});
+    router_->SetPerformanceSensitive(true);
 }
-TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -160,7 +162,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
     LOG(INFO) << "Finish sql_sdk_request_procedure_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureAsynTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -171,7 +173,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
     RunRequestProcedureModeSDK(sql_case, router_, true);
     LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -186,7 +188,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
     RunBatchRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -202,7 +204,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_asyn_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureAsynTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -218,7 +220,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_asyn_test) {
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
-TEST_F(SQLSDKQueryTest, execute_where_test) {
+TEST_F(SQLSDKQueryTest, ExecuteWhereTest) {
     std::string ddl =
         "create table trans(c_sk_seq string,\n"
         "                   cust_no string,\n"
@@ -285,7 +287,7 @@ TEST_F(SQLSDKQueryTest, execute_where_test) {
     ASSERT_EQ(rs->Size(), 0);
 }
 
-TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
+TEST_F(SQLSDKQueryTest, ExecuteInsertLoopsTest) {
     std::string ddl =
         "create table trans(c_sk_seq string,\n"
         "                   cust_no string,\n"
@@ -361,7 +363,7 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
     }
 }
 
-TEST_F(SQLSDKQueryTest, create_no_ts) {
+TEST_F(SQLSDKQueryTest, CreateNoTs) {
     std::string ddl =
         "create table t1(c1 string,\n"
         "                c2 bigint,\n"
@@ -391,7 +393,7 @@ TEST_F(SQLSDKQueryTest, create_no_ts) {
     ASSERT_EQ(rs->Size(), 0);
 }
 
-TEST_F(SQLSDKQueryTest, request_procedure_test) {
+TEST_F(SQLSDKQueryTest, RequestProcedureTest) {
     // create table
     std::string ddl =
         "create table trans(c1 string,\n"
@@ -507,7 +509,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
 }
 
 
-TEST_F(SQLSDKQueryTest, drop_table_with_procedure_test) {
+TEST_F(SQLSDKQueryTest, DropTableWithProcedureTest) {
     // create table trans
     std::string ddl =
         "create table trans(c1 string,\n"
@@ -591,7 +593,7 @@ TEST_F(SQLSDKQueryTest, drop_table_with_procedure_test) {
     // success drop table test_db1.trans after drop all associated procedures
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans;", &status));
 }
-TEST_F(SQLSDKTest, table_reader_scan) {
+TEST_F(SQLSDKTest, TableReaderScan) {
     auto router = router_;
     ASSERT_TRUE(router != nullptr);
     std::string db = GenRand("db");
@@ -620,7 +622,7 @@ TEST_F(SQLSDKTest, table_reader_scan) {
     ASSERT_FALSE(rs->Next());
 }
 
-TEST_F(SQLSDKTest, table_reader_async_scan) {
+TEST_F(SQLSDKTest, TableReaderAsyncScan) {
     auto router = router_;
     ASSERT_TRUE(router != nullptr);
     std::string db = GenRand("db");
@@ -689,7 +691,7 @@ TEST_F(SQLSDKTest, table_reader_async_scan) {
 //    ASSERT_TRUE(router->DropDB(db, &status));
 //}
 
-TEST_F(SQLSDKQueryTest, execute_where_with_parameter) {
+TEST_F(SQLSDKQueryTest, ExecuteWhereWithParameter) {
     std::string ddl =
         "create table trans(c_sk_seq string,\n"
         "                   cust_no string,\n"

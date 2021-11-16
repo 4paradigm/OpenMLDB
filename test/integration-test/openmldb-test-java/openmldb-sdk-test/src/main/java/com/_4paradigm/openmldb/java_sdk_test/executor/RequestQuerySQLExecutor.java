@@ -52,8 +52,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
     }
     @Override
     public FesqlResult execute(String version, SqlExecutor executor) {
-        log.info("version:{} execute begin",version);
-        reportLog.info("version:{} execute begin",version);
+        logger.info("version:{} execute begin",version);
         FesqlResult fesqlResult = null;
         try {
             // List<String> sqls = fesqlCase.getSqls();
@@ -80,8 +79,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
                 if (isBatchRequest) {
                     InputDesc batchRequest = fesqlCase.getBatch_request();
                     if (batchRequest == null) {
-                        log.error("No batch request provided in case");
-                        reportLog.error("No batch request provided in case");
+                        logger.error("No batch request provided in case");
                         return null;
                     }
                     List<Integer> commonColumnIndices = new ArrayList<>();
@@ -102,8 +100,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
                         request = fesqlCase.getInputs().get(0);
                     }
                     if (null == request || CollectionUtils.isEmpty(request.getColumns())) {
-                        log.error("fail to execute in request query sql executor: sql case request columns is empty");
-                        reportLog.error("fail to execute in request query sql executor: sql case request columns is empty");
+                        logger.error("fail to execute in request query sql executor: sql case request columns is empty");
                         return null;
                     }
                     fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, null == fesqlCase.getBatch_request(), sql, request);
@@ -112,42 +109,35 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         }catch (Exception e){
             e.printStackTrace();
         }
-        log.info("version:{} execute end",version);
-        reportLog.info("version:{} execute end",version);
+        logger.info("version:{} execute end",version);
         return fesqlResult;
     }
 
     @Override
     protected void prepare(String version,SqlExecutor executor) {
-        log.info("version:{} prepare begin",version);
-        reportLog.info("version:{} prepare begin",version);
+        logger.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
-        log.info("create db:{},{}", dbName, dbOk);
-        reportLog.info("create db:{},{}", dbName, dbOk);
+        logger.info("create db:{},{}", dbName, dbOk);
         boolean useFirstInputAsRequests = !isBatchRequest && null == fesqlCase.getBatch_request();
         FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), useFirstInputAsRequests);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail");
         }
-        log.info("version:{} prepare end",version);
-        reportLog.info("version:{} prepare end",version);
+        logger.info("version:{} prepare end",version);
     }
 
     @Override
     public boolean verify() {
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("hybridse-only")) {
-            log.info("skip case in request mode: {}", fesqlCase.getDesc());
-            reportLog.info("skip request in cli mode: {}", fesqlCase.getDesc());
+            logger.info("skip case in request mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("request-unsupport")) {
-            log.info("skip case in request mode: {}", fesqlCase.getDesc());
-            reportLog.info("skip case in request mode: {}", fesqlCase.getDesc());
+            logger.info("skip case in request mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-unsupport")) {
-            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
-            reportLog.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("performance-sensitive-unsupport")) {
@@ -156,14 +146,12 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-request-unsupport")) {
-            log.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
-            reportLog.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
+            logger.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (FedbConfig.isCluster() &&
                 null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
-            log.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
-            reportLog.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
+            logger.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
             return false;
         }
         return true;

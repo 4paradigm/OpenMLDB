@@ -44,7 +44,6 @@ public class ColumnsCheckerByJBDC extends BaseChecker {
             return;
         }
         List<String> columnNames = fesqlResult.getColumnNames();
-        List<String> columnTypes = fesqlResult.getColumnTypes();
         Assert.assertEquals(expectColumns.size(),columnNames.size(), "Illegal schema size");
         for (int i = 0; i < expectColumns.size(); i++) {
             Assert.assertEquals(columnNames.get(i), Table.getColumnName(expectColumns.get(i)).replace(" ",""));

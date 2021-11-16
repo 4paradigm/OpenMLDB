@@ -818,8 +818,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
 }
 
 void SetVariable(const std::string& key, const hybridse::node::ConstNode* value) {
-    std::string lower_key = key;
-    boost::to_lower(lower_key);
+    auto lower_key = boost::to_lower_copy(key);
     if (lower_key == "performance_sensitive") {
         if (value->GetDataType() == hybridse::node::kBool) {
             bool performance_sensitive = value->GetBool();

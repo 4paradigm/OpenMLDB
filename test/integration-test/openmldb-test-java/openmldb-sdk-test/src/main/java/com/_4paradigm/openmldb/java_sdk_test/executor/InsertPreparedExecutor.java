@@ -35,7 +35,6 @@ import java.util.Map;
  */
 @Slf4j
 public class InsertPreparedExecutor extends BatchSQLExecutor {
-    private static final Logger logger = new LogProxy(log);
     public InsertPreparedExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
         super(executor, fesqlCase, executorType);
     }

@@ -39,6 +39,8 @@ public class ExecutorFactory {
                 return new MysqlExecutor(fesqlCase,type);
             case kCLI:
                 return new CommandExecutor(fesqlCase,type);
+            case kStandaloneCLI:
+                return new StandaloneCliExecutor(fesqlCase,type);
         }
         return null;
     }
