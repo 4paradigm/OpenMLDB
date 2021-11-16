@@ -65,26 +65,27 @@ public class Common {
     }
 
     public static DataType sqlTypeToDataType(int sqlType) throws SQLException {
-        if (Types.BOOLEAN == sqlType) {
-            return DataType.kTypeBool;
-        } else if (Types.SMALLINT == sqlType) {
-            return DataType.kTypeInt16;
-        } else if (Types.INTEGER == sqlType) {
-            return DataType.kTypeInt32;
-        } else if (Types.BIGINT == sqlType) {
-            return DataType.kTypeInt64;
-        } else if (Types.FLOAT == sqlType) {
-            return DataType.kTypeFloat;
-        } else if (Types.DOUBLE == sqlType) {
-            return DataType.kTypeDouble;
-        } else if (Types.VARCHAR == sqlType) {
-            return DataType.kTypeString;
-        } else if (Types.DATE == sqlType) {
-            return DataType.kTypeDate;
-        } else if (Types.TIMESTAMP == sqlType) {
-            return DataType.kTypeTimestamp;
-        } else {
-            throw new SQLException("Unexpected Values: " + sqlType);
+        switch (sqlType) {
+            case Types.BOOLEAN:
+                return DataType.kTypeBool;
+            case Types.SMALLINT:
+                return DataType.kTypeInt16;
+            case Types.INTEGER:
+                return DataType.kTypeInt32;
+            case Types.BIGINT:
+                return DataType.kTypeInt64;
+            case Types.FLOAT:
+                return DataType.kTypeFloat;
+            case Types.DOUBLE:
+                return DataType.kTypeDouble;
+            case Types.VARCHAR:
+                return DataType.kTypeString;
+            case Types.DATE:
+                return DataType.kTypeDate;
+            case Types.TIMESTAMP:
+                return DataType.kTypeTimestamp;
+            default:
+                throw new SQLException("Unexpected Values: " + sqlType);
         }
     }
 }
