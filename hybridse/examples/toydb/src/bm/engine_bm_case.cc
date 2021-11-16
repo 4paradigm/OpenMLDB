@@ -109,7 +109,7 @@ static void EngineRequestMode(const std::string sql, MODE mode,
     auto catalog = vm::BuildOnePkTableStorage(size);
     vm::EngineOptions options;
     if (hybridse::sqlcase::SqlCase::IsCluster()) {
-        options.set_cluster_optimized(true);
+        options.SetClusterOptimized(true);
     }
     Engine engine(catalog, options);
     RequestRunSession session;
@@ -827,18 +827,18 @@ void EngineBenchmarkOnCase(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
 
     vm::EngineOptions engine_options;
     if (engine_mode == vm::kBatchRequestMode) {
-        engine_options.set_batch_request_optimized(
+        engine_options.SetBatchRequestOptimized(
             sql_case.batch_request_optimized_);
     }
     if (hybridse::sqlcase::SqlCase::IsCluster()) {
-        engine_options.set_cluster_optimized(true);
+        engine_options.SetClusterOptimized(true);
     } else {
-        engine_options.set_cluster_optimized(false);
+        engine_options.SetClusterOptimized(false);
     }
     if (hybridse::sqlcase::SqlCase::IsDisableExprOpt()) {
-        engine_options.set_enable_expr_optimize(false);
+        engine_options.SetEnableExprOptimize(false);
     } else {
-        engine_options.set_enable_expr_optimize(true);
+        engine_options.SetEnableExprOptimize(true);
     }
     std::unique_ptr<vm::EngineTestRunner> engine_runner;
     if (engine_mode == vm::kBatchMode) {

@@ -45,23 +45,23 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
     @Override
     public boolean verify() {
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("hybridse-only")) {
-            log.info("skip case in batch mode: {}", fesqlCase.getDesc());
-            reportLog.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            logger.info("skip case in batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("batch-unsupport")) {
-            log.info("skip case in batch mode: {}", fesqlCase.getDesc());
-            reportLog.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            logger.info("skip case in batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-batch-unsupport")) {
-            log.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
-            reportLog.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
+            logger.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-unsupport")) {
-            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
-            reportLog.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            return false;
+        }
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("performance-sensitive-unsupport")) {
+            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
             return false;
         }
         return true;
@@ -69,23 +69,19 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
 
     @Override
     public void prepare(String version,SqlExecutor executor){
-        log.info("version:{} prepare begin",version);
-        reportLog.info("version:{} prepare begin",version);
+        logger.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
-        log.info("version:{},create db:{},{}", version, dbName, dbOk);
-        reportLog.info("version:{},create db:{},{}", version, dbName, dbOk);
+        logger.info("version:{},create db:{},{}", version, dbName, dbOk);
         FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), false);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
         }
-        log.info("version:{} prepare end",version);
-        reportLog.info("version:{} prepare end",version);
+        logger.info("version:{} prepare end",version);
     }
 
     @Override
     public FesqlResult execute(String version,SqlExecutor executor){
-        log.info("version:{} execute begin",version);
-        reportLog.info("version:{} execute begin",version);
+        logger.info("version:{} execute begin",version);
         FesqlResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
@@ -109,8 +105,7 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
             }
             fesqlResult = FesqlUtil.sql(executor, dbName, sql);
         }
-        log.info("version:{} execute end",version);
-        reportLog.info("version:{} execute end",version);
+        logger.info("version:{} execute end",version);
         return fesqlResult;
     }
 }

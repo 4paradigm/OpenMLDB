@@ -16,8 +16,10 @@
 
 package com._4paradigm.openmldb.java_sdk_test.entity;
 
+import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com.google.common.base.Joiner;
 import lombok.Data;
+import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.List;
 
@@ -35,9 +37,9 @@ public class FesqlResult {
     private List<List<Object>> result;
     private List<String> columnNames;
     private List<String> columnTypes;
-    // private Schema resultSchema;
-    // private ResultSetMetaData metaData;
-    // private ResultSet rs;
+    private OpenMLDBSchema schema;
+    private OpenmldbDeployment deployment;
+    private List<OpenmldbDeployment> deployments;
 
     @Override
     public String toString() {
@@ -50,11 +52,20 @@ public class FesqlResult {
         builder.append("}");
         if (result != null) {
             builder.append("result=" + result.size() + ":\n");
-            for(int i=0;i<columnNames.size();i++){
-                builder.append(columnNames.get(i))
-                        .append(" ")
-                        .append(columnTypes.get(i))
-                        .append(",");
+            if(CollectionUtils.isNotEmpty(columnTypes)){
+                for(int i=0;i<columnNames.size();i++){
+                    builder.append(columnNames.get(i))
+                            .append(" ")
+                            .append(columnTypes.get(i))
+                            .append(",");
+                }
+            }else{
+                if(CollectionUtils.isNotEmpty(columnNames)) {
+                    for (int i = 0; i < columnNames.size(); i++) {
+                        builder.append(columnNames.get(i))
+                                .append(",");
+                    }
+                }
             }
             builder.append("\n");
             for (int i = 0; i < result.size(); i++) {

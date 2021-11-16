@@ -1,0 +1,32 @@
+smoke
+
+create table test_smoke(
+    id int,
+    c1_smallint smallint,
+    c2_int int,
+    c3_bigint bigint,
+    c4_float float,
+    c5_double double,
+    c6_string string,
+    c7_timestamp timestamp,
+    c8_date date,
+    c9_bool bool,
+    index(key=c6_string,ts=c7_timestamp,ttl=0,ttl_type=absolute)
+)options(partitionnum = 8,replicanum = 3);
+
+
+
+100millions
+
+create table test_smoke(
+    id int,
+    c1_smallint smallint,
+    c2_int int,
+    c3_bigint bigint,
+    c4_float float,
+    c5_double double,
+    c6_string string,
+    c7_timestamp timestamp,
+    c8_date date,
+    c9_bool bool,
+    index(key=c6_string,ts=c7_timestamp);

@@ -24,7 +24,11 @@ bool PlanAPI::CreatePlanTreeFromScript(const std::string &sql, PlanNodeList &pla
                                        Status &status, bool is_batch_mode, bool is_cluster,
                                        bool enable_batch_window_parallelization) {
     std::unique_ptr<zetasql::ParserOutput> parser_output;
-    auto zetasql_status = zetasql::ParseScript(sql, zetasql::ParserOptions(),
+    zetasql::ParserOptions parser_opts;
+    zetasql::LanguageOptions language_opts;
+    language_opts.EnableLanguageFeature(zetasql::FEATURE_V_1_3_COLUMN_DEFAULT_VALUE);
+    parser_opts.set_language_options(&language_opts);
+    auto zetasql_status = zetasql::ParseScript(sql, parser_opts,
                                                zetasql::ERROR_MESSAGE_MULTI_LINE_WITH_CARET, &parser_output);
     zetasql::ErrorLocation location;
     if (!zetasql_status.ok()) {

@@ -33,12 +33,12 @@ public class CreateImportData {
         if(!dataDirectory.exists()){
             dataDirectory.mkdir();
         }
-        String fileName = "csv-import-50million.csv";
+        String fileName = "csv-import-1000w.csv";
         String filePath = dataDirectory.getAbsolutePath()+"/"+fileName;
         PrintWriter out = new PrintWriter(filePath);
         out.println("id,c1_smallint,c2_int,c3_bigint,c4_float,c5_double,c6_string,c7_timestamp,c8_date,c9_bool");
         int size = 10000;
-        int total = 50000000;
+        int total = 10000000;
         for(int i=1;i<=total;i++){
             int id = i;
             short c1_smallint = (short) ran.nextInt();

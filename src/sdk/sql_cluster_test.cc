@@ -55,7 +55,144 @@ class MockClosure : public ::google::protobuf::Closure {
     void Run() {}
 };
 
-TEST_F(SQLClusterTest, cluster_insert) {
+class SQLClusterDDLTest : public SQLClusterTest {
+ public:
+    void SetUp() {
+        SQLRouterOptions sql_opt;
+        sql_opt.zk_cluster = mc_->GetZkCluster();
+        sql_opt.zk_path = mc_->GetZkPath();
+        router = NewClusterSQLRouter(sql_opt);
+        ASSERT_TRUE(router != nullptr);
+        db = "db" + GenRand();
+        ::hybridse::sdk::Status status;
+        ASSERT_TRUE(router->CreateDB(db, &status));
+    }
+
+    void TearDown() {
+        ::hybridse::sdk::Status status;
+        ASSERT_TRUE(router->DropDB(db, &status));
+        router.reset();
+    }
+
+    void RightDDL(const std::string& name, const std::string& ddl) {
+        ::hybridse::sdk::Status status;
+        ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+        ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
+    }
+
+    void WrongDDL(const std::string& name, const std::string& ddl) {
+        ::hybridse::sdk::Status status;
+        ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+        ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
+    }
+
+    std::shared_ptr<SQLRouter> router;
+    std::string db;
+};
+
+TEST_F(SQLClusterDDLTest, ColumnDefaultValue) {
+    std::string name = "test" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string ddl;
+    ddl = "create table " + name +
+          "("
+          "col1 bool default true, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    RightDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 bool default 12, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    RightDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 int default 12, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    RightDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 bigint default 50000000000l, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    RightDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 float default 123, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    RightDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 float default 1.23, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    RightDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 double default 0.1, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    RightDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 date default '2021-10-01', col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    RightDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 timestamp default 1634890378, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    RightDDL(name, ddl);
+}
+
+TEST_F(SQLClusterDDLTest, ColumnDefaultValueWrongType) {
+    std::string name = "test" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string ddl;
+    ddl = "create table " + name +
+          "("
+          "col1 bool default test, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    WrongDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 int default 'test', col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    WrongDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 int default 1.0, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    WrongDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 int default 1+1, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    WrongDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 string default 12, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    WrongDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 double default 'test', col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    WrongDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 date default 'test', col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    WrongDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 date default 1234, col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    WrongDDL(name, ddl);
+    ddl = "create table " + name +
+          "("
+          "col1 timestamp default 'test', col2 bigint not null, col3 string,"
+          "index(key=col3, ts=col2));";
+    WrongDDL(name, ddl);
+}
+
+TEST_F(SQLClusterTest, ClusterInsert) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -79,7 +216,7 @@ TEST_F(SQLClusterTest, cluster_insert) {
         std::string insert = "insert into " + name + " values('" + key + "', 1590);";
         ok = router->ExecuteInsert(db, insert, &status);
         ASSERT_TRUE(ok);
-        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % 8);
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key) % 8);
         key_map[pid].push_back(key);
     }
     auto endpoints = mc_->GetTbEndpoint();
@@ -97,6 +234,73 @@ TEST_F(SQLClusterTest, cluster_insert) {
         }
     }
     ASSERT_EQ(100u, count);
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
+}
+
+TEST_F(SQLClusterTest, ClusterInsertWithColumnDefaultValue) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 int not null,"
+                      "col2 bigint default 112 not null,"
+                      "col4 string default 'test4' not null,"
+                      "col5 date default '2000-01-01' not null,"
+                      "col6 timestamp default 10000 not null,"
+                      "index(key=col1, ts=col2)) options(partitionnum=1);";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string sql;
+    sql = "insert into " + name + " values(1, 1, '1', '2021-01-01', 1);";
+    ASSERT_TRUE(router->ExecuteInsert(db, sql, &status));
+    auto res = router->ExecuteSQL(db, "select * from " + name + " where col1=1", &status);
+    ASSERT_TRUE(res);
+    ASSERT_TRUE(res->Next());
+    ASSERT_EQ("1, 1, 1, 2021-01-01, 1", res->GetRowString());
+    ASSERT_FALSE(res->Next());
+
+    sql = "insert into " + name + "(col1, col2) values(2, 2);";
+    ASSERT_TRUE(router->ExecuteInsert(db, sql, &status));
+    res = router->ExecuteSQL(db, "select * from " + name + " where col1=2", &status);
+    ASSERT_TRUE(res);
+    ASSERT_TRUE(res->Next());
+    ASSERT_EQ("2, 2, test4, 2000-01-01, 10000", res->GetRowString());
+    ASSERT_FALSE(res->Next());
+    sql = "insert into " + name + "(col1) values(3);";
+    ASSERT_TRUE(router->ExecuteInsert(db, sql, &status));
+    res = router->ExecuteSQL(db, "select * from " + name + " where col1=3", &status);
+    ASSERT_TRUE(res);
+    ASSERT_TRUE(res->Next());
+    ASSERT_EQ("3, 112, test4, 2000-01-01, 10000", res->GetRowString());
+    ASSERT_FALSE(res->Next());
+    sql = "insert into " + name + "(col2) values(4);";
+    ASSERT_FALSE(router->ExecuteInsert(db, sql, &status));
+
+    auto endpoints = mc_->GetTbEndpoint();
+    uint32_t count = 0;
+    for (const auto& endpoint : endpoints) {
+        ::openmldb::tablet::TabletImpl* tb1 = mc_->GetTablet(endpoint);
+        ::openmldb::api::GetTableStatusRequest request;
+        ::openmldb::api::GetTableStatusResponse response;
+        MockClosure closure;
+        tb1->GetTableStatus(NULL, &request, &response, &closure);
+        for (const auto& table_status : response.all_table_status()) {
+            count += table_status.record_cnt();
+        }
+    }
+    ASSERT_EQ(3u, count);
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(db, &status);
@@ -162,6 +366,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
 static bool IsRequestSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
         mode.find("rtidb-unsupport") != std::string::npos ||
+        mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("request-unsupport") != std::string::npos
         || mode.find("cluster-unsupport") != std::string::npos) {
         return false;
@@ -171,6 +376,7 @@ static bool IsRequestSupportMode(const std::string& mode) {
 static bool IsBatchRequestSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
         mode.find("rtidb-unsupport") != std::string::npos ||
+        mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("batch-request-unsupport") != std::string::npos ||
         mode.find("request-unsupport") != std::string::npos
         || mode.find("cluster-unsupport") != std::string::npos) {
@@ -181,13 +387,14 @@ static bool IsBatchRequestSupportMode(const std::string& mode) {
 static bool IsBatchSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
         mode.find("rtidb-unsupport") != std::string::npos ||
+        mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("batch-unsupport") != std::string::npos
         || mode.find("cluster-unsupport") != std::string::npos) {
         return false;
     }
     return true;
 }
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -202,7 +409,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_test) {
     DistributeRunBatchRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -218,7 +425,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_test) {
     LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -229,7 +436,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_test) {
     DistributeRunRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_distribute_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_single_partition_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeBatchRequestSinglePartitionTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -245,7 +452,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_single_partition_test) 
     LOG(INFO) << "Finish sql_sdk_distribute_batch_request_single_partition_test: ID: " << sql_case.id()
               << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_partition_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestSinglePartitionTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -278,7 +485,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_part
               << ", DESC: " << sql_case.desc();
 } */
 
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -295,7 +502,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_t
               << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -307,7 +514,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_test) {
     LOG(INFO) << "Finish sql_sdk_distribute_request_procedure_test: ID: " << sql_case.id()
               << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_async_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureAsyncTest) {
     auto sql_case = GetParam();
     if (!IsRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -324,7 +531,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_a
               << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_async_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureAsyncTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -337,7 +544,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_async_test) {
               << ", DESC: " << sql_case.desc();
 }
 
-TEST_F(SQLClusterTest, create_table) {
+TEST_F(SQLClusterTest, CreateTable) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -381,7 +588,7 @@ TEST_F(SQLClusterTest, create_table) {
     ASSERT_TRUE(router->DropDB(db, &status));
 }
 
-TEST_F(SQLClusterTest, get_table_schema) {
+TEST_F(SQLClusterTest, GetTableSchema) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();

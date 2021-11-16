@@ -46,8 +46,7 @@ public class QueryPreparedExecutor extends BatchSQLExecutor {
 
     @Override
     public FesqlResult execute(String version, SqlExecutor executor){
-        log.info("version:{} execute begin",version);
-        reportLog.info("version:{} execute begin",version);
+        logger.info("version:{} execute begin",version);
         FesqlResult fesqlResult = null;
         // List<String> sqls = fesqlCase.getSqls();
         // if (sqls != null && sqls.size() > 0) {
@@ -74,8 +73,7 @@ public class QueryPreparedExecutor extends BatchSQLExecutor {
             List<Object> objects = parameters.getRows().get(0);
             fesqlResult = FesqlUtil.selectWithPrepareStatement(executor, dbName,sql, types,objects);
         }
-        log.info("version:{} execute end",version);
-        reportLog.info("version:{} execute end",version);
+        logger.info("version:{} execute end",version);
         return fesqlResult;
     }
 }

@@ -47,70 +47,70 @@ class EngineOptions {
     EngineOptions();
 
     /// Set `true` to enable storing ir results into SqlContext, default `false`.
-    inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
+    inline void SetKeepIr(bool flag) { this->keep_ir_ = flag; }
     /// Return if support to store ir results into SqlContext.
-    inline bool is_keep_ir() const { return this->keep_ir_; }
+    inline bool IsKeepIr() const { return this->keep_ir_; }
 
     /// Set `true` if only support to compile SQL, default `false`
     ///
     /// If set `true`, the engine won't generate runner plan as well.
-    inline void set_compile_only(bool flag) { this->compile_only_ = flag; }
+    inline void SetCompileOnly(bool flag) { this->compile_only_ = flag; }
     /// Return if only support to compile physical plan.
-    inline bool is_compile_only() const { return compile_only_; }
+    inline bool IsCompileOnly() const { return compile_only_; }
 
 
     /// Set `true` if the engine only generate physical plan, default `false`.
     ///
     /// If set `true`, the engine won't build llvm jit.
-    inline void set_plan_only(bool flag) { plan_only_ = flag; }
+    inline void SetPlanOnly(bool flag) { plan_only_ = flag; }
     /// Return `true` if the engine only generate physical plan.
-    inline bool is_plan_only() const { return plan_only_; }
+    inline bool IsPlanOnly() const { return plan_only_; }
 
     /// Set `true` to enable cluster optimization, default `false`
-    inline EngineOptions* set_cluster_optimized(bool flag) {
+    inline EngineOptions* SetClusterOptimized(bool flag) {
         cluster_optimized_ = flag;
         return this;
     }
     /// Return if the engine support cluster optimization.
-    inline bool is_cluster_optimzied() const { return cluster_optimized_; }
+    inline bool IsClusterOptimzied() const { return cluster_optimized_; }
 
     /// Set `true` to enable batch request optimization, default `true`.
-    inline EngineOptions* set_batch_request_optimized(bool flag) {
+    inline EngineOptions* SetBatchRequestOptimized(bool flag) {
         batch_request_optimized_ = flag;
         return this;
     }
     /// Return if the engine support batch request optimization.
-    inline bool is_batch_request_optimized() const { return batch_request_optimized_; }
+    inline bool IsBatchRequestOptimized() const { return batch_request_optimized_; }
 
     /// Set `true` to enable expression optimization, default `true`.
-    inline EngineOptions* set_enable_expr_optimize(bool flag) {
+    inline EngineOptions* SetEnableExprOptimize(bool flag) {
         enable_expr_optimize_ = flag;
         return this;
     }
     /// Return if the engine support expression optimization
-    inline bool is_enable_expr_optimize() const { return enable_expr_optimize_; }
+    inline bool IsEnableExprOptimize() const { return enable_expr_optimize_; }
 
     /// Set `true` to enable batch window parallelization, default `false`.
-    inline EngineOptions* set_enable_batch_window_parallelization(bool flag) {
+    inline EngineOptions* SetEnableBatchWindowParallelization(bool flag) {
         enable_batch_window_parallelization_ = flag;
         return this;
     }
     /// Return if the engine support batch window parallelization.
-    inline bool is_enable_batch_window_parallelization() const {
+    inline bool IsEnableBatchWindowParallelization() const {
         return enable_batch_window_parallelization_;
     }
 
     /// Set the maximum number of cache entries, default is `50`.
-    inline void set_max_sql_cache_size(uint32_t size) {
+    inline void SetMaxSqlCacheSize(uint32_t size) {
         max_sql_cache_size_ = size;
     }
     /// Return the maximum number of entries we can hold for compiling cache.
-    inline uint32_t max_sql_cache_size() const { return max_sql_cache_size_; }
+    inline uint32_t GetMaxSqlCacheSize() const { return max_sql_cache_size_; }
 
     /// Set `true` to enable spark unsafe row format, default `false`.
-    EngineOptions* set_enable_spark_unsaferow_format(bool flag);
+    EngineOptions* SetEnableSparkUnsaferowFormat(bool flag);
     /// Return if the engine can support can support spark unsafe row format.
-    inline bool is_enable_spark_unsaferow_format() const {
+    inline bool IsEnableSparkUnsaferowFormat() const {
         return enable_spark_unsaferow_format_;
     }
 

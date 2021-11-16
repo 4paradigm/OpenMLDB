@@ -29,4 +29,5 @@ public class FedbGlobalVar {
     public static String version;
     public static String fedbPath;
     public static FEDBInfo mainInfo;
+    public static String dbName = "test_zw";
 }
