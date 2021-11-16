@@ -16,15 +16,30 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.openmldb.*;
+import com._4paradigm.openmldb.ColumnDescPair;
+import com._4paradigm.openmldb.ColumnDescVector;
+import com._4paradigm.openmldb.ExplainInfo;
+import com._4paradigm.openmldb.ResultSet;
+import com._4paradigm.openmldb.SQLInsertRow;
+import com._4paradigm.openmldb.SQLInsertRows;
+import com._4paradigm.openmldb.SQLRequestRow;
+import com._4paradigm.openmldb.SQLRouter;
+import com._4paradigm.openmldb.SQLRouterOptions;
+import com._4paradigm.openmldb.Status;
+import com._4paradigm.openmldb.TableColumnDescPair;
+import com._4paradigm.openmldb.TableColumnDescPairVector;
+import com._4paradigm.openmldb.TableReader;
+import com._4paradigm.openmldb.VectorString;
 import com._4paradigm.openmldb.common.LibraryLoader;
-import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
+import com._4paradigm.openmldb.sdk.Column;
+import com._4paradigm.openmldb.sdk.Common;
 import com._4paradigm.openmldb.sdk.Schema;
-
-import java.util.Map;
-
+import com._4paradigm.openmldb.sdk.SdkOption;
+import com._4paradigm.openmldb.sdk.SqlException;
+import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,17 +47,12 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class SqlClusterExecutor implements SqlExecutor {
     static {
         String libname = "sql_jsdk";
-        String osName = System.getProperty("os.name").toLowerCase();
-        // TODO(hw): what's the meaning?
-        if (osName.equals("mac os x")) {
-            LibraryLoader.loadLibrary(libname);
-        } else {
-            LibraryLoader.loadLibrary(libname);
-        }
+        LibraryLoader.loadLibrary(libname);
     }
 
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
@@ -72,7 +82,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("executeDDL fail: {}", status.getMsg());
         }
         status.delete();
-        status = null;
         return ok;
     }
 
@@ -84,7 +93,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("executeInsert fail: {}", status.getMsg());
         }
         status.delete();
-        status = null;
         return ok;
     }
 
@@ -96,7 +104,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("executeInsert fail: {}", status.getMsg());
         }
         status.delete();
-        status = null;
         return ok;
     }
 
@@ -108,7 +115,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("executeInsert fail: {}", status.getMsg());
         }
         status.delete();
-        status = null;
         return ok;
     }
 
@@ -120,7 +126,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("executeSQL fail: {}", status.getMsg());
         }
         status.delete();
-        status = null;
         return new SQLResultSet(rs);
     }
 
@@ -132,41 +137,34 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }
         status.delete();
-        status = null;
         return row;
     }
 
     public PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException {
-        InsertPreparedStatementImpl impl = new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
-        return impl;
+        return new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
     }
 
     public PreparedStatement getRequestPreparedStmt(String db, String sql) throws SQLException {
-        RequestPreparedStatementImpl impl = new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
-        return impl;
+        return new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
     }
 
     public PreparedStatement getPreparedStatement(String db, String sql) throws SQLException {
-        PreparedStatementImpl impl = new PreparedStatementImpl(db, sql, this.sqlRouter);
-        return impl;
+        return new PreparedStatementImpl(db, sql, this.sqlRouter);
     }
 
     public PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
                                                          List<Integer> commonColumnIndices) throws SQLException {
-        BatchRequestPreparedStatementImpl impl = new BatchRequestPreparedStatementImpl(
+        return new BatchRequestPreparedStatementImpl(
                 db, sql, this.sqlRouter, commonColumnIndices);
-        return impl;
     }
 
     public CallablePreparedStatement getCallablePreparedStmt(String db, String spName) throws SQLException {
-        CallablePreparedStatementImpl impl = new CallablePreparedStatementImpl(db, spName, this.sqlRouter);
-        return impl;
+        return new CallablePreparedStatementImpl(db, spName, this.sqlRouter);
     }
 
     @Override
     public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String spName) throws SQLException {
-        BatchCallablePreparedStatementImpl impl = new BatchCallablePreparedStatementImpl(db, spName, this.sqlRouter);
-        return impl;
+        return new BatchCallablePreparedStatementImpl(db, spName, this.sqlRouter);
     }
 
     @Override
@@ -177,7 +175,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }
         status.delete();
-        status = null;
         return rows;
     }
 
@@ -190,7 +187,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }
         status.delete();
-        status = null;
         return rs;
     }
 
@@ -201,14 +197,12 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (status.getCode() != 0 || explain == null) {
             String msg = status.getMsg();
             status.delete();
-            status = null;
             if (explain != null) {
                 explain.delete();
             }
             throw new SQLException("getInputSchema fail! msg: " + msg);
         }
         status.delete();
-        status = null;
         List<Column> columnList = new ArrayList<>();
         com._4paradigm.openmldb.Schema schema = explain.GetInputSchema();
         for (int i = 0; i < schema.GetColumnCnt(); i++) {
@@ -243,14 +237,12 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (procedureInfo == null || status.getCode() != 0) {
             String msg = status.getMsg();
             status.delete();
-            status = null;
             if (procedureInfo != null) {
                 procedureInfo.delete();
             }
             throw new SQLException("show procedure failed, msg: " + msg);
         }
         status.delete();
-        status = null;
         com._4paradigm.openmldb.sdk.ProcedureInfo spInfo = new com._4paradigm.openmldb.sdk.ProcedureInfo();
         spInfo.setDbName(procedureInfo.GetDbName());
         spInfo.setProName(procedureInfo.GetSpName());
@@ -321,7 +313,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("create db fail: {}", status.getMsg());
         }
         status.delete();
-        status = null;
         return ok;
     }
 
@@ -338,7 +329,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("drop db fail: {}", status.getMsg());
         }
         status.delete();
-        status = null;
         return ok;
     }
 
