@@ -329,7 +329,7 @@ cases:
       success: false
   -
     id: 13
-    desc: option key错误
+    desc: option header 值错误
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -342,7 +342,7 @@ cases:
       success: false
   -
     id: 14
-    desc: option key错误
+    desc: format 其他格式
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -876,7 +876,19 @@ cases:
         - [1,"aa",1590738989000]
         - [2,"bb",1590738990000]
         - [3,"cc",1590738991000]
-
+  -
+    id: 38
+    desc: mode 值错误
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(mode='true');
+    expect:
+      success: false
 
 
 

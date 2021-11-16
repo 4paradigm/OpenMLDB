@@ -26,7 +26,8 @@ public class CommandResultUtil {
         String tmp = s.toLowerCase();
         return tmp.contains("fail")||tmp.contains("error")||tmp.contains("unknow")||tmp.contains("unsupported")||
                 tmp.contains("not an astint")||tmp.contains("already exists")||tmp.contains("not supported")
-                ||tmp.contains("not found")||tmp.contains("un-support")||tmp.contains("invalid")||tmp.contains("distribution element is not");
+                ||tmp.contains("not found")||tmp.contains("un-support")||tmp.contains("invalid")
+                ||tmp.contains("distribution element is not")||tmp.contains("is not currently supported");
     }
     public static OpenMLDBSchema parseSchema(List<String> lines){
         OpenMLDBSchema schema = new OpenMLDBSchema();
@@ -53,7 +54,7 @@ public class CommandResultUtil {
             String[] infos = line.split("\\s+");
             index.setId(Integer.parseInt(infos[0]));
             index.setIndexName(infos[1]);
-            index.setKeys(Arrays.asList(infos[2].split(",")));
+            index.setKeys(Arrays.asList(infos[2].split("\\|")));
             index.setTs(infos[3]);
             index.setTtl(infos[4]);
             index.setTtlType(infos[5]);
