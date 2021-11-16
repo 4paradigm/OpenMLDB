@@ -117,6 +117,8 @@ cases:
     id: 6-2
     desc: 表名为非保留关键字
     sqlDialect: ["HybridSQL"]
+    inputs:
+      - name: table
     sql: create table table(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
     expect:
       success: true
@@ -138,14 +140,14 @@ cases:
     id: 9
     desc: 语句缺少分号
     sqlDialect: ["HybridSQL"]
-    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
     expect:
       success: true
   -
     id: 10
     desc: 列的类型不存在
     sqlDialect: ["HybridSQL"]
-    sql: create table {auto}(c1 varchar2 NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+    sql: create table {auto}(c1 varchar2 NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
     expect:
       success: false
   -
@@ -172,6 +174,7 @@ cases:
   -
     id: 14
     desc: 创建index不指定col
+    mode: standalone-unsupport
     sqlDialect: ["HybridSQL"]
     sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(ts=c4,ttl=0m));
     expect:
@@ -396,6 +399,7 @@ cases:
     id: 37
     desc: create with replica num
     sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -408,7 +412,9 @@ cases:
   -
     id: 38
     desc: create with replica num and distribution
+    mode: standalone-unsupport
     sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -422,7 +428,9 @@ cases:
   -
     id: 39
     desc: create with replica num and distribution
+    mode: standalone-unsupport
     sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -436,7 +444,9 @@ cases:
   -
     id: 40
     desc: create with replica num and distribution
+    mode: standalone-unsupport
     sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -451,6 +461,7 @@ cases:
     id: 41
     desc: create with partition num
     sqlDialect: ["HybridSQL"]
+#    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -464,6 +475,7 @@ cases:
     id: 42
     desc: create with partition num
     sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,

@@ -137,6 +137,7 @@ void CheckOptimizePlan(const SqlCase& sql_case_org,
     SqlCase sql_case = sql_case_org;
     if (boost::contains(sql_case.mode(), "request-unsupport") ||
         boost::contains(sql_case.mode(), "zetasql-unsupport") ||
+        boost::contains(sql_case.mode(), "performance-sensitive-unsupport") ||
         boost::contains(sql_case.mode(), "rtidb-unsupport")) {
         LOG(INFO) << "Skip mode " << sql_case.mode();
         return;

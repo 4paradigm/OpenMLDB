@@ -98,13 +98,6 @@ public class FedbConfig {
         }else{
             ADD_REPORT_LOG = true;
         }
-        // mainInfo = FEDBInfo.builder()
-        //         .nsNum(2)
-        //         .tabletNum(3)
-        //         .zk_cluster(ZK_CLUSTER)
-        //         .tabletEndpoints(Lists.newArrayList(tb_endpoint_0, tb_endpoint_1, tb_endpoint_2))
-        //         .zk_root_path(ZK_ROOT_PATH)
-        //         .build();
         String init_env = CONFIG.getProperty(FedbGlobalVar.env + "_init_version_env");
         if (StringUtils.isNotEmpty(init_env)) {
             INIT_VERSION_ENV = Boolean.parseBoolean(init_env);

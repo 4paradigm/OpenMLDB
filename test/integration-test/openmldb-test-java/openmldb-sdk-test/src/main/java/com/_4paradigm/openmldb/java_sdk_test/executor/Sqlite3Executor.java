@@ -45,15 +45,13 @@ public class Sqlite3Executor extends JDBCExecutor{
         if(sqlDialect.contains(DBType.ANSISQL.name())|| sqlDialect.contains(DBType.SQLITE3.name())){
             return true;
         }
-        log.info("skip case in sqlite3 mode: {}", fesqlCase.getDesc());
-        reportLog.info("skip case in sqlite3 mode: {}", fesqlCase.getDesc());
+        logger.info("skip case in sqlite3 mode: {}", fesqlCase.getDesc());
         return false;
     }
 
     @Override
     public void prepare() {
-        log.info("sqlite3 prepare begin");
-        reportLog.info("sqlite3 prepare begin");
+        logger.info("sqlite3 prepare begin");
         for(InputDesc inputDesc:fesqlCase.getInputs()) {
             String createSql = Sqlite3Util.getCreateTableSql(inputDesc);
             JDBCUtil.executeUpdate(createSql,DBType.SQLITE3);
@@ -62,14 +60,12 @@ public class Sqlite3Executor extends JDBCExecutor{
                 throw new RuntimeException("fail to run Sqlite3Executor: prepare fail");
             }
         }
-        log.info("sqlite3 prepare end");
-        reportLog.info("sqlite3 prepare end");
+        logger.info("sqlite3 prepare end");
     }
 
     @Override
     public void execute() {
-        log.info("sqlite3 execute begin");
-        reportLog.info("sqlite3 execute begin");
+        logger.info("sqlite3 execute begin");
         FesqlResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
@@ -84,14 +80,12 @@ public class Sqlite3Executor extends JDBCExecutor{
             fesqlResult = JDBCUtil.executeQuery(sql,DBType.SQLITE3);
         }
         mainResult = fesqlResult;
-        log.info("sqlite3 execute end");
-        reportLog.info("sqlite3 execute end");
+        logger.info("sqlite3 execute end");
     }
 
     @Override
     public void tearDown() {
-        log.info("sqlite3,begin drop table");
-        reportLog.info("sqlite3,begin drop table");
+        logger.info("sqlite3,begin drop table");
         List<InputDesc> tables = fesqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;

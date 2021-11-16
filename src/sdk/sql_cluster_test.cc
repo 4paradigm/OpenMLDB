@@ -55,7 +55,7 @@ class MockClosure : public ::google::protobuf::Closure {
     void Run() {}
 };
 
-TEST_F(SQLClusterTest, cluster_insert) {
+TEST_F(SQLClusterTest, ClusterInsert) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -79,7 +79,7 @@ TEST_F(SQLClusterTest, cluster_insert) {
         std::string insert = "insert into " + name + " values('" + key + "', 1590);";
         ok = router->ExecuteInsert(db, insert, &status);
         ASSERT_TRUE(ok);
-        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % 8);
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key) % 8);
         key_map[pid].push_back(key);
     }
     auto endpoints = mc_->GetTbEndpoint();
@@ -162,6 +162,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
 static bool IsRequestSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
         mode.find("rtidb-unsupport") != std::string::npos ||
+        mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("request-unsupport") != std::string::npos
         || mode.find("cluster-unsupport") != std::string::npos) {
         return false;
@@ -171,6 +172,7 @@ static bool IsRequestSupportMode(const std::string& mode) {
 static bool IsBatchRequestSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
         mode.find("rtidb-unsupport") != std::string::npos ||
+        mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("batch-request-unsupport") != std::string::npos ||
         mode.find("request-unsupport") != std::string::npos
         || mode.find("cluster-unsupport") != std::string::npos) {
@@ -181,13 +183,14 @@ static bool IsBatchRequestSupportMode(const std::string& mode) {
 static bool IsBatchSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
         mode.find("rtidb-unsupport") != std::string::npos ||
+        mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("batch-unsupport") != std::string::npos
         || mode.find("cluster-unsupport") != std::string::npos) {
         return false;
     }
     return true;
 }
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -202,7 +205,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_test) {
     DistributeRunBatchRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -218,7 +221,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_test) {
     LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -229,7 +232,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_test) {
     DistributeRunRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_distribute_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_single_partition_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeBatchRequestSinglePartitionTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -245,7 +248,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_single_partition_test) 
     LOG(INFO) << "Finish sql_sdk_distribute_batch_request_single_partition_test: ID: " << sql_case.id()
               << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_partition_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestSinglePartitionTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -278,7 +281,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_part
               << ", DESC: " << sql_case.desc();
 } */
 
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -295,7 +298,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_t
               << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -307,7 +310,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_test) {
     LOG(INFO) << "Finish sql_sdk_distribute_request_procedure_test: ID: " << sql_case.id()
               << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_async_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureAsyncTest) {
     auto sql_case = GetParam();
     if (!IsRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -324,7 +327,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_a
               << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_async_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureAsyncTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -337,7 +340,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_async_test) {
               << ", DESC: " << sql_case.desc();
 }
 
-TEST_F(SQLClusterTest, create_table) {
+TEST_F(SQLClusterTest, CreateTable) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -381,7 +384,7 @@ TEST_F(SQLClusterTest, create_table) {
     ASSERT_TRUE(router->DropDB(db, &status));
 }
 
-TEST_F(SQLClusterTest, get_table_schema) {
+TEST_F(SQLClusterTest, GetTableSchema) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();

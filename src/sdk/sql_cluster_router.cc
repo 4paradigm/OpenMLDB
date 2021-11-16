@@ -1319,7 +1319,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
             return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : InputParameterNode null");
         }
         if (input->GetType() == hybridse::node::kInputParameter) {
-            hybridse::node::InputParameterNode* input_ptr = (hybridse::node::InputParameterNode*)input;
+            hybridse::node::InputParameterNode* input_ptr = dynamic_cast<hybridse::node::InputParameterNode*>(input);
             if (input_ptr == nullptr) {
                 return base::Status(base::ReturnCode::kSQLCmdRunError, "cast InputParameterNode failed");
             }

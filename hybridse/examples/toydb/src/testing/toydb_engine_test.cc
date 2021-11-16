@@ -28,6 +28,7 @@ TEST_P(EngineTest, TestRequestEngine) {
     EngineOptions options;
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
+        !boost::contains(sql_case.mode(), "performance-sensitive-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
         EngineCheck(sql_case, options, kRequestMode);
     } else {
@@ -40,6 +41,7 @@ TEST_P(EngineTest, TestBatchEngine) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "batch-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "performance-sensitive-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-batch-unsupport")) {
         EngineCheck(sql_case, options, kBatchMode);
     } else {
@@ -52,6 +54,7 @@ TEST_P(EngineTest, TestBatchRequestEngineForLastRow) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "performance-sensitive-unsupport") &&
         !boost::contains(sql_case.mode(), "batch-request-unsupport")) {
         EngineCheck(sql_case, options, kBatchRequestMode);
     } else {
@@ -65,6 +68,7 @@ TEST_P(EngineTest, TestClusterRequestEngine) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "performance-sensitive-unsupport") &&
         !boost::contains(sql_case.mode(), "cluster-unsupport")) {
         EngineCheck(sql_case, options, kRequestMode);
     } else {
@@ -78,6 +82,7 @@ TEST_P(EngineTest, TestClusterBatchRequestEngine) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "performance-sensitive-unsupport") &&
         !boost::contains(sql_case.mode(), "batch-request-unsupport") &&
         !boost::contains(sql_case.mode(), "cluster-unsupport")) {
         EngineCheck(sql_case, options, kBatchRequestMode);
