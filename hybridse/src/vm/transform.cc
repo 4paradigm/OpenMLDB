@@ -1409,6 +1409,13 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
 
                     CHECK_STATUS(CheckPartitionColumn(win_agg_op->window_.partition().keys(),
                                                       win_agg_op->GetProducer(0)->schemas_ctx()));
+
+                    // union table's partition key not check
+                    // physical plan generation will fail because of schema not match
+
+                    for (const auto& join: win_agg_op->window_joins_.window_joins_) {
+                        CHECK_STATUS(CheckPartitionColumn(join.second.right_key().keys(), join.first->schemas_ctx()));
+                    }
                     break;
                 }
                 default: {
@@ -1816,7 +1823,7 @@ Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(const node::OrderByNo
 
 /**
 * check partition keys is acceptable type, which should be one of
-*   bool, intXX, string, date, kTimestamp
+*   bool, intXX, string, date, timestamp
 */
 Status BatchModeTransformer::CheckPartitionColumn(const node::ExprListNode* partition, const SchemasContext* ctx) {
     if (partition == nullptr) {

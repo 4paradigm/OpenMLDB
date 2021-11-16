@@ -464,6 +464,35 @@ TEST_F(TransformTest, PhysicalPlanFailOnRightKeyTypeOfJoin) {
         "unsupported partition key: 't2.col4', type is double, should be bool, intxx, string, date or timestamp");
 }
 
+TEST_F(TransformTest, PhysicalPlanFailOnLastJoinWindow) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    hybridse::type::TableDef table_def2;
+    BuildTableT2Def(table_def2);
+    AddTable(db, table_def2);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    const std::string last_join_window = R"sql(
+      SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5,
+      sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER w1 as w1_col3_sum,
+      sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER w1 as w1_t2_col2_sum,
+      sum(t1.col5) OVER w1 as w1_col5_sum,
+      str1 as t2_str1 FROM t1
+      last join t2 order by t2.col5 on t1.col3=t2.col3 and t1.col5 = t2.col5
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+    )sql";
+    PhysicalPlanFailCheck(catalog, last_join_window, kBatchMode, common::kPhysicalPlanError,
+        "unsupported partition key: 't2.col3', type is float, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(catalog, last_join_window, kRequestMode, common::kPhysicalPlanError,
+        "unsupported partition key: 't2.col3', type is float, should be bool, intxx, string, date or timestamp");
+}
+
 
 TEST_F(TransformTest, TransfromConditionsTest) {
     std::vector<std::pair<std::string, std::vector<std::string>>> sql_exp;
