@@ -407,7 +407,6 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     std::string lower_sql = boost::to_lower_copy(sql);
     if (boost::algorithm::starts_with(lower_sql, "select")) {
         std::shared_ptr<hybridse::sdk::ResultSet> rs;
-        router->SetPerformanceSensitive(performance_sensitive);
         // parameterized batch query
         if (!sql_case.parameters().columns_.empty()) {
             auto parameter_schema = sql_case.ExtractParameterTypes();
