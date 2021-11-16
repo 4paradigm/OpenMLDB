@@ -55,12 +55,12 @@ public class DDLTest extends StandaloneTest {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
 
-    // @Test(dataProvider = "getCase")
-    // @Yaml(filePaths = "function/ddl/test_create_index.yaml")
-    // @Story("create_index")
-    // public void testCreateIndex(SQLCase testCase){
-    //     ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
-    // }
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create_index.yaml")
+    @Story("create_index")
+    public void testCreateIndex(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
+    }
 
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
