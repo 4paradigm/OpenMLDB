@@ -685,7 +685,35 @@ class TransformPassOptimizedTest
     TransformPassOptimizedTest() {}
     ~TransformPassOptimizedTest() {}
 };
-
+INSTANTIATE_TEST_SUITE_P(
+    GroupHavingOptimized, TransformPassOptimizedTest,
+    testing::Values(
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1 HAVING sum(col2) > 100;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1), having_condition=sum(col2) > 100)\n"
+            "  DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2 HAVING sum(col2) > 100;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1,col2), having_condition=sum(col2) > 100)\n"
+            "  DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3 HAVING sum(col2) > 100;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col3), having_condition=sum(col2) > 100)\n"
+            "  GROUP_BY(group_keys=(col3))\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1 HAVING col1 > 0 AND col2 > 0;",
+            "PROJECT(type=GroupAggregation, group_keys=(col3,col2,col1), having_condition=col1 > 0 AND col2 > 0)\n"
+            "  GROUP_BY(group_keys=(col3))\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM (select c1 as col1, c2 as col2 , "
+            "c3 as col3 from tc) group by col3, col2, col1 HAVING col1 > 0;",
+            "PROJECT(type=GroupAggregation, group_keys=(col3,col2,col1), having_condition=col1 > 0)\n"
+            "  GROUP_BY(group_keys=(col3))\n"
+            "    SIMPLE_PROJECT(sources=(c1 -> col1, c2 -> col2, c3 -> col3))\n"
+            "      DATA_PROVIDER(type=Partition, table=tc, "
+            "index=index12_tc)")));
 INSTANTIATE_TEST_SUITE_P(
     GroupOptimized, TransformPassOptimizedTest,
     testing::Values(

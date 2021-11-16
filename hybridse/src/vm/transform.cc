@@ -210,26 +210,44 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
         }
         case kPhysicalOpProject: {
             auto project_op = dynamic_cast<PhysicalProjectNode*>(node);
-            if (kWindowAggregation != project_op->project_type_) {
-                break;
-            }
-            auto window_agg_op =
-                dynamic_cast<PhysicalWindowAggrerationNode*>(node);
-            CHECK_STATUS(GenWindow(&window_agg_op->window_,
-                                   window_agg_op->producers()[0]));
-            for (auto& window_union :
-                 window_agg_op->window_unions_.window_unions_) {
-                CHECK_STATUS(InitFnInfo(window_union.first, visited),
-                             "Fail Gen Window Union Sub Query Plan");
-            }
-            CHECK_STATUS(GenWindowUnionList(&window_agg_op->window_unions_,
-                                            window_agg_op->producers()[0]));
-            for (auto& pair : window_agg_op->window_joins_.window_joins()) {
-                CHECK_STATUS(InitFnInfo(pair.first, visited),
-                             "Fail Gen Window Join Sub Query Plan");
-            }
-            CHECK_STATUS(GenWindowJoinList(window_agg_op,
+            switch (project_op->project_type_) {
+                case kGroupAggregation: {
+                    // Code generation for having condition
+                    CHECK_STATUS(
+                        GenHavingFilter(&(dynamic_cast<PhysicalGroupAggrerationNode*>(node))->having_condition_,
+                                        project_op->producers()[0]->schemas_ctx()));
+                    break;
+                }
+                case kAggregation: {
+                    // Code generation for having condition
+                    CHECK_STATUS(GenHavingFilter(&(dynamic_cast<PhysicalAggrerationNode*>(node))->having_condition_,
+                                                    project_op->producers()[0]->schemas_ctx()));
+                    break;
+                }
+                case kWindowAggregation: {
+                    auto window_agg_op =
+                        dynamic_cast<PhysicalWindowAggrerationNode*>(node);
+                    CHECK_STATUS(GenWindow(&window_agg_op->window_,
                                            window_agg_op->producers()[0]));
+                    for (auto& window_union :
+                        window_agg_op->window_unions_.window_unions_) {
+                        CHECK_STATUS(InitFnInfo(window_union.first, visited),
+                                     "Fail Gen Window Union Sub Query Plan");
+                    }
+                    CHECK_STATUS(GenWindowUnionList(&window_agg_op->window_unions_,
+                                                    window_agg_op->producers()[0]));
+                    for (auto& pair : window_agg_op->window_joins_.window_joins()) {
+                        CHECK_STATUS(InitFnInfo(pair.first, visited),
+                                     "Fail Gen Window Join Sub Query Plan");
+                    }
+                    CHECK_STATUS(GenWindowJoinList(window_agg_op,
+                                                   window_agg_op->producers()[0]));
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
             break;
         }
         case kPhysicalOpSimpleProject:
@@ -979,7 +997,7 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
                "project list node or output node is null");
 
     const node::PlanNodeList& projects = project_list->GetProjects();
-
+    const node::ExprNode* having_condition = project_list->GetHavingCondition();
     // extract window frame if any
     const node::FrameNode* primary_frame = nullptr;
     if (project_list->GetW() != nullptr) {
@@ -1031,6 +1049,8 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
     // Create physical project op
     switch (project_type) {
         case kRowProject: {
+            CHECK_TRUE(having_condition == nullptr, kPlanError,
+                       "Can't support having clause and row project simultaneously")
             if (IsSimpleProject(column_projects)) {
                 PhysicalSimpleProjectNode* simple_project_op = nullptr;
                 CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(
@@ -1045,6 +1065,8 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
             break;
         }
         case kTableProject: {
+            CHECK_TRUE(having_condition == nullptr, kPlanError,
+                       "Can't support having clause and table project simultaneously")
             if (IsSimpleProject(column_projects)) {
                 PhysicalSimpleProjectNode* simple_project_op = nullptr;
                 CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(
@@ -1061,7 +1083,7 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
         case kAggregation: {
             PhysicalAggrerationNode* agg_op = nullptr;
             CHECK_STATUS(CreateOp<PhysicalAggrerationNode>(&agg_op, depend,
-                                                           column_projects));
+                                                           column_projects, having_condition));
             *output = agg_op;
             break;
         }
@@ -1072,12 +1094,15 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
                        "Can not create group agg with non group keys");
             PhysicalGroupAggrerationNode* agg_op = nullptr;
             CHECK_STATUS(CreateOp<PhysicalGroupAggrerationNode>(
-                &agg_op, depend, column_projects, keys));
+                &agg_op, depend, column_projects, having_condition, keys));
             *output = agg_op;
             break;
         }
         case kWindowAggregation: {
             PhysicalWindowAggrerationNode* window_agg_op = nullptr;
+            // window clause and having clause cannot exist simultaneously
+            CHECK_TRUE(nullptr == having_condition, kPlanError,
+                       "Can't support having clause and window clause simultaneously")
             CHECK_STATUS(CreateOp<PhysicalWindowAggrerationNode>(
                 &window_agg_op, depend, column_projects,
                 WindowOp(project_list->w_ptr_),
@@ -1581,6 +1606,15 @@ Status BatchModeTransformer::GenConditionFilter(
         node::ExprListNode expr_list;
         expr_list.AddChild(const_cast<node::ExprNode*>(filter->condition()));
         CHECK_STATUS(plan_ctx_.InitFnDef(&expr_list, schemas_ctx, true, filter))
+    }
+    return Status::OK();
+}
+Status BatchModeTransformer::GenHavingFilter(
+    ConditionFilter* filter, const SchemasContext* schemas_ctx) {
+    if (nullptr != filter->condition()) {
+        node::ExprListNode expr_list;
+        expr_list.AddChild(const_cast<node::ExprNode*>(filter->condition()));
+        CHECK_STATUS(plan_ctx_.InitFnDef(&expr_list, schemas_ctx, false, filter))
     }
     return Status::OK();
 }

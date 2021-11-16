@@ -126,6 +126,8 @@ class BatchModeTransformer {
 
     Status GenJoin(Join* join, PhysicalOpNode* in);
     Status GenFilter(Filter* filter, PhysicalOpNode* in);
+    Status GenHavingFilter(ConditionFilter* filter,
+                              const SchemasContext* schemas_ctx);
     Status GenConditionFilter(ConditionFilter* filter,
                               const SchemasContext* schemas_ctx);
     Status GenKey(Key* hash, const SchemasContext* schemas_ctx);

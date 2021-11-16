@@ -122,6 +122,7 @@ class ConditionGenerator : public FnGenerator {
     explicit ConditionGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~ConditionGenerator() {}
     const bool Gen(const Row& row, const Row& parameter) const;
+    const bool Gen(std::shared_ptr<TableHandler> table, const codec::Row& parameter_row);
 };
 class RangeGenerator {
  public:
@@ -765,10 +766,8 @@ class ConstProjectRunner : public Runner {
 };
 class TableProjectRunner : public Runner {
  public:
-    TableProjectRunner(const int32_t id, const SchemasContext* schema,
-                       const int32_t limit_cnt, const FnInfo& fn_info)
-        : Runner(id, kRunnerTableProject, schema, limit_cnt),
-          project_gen_(fn_info) {}
+    TableProjectRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const FnInfo& fn_info)
+        : Runner(id, kRunnerTableProject, schema, limit_cnt), project_gen_(fn_info) {}
     ~TableProjectRunner() {}
 
     std::shared_ptr<DataHandler> Run(
@@ -779,10 +778,8 @@ class TableProjectRunner : public Runner {
 };
 class RowProjectRunner : public Runner {
  public:
-    RowProjectRunner(const int32_t id, const SchemasContext* schema,
-                     const int32_t limit_cnt, const FnInfo& fn_info)
-        : Runner(id, kRunnerRowProject, schema, limit_cnt),
-          project_gen_(fn_info) {}
+    RowProjectRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const FnInfo& fn_info)
+        : Runner(id, kRunnerRowProject, schema, limit_cnt), project_gen_(fn_info) {}
     ~RowProjectRunner() {}
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
@@ -839,11 +836,11 @@ class SelectSliceRunner : public Runner {
 
 class GroupAggRunner : public Runner {
  public:
-    GroupAggRunner(const int32_t id, const SchemasContext* schema,
-                   const int32_t limit_cnt, const Key& group,
-                   const FnInfo& project)
+    GroupAggRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt,
+                   const Key& group, const ConditionFilter& having_condition, const FnInfo& project)
         : Runner(id, kRunnerGroupAgg, schema, limit_cnt),
           group_(group.fn_info()),
+          having_condition_(having_condition.fn_info()),
           agg_gen_(project) {}
     ~GroupAggRunner() {}
     std::shared_ptr<DataHandler> Run(
@@ -851,18 +848,24 @@ class GroupAggRunner : public Runner {
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
         override;  // NOLINT
     KeyGenerator group_;
+    ConditionGenerator having_condition_;
     AggGenerator agg_gen_;
 };
 class AggRunner : public Runner {
  public:
     AggRunner(const int32_t id, const SchemasContext* schema,
-              const int32_t limit_cnt, const FnInfo& fn_info)
-        : Runner(id, kRunnerAgg, schema, limit_cnt), agg_gen_(fn_info) {}
+              const int32_t limit_cnt,
+              const ConditionFilter& having_condition,
+              const FnInfo& fn_info)
+        : Runner(id, kRunnerAgg, schema, limit_cnt),
+          having_condition_(having_condition.fn_info()),
+          agg_gen_(fn_info) {}
     ~AggRunner() {}
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
         override;  // NOLINT
+    ConditionGenerator having_condition_;
     AggGenerator agg_gen_;
 };
 class WindowAggRunner : public Runner {

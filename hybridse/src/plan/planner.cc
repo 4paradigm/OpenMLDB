@@ -46,7 +46,7 @@ base::Status Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **pl
     }
     return base::Status::OK();
 }
-// TODO(chenjing, liguo), refactor SELECT query logical plan
+// TODO(chenjing): refactor SELECT query logical plan
 // Deal with group by clause, order clause, having clause in physical plan instead of logical plan, since we need
 // schema context for column resolve.
 base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, PlanNode **plan_tree) {
@@ -163,10 +163,6 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
             node_manager_->MakeAggProjectNode(pos, project_name, project_expr, w_ptr->GetFrame()));
     }
 
-    // Can't support table aggregation and table row project at the same time
-    // e.g.
-    // -- unacceptable sql
-    // SELECT col1, col2, SUM(col3) from t1;
     // Rule 1: Can't support group clause and window clause simultaneously
     CHECK_TRUE(!(nullptr != root->group_clause_ptr_ && !window_project_list_map.empty()), common::kPlanError,
                "Can't support group clause and window clause simultaneously")
@@ -187,13 +183,12 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         // ```
         // SELECT name, address, MAX(age) FROM t GROUP BY name;
         if (table_project_list->HasRowProject()) {
-
             for (size_t idx = 0; idx < table_project_list->GetProjects().size(); idx++) {
                 node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(table_project_list->GetProjects()[idx]);
                 if (!project->IsAgg()) {
                     std::vector<const node::ExprNode *> columns;
                     node::ColumnOfExpression(project->GetExpression(), &columns);
-                    for (const node::ExprNode* column: columns) {
+                    for (const node::ExprNode *column : columns) {
                         bool functionally_dependent = false;
                         for (size_t i = 0; i < root->group_clause_ptr_->GetChildNum(); i++) {
                             if (node::ExprEquals(root->group_clause_ptr_->GetChild(i), column)) {
@@ -214,6 +209,8 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         // Rule 5: OpenMLDB only support ONLY_FULL_GROUP_BY mode
         // In aggregated query without GROUP BY, expression #%u of %s contains nonaggregated column '%s';
         // this is incompatible with sql_mode=only_full_group_by
+        // -- unacceptable sql
+        // SELECT col1, col2, SUM(col3) from t1;
         if (table_project_list->HasAggProject()) {
             for (size_t idx = 0; idx < table_project_list->GetProjects().size(); idx++) {
                 node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(table_project_list->GetProjects()[idx]);
@@ -244,7 +241,8 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
                             break;
                         }
                     }
-                    CHECK_TRUE(functionally_dependent, common::kPlanError, "Having clause is not in GROUP BY clause and contains nonaggregated column ",
+                    CHECK_TRUE(functionally_dependent, common::kPlanError,
+                               "Having clause is not in GROUP BY clause and contains nonaggregated column ",
                                column->GetExprString(),
                                " which is not functionally dependent on columns in GROUP BY clause; this is "
                                "incompatible with sql_mode=only_full_group_by")
@@ -265,7 +263,6 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
                        root->having_clause_ptr_->GetExprString(),
                        "'; this is incompatible with sql_mode=only_full_group_by")
         }
-
     }
 
     // Add table projects into project map beforehand

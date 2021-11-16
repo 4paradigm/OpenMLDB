@@ -182,15 +182,14 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     }
                     TableProjectRunner* runner = nullptr;
                     CreateRunner<TableProjectRunner>(
-                        &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                        op->project().fn_info());
+                        &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(), op->project().fn_info());
                     return RegisterTask(node,
                                         UnaryInheritTask(cluster_task, runner));
                 }
                 case kAggregation: {
                     AggRunner* runner = nullptr;
-                    CreateRunner<AggRunner>(&runner, id_++, node->schemas_ctx(),
-                                            op->GetLimitCnt(),
+                    CreateRunner<AggRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                                            dynamic_cast<const PhysicalAggrerationNode*>(node)->having_condition_,
                                             op->project().fn_info());
                     return RegisterTask(node,
                                         UnaryInheritTask(cluster_task, runner));
@@ -209,7 +208,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     GroupAggRunner* runner = nullptr;
                     CreateRunner<GroupAggRunner>(
                         &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                        op->group_, op->project().fn_info());
+                        op->group_, op->having_condition_, op->project().fn_info());
                     return RegisterTask(node,
                                         UnaryInheritTask(cluster_task, runner));
                 }
@@ -265,8 +264,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case kRowProject: {
                     RowProjectRunner* runner = nullptr;
                     CreateRunner<RowProjectRunner>(
-                        &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                        op->project().fn_info());
+                        &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(), op->project().fn_info());
                     return RegisterTask(node,
                                         UnaryInheritTask(cluster_task, runner));
                 }
@@ -2471,7 +2469,9 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
             LOG(WARNING) << "group aggregation fail: input table is null";
             return std::shared_ptr<DataHandler>();
         }
-        output_table->AddRow(agg_gen_.Gen(parameter, table));
+        if (!having_condition_.Valid() || having_condition_.Gen(table, parameter)) {
+            output_table->AddRow(agg_gen_.Gen(parameter, table));
+        }
         return output_table;
     } else if (kPartitionHandler == input->GetHanlderType()) {
         auto partition = std::dynamic_pointer_cast<PartitionHandler>(input);
@@ -2492,7 +2492,9 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
                 LOG(WARNING) << "group aggregation fail: segment segment is null";
                 return std::shared_ptr<DataHandler>();
             }
-            output_table->AddRow(agg_gen_.Gen(parameter, segment));
+            if (!having_condition_.Valid() || having_condition_.Gen(segment, parameter)) {
+                output_table->AddRow(agg_gen_.Gen(parameter, segment));
+            }
             iter->Next();
         }
         return output_table;
@@ -2675,8 +2677,13 @@ std::shared_ptr<DataHandler> AggRunner::Run(
     if (kTableHandler != input->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
+    auto table = std::dynamic_pointer_cast<TableHandler>(input);
+    auto parameter = ctx.GetParameterRow();
+    if (having_condition_.Valid() && !having_condition_.Gen(table, parameter)) {
+        return std::shared_ptr<DataHandler>();
+    }
     auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(
-        agg_gen_.Gen(ctx.GetParameterRow(), std::dynamic_pointer_cast<TableHandler>(input))));
+        agg_gen_.Gen(parameter, table)));
     return row_handler;
 }
 std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
@@ -3170,6 +3177,11 @@ const int64_t OrderGenerator::Gen(const Row& row) {
 
 const bool ConditionGenerator::Gen(const Row& row, const Row& parameter) const {
     return CoreAPI::ComputeCondition(fn_, row, parameter, &row_view_, idxs_[0]);
+}
+const bool ConditionGenerator::Gen(std::shared_ptr<TableHandler> table, const codec::Row& parameter) {
+    Row cond_row = Runner::GroupbyProject(fn_, parameter, table.get());
+    return Runner::GetColumnBool(cond_row.buf(), &row_view_, idxs_[0],
+                                 row_view_.GetSchema()->Get(idxs_[0]).type());
 }
 const Row ProjectGenerator::Gen(const Row& row, const Row& parameter) {
     return CoreAPI::RowProject(fn_, row, parameter, false);

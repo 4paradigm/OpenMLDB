@@ -278,6 +278,8 @@ class Range : public FnComponent {
 
 class ConditionFilter : public FnComponent {
  public:
+    ConditionFilter()
+        : condition_(nullptr) {}
     explicit ConditionFilter(const node::ExprNode *condition)
         : condition_(condition) {}
     virtual ~ConditionFilter() {}
@@ -785,31 +787,33 @@ class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
 
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
-    PhysicalAggrerationNode(PhysicalOpNode *node, const ColumnProjects &project)
-        : PhysicalProjectNode(node, kAggregation, project, true) {
+    PhysicalAggrerationNode(PhysicalOpNode *node, const ColumnProjects &project, const node::ExprNode *condition)
+        : PhysicalProjectNode(node, kAggregation, project, true), having_condition_(condition) {
         output_type_ = kSchemaTypeRow;
+        fn_infos_.push_back(&having_condition_.fn_info());
     }
     virtual ~PhysicalAggrerationNode() {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    ConditionFilter having_condition_;
 };
 
 class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalGroupAggrerationNode(PhysicalOpNode *node,
                                  const ColumnProjects &project,
+                                 const node::ExprNode* having_condition,
                                  const node::ExprListNode *groups)
         : PhysicalProjectNode(node, kGroupAggregation, project, true),
+          having_condition_(having_condition),
           group_(groups) {
         output_type_ = kSchemaTypeTable;
+        fn_infos_.push_back(&having_condition_.fn_info());
         fn_infos_.push_back(&group_.fn_info());
     }
     virtual ~PhysicalGroupAggrerationNode() {}
-
-    base::Status WithNewChildren(node::NodeManager *nm,
-                                 const std::vector<PhysicalOpNode *> &children,
-                                 PhysicalOpNode **out) override;
-
     static PhysicalGroupAggrerationNode *CastFrom(PhysicalOpNode *node);
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    ConditionFilter having_condition_;
     Key group_;
 };
 
