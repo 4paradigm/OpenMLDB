@@ -1738,13 +1738,19 @@ class ResTarget : public SqlNode {
 class ColumnDefNode : public SqlNode {
  public:
     ColumnDefNode() : SqlNode(kColumnDesc, 0, 0), column_name_(""), column_type_() {}
-    ColumnDefNode(const std::string &name, const DataType &data_type, bool op_not_null)
-        : SqlNode(kColumnDesc, 0, 0), column_name_(name), column_type_(data_type), op_not_null_(op_not_null) {}
+    ColumnDefNode(const std::string &name, const DataType &data_type, bool op_not_null, ExprNode *default_value)
+        : SqlNode(kColumnDesc, 0, 0),
+          column_name_(name),
+          column_type_(data_type),
+          op_not_null_(op_not_null),
+          default_value_(default_value) {}
     ~ColumnDefNode() {}
 
     std::string GetColumnName() const { return column_name_; }
 
     DataType GetColumnType() const { return column_type_; }
+
+    ExprNode* GetDefaultValue() const { return default_value_; }
 
     bool GetIsNotNull() const { return op_not_null_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
@@ -1753,6 +1759,7 @@ class ColumnDefNode : public SqlNode {
     std::string column_name_;
     DataType column_type_;
     bool op_not_null_;
+    ExprNode* default_value_ = nullptr;
 };
 
 class InsertStmt : public SqlNode {

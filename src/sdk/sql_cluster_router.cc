@@ -429,95 +429,6 @@ bool SQLClusterRouter::GetInsertInfo(const std::string& db, const std::string& s
     return true;
 }
 
-std::shared_ptr<hybridse::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(const hybridse::node::ConstNode& node,
-                                                                                openmldb::type::DataType column_type) {
-    hybridse::node::DataType node_type = node.GetDataType();
-    switch (column_type) {
-        case openmldb::type::kBool:
-            if (node_type == hybridse::node::kInt32) {
-                return std::make_shared<hybridse::node::ConstNode>(node.GetBool());
-            } else if (node_type == hybridse::node::kBool) {
-                return std::make_shared<hybridse::node::ConstNode>(node);
-            }
-            break;
-        case openmldb::type::kSmallInt:
-            if (node_type == hybridse::node::kInt16) {
-                return std::make_shared<hybridse::node::ConstNode>(node);
-            } else if (node_type == hybridse::node::kInt32) {
-                return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt16());
-            }
-            break;
-        case openmldb::type::kInt:
-            if (node_type == hybridse::node::kInt16) {
-                return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt32());
-            } else if (node_type == hybridse::node::kInt32) {
-                return std::make_shared<hybridse::node::ConstNode>(node);
-            } else if (node_type == hybridse::node::kInt64) {
-                return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt32());
-            }
-            break;
-        case openmldb::type::kBigInt:
-            if (node_type == hybridse::node::kInt16 || node_type == hybridse::node::kInt32) {
-                return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt64());
-            } else if (node_type == hybridse::node::kInt64) {
-                return std::make_shared<hybridse::node::ConstNode>(node);
-            }
-            break;
-        case openmldb::type::kFloat:
-            if (node_type == hybridse::node::kDouble || node_type == hybridse::node::kInt32 ||
-                node_type == hybridse::node::kInt16) {
-                return std::make_shared<hybridse::node::ConstNode>(node.GetAsFloat());
-            } else if (node_type == hybridse::node::kFloat) {
-                return std::make_shared<hybridse::node::ConstNode>(node);
-            }
-            break;
-        case openmldb::type::kDouble:
-            if (node_type == hybridse::node::kFloat || node_type == hybridse::node::kInt32 ||
-                node_type == hybridse::node::kInt16) {
-                return std::make_shared<hybridse::node::ConstNode>(node.GetAsDouble());
-            } else if (node_type == hybridse::node::kDouble) {
-                return std::make_shared<hybridse::node::ConstNode>(node);
-            }
-            break;
-        case openmldb::type::kDate:
-            if (node_type == hybridse::node::kVarchar) {
-                int32_t year;
-                int32_t month;
-                int32_t day;
-                if (node.GetAsDate(&year, &month, &day)) {
-                    if (year < 1900 || year > 9999) break;
-                    if (month < 1 || month > 12) break;
-                    if (day < 1 || day > 31) break;
-                    int32_t date = (year - 1900) << 16;
-                    date = date | ((month - 1) << 8);
-                    date = date | day;
-                    return std::make_shared<hybridse::node::ConstNode>(date);
-                }
-                break;
-            } else if (node_type == hybridse::node::kDate) {
-                return std::make_shared<hybridse::node::ConstNode>(node);
-            }
-            break;
-        case openmldb::type::kTimestamp:
-            if (node_type == hybridse::node::kInt16 || node_type == hybridse::node::kInt32 ||
-                node_type == hybridse::node::kTimestamp) {
-                return std::make_shared<hybridse::node::ConstNode>(node.GetAsInt64());
-            } else if (node_type == hybridse::node::kInt64) {
-                return std::make_shared<hybridse::node::ConstNode>(node);
-            }
-            break;
-        case openmldb::type::kVarchar:
-        case openmldb::type::kString:
-            if (node_type == hybridse::node::kVarchar) {
-                return std::make_shared<hybridse::node::ConstNode>(node);
-            }
-            break;
-        default:
-            return {};
-    }
-    return {};
-}
-
 DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                                                 const std::map<uint32_t, uint32_t>& column_map,
                                                 ::hybridse::node::ExprListNode* row, uint32_t* str_length) {
@@ -532,16 +443,25 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::name
         return {};
     }
     for (int32_t idx = 0; idx < table_info->column_desc_size(); idx++) {
+        auto column = table_info->column_desc(idx);
         if (!column_map.empty() && (column_map.count(idx) == 0)) {
-            if (table_info->column_desc(idx).not_null()) {
-                LOG(WARNING) << "column " << table_info->column_desc(idx).name() << " can't be null";
-                return {};
+            if (column.has_default_value()) {
+                auto val = NodeAdapter::StringToData(column.default_value(), column.data_type());
+                default_map->insert(std::make_pair(idx, val));
+                if (column.data_type() == ::openmldb::type::kVarchar ||
+                    column.data_type() == ::openmldb::type::kString) {
+                    *str_length += strlen(val->GetStr());
+                }
+                continue;
             }
-            default_map->insert(std::make_pair(idx, std::make_shared<::hybridse::node::ConstNode>()));
-            continue;
+            if (!column.not_null()) {
+                default_map->insert(std::make_pair(idx, std::make_shared<::hybridse::node::ConstNode>()));
+                continue;
+            }
+            LOG(WARNING) << "column " << column.name() << " can't be null";
+            return {};
         }
 
-        auto column = table_info->column_desc(idx);
         uint32_t i = idx;
         if (!column_map.empty()) {
             i = column_map.at(idx);
@@ -562,7 +482,7 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::name
                 }
                 val = std::make_shared<::hybridse::node::ConstNode>(*primary);
             } else {
-                val = GetDefaultMapValue(*primary, column.data_type());
+                val = NodeAdapter::TransformDataType(*primary, column.data_type());
                 if (!val) {
                     LOG(WARNING) << "default value type mismatch, column " << column.name();
                     return DefaultValueMap();

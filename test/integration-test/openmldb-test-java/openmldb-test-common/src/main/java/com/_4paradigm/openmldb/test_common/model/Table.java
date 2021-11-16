@@ -406,7 +406,7 @@ public class Table implements Serializable{
 
     public static String buildCreateSQLFromColumnsIndexs(String name, List<String> columns, List<String> indexs,
                                                          int replicaNum,int partitionNum,List<OpenMLDBDistribution> distribution) {
-        if (CollectionUtils.isEmpty(indexs) || CollectionUtils.isEmpty(columns)) {
+        if (CollectionUtils.isEmpty(columns)) {
             return "";
         }
         String sql;
@@ -417,29 +417,30 @@ public class Table implements Serializable{
             }
             builder.append(columns.get(i) + ",");
         }
+        if(CollectionUtils.isNotEmpty(indexs)) {
+            for (String index : indexs) {
+                builder.append("\nindex(");
+                if (!validateIndex(index)) {
+                    return "";
+                }
 
-        for (String index : indexs) {
-            builder.append("\nindex(");
-            if (!validateIndex(index)) {
-                return "";
-            }
+                builder.append("key=(").append(Joiner.on(",").join(getIndexKeys(index))).append(")");
+                String tsIndex = getIndexTsCol(index);
+                if (!tsIndex.isEmpty()) {
+                    builder.append(",ts=").append(getIndexTsCol(index));
+                }
 
-            builder.append("key=(").append(Joiner.on(",").join(getIndexKeys(index))).append(")");
-            String tsIndex = getIndexTsCol(index);
-            if (!tsIndex.isEmpty()) {
-                builder.append(",ts=").append(getIndexTsCol(index));
-            }
+                String ttl = getIndexTTL(index);
+                if (!ttl.isEmpty()) {
+                    builder.append(",ttl=").append(ttl);
+                }
 
-            String ttl = getIndexTTL(index);
-            if (!ttl.isEmpty()) {
-                builder.append(",ttl=").append(ttl);
+                String ttlType = getIndexTTLType(index);
+                if (!ttlType.isEmpty()) {
+                    builder.append(",ttl_type=").append(ttlType);
+                }
+                builder.append("),");
             }
-
-            String ttlType = getIndexTTLType(index);
-            if (!ttlType.isEmpty()) {
-                builder.append(",ttl_type=").append(ttlType);
-            }
-            builder.append("),");
         }
         sql = builder.toString();
         if (sql.endsWith(",")) {

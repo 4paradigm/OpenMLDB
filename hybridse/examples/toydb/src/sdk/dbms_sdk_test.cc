@@ -571,7 +571,7 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(rs);
     codec::RowView row_view(schema);
-    int order_idx = 0;
+    int order_idx = -1;
     for (int i = 0; i < schema.size(); i++) {
         if (schema.Get(i).name() == order_col) {
             order_idx = i;
@@ -579,15 +579,17 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
         }
     }
     std::map<std::string, std::pair<codec::Row, bool>> rows_map;
-    for (auto row : rows) {
-        row_view.Reset(row.buf());
-        std::string key = row_view.GetAsString(order_idx);
-        rows_map.insert(std::make_pair(key, std::make_pair(row, false)));
+    if (order_idx >= 0) {
+        for (auto row : rows) {
+            row_view.Reset(row.buf());
+            std::string key = row_view.GetAsString(order_idx);
+            rows_map.insert(std::make_pair(key, std::make_pair(row, false)));
+        }
     }
     int32_t index = 0;
     rs->Reset();
     while (rs->Next()) {
-        if (order_idx) {
+        if (order_idx >= 0) {
             std::string key = rs->GetAsString(order_idx);
             LOG(INFO) << "key : " << key;
             ASSERT_TRUE(rows_map.find(key) != rows_map.cend())
@@ -693,24 +695,25 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
             }
             Status status;
             std::string create;
-            ASSERT_TRUE(sql_case.BuildCreateSqlFromInput(i, &create));
-            std::string placeholder = "{" + std::to_string(i) + "}";
-            boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
-            LOG(INFO) << create;
-            dbms_sdk->ExecuteQuery(db, create, &status);
-            ASSERT_EQ(0, static_cast<int>(status.code));
-
-            std::string insert;
-            ASSERT_TRUE(sql_case.BuildInsertSqlFromInput(i, &insert));
-            boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
-            LOG(INFO) << insert;
-            dbms_sdk->ExecuteQuery(db, insert, &status);
-            if (!sql_case.expect_.success_) {
-                ASSERT_NE(0, static_cast<int>(status.code));
-                LOG(INFO) << status.msg;
-                return;
-            } else {
+            if (sql_case.BuildCreateSqlFromInput(i, &create) && !create.empty()) {
+                std::string placeholder = "{" + std::to_string(i) + "}";
+                boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
+                LOG(INFO) << create;
+                dbms_sdk->ExecuteQuery(db, create, &status);
                 ASSERT_EQ(0, static_cast<int>(status.code));
+
+                std::string insert;
+                ASSERT_TRUE(sql_case.BuildInsertSqlFromInput(i, &insert));
+                boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
+                LOG(INFO) << insert;
+                dbms_sdk->ExecuteQuery(db, insert, &status);
+                if (!sql_case.expect_.success_) {
+                    ASSERT_NE(0, static_cast<int>(status.code));
+                    LOG(INFO) << status.msg;
+                    return;
+                } else {
+                    ASSERT_EQ(0, static_cast<int>(status.code));
+                }
             }
         }
     }

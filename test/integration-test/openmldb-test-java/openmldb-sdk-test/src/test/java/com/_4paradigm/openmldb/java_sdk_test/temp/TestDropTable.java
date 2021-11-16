@@ -27,8 +27,8 @@ public class TestDropTable {
 
     @Test
     public void testAll(){
-        FedbClient fedbClient = new FedbClient("172.24.4.55:10000","/fedb");
-        String dbName = "test_fedb";
+        FedbClient fedbClient = new FedbClient("172.24.4.55:10000","/openmldb");
+        String dbName = "test_zw";
         String sql = "show tables;";
         FesqlResult fesqlResult = FesqlUtil.select(fedbClient.getExecutor(), dbName, sql);
         List<List<Object>> result = fesqlResult.getResult();

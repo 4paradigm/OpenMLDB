@@ -49,10 +49,16 @@ public class TestFEDBDeploy {
     }
 
     @Test
-    public void test4(){
+    public void testTmp(){
         FEDBDeploy deploy = new FEDBDeploy("tmp");
-        deploy.setCluster(false);
+        deploy.setCluster(true);
         FEDBInfo fedbInfo = deploy.deployFEDB(2, 3);
+        System.out.println(fedbInfo);
+    }
+    @Test
+    public void testStandalone(){
+        FEDBDeploy deploy = new FEDBDeploy("standalone");
+        FEDBInfo fedbInfo = deploy.deployFEDBByStandalone();
         System.out.println(fedbInfo);
     }
 }

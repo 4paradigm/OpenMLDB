@@ -773,6 +773,10 @@ bool SqlCase::BuildCreateSqlFromInput(int32_t input_idx, std::string* sql,
         LOG(WARNING) << "Fail to extract table schema";
         return false;
     }
+    if (table.columns_size() == 0) {
+        LOG(WARNING) << "Do not build create sql from empty columns table";
+        return false;
+    }
     if (!BuildCreateSqlFromSchema(table, sql, true, partition_num)) {
         LOG(WARNING) << "Fail to build create sql string";
         return false;

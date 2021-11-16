@@ -170,9 +170,9 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 
     ::hybridse::vm::EngineOptions options;
     if (IsClusterMode()) {
-        options.set_cluster_optimized(FLAGS_enable_distsql);
+        options.SetClusterOptimized(FLAGS_enable_distsql);
     } else {
-        options.set_cluster_optimized(false);
+        options.SetClusterOptimized(false);
     }
     engine_ = std::unique_ptr<::hybridse::vm::Engine>(new ::hybridse::vm::Engine(catalog_, options));
     catalog_->SetLocalTablet(
