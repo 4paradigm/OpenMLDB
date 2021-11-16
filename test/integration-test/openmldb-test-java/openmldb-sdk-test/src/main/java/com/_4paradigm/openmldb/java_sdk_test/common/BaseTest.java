@@ -18,9 +18,13 @@ package com._4paradigm.openmldb.java_sdk_test.common;
 
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlDataProvider;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlDataProviderList;
+import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.common.ReportLog;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
+import lombok.extern.flogger.Flogger;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 import org.testng.Assert;
 import org.testng.ITest;
 import org.testng.annotations.BeforeMethod;
@@ -33,8 +37,9 @@ import java.lang.reflect.Method;
  * @author zhaowei
  * @date 2021/3/12 7:52 AM
  */
+@Slf4j
 public class BaseTest implements ITest {
-    protected ReportLog reportLog = ReportLog.of();
+    protected static final Logger logger = new LogProxy(log);
     private ThreadLocal<String> testName = new ThreadLocal<>();
     private int testNum = 0;
 
@@ -50,12 +55,15 @@ public class BaseTest implements ITest {
             throw new RuntimeException("please add @Yaml");
         }
         FesqlDataProviderList dp = FesqlDataProviderList.dataProviderGenerator(casePaths);
-        return dp.getCases().toArray();
+        Object[] caseArray = dp.getCases().toArray();
+        logger.info("caseArray.length:{}",caseArray.length);
+        return caseArray;
     }
 
     @BeforeMethod
     public void BeforeMethod(Method method, Object[] testData) {
         ReportLog.of().clean();
+        if(testData==null || testData.length==0) return;
         Assert.assertNotNull(
                 testData[0], "fail to run fesql test with null SQLCase: check yaml case");
         if (testData[0] instanceof SQLCase) {

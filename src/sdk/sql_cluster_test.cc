@@ -90,7 +90,7 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::string db;
 };
 
-TEST_F(SQLClusterDDLTest, clumn_default_value) {
+TEST_F(SQLClusterDDLTest, ColumnDefaultValue) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
     std::string ddl;
@@ -141,7 +141,7 @@ TEST_F(SQLClusterDDLTest, clumn_default_value) {
     RightDDL(name, ddl);
 }
 
-TEST_F(SQLClusterDDLTest, clumn_default_value_wrong_type) {
+TEST_F(SQLClusterDDLTest, ColumnDefaultValueWrongType) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
     std::string ddl;
@@ -192,7 +192,7 @@ TEST_F(SQLClusterDDLTest, clumn_default_value_wrong_type) {
     WrongDDL(name, ddl);
 }
 
-TEST_F(SQLClusterTest, cluster_insert) {
+TEST_F(SQLClusterTest, ClusterInsert) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -216,7 +216,7 @@ TEST_F(SQLClusterTest, cluster_insert) {
         std::string insert = "insert into " + name + " values('" + key + "', 1590);";
         ok = router->ExecuteInsert(db, insert, &status);
         ASSERT_TRUE(ok);
-        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key) % 8);
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key) % 8);
         key_map[pid].push_back(key);
     }
     auto endpoints = mc_->GetTbEndpoint();
@@ -240,7 +240,7 @@ TEST_F(SQLClusterTest, cluster_insert) {
     ASSERT_TRUE(ok);
 }
 
-TEST_F(SQLClusterTest, cluster_insert_with_column_default_value) {
+TEST_F(SQLClusterTest, ClusterInsertWithColumnDefaultValue) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -394,7 +394,7 @@ static bool IsBatchSupportMode(const std::string& mode) {
     }
     return true;
 }
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -409,7 +409,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_test) {
     DistributeRunBatchRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -425,7 +425,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_test) {
     LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -436,7 +436,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_test) {
     DistributeRunRequestModeSDK(sql_case, router_);
     LOG(INFO) << "Finish sql_sdk_distribute_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_single_partition_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeBatchRequestSinglePartitionTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -452,7 +452,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_single_partition_test) 
     LOG(INFO) << "Finish sql_sdk_distribute_batch_request_single_partition_test: ID: " << sql_case.id()
               << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_partition_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestSinglePartitionTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -485,7 +485,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_part
               << ", DESC: " << sql_case.desc();
 } */
 
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -502,7 +502,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_t
               << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -514,7 +514,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_test) {
     LOG(INFO) << "Finish sql_sdk_distribute_request_procedure_test: ID: " << sql_case.id()
               << ", DESC: " << sql_case.desc();
 }
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_async_test) {
+TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureAsyncTest) {
     auto sql_case = GetParam();
     if (!IsRequestSupportMode(sql_case.mode())) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
@@ -531,7 +531,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_a
               << ", DESC: " << sql_case.desc();
 }
 
-TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_async_test) {
+TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureAsyncTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
@@ -544,7 +544,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_async_test) {
               << ", DESC: " << sql_case.desc();
 }
 
-TEST_F(SQLClusterTest, create_table) {
+TEST_F(SQLClusterTest, CreateTable) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -588,7 +588,7 @@ TEST_F(SQLClusterTest, create_table) {
     ASSERT_TRUE(router->DropDB(db, &status));
 }
 
-TEST_F(SQLClusterTest, get_table_schema) {
+TEST_F(SQLClusterTest, GetTableSchema) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
