@@ -83,14 +83,14 @@ class CompileInfoCache {
 
 class JitOptions {
  public:
-    bool IsEnableMCJIT() const { return enable_mcjit_; }
-    void SetEnableMCJIT(bool flag) { enable_mcjit_ = flag; }
+    bool IsEnableMcjit() const { return enable_mcjit_; }
+    void SetEnableMcjit(bool flag) { enable_mcjit_ = flag; }
 
-    bool IsEnableVTune() const { return enable_vtune_; }
-    void SetEnableVTune(bool flag) { enable_vtune_ = flag; }
+    bool IsEnableVtune() const { return enable_vtune_; }
+    void SetEnableVtune(bool flag) { enable_vtune_ = flag; }
 
-    bool IsEnableGDB() const { return enable_gdb_; }
-    void SetEnableGDB(bool flag) { enable_gdb_ = flag; }
+    bool IsEnableGdb() const { return enable_gdb_; }
+    void SetEnableGdb(bool flag) { enable_gdb_ = flag; }
 
     bool IsEnablePerf() const { return enable_perf_; }
     void SetEnablePerf(bool flag) { enable_perf_ = flag; }

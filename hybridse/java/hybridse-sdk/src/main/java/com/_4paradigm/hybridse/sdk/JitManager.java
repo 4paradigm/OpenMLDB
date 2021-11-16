@@ -70,12 +70,12 @@ public class JitManager {
             String enableMcJit = prop.getProperty("fesql.jit.enable_mcjit");
             if (enableMcJit != null && enableMcJit.toLowerCase().equals("true")) {
                 logger.info("Try enable llvm legacy mcjit support");
-                options.SetEnableMCJIT(true);
+                options.SetEnableMcjit(true);
             }
             String enableVtune = prop.getProperty("fesql.jit.enable_vtune");
             if (enableVtune != null && enableVtune.toLowerCase().equals("true")) {
                 logger.info("Try enable intel jit events support");
-                options.SetEnableVTune(true);
+                options.SetEnableVtune(true);
             }
             String enablePerf = prop.getProperty("fesql.jit.enable_perf");
             if (enablePerf != null && enablePerf.toLowerCase().equals("true")) {
@@ -85,7 +85,7 @@ public class JitManager {
             String enableGdb = prop.getProperty("fesql.jit.enable_gdb");
             if (enableGdb != null && enableGdb.toLowerCase().equals("true")) {
                 logger.info("Try enable gdb jit events support");
-                options.SetEnableGDB(true);
+                options.SetEnableGdb(true);
             }
         } catch (IOException ex) {
             logger.debug("Can not find jit.properties", ex);

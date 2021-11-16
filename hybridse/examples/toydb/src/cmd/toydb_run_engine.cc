@@ -76,9 +76,9 @@ int RunSingle(const std::string& yaml_path) {
         FLAGS_enable_batch_window_parallelization);
 
     JitOptions& jit_options = options.jit_options();
-    jit_options.SetEnableMCJIT(FLAGS_enable_mcjit);
-    jit_options.SetEnableVTune(FLAGS_enable_vtune);
-    jit_options.SetEnableGDB(FLAGS_enable_gdb);
+    jit_options.SetEnableMcjit(FLAGS_enable_mcjit);
+    jit_options.SetEnableVtune(FLAGS_enable_vtune);
+    jit_options.SetEnableGdb(FLAGS_enable_gdb);
     jit_options.SetEnablePerf(FLAGS_enable_perf);
 
     for (auto& sql_case : cases) {

@@ -123,10 +123,10 @@ TEST_F(JitWrapperTest, test) {
 TEST_F(JitWrapperTest, test_mcjit) {
     EngineOptions options;
     options.SetKeepIr(true);
-    options.jit_options().SetEnableMCJIT(true);
-    options.jit_options().SetEnableGDB(true);
+    options.jit_options().SetEnableMcjit(true);
+    options.jit_options().SetEnableGdb(true);
     options.jit_options().SetEnablePerf(true);
-    options.jit_options().SetEnableVTune(true);
+    options.jit_options().SetEnableVtune(true);
     simple_test(options);
 }
 #endif
