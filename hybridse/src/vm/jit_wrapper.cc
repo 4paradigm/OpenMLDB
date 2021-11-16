@@ -70,7 +70,7 @@ HybridSeJitWrapper* HybridSeJitWrapper::Create() {
 }
 
 HybridSeJitWrapper* HybridSeJitWrapper::Create(const JitOptions& jit_options) {
-    if (jit_options.is_enable_mcjit()) {
+    if (jit_options.IsEnableMcjit()) {
 #ifdef LLVM_EXT_ENABLE
         LOG(INFO) << "Create McJit engine";
         return new HybridSeMcJitWrapper(jit_options);
@@ -79,8 +79,8 @@ HybridSeJitWrapper* HybridSeJitWrapper::Create(const JitOptions& jit_options) {
         return new HybridSeLlvmJitWrapper();
 #endif
     } else {
-        if (jit_options.is_enable_vtune() || jit_options.is_enable_perf() ||
-            jit_options.is_enable_gdb()) {
+        if (jit_options.IsEnableVtune() || jit_options.IsEnablePerf() ||
+            jit_options.IsEnableGdb()) {
             LOG(WARNING) << "LLJIT do not support jit events";
         }
         return new HybridSeLlvmJitWrapper();
