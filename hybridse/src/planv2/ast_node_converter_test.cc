@@ -999,7 +999,11 @@ TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
     }
 
     std::unique_ptr<zetasql::ParserOutput> parser_output;
-    ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+    zetasql::ParserOptions parser_opts;
+    zetasql::LanguageOptions language_opts;
+    language_opts.EnableLanguageFeature(zetasql::FEATURE_V_1_3_COLUMN_DEFAULT_VALUE);
+    parser_opts.set_language_options(&language_opts);
+    ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, parser_opts, &parser_output));
     const auto* statement = parser_output->statement();
     DLOG(INFO) << "\n" << statement->DebugString();
     node::SqlNode* output;
