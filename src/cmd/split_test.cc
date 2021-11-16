@@ -19,7 +19,7 @@
 #include <memory>
 #include <vector>
 
-#include "cmd/sql_cmd.h"
+#include "vm/engine.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 
