@@ -16,20 +16,11 @@
 
 #include "cmd/sql_cmd.h"
 
-#include <sched.h>
 #include <unistd.h>
 
 #include <memory>
 #include <string>
-#include <vector>
 
-#include "base/file_util.h"
-#include "base/glog_wapper.h"
-#include "case/sql_case.h"
-#include "catalog/schema_adapter.h"
-#include "cmd/split.h"
-#include "codec/fe_row_codec.h"
-#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
@@ -283,69 +274,6 @@ TEST_F(SqlCmdTest, load_data) {
     delete[] data;
     ifile.close();
     ofile.close();
-}
-
-TEST_F(SqlCmdTest, split_line) {
-    std::vector<std::string> cols;
-    openmldb::cmd::SplitLineWithDelimiterForStrings(" --- --- ---", "---", &cols, '\0');
-    ASSERT_EQ(cols.size(), 4);
-    for (auto& line : cols) {
-        ASSERT_EQ(strcmp(line.c_str(), ""), 0);
-    }
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("- - ---ab---c b---", "---", &cols, '\0');
-    ASSERT_EQ(cols.size(), 4);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "- -"), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "ab"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "c b"), 0);
-    ASSERT_EQ(strcmp(cols[3].c_str(), ""), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("\" + + \"---+ +---c b", "---", &cols, '"');
-    ASSERT_EQ(cols.size(), 3);
-    ASSERT_EQ(strcmp(cols[0].c_str(), " + + "), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "+ +"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "c b"), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("\" + + \"---+ +---c b", "---", &cols, '\0');
-    ASSERT_EQ(cols.size(), 3);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "\" + + \""), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "+ +"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "c b"), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings(" _ --- ab --- cd", "---", &cols, '\0');
-    ASSERT_EQ(cols.size(), 3);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "_"), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "ab"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "cd"), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("ab cd ef", " ", &cols, '\0');
-    ASSERT_EQ(cols.size(), 3);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "ab"), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "cd"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "ef"), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("ab  cd  ef", " ", &cols, '\0');
-    ASSERT_EQ(cols.size(), 5);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "ab"), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), ""), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "cd"), 0);
-    ASSERT_EQ(strcmp(cols[3].c_str(), ""), 0);
-    ASSERT_EQ(strcmp(cols[4].c_str(), "ef"), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("\"ab \" cd  ef", " ", &cols, '"');
-    ASSERT_EQ(cols.size(), 4);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "ab "), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "cd"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), ""), 0);
-    ASSERT_EQ(strcmp(cols[3].c_str(), "ef"), 0);
-    cols.clear();
 }
 
 }  // namespace cmd

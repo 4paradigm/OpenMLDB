@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "absl/strings/ascii.h"
+#include "glog/logging.h"
 
 namespace openmldb::cmd {
 // ----------------------------------------------------------------------
@@ -124,7 +125,7 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
             // Skip all trailing whitespace
             for (end = line; end > start; --end) {
                 if (!absl::ascii_isspace(end[-1])) {
-                    DCHECK(memcmp(end-delimiter_len, delimiter, delimiter_len) != 0);
+                    DCHECK(memcmp(end - delimiter_len, delimiter, delimiter_len) != 0);
                     break;
                 }
             }
