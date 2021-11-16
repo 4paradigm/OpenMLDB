@@ -53,7 +53,7 @@ public class CommandResultUtil {
             String[] infos = line.split("\\s+");
             index.setId(Integer.parseInt(infos[0]));
             index.setIndexName(infos[1]);
-            index.setKeys(Arrays.asList(infos[2].split(",")));
+            index.setKeys(Arrays.asList(infos[2].split("\\|")));
             index.setTs(infos[3]);
             index.setTtl(infos[4]);
             index.setTtlType(infos[5]);
