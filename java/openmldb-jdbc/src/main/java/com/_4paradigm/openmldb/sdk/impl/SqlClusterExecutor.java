@@ -284,7 +284,9 @@ public class SqlClusterExecutor implements SqlExecutor {
             Map<String, Schema> schemaMap = entry.getValue();
             TableColumnDescPairVector tableColumnDescPairVector = convertSchema(schemaMap);
             VectorString ddlList = sql_router_sdk.GenDDL(sql, tableColumnDescPairVector);
-            results.addAll(ddlList);
+            results.addAll(ddlList); // hard copy
+            ddlList.delete();
+            tableColumnDescPairVector.delete();
         }
         return results;
     }
@@ -300,8 +302,11 @@ public class SqlClusterExecutor implements SqlExecutor {
             tableColumnDescPairVector.addAll(convertSchema(schemaMap));
         }
         com._4paradigm.openmldb.Schema outputSchema = sql_router_sdk.GenOutputSchema(sql, tableColumnDescPairVector);
+        // TODO(hw): if we convert com._4paradigm.openmldb.Schema(cPtr) failed, it will throw an exception,
+        //  we can't do the later delete()
         Schema ret = Common.convertSchema(outputSchema);
         outputSchema.delete();
+        tableColumnDescPairVector.delete();
         return ret;
     }
 
