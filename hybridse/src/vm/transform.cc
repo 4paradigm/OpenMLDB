@@ -960,7 +960,93 @@ bool BatchModeTransformer::AddDefaultPasses() {
     AddPass(PhysicalPlanPassType::kPassClusterOptimized);
     return false;
 }
+Status BatchModeTransformer::ValidateOnlyFullGroupBy(const node::ProjectListNode* project_list,
+                                                     const node::ExprListNode* group_keys,
+                                                     const SchemasContext* schemas_ctx) {
+    CHECK_TRUE(project_list != nullptr && schemas_ctx != nullptr, common::kNullInputPointer,
+               "input parameters are null");
 
+    const node::ExprNode* having_condition = project_list->GetHavingCondition();
+    // GROUP BY
+    if (!node::ExprListNullOrEmpty(group_keys)) {
+        std::set<size_t> group_column_ids;
+        CHECK_STATUS(schemas_ctx->ResolveExprDependentColumns(group_keys, &group_column_ids));
+        // Rule 4: OpenMLDB only support ONLY_FULL_GROUP_BY mode
+        // Expression #%u of %s is not in GROUP BY clause and contains nonaggregated column '%s'
+        // which is not functionally dependent on columns in GROUP BY clause;
+        // this is incompatible with sql_mode=only_full_group_by
+        // e.g.
+        // -- invalid with ONLY_FULL_GROUP_BY
+        // ```
+        // SELECT name, address, MAX(age) FROM t GROUP BY name;
+        if (project_list->HasRowProject()) {
+            for (size_t idx = 0; idx < project_list->GetProjects().size(); idx++) {
+                node::ProjectNode* project = dynamic_cast<node::ProjectNode*>(project_list->GetProjects()[idx]);
+                if (!project->IsAgg()) {
+                    std::set<size_t> depend_column_ids;
+                    CHECK_STATUS(
+                        schemas_ctx->ResolveExprDependentColumns(project->GetExpression(), &depend_column_ids));
+                    for (auto& column_id : depend_column_ids) {
+                        CHECK_TRUE(group_column_ids.count(column_id) > 0, common::kPlanError, "Expression #",
+                                   project->GetPos(),
+                                   " of SELECT list is not in GROUP BY clause and contains nonaggregated column ",
+                                   " which is not functionally dependent on columns in GROUP BY clause; this is "
+                                   "incompatible with sql_mode=only_full_group_by")
+                    }
+                }
+            }
+        }
+        // GROUP BY ... HAVING ...
+        if (nullptr != having_condition) {
+            // Rule 6:
+            // Expression #%u of %s is not in GROUP BY clause and contains nonaggregated column '%s'
+            // which is not functionally dependent on columns in GROUP BY clause;
+            // this is incompatible with sql_mode=only_full_group_by
+            if (!node::IsAggregationExpression(library_, having_condition)) {
+                std::set<size_t> depend_column_ids;
+                CHECK_STATUS(schemas_ctx->ResolveExprDependentColumns(having_condition, &depend_column_ids))
+
+                for (auto column_id : depend_column_ids) {
+                    CHECK_TRUE(group_column_ids.count(column_id) > 0, common::kPlanError,
+                               "Having clause is not in GROUP BY clause and contains nonaggregated column ",
+                               " which is not functionally dependent on columns in GROUP BY clause; this is "
+                               "incompatible with sql_mode=only_full_group_by")
+                }
+            }
+        }
+    } else {
+        // HAVING
+        if (nullptr != having_condition) {
+            // Rule 7: Having clause can only be used in conjunction with aggregated query
+            CHECK_TRUE(project_list->HasAggProject(), common::kPlanError,
+                       "Having clause can only be used in conjunction with aggregated query")
+            // Rule 8: OpenMLDB only support ONLY_FULL_GROUP_BY mode
+            // In aggregated query without GROUP BY, Having clause contains nonaggregated column '%s';
+            // this is incompatible with sql_mode=only_full_group_by
+            CHECK_TRUE(node::IsAggregationExpression(library_, having_condition), common::kPlanError,
+                       "In aggregated query without GROUP BY, "
+                       "Having clause contains nonaggregated project '",
+                       having_condition->GetExprString(), "'; this is incompatible with sql_mode=only_full_group_by")
+        } else {
+            // Rule 5: OpenMLDB only support ONLY_FULL_GROUP_BY mode
+            // In aggregated query without GROUP BY, expression #%u of %s contains nonaggregated column '%s';
+            // this is incompatible with sql_mode=only_full_group_by
+            // -- unacceptable sql
+            // SELECT col1, col2, SUM(col3) from t1;
+            if (nullptr == project_list->GetW() && project_list->HasAggProject() && project_list->HasRowProject()) {
+                for (size_t idx = 0; idx < project_list->GetProjects().size(); idx++) {
+                    node::ProjectNode* project = dynamic_cast<node::ProjectNode*>(project_list->GetProjects()[idx]);
+                    CHECK_TRUE(project->IsAgg(), common::kPlanError,
+                               "In aggregated query without GROUP BY, expression #", project->GetPos(),
+                               " of SELECT list contains nonaggregated project '",
+                               project->GetExpression()->GetExprString(),
+                               "'; this is incompatible with sql_mode=only_full_group_by")
+                }
+            }
+        }
+    }
+    return base::Status::OK();
+}
 Status BatchModeTransformer::CreatePhysicalConstProjectNode(
     node::ProjectListNode* project_list, PhysicalOpNode** output) {
     CHECK_TRUE(project_list != nullptr && output != nullptr, kPlanError,
@@ -998,6 +1084,11 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
 
     const node::PlanNodeList& projects = project_list->GetProjects();
     const node::ExprNode* having_condition = project_list->GetHavingCondition();
+    const node::ExprListNode* group_keys = nullptr;
+    if (kGroupAggregation == project_type) {
+        CHECK_STATUS(ExtractGroupKeys(depend, &group_keys));
+    }
+    CHECK_STATUS(ValidateOnlyFullGroupBy(project_list, group_keys, depend->schemas_ctx()));
     // extract window frame if any
     const node::FrameNode* primary_frame = nullptr;
     if (project_list->GetW() != nullptr) {
@@ -1088,13 +1179,12 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
             break;
         }
         case kGroupAggregation: {
-            const node::ExprListNode* keys = nullptr;
-            CHECK_STATUS(ExtractGroupKeys(depend, &keys));
-            CHECK_TRUE(keys != nullptr, kPlanError,
+            CHECK_TRUE(!node::ExprListNullOrEmpty(group_keys), kPlanError,
                        "Can not create group agg with non group keys");
+
             PhysicalGroupAggrerationNode* agg_op = nullptr;
             CHECK_STATUS(CreateOp<PhysicalGroupAggrerationNode>(
-                &agg_op, depend, column_projects, having_condition, keys));
+                &agg_op, depend, column_projects, having_condition, group_keys));
             *output = agg_op;
             break;
         }
@@ -1830,6 +1920,7 @@ RequestModeTransformer::RequestModeTransformer(node::NodeManager* node_manager, 
 
 RequestModeTransformer::~RequestModeTransformer() {}
 
+
 // transform project plan in request mode
 Status RequestModeTransformer::TransformProjectPlanOp(
     const node::ProjectPlanNode* node, PhysicalOpNode** output) {
@@ -2015,6 +2106,7 @@ Status RequestModeTransformer::ValidatePrimaryPath(
     }
     return Status::OK();
 }
+
 Status RequestModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* depend,
     bool append_input, PhysicalOpNode** output) {

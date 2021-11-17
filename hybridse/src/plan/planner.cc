@@ -79,6 +79,13 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         // TODO(chenjing): 处理子查询
         table_name = MakeTableName(current_node);
     }
+
+    // Cannot support GROUP BY, WHERE and HAVING clause under Request Mode
+    if (!is_batch_mode_) {
+        CHECK_TRUE(nullptr == root->group_clause_ptr_, common::kPlanError, "Cannot support GROUP BY clause on RequestMode");
+        CHECK_TRUE(nullptr == root->where_clause_ptr_, common::kPlanError, "Cannot support WHERE clause on RequestMode");
+        CHECK_TRUE(nullptr == root->having_clause_ptr_, common::kPlanError, "Cannot support HAVING clause on RequestMode");
+    }
     // group by
     if (nullptr != root->group_clause_ptr_) {
         if (!root->group_clause_ptr_->IsEmpty()) {
@@ -173,101 +180,10 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     CHECK_TRUE(!(table_project_list->HasAggProject() && !window_project_list_map.empty()), common::kPlanError,
                "Can't support table aggregation and window aggregation simultaneously")
 
-    if (nullptr != root->group_clause_ptr_) {
-        // Rule 4: OpenMLDB only support ONLY_FULL_GROUP_BY mode
-        // Expression #%u of %s is not in GROUP BY clause and contains nonaggregated column '%s'
-        // which is not functionally dependent on columns in GROUP BY clause;
-        // this is incompatible with sql_mode=only_full_group_by
-        // e.g.
-        // -- invalid with ONLY_FULL_GROUP_BY
-        // ```
-        // SELECT name, address, MAX(age) FROM t GROUP BY name;
-        if (table_project_list->HasRowProject()) {
-            for (size_t idx = 0; idx < table_project_list->GetProjects().size(); idx++) {
-                node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(table_project_list->GetProjects()[idx]);
-                if (!project->IsAgg()) {
-                    std::vector<const node::ExprNode *> columns;
-                    node::ColumnOfExpression(project->GetExpression(), &columns);
-                    for (const node::ExprNode *column : columns) {
-                        bool functionally_dependent = false;
-                        for (size_t i = 0; i < root->group_clause_ptr_->GetChildNum(); i++) {
-                            if (node::ExprEquals(root->group_clause_ptr_->GetChild(i), column)) {
-                                functionally_dependent = true;
-                                break;
-                            }
-                        }
-                        CHECK_TRUE(functionally_dependent, common::kPlanError, "Expression #", idx,
-                                   " of SELECT list is not in GROUP BY clause and contains nonaggregated column ",
-                                   column->GetExprString(),
-                                   " which is not functionally dependent on columns in GROUP BY clause; this is "
-                                   "incompatible with sql_mode=only_full_group_by")
-                    }
-                }
-            }
-        }
-    } else {
-        // Rule 5: OpenMLDB only support ONLY_FULL_GROUP_BY mode
-        // In aggregated query without GROUP BY, expression #%u of %s contains nonaggregated column '%s';
-        // this is incompatible with sql_mode=only_full_group_by
-        // -- unacceptable sql
-        // SELECT col1, col2, SUM(col3) from t1;
-        if (table_project_list->HasAggProject()) {
-            for (size_t idx = 0; idx < table_project_list->GetProjects().size(); idx++) {
-                node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(table_project_list->GetProjects()[idx]);
-                CHECK_TRUE(project->IsAgg(), common::kPlanError, "In aggregated query without GROUP BY, expression #",
-                           idx, " of SELECT list contains nonaggregated project '",
-                           project->GetExpression()->GetExprString(),
-                           "'; this is incompatible with sql_mode=only_full_group_by")
-            }
-        }
-    }
-
-    // having
-    if (nullptr != root->having_clause_ptr_) {
-        if (nullptr != root->group_clause_ptr_) {
-            // Rule 6:
-            // Expression #%u of %s is not in GROUP BY clause and contains nonaggregated column '%s'
-            // which is not functionally dependent on columns in GROUP BY clause;
-            // this is incompatible with sql_mode=only_full_group_by
-            const node::ExprNode *expression = root->having_clause_ptr_;
-            if (!node::IsAggregationExpression(lib, expression)) {
-                std::vector<const node::ExprNode *> columns;
-                node::ColumnOfExpression(expression, &columns);
-                for (const node::ExprNode *column : columns) {
-                    bool functionally_dependent = false;
-                    for (size_t i = 0; i < root->group_clause_ptr_->GetChildNum(); i++) {
-                        if (node::ExprEquals(root->group_clause_ptr_->GetChild(i), column)) {
-                            functionally_dependent = true;
-                            break;
-                        }
-                    }
-                    CHECK_TRUE(functionally_dependent, common::kPlanError,
-                               "Having clause is not in GROUP BY clause and contains nonaggregated column ",
-                               column->GetExprString(),
-                               " which is not functionally dependent on columns in GROUP BY clause; this is "
-                               "incompatible with sql_mode=only_full_group_by")
-                }
-            }
-            table_project_list->SetHavingCondition(root->having_clause_ptr_);
-        } else {
-            // Rule 7: Having clause can't only be used in conjunction with aggregated query
-            CHECK_TRUE(table_project_list->HasAggProject(), common::kPlanError,
-                       "Having clause can only be used in conjunction with aggregated query")
-            // Rule 8: OpenMLDB only support ONLY_FULL_GROUP_BY mode
-            // In aggregated query without GROUP BY, Having clause contains nonaggregated column '%s';
-            // this is incompatible with sql_mode=only_full_group_by
-
-            CHECK_TRUE(node::IsAggregationExpression(lib, root->having_clause_ptr_), common::kPlanError,
-                       "In aggregated query without GROUP BY, "
-                       "Having clause contains nonaggregated project '",
-                       root->having_clause_ptr_->GetExprString(),
-                       "'; this is incompatible with sql_mode=only_full_group_by")
-        }
-    }
-
     // Add table projects into project map beforehand
     // Thus we can merge project list based on window frame when it is necessary.
     if (!table_project_list->GetProjects().empty()) {
+        table_project_list->SetHavingCondition(root->having_clause_ptr_);
         window_project_list_map[nullptr] = table_project_list;
     }
     // merge window map
@@ -313,7 +229,6 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     }
 
     current_node = node_manager_->MakeProjectPlanNode(current_node, table_name, project_list_without_null, pos_mapping);
-
 
     // distinct
     if (root->distinct_opt_) {

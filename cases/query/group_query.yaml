@@ -77,7 +77,7 @@ cases:
     sql: |
       SELECT col2, sum(col1) as col1_sum, sum(col3) as col3_sum,
       sum(col4) as col4_sum, sum(col2) as col2_sum,
-      sum(col5) as col5_sum FROM t1 Group By col2;
+      sum(col5) as col5_sum FROM t1 Group By t1.col2;
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string

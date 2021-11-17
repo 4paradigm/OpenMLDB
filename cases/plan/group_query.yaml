@@ -15,14 +15,18 @@
 cases:
   - id: 1
     desc: 简单SELECT分组KEY
+    mode: request-unsupport
     sql: SELECT COL1 FROM t1 group by COL1;
   - id: 3
     desc: SELECT多KEY的分组
+    mode: request-unsupport
     sql: SELECT COL1, COL2 FROM t1 group by COL1, COL2;
   - id: 4
     desc: 简单SELECT分组聚合
+    mode: request-unsupport
     sql: SELECT COL1, SUM(COL2) FROM t1 group by COL1;
 
   - id: 6
     desc: SELECT多KEY的分组聚合
+    mode: request-unsupport
     sql: SELECT COL1, COL2, SUM(COL3) FROM t1 group by COL1, COL2;
