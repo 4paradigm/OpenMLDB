@@ -37,14 +37,12 @@
 #include "passes/physical/simple_project_optimized.h"
 #include "passes/physical/window_column_pruning.h"
 
-using ::hybridse::base::Status;
-using ::hybridse::common::kPlanError;
-using ::hybridse::common::kCodegenError;
-
 namespace hybridse {
 namespace vm {
 
-using hybridse::passes::CheckExprDependOnChildOnly;
+using ::hybridse::base::Status;
+using ::hybridse::common::kPlanError;
+using ::hybridse::common::kCodegenError;
 using hybridse::passes::ClusterOptimized;
 using hybridse::passes::CommonColumnOptimize;
 using hybridse::passes::ConditionOptimized;
@@ -542,9 +540,9 @@ Status BatchModeTransformer::CreateRequestUnionNode(
     return Status::OK();
 }
 
-Status BatchModeTransformer::TransformWindowOp(
-    PhysicalOpNode* depend, const node::WindowPlanNode* w_ptr,
-    PhysicalOpNode** output) {
+Status BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
+                                               const node::WindowPlanNode* w_ptr,
+                                               PhysicalOpNode** output) {
     // sanity check
     CHECK_TRUE(depend != nullptr && output != nullptr, kPlanError,
                "Depend node or output node is null");
@@ -612,14 +610,14 @@ Status BatchModeTransformer::TransformWindowOp(
                     auto child_schemas_ctx =
                         join_op->GetProducer(0)->schemas_ctx();
                     if (!node::ExprListNullOrEmpty(groups)) {
-                        CHECK_STATUS(CheckExprDependOnChildOnly(
+                        CHECK_STATUS(passes::CheckExprDependOnChildOnly(
                                          groups, child_schemas_ctx),
                                      "Fail to handle window: group "
                                      "expression should belong to left table");
                     }
                     if (nullptr != orders &&
                         !node::ExprListNullOrEmpty(orders->order_expressions_)) {
-                        CHECK_STATUS(CheckExprDependOnChildOnly(
+                        CHECK_STATUS(passes::CheckExprDependOnChildOnly(
                                          orders->order_expressions_, child_schemas_ctx),
                                      "Fail to handle window: group "
                                      "expression should belong to left table");
@@ -749,8 +747,9 @@ Status BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     CHECK_STATUS(CreateOp<PhysicalJoinNode>(&join_op, left, right,
                                             node->join_type_, node->orders_,
                                             node->condition_));
-    CHECK_STATUS(
-        CheckTimeOrIntegerOrderColumn(node->orders_, join_op->schemas_ctx()));
+
+    CHECK_STATUS(CheckTimeOrIntegerOrderColumn(node->orders_, join_op->schemas_ctx()));
+
     *output = join_op;
     return Status::OK();
 }
@@ -882,11 +881,9 @@ Status BatchModeTransformer::TransformDistinctOp(
     return Status::OK();
 }
 
-Status BatchModeTransformer::TransformQueryPlan(
-    const ::hybridse::node::PlanNode* node,
-    ::hybridse::vm::PhysicalOpNode** output) {
-    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
-               "Input node or output node is null");
+Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode* node,
+                                                ::hybridse::vm::PhysicalOpNode** output) {
+    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
     return TransformPlanOp(node->GetChildren()[0], output);
 }
 
@@ -1116,9 +1113,10 @@ base::Status BatchModeTransformer::ExtractGroupKeys(vm::PhysicalOpNode* depend, 
     *keys = dynamic_cast<PhysicalGroupNode*>(depend)->group().keys_;
     return base::Status::OK();
 }
-Status BatchModeTransformer::TransformProjectOp(
-    node::ProjectListNode* project_list, PhysicalOpNode* node,
-    bool append_input, PhysicalOpNode** output) {
+Status BatchModeTransformer::TransformProjectOp(node::ProjectListNode* project_list,
+                                                PhysicalOpNode* node,
+                                                bool append_input,
+                                                PhysicalOpNode** output) {
     auto depend = node;
     if (nullptr == depend) {
         return CreatePhysicalConstProjectNode(project_list, output);
@@ -1344,13 +1342,97 @@ Status BatchModeTransformer::ValidateWindowIndexOptimization(
                kPlanError, "Window node hasn't been optimzied")
     return Status::OK();
 }
+
+// 1. validate plan is currently supported
+//    - the right key used for partition, whose type should be one of: [bool, intxx, string, date, timestamp]
+// 2. validate if plan is optimized for performance sensitive mode
+//    - query condition hit to a table index
+//    - not aggregation over table
 Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
+    CHECK_TRUE(nullptr != node, kPlanError, "Invalid physical node: null");
+    // TODO: create a `visitor` method for nodes, single dfs applied
+    CHECK_STATUS(ValidatePlanSupported(node));
     if (performance_sensitive_mode_) {
         CHECK_STATUS(ValidateIndexOptimization(node),
                      "Fail to support physical plan in "
                      "performance sensitive mode");
         CHECK_STATUS(ValidateNotAggregationOverTable(node),
                      "Fail to support aggregation over table in performance sensitive mode")
+    }
+    return Status::OK();
+}
+
+Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
+    for (const auto child : in->GetProducers()) {
+        CHECK_STATUS(ValidatePlanSupported(child));
+    }
+    switch (in->GetOpType()) {
+        case kPhysicalOpJoin: {
+            const auto& join_op = dynamic_cast<const PhysicalJoinNode*>(in);
+            switch (join_op->join_.join_type()) {
+                case node::kJoinTypeLast:
+                case node::kJoinTypeLeft: {
+                    CHECK_STATUS(CheckPartitionColumn(join_op->join().right_key().keys(), join_op->schemas_ctx()));
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+            break;
+        }
+        case kPhysicalOpRequestJoin: {
+            const auto& join_op = dynamic_cast<const PhysicalRequestJoinNode*>(in);
+            switch (join_op->join_.join_type()) {
+                case node::kJoinTypeLast:
+                case node::kJoinTypeLeft: {
+                    CHECK_STATUS(CheckPartitionColumn(join_op->join().right_key().keys(), join_op->schemas_ctx()));
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+            break;
+        }
+        case kPhysicalOpGroupBy: {
+            const auto& group_op = dynamic_cast<const PhysicalGroupNode*>(in);
+            CHECK_STATUS(CheckPartitionColumn(group_op->group().keys(), group_op->schemas_ctx()));
+            break;
+        }
+        case kPhysicalOpProject: {
+            const auto& project_op = dynamic_cast<const PhysicalProjectNode*>(in);
+
+            switch (project_op->project_type_) {
+                case kWindowAggregation: {
+                    const auto& win_agg_op = dynamic_cast<const PhysicalWindowAggrerationNode*>(project_op);
+
+                    CHECK_STATUS(CheckPartitionColumn(win_agg_op->window_.partition().keys(),
+                                                      win_agg_op->GetProducer(0)->schemas_ctx()));
+
+                    // union table's partition key not check
+                    // physical plan generation will fail because of schema not match
+
+                    for (const auto& join: win_agg_op->window_joins_.window_joins_) {
+                        CHECK_STATUS(CheckPartitionColumn(join.second.right_key().keys(), join.first->schemas_ctx()));
+                    }
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+
+            break;
+        }
+        case kPhysicalOpRequestUnion: {
+            const auto& union_op = dynamic_cast<const PhysicalRequestUnionNode*>(in);
+            CHECK_STATUS(CheckPartitionColumn(union_op->window().partition().keys(), union_op->schemas_ctx()));
+            break;
+        }
+        default: {
+            break;
+        }
     }
     return Status::OK();
 }
@@ -1469,11 +1551,9 @@ Status BatchModeTransformer::ValidateIndexOptimization(PhysicalOpNode* in) {
     return Status::OK();
 }
 
-Status BatchModeTransformer::TransformPhysicalPlan(
-    const ::hybridse::node::PlanNodeList& trees,
-    ::hybridse::vm::PhysicalOpNode** output) {
-    CHECK_TRUE(module_ != nullptr && !trees.empty(), kPlanError,
-               "Module or logical trees is empty");
+Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanNodeList& trees,
+                                                   ::hybridse::vm::PhysicalOpNode** output) {
+    CHECK_TRUE(module_ != nullptr && !trees.empty(), kPlanError, "Module or logical trees is empty");
 
     auto it = trees.begin();
     for (; it != trees.end(); ++it) {
@@ -1481,46 +1561,36 @@ Status BatchModeTransformer::TransformPhysicalPlan(
         switch (node->GetType()) {
             case ::hybridse::node::kPlanTypeFuncDef: {
                 const ::hybridse::node::FuncDefPlanNode* func_def_plan =
-                    dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(
-                        node);
-                CHECK_STATUS(GenFnDef(func_def_plan),
-                             "Fail to compile user function def");
+                    dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(node);
+                CHECK_STATUS(GenFnDef(func_def_plan), "Fail to compile user function def");
                 *output = nullptr;
                 break;
             }
             case ::hybridse::node::kPlanTypeUnion:
             case ::hybridse::node::kPlanTypeQuery: {
                 PhysicalOpNode* physical_plan = nullptr;
-                CHECK_STATUS(TransformQueryPlan(node, &physical_plan),
-                             "Fail to transform query statement");
+                CHECK_STATUS(TransformQueryPlan(node, &physical_plan), "Fail to transform query statement");
 
-                DLOG(INFO) << "Before optimization: \n"
-                           << physical_plan->GetTreeString();
+                DLOG(INFO) << "Before optimization: \n" << physical_plan->GetTreeString();
 
                 PhysicalOpNode* optimized_physical_plan = nullptr;
                 ApplyPasses(physical_plan, &optimized_physical_plan);
 
-                DLOG(INFO) << "After optimization: \n"
-                           << optimized_physical_plan->GetTreeString();
+                DLOG(INFO) << "After optimization: \n" << optimized_physical_plan->GetTreeString();
                 CHECK_STATUS(ValidatePlan(optimized_physical_plan));
                 std::set<PhysicalOpNode*> node_visited_dict;
-                CHECK_STATUS(
-                    InitFnInfo(optimized_physical_plan, &node_visited_dict),
-                    "Fail to generate functions for physical plan");
+                CHECK_STATUS(InitFnInfo(optimized_physical_plan, &node_visited_dict),
+                             "Fail to generate functions for physical plan");
                 *output = optimized_physical_plan;
                 break;
             }
             case ::hybridse::node::kPlanTypeCreateSp: {
                 const ::hybridse::node::CreateProcedurePlanNode* sp_plan =
-                    dynamic_cast<
-                        const ::hybridse::node::CreateProcedurePlanNode*>(node);
-                return TransformPhysicalPlan(sp_plan->GetInnerPlanNodeList(),
-                                             output);
+                    dynamic_cast<const ::hybridse::node::CreateProcedurePlanNode*>(node);
+                return TransformPhysicalPlan(sp_plan->GetInnerPlanNodeList(), output);
             }
             default: {
-                return Status(kPlanError,
-                              "Plan type not supported: " +
-                                  node::NameOfPlanNodeType(node->GetType()));
+                return Status(kPlanError, "Plan type not supported: " + node::NameOfPlanNodeType(node->GetType()));
             }
         }
     }
@@ -1751,6 +1821,48 @@ Status BatchModeTransformer::CheckTimeOrIntegerOrderColumn(const node::OrderByNo
     return Status::OK();
 }
 
+/**
+* check partition keys is acceptable type, which should be one of
+*   bool, intXX, string, date, timestamp
+*/
+Status BatchModeTransformer::CheckPartitionColumn(const node::ExprListNode* partition, const SchemasContext* ctx) {
+    if (partition == nullptr) {
+        return Status::OK();
+    }
+    for (int i = 0; i < partition->GetChildNum(); ++i) {
+        const auto child = partition->GetChild(i);
+        switch (child->GetExprType()) {
+            case node::kExprColumnRef: {
+                auto column = dynamic_cast<const node::ColumnRefNode*>(child);
+                size_t schema_idx = 0;
+                size_t col_idx = 0;
+                if (ctx->ResolveColumnRefIndex(column, &schema_idx, &col_idx).isOK()) {
+                    auto type = ctx->GetSchemaSource(schema_idx)->GetColumnType(col_idx);
+                    switch (type) {
+                        case type::kBool:
+                        case type::kInt16:
+                        case type::kInt32:
+                        case type::kInt64:
+                        case type::kVarchar:
+                        case type::kDate:
+                        case type::kTimestamp:
+                            break;
+                        default: {
+                            FAIL_STATUS(common::kPhysicalPlanError, "unsupported partition key: '",
+                                        column->GetExprString(), "', type is ", node::TypeName(type),
+                                        ", should be bool, intxx, string, date or timestamp");
+                        }
+                    }
+                }
+            }
+            default: {
+                break;
+            }
+        }
+    }
+    return Status::OK();
+}
+
 Status BatchModeTransformer::CheckWindow(
     const node::WindowPlanNode* w_ptr, const vm::SchemasContext* schemas_ctx) {
     CHECK_TRUE(w_ptr != nullptr, common::kPlanError, "NULL Window");
@@ -1761,8 +1873,9 @@ Status BatchModeTransformer::CheckWindow(
                common::kPlanError,
                "Invalid Window: Do not support window on non-order");
     CHECK_STATUS(CheckHistoryWindowFrame(w_ptr));
-    CHECK_STATUS(
-        CheckTimeOrIntegerOrderColumn(w_ptr->GetOrders(), schemas_ctx));
+
+    CHECK_STATUS(CheckTimeOrIntegerOrderColumn(w_ptr->GetOrders(), schemas_ctx));
+
     return Status::OK();
 }
 Status BatchModeTransformer::CheckHistoryWindowFrame(
@@ -1886,8 +1999,8 @@ Status RequestModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
         &request_join_op, left, right, node->join_type_, node->orders_,
         node->condition_));
 
-    CHECK_STATUS(CheckTimeOrIntegerOrderColumn(node->orders_,
-                                               request_join_op->schemas_ctx()));
+    CHECK_STATUS(CheckTimeOrIntegerOrderColumn(node->orders_, request_join_op->schemas_ctx()));
+
     *output = request_join_op;
     return Status::OK();
 }
