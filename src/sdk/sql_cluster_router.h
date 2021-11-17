@@ -290,9 +290,6 @@ class SQLClusterRouter : public SQLRouter {
                                std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
                                std::vector<DefaultValueMap>* default_maps, std::vector<uint32_t>* str_lengths);
 
-    std::shared_ptr<hybridse::node::ConstNode> GetDefaultMapValue(const hybridse::node::ConstNode& node,
-                                                                  openmldb::type::DataType column_type);
-
     DefaultValueMap GetDefaultMap(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                                   const std::map<uint32_t, uint32_t>& column_map, ::hybridse::node::ExprListNode* row,
                                   uint32_t* str_length);

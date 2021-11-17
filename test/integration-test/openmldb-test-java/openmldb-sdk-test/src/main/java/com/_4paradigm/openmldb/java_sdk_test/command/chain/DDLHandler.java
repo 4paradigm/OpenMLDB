@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.java_sdk_test.command.chain;
 import com._4paradigm.openmldb.java_sdk_test.command.OpenmlDBCommandFactory;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.CommandResultUtil;
+import com._4paradigm.openmldb.java_sdk_test.util.Tool;
 import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com.google.common.base.Joiner;
 
@@ -37,6 +38,10 @@ public class DDLHandler extends AbstractSQLHandler{
         fesqlResult.setMsg(Joiner.on("\n").join(result));
         fesqlResult.setOk(CommandResultUtil.success(result));
         fesqlResult.setDbName(dbName);
+        if(sql.toLowerCase().startsWith("create index")){
+            // TODO 希望有更好的解决方案
+            Tool.sleep(10000);
+        }
         return fesqlResult;
     }
 

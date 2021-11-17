@@ -527,8 +527,9 @@ SqlNode *NodeManager::MakeColumnIndexNode(SqlNodeList *keys, SqlNode *ts, SqlNod
     return RegisterNode(node_ptr);
 }
 
-SqlNode *NodeManager::MakeColumnDescNode(const std::string &column_name, const DataType data_type, bool op_not_null) {
-    SqlNode *node_ptr = new ColumnDefNode(column_name, data_type, op_not_null);
+SqlNode *NodeManager::MakeColumnDescNode(const std::string &column_name, const DataType data_type, bool op_not_null,
+                                         ExprNode *default_value) {
+    SqlNode *node_ptr = new ColumnDefNode(column_name, data_type, op_not_null, default_value);
     return RegisterNode(node_ptr);
 }
 

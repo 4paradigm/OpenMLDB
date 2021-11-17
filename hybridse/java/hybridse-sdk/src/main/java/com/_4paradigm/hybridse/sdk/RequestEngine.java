@@ -51,8 +51,8 @@ public class RequestEngine implements AutoCloseable {
      */
     public RequestEngine(String sql, TypeOuterClass.Database database) throws UnsupportedHybridSeException {
         options = new EngineOptions();
-        options.set_keep_ir(true);
-        options.set_compile_only(true);
+        options.SetKeepIr(true);
+        options.SetCompileOnly(true);
         catalog = new SimpleCatalog();
         session = new RequestRunSession();
         session.SetPerformanceSensitive(false);

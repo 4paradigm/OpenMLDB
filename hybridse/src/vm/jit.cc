@@ -253,7 +253,7 @@ bool HybridSeMcJitWrapper::AddModule(
     } else {
         execution_engine_->addModule(std::move(module));
     }
-    if (jit_options_.is_enable_vtune()) {
+    if (jit_options_.IsEnableVTune()) {
         auto listener = ::llvm::JITEventListener::createIntelJITEventListener();
         if (listener == nullptr) {
             LOG(WARNING) << "Intel jit events is not enabled";
@@ -261,7 +261,7 @@ bool HybridSeMcJitWrapper::AddModule(
             execution_engine_->RegisterJITEventListener(listener);
         }
     }
-    if (jit_options_.is_enable_gdb()) {
+    if (jit_options_.IsEnableGDB()) {
         auto listener =
             ::llvm::JITEventListener::createGDBRegistrationListener();
         if (listener == nullptr) {
@@ -276,7 +276,7 @@ bool HybridSeMcJitWrapper::AddModule(
 #endif
         }
     }
-    if (jit_options_.is_enable_perf()) {
+    if (jit_options_.IsEnablePerf()) {
         auto listener = ::llvm::JITEventListener::createPerfJITEventListener();
         if (listener == nullptr) {
             LOG(WARNING) << "Perf jit events is not enabled";

@@ -54,10 +54,10 @@ public class DDLTest extends FedbTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
-    // @Test(dataProvider = "getCase")
-    // @Yaml(filePaths = "function/ddl/test_create_index.yaml")
-    // @Story("create_index")
-    // public void testCreateIndex(SQLCase testCase){
-    //     ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
-    // }
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create_index.yaml")
+    @Story("create_index")
+    public void testCreateIndex(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+    }
 }

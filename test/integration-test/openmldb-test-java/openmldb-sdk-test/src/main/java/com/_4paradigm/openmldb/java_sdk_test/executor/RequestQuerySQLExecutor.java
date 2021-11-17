@@ -141,8 +141,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("performance-sensitive-unsupport")) {
-            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
-            reportLog.info("skip case in performance sensitive mode: {}", fesqlCase.getDesc());
+            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-request-unsupport")) {
