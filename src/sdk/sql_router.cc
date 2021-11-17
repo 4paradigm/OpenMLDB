@@ -57,6 +57,65 @@ std::map<std::string, std::vector<openmldb::common::ColumnDesc>> convertSchema(
     return table_desc_map;
 }
 
+bool ToTTLTypeString(openmldb::type::TTLType ttl_type, std::string* ttl_type_str) {
+    switch (ttl_type) {
+        case openmldb::type::TTLType::kAbsoluteTime:
+            *ttl_type_str = "absolute";
+            return true;
+        case openmldb::type::TTLType::kLatestTime:
+            *ttl_type_str = "latest";
+            return true;
+        case openmldb::type::TTLType::kAbsAndLat:
+            *ttl_type_str = "absandlat";
+            return true;
+        case openmldb::type::TTLType::kAbsOrLat:
+            *ttl_type_str = "absorlat";
+            return true;
+        default:
+            DLOG(ERROR) << "Can Not Found This TTL Type: " + openmldb::type::TTLType_Name(ttl_type);
+            return false;
+    }
+}
+
+std::string ToIndexString(const std::string& ts, const std::string& key_name, openmldb::type::TTLType ttl_type,
+                          const std::string& expire) {
+    std::string index;
+    std::string ttl_type_str;
+    ToTTLTypeString(ttl_type, &ttl_type_str);
+    index = "\tindex(key=(";
+    index.append(key_name);
+    index.append("), ttl=");
+    index.append(expire);
+    index.append(", ttl_type=");
+    index.append(ttl_type_str);
+    if (ts.empty()) {
+        index.append(")");
+    } else {
+        index.append(", ts=`");
+        index.append(ts);
+        index.append("`)");
+    }
+    return index;
+}
+
+bool GetTTL(openmldb::type::TTLType ttl_type, ::google::protobuf::uint64 abs_ttl, ::google::protobuf::uint64 lat_ttl,
+            std::string* ttl) {
+    switch (ttl_type) {
+        case openmldb::type::TTLType::kAbsoluteTime:
+            *ttl = std::to_string(abs_ttl).append("m");
+            return true;
+        case openmldb::type::TTLType::kAbsAndLat:
+        case openmldb::type::TTLType::kAbsOrLat:
+            *ttl = "(" + std::to_string(abs_ttl) + "m, " + std::to_string(lat_ttl) + ")";
+            return true;
+        case openmldb::type::TTLType::kLatestTime:
+            *ttl = std::to_string(lat_ttl);
+            return true;
+        default:
+            return false;
+    }
+}
+
 std::vector<std::string> GenDDL(
     const std::string& sql,
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
@@ -100,9 +159,9 @@ std::vector<std::string> GenDDL(
                     auto abs_ttl = ttl.abs_ttl();
                     auto lat_ttl = ttl.lat_ttl();
                     std::string expire;
-                    SQLClusterRouter::GetTTL(ttl_type, abs_ttl, lat_ttl, &expire);
+                    GetTTL(ttl_type, abs_ttl, lat_ttl, &expire);
                     const auto& ts = column_key.ts_name();
-                    ddl = ddl.append(SQLClusterRouter::ToIndexString(ts, key_name, ttl_type, expire));
+                    ddl = ddl.append(ToIndexString(ts, key_name, ttl_type, expire));
                     ddl = ddl.append(",\n");
                 }
             }

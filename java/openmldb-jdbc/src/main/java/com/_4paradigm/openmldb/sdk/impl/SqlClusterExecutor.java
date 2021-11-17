@@ -276,7 +276,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     static public List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
         if (null == tableSchema || tableSchema.isEmpty()) {
-            return null;
+            throw new SQLException("input schema is null or empty");
         }
         List<String> results = new ArrayList<>();
         // TODO(hw): multi db is not supported now
@@ -291,7 +291,7 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     static public Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
         if (null == tableSchema || tableSchema.isEmpty()) {
-            return null;
+            throw new SQLException("input schema is null or empty");
         }
         TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
         // TODO(hw): multi db is not supported now, so we add all db-tables here

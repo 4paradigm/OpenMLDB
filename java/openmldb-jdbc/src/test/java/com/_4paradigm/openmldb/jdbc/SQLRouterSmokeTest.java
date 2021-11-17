@@ -16,16 +16,16 @@
 
 package com._4paradigm.openmldb.jdbc;
 
-import com._4paradigm.openmldb.*;
-
+import com._4paradigm.openmldb.SQLInsertRow;
+import com._4paradigm.openmldb.SQLInsertRows;
 import com._4paradigm.openmldb.sdk.Column;
-import com._4paradigm.openmldb.sdk.Common;
 import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import org.testng.collections.Maps;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -583,5 +583,37 @@ public class SQLRouterSmokeTest {
         Assert.assertEquals(schema.size(), 1);
         Assert.assertEquals(schema.get(0).getColumnName(), "c1");
         Assert.assertEquals(schema.get(0).getSqlType(), Types.VARCHAR);
+
+        // if input schema is null or empty
+        try {
+            SqlClusterExecutor.genDDL("", null);
+            Assert.fail("null input schema will throw an exception");
+        } catch (SQLException ignored) {
+        }
+        try {
+            SqlClusterExecutor.genOutputSchema("", null);
+            Assert.fail("null input schema will throw an exception");
+        } catch (SQLException ignored) {
+        }
+        try {
+            SqlClusterExecutor.genDDL("", Maps.newHashMap());
+            Assert.fail("null input schema will throw an exception");
+        } catch (SQLException ignored) {
+        }
+        try {
+            SqlClusterExecutor.genOutputSchema("", Maps.newHashMap());
+            Assert.fail("null input schema will throw an exception");
+        } catch (SQLException ignored) {
+        }
+
+        // if parse fails, genDDL will create table without index
+        List<String> res1 = SqlClusterExecutor.genDDL("select not_exist from t1;", schemaMaps);
+        Assert.assertEquals(res1.size(), 1);
+        Assert.assertFalse(res1.get(0).contains("index"));
+        // if parse fails, the output schema result is empty, can't convert to sdk.Schema
+        try {
+            SqlClusterExecutor.genOutputSchema("select not_exist from t1;", schemaMaps);
+        } catch (SQLException ignored) {
+        }
     }
 }
