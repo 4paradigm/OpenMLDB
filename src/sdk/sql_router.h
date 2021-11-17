@@ -73,7 +73,7 @@ class SQLRouter {
 
     virtual bool DropDB(const std::string& db, hybridse::sdk::Status* status) = 0;
 
-    virtual void SetPerformanceSensitive(const bool performance_sensitive) = 0;
+    virtual void SetPerformanceSensitive(bool performance_sensitive) = 0;
 
     virtual bool ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) = 0;
 
@@ -142,52 +142,56 @@ class SQLRouter {
 
     virtual std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
                                                                   const std::string& table_name) = 0;
-    /*
-     * return ddl statements
-     * schemas example:
-     * {
-     *  "table1" : [
-     *      {
-     *          "col1": "kTypeString"
-     *      }
-     *      {
-     *          "col2": "kTypeInt64"
-     *      }
-     *  ],
-     *  "table2": [
-     *      {
-     *          "col1": "kTypeString"
-     *      },
-     *      {
-     *          "col2": "kTypeInt64"
-     *      }
-     *  ]
-     * }
-     *
-     * enum ColumnType: hybridse::sdk::DataType
-     *
-     * return:
-     *      [
-     *          "CREATE TABLE IF NOT EXISTS table1(
-     *              col1 string,
-     *              col2 bigint,
-     *              index(key=col1, ttl=60)
-     *          )",
-     *          "CREATE TABLE IF NOT EXISTS table2(
-     *              col1 string,
-     *              col2 bigint,
-     *              index(key=col1, ttl=60)
-     *          )"
-     *      ]
-     */
-    virtual std::vector<std::string> ExecuteDDLParse(
-        const std::string& sql,
-        const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>&
-            schemas) = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
 
+/*
+ * return ddl statements
+ * schemas example:
+ * {
+ *  "table1" : [
+ *      {
+ *          "col1": "kTypeString"
+ *      }
+ *      {
+ *          "col2": "kTypeInt64"
+ *      }
+ *  ],
+ *  "table2": [
+ *      {
+ *          "col1": "kTypeString"
+ *      },
+ *      {
+ *          "col2": "kTypeInt64"
+ *      }
+ *  ]
+ * }
+ *
+ * enum ColumnType: hybridse::sdk::DataType
+ *
+ * return:
+ *      [
+ *          "CREATE TABLE IF NOT EXISTS table1(
+ *              col1 string,
+ *              col2 bigint,
+ *              index(key=col1, ttl=60)
+ *          )",
+ *          "CREATE TABLE IF NOT EXISTS table2(
+ *              col1 string,
+ *              col2 bigint,
+ *              index(key=col1, ttl=60)
+ *          )"
+ *      ]
+ */
+// TODO(hw): support multi db
+std::vector<std::string> GenDDL(
+    const std::string& sql,
+    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
+
+std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
+    const std::string& sql,
+    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
 }  // namespace sdk
 }  // namespace openmldb
 #endif  // SRC_SDK_SQL_ROUTER_H_

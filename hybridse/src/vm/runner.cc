@@ -1045,8 +1045,7 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     auto res = Run(ctx, inputs);
     if (ctx.is_debug()) {
         std::ostringstream oss;
-        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
-            << "\n";
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_ << "\n";
         Runner::PrintData(oss, output_schemas_, res);
         LOG(INFO) << oss.str();
     }
@@ -1471,9 +1470,8 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     }
 }
 
-std::shared_ptr<DataHandler> LastJoinRunner::Run(
-    RunnerContext& ctx,
-    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx,
+                                                 const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (inputs.size() < 2) {
         LOG(WARNING) << "inputs size < 2";
@@ -1497,8 +1495,7 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(
                 right = join_gen_.right_group_gen_.Partition(right, parameter);
             }
             if (!right) {
-                LOG(WARNING)
-                    << "fail to run last join: right partition is empty";
+                LOG(WARNING) << "fail to run last join: right partition is empty";
                 return fail_ptr;
             }
             auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
@@ -1530,8 +1527,7 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(
                 right = join_gen_.right_group_gen_.Partition(right, parameter);
             }
             if (!right) {
-                LOG(WARNING)
-                    << "fail to run last join: right partition is empty";
+                LOG(WARNING) << "fail to run last join: right partition is empty";
                 return fail_ptr;
             }
             auto output_partition =
@@ -3143,27 +3139,32 @@ const std::string KeyGenerator::Gen(const Row& row, const Row& parameter) {
             case hybridse::type::kInt16: {
                 int16_t buf = 0;
                 if (row_view_.GetValue(key_row.buf(), pos, type,
-                                       reinterpret_cast<void*>(&buf)) == 0)
+                                       reinterpret_cast<void*>(&buf)) == 0) {
                     keys.append(std::to_string(buf));
+                }
                 break;
             }
             case hybridse::type::kInt32: {
                 int32_t buf = 0;
                 if (row_view_.GetValue(key_row.buf(), pos, type,
-                                       reinterpret_cast<void*>(&buf)) == 0)
+                                       reinterpret_cast<void*>(&buf)) == 0) {
                     keys.append(std::to_string(buf));
+                }
                 break;
             }
             case hybridse::type::kInt64:
             case hybridse::type::kTimestamp: {
                 int64_t buf = 0;
                 if (row_view_.GetValue(key_row.buf(), pos, type,
-                                       reinterpret_cast<void*>(&buf)) == 0)
+                                       reinterpret_cast<void*>(&buf)) == 0) {
                     keys.append(std::to_string(buf));
+                }
                 break;
             }
-            default:
-                continue;
+            default: {
+                DLOG(ERROR) << "unsupported: partition key's type is " << node::TypeName(type);
+                break;
+            }
         }
     }
     return keys;

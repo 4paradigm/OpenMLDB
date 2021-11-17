@@ -82,9 +82,12 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
 
     // Cannot support GROUP BY, WHERE and HAVING clause under Request Mode
     if (!is_batch_mode_) {
-        CHECK_TRUE(nullptr == root->group_clause_ptr_, common::kPlanError, "Cannot support GROUP BY clause on RequestMode");
-        CHECK_TRUE(nullptr == root->where_clause_ptr_, common::kPlanError, "Cannot support WHERE clause on RequestMode");
-        CHECK_TRUE(nullptr == root->having_clause_ptr_, common::kPlanError, "Cannot support HAVING clause on RequestMode");
+        CHECK_TRUE(nullptr == root->group_clause_ptr_, common::kPlanError,
+                   "Cannot support GROUP BY clause on RequestMode");
+        CHECK_TRUE(nullptr == root->where_clause_ptr_, common::kPlanError,
+                   "Cannot support WHERE clause on RequestMode");
+        CHECK_TRUE(nullptr == root->having_clause_ptr_, common::kPlanError,
+                   "Cannot support HAVING clause on RequestMode");
     }
     // group by
     if (nullptr != root->group_clause_ptr_) {
@@ -432,7 +435,7 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
         switch (parser_tree->GetType()) {
             case node::kQuery: {
                 PlanNode *query_plan = nullptr;
-                CHECK_STATUS(CreateQueryPlan(dynamic_cast<node::QueryNode *>(parser_tree), &query_plan))
+                CHECK_STATUS(CreateQueryPlan(dynamic_cast<node::QueryNode *>(parser_tree), &query_plan));
 
                 if (!is_batch_mode_) {
                     // return false if Primary path check fail

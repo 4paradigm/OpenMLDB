@@ -61,7 +61,7 @@ public class FesqlUtil {
     public static String buildSpSQLWithConstColumns(String spName,
                                                     String sql,
                                                     InputDesc input) throws SQLException {
-        StringBuilder builder = new StringBuilder("create procedure " + spName + "(\n");
+        StringBuilder builder = new StringBuilder("create procedure " + spName + "(");
         HashSet<Integer> commonColumnIndices = new HashSet<>();
         if (input.getCommon_column_indices() != null) {
             for (String str : input.getCommon_column_indices()) {
@@ -85,10 +85,10 @@ public class FesqlUtil {
                 builder.append(",");
             }
         }
-        builder.append(")\n");
-        builder.append("BEGIN\n");
-        builder.append(sql);
-        builder.append("\n");
+        builder.append(") ");
+        builder.append("BEGIN ");
+        builder.append(sql.trim());
+        builder.append(" ");
         builder.append("END;");
         sql = builder.toString();
         return sql;
@@ -1181,7 +1181,6 @@ public class FesqlUtil {
         if (!StringUtils.isEmpty(defaultDBName)) {
             dbNames.add(defaultDBName);
         }
-
         if (!Objects.isNull(inputs)) {
             for (InputDesc input : inputs) {
                 // CreateDB if input's db has been configured and hasn't been created before
@@ -1269,5 +1268,19 @@ public class FesqlUtil {
             sb.append(rs.GetRowString()).append("\n");
         }
         logger.info("RESULT:\n{} row in set\n{}", rs.Size(), sb.toString());
+    }
+    public static String getColumnTypeByType(int type){
+        switch (type){
+            case Types.BIGINT: return "bigint";
+            case Types.SMALLINT: return "smallint";
+            case Types.INTEGER: return "int";
+            case Types.VARCHAR: return "string";
+            case Types.FLOAT: return "float";
+            case Types.DOUBLE: return "double";
+            case Types.DATE: return "date";
+            case Types.TIMESTAMP: return "timestamp";
+            case Types.BOOLEAN: return "bool";
+        }
+        throw new IllegalArgumentException("not know type");
     }
 }

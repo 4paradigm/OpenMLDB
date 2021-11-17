@@ -24,6 +24,7 @@ cases:
   -
     id: 1
     desc: 冒烟测试
+    mode: standalone-unsupport
     inputs:
       - name: t3
     sql: |
@@ -76,6 +77,7 @@ cases:
   -
     id: 4
     desc: 创建表时没有distribution
+    mode: standalone-unsupport
     inputs:
       - name: t3
     sql: |
@@ -93,6 +95,7 @@ cases:
   -
     id: 5
     desc: distribution多个
+    mode: standalone-unsupport
     inputs:
       - name: t3
     sql: |
@@ -107,6 +110,7 @@ cases:
   -
     id: 6
     desc: partitionnum=0
+    mode: standalone-unsupport
     inputs:
       - name: t3
     sql: |
@@ -121,6 +125,7 @@ cases:
   -
     id: 7
     desc: partitionnum=10
+    mode: standalone-unsupport
     inputs:
       - name: t3
     sql: |
@@ -170,6 +175,7 @@ cases:
   -
     id: 10
     desc: replicanum=4
+    mode: standalone-unsupport
     inputs:
       - name: t3
     sql: |
@@ -198,6 +204,7 @@ cases:
   -
     id: 12
     desc: distribution的个数和replicanum对不上
+    mode: standalone-unsupport
     inputs:
       - name: t3
     sql: |
@@ -212,6 +219,7 @@ cases:
   -
     id: 13
     desc: distribution的个数和partitionnum对不上
+    mode: standalone-unsupport
     inputs:
       - name: t3
     sql: |
@@ -330,6 +338,7 @@ cases:
   -
     id: 21
     desc: partitionnum大于distribution的个数
+    mode: standalone-unsupport
     inputs:
       - name: t3
     sql: |
@@ -348,6 +357,7 @@ cases:
   -
     id: 22
     desc: test-case
+    mode: standalone-unsupport
     inputs:
       -
         columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]

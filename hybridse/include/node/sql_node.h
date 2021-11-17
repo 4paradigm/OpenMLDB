@@ -352,6 +352,34 @@ inline const std::string DataTypeName(const DataType &type) {
     return "";
 }
 
+inline const std::string TypeName(type::Type type) {
+    switch (type) {
+        case type::kInt16:
+            return "smallint";
+        case type::kInt32:
+            return "int";
+        case type::kInt64:
+            return "bigint";
+        case type::kFloat:
+            return "float";
+        case type::kDouble:
+            return "double";
+        case type::kVarchar:
+            return "string";
+        case type::kTimestamp:
+            return "timestamp";
+        case type::kDate:
+            return "date";
+        case type::kBool:
+            return "bool";
+        case type::kBlob:
+            return "blob";
+        case type::kNull:
+            return "null";
+    }
+    return "unknown";
+}
+
 /**
  * Convert string to corresponding DataType. e.g. "i32" => kInt32
  *
@@ -1710,13 +1738,19 @@ class ResTarget : public SqlNode {
 class ColumnDefNode : public SqlNode {
  public:
     ColumnDefNode() : SqlNode(kColumnDesc, 0, 0), column_name_(""), column_type_() {}
-    ColumnDefNode(const std::string &name, const DataType &data_type, bool op_not_null)
-        : SqlNode(kColumnDesc, 0, 0), column_name_(name), column_type_(data_type), op_not_null_(op_not_null) {}
+    ColumnDefNode(const std::string &name, const DataType &data_type, bool op_not_null, ExprNode *default_value)
+        : SqlNode(kColumnDesc, 0, 0),
+          column_name_(name),
+          column_type_(data_type),
+          op_not_null_(op_not_null),
+          default_value_(default_value) {}
     ~ColumnDefNode() {}
 
     std::string GetColumnName() const { return column_name_; }
 
     DataType GetColumnType() const { return column_type_; }
+
+    ExprNode* GetDefaultValue() const { return default_value_; }
 
     bool GetIsNotNull() const { return op_not_null_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
@@ -1725,6 +1759,7 @@ class ColumnDefNode : public SqlNode {
     std::string column_name_;
     DataType column_type_;
     bool op_not_null_;
+    ExprNode* default_value_ = nullptr;
 };
 
 class InsertStmt : public SqlNode {

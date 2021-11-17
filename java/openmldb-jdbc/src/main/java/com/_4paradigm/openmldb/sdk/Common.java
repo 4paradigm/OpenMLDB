@@ -63,4 +63,29 @@ public class Common {
         }
         return new com._4paradigm.openmldb.sdk.Schema(columnList);
     }
+
+    public static DataType sqlTypeToDataType(int sqlType) throws SQLException {
+        switch (sqlType) {
+            case Types.BOOLEAN:
+                return DataType.kTypeBool;
+            case Types.SMALLINT:
+                return DataType.kTypeInt16;
+            case Types.INTEGER:
+                return DataType.kTypeInt32;
+            case Types.BIGINT:
+                return DataType.kTypeInt64;
+            case Types.FLOAT:
+                return DataType.kTypeFloat;
+            case Types.DOUBLE:
+                return DataType.kTypeDouble;
+            case Types.VARCHAR:
+                return DataType.kTypeString;
+            case Types.DATE:
+                return DataType.kTypeDate;
+            case Types.TIMESTAMP:
+                return DataType.kTypeTimestamp;
+            default:
+                throw new SQLException("Unexpected Values: " + sqlType);
+        }
+    }
 }

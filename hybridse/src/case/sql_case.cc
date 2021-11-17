@@ -15,17 +15,21 @@
  */
 
 #include "case/sql_case.h"
+
 #include <optional>
 #include <set>
 #include <string>
 #include <vector>
+
 #include "boost/algorithm/string.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
 #include "boost/regex.hpp"
 #include "codec/fe_row_codec.h"
 #include "glog/logging.h"
+#include "node/sql_node.h"
 #include "yaml-cpp/yaml.h"
+
 namespace hybridse {
 namespace sqlcase {
 using hybridse::codec::Row;
@@ -120,29 +124,7 @@ bool SqlCase::TypeParse(const std::string& org_type_str,
 }
 
 const std::string SqlCase::TypeString(hybridse::type::Type type) {
-    switch (type) {
-        case type::kInt16:
-            return "smallint";
-        case type::kInt32:
-            return "int";
-        case type::kInt64:
-            return "bigint";
-        case type::kFloat:
-            return "float";
-        case type::kDouble:
-            return "double";
-        case type::kVarchar:
-            return "string";
-        case type::kTimestamp:
-            return "timestamp";
-        case type::kDate:
-            return "date";
-        case type::kBool:
-            return "bool";
-        default: {
-            return "unknow";
-        }
-    }
+    return node::TypeName(type);
 }
 bool SqlCase::ExtractTableDef(const std::vector<std::string>& columns,
                               const std::vector<std::string>& indexs,
@@ -789,6 +771,10 @@ bool SqlCase::BuildCreateSqlFromInput(int32_t input_idx, std::string* sql,
     type::TableDef table;
     if (!ExtractInputTableDef(table, input_idx)) {
         LOG(WARNING) << "Fail to extract table schema";
+        return false;
+    }
+    if (table.columns_size() == 0) {
+        LOG(WARNING) << "Do not build create sql from empty columns table";
         return false;
     }
     if (!BuildCreateSqlFromSchema(table, sql, true, partition_num)) {

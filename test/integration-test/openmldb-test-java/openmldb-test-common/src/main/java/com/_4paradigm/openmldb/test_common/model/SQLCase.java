@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.test_common.model;
 import lombok.Data;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
 import java.util.List;
@@ -51,6 +52,7 @@ public class SQLCase implements Serializable{
     private InputDesc parameters;
 
     private Map<Integer, ExpectDesc> expectProvider;
+    private List<String> tearDown;
 
     public static String formatSql(String sql, int idx, String name) {
         return sql.replaceAll("\\{" + idx + "\\}", name);
@@ -65,12 +67,14 @@ public class SQLCase implements Serializable{
     }
 
     public String getSql() {
-        sql = formatSql(sql, Table.genAutoName());
-        if (CollectionUtils.isEmpty(inputs)) {
-            return sql;
-        }
-        for (int idx = 0; idx < inputs.size(); idx++) {
-            sql = formatSql(sql, idx, inputs.get(idx).getName());
+        if(StringUtils.isNotEmpty(sql)){
+            sql = formatSql(sql, Table.genAutoName());
+            if (CollectionUtils.isEmpty(inputs)) {
+                return sql;
+            }
+            for (int idx = 0; idx < inputs.size(); idx++) {
+                sql = formatSql(sql, idx, inputs.get(idx).getName());
+            }
         }
         return sql;
     }

@@ -199,76 +199,6 @@ class SQLClusterRouter : public SQLRouter {
     base::Status HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
                               std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
 
-    std::vector<std::string> ExecuteDDLParse(
-        const std::string& sql,
-        const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>&
-            table_map) override;
-
-    static bool GetTTL(openmldb::type::TTLType ttl_type, ::google::protobuf::uint64 abs_ttl,
-                       ::google::protobuf::uint64 lat_ttl, std::string* ttl) {
-        switch (ttl_type) {
-            case openmldb::type::TTLType::kAbsoluteTime:
-                *ttl = std::to_string(abs_ttl).append("m");
-                return true;
-            case openmldb::type::TTLType::kAbsAndLat:
-            case openmldb::type::TTLType::kAbsOrLat:
-                *ttl = "(" + std::to_string(abs_ttl) + "m, " + std::to_string(lat_ttl) + ")";
-                return true;
-            case openmldb::type::TTLType::kLatestTime:
-                *ttl = std::to_string(lat_ttl);
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    static std::string ToIndexString(const std::string ts, const std::string key_name, openmldb::type::TTLType ttl_type,
-                                     const std::string& expire) {
-        std::string index;
-        std::string ttl_type_str;
-        SQLClusterRouter::ToTTLTypeString(ttl_type, &ttl_type_str);
-        if (ts.empty()) {
-            index = "\tindex(key=(";
-            index = index.append(key_name);
-            index = index.append("), ttl=");
-            index = index.append(expire);
-            index = index.append(", ttl_type=");
-            index = index.append(ttl_type_str);
-            index = index.append(")");
-        } else {
-            index = "\tindex(key=(";
-            index = index.append(key_name);
-            index = index.append("), ttl=");
-            index = index.append(expire);
-            index = index.append(", ttl_type=");
-            index = index.append(ttl_type_str);
-            index = index.append(", ts=`");
-            index = index.append(ts);
-            index = index.append("`)");
-        }
-        return index;
-    }
-
-    static bool ToTTLTypeString(openmldb::type::TTLType ttl_type, std::string* ttl_type_str) {
-        switch (ttl_type) {
-            case openmldb::type::TTLType::kAbsoluteTime:
-                *ttl_type_str = "absolute";
-                return true;
-            case openmldb::type::TTLType::kLatestTime:
-                *ttl_type_str = "latest";
-                return true;
-            case openmldb::type::TTLType::kAbsAndLat:
-                *ttl_type_str = "absandlat";
-                return true;
-            case openmldb::type::TTLType::kAbsOrLat:
-                *ttl_type_str = "absorlat";
-                return true;
-            default:
-                DLOG(ERROR) << "Can Not Found This TTL Type: " + openmldb::type::TTLType_Name(ttl_type);
-                return false;
-        }
-    }
-
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 
@@ -289,9 +219,6 @@ class SQLClusterRouter : public SQLRouter {
     bool GetMultiRowInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                                std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
                                std::vector<DefaultValueMap>* default_maps, std::vector<uint32_t>* str_lengths);
-
-    std::shared_ptr<hybridse::node::ConstNode> GetDefaultMapValue(const hybridse::node::ConstNode& node,
-                                                                  openmldb::type::DataType column_type);
 
     DefaultValueMap GetDefaultMap(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                                   const std::map<uint32_t, uint32_t>& column_map, ::hybridse::node::ExprListNode* row,

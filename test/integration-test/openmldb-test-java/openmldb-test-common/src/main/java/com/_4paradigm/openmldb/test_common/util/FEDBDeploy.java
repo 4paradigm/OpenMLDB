@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.test_common.util;
 
 
 import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBDeployType;
 import com._4paradigm.openmldb.test_common.common.FedbDeployConfig;
 import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import com._4paradigm.test_tool.command_tool.common.LinuxUtil;
@@ -25,6 +26,7 @@ import com.google.common.collect.Lists;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.util.List;
@@ -46,11 +48,24 @@ public class FEDBDeploy {
         this.version = version;
         this.fedbUrl = FedbDeployConfig.getUrl(version);
     }
+    public FEDBInfo deployFEDBByStandalone(){
+        String testPath = DeployUtil.getTestPath(version);
+        String ip = LinuxUtil.getLocalIP();
+        File file = new File(testPath);
+        if(!file.exists()){
+            file.mkdirs();
+        }
+        downloadFEDB(testPath);
+        FEDBInfo fedbInfo = deployStandalone(testPath,ip);
+        log.info("openmldb-info:"+fedbInfo);
+        return fedbInfo;
+    }
     public FEDBInfo deployFEDB(int ns, int tablet){
         return deployFEDB(null,ns,tablet);
     }
     public FEDBInfo deployFEDB(String clusterName, int ns, int tablet){
         FEDBInfo.FEDBInfoBuilder builder = FEDBInfo.builder();
+        builder.deployType(OpenMLDBDeployType.CLUSTER);
         String testPath = DeployUtil.getTestPath(version);
         if(StringUtils.isNotEmpty(clusterName)) {
             testPath = testPath + "/" + clusterName;
@@ -133,7 +148,7 @@ public class FEDBDeploy {
         try {
             int port = LinuxUtil.getNoUsedPort();
             String[] commands = {
-                    "wget -P "+testPath+" "+ FedbDeployConfig.ZK_URL,
+                    "wget -P "+testPath+" "+ FedbDeployConfig.getZKUrl(version),
                     "tar -zxvf "+testPath+"/zookeeper-3.4.14.tar.gz -C "+testPath,
                     "cp "+testPath+"/zookeeper-3.4.14/conf/zoo_sample.cfg "+testPath+"/zookeeper-3.4.14/conf/zoo.cfg",
                     "sed -i 's#dataDir=/tmp/zookeeper#dataDir="+testPath+"/data#' "+testPath+"/zookeeper-3.4.14/conf/zoo.cfg",
@@ -162,6 +177,9 @@ public class FEDBDeploy {
                     "cp -r " + testPath + "/" + fedbName + " " + testPath + ns_name,
                     "sed -i 's#--zk_cluster=.*#--zk_cluster=" + zk_endpoint + "#' " + testPath + ns_name + "/conf/nameserver.flags",
                     "sed -i 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
+                    "sed -i 's@#--zk_cluster=.*@--zk_cluster=" + zk_endpoint + "@' " + testPath + ns_name + "/conf/nameserver.flags",
+                    "sed -i 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
+                    "sed -i 's@--tablet=.*@#--tablet=127.0.0.1:9921@' "+testPath+ns_name+"/conf/nameserver.flags",
                     "echo '--request_timeout_ms=60000' >> " + testPath + ns_name + "/conf/nameserver.flags"
             );
             if(useName){
@@ -205,6 +223,8 @@ public class FEDBDeploy {
                     "cp -r "+testPath+"/"+fedbName+" "+testPath+tablet_name,
                     "sed -i 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i 's@#--make_snapshot_threshold_offset=100000@--make_snapshot_threshold_offset=10@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i 's@--scan_concurrency_limit=16@--scan_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i 's@--put_concurrency_limit=8@--put_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
@@ -232,7 +252,6 @@ public class FEDBDeploy {
             if(StringUtils.isNotEmpty(fedbPath)){
                 FEDBCommandUtil.cpRtidb(testPath+tablet_name,fedbPath);
             }
-//            ExecutorUtil.run("sh "+testPath+tablet_name+"/bin/start.sh start");
             ExecutorUtil.run("sh "+testPath+tablet_name+"/bin/start.sh start tablet");
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
             if(used){
@@ -251,7 +270,10 @@ public class FEDBDeploy {
             List<String> commands = Lists.newArrayList(
                     "cp -r "+testPath+"/"+fedbName+" "+testPath+apiserver_name,
                     "sed -i 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+apiserver_name+"/conf/apiserver.flags",
-                    "sed -i 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags"
+                    "sed -i 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags",
+                    "sed -i 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+apiserver_name+"/conf/apiserver.flags",
+                    "sed -i 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags",
+                    "sed -i 's@--nameserver=.*@#--nameserver=127.0.0.1:6527@' "+testPath+apiserver_name+"/conf/apiserver.flags"
             );
             if(useName){
                 commands.add("sed -i 's/--endpoint=.*/#&/' " + testPath + apiserver_name + "/conf/apiserver.flags");
@@ -275,7 +297,6 @@ public class FEDBDeploy {
             if(StringUtils.isNotEmpty(fedbPath)){
                 FEDBCommandUtil.cpRtidb(testPath+apiserver_name,fedbPath);
             }
-//            ExecutorUtil.run("sh "+testPath+tablet_name+"/bin/start.sh start");
             ExecutorUtil.run("sh "+testPath+apiserver_name+"/bin/start.sh start apiserver");
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
             if(used){
@@ -286,6 +307,60 @@ public class FEDBDeploy {
             e.printStackTrace();
         }
         throw new RuntimeException("apiserver部署失败");
+    }
+
+    public FEDBInfo deployStandalone(String testPath, String ip){
+        try {
+            int nsPort = LinuxUtil.getNoUsedPort();
+            int tabletPort = LinuxUtil.getNoUsedPort();
+            int apiServerPort = LinuxUtil.getNoUsedPort();
+            String nsEndpoint = ip+":"+nsPort;
+            String tabletEndpoint = ip+":"+tabletPort;
+            String apiServerEndpoint = ip+":"+apiServerPort;
+            String standaloneName = "/openmldb-standalone";
+            List<String> commands = Lists.newArrayList(
+                    "cp -r " + testPath + "/" + fedbName + " " + testPath + standaloneName,
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/nameserver.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/nameserver.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint=" + nsEndpoint + "#' " + testPath + standaloneName + "/conf/nameserver.flags",
+                    "sed -i 's@--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/nameserver.flags",
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/tablet.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/tablet.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/tablet.flags",
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' "+testPath+standaloneName+"/conf/apiserver.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/apiserver.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint="+apiServerEndpoint+"#' "+testPath+standaloneName+"/conf/apiserver.flags",
+                    "sed -i 's#--nameserver=.*#--nameserver="+nsEndpoint+"#' "+testPath+standaloneName+"/conf/apiserver.flags"
+            );
+            commands.forEach(ExecutorUtil::run);
+            if(StringUtils.isNotEmpty(fedbPath)){
+                FEDBCommandUtil.cpRtidb(testPath+standaloneName,fedbPath);
+            }
+            ExecutorUtil.run("sh "+testPath+standaloneName+"/bin/start-all.sh");
+            boolean nsOk = LinuxUtil.checkPortIsUsed(nsPort,3000,30);
+            boolean tabletOk = LinuxUtil.checkPortIsUsed(tabletPort,3000,30);
+            boolean apiServerOk = LinuxUtil.checkPortIsUsed(apiServerPort,3000,30);
+            if(nsOk&&tabletOk&&apiServerOk){
+                log.info(String.format("standalone 部署成功,nsPort：{},tabletPort:{},apiServerPort:{}",nsPort,tabletPort,apiServerPort));
+                FEDBInfo fedbInfo = FEDBInfo.builder()
+                        .deployType(OpenMLDBDeployType.STANDALONE)
+                        .fedbPath(testPath+"/openmldb-standalone/bin/openmldb")
+                        .apiServerEndpoints(Lists.newArrayList())
+                        .basePath(testPath)
+                        .nsEndpoints(Lists.newArrayList(nsEndpoint))
+                        .nsNum(1)
+                        .host(ip)
+                        .port(nsPort)
+                        .tabletNum(1)
+                        .tabletEndpoints(Lists.newArrayList(tabletEndpoint))
+                        .apiServerEndpoints(Lists.newArrayList(apiServerEndpoint))
+                        .build();
+                return fedbInfo;
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        throw new RuntimeException("standalone 部署失败");
     }
 }
 

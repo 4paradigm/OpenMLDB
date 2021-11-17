@@ -88,6 +88,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
         status->code = st.code;
         return;
     }
+    // Check file
     std::ofstream fstream;
     if (options_parse.GetMode() == "error_if_exists") {
         if (access(file_path.c_str(), 0) == 0) {
@@ -111,6 +112,7 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
         status->code = openmldb::base::kSQLCmdRunError;
         return;
     }
+    // Write data
     if (options_parse.GetFormat() == "csv") {
         auto* schema = result_set->GetSchema();
         // Add Header
@@ -132,7 +134,13 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
                     if (result_set->IsNULL(i)) {
                         rowString.append(options_parse.GetNullValue());
                     } else {
-                        rowString.append(result_set->GetAsString(i));
+                        if (options_parse.GetQuote() != '\0' &&
+                            schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+                            rowString.append(options_parse.GetQuote() + result_set->GetAsString(i) +
+                                             options_parse.GetQuote());
+                        } else {
+                            rowString.append(result_set->GetAsString(i));
+                        }
                     }
                     if (i != schema->GetColumnCnt() - 1) {
                         rowString += options_parse.GetDelimiter();
@@ -369,7 +377,6 @@ bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& n
     return true;
 }
 
-// TODO(zekai): use status instead of cout
 void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
     std::shared_ptr<client::NsClient> ns;
     switch (cmd_node->GetCmdType()) {
@@ -818,8 +825,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
 }
 
 void SetVariable(const std::string& key, const hybridse::node::ConstNode* value) {
-    std::string lower_key = key;
-    boost::to_lower(lower_key);
+    auto lower_key = boost::to_lower_copy(key);
     if (lower_key == "performance_sensitive") {
         if (value->GetDataType() == hybridse::node::kBool) {
             bool performance_sensitive = value->GetBool();
@@ -958,8 +964,8 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
     }
     std::cout << "Load " << file_path << " to " << real_db << "-" << table << ", options: delimiter ["
               << options_parse.GetDelimiter() << "], has header[" << (options_parse.GetHeader() ? "true" : "false")
-              << "], null_value[" << options_parse.GetNullValue() << "], format[" << options_parse.GetFormat() << "]"
-              << std::endl;
+              << "], null_value[" << options_parse.GetNullValue() << "], format[" << options_parse.GetFormat()
+              << "], quote[" << options_parse.GetQuote() << "]" << std::endl;
     // read csv
     if (!base::IsExists(file_path)) {
         *error = "file not exist";
@@ -977,7 +983,7 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
         return false;
     }
     std::vector<std::string> cols;
-    SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
+    SplitLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols, options_parse.GetQuote());
     auto schema = sr->GetTableSchema(real_db, table);
     if (!schema) {
         *error = "table is not exist";
@@ -1017,7 +1023,7 @@ bool HandleLoadDataInfile(const std::string& database, const std::string& table,
     uint64_t i = 0;
     do {
         cols.clear();
-        SplitCSVLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols);
+        SplitLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols, options_parse.GetQuote());
         if (!InsertOneRow(real_db, insert_placeholder, str_cols_idx, options_parse.GetNullValue(), cols, error)) {
             *error = "line [" + line + "] insert failed, " + *error;
             return false;

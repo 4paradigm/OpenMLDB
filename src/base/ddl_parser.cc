@@ -221,6 +221,26 @@ IndexMap DDLParser::ExtractIndexes(const std::string& sql, const hybridse::type:
     return ParseIndexes(const_cast<hybridse::vm::PhysicalOpNode*>(plan));
 }
 
+std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(const std::string& sql,
+                                                                  const hybridse::type::Database& db) {
+    hybridse::vm::RequestRunSession session;
+    if (!GetPlan(sql, db, &session)) {
+        LOG(ERROR) << "sql get plan failed";
+        return {};
+    }
+    auto output_schema_ptr = session.GetCompileInfo()->GetPhysicalPlan()->GetOutputSchema();
+    return std::make_shared<hybridse::sdk::SchemaImpl>(*output_schema_ptr);
+}
+
+std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(
+    const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
+    ::hybridse::type::Database db;
+    std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
+    db.set_name(tmp_db);
+    AddTables(schemas, &db);
+    return GetOutputSchema(sql, db);
+}
+
 IndexMap DDLParser::ParseIndexes(hybridse::vm::PhysicalOpNode* node) {
     // This physical plan is optimized, but no real optimization about index(cuz no index in fake catalog).
     // So we can run GroupAndSortOptimizedParser on the plan(very like transformer's pass-ApplyPasses)
@@ -230,13 +250,13 @@ IndexMap DDLParser::ParseIndexes(hybridse::vm::PhysicalOpNode* node) {
 }
 
 bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session) {
-    // TODO(hw): engine is input, do not create in here
+    // TODO(hw): engine should be the input, do not create in here
     auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
     catalog->AddDatabase(db);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::hybridse::vm::EngineOptions options;
-    options.set_keep_ir(true);
-    options.set_compile_only(true);
+    options.SetKeepIr(true);
+    options.SetCompileOnly(true);
     session->SetPerformanceSensitive(false);
     auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
 
