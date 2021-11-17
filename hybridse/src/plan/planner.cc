@@ -417,7 +417,7 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
         switch (parser_tree->GetType()) {
             case node::kQuery: {
                 PlanNode *query_plan = nullptr;
-                CHECK_STATUS(CreateQueryPlan(dynamic_cast<node::QueryNode *>(parser_tree), &query_plan))
+                CHECK_STATUS(CreateQueryPlan(dynamic_cast<node::QueryNode *>(parser_tree), &query_plan));
 
                 if (!is_batch_mode_) {
                     // return false if Primary path check fail
