@@ -46,8 +46,7 @@ build
 build_mac
 thirdparty*/
 thirdsrc
-.vscode/
-onebox/*.log
+**/*.log
 onebox/*binlogs*
 onebox/*bin*
 onebox/logs
@@ -78,10 +77,10 @@ python/logs
 **/.project
 **/.factorypath
 **/.cache/
+
+**/.vscode/
 **/.metals/
-
-
-.vscode/settings.json
+**/.bloop/
 
 # ignore openmldb release dir & pkg
 /openmldb-*
