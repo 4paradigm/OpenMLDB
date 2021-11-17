@@ -188,7 +188,7 @@ TEST_F(DDLParserTest, joinExtract) {
     {
         ClearAllIndex();
         // left join
-        auto sql = "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on t1.col1 = t2.col3;";
+        auto sql = "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on t1.col1 = t2.col2;";
 
         auto index_map = DDLParser::ExtractIndexes(sql, db);
         ASSERT_FALSE(index_map.empty());
@@ -261,7 +261,7 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "col1, "
             "sum(col3) OVER w1 as w1_col3_sum, "
             "sum(col2) OVER w1 as w1_col2_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS_RANGE BETWEEN 0s "
             "PRECEDING AND CURRENT ROW) limit 10;";
         auto index_map = DDLParser::ExtractIndexes(sql, db);
@@ -283,7 +283,7 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
         // UNBOUNDED abs -> abs ttl 0
         auto sql =
             "SELECT sum(col3) OVER w1 "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)";
         auto index_map = DDLParser::ExtractIndexes(sql, db);
         ASSERT_FALSE(index_map.empty());
@@ -301,7 +301,7 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
         // x open preceding abs -> x - 1ms, doesn't matter
         auto sql =
             "SELECT sum(col3) OVER w1 as w1_col3_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS_RANGE BETWEEN 3m OPEN PRECEDING AND CURRENT ROW)";
         auto index_map = DDLParser::ExtractIndexes(sql, db);
         ASSERT_FALSE(index_map.empty());
@@ -322,7 +322,7 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "col1, "
             "sum(col3) OVER w1 as w1_col3_sum, "
             "sum(col2) OVER w1 as w1_col2_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;";
         auto index_map = DDLParser::ExtractIndexes(sql, db);
@@ -347,7 +347,7 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "col1, "
             "sum(col3) OVER w1 as w1_col3_sum, "
             "sum(col2) OVER w1 as w1_col2_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS BETWEEN 0 "
             "PRECEDING AND CURRENT ROW) limit 10;";
         auto index_map = DDLParser::ExtractIndexes(sql, db);
@@ -369,7 +369,7 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
         // UNBOUNDED latest -> lat ttl 0
         auto sql =
             "SELECT sum(col3) OVER w1 as w1_col3_sum "
-            "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+            "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)";
         auto index_map = DDLParser::ExtractIndexes(sql, db);
         ASSERT_FALSE(index_map.empty());
@@ -385,7 +385,7 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
     {
         ClearAllIndex();
         // no order by
-        auto sql = "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;";
+        auto sql = "SELECT sum(col1) as col1sum FROM t1 group by col2, col1;";
         // GROUP_BY node
         auto index_map = DDLParser::ExtractIndexesForBatch(sql, db);
         LOG(INFO) << "result for batch: " << index_map;
