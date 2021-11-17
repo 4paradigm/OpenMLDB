@@ -170,7 +170,6 @@ cases:
         insert: insert into {0} values ("aa", 1, 1590738990000, 1614672180000);
     sql: select * from {0};
     expect:
-      columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
       count: 0
   -
     id: 21
@@ -218,7 +217,6 @@ cases:
           - ["aa", 1, 1590738990000,1590738990000]
     sql: select * from {0};
     expect:
-      columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
       count: 0
   -
     id: 24

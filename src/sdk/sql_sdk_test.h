@@ -173,11 +173,10 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         std::string input_db_name = sql_case.inputs_[i].db_.empty() ? sql_case.db() : sql_case.inputs_[i].db_;
         // create table
         std::string create;
-        ASSERT_TRUE(sql_case.BuildCreateSqlFromInput(i, &create, partition_num));
-        std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
-        LOG(INFO) << create;
-        if (!create.empty()) {
+        if (sql_case.BuildCreateSqlFromInput(i, &create, partition_num) && !create.empty()) {
+            std::string placeholder = "{" + std::to_string(i) + "}";
+            boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
+            LOG(INFO) << create;
             router->ExecuteDDL(input_db_name, create, &status);
             ASSERT_TRUE(router->RefreshCatalog());
             ASSERT_TRUE(status.code == 0) << status.msg;
@@ -423,6 +422,7 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
             }
             row_view.Reset(parameter_rows[0].buf());
             CovertHybridSERowToRequestRow(&row_view, parameter_row);
+
             rs = router->ExecuteSQLParameterized(sql_case.db(), sql, parameter_row, &status);
         } else {
             rs = router->ExecuteSQL(sql_case.db(), sql, &status);

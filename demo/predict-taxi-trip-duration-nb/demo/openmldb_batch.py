@@ -4,7 +4,6 @@
 #
 from pyspark.sql import SparkSession
 import numpy as np
-import pandas as pd
 
 
 def run_batch_sql(sql):

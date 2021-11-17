@@ -16,7 +16,7 @@ if(TESTING_ENABLE)
     add_library(mini_cluster_bm_common STATIC mini_cluster_bm.cc sql_sdk_test.cc)
     add_library(base_test STATIC ../test/base_test.cc)
 
-    set(HYBRIDSE_CASE_LIBS base_test hybridse_core hybridse_flags yaml-cpp)
+    set(HYBRIDSE_CASE_LIBS base_test yaml-cpp)
 
     add_executable(db_sdk_test db_sdk_test.cc)
     target_link_libraries(db_sdk_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)

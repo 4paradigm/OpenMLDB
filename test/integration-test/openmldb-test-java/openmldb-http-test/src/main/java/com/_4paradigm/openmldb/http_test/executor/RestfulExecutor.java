@@ -39,10 +39,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class RestfulExecutor extends BaseExecutor{
-
+    protected SqlExecutor executor;
     private FedbHttp fedbHttp;
     public RestfulExecutor(SqlExecutor executor, RestfulCase restfulCase) {
-        super(executor, restfulCase);
+        super(restfulCase);
+        this.executor = executor;
         fedbHttp = new FedbHttp();
         fedbHttp.setUrl("http://"+ RestfulGlobalVar.mainInfo.getApiServerEndpoints().get(0));
         fedbHttp.setMethod(HttpMethod.valueOf(restfulCase.getMethod()));
@@ -60,8 +61,6 @@ public class RestfulExecutor extends BaseExecutor{
 
     @Override
     public void prepare() {
-        System.out.println("FedbRestfulConfig.DB_NAME = " + FedbRestfulConfig.DB_NAME);
-        System.out.println("executor = " + executor);
         boolean dbOk = executor.createDB(FedbRestfulConfig.DB_NAME);
         logger.info("create db:{},{}", FedbRestfulConfig.DB_NAME, dbOk);
         BeforeAction beforeAction = restfulCase.getBeforeAction();

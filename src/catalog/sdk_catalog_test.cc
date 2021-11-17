@@ -61,7 +61,7 @@ TEST_F(SDKCatalogTest, sdk_smoke_test) {
     Procedures procedures;
     ASSERT_TRUE(catalog->Init(tables, procedures));
     ::hybridse::vm::EngineOptions options;
-    options.set_compile_only(true);
+    options.SetCompileOnly(true);
     ::hybridse::vm::Engine engine(catalog, options);
     std::string sql = "select col1, col2 + 1 from t1;";
     ::hybridse::vm::BatchRunSession session;
@@ -81,7 +81,7 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     Procedures procedures;
     ASSERT_TRUE(catalog->Init(tables, procedures));
     ::hybridse::vm::EngineOptions options;
-    options.set_compile_only(true);
+    options.SetCompileOnly(true);
     ::hybridse::vm::Engine engine(catalog, options);
     std::string sql =
         "select sum(col2) over w1, t1.col1, t1.col2 from t1 window w1 "
@@ -106,7 +106,7 @@ TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
     Procedures procedures;
     ASSERT_TRUE(catalog->Init(tables, procedures));
     ::hybridse::vm::EngineOptions options;
-    options.set_compile_only(true);
+    options.SetCompileOnly(true);
     ::hybridse::vm::Engine engine(catalog, options);
     std::string sql =
         "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "

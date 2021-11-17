@@ -371,7 +371,7 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
         size_t request_schema_size = static_cast<size_t>(request_schema.size());
         if (common_column_indices.empty() ||
             common_column_indices.size() == request_schema_size ||
-            !options_.is_batch_request_optimized()) {
+            !options_.IsBatchRequestOptimized()) {
             request_rows_ = original_request_data;
         } else {
             std::vector<size_t> non_common_column_indices;

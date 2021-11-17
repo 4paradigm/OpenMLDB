@@ -111,8 +111,19 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
 
 
     public void tearDown(String version,SqlExecutor executor) {
-        log.info("version:{},begin drop table",version);
-        reportLog.info("version:{},begin drop table",version);
+        logger.info("version:{},begin tear down",version);
+        List<String> tearDown = fesqlCase.getTearDown();
+        if(CollectionUtils.isNotEmpty(tearDown)){
+            tearDown.forEach(sql->{
+                if(MapUtils.isNotEmpty(fedbInfoMap)) {
+                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                }else {
+                    sql = FesqlUtil.formatSql(sql, tableNames);
+                }
+                FesqlUtil.sql(executor, dbName, sql);
+            });
+        }
+        logger.info("version:{},begin drop table",version);
         List<InputDesc> tables = fesqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;

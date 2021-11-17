@@ -54,7 +54,7 @@ EngineOptions::EngineOptions()
     FLAGS_enable_spark_unsaferow_format = enable_spark_unsaferow_format_;
 }
 
-EngineOptions* EngineOptions::set_enable_spark_unsaferow_format(bool flag) {
+EngineOptions* EngineOptions::SetEnableSparkUnsaferowFormat(bool flag) {
     enable_spark_unsaferow_format_ = flag;
     FLAGS_enable_spark_unsaferow_format = flag;
     return this;
@@ -77,8 +77,8 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db, E
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().engine_mode = engine_mode;
-    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), options_.is_keep_ir(), false,
-                         options_.is_plan_only());
+    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), options_.IsKeepIr(), false,
+                         options_.IsPlanOnly());
     bool ok = compiler.Parse(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         // TODO(chenjing): do clean
@@ -226,10 +226,10 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();
     sql_context.is_performance_sensitive = session.GetPerformanceSensitive();
-    sql_context.is_cluster_optimized = options_.is_cluster_optimzied();
-    sql_context.is_batch_request_optimized = options_.is_batch_request_optimized();
-    sql_context.enable_batch_window_parallelization = options_.is_enable_batch_window_parallelization();
-    sql_context.enable_expr_optimize = options_.is_enable_expr_optimize();
+    sql_context.is_cluster_optimized = options_.IsClusterOptimzied();
+    sql_context.is_batch_request_optimized = options_.IsBatchRequestOptimized();
+    sql_context.enable_batch_window_parallelization = options_.IsEnableBatchWindowParallelization();
+    sql_context.enable_expr_optimize = options_.IsEnableExprOptimize();
     sql_context.jit_options = options_.jit_options();
     if (session.engine_mode() == kBatchMode) {
         sql_context.parameter_types = dynamic_cast<BatchRunSession*>(&session)->GetParameterSchema();
@@ -238,13 +238,13 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
         sql_context.batch_request_info.common_column_indices = batch_req_sess->common_column_indices();
     }
 
-    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), options_.is_keep_ir(), false,
-                         options_.is_plan_only());
+    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), options_.IsKeepIr(), false,
+                         options_.IsPlanOnly());
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         return false;
     }
-    if (!options_.is_compile_only()) {
+    if (!options_.IsCompileOnly()) {
         ok = compiler.BuildClusterJob(info->get_sql_context(), status);
         if (!ok || 0 != status.code) {
             LOG(WARNING) << "fail to build cluster job: " << status.msg;
@@ -289,7 +289,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     ctx.db = db;
     ctx.parameter_types = parameter_schema;
     ctx.is_performance_sensitive = performance_sensitive;
-    ctx.is_cluster_optimized = options_.is_cluster_optimzied();
+    ctx.is_cluster_optimized = options_.IsClusterOptimzied();
     ctx.is_batch_request_optimized = !common_column_indices.empty();
     ctx.batch_request_info.common_column_indices = common_column_indices;
     SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true, true);
@@ -414,7 +414,7 @@ bool Engine::SetCacheLocked(const std::string& db, const std::string& sql, Engin
     using BoostLRU = boost::compute::detail::lru_cache<std::string, std::shared_ptr<CompileInfo>>;
     std::map<std::string, BoostLRU>::iterator db_iter = performance_sensitive_cache.find(db);
     if (db_iter == performance_sensitive_cache.end()) {
-        db_iter = performance_sensitive_cache.insert(db_iter, {db, BoostLRU(options_.max_sql_cache_size())});
+        db_iter = performance_sensitive_cache.insert(db_iter, {db, BoostLRU(options_.GetMaxSqlCacheSize())});
     }
     auto& lru = db_iter->second;
     auto value = lru.get(sql);
