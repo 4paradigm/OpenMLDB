@@ -109,6 +109,7 @@ cases:
       success: false
   - id: 8
     desc: 查询的数据中有空串
+    mode: cli-unsupport
     inputs:
       - columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
         indexs: ["index1:c1:c4"]
@@ -267,7 +268,7 @@ cases:
         - [1, 1590115420]
   - id: 19
     desc: 全表聚合
-    mode: rtidb-unsupport,offline-unsupport
+    mode: rtidb-unsupport,offline-unsupport,cli-unsupport
     db: db1
     sqlDialect: ["HybridSQL", "MYSQL"]
     sql: |

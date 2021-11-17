@@ -387,7 +387,7 @@ cases:
         - [3, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115420000.0, 0.0, NULL]
   - id: 19
     desc: cast as string
-    mode: offline-unsupport
+    mode: offline-unsupport,cli-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",

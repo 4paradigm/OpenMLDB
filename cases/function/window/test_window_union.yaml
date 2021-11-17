@@ -124,7 +124,7 @@ cases:
         - [5,"ee",21,34]
   - id: 5
     desc: 样本表使用索引,UNION表未命中索引
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport,cli-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
@@ -148,7 +148,7 @@ cases:
         - [5,"ee",21,34]
   - id: 6
     desc: union表使用索引,样本表未命中索引
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport,cli-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c1:c7"]

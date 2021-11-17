@@ -185,15 +185,15 @@ cases:
       card_no,
       merchant_id,
       trx_time,
-      sum(trx_amt) over w30d,
-      count(merchant_id) over w10d
+      sum(trx_amt) over w30d as sum_trx_amt,
+      count(merchant_id) over w10d as count_merchant_id
       from  {0}
       window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
       w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
       last join {1} order by {1}.crd_lst_isu_dte on trx_fe.merchant_id = {1}.merchant_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte;
     expect:
       columns: ["id int", "card_no string", "merchant_id int", "trx_time timestamp",
-                "sum(trx_amt)over w30d float", "count(merchant_id)over w10d int64", "crd_lst_isu_dte timestamp",
+                "sum_trx_amt float", "count_merchant_id int64", "crd_lst_isu_dte timestamp",
                 "merchant_nbr int"]
       order: id
       rows:

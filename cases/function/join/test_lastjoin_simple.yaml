@@ -223,7 +223,7 @@ cases:
         - [ "dd", 41, NULL, NULL ]
   - id: 4-6
     desc: Last Join 无order by, 拼表条件没有命中索引-离线支持
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport,cli-unsupport
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
         indexs: [ "index1:c1:c4" ]
@@ -312,7 +312,7 @@ cases:
       success: false
   - id: 6
     desc: orderby-int-离线支持
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport,cli-unsupport
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
         indexs: [ "index1:c1:c4" ]
@@ -681,6 +681,7 @@ cases:
         - [ "bb",21,31,1590738992000 ]
   - id: 19
     desc: 拼接条件中有空串
+    mode: cli-unsupport
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
         indexs: [ "index1:c1:c4" ]
@@ -996,7 +997,7 @@ cases:
         - ["bb",false,31,1590738992000]
   - id: 4-6
     desc: lastjoin-拼表条件没有命中索引
-    mode: performance-sensitive-unsupport
+    mode: performance-sensitive-unsupport,cli-unsupport
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
         indexs: [ "index1:c1:c4" ]
