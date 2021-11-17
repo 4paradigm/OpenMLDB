@@ -84,7 +84,8 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
+    auto s = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
+    ASSERT_TRUE(s.isOK()) << s;
     //    m->print(::llvm::errs(), NULL);
     std::ostringstream oss;
     physical_plan->Print(oss, "");
@@ -208,8 +209,8 @@ void CheckTransformPhysicalPlan(const SqlCase& sql_case, bool is_cluster_optimiz
     //    m->print(::llvm::errs(), NULL);
 }
 
-TEST_P(TransformRequestModeTest, transform_physical_plan) { CheckTransformPhysicalPlan(GetParam(), false, &manager); }
-TEST_P(TransformRequestModeTest, cluster_transform_physical_plan) {
+TEST_P(TransformRequestModeTest, TransformPhysicalPlan) { CheckTransformPhysicalPlan(GetParam(), false, &manager); }
+TEST_P(TransformRequestModeTest, ClusterTransformPhysicalPlan) {
     CheckTransformPhysicalPlan(GetParam(), true, &manager);
 }
 class TransformRequestModePassOptimizedTest : public ::testing::TestWithParam<std::pair<std::string, std::string>> {
@@ -250,12 +251,12 @@ INSTANTIATE_TEST_SUITE_P(
                                    "sum(col3) OVER w1 as w1_col3_sum, "
                                    "*, "
                                    "sum(col2) OVER w1 as w1_col2_sum "
-                                   "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+                                   "FROM t1 WINDOW w1 AS (PARTITION BY col6 ORDER BY col5 "
                                    "ROWS_RANGE BETWEEN 3 "
                                    "PRECEDING AND CURRENT ROW) limit 10;",
                                    "LIMIT(limit=10, optimized)\n"
                                    "  PROJECT(type=Aggregation, limit=10)\n"
-                                   "    REQUEST_UNION(partition_keys=(col3), orders=(col5 ASC), "
+                                   "    REQUEST_UNION(partition_keys=(col6), orders=(col5 ASC), "
                                    "range=(col5, -3, 0), index_keys=)\n"
                                    "      DATA_PROVIDER(request=t1)\n"
                                    "      DATA_PROVIDER(table=t1)")));
@@ -272,15 +273,15 @@ INSTANTIATE_TEST_SUITE_P(
                                    "index_keys=(col1,col2))\n"
                                    "    DATA_PROVIDER(request=t1)\n"
                                    "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
-                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
+                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col6;",
                                    "PROJECT(type=Aggregation)\n"
-                                   "  REQUEST_UNION(partition_keys=(col3), orders=, "
+                                   "  REQUEST_UNION(partition_keys=(col6), orders=, "
                                    "index_keys=(col1,col2))\n"
                                    "    DATA_PROVIDER(request=t1)\n"
                                    "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
-                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
+                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col6, col2, col1;",
                                    "PROJECT(type=Aggregation)\n"
-                                   "  REQUEST_UNION(partition_keys=(col3), orders=, "
+                                   "  REQUEST_UNION(partition_keys=(col6), orders=, "
                                    "index_keys=(col2,col1))\n"
                                    "    DATA_PROVIDER(request=t1)\n"
                                    "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
@@ -407,7 +408,7 @@ INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOp
                                            "      DATA_PROVIDER(request=t1)\n"
                                            "      DATA_PROVIDER(type=Partition, table=t1, "
                                            "index=index1)")));
-TEST_P(TransformRequestModePassOptimizedTest, pass_pass_optimized_test) {
+TEST_P(TransformRequestModePassOptimizedTest, PassPassOptimizedTest) {
     auto in_out = GetParam();
     hybridse::type::TableDef table_def;
     BuildTableDef(table_def);

@@ -43,7 +43,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private Schema currentSchema = null;
     private String db = null;
     private List<Boolean> hasSet = null;
-    private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
+    private static final Logger logger = LoggerFactory.getLogger(InsertPreparedStatementImpl.class);
     private boolean closed = false;
     private boolean closeOnComplete = false;
     private Map<String, SQLInsertRows> sqlRowsMap = new HashMap<>();

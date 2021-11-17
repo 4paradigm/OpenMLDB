@@ -62,7 +62,5 @@ public interface SqlExecutor {
 
     ProcedureInfo showProcedure(String dbName, String proName) throws SQLException;
 
-    List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException;
-
     void close();
 }

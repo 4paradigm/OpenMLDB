@@ -108,9 +108,9 @@ class BatchModeTransformer {
                          bool cluster_optimized_mode, bool enable_expr_opt, bool enable_window_parallelization);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
-    virtual Status TransformPhysicalPlan(
-        const ::hybridse::node::PlanNodeList& trees,
-        ::hybridse::vm::PhysicalOpNode** output);
+
+    virtual Status TransformPhysicalPlan(const ::hybridse::node::PlanNodeList& trees,
+                                         ::hybridse::vm::PhysicalOpNode** output);
     virtual Status TransformQueryPlan(const ::hybridse::node::PlanNode* node,
                                       ::hybridse::vm::PhysicalOpNode** output);
     virtual Status ValidatePlan(PhysicalOpNode* in);
@@ -199,6 +199,8 @@ class BatchModeTransformer {
                                       PhysicalOpNode** output);
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
 
+    Status ValidatePlanSupported(const PhysicalOpNode* in);
+
     template <typename Op, typename... Args>
     Status CreateOp(Op** op, Args&&... args) {
         return plan_ctx_.CreateOp<Op>(op, args...);
@@ -225,6 +227,7 @@ class BatchModeTransformer {
 
     base::Status CheckTimeOrIntegerOrderColumn(
         const node::OrderByNode* orders, const SchemasContext* schemas_ctx);
+    Status CheckPartitionColumn(const node::ExprListNode* partition, const SchemasContext* ctx);
 
     base::Status ExtractGroupKeys(vm::PhysicalOpNode* depend, const node::ExprListNode** keys);
     node::NodeManager* node_manager_;
@@ -271,14 +274,14 @@ class RequestModeTransformer : public BatchModeTransformer {
 
  protected:
     void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
-    virtual Status TransformProjectOp(node::ProjectListNode* node,
+    Status TransformProjectOp(node::ProjectListNode* node,
                                       PhysicalOpNode* depend, bool append_input,
-                                      PhysicalOpNode** output);
-    virtual Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
-                                          PhysicalOpNode** output);
-    virtual Status TransformJoinOp(const node::JoinPlanNode* node,
-                                   PhysicalOpNode** output);
-    virtual Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output);
+                                      PhysicalOpNode** output) override;
+    Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
+                                          PhysicalOpNode** output) override;
+    Status TransformJoinOp(const node::JoinPlanNode* node,
+                                   PhysicalOpNode** output) override;
+    Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output) override;
 
  private:
     bool enable_batch_request_opt_;

@@ -18,14 +18,14 @@ package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.DataType;
 import com._4paradigm.openmldb.Schema;
+import com._4paradigm.openmldb.sdk.Common;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Types;
 
 public class SQLResultSetMetaData implements ResultSetMetaData {
 
-    private Schema schema;
+    private final Schema schema;
 
     public SQLResultSetMetaData(Schema schema) {
         this.schema = schema;
@@ -43,30 +43,6 @@ public class SQLResultSetMetaData implements ResultSetMetaData {
         }
         if (i > schema.GetColumnCnt()) {
             throw new SQLException("index overflow");
-        }
-    }
-
-    private int type2SqlType(DataType dataType) throws SQLException{
-        if (dataType == DataType.kTypeBool) {
-            return Types.BOOLEAN;
-        } else if (dataType == DataType.kTypeInt16) {
-            return Types.SMALLINT;
-        } else if (dataType == DataType.kTypeInt32) {
-            return Types.INTEGER;
-        } else if (dataType == DataType.kTypeInt64) {
-            return Types.BIGINT;
-        } else if (dataType == DataType.kTypeFloat) {
-            return Types.FLOAT;
-        } else if (dataType == DataType.kTypeDouble) {
-            return Types.DOUBLE;
-        } else if (dataType == DataType.kTypeString) {
-            return Types.VARCHAR;
-        } else if (dataType == DataType.kTypeDate) {
-            return Types.DATE;
-        } else if (dataType == DataType.kTypeTimestamp) {
-            return Types.TIMESTAMP;
-        } else {
-            throw new SQLException("Unexpected value: " + dataType.toString());
         }
     }
 
@@ -173,7 +149,7 @@ public class SQLResultSetMetaData implements ResultSetMetaData {
     public int getColumnType(int i) throws SQLException {
         check(i);
         DataType dataType = schema.GetColumnType(i - 1);
-        return type2SqlType(dataType);
+        return Common.type2SqlType(dataType);
     }
 
     @Override
