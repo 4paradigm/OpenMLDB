@@ -14,12 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import lightgbm as lgb
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import GridSearchCV
+from pyspark.sql import SparkSession
+from sklearn.model_selection import train_test_split
 import argparse
-import openmldb_batch
 
 parser = argparse.ArgumentParser()
 parser.add_argument("sql_file", 
@@ -32,7 +32,13 @@ with open(args.sql_file, "r") as fd:
     sql = fd.read()
 
 # run batch sql and get instances
-train_set, predict_set = openmldb_batch.run_batch_sql(sql)
+spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
+parquet_train = "./data/taxi_tour_table_train_simple.snappy.parquet"
+train = spark.read.parquet(parquet_train)
+train.createOrReplaceTempView("t1")
+train_df = spark.sql(sql)
+df = train_df.toPandas()
+train_set, predict_set = train_test_split(df, test_size=0.2)
 y_train = train_set['trip_duration']
 x_train = train_set.drop(columns=['trip_duration'])
 y_predict = predict_set['trip_duration']
