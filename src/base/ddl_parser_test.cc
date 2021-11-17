@@ -429,6 +429,7 @@ TEST_F(DDLParserTest, mergeNode) {
     ASSERT_EQ(ttl.abs_ttl(), 1);
     ASSERT_EQ(ttl.lat_ttl(), 2);
 }
+
 TEST_F(DDLParserTest, twoTable) {
     AddTableToDB(&db, "t1", "col0 string, col1 int32, col2 int16, col3 float, col4 double, col5 int64, col6 string",
                  ",", " ");
@@ -456,6 +457,17 @@ TEST_F(DDLParserTest, twoTable) {
     ASSERT_EQ(ttl2.abs_ttl(), 0);
 }
 
+TEST_F(DDLParserTest, getOutputSchema) {
+    std::string query =
+        "SELECT sum(rank) OVER w1 as w1_rank_sum FROM behaviourTable as t1 WINDOW w1 AS (UNION behaviourTable2 "
+        "PARTITION BY itemId ORDER BY "
+        "eventTime ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+
+    auto output_schema = DDLParser::GetOutputSchema(query, db);
+    ASSERT_EQ(output_schema->GetColumnCnt(), 1);
+    ASSERT_EQ(output_schema->GetColumnName(0), "w1_rank_sum");
+    ASSERT_EQ(output_schema->GetColumnType(0), hybridse::sdk::DataType::kTypeInt32);
+}
 }  // namespace openmldb::base
 
 int main(int argc, char** argv) {
