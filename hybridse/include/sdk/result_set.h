@@ -18,7 +18,9 @@
 #define HYBRIDSE_INCLUDE_SDK_RESULT_SET_H_
 
 #include <stdint.h>
+
 #include <string>
+
 #include "sdk/base.h"
 
 namespace hybridse {
@@ -45,17 +47,28 @@ class ResultSet {
         GetString(index, &val);
         return val;
     }
-    const std::string GetAsString(uint32_t idx) {
+
+    const bool GetAsString(uint32_t idx, std::string* val) {
+        std::string unsafe_val = GetAsStringUnsafe(idx, "NA");
+        if (unsafe_val == "NA") {
+            return false;
+        } else {
+            *val = unsafe_val;
+            return true;
+        }
+    }
+
+    const std::string GetAsStringUnsafe(uint32_t idx, const std::string& default_na_value = "NA") {
         if (nullptr == GetSchema()) {
-            return "NA";
+            return default_na_value;
         }
         int schema_size = GetSchema()->GetColumnCnt();
         if (0 == schema_size) {
-            return "NA";
+            return default_na_value;
         }
 
         if ((int32_t)idx >= schema_size) {
-            return "NA";
+            return default_na_value;
         }
 
         if (IsNULL(idx)) {
@@ -83,7 +96,6 @@ class ResultSet {
             }
             case kTypeString: {
                 return GetStringUnsafe(idx);
-                break;
             }
             case kTypeTimestamp: {
                 return std::to_string(GetTimeUnsafe(idx));
@@ -97,15 +109,14 @@ class ResultSet {
                     snprintf(date, 11u, "%4d-%.2d-%.2d", year, month, day);
                     return std::string(date);
                 } else {
-                    return "NA";
+                    return default_na_value;
                 }
             }
             default: {
                 break;
             }
         }
-
-        return "NA";
+        return default_na_value;
     }
 
     inline std::string GetRowString() {
@@ -116,7 +127,7 @@ class ResultSet {
         std::string row_str = "";
 
         for (int i = 0; i < schema_size; i++) {
-            row_str.append(GetAsString(i));
+            row_str.append(GetAsStringUnsafe(i));
             if (i != schema_size - 1) {
                 row_str.append(", ");
             }
@@ -184,8 +195,7 @@ class ResultSet {
         return val;
     }
 
-    virtual bool GetDate(uint32_t index, int32_t* year, int32_t* month,
-                         int32_t* day) = 0;
+    virtual bool GetDate(uint32_t index, int32_t* year, int32_t* month, int32_t* day) = 0;
 
     virtual bool GetDate(uint32_t index, int32_t* days) = 0;
 

@@ -134,13 +134,21 @@ void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& fi
                     if (result_set->IsNULL(i)) {
                         rowString.append(options_parse.GetNullValue());
                     } else {
+                        std::string* val = new std::string();
+                        bool ok = result_set->GetAsString(i, val);
+                        if (!ok) {
+                            status->msg = "ERROR: Failed to get result set value";
+                            status->code = openmldb::base::kSQLCmdRunError;
+                            delete(val);
+                            return;
+                        }
                         if (options_parse.GetQuote() != '\0' &&
                             schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
-                            rowString.append(options_parse.GetQuote() + result_set->GetAsString(i) +
-                                             options_parse.GetQuote());
+                            rowString.append(options_parse.GetQuote() + *val + options_parse.GetQuote());
                         } else {
-                            rowString.append(result_set->GetAsString(i));
+                            rowString.append(*val);
                         }
+                        delete(val);
                     }
                     if (i != schema->GetColumnCnt() - 1) {
                         rowString += options_parse.GetDelimiter();
@@ -177,7 +185,7 @@ void PrintResultSet(std::ostream& stream, ::hybridse::sdk::ResultSet* result_set
                 t.add("NULL");
                 continue;
             }
-            t.add(result_set->GetAsString(i));
+            t.add(result_set->GetAsStringUnsafe(i));
         }
         t.end_of_row();
     }
