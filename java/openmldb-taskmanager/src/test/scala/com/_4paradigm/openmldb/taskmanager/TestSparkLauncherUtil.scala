@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.taskmanager
 
+import org.apache.spark.launcher.{SparkAppHandle, SparkLauncher}
 import org.scalatest.FunSuite
 
 class TestSparkLauncherUtil extends FunSuite {
@@ -23,6 +24,19 @@ class TestSparkLauncherUtil extends FunSuite {
   test("Test createSparkLauncher") {
     val launcher = SparkLauncherUtil.createSparkLauncher("")
     assert(launcher!= null)
+  }
+
+  test("Test submit Spark application") {
+    val mainClass = classOf[DummySparkApp].getName
+
+    val launcher = SparkLauncherUtil.createSparkLauncher(mainClass)
+    launcher.setConf(SparkLauncher.DRIVER_EXTRA_CLASSPATH, System.getProperty("java.class.path"))
+
+    val sparkAppHandle = launcher.startApplication()
+    Thread.sleep(3000)
+
+    // Submit successfully and get final state
+    assert(sparkAppHandle.getState.isFinal)
   }
 
 }
