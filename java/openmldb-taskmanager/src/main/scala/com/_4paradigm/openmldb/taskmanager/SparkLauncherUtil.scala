@@ -38,8 +38,8 @@ object SparkLauncherUtil {
       .setAppResource(TaskManagerConfig.BATCHJOB_JAR_PATH)
       .setMainClass(mainClass)
 
-    if (TaskManagerConfig.SPARK_SUBMIT_PATH != null) {
-      launcher.setSparkHome(TaskManagerConfig.SPARK_SUBMIT_PATH)
+    if (TaskManagerConfig.SPARK_HOME != null) {
+      launcher.setSparkHome(TaskManagerConfig.SPARK_HOME)
     }
 
     TaskManagerConfig.SPARK_MASTER.toLowerCase match {
