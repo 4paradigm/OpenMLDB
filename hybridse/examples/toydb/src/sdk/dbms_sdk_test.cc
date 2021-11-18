@@ -546,7 +546,7 @@ void PrintResultSet(std::shared_ptr<ResultSet> rs) {
 
     while (rs->Next()) {
         for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
-            std::string str = rs->GetAsString(idx);
+            std::string str = rs->GetAsStringUnsafe(idx);
             t.add(str);
             if (t.current_columns_size() >= 20) {
                 t.add("...");
@@ -590,7 +590,7 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
     rs->Reset();
     while (rs->Next()) {
         if (order_idx >= 0) {
-            std::string key = rs->GetAsString(order_idx);
+            std::string key = rs->GetAsStringUnsafe(order_idx);
             LOG(INFO) << "key : " << key;
             ASSERT_TRUE(rows_map.find(key) != rows_map.cend())
                 << "CheckRows fail: row[" << index << "] order not expected";
