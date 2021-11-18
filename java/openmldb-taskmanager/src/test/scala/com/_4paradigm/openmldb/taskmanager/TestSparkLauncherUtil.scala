@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.taskmanager
 
-import org.apache.spark.launcher.{SparkAppHandle, SparkLauncher}
+import org.apache.spark.launcher.SparkLauncher
 import org.scalatest.FunSuite
 
 class TestSparkLauncherUtil extends FunSuite {
@@ -37,7 +37,7 @@ class TestSparkLauncherUtil extends FunSuite {
 
     // Submit successfully and get final state
     // TODO: get lost state since of lack of log4j jar, more info in sparkAppHandle.getError
-    assert(sparkAppHandle.getState.isFinal)
+    assert(!sparkAppHandle.getError.isPresent)
   }
 
 }

@@ -38,6 +38,10 @@ object SparkLauncherUtil {
       .setAppResource(TaskManagerConfig.BATCHJOB_JAR_PATH)
       .setMainClass(mainClass)
 
+    if (TaskManagerConfig.SPARK_SUBMIT_PATH != null) {
+      launcher.setSparkHome(TaskManagerConfig.SPARK_SUBMIT_PATH)
+    }
+
     TaskManagerConfig.SPARK_MASTER.toLowerCase match {
       case "local" => {
         launcher.setMaster("local")

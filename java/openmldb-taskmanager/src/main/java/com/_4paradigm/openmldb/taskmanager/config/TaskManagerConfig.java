@@ -30,6 +30,7 @@ public class TaskManagerConfig {
     public static String SPARK_MASTER;
     public static String BATCHJOB_JAR_PATH;
     public static String SPARK_YARN_JARS;
+    public static String SPARK_SUBMIT_PATH;
 
     static {
         try {
@@ -46,6 +47,7 @@ public class TaskManagerConfig {
             SPARK_MASTER = prop.getProperty("spark.master", "yarn");
             BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
+            SPARK_SUBMIT_PATH = prop.getProperty("spark.submit.path");
         } catch (Exception e) {
             e.printStackTrace();
         }
