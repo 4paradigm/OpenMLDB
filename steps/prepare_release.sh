@@ -44,4 +44,4 @@ sed -i "s/OPENMLDB_VERSION_MINOR .*/OPENMLDB_VERSION_MINOR ${MINOR})/g" "${cmake
 sed -i "s/OPENMLDB_VERSION_BUG .*/OPENMLDB_VERSION_BUG ${BUG})/g" "${cmake_file}"
 
 # version in python sdk
-sed -i "" "s/version=.*/version='$VERSION',/g" python/sqlalchemy-openmldb/setup.py
+sed -i "s/version=.*/version='$VERSION',/g" python/sqlalchemy-openmldb/setup.py
