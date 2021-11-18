@@ -22,11 +22,12 @@ from sklearn.model_selection import train_test_split
 import argparse
 
 parser = argparse.ArgumentParser()
+parser.add_argument("feature_path", help="specify the feature path")
 parser.add_argument("model_path", help="specify the model path")
 args = parser.parse_args()
 
 # run batch sql and get instances
-df = pd.read_csv("/tmp/feature.csv");
+df = pd.read_csv(args.feature_path);
 train_set, predict_set = train_test_split(df, test_size=0.2)
 y_train = train_set['trip_duration']
 x_train = train_set.drop(columns=['trip_duration'])

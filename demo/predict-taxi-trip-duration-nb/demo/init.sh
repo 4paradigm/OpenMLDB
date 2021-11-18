@@ -20,6 +20,10 @@ MODE="cluster"
 if [ $# -gt 0 ]; then
     MODE=$1
 fi
+pkill mon
+pkill python3
+rm -rf /tmp/*
+sleep 2
 if [ $MODE = "standalone" ]; then
     sed -i "s/.*zk_cluster=.*/#--zk_cluster=127.0.0.1:2181/g" /work/openmldb/conf/nameserver.flags
     sed -i "s/.*zk_root_path=.*/#--zk_root_path=\/openmldb/g" /work/openmldb/conf/nameserver.flags
@@ -35,7 +39,7 @@ else
     sed -i "s/.*zk_root_path=.*/--zk_root_path=\/openmldb/g" /work/openmldb/conf/nameserver.flags
     sed -i "s/.*zk_cluster=.*/--zk_cluster=127.0.0.1:2181/g" /work/openmldb/conf/tablet.flags
     sed -i "s/.*zk_root_path=.*/--zk_root_path=\/openmldb/g" /work/openmldb/conf/tablet.flags
-    cd /work/zookeeper-3.4.14 && ./bin/zkServer.sh start
+    cd /work/zookeeper-3.4.14 && ./bin/zkServer.sh restart
     sleep 1
     cd /work/openmldb && ./bin/start.sh start tablet
     sleep 1
