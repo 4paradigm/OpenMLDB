@@ -38,9 +38,10 @@ MINOR=${ARR[1]}
 BUG=${ARR[2]}
 
 # version in server
-sed -i "" "s/OPENMLDB_VERSION_MAJOR .*/OPENMLDB_VERSION_MAJOR ${MAJOR})/g" "${cmake_file}"
-sed -i "" "s/OPENMLDB_VERSION_MINOR .*/OPENMLDB_VERSION_MINOR ${MINOR})/g" "${cmake_file}"
-sed -i "" "s/OPENMLDB_VERSION_BUG .*/OPENMLDB_VERSION_BUG ${BUG})/g" "${cmake_file}"
+# TODO(aceforeverd): it only work for gnu sed
+sed -i "s/OPENMLDB_VERSION_MAJOR .*/OPENMLDB_VERSION_MAJOR ${MAJOR})/g" "${cmake_file}"
+sed -i "s/OPENMLDB_VERSION_MINOR .*/OPENMLDB_VERSION_MINOR ${MINOR})/g" "${cmake_file}"
+sed -i "s/OPENMLDB_VERSION_BUG .*/OPENMLDB_VERSION_BUG ${BUG})/g" "${cmake_file}"
 
 # version in python sdk
 sed -i "" "s/version=.*/version='$VERSION',/g" python/sqlalchemy-openmldb/setup.py
