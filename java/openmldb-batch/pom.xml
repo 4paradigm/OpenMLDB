@@ -7,13 +7,12 @@
 	<parent>
 		<artifactId>openmldb-parent</artifactId>
 		<groupId>com.4paradigm.openmldb</groupId>
-		<version>0.2.3</version>
+		<version>0.3.2-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>openmldb-batch</artifactId>
 	<name>openmldb-batch</name>
 	<packaging>jar</packaging>
-	<version>${revision}</version>
 
 	<description>OpenMLDB Batch is the LLVM-based and high-performance batch execution engine for feature engineering.</description>
 
