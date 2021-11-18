@@ -36,6 +36,7 @@ class TestSparkLauncherUtil extends FunSuite {
     Thread.sleep(3000)
 
     // Submit successfully and get final state
+    // TODO: get lost state since of lack of log4j jar, more info in sparkAppHandle.getError
     assert(sparkAppHandle.getState.isFinal)
   }
 
