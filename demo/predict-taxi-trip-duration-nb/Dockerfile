@@ -3,7 +3,7 @@ FROM openjdk:11.0.13-jre-slim-bullseye
 LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
 
 RUN  apt-get update \
-     && apt-get install -y --no-install-recommends libgomp1 curl binutils python3 python3-pip python3-numpy \
+     && apt-get install -y --no-install-recommends libgomp1 curl binutils procps python3 python3-pip python3-numpy \
      && rm -rf /var/lib/apt/lists/* \
      && pip install --no-cache-dir numpy lightgbm tornado requests pandas openmldb
 
