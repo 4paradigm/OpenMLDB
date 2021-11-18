@@ -114,6 +114,12 @@ class SchemasContext {
                                        std::string* name) const;
 
     /**
+    * Given unique column id, return db, table, column name.
+    */
+    base::Status ResolveDbTableColumnByID(size_t column_id,
+                                       std::string*db, std::string *table, std::string* column) const;
+
+    /**
      * Resolve index for column reference expression
      */
     base::Status ResolveColumnRefIndex(const node::ColumnRefNode* column_ref,

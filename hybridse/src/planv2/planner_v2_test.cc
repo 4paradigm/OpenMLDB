@@ -1827,30 +1827,6 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
         WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
         )",
         common::kPlanError, "Can't support table aggregation and window aggregation simultaneously");
-    //    // Rule #4
-    //    expect_converted(
-    //        "SELECT COL1, SUM(COL3) from t1 GROUP BY COL2;", common::kPlanError,
-    //        "Expression #0 of SELECT list is not in GROUP BY clause and contains nonaggregated column COL1 which is
-    //        not " "functionally dependent on columns in GROUP BY clause; this is incompatible with
-    //        sql_mode=only_full_group_by");
-    //    // Rule #5
-    //    expect_converted("SELECT COL1, COL2, SUM(COL3) from t1;", common::kPlanError,
-    //                     "In aggregated query without GROUP BY, expression #0 of SELECT list contains nonaggregated "
-    //                     "project 'COL1'; this is incompatible with sql_mode=only_full_group_by");
-    //    // Rule #6
-    //    expect_converted(
-    //        "SELECT COL1, SUM(COL3) from t1 GROUP BY COL1 HAVING COL2 > 0;", common::kPlanError,
-    //        "Having clause is not in GROUP BY clause and contains nonaggregated column COL2 which is not functionally
-    //        " "dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by");
-    //    // Rule #7
-    //    expect_converted(
-    //        "SELECT COL1 from t1 HAVING COL2 > 0;", common::kPlanError,
-    //        "Having clause can only be used in conjunction with aggregated query");
-    //    // Rule #8
-    //    expect_converted("SELECT SUM(COL1) from t1 HAVING COL2 > 0;", common::kPlanError,
-    //                     "In aggregated query without GROUP BY, Having clause contains nonaggregated project 'COL2 >
-    //                     0'; " "this is incompatible with sql_mode=only_full_group_by");
-    // TODO(chenjing): add boundary check rules tests
 }
 }  // namespace plan
 }  // namespace hybridse
