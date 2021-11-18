@@ -91,6 +91,8 @@ python/logs
 
 **/compile_commands.json
 **/pom.xml.versionsBackup
+**/dependency-reduced-pom.xml
+**/scalastyle-output.xml
 
 # test
 logs

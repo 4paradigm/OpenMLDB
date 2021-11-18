@@ -23,6 +23,7 @@ CMAKE_FLAGS := -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 CMAKE_EXTRA_FLAGS ?=
 
 SQL_CASE_BASE_DIR ?= $(MAKEFILE_DIR)
+OPENMLDB_BUILD_TARGET ?= all
 
 # Extra cmake flags for OpenMLDB
 OPENMLDB_CMAKE_FLAGS := $(CMAKE_FLAGS)
@@ -68,33 +69,24 @@ endif
 # Extra cmake flags for third-party
 THIRD_PARTY_CMAKE_FLAGS ?=
 
+TEST_TARGET ?=
+TEST_LEVEL ?=
+
+.PHONY: all coverage build test configure clean thirdparty openmldb-clean thirdparty-configure thirdparty-clean thirdpartybuild-clean thirdpartysrc-clean
+
 all: build
 
-# TODO: add OpenMLDB coverage
+# TODO(#): add OpenMLDB coverage
 coverage: hybridse-coverage
 
 OPENMLDB_BUILD_DIR := $(MAKEFILE_DIR)/build
 
 build: configure
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) -- -j$(NPROC)
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target $(OPENMLDB_BUILD_TARGET) -- -j$(NPROC)
 
-sdktest-build: configure
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target sql_sdk_test -- -j$(NPROC)
-
-sdktest: sdktest-build
-	bash steps/ut.sh sql_sdk_test 0
-
-clustertest-build: configure
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target sql_cluster_test -- -j$(NPROC)
-
-clustertest: clustertest-build
-	bash steps/ut.sh sql_cluster_test 0
-
-javasdk: configure
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target sql_javasdk_package openmldb -- -j$(NPROC)
-
-pythonsdk: configure
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target sqlalchemy_openmldb openmldb -- -j$(NPROC)
+test:
+	$(MAKE) build TESTING_ENABLE=ON OPENMLDB_BUILD_TARGE=$(TEST_TARGET)
+	bash steps/ut.sh $(TEST_TARGET) $(TEST_LEVEL)
 
 # turn off testing and example build for hybridse to save time & space
 # TODO(#625): embedded hybridse into OpenMLDB instead glued in this Makefile
@@ -116,7 +108,7 @@ thirdparty: thirdparty-configure
 thirdparty-configure:
 	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
 
-thirdparty-clean: thirdparty-build-clean thirdparty-src-clean
+thirdparty-clean: thirdpartybuild-clean thirdpartysrc-clean
 
 thirdpartybuild-clean:
 	rm -rf "$(THIRD_PARTY_BUILD_DIR)"
@@ -127,6 +119,7 @@ thirdpartysrc-clean:
 HYBRIDSE_BUILD_DIR := $(MAKEFILE_DIR)/hybridse/build
 HYBRIDSE_INSTALL_DIR := $(THIRD_PARTY_DIR)/hybridse
 
+.PHONY: hybridse hybridse-build hybridse-test hybridse-configure hybridse-coverage hybridse-coverage-configure hybridse-clean
 hybridse: hybridse-build
 
 hybridse-install: hybridse-build
@@ -152,6 +145,8 @@ hybridse-clean:
 	rm -rf "$(HYBRIDSE_BUILD_DIR)"
 
 clean: hybridse-clean openmldb-clean
+
+.PHONY: distclean lint format javafmt shfmt cppfmt pyfmt configfmt yamlfmt jsonfmt xmlfmt cpplint shlint javalint pylint
 
 distclean: clean thirdparty-clean
 
