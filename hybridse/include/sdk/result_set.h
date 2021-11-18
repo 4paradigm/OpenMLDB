@@ -50,6 +50,7 @@ class ResultSet {
 
     const bool GetAsString(uint32_t idx, std::string* val) {
         std::string unsafe_val = GetAsStringUnsafe(idx, "NA");
+        // TODO(zekai): "NA" may be the value of a column, it will cause wrong judgment. Need fix
         if (unsafe_val == "NA") {
             return false;
         } else {
