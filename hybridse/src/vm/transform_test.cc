@@ -204,6 +204,9 @@ TEST_P(TransformTest, TransformPhysicalPlan) {
     PhysicalOpNode* physical_plan = nullptr;
     base::Status status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
     EXPECT_EQ(sql_case.expect().success_, status.isOK()) << status;
+    std::ostringstream oss;
+    physical_plan->Print(oss, "");
+    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 }
 
 TEST_P(TransformTest, TransformPhysicalPlanEnableWindowParalled) {

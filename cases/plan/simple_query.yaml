@@ -356,3 +356,6 @@ cases:
           |      +-table: t1
           |      +-alias: <nil>
           +-window_list: []
+  - id: load_data
+    desc: load data plan
+    sql: LOAD DATA INFILE 'nonexistent.csv' into table nonexistent_db.nonexistent_t options(format='csv', foo='bar');

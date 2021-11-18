@@ -176,6 +176,8 @@ class BatchModeTransformer {
                                      PhysicalOpNode** output);
     virtual Status TransformDistinctOp(const node::DistinctPlanNode* node,
                                        PhysicalOpNode** output);
+    virtual Status TransformLoadDataOp(const node::LoadDataPlanNode* node,
+                                       PhysicalOpNode** output);
 
     virtual Status CreatePhysicalConstProjectNode(
         node::ProjectListNode* project_list, PhysicalOpNode** output);

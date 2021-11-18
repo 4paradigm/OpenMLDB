@@ -15,7 +15,9 @@
  */
 
 #include "vm/physical_op.h"
+
 #include <set>
+
 #include "passes/physical/physical_pass.h"
 
 namespace hybridse {
@@ -28,12 +30,10 @@ void PhysicalOpNode::Print(std::ostream& output, const std::string& tab) const {
     output << tab << PhysicalOpTypeName(type_);
 }
 
-bool PhysicalOpNode::IsSameSchema(const vm::Schema& schema,
-                                  const vm::Schema& exp_schema) const {
+bool PhysicalOpNode::IsSameSchema(const vm::Schema& schema, const vm::Schema& exp_schema) const {
     if (schema.size() != exp_schema.size()) {
         LOG(WARNING) << "Schemas size aren't consistent: "
-                     << "expect size " << exp_schema.size() << ", real size "
-                     << schema.size();
+                     << "expect size " << exp_schema.size() << ", real size " << schema.size();
         return false;
     }
     for (int i = 0; i < schema.size(); i++) {
@@ -55,21 +55,16 @@ bool PhysicalOpNode::IsSameSchema(const vm::Schema& schema,
 
 void PhysicalOpNode::Print() const { this->Print(std::cout, "    "); }
 
-void PhysicalOpNode::PrintChildren(std::ostream& output,
-                                   const std::string& tab) const {}
-void PhysicalOpNode::UpdateProducer(int i, PhysicalOpNode* producer) {
-    producers_[i] = producer;
-}
-void PhysicalUnaryNode::PrintChildren(std::ostream& output,
-                                      const std::string& tab) const {
+void PhysicalOpNode::PrintChildren(std::ostream& output, const std::string& tab) const {}
+void PhysicalOpNode::UpdateProducer(int i, PhysicalOpNode* producer) { producers_[i] = producer; }
+void PhysicalUnaryNode::PrintChildren(std::ostream& output, const std::string& tab) const {
     if (producers_.empty() || nullptr == producers_[0]) {
         LOG(WARNING) << "empty producers";
         return;
     }
     producers_[0]->Print(output, tab + INDENT);
 }
-void PhysicalUnaryNode::Print(std::ostream& output,
-                              const std::string& tab) const {
+void PhysicalUnaryNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     if (limit_cnt_ > 0) {
         output << "(limit=" << limit_cnt_ << ")";
@@ -85,10 +80,8 @@ Status PhysicalUnaryNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
-void PhysicalBinaryNode::PrintChildren(std::ostream& output,
-                                       const std::string& tab) const {
-    if (2 != producers_.size() || nullptr == producers_[0] ||
-        nullptr == producers_[1]) {
+void PhysicalBinaryNode::PrintChildren(std::ostream& output, const std::string& tab) const {
+    if (2 != producers_.size() || nullptr == producers_[0] || nullptr == producers_[1]) {
         LOG(WARNING) << "fail to print children";
         return;
     }
@@ -96,30 +89,25 @@ void PhysicalBinaryNode::PrintChildren(std::ostream& output,
     output << "\n";
     producers_[1]->Print(output, tab + INDENT);
 }
-void PhysicalBinaryNode::Print(std::ostream& output,
-                               const std::string& tab) const {
+void PhysicalBinaryNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "\n";
     PrintChildren(output, tab);
 }
 
-void PhysicalTableProviderNode::Print(std::ostream& output,
-                                      const std::string& tab) const {
+void PhysicalTableProviderNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(table=" << table_handler_->GetName() << ")";
 }
 
-void PhysicalRequestProviderNode::Print(std::ostream& output,
-                                        const std::string& tab) const {
+void PhysicalRequestProviderNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(request=" << table_handler_->GetName() << ")";
 }
 
-void PhysicalRequestProviderNodeWithCommonColumn::Print(
-    std::ostream& output, const std::string& tab) const {
+void PhysicalRequestProviderNodeWithCommonColumn::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(request=" << table_handler_->GetName()
-           << ", common_column_indices=(";
+    output << "(request=" << table_handler_->GetName() << ", common_column_indices=(";
     size_t i = 0;
     for (size_t column_idx : common_column_indices_) {
         output << column_idx;
@@ -131,17 +119,14 @@ void PhysicalRequestProviderNodeWithCommonColumn::Print(
     output << "))";
 }
 
-void PhysicalPartitionProviderNode::Print(std::ostream& output,
-                                          const std::string& tab) const {
+void PhysicalPartitionProviderNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << DataProviderTypeName(provider_type_)
-           << ", table=" << table_handler_->GetName()
+    output << "(type=" << DataProviderTypeName(provider_type_) << ", table=" << table_handler_->GetName()
            << ", index=" << index_name_ << ")";
 }
 
-Status PhysicalGroupNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalGroupNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                          PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 1, common::kPlanError);
     std::vector<const node::ExprNode*> depend_columns;
     group_.ResolvedRelatedColumns(&depend_columns);
@@ -151,28 +136,23 @@ Status PhysicalGroupNode::WithNewChildren(
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {
         CHECK_STATUS(
-            BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(),
-                                   children[0]->schemas_ctx(), nm, &replacer));
+            BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
     }
     CHECK_STATUS(group_.ReplaceExpr(replacer, nm, &new_group_op->group_));
     *out = nm->RegisterNode(new_group_op);
     return Status::OK();
 }
 
-void PhysicalGroupNode::Print(std::ostream& output,
-                              const std::string& tab) const {
+void PhysicalGroupNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "("
            << "group_" << group_.ToString() << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
-PhysicalGroupNode* PhysicalGroupNode::CastFrom(PhysicalOpNode* node) {
-    return dynamic_cast<PhysicalGroupNode*>(node);
-}
+PhysicalGroupNode* PhysicalGroupNode::CastFrom(PhysicalOpNode* node) { return dynamic_cast<PhysicalGroupNode*>(node); }
 
-void ColumnProjects::Add(const std::string& name, const node::ExprNode* expr,
-                         const node::FrameNode* frame) {
+void ColumnProjects::Add(const std::string& name, const node::ExprNode* expr, const node::FrameNode* frame) {
     if (name.empty()) {
         LOG(WARNING) << "Append empty column name into projects";
         return;
@@ -192,8 +172,7 @@ void ColumnProjects::Clear() {
     primary_frame_ = nullptr;
 }
 
-Status ColumnProjects::ReplaceExpr(const passes::ExprReplacer& replacer,
-                                   node::NodeManager* nm,
+Status ColumnProjects::ReplaceExpr(const passes::ExprReplacer& replacer, node::NodeManager* nm,
                                    ColumnProjects* out) const {
     out->Clear();
     for (size_t i = 0; i < this->size(); ++i) {
@@ -206,8 +185,7 @@ Status ColumnProjects::ReplaceExpr(const passes::ExprReplacer& replacer,
     return Status::OK();
 }
 
-void PhysicalProjectNode::Print(std::ostream& output,
-                                const std::string& tab) const {
+void PhysicalProjectNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);
     if (limit_cnt_ > 0) {
@@ -225,13 +203,10 @@ void PhysicalProjectNode::Print(std::ostream& output,
  * (2) Else:
  *    - Allocate new column id since it a newly computed column.
  */
-static Status InitProjectSchemaSource(const ColumnProjects& projects,
-                                      const SchemasContext* schemas_ctx,
-                                      PhysicalPlanContext* plan_ctx,
-                                      SchemaSource* project_source) {
+static Status InitProjectSchemaSource(const ColumnProjects& projects, const SchemasContext* schemas_ctx,
+                                      PhysicalPlanContext* plan_ctx, SchemaSource* project_source) {
     const FnInfo& fn_info = projects.fn_info();
-    CHECK_TRUE(fn_info.IsValid(), common::kPlanError,
-               "Project node's function info is not valid");
+    CHECK_TRUE(fn_info.IsValid(), common::kPlanError, "Project node's function info is not valid");
     project_source->SetSchema(fn_info.fn_schema());
 
     for (size_t i = 0; i < projects.size(); ++i) {
@@ -243,9 +218,8 @@ static Status InitProjectSchemaSource(const ColumnProjects& projects,
                    "* should be extend before generate projects");
         if (expr->GetExprType() == node::kExprColumnRef) {
             auto col_ref = dynamic_cast<const node::ColumnRefNode*>(expr);
-            CHECK_STATUS(schemas_ctx->ResolveColumnID(col_ref->GetDBName(),
-                col_ref->GetRelationName(), col_ref->GetColumnName(),
-                &column_id));
+            CHECK_STATUS(schemas_ctx->ResolveColumnID(col_ref->GetDBName(), col_ref->GetRelationName(),
+                                                      col_ref->GetColumnName(), &column_id));
             project_source->SetColumnID(i, column_id);
             project_source->SetSource(i, 0, column_id);
         } else if (expr->GetExprType() == node::kExprColumnId) {
@@ -267,21 +241,18 @@ Status PhysicalProjectNode::InitSchema(PhysicalPlanContext* ctx) {
     bool is_row_project = !IsAggProjectType(project_type_);
 
     // init project fn
-    CHECK_STATUS(
-        ctx->InitFnDef(project_, input_schemas_ctx, is_row_project, &project_),
-        "Fail to initialize function info of project node");
+    CHECK_STATUS(ctx->InitFnDef(project_, input_schemas_ctx, is_row_project, &project_),
+                 "Fail to initialize function info of project node");
 
     // init project schema
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
     SchemaSource* project_source = schemas_ctx_.AddSource();
-    return InitProjectSchemaSource(project_, input_schemas_ctx, ctx,
-                                   project_source);
+    return InitProjectSchemaSource(project_, input_schemas_ctx, ctx, project_source);
 }
 
-Status PhysicalConstProjectNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalConstProjectNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                                 PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 0, common::kPlanError);
     *out = nm->RegisterNode(new PhysicalConstProjectNode(project_));
     return Status::OK();
@@ -296,8 +267,7 @@ Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
     SchemaSource* project_source = schemas_ctx_.AddSource();
 
     SchemasContext empty_schemas_ctx;
-    return InitProjectSchemaSource(project_, &empty_schemas_ctx, ctx,
-                                   project_source);
+    return InitProjectSchemaSource(project_, &empty_schemas_ctx, ctx, project_source);
 }
 
 int PhysicalSimpleProjectNode::GetSelectSourceIndex() const {
@@ -311,15 +281,12 @@ int PhysicalSimpleProjectNode::GetSelectSourceIndex() const {
         switch (expr->GetExprType()) {
             case node::kExprColumnId: {
                 status = input_schemas_ctx->ResolveColumnIndexByID(
-                    dynamic_cast<const node::ColumnIdNode*>(expr)
-                        ->GetColumnID(),
-                    &schema_idx, &col_idx);
+                    dynamic_cast<const node::ColumnIdNode*>(expr)->GetColumnID(), &schema_idx, &col_idx);
                 break;
             }
             case node::kExprColumnRef: {
-                status = input_schemas_ctx->ResolveColumnRefIndex(
-                    dynamic_cast<const node::ColumnRefNode*>(expr), &schema_idx,
-                    &col_idx);
+                status = input_schemas_ctx->ResolveColumnRefIndex(dynamic_cast<const node::ColumnRefNode*>(expr),
+                                                                  &schema_idx, &col_idx);
                 break;
             }
             default:
@@ -328,8 +295,7 @@ int PhysicalSimpleProjectNode::GetSelectSourceIndex() const {
         if (!status.isOK()) {
             return -1;
         }
-        if (project_.size() !=
-            input_schemas_ctx->GetSchemaSource(schema_idx)->size()) {
+        if (project_.size() != input_schemas_ctx->GetSchemaSource(schema_idx)->size()) {
             return -1;
         }
         if (i == 0) {
@@ -354,38 +320,32 @@ Status PhysicalSimpleProjectNode::InitSchema(PhysicalPlanContext* ctx) {
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
     SchemaSource* project_source = schemas_ctx_.AddSource();
-    return InitProjectSchemaSource(project_, input_schemas_ctx, ctx,
-                                   project_source);
+    return InitProjectSchemaSource(project_, input_schemas_ctx, ctx, project_source);
 }
 
-Status PhysicalSimpleProjectNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalSimpleProjectNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                                  PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 1, common::kPlanError);
     passes::ExprReplacer replacer;
     for (size_t i = 0; i < project_.size(); ++i) {
         auto expr = project_.GetExpr(i);
-        CHECK_STATUS(BuildColumnReplacement(expr, GetProducer(0)->schemas_ctx(),
-                                            children[0]->schemas_ctx(), nm,
-                                            &replacer));
+        CHECK_STATUS(
+            BuildColumnReplacement(expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
     }
     ColumnProjects new_projects;
     CHECK_STATUS(project_.ReplaceExpr(replacer, nm, &new_projects));
-    *out = nm->RegisterNode(
-        new PhysicalSimpleProjectNode(children[0], new_projects));
+    *out = nm->RegisterNode(new PhysicalSimpleProjectNode(children[0], new_projects));
     return Status::OK();
 }
 
-Status PhysicalProjectNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                            PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 1, common::kPlanError);
     passes::ExprReplacer replacer;
     for (size_t i = 0; i < project_.size(); ++i) {
         auto expr = project_.GetExpr(i);
-        CHECK_STATUS(BuildColumnReplacement(expr, GetProducer(0)->schemas_ctx(),
-                                            children[0]->schemas_ctx(), nm,
-                                            &replacer));
+        CHECK_STATUS(
+            BuildColumnReplacement(expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
     }
     ColumnProjects new_projects;
     CHECK_STATUS(project_.ReplaceExpr(replacer, nm, &new_projects));
@@ -405,9 +365,7 @@ Status PhysicalProjectNode::WithNewChildren(
             break;
         }
         default:
-            return Status(
-                common::kPlanError,
-                "Unknown project type: " + ProjectTypeName(project_type_));
+            return Status(common::kPlanError, "Unknown project type: " + ProjectTypeName(project_type_));
     }
     *out = nm->RegisterNode(op);
     return Status::OK();
@@ -421,50 +379,38 @@ PhysicalRowProjectNode* PhysicalRowProjectNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalRowProjectNode*>(node);
 }
 
-PhysicalTableProjectNode* PhysicalTableProjectNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalTableProjectNode* PhysicalTableProjectNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalTableProjectNode*>(node);
 }
 
-PhysicalConstProjectNode* PhysicalConstProjectNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalConstProjectNode* PhysicalConstProjectNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalConstProjectNode*>(node);
 }
 
-PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalSimpleProjectNode*>(node);
 }
 
-PhysicalUnionNode* PhysicalUnionNode::CastFrom(PhysicalOpNode* node) {
-    return dynamic_cast<PhysicalUnionNode*>(node);
-}
+PhysicalUnionNode* PhysicalUnionNode::CastFrom(PhysicalOpNode* node) { return dynamic_cast<PhysicalUnionNode*>(node); }
 
-PhysicalPostRequestUnionNode* PhysicalPostRequestUnionNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalPostRequestUnionNode* PhysicalPostRequestUnionNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalPostRequestUnionNode*>(node);
 }
 
-PhysicalSortNode* PhysicalSortNode::CastFrom(PhysicalOpNode* node) {
-    return dynamic_cast<PhysicalSortNode*>(node);
-}
+PhysicalSortNode* PhysicalSortNode::CastFrom(PhysicalOpNode* node) { return dynamic_cast<PhysicalSortNode*>(node); }
 
 PhysicalFilterNode* PhysicalFilterNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalFilterNode*>(node);
 }
 
-PhysicalLimitNode* PhysicalLimitNode::CastFrom(PhysicalOpNode* node) {
-    return dynamic_cast<PhysicalLimitNode*>(node);
-}
+PhysicalLimitNode* PhysicalLimitNode::CastFrom(PhysicalOpNode* node) { return dynamic_cast<PhysicalLimitNode*>(node); }
 PhysicalRenameNode* PhysicalRenameNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalRenameNode*>(node);
 }
-void PhysicalConstProjectNode::Print(std::ostream& output,
-                                     const std::string& tab) const {
+void PhysicalConstProjectNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
 }
-void PhysicalSimpleProjectNode::Print(std::ostream& output,
-                                      const std::string& tab) const {
+void PhysicalSimpleProjectNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(";
     output << "sources=(";
@@ -492,49 +438,44 @@ void PhysicalSimpleProjectNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-Status PhysicalWindowAggrerationNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalWindowAggrerationNode::WithNewChildren(node::NodeManager* nm,
+                                                      const std::vector<PhysicalOpNode*>& children,
+                                                      PhysicalOpNode** out) {
     return Status(common::kPlanError, "Not supported");
 }
 
-PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalWindowAggrerationNode*>(node);
 }
 
-Status PhysicalGroupAggrerationNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalGroupAggrerationNode::WithNewChildren(node::NodeManager* nm,
+                                                     const std::vector<PhysicalOpNode*>& children,
+                                                     PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 1, common::kPlanError);
     passes::ExprReplacer replacer;
     for (size_t i = 0; i < project_.size(); ++i) {
         auto expr = project_.GetExpr(i);
-        CHECK_STATUS(BuildColumnReplacement(expr, GetProducer(0)->schemas_ctx(),
-                                            children[0]->schemas_ctx(), nm,
-                                            &replacer));
+        CHECK_STATUS(
+            BuildColumnReplacement(expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
     }
     ColumnProjects new_projects;
     CHECK_STATUS(project_.ReplaceExpr(replacer, nm, &new_projects));
 
-    auto* op = new PhysicalGroupAggrerationNode(children[0], new_projects,
-                                                group_.keys());
+    auto* op = new PhysicalGroupAggrerationNode(children[0], new_projects, group_.keys());
 
     std::vector<const node::ExprNode*> group_depend_columns;
     group_.ResolvedRelatedColumns(&group_depend_columns);
     passes::ExprReplacer group_replacer;
     for (auto col_expr : group_depend_columns) {
-        CHECK_STATUS(BuildColumnReplacement(
-            col_expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(),
-            nm, &group_replacer));
+        CHECK_STATUS(BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm,
+                                            &group_replacer));
     }
     CHECK_STATUS(group_.ReplaceExpr(group_replacer, nm, &op->group_));
     *out = nm->RegisterNode(op);
     return Status::OK();
 }
 
-void PhysicalGroupAggrerationNode::Print(std::ostream& output,
-                                         const std::string& tab) const {
+void PhysicalGroupAggrerationNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_) << ", "
            << "group_" << group_.ToString();
@@ -546,13 +487,11 @@ void PhysicalGroupAggrerationNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-PhysicalGroupAggrerationNode* PhysicalGroupAggrerationNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalGroupAggrerationNode* PhysicalGroupAggrerationNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalGroupAggrerationNode*>(node);
 }
 
-Status Key::ReplaceExpr(const passes::ExprReplacer& replacer,
-                        node::NodeManager* nm, Key* out) const {
+Status Key::ReplaceExpr(const passes::ExprReplacer& replacer, node::NodeManager* nm, Key* out) const {
     if (keys_ == nullptr) {
         return Status::OK();
     }
@@ -563,8 +502,7 @@ Status Key::ReplaceExpr(const passes::ExprReplacer& replacer,
     return Status::OK();
 }
 
-Status Sort::ReplaceExpr(const passes::ExprReplacer& replacer,
-                         node::NodeManager* nm, Sort* out) const {
+Status Sort::ReplaceExpr(const passes::ExprReplacer& replacer, node::NodeManager* nm, Sort* out) const {
     if (orders_ == nullptr) {
         out->orders_ = nullptr;
         return Status::OK();
@@ -582,8 +520,7 @@ Status Sort::ReplaceExpr(const passes::ExprReplacer& replacer,
     return Status::OK();
 }
 
-Status Filter::ReplaceExpr(const passes::ExprReplacer& replacer,
-                           node::NodeManager* nm, Filter* out) const {
+Status Filter::ReplaceExpr(const passes::ExprReplacer& replacer, node::NodeManager* nm, Filter* out) const {
     CHECK_STATUS(condition_.ReplaceExpr(replacer, nm, &out->condition_));
     CHECK_STATUS(left_key_.ReplaceExpr(replacer, nm, &out->left_key_));
     CHECK_STATUS(right_key_.ReplaceExpr(replacer, nm, &out->right_key_));
@@ -591,8 +528,7 @@ Status Filter::ReplaceExpr(const passes::ExprReplacer& replacer,
     return Status::OK();
 }
 
-Status ConditionFilter::ReplaceExpr(const passes::ExprReplacer& replacer,
-                                    node::NodeManager* nm,
+Status ConditionFilter::ReplaceExpr(const passes::ExprReplacer& replacer, node::NodeManager* nm,
                                     ConditionFilter* out) const {
     if (condition_ == nullptr) {
         return Status::OK();
@@ -604,16 +540,14 @@ Status ConditionFilter::ReplaceExpr(const passes::ExprReplacer& replacer,
     return Status::OK();
 }
 
-Status Join::ReplaceExpr(const passes::ExprReplacer& replacer,
-                         node::NodeManager* nm, Join* out) const {
+Status Join::ReplaceExpr(const passes::ExprReplacer& replacer, node::NodeManager* nm, Join* out) const {
     CHECK_STATUS(this->Filter::ReplaceExpr(replacer, nm, out));
     out->join_type_ = join_type_;
     CHECK_STATUS(right_sort_.ReplaceExpr(replacer, nm, &out->right_sort_));
     return Status::OK();
 }
 
-Status Range::ReplaceExpr(const passes::ExprReplacer& replacer,
-                          node::NodeManager* nm, Range* out) const {
+Status Range::ReplaceExpr(const passes::ExprReplacer& replacer, node::NodeManager* nm, Range* out) const {
     if (range_key_ == nullptr) {
         return Status::OK();
     }
@@ -625,42 +559,36 @@ Status Range::ReplaceExpr(const passes::ExprReplacer& replacer,
     return Status::OK();
 }
 
-void Range::ResolvedRelatedColumns(
-    std::vector<const node::ExprNode*>* columns) const {
+void Range::ResolvedRelatedColumns(std::vector<const node::ExprNode*>* columns) const {
     node::ColumnOfExpression(range_key_, columns);
 }
 
-void WindowOp::ResolvedRelatedColumns(
-    std::vector<const node::ExprNode*>* columns) const {
+void WindowOp::ResolvedRelatedColumns(std::vector<const node::ExprNode*>* columns) const {
     partition_.ResolvedRelatedColumns(columns);
     sort_.ResolvedRelatedColumns(columns);
     range_.ResolvedRelatedColumns(columns);
 }
 
-Status WindowOp::ReplaceExpr(const passes::ExprReplacer& replacer,
-                             node::NodeManager* nm, WindowOp* out) const {
+Status WindowOp::ReplaceExpr(const passes::ExprReplacer& replacer, node::NodeManager* nm, WindowOp* out) const {
     CHECK_STATUS(partition_.ReplaceExpr(replacer, nm, &out->partition_));
     CHECK_STATUS(sort_.ReplaceExpr(replacer, nm, &out->sort_));
     CHECK_STATUS(range_.ReplaceExpr(replacer, nm, &out->range_));
     return Status::OK();
 }
 
-void RequestWindowOp::ResolvedRelatedColumns(
-    std::vector<const node::ExprNode*>* columns) const {
+void RequestWindowOp::ResolvedRelatedColumns(std::vector<const node::ExprNode*>* columns) const {
     this->WindowOp::ResolvedRelatedColumns(columns);
     index_key_.ResolvedRelatedColumns(columns);
 }
 
-Status RequestWindowOp::ReplaceExpr(const passes::ExprReplacer& replacer,
-                                    node::NodeManager* nm,
+Status RequestWindowOp::ReplaceExpr(const passes::ExprReplacer& replacer, node::NodeManager* nm,
                                     RequestWindowOp* out) const {
     CHECK_STATUS(this->WindowOp::ReplaceExpr(replacer, nm, out));
     CHECK_STATUS(index_key_.ReplaceExpr(replacer, nm, &out->index_key_));
     return Status::OK();
 }
 
-void PhysicalWindowAggrerationNode::Print(std::ostream& output,
-                                          const std::string& tab) const {
+void PhysicalWindowAggrerationNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);
     if (exclude_current_time_) {
@@ -682,8 +610,7 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     if (!window_joins_.Empty()) {
         for (auto window_join : window_joins_.window_joins_) {
             output << "\n";
-            output << tab << INDENT << "+-JOIN("
-                   << window_join.second.ToString() << ")\n";
+            output << tab << INDENT << "+-JOIN(" << window_join.second.ToString() << ")\n";
             window_join.first->Print(output, tab + INDENT + INDENT + INDENT);
         }
     }
@@ -691,8 +618,7 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
     if (!window_unions_.Empty()) {
         for (auto window_union : window_unions_.window_unions_) {
             output << "\n";
-            output << tab << INDENT << "+-UNION("
-                   << window_union.second.ToString() << ")\n";
+            output << tab << INDENT << "+-UNION(" << window_union.second.ToString() << ")\n";
             window_union.first->Print(output, tab + INDENT + INDENT + INDENT);
         }
     }
@@ -712,16 +638,14 @@ Status PhysicalWindowAggrerationNode::InitSchema(PhysicalPlanContext* ctx) {
 
     // init fn info
     bool is_row_project = !IsAggProjectType(project_type_);
-    CHECK_STATUS(
-        ctx->InitFnDef(project_, input_schemas_ctx, is_row_project, &project_),
-        "Fail to initialize function def of project node");
+    CHECK_STATUS(ctx->InitFnDef(project_, input_schemas_ctx, is_row_project, &project_),
+                 "Fail to initialize function def of project node");
 
     // init output schema
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
     auto project_source = schemas_ctx_.AddSource();
-    CHECK_STATUS(InitProjectSchemaSource(project_, input_schemas_ctx, ctx,
-                                         project_source));
+    CHECK_STATUS(InitProjectSchemaSource(project_, input_schemas_ctx, ctx, project_source));
 
     // window agg may inherit input row
     if (need_append_input()) {
@@ -730,8 +654,7 @@ Status PhysicalWindowAggrerationNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
-Status PhysicalWindowAggrerationNode::InitJoinList(
-    PhysicalPlanContext* plan_ctx) {
+Status PhysicalWindowAggrerationNode::InitJoinList(PhysicalPlanContext* plan_ctx) {
     auto& window_joins = window_joins_.window_joins();
     if (window_joins.size() == joined_op_list_.size()) {
         return Status::OK();
@@ -740,16 +663,14 @@ Status PhysicalWindowAggrerationNode::InitJoinList(
     PhysicalOpNode* cur = this->GetProducer(0);
     for (auto& pair : window_joins) {
         PhysicalJoinNode* joined = nullptr;
-        CHECK_STATUS(plan_ctx->CreateOp<PhysicalJoinNode>(
-            &joined, cur, pair.first, pair.second));
+        CHECK_STATUS(plan_ctx->CreateOp<PhysicalJoinNode>(&joined, cur, pair.first, pair.second));
         joined_op_list_.push_back(joined);
         cur = joined;
     }
     return Status::OK();
 }
 
-void PhysicalJoinNode::Print(std::ostream& output,
-                             const std::string& tab) const {
+void PhysicalJoinNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(";
     if (output_right_only_) {
@@ -769,9 +690,7 @@ void PhysicalJoinNode::Print(std::ostream& output,
 }
 
 Status PhysicalJoinNode::InitSchema(PhysicalPlanContext* ctx) {
-    CHECK_TRUE(2 == producers_.size() && nullptr != producers_[0] &&
-                   nullptr != producers_[1],
-               common::kPlanError,
+    CHECK_TRUE(2 == producers_.size() && nullptr != producers_[0] && nullptr != producers_[1], common::kPlanError,
                "InitSchema fail: producers size isn't 2 or left/right "
                "producer is null");
     schemas_ctx_.Clear();
@@ -794,41 +713,34 @@ Status PhysicalJoinNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
-Status PhysicalJoinNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalJoinNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                         PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 2, common::kPlanError);
     std::vector<const node::ExprNode*> depend_columns;
     join_.ResolvedRelatedColumns(&depend_columns);
 
-    auto new_join_op = new PhysicalJoinNode(children[0], children[1], join_,
-                                            output_right_only_);
+    auto new_join_op = new PhysicalJoinNode(children[0], children[1], join_, output_right_only_);
 
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {
         Status status;
         status =
-            BuildColumnReplacement(col_expr, this->joined_schemas_ctx(),
-                                   children[0]->schemas_ctx(), nm, &replacer);
+            BuildColumnReplacement(col_expr, this->joined_schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer);
         if (status.isOK()) {
             continue;
         }
         CHECK_STATUS(
-            BuildColumnReplacement(col_expr, this->joined_schemas_ctx(),
-                                   children[1]->schemas_ctx(), nm, &replacer));
+            BuildColumnReplacement(col_expr, this->joined_schemas_ctx(), children[1]->schemas_ctx(), nm, &replacer));
     }
     CHECK_STATUS(join_.ReplaceExpr(replacer, nm, &new_join_op->join_));
     *out = nm->RegisterNode(new_join_op);
     return Status::OK();
 }
 
-PhysicalJoinNode* PhysicalJoinNode::CastFrom(PhysicalOpNode* node) {
-    return dynamic_cast<PhysicalJoinNode*>(node);
-}
+PhysicalJoinNode* PhysicalJoinNode::CastFrom(PhysicalOpNode* node) { return dynamic_cast<PhysicalJoinNode*>(node); }
 
-Status PhysicalSortNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalSortNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                         PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 1, common::kPlanError);
     std::vector<const node::ExprNode*> depend_columns;
     sort_.ResolvedRelatedColumns(&depend_columns);
@@ -838,16 +750,14 @@ Status PhysicalSortNode::WithNewChildren(
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {
         CHECK_STATUS(
-            BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(),
-                                   children[0]->schemas_ctx(), nm, &replacer));
+            BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
     }
     CHECK_STATUS(sort_.ReplaceExpr(replacer, nm, &new_sort_op->sort_));
     *out = nm->RegisterNode(new_sort_op);
     return Status::OK();
 }
 
-void PhysicalSortNode::Print(std::ostream& output,
-                             const std::string& tab) const {
+void PhysicalSortNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(" << sort_.ToString();
     if (limit_cnt_ > 0) {
@@ -858,73 +768,62 @@ void PhysicalSortNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-Status PhysicalDistinctNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalDistinctNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                             PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 1, common::kPlanError);
     *out = nm->RegisterNode(new PhysicalDistinctNode(children[0]));
     return Status::OK();
 }
 
-Status PhysicalLimitNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalLimitNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                          PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 1, common::kPlanError);
-    auto new_limit_op =
-        nm->RegisterNode(new PhysicalLimitNode(children[0], limit_cnt_));
+    auto new_limit_op = nm->RegisterNode(new PhysicalLimitNode(children[0], limit_cnt_));
     new_limit_op->SetLimitOptimized(limit_optimized_);
     *out = new_limit_op;
     return Status::OK();
 }
 
-void PhysicalLimitNode::Print(std::ostream& output,
-                              const std::string& tab) const {
+void PhysicalLimitNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(limit=" << std::to_string(limit_cnt_)
-           << (limit_optimized_ ? ", optimized" : "") << ")";
+    output << "(limit=" << std::to_string(limit_cnt_) << (limit_optimized_ ? ", optimized" : "") << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
 
-Status PhysicalRenameNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalRenameNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                           PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 1, common::kPlanError);
     *out = nm->RegisterNode(new PhysicalRenameNode(children[0], name_));
     return Status::OK();
 }
 
-void PhysicalRenameNode::Print(std::ostream& output,
-                               const std::string& tab) const {
+void PhysicalRenameNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(name=" << name_ << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
 
-Status PhysicalFilterNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalFilterNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                           PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 1, common::kPlanError);
     std::vector<const node::ExprNode*> depend_columns;
     filter_.ResolvedRelatedColumns(&depend_columns);
 
-    auto new_filter_op =
-        new PhysicalFilterNode(children[0], filter_.condition_.condition());
+    auto new_filter_op = new PhysicalFilterNode(children[0], filter_.condition_.condition());
 
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {
         CHECK_STATUS(
-            BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(),
-                                   children[0]->schemas_ctx(), nm, &replacer));
+            BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
     }
     CHECK_STATUS(filter_.ReplaceExpr(replacer, nm, &new_filter_op->filter_));
     *out = nm->RegisterNode(new_filter_op);
     return Status::OK();
 }
 
-void PhysicalFilterNode::Print(std::ostream& output,
-                               const std::string& tab) const {
+void PhysicalFilterNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(" << filter_.ToString();
     if (limit_cnt_ > 0) {
@@ -935,23 +834,18 @@ void PhysicalFilterNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-PhysicalDataProviderNode* PhysicalDataProviderNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalDataProviderNode* PhysicalDataProviderNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalDataProviderNode*>(node);
 }
 
-const std::string& PhysicalDataProviderNode::GetName() const {
-    return table_handler_->GetName();
-}
+const std::string& PhysicalDataProviderNode::GetName() const { return table_handler_->GetName(); }
 
 Status PhysicalDataProviderNode::InitSchema(PhysicalPlanContext* ctx) {
-    CHECK_TRUE(table_handler_ != nullptr, common::kPlanError,
-               "InitSchema fail: table handler is null");
+    CHECK_TRUE(table_handler_ != nullptr, common::kPlanError, "InitSchema fail: table handler is null");
     const std::string db_name = table_handler_->GetDatabase();
     const std::string table_name = table_handler_->GetName();
     auto schema = table_handler_->GetSchema();
-    CHECK_TRUE(schema != nullptr, common::kPlanError,
-               "InitSchema fail: table schema of ", table_name, " is null");
+    CHECK_TRUE(schema != nullptr, common::kPlanError, "InitSchema fail: table schema of ", table_name, " is null");
 
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
@@ -963,22 +857,19 @@ Status PhysicalDataProviderNode::InitSchema(PhysicalPlanContext* ctx) {
     table_source->SetSourceDBAndTableName(db_name, table_name);
     for (auto i = 0; i < schema->size(); ++i) {
         size_t column_id;
-        CHECK_STATUS(
-            ctx->GetSourceID(db_name, table_name, schema->Get(i).name(), &column_id),
-            "Get source column id from table \"", table_name, "\" failed");
+        CHECK_STATUS(ctx->GetSourceID(db_name, table_name, schema->Get(i).name(), &column_id),
+                     "Get source column id from table \"", table_name, "\" failed");
         table_source->SetColumnID(i, column_id);
     }
     return Status::OK();
 }
 
 Status PhysicalRequestProviderNode::InitSchema(PhysicalPlanContext* ctx) {
-    CHECK_TRUE(table_handler_ != nullptr, common::kPlanError,
-               "InitSchema fail: table handler is null");
+    CHECK_TRUE(table_handler_ != nullptr, common::kPlanError, "InitSchema fail: table handler is null");
     const std::string request_name = table_handler_->GetName();
     const std::string db_name = table_handler_->GetDatabase();
     auto schema = table_handler_->GetSchema();
-    CHECK_TRUE(schema != nullptr, common::kPlanError,
-               "InitSchema fail: table schema of", request_name, " is null");
+    CHECK_TRUE(schema != nullptr, common::kPlanError, "InitSchema fail: table schema of", request_name, " is null");
 
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
@@ -990,25 +881,20 @@ Status PhysicalRequestProviderNode::InitSchema(PhysicalPlanContext* ctx) {
     request_source->SetSourceDBAndTableName(db_name, request_name);
     for (auto i = 0; i < schema->size(); ++i) {
         size_t column_id;
-        CHECK_STATUS(ctx->GetRequestSourceID(db_name, request_name,
-                                             schema->Get(i).name(), &column_id),
-                     "Get source column id from table \"", request_name,
-                     "\" failed");
+        CHECK_STATUS(ctx->GetRequestSourceID(db_name, request_name, schema->Get(i).name(), &column_id),
+                     "Get source column id from table \"", request_name, "\" failed");
         request_source->SetColumnID(i, column_id);
     }
     return Status::OK();
 }
 
-Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
-    PhysicalPlanContext* ctx) {
-    CHECK_TRUE(table_handler_ != nullptr, common::kPlanError,
-               "InitSchema fail: table handler is null");
+Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(PhysicalPlanContext* ctx) {
+    CHECK_TRUE(table_handler_ != nullptr, common::kPlanError, "InitSchema fail: table handler is null");
     const std::string request_name = table_handler_->GetName();
     const std::string db_name = table_handler_->GetDatabase();
     auto schema = table_handler_->GetSchema();
     size_t schema_size = static_cast<size_t>(schema->size());
-    CHECK_TRUE(schema != nullptr, common::kPlanError,
-               "InitSchema fail: table schema of", request_name, " is null");
+    CHECK_TRUE(schema != nullptr, common::kPlanError, "InitSchema fail: table schema of", request_name, " is null");
 
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
@@ -1016,13 +902,11 @@ Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
 
     std::vector<size_t> column_ids(schema_size);
     for (size_t i = 0; i < schema_size; ++i) {
-        CHECK_STATUS(ctx->GetRequestSourceID(db_name,
-                         request_name, schema->Get(i).name(), &column_ids[i]),
+        CHECK_STATUS(ctx->GetRequestSourceID(db_name, request_name, schema->Get(i).name(), &column_ids[i]),
                      "Get column id from ", request_name, " failed");
     }
 
-    bool share_common = common_column_indices_.size() > 0 &&
-                        common_column_indices_.size() < schema_size;
+    bool share_common = common_column_indices_.size() > 0 && common_column_indices_.size() < schema_size;
     if (share_common) {
         auto common_source = schemas_ctx_.AddSource();
         auto non_common_source = schemas_ctx_.AddSource();
@@ -1032,8 +916,7 @@ Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
         common_schema_.Clear();
         non_common_schema_.Clear();
         for (size_t i = 0; i < schema_size; ++i) {
-            if (common_column_indices_.find(i) !=
-                common_column_indices_.end()) {
+            if (common_column_indices_.find(i) != common_column_indices_.end()) {
                 *common_schema_.Add() = schema->Get(i);
             } else {
                 *non_common_schema_.Add() = schema->Get(i);
@@ -1045,8 +928,7 @@ Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
         size_t lsize = 0;
         size_t rsize = 0;
         for (size_t i = 0; i < schema_size; ++i) {
-            if (common_column_indices_.find(i) !=
-                common_column_indices_.end()) {
+            if (common_column_indices_.find(i) != common_column_indices_.end()) {
                 common_source->SetColumnID(lsize, column_ids[i]);
                 lsize += 1;
             } else {
@@ -1065,34 +947,29 @@ Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
     return Status::OK();
 }
 
-Status PhysicalRequestProviderNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalRequestProviderNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                                    PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 0, common::kPlanError);
     *out = nm->RegisterNode(new PhysicalRequestProviderNode(table_handler_));
     return Status::OK();
 }
 
-Status PhysicalTableProviderNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalTableProviderNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                                  PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 0, common::kPlanError);
     *out = nm->RegisterNode(new PhysicalTableProviderNode(table_handler_));
     return Status::OK();
 }
 
-Status PhysicalPartitionProviderNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalPartitionProviderNode::WithNewChildren(node::NodeManager* nm,
+                                                      const std::vector<PhysicalOpNode*>& children,
+                                                      PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 0, common::kPlanError);
-    *out =
-        nm->RegisterNode(new PhysicalPartitionProviderNode(this, index_name_));
+    *out = nm->RegisterNode(new PhysicalPartitionProviderNode(this, index_name_));
     return Status::OK();
 }
 
-void PhysicalOpNode::PrintSchema() const {
-    std::cout << SchemaToString() << std::endl;
-}
+void PhysicalOpNode::PrintSchema() const { std::cout << SchemaToString() << std::endl; }
 
 std::string PhysicalOpNode::SchemaToString(const std::string& tab) const {
     std::stringstream ss;
@@ -1112,11 +989,10 @@ std::string PhysicalOpNode::SchemaToString(const std::string& tab) const {
         for (int32_t j = 0; j < schema->size(); j++) {
             ss << tab << "    ";
             const type::ColumnDef& column = schema->Get(j);
-            ss << "#" << schema_source->GetColumnID(j) << " " << column.name()
-               << " " << type::Type_Name(column.type());
+            ss << "#" << schema_source->GetColumnID(j) << " " << column.name() << " " << type::Type_Name(column.type());
             if (schema_source->IsSourceColumn(j)) {
-                ss << " <- #" << schema_source->GetSourceColumnID(j)
-                   << " (from [" << schema_source->GetSourceChildIdx(j) << "])";
+                ss << " <- #" << schema_source->GetSourceColumnID(j) << " (from ["
+                   << schema_source->GetSourceChildIdx(j) << "])";
             }
             ss << "\n";
         }
@@ -1133,17 +1009,14 @@ Status PhysicalUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
-Status PhysicalUnionNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalUnionNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                          PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 2, common::kPlanError);
-    *out = nm->RegisterNode(
-        new PhysicalUnionNode(children[0], children[1], is_all_));
+    *out = nm->RegisterNode(new PhysicalUnionNode(children[0], children[1], is_all_));
     return Status::OK();
 }
 
-void PhysicalUnionNode::Print(std::ostream& output,
-                              const std::string& tab) const {
+void PhysicalUnionNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "\n";
     PrintChildren(output, tab);
@@ -1157,59 +1030,50 @@ Status PhysicalPostRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
-Status PhysicalPostRequestUnionNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalPostRequestUnionNode::WithNewChildren(node::NodeManager* nm,
+                                                     const std::vector<PhysicalOpNode*>& children,
+                                                     PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 2, common::kPlanError);
 
     Range new_request_ts;
-    CHECK_STATUS(
-        ReplaceComponentExpr(request_ts_, GetProducer(0)->schemas_ctx(),
-                             children[0]->schemas_ctx(), nm, &new_request_ts));
-    *out = nm->RegisterNode(new PhysicalPostRequestUnionNode(
-        children[0], children[1], new_request_ts));
+    CHECK_STATUS(ReplaceComponentExpr(request_ts_, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm,
+                                      &new_request_ts));
+    *out = nm->RegisterNode(new PhysicalPostRequestUnionNode(children[0], children[1], new_request_ts));
     return Status::OK();
 }
 
-void PhysicalPostRequestUnionNode::Print(std::ostream& output,
-                                         const std::string& tab) const {
+void PhysicalPostRequestUnionNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "\n";
     PrintChildren(output, tab);
 }
 
-Status PhysicalRequestUnionNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalRequestUnionNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                                 PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 2, common::kPlanError);
-    auto new_union_op = new PhysicalRequestUnionNode(
-        children[0], children[1], window_, instance_not_in_window_,
-        exclude_current_time_, output_request_row_);
+    auto new_union_op = new PhysicalRequestUnionNode(children[0], children[1], window_, instance_not_in_window_,
+                                                     exclude_current_time_, output_request_row_);
 
     std::vector<const node::ExprNode*> depend_columns;
     window_.ResolvedRelatedColumns(&depend_columns);
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {
         CHECK_STATUS(
-            BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(),
-                                   children[0]->schemas_ctx(), nm, &replacer));
+            BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
     }
     CHECK_STATUS(window_.ReplaceExpr(replacer, nm, &new_union_op->window_));
 
     for (auto& pair : window_unions_.window_unions_) {
         new_union_op->AddWindowUnion(pair.first);
-        auto window_ptr =
-            &new_union_op->window_unions_.window_unions_.back().second;
-        CHECK_STATUS(
-            ReplaceComponentExpr(pair.second, GetProducer(0)->schemas_ctx(),
-                                 children[0]->schemas_ctx(), nm, window_ptr));
+        auto window_ptr = &new_union_op->window_unions_.window_unions_.back().second;
+        CHECK_STATUS(ReplaceComponentExpr(pair.second, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm,
+                                          window_ptr));
     }
     *out = nm->RegisterNode(new_union_op);
     return Status::OK();
 }
 
-void PhysicalRequestUnionNode::Print(std::ostream& output,
-                                     const std::string& tab) const {
+void PhysicalRequestUnionNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(";
     if (!output_request_row_) {
@@ -1222,8 +1086,7 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
     if (!window_unions_.Empty()) {
         for (auto window_union : window_unions_.window_unions_) {
             output << "\n";
-            output << tab << INDENT << "+-UNION("
-                   << window_union.second.ToString() << ")\n";
+            output << tab << INDENT << "+-UNION(" << window_union.second.ToString() << ")\n";
             window_union.first->Print(output, tab + INDENT + INDENT + INDENT);
         }
     }
@@ -1261,13 +1124,11 @@ base::Status PhysicalRenameNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
-PhysicalRequestUnionNode* PhysicalRequestUnionNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalRequestUnionNode* PhysicalRequestUnionNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalRequestUnionNode*>(node);
 }
 
-void PhysicalRequestJoinNode::Print(std::ostream& output,
-                                    const std::string& tab) const {
+void PhysicalRequestJoinNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(";
     if (output_right_only_) {
@@ -1286,33 +1147,28 @@ void PhysicalRequestJoinNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-PhysicalRequestJoinNode* PhysicalRequestJoinNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalRequestJoinNode* PhysicalRequestJoinNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalRequestJoinNode*>(node);
 }
 
-Status PhysicalRequestJoinNode::WithNewChildren(
-    node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-    PhysicalOpNode** out) {
+Status PhysicalRequestJoinNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                                PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 2, common::kPlanError);
     std::vector<const node::ExprNode*> depend_columns;
     join_.ResolvedRelatedColumns(&depend_columns);
 
-    auto new_join_op = new PhysicalRequestJoinNode(children[0], children[1],
-                                                   join_, output_right_only_);
+    auto new_join_op = new PhysicalRequestJoinNode(children[0], children[1], join_, output_right_only_);
 
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {
         Status status;
         status =
-            BuildColumnReplacement(col_expr, this->joined_schemas_ctx(),
-                                   children[0]->schemas_ctx(), nm, &replacer);
+            BuildColumnReplacement(col_expr, this->joined_schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer);
         if (status.isOK()) {
             continue;
         }
         CHECK_STATUS(
-            BuildColumnReplacement(col_expr, this->joined_schemas_ctx(),
-                                   children[1]->schemas_ctx(), nm, &replacer));
+            BuildColumnReplacement(col_expr, this->joined_schemas_ctx(), children[1]->schemas_ctx(), nm, &replacer));
     }
     CHECK_STATUS(join_.ReplaceExpr(replacer, nm, &new_join_op->join_));
     *out = nm->RegisterNode(new_join_op);
@@ -1320,9 +1176,7 @@ Status PhysicalRequestJoinNode::WithNewChildren(
 }
 
 Status PhysicalRequestJoinNode::InitSchema(PhysicalPlanContext* ctx) {
-    CHECK_TRUE(2 == producers_.size() && nullptr != producers_[0] &&
-                   nullptr != producers_[1],
-               common::kPlanError,
+    CHECK_TRUE(2 == producers_.size() && nullptr != producers_[0] && nullptr != producers_[1], common::kPlanError,
                "InitSchema fail: producers size isn't 2 or left/right "
                "producer is null");
     schemas_ctx_.Clear();
@@ -1345,15 +1199,42 @@ Status PhysicalRequestJoinNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
-Status BuildColumnReplacement(const node::ExprNode* expr,
-                              const SchemasContext* origin_schema,
-                              const SchemasContext* rebase_schema,
-                              node::NodeManager* nm,
+Status PhysicalLoadDataNode::InitSchema(PhysicalPlanContext* ctx) { return Status::OK(); }
+Status PhysicalLoadDataNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                             PhysicalOpNode** out) {
+    return {common::kPlanError, "no children"};
+}
+
+void PhysicalLoadDataNode::Print(std::ostream& output, const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "("
+           << "file=" << File() << ", db=" << Db() << ", table=" << Table();
+    auto options = Options();
+    if (options) {
+        output << ", options=";
+        if (options->empty()) {
+            output << "<nil>";
+        } else {
+            auto it = options->begin();
+            output << "(" << it->first << ":" << it->second->GetExprString();
+            it++;
+            for (; it != options->end(); ++it) {
+                output << ", " << it->first << ":" << it->second->GetExprString();
+            }
+            output << ")";
+        }
+    }
+    output << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
+Status BuildColumnReplacement(const node::ExprNode* expr, const SchemasContext* origin_schema,
+                              const SchemasContext* rebase_schema, node::NodeManager* nm,
                               passes::ExprReplacer* replacer) {
     // Find all column expressions the expr depend on
     std::vector<const node::ExprNode*> origin_columns;
-    CHECK_STATUS(
-        origin_schema->ResolveExprDependentColumns(expr, &origin_columns));
+    CHECK_STATUS(origin_schema->ResolveExprDependentColumns(expr, &origin_columns));
 
     // Build possible replacement
     for (auto col_expr : origin_columns) {
@@ -1361,33 +1242,25 @@ Status BuildColumnReplacement(const node::ExprNode* expr,
             auto col_ref = dynamic_cast<const node::ColumnRefNode*>(col_expr);
             size_t origin_schema_idx;
             size_t origin_col_idx;
-            CHECK_STATUS(origin_schema->ResolveColumnRefIndex(
-                col_ref, &origin_schema_idx, &origin_col_idx));
-            size_t column_id = origin_schema->GetSchemaSource(origin_schema_idx)
-                                   ->GetColumnID(origin_col_idx);
+            CHECK_STATUS(origin_schema->ResolveColumnRefIndex(col_ref, &origin_schema_idx, &origin_col_idx));
+            size_t column_id = origin_schema->GetSchemaSource(origin_schema_idx)->GetColumnID(origin_col_idx);
 
             size_t new_schema_idx;
             size_t new_col_idx;
-            Status status = rebase_schema->ResolveColumnIndexByID(
-                column_id, &new_schema_idx, &new_col_idx);
+            Status status = rebase_schema->ResolveColumnIndexByID(column_id, &new_schema_idx, &new_col_idx);
 
             // (1) the column is inherited with same column id
             if (status.isOK()) {
-                replacer->AddReplacement(col_ref->GetRelationName(),
-                                         col_ref->GetColumnName(),
+                replacer->AddReplacement(col_ref->GetRelationName(), col_ref->GetColumnName(),
                                          nm->MakeColumnIdNode(column_id));
                 continue;
             }
 
             // (2) the column is with same name
-            status = rebase_schema->ResolveColumnRefIndex(
-                col_ref, &new_schema_idx, &new_col_idx);
+            status = rebase_schema->ResolveColumnRefIndex(col_ref, &new_schema_idx, &new_col_idx);
             if (status.isOK()) {
-                size_t new_column_id =
-                    rebase_schema->GetSchemaSource(new_schema_idx)
-                        ->GetColumnID(new_col_idx);
-                replacer->AddReplacement(col_ref->GetRelationName(),
-                                         col_ref->GetColumnName(),
+                size_t new_column_id = rebase_schema->GetSchemaSource(new_schema_idx)->GetColumnID(new_col_idx);
+                replacer->AddReplacement(col_ref->GetRelationName(), col_ref->GetColumnName(),
                                          nm->MakeColumnIdNode(new_column_id));
                 continue;
             }
@@ -1401,11 +1274,8 @@ Status BuildColumnReplacement(const node::ExprNode* expr,
             for (size_t i = 0; i < rebase_schema->GetSchemaSourceSize(); ++i) {
                 auto source = rebase_schema->GetSchemaSource(i);
                 if (total_idx < source->size()) {
-                    auto col_id_node =
-                        nm->MakeColumnIdNode(source->GetColumnID(total_idx));
-                    replacer->AddReplacement(col_ref->GetRelationName(),
-                                             col_ref->GetColumnName(),
-                                             col_id_node);
+                    auto col_id_node = nm->MakeColumnIdNode(source->GetColumnID(total_idx));
+                    replacer->AddReplacement(col_ref->GetRelationName(), col_ref->GetColumnName(), col_id_node);
                     replacer->AddReplacement(column_id, col_id_node);
                     index_is_valid = true;
                     break;
@@ -1414,21 +1284,17 @@ Status BuildColumnReplacement(const node::ExprNode* expr,
             }
 
             // (3) can not build replacement
-            CHECK_TRUE(index_is_valid, common::kPlanError,
-                       "Build replacement failed: " + col_ref->GetExprString());
+            CHECK_TRUE(index_is_valid, common::kPlanError, "Build replacement failed: " + col_ref->GetExprString());
 
         } else if (col_expr->GetExprType() == node::kExprColumnId) {
-            auto column_id = dynamic_cast<const node::ColumnIdNode*>(col_expr)
-                                 ->GetColumnID();
+            auto column_id = dynamic_cast<const node::ColumnIdNode*>(col_expr)->GetColumnID();
             size_t origin_schema_idx;
             size_t origin_col_idx;
-            CHECK_STATUS(origin_schema->ResolveColumnIndexByID(
-                column_id, &origin_schema_idx, &origin_col_idx));
+            CHECK_STATUS(origin_schema->ResolveColumnIndexByID(column_id, &origin_schema_idx, &origin_col_idx));
 
             size_t new_schema_idx;
             size_t new_col_idx;
-            Status status = rebase_schema->ResolveColumnIndexByID(
-                column_id, &new_schema_idx, &new_col_idx);
+            Status status = rebase_schema->ResolveColumnIndexByID(column_id, &new_schema_idx, &new_col_idx);
 
             // (1) the column is inherited with same column id
             if (status.isOK()) {
@@ -1444,9 +1310,7 @@ Status BuildColumnReplacement(const node::ExprNode* expr,
             for (size_t i = 0; i < rebase_schema->GetSchemaSourceSize(); ++i) {
                 auto source = rebase_schema->GetSchemaSource(i);
                 if (total_idx < source->size()) {
-                    replacer->AddReplacement(
-                        column_id,
-                        nm->MakeColumnIdNode(source->GetColumnID(total_idx)));
+                    replacer->AddReplacement(column_id, nm->MakeColumnIdNode(source->GetColumnID(total_idx)));
                     index_is_valid = true;
                     break;
                 }
@@ -1454,9 +1318,7 @@ Status BuildColumnReplacement(const node::ExprNode* expr,
             }
 
             // (3) can not build replacement
-            CHECK_TRUE(
-                index_is_valid, common::kPlanError,
-                "Build replacement failed: " + col_expr->GetExprString());
+            CHECK_TRUE(index_is_valid, common::kPlanError, "Build replacement failed: " + col_expr->GetExprString());
         } else {
             return Status(common::kPlanError, "Invalid column expression type");
         }
