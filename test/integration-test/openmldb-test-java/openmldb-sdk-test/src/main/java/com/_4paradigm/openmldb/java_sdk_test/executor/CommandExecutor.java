@@ -71,6 +71,22 @@ public class CommandExecutor extends BaseExecutor{
             logger.info("skip case in cli mode: {}", fesqlCase.getDesc());
             return false;
         }
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("batch-unsupport")) {
+            logger.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            return false;
+        }
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-batch-unsupport")) {
+            logger.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
+            return false;
+        }
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-unsupport")) {
+            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            return false;
+        }
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("performance-sensitive-unsupport")) {
+            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            return false;
+        }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cli-unsupport")) {
             logger.info("skip case in cli mode: {}", fesqlCase.getDesc());
             return false;
