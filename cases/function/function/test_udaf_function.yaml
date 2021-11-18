@@ -2284,3 +2284,55 @@ cases:
         - [2,"aa",NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
         - [3,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
         - [4,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+  - id: 56
+    desc: window at functions, at is synonym to lag
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","pk bigint","c1 string","c2 int","c3 bigint","c4 float",
+                   "c5 double","c6 timestamp","c7 date","c8 bool"]
+        indexs: ["index1:pk:c6"]
+        rows:
+          - [1, 1, "a", 1, 30, 1.1, 2.1, 1590738990000, "2020-05-01", true]
+          - [2, 1, "c", 4, 33, 1.4, 2.4, 1590738991000, "2020-05-03", false]
+          - [3, 1, "b", 3, 32, 1.3, 2.3, 1590738992000, "2020-05-02", true,]
+          - [4, 1, NULL, NULL, NULL, NULL, NULL, 1590738993000, NULL, NULL]
+          - [5, 1, "d", 5, 35, 1.5, 2.5, 1590738994000, "2020-05-04", false]
+    sql: |
+      SELECT {0}.id,
+          at(c1, 0) OVER w1 as m1,
+          at(c1, 2) OVER w1 as m2,
+          at(c2, 0) OVER w1 as m3,
+          at(c2, 2) OVER w1 as m4,
+          at(c3, 0) OVER w1 as m5,
+          at(c3, 2) OVER w1 as m6,
+          at(c4, 0) OVER w1 as m7,
+          at(c4, 2) OVER w1 as m8,
+          at(c5, 0) OVER w1 as m9,
+          at(c5, 2) OVER w1 as m10,
+          at(c6, 0) OVER w1 as m11,
+          at(c6, 2) OVER w1 as m12,
+          at(c7, 0) OVER w1 as m13,
+          at(c7, 2) OVER w1 as m14,
+          at(c8, 0) OVER w1 as m15,
+          at(c8, 2) OVER w1 as m16,
+          at(pk, -1) OVER w1 as m17
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.pk ORDER BY {0}.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","m1 string", "m2 string", "m3 int", "m4 int", "m5 bigint", "m6 bigint",
+                "m7 float", "m8 float", "m9 double", "m10 double",
+                "m11 timestamp", "m12 timestamp", "m13 date", "m14 date", "m15 bool", "m16 bool", "m17 bigint"]
+      rows:
+        - [1, "a", NULL, 1, NULL, 30, NULL, 1.1, NULL, 2.1, NULL,
+           1590738990000, NULL, "2020-05-01", NULL, true, NULL, NULL]
+        - [2, "c", NULL, 4, NULL, 33, NULL, 1.4, NULL, 2.4, NULL,
+           1590738991000, NULL, "2020-05-03", NULL, false, NULL, NULL]
+        - [3, "b", "a", 3, 1, 32, 30, 1.3, 1.1, 2.3, 2.1,
+           1590738992000, 1590738990000, "2020-05-02", "2020-05-01", true, true, NULL]
+        - [4, NULL, "c", NULL, 4, NULL, 33, NULL, 1.4, NULL, 2.4,
+           1590738993000, 1590738991000, NULL, "2020-05-03", NULL, false, NULL]
+        - [5, "d", "b", 5, 3, 35, 32, 1.5, 1.3, 2.5, 2.3,
+           1590738994000, 1590738992000, "2020-05-04", "2020-05-02", false, true, NULL]
+
