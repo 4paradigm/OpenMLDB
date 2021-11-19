@@ -109,7 +109,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
       SQL_JAVASDK_ENABLE: ON
-      OPENMLDB_BUILD_TARGE: 'sql_javasdk_package openmldb'
+      OPENMLDB_BUILD_TARGET: 'sql_javasdk_package openmldb'
     steps:
       - uses: actions/checkout@v2
 
@@ -141,7 +141,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
       SQL_PYSDK_ENABLE: ON
-      OPENMLDB_BUILD_TARGE: 'sqlalchemy_openmldb openmldb'
+      OPENMLDB_BUILD_TARGET: 'sqlalchemy_openmldb openmldb'
     steps:
       - uses: actions/checkout@v2
 
