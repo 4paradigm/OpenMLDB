@@ -5,7 +5,7 @@ services:
       context: .
     command: >
       bash -c "
-      sh init.sh && python3 import.py &&
+      ./init.sh && python3 import.py &&
       python3 train.py ./fe.sql /tmp/model.txt &&
-      sh start_predict_server.sh ./fe.sql /tmp/model.txt &&
+      ./start_predict_server.sh ./fe.sql /tmp/model.txt &&
       python3 predict.py"
