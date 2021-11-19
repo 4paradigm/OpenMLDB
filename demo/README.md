@@ -61,7 +61,7 @@ Initilize environment
 ```bash
 ./init.sh standalone
 ```
-Create table and import the data to OpenMLDB. The recent data will be imported again in the real scene before deploying online service.
+Create table and import the data to OpenMLDB.
 ```bash
 ../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
@@ -116,6 +116,7 @@ window w as (partition by vendor_id order by pickup_datetime ROWS_RANGE BETWEEN 
 w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
 > quit
 ```
+Note that for a real-world application, the user may import another copy of recent data for online inference before SQL deployment (refer to the cluster-mode demo). For the sake of simplicity, this demo just uses the same data for both offline training and online inference.
 
 Start HTTP serevice for inference with OpenMLDB
 ```
