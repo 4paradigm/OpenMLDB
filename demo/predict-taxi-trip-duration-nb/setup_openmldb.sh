@@ -16,7 +16,7 @@
 # limitations under the License.
 
 set -eE
-VERSION=0.3.0
+VERSION="$1"
 
 curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
 curl -SLo openmldb.tar.gz https://github.com/4paradigm/OpenMLDB/releases/download/v$VERSION/openmldb-$VERSION-linux.tar.gz

@@ -12,11 +12,9 @@ COPY demo /work/taxi-trip/
 COPY develop_ml_application_tour.ipynb /work/
 
 ENV LANG=en_US.UTF-8
+ARG OPENMLDB_VERSION
 
 COPY setup_openmldb.sh /
-RUN /setup_openmldb.sh && rm /setup_openmldb.sh
-
-# copy cluster config
-COPY conf/* /work/openmldb/conf/
+RUN /setup_openmldb.sh "${OPENMLDB_VERSION}"  && rm /setup_openmldb.sh
 
 WORKDIR /work/taxi-trip

@@ -2,8 +2,6 @@ name: OpenMLDB Docker
 
 on:
   push:
-    branches:
-      - main
     tags:
       - v*
   pull_request:
@@ -61,6 +59,7 @@ jobs:
 
           echo "GHCR_TAG=$GHCR_TAG" >> $GITHUB_ENV
           echo "DOCKERHUB_TAG=$DOCKERHUB_TAG" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Decide Push
         run: |
@@ -96,3 +95,4 @@ jobs:
           tags: |
             ${{ env.GHCR_TAG }}
             ${{ env.DOCKERHUB_TAG }}
+          build-args: OPENMLDB_VERSION=${{ env.VERSION }}
