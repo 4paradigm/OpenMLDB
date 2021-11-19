@@ -26,6 +26,9 @@ import com.baidu.brpc.server.RpcServerOptions;
 public class TaskManagerEntrypoint {
 
     public static void main(String[] args) {
+
+        // TODO: Register leader in ZooKeeper and support high availability
+
         try {
             RpcServerOptions options = new RpcServerOptions();
             options.setReceiveBufferSize(64 * 1024 * 1024);

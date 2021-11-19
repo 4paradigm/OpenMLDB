@@ -39,14 +39,7 @@ object YarnClientUtil {
     ApplicationId.newInstance(appIdStrSplit(1).toLong, appIdStrSplit(2).toInt)
   }
 
-  /**
-   * Get Yarn job report from string app id.
-   *
-   * @param appIdStr the string app id
-   * @return the ApplicationReport object
-   */
-  def getYarnJobReport(appIdStr: String): ApplicationReport = {
-
+  def createYarnClient(): YarnClient = {
     // TODO: Read yarn config from environment
     val confPath = Thread.currentThread.getContextClassLoader.getResource("").getPath + File.separator + "conf"
     val configuration = new Configuration()
@@ -59,6 +52,18 @@ object YarnClientUtil {
     val yarnClient = YarnClient.createYarnClient()
     yarnClient.init(configuration)
     yarnClient.start()
+
+    yarnClient
+  }
+
+  /**
+   * Get Yarn job report from string app id.
+   *
+   * @param appIdStr the string app id
+   * @return the ApplicationReport object
+   */
+  def getYarnJobReport(appIdStr: String): ApplicationReport = {
+    val yarnClient = createYarnClient()
 
     val appId = parseAppIdStr(appIdStr)
     yarnClient.getApplicationReport(appId)
@@ -74,6 +79,11 @@ object YarnClientUtil {
   def getYarnJobState(appIdStr: String): YarnApplicationState = {
     val appReport = getYarnJobReport(appIdStr)
     appReport.getYarnApplicationState
+  }
+
+  def killYarnJob(appIdStr: String): Unit = {
+    val yarnClient = createYarnClient()
+    yarnClient.killApplication(parseAppIdStr(appIdStr))
   }
 
 }
