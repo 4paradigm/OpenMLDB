@@ -17,7 +17,7 @@ MAKEFILE_DIR  := $(dir $(MAKEFILE_PATH))
 NPROC ?= $(shell (nproc))
 
 CMAKE_PRG ?= $(shell (command -v cmake3 || echo cmake))
-CMAKE_BUILD_TYPE ?= Release
+CMAKE_BUILD_TYPE ?= RelWithDebInfo
 CMAKE_FLAGS := -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 CMAKE_EXTRA_FLAGS ?=
