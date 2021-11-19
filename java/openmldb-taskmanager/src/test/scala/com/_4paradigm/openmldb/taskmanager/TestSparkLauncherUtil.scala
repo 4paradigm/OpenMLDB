@@ -26,8 +26,7 @@ class TestSparkLauncherUtil extends FunSuite {
     assert(launcher!= null)
   }
 
-  /*
-  test("Test submit Spark application") {
+  /*test("Test submit Spark application") {
     val mainClass = classOf[DummySparkApp].getName
 
     val launcher = SparkLauncherUtil.createSparkLauncher(mainClass)
@@ -37,8 +36,8 @@ class TestSparkLauncherUtil extends FunSuite {
     Thread.sleep(3000)
 
     // Submit successfully and get final state
-    assert(sparkAppHandle.getState == SparkAppHandle.State.FINISHED)
-  }
-  */
+    assert(!sparkAppHandle.getError.isPresent)
+    assert(sparkAppHandle.getState == SparkAppHandle.State.LOST)
+  }*/
 
 }
