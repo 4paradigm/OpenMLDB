@@ -38,7 +38,7 @@ object SparkLauncherUtil {
       .setAppResource(TaskManagerConfig.BATCHJOB_JAR_PATH)
       .setMainClass(mainClass)
 
-    if (!TaskManagerConfig.SPARK_HOME.isEmpty && TaskManagerConfig.SPARK_HOME != null) {
+    if (TaskManagerConfig.SPARK_HOME != null && TaskManagerConfig.SPARK_HOME.nonEmpty) {
       launcher.setSparkHome(TaskManagerConfig.SPARK_HOME)
     }
 
