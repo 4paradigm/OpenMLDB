@@ -370,24 +370,8 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>pl.project13.maven</groupId>
-                <artifactId>git-commit-id-plugin</artifactId>
-                <version>2.2.4</version>
-                <executions>
-                    <execution>
-                        <id>get-the-git-infos</id>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <generateGitPropertiesFilename>${project.build.outputDirectory}/sparkfe_git.properties</generateGitPropertiesFilename>
-                    <injectAllReactorProjects>true</injectAllReactorProjects>
-                    <dateFormat>yyyy.MM.dd HH:mm:ss</dateFormat>
-                    <verbose>true</verbose>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
+              <groupId>pl.project13.maven</groupId>
+              <artifactId>git-commit-id-plugin</artifactId>
             </plugin>
             <!--
             <plugin>
@@ -579,6 +563,25 @@
                             </goals>
                         </execution>
                     </executions>
+                </plugin>
+                <plugin>
+                  <groupId>pl.project13.maven</groupId>
+                  <artifactId>git-commit-id-plugin</artifactId>
+                  <version>2.2.4</version>
+                  <executions>
+                    <execution>
+                      <id>get-the-git-infos</id>
+                      <goals>
+                        <goal>revision</goal>
+                      </goals>
+                      <phase>initialize</phase>
+                    </execution>
+                  </executions>
+                  <configuration>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                    <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                    <injectAllReactorProjects>true</injectAllReactorProjects>
+                  </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
