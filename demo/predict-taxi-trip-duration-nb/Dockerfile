@@ -7,7 +7,7 @@ RUN  apt-get update \
      && rm -rf /var/lib/apt/lists/* \
      && pip install --no-cache-dir numpy lightgbm tornado requests pandas openmldb
 
-COPY demo /work/taxi-trip/
+COPY script /work/taxi-trip/
 
 ENV LANG=en_US.UTF-8
 
