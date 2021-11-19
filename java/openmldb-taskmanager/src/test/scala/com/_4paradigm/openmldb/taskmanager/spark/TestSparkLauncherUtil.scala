@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.taskmanager
+package com._4paradigm.openmldb.taskmanager.spark
 
-import org.apache.spark.launcher.{SparkAppHandle, SparkLauncher}
 import org.scalatest.FunSuite
 
 class TestSparkLauncherUtil extends FunSuite {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.taskmanager
+package com._4paradigm.openmldb.taskmanager.yarn
 
 import org.scalatest.FunSuite
 
