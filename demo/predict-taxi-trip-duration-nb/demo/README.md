@@ -30,16 +30,16 @@ CONTAINER_ID=`docker ps | grep openmldb | awk '{print $1}'`
 docker exec -it ${CONTAINER_ID} /bin/bash
 
 # Initilize the environment
-sh init.sh
+./init.sh
 
-# Import the data to OpenMLDB
-python3 import.py
-
-# Run feature extraction and model training
+# Run feature extraction and model training. Feature extraction will read offline data from local file which may be stored in HDFS in real scene.
 python3 train.py ./fe.sql /tmp/model.txt
 
+# Import to online database
+python3 import.py
+
 # Start HTTP serevice for inference with OpenMLDB
-sh start_predict_server.sh ./fe.sql /tmp/model.txt
+./start_predict_server.sh ./fe.sql /tmp/model.txt
 
 # Run inference with HTTP request
 python3 predict.py
@@ -58,9 +58,9 @@ docker run -it ghcr.io/4paradigm/openmldb:0.3.0 bash
 ```
 Initilize environment
 ```bash
-sh init.sh standalone
+./init.sh standalone
 ```
-Create table and import the data to OpenMLDB
+Create table and import the data to OpenMLDB. The recent data will be imported again in the real scene before deploying online service.
 ```bash
 ../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
@@ -118,7 +118,7 @@ w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 
 
 Start HTTP serevice for inference with OpenMLDB
 ```
-sh start_predict_server.sh /tmp/model.txt
+./start_predict_server.sh /tmp/model.txt
 ```
 
 Run inference with HTTP request
