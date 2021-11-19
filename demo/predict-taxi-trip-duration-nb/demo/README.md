@@ -50,6 +50,7 @@ python3 predict.py
 ---------------predict trip_duration -------------
 848.014745715936 s
 ```
+To read more details about cluster mode, please refer [here](https://github.com/4paradigm/OpenMLDB/blob/main/docs/en/cluster.md)
 
 ## Running the demo with standalone mode
 Start docker

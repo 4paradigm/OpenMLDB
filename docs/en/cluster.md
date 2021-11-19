@@ -38,27 +38,19 @@ After executing the feature extraction SQL, we can extract the features from the
 
 The SQL can executed in Spark to extract features from the raw dataset, which are stored directly in local filesystem or HDFS.
 
-Sample Python code is shown as follows（complete code can be found [here](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/openmldb_batch.py)):
+Sample Python code is shown as follows（complete code can be found [here](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/train.py)):
 
 ```python
 from pyspark.sql import SparkSession
 import numpy as np
 import pandas as pd
 
-
-def run_batch_sql(sql):
-    spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
-    parquet_predict = "./data/taxi_tour_table_predict_simple.snappy.parquet"
-    parquet_train = "./data/taxi_tour_table_train_simple.snappy.parquet"
-    train = spark.read.parquet(parquet_train)
-    train.createOrReplaceTempView("t1")
-    train_df = spark.sql(sql)
-    train_set = train_df.toPandas()
-    predict = spark.read.parquet(parquet_predict)
-    predict.createOrReplaceTempView("t1")
-    predict_df = spark.sql(sql)
-    predict_set = predict_df.toPandas()
-    return train_set, predict_set
+spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
+parquet_train = "./data/taxi_tour_table_train_simple.snappy.parquet"
+train = spark.read.parquet(parquet_train)
+train.createOrReplaceTempView("t1")
+train_df = spark.sql(sql)
+df = train_df.toPandas()
 ```
 
 
@@ -72,10 +64,9 @@ After we get the train and predict datasets from feature extraction, we can use 
 For example, we can use Gradient Boosting Machine (GBM) to train the model and produce a model file（complete source code can be found [here](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/train.py)):
 ```python
 import lightgbm as lgb
-import openmldb_batch
+from sklearn.model_selection import train_test_split
 
-
-train_set, predict_set = openmldb_batch.run_batch_sql(sql)
+train_set, predict_set = train_test_split(df, test_size=0.2)
 y_train = train_set['trip_duration']
 x_train = train_set.drop(columns=['trip_duration'])
 y_predict = predict_set['trip_duration']

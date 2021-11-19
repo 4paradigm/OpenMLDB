@@ -33,29 +33,21 @@ w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 
 对于离线特征抽取的输入数据，可以直接存放在本地文件或者HDFS上面，然后通过Spark执行特征抽取SQL。
 
 
-Python示例代码如下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/openmldb_batch.py)）：
+Python示例代码如下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/train.py)）：
 
 ```python
 from pyspark.sql import SparkSession
 import numpy as np
 import pandas as pd
 
-
-def run_batch_sql(sql):
-    spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
-    parquet_predict = "./data/taxi_tour_table_predict_simple.snappy.parquet"
-    parquet_train = "./data/taxi_tour_table_train_simple.snappy.parquet"
-    train = spark.read.parquet(parquet_train)
-    train.createOrReplaceTempView("t1")
-    train_df = spark.sql(sql)
-    train_set = train_df.toPandas()
-    predict = spark.read.parquet(parquet_predict)
-    predict.createOrReplaceTempView("t1")
-    predict_df = spark.sql(sql)
-    predict_set = predict_df.toPandas()
-    return train_set, predict_set
+spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
+parquet_predict = "./data/taxi_tour_table_predict_simple.snappy.parquet"
+parquet_train = "./data/taxi_tour_table_train_simple.snappy.parquet"
+train = spark.read.parquet(parquet_train)
+train.createOrReplaceTempView("t1")
+train_df = spark.sql(sql)
+df = train_df.toPandas()
 ```
-
 
 ***注意***：需要使用[OpenMLDB Spark Distribution](https://github.com/4paradigm/OpenMLDB/blob/main/docs/en/compile.md#optimized-spark-distribution-for-openmldb-optional)
 
@@ -67,10 +59,9 @@ def run_batch_sql(sql):
 下面示例使用Gradient Boosting Machine (GBM) 进行模型训练，并将训练好的模型保存在`model_path`路径下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/train.py)）：
 ```python
 import lightgbm as lgb
-import openmldb_batch
+from sklearn.model_selection import train_test_split
 
-
-train_set, predict_set = openmldb_batch.run_batch_sql(sql)
+train_set, predict_set = train_test_split(df, test_size=0.2)
 y_train = train_set['trip_duration']
 x_train = train_set.drop(columns=['trip_duration'])
 y_predict = predict_set['trip_duration']
