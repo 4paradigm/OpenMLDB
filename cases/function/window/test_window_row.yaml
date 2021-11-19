@@ -556,6 +556,7 @@ cases:
   -
     id: 18
     desc: window的计算结果不使用别名
+    mode: cli-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

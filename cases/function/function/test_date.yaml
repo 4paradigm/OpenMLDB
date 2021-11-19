@@ -18,7 +18,7 @@ sqlDialect: ["HybridSQL"]
 cases:
   - id: 0
     desc: date_format-normal
-
+    mode: cli-unsupport
     inputs:
       -
         columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]

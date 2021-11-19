@@ -465,6 +465,7 @@ cases:
   -
     id: 20
     desc: max_cate-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -542,6 +543,7 @@ cases:
   -
     id: 21
     desc: min_cate-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -614,6 +616,7 @@ cases:
   -
     id: 22
     desc: count_cate-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -686,6 +689,7 @@ cases:
   -
     id: 23
     desc: sum_cate-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -758,6 +762,7 @@ cases:
   -
     id: 24
     desc: avg_cate-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -896,6 +901,7 @@ cases:
   -
     id: 27
     desc: max_cate_where-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -968,6 +974,7 @@ cases:
   -
     id: 28
     desc: min_cate_where-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1040,6 +1047,7 @@ cases:
   -
     id: 29
     desc: count_cate_where-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1112,6 +1120,7 @@ cases:
   -
     id: 30
     desc: sum_cate_where-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1184,6 +1193,7 @@ cases:
   -
     id: 31
     desc: avg_cate_where-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1322,6 +1332,7 @@ cases:
   -
     id: 34
     desc: top_n_key_max_cate_where-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1394,6 +1405,7 @@ cases:
   -
     id: 35
     desc: top_n_key_min_cate_where-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1466,6 +1478,7 @@ cases:
   -
     id: 36
     desc: top_n_key_sum_cate_where-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1538,6 +1551,7 @@ cases:
   -
     id: 37
     desc: top_n_key_avg_cate_where-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1610,6 +1624,7 @@ cases:
   -
     id: 38
     desc: top_n_key_count_cate_where-normal
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -

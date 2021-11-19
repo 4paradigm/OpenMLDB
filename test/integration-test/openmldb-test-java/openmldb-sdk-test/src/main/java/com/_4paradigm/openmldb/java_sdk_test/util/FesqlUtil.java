@@ -799,17 +799,25 @@ public class FesqlUtil {
                 obj = Long.parseLong(data);
                 break;
             case "float": {
-                if (data.equalsIgnoreCase("nan")) {
+                if (data.equalsIgnoreCase("nan")||data.equalsIgnoreCase("-nan")) {
                     obj = Float.NaN;
-                } else {
+                }else if(data.equalsIgnoreCase("inf")){
+                    obj = Float.POSITIVE_INFINITY;
+                }else if(data.equalsIgnoreCase("-inf")){
+                    obj = Float.NEGATIVE_INFINITY;
+                }else {
                     obj = Float.parseFloat(data);
                 }
                 break;
             }
             case "double": {
-                if (data.equalsIgnoreCase("nan")) {
+                if (data.equalsIgnoreCase("nan")||data.equalsIgnoreCase("-nan")) {
                     obj = Double.NaN;
-                } else {
+                }else if(data.equalsIgnoreCase("inf")){
+                    obj = Double.POSITIVE_INFINITY;
+                }else if(data.equalsIgnoreCase("-inf")){
+                    obj = Double.NEGATIVE_INFINITY;
+                }else {
                     obj = Double.parseDouble(data);
                 }
                 break;
