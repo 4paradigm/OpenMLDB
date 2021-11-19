@@ -614,6 +614,20 @@
         </plugins>
     </reporting>
 
+    <repositories>
+      <repository>
+        <id>maven-snapshots</id>
+        <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        <layout>default</layout>
+        <releases>
+          <enabled>false</enabled>
+        </releases>
+        <snapshots>
+          <enabled>true</enabled>
+        </snapshots>
+      </repository>
+    </repositories>
+
   <distributionManagement>
     <snapshotRepository>
         <id>ossrh</id>
