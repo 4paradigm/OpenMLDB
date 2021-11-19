@@ -25,8 +25,8 @@ set(DEPS_DOWNLOAD_DIR "${DEPS_BUILD_DIR}/downloads" CACHE PATH "Dependencies dow
 set(DEPS_INSTALL_DIR "${CMAKE_BINARY_DIR}/usr" CACHE PATH "Dependencies install directory.")
 set(SRC_INSTALL_DIR "${CMAKE_BINARY_DIR}/src" CACHE PATH "Source code install directory.")
 
-# By default, thirdparty dependencies was fetched/build into the same directory
-# with OpenMLDB
+# convention: put all options here
+# By default, thirdparty dependencies was fetched/build into the same directory with OpenMLDB
 option(BUILD_BUNDLED "Build dependencies from source" OFF)
 option(BUILD_BUNDLED_ZETASQL "Build zetasql from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_HYBRIDSQL_ASSERTS "Build hybridsql asserts from source" OFF)
@@ -34,7 +34,7 @@ option(USE_BUNDLED_SRC "Use bundled hybridsql asserts source" ON)
 
 message(STATUS "Install bundled dependencies into ${DEPS_INSTALL_DIR}")
 
-set(HYBRIDSQL_ASSERTS_HOME https://github.com/jingchen2222/hybridsql-asserts)
+set(HYBRIDSQL_ASSERTS_HOME https://github.com/4paradigm/hybridsql-asserts)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
@@ -57,9 +57,10 @@ include(FetchZetasql)
 
 # Fetch hybridsql asserts
 if(NOT BUILD_BUNDLED_HYBRIDSQL_ASSERTS)
-  message(
-    STATUS
-      "Download pre-compiled hybridsql assert from ${HYBRIDSQL_ASSERTS_URL}")
+  message(STATUS "Download pre-compiled hybridsql assert from ${HYBRIDSQL_ASSERTS_URL}")
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+    message(WARNING pre-compiled hybridsql aseerts for arm64 may out-of-date, consider build from source by '-DBUILD_BUNDLED_HYBRIDSQL_ASSERTS=ON')
+  endif()
   ExternalProject_Add(
     hybridsql-asserts
     URL ${HYBRIDSQL_ASSERTS_URL}
@@ -90,4 +91,6 @@ if (USE_BUNDLED_SRC)
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${SRC_INSTALL_DIR} --strip-components=1")
+else()
+  message(FATAL_ERROR "'USE_BUNDLED_SRC=OFF' is currently unsupported")
 endif()
