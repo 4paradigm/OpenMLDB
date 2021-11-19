@@ -27,7 +27,6 @@ public class TaskManagerEntrypoint {
 
     public static void main(String[] args) {
         try {
-
             RpcServerOptions options = new RpcServerOptions();
             options.setReceiveBufferSize(64 * 1024 * 1024);
             options.setSendBufferSize(64 * 1024 * 1024);
@@ -36,7 +35,6 @@ public class TaskManagerEntrypoint {
             final RpcServer rpcServer = new RpcServer(TaskManagerConfig.PORT, options);
             rpcServer.registerService(new TaskManagerServerImpl());
             rpcServer.start();
-
             log.info("Start TaskManager on {} with worker thread number {}", TaskManagerConfig.PORT, TaskManagerConfig.WORKER_THREAD);
 
             // make server keep running
@@ -48,7 +46,7 @@ public class TaskManagerEntrypoint {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            //log.error("fail to start nearline tablet server");
+            log.error("Fail to start TaskManager, " + e.getMessage());
         }
     }
 }
