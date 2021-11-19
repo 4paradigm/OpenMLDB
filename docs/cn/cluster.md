@@ -41,7 +41,6 @@ import numpy as np
 import pandas as pd
 
 spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
-parquet_predict = "./data/taxi_tour_table_predict_simple.snappy.parquet"
 parquet_train = "./data/taxi_tour_table_train_simple.snappy.parquet"
 train = spark.read.parquet(parquet_train)
 train.createOrReplaceTempView("t1")
