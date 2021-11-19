@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.taskmanager
 
-import org.apache.spark.launcher.SparkLauncher
+import org.apache.spark.launcher.{SparkAppHandle, SparkLauncher}
 import org.scalatest.FunSuite
 
 class TestSparkLauncherUtil extends FunSuite {
@@ -36,7 +36,7 @@ class TestSparkLauncherUtil extends FunSuite {
     Thread.sleep(3000)
 
     // Submit successfully and get final state
-    assert(!sparkAppHandle.getError.isPresent)
+    assert(sparkAppHandle.getState == SparkAppHandle.State.FINISHED)
   }
 
 }
