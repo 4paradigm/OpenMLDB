@@ -131,3 +131,5 @@ python3 predict.py
 ---------------predict trip_duration -------------
 880.3688347542294 s
 ```
+
+To read more details about standalone mode, please refer [here](https://github.com/4paradigm/OpenMLDB/blob/main/docs/en/standalone.md)
