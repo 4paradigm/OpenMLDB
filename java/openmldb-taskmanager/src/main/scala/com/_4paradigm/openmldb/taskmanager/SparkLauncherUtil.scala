@@ -38,6 +38,10 @@ object SparkLauncherUtil {
       .setAppResource(TaskManagerConfig.BATCHJOB_JAR_PATH)
       .setMainClass(mainClass)
 
+    if (TaskManagerConfig.SPARK_HOME != null && TaskManagerConfig.SPARK_HOME.nonEmpty) {
+      launcher.setSparkHome(TaskManagerConfig.SPARK_HOME)
+    }
+
     TaskManagerConfig.SPARK_MASTER.toLowerCase match {
       case "local" => {
         launcher.setMaster("local")
@@ -45,7 +49,6 @@ object SparkLauncherUtil {
       case "yarn" => {
         launcher.setMaster("yarn")
           .setDeployMode("cluster")
-
           .setConf("spark.yarn.maxAppAttempts", "1")
       }
       case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
