@@ -38,7 +38,7 @@ object SparkLauncherUtil {
       case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
     }
 
-    if (TaskManagerConfig.SPARK_YARN_JARS != "") {
+    if (TaskManagerConfig.SPARK_YARN_JARS != null && TaskManagerConfig.SPARK_YARN_JARS.nonEmpty) {
       launcher.setConf("spark.yarn.jars", TaskManagerConfig.SPARK_YARN_JARS)
     }
 
