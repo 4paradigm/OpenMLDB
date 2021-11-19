@@ -53,15 +53,15 @@ python3 predict.py
 To read more details about cluster mode, please refer [here](https://github.com/4paradigm/OpenMLDB/blob/main/docs/en/cluster.md)
 
 ## Running the demo with standalone mode
-Start docker
+### Start docker
 ```bash
 docker run -it ghcr.io/4paradigm/openmldb:0.3.0 bash
 ```
-Initilize environment
+### Initilize environment
 ```bash
 ./init.sh standalone
 ```
-Create table and import the data to OpenMLDB.
+### Create table and import the data to OpenMLDB.
 ```bash
 ../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
@@ -71,7 +71,7 @@ Create table and import the data to OpenMLDB.
 > CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double,dropoff_latitude double, store_and_fwd_flag string,trip_duration int, index(ts=pickup_datetime));
 > LOAD DATA INFILE './data/taxi_tour.csv' INTO TABLE t1;
 ```
-Run feature extraction
+### Run feature extraction
 ```
 > SET PERFORMANCE_SENSITIVE = false;
 > select trip_duration, passenger_count,
@@ -90,11 +90,11 @@ window w as (partition by vendor_id order by pickup_datetime ROWS_RANGE BETWEEN 
 w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 > quit
 ```
-Train model
+### Train model
 ```bash
 python3 train_s.py /tmp/feature.csv /tmp/model.txt
 ```
-Deploy SQL
+### Deploy SQL
 ```bash
 ../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
@@ -118,12 +118,12 @@ w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 
 ```
 Note that for a real-world application, the user may import another copy of recent data for online inference before SQL deployment (refer to the cluster-mode demo). For the sake of simplicity, this demo just uses the same data for both offline training and online inference.
 
-Start HTTP serevice for inference with OpenMLDB
+### Start HTTP serevice for inference with OpenMLDB
 ```
 ./start_predict_server.sh /tmp/model.txt
 ```
 
-Run inference with HTTP request
+### Run inference with HTTP request
 ```
 python3 predict.py
 # the output we will see
