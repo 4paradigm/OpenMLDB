@@ -45,12 +45,17 @@ object SparkLauncherUtil {
       case "yarn" => {
         launcher.setMaster("yarn")
           .setDeployMode("cluster")
-          .setConf("spark.yarn.jars", TaskManagerConfig.SPARK_YARN_JARS)
+
           .setConf("spark.yarn.maxAppAttempts", "1")
       }
       case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
     }
 
+    if (TaskManagerConfig.SPARK_YARN_JARS != "") {
+      launcher.setConf("spark.yarn.jars", TaskManagerConfig.SPARK_YARN_JARS)
+    }
+
+    launcher
   }
 
   /**

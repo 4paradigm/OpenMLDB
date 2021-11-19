@@ -34,7 +34,7 @@ public class TaskManagerConfig {
     static {
         try {
             Properties prop = new Properties();
-            prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("openmldb-taskmanager.properties"));
+            prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
             HOST = prop.getProperty("server.host", "127.0.0.1");
             PORT = Integer.parseInt(prop.getProperty("server.port", "9902"));
             WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "4"));
