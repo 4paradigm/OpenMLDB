@@ -46,8 +46,8 @@ endif
 ifdef PYSDK_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DPYSDK_ENABLE=$(PYSDK_ENABLE)
 endif
-ifdef CORE_TESTING_ENABLE
-    HYBRIDSE_CMAKE_FLAGS += -DCORE_TESTING_ENABLE=$(CORE_TESTING_ENABLE)
+ifdef HYBRIDSE_TESTING_ENABLE
+    HYBRIDSE_CMAKE_FLAGS += -DHYBRIDSE_TESTING_ENABLE=$(HYBRIDSE_TESTING_ENABLE)
 endif
 ifdef TESTING_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DTESTING_ENABLE=$(TESTING_ENABLE)
@@ -76,7 +76,7 @@ TEST_LEVEL ?=
 
 all: build
 
-# TODO(#): add OpenMLDB coverage
+# TODO(#677): add OpenMLDB coverage
 coverage: hybridse-coverage
 
 OPENMLDB_BUILD_DIR := $(MAKEFILE_DIR)/build
@@ -88,11 +88,10 @@ test:
 	$(MAKE) build TESTING_ENABLE=ON OPENMLDB_BUILD_TARGE=$(TEST_TARGET)
 	bash steps/ut.sh $(TEST_TARGET) $(TEST_LEVEL)
 
-# turn off testing and example build for hybridse to save time & space
-# TODO(#625): embedded hybridse into OpenMLDB instead glued in this Makefile
+# disable building hybridse tests for faster compilation
+HYBRIDSE_CMAKE_DEPS_FLAGS ?= -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DPYSDK_ENABLE=OFF
 configure:
-	$(MAKE) hybridse-install TESTING_ENABLE=OFF EXAMPLES_ENABLE=OFF
-	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
+	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) $(HYBRIDSE_CMAKE_DEPS_FLAGS) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 openmldb-clean:
 	rm -rf "$(OPENMLDB_BUILD_DIR)"
@@ -120,6 +119,8 @@ HYBRIDSE_BUILD_DIR := $(MAKEFILE_DIR)/hybridse/build
 HYBRIDSE_INSTALL_DIR := $(THIRD_PARTY_DIR)/hybridse
 
 .PHONY: hybridse hybridse-build hybridse-test hybridse-configure hybridse-coverage hybridse-coverage-configure hybridse-clean
+
+# hybridse* target reserved for those like to compile in the old way
 hybridse: hybridse-build
 
 hybridse-install: hybridse-build

@@ -34,7 +34,7 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules")
 
 project(hybridse)
 
@@ -43,7 +43,7 @@ set(HYBRIDSE_VERSION_MINOR 2)
 set(HYBRIDSE_VERSION_BUG 4)
 
 option(TESTING_ENABLE "Enable Test" ON)
-option(CORE_TESTING_ENABLE "Enable Core Test" ON)
+option(HYBRIDSE_TESTING_ENABLE "Enable Hybridse Test" ON)
 option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
 option(COVERAGE_ENABLE "Enable Coverage" OFF)
@@ -162,7 +162,7 @@ find_package(SWIG REQUIRED)
 include(UseSWIG)
 
 include_directories(${CMAKE_PREFIX_PATH}/include)
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 link_directories(${CMAKE_PREFIX_PATH}/lib)
 link_directories(${CMAKE_PREFIX_PATH}/lib64)
 
