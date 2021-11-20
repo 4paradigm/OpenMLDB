@@ -90,7 +90,7 @@ test:
 
 # disable building hybridse tests for faster compilation
 HYBRIDSE_CMAKE_DEPS_FLAGS ?= -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DPYSDK_ENABLE=OFF
-configure:
+configure: thirdparty
 	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) $(HYBRIDSE_CMAKE_DEPS_FLAGS) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 openmldb-clean:
