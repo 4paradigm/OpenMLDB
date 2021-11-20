@@ -29,19 +29,19 @@ make CMAKE_BUILD_TYPE=Debug
 
 - CMAKE_BUILD_TYPE
 
-  Default: Release
+  Default: RelWithDebInfo
 
 - SQL_PYSDK_ENABLE
 
   enable build python sdk
 
-  Default: ON
+  Default: OFF
 
 - SQL_JAVASDK_ENABLE
 
   enable build java sdk
 
-  Default: ON
+  Default: OFF
 
 - TESTING_ENABLE
 

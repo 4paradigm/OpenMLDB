@@ -12,10 +12,9 @@ By default, the built directory is
 ```bash
 third-party/
 └── build/
-    ├── ...
     ├── build/
-    │   ├── downloads
-    │   ├── src
+    │   ├── downloads        # dependencies artifacts download directory
+    │   ├── src              # dependencies source code (from VCS) download directory
     │   └── tmp
     ├── src/                 # source code install directory
     └── usr/                 # compiled libraries install directory
@@ -60,6 +59,7 @@ where compiled libraries are installed into `build/usr`, source code installed i
     Dependencies install directory.
 
 - SRC_INSTALL_DIR:PATH=${CMAKE_BINARY_DIR}/src
+
     Source code install directory.
 
 - USE_BUNDLED_SRC:BOOL=ON
