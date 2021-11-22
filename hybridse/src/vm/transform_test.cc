@@ -1451,48 +1451,6 @@ TEST_P(SimpleCataLogTransformPassOptimizedTest, PassOptimizedTest) {
     PhysicalPlanCheck(simple_catalog, in_out.first, in_out.second);
 }
 
-TEST_F(TransformTest, PhysicalProjectWithNewChildrenTest) {
-    node::NodeManager nm;
-    udf::UdfLibrary lib;
-    std::shared_ptr<vm::SimpleCatalog> catalog;
-    vm::PhysicalPlanContext plan_ctx;
-    // physical plan transform will fail if the partition key of a window is not in the supported type list
-//  which is [bool, intxx, data, timestamp, string]
-    hybridse::type::Database db;
-    db.set_name("db");
-
-    hybridse::type::TableDef table_def;
-    BuildTableDef(table_def);
-    AddTable(db, table_def);
-
-    auto catalog = BuildSimpleCatalog(db);
-
-    const std::string sql = R"sql(SELECT sum(col1) as sum_col1, sum(col2) as sum_col2 FROM t1;)sql";
-
-    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
-
-    ::hybridse::node::NodeManager manager;
-    ::hybridse::node::PlanNodeList plan_trees;
-    ::hybridse::base::Status status;
-
-    bool is_batch_mode = kBatchMode;
-
-    // logical plan consider pass
-    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &manager, status, is_batch_mode)) << status;
-    ASSERT_EQ(common::kOk, status.code);
-
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("test_op_generator", *ctx);
-    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    std::unique_ptr<BatchModeTransformer> transform(new BatchModeTransformer(&manager, "db", catalog, nullptr, m.get(), lib));
-    transform->AddDefaultPasses();
-    PhysicalOpNode* physical_plan = nullptr;
-
-    status = transform->TransformPhysicalPlan(plan_trees, &physical_plan);
-    EXPECT_EQ(common::StatusCode::kOk, status.code) << status;
-
-    ASSERT_EQ(vm::kPhysicalOpProject, physical_plan->GetOpType());
-}
 }  // namespace vm
 }  // namespace hybridse
 int main(int argc, char** argv) {
