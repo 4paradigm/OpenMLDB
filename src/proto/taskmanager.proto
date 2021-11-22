@@ -13,6 +13,7 @@ message RunBatchSqlRequest {
     required string sql = 1;
     optional string db_name = 2;
     optional string output_table_name = 3;
+    map<string, string> conf = 4;
 };
 
 message YarnJobResponse {
