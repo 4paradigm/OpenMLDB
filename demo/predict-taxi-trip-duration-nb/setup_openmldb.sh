@@ -20,7 +20,7 @@ VERSION="$1"
 
 curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
 curl -SLo "openmldb.tar.gz https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux.tar.gz"
-curl -SLo spark-3.0.0-bin-openmldbspark.tgz https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.2.3/spark-3.0.0-bin-openmldbspark.tgz
+curl -SLo "spark-${VERSION}-bin-openmldbspark.tgz https://github.com/4paradigm/spark/releases/download/v${VERSION}-openmldb${VERSION}/spark-${VERSION}-bin-openmldbspark.tgz"
 
 WORKDIR=/work
 
@@ -31,16 +31,16 @@ pushd $WORKDIR/zookeeper-3.4.14/
 mv conf/zoo_sample.cfg conf/zoo.cfg
 popd
 
-mkdir -p $WORKDIR/openmldb
+mkdir -p "$WORKDIR/openmldb"
 tar xzf openmldb.tar.gz -C "$WORKDIR/openmldb" --strip-components 1
 # remove symbols and sections
-strip -s $WORKDIR/openmldb/bin/openmldb
+strip -s "$WORKDIR/openmldb/bin/openmldb"
 
-tar xzf spark-3.0.0-bin-openmldbspark.tgz
-pushd spark-3.0.0-bin-openmldbspark/python/
+tar xzf "spark-${VERSION}-bin-openmldbspark.tgz"
+pushd "spark-${VERSION}-bin-openmldbspark/python/"
 python3 setup.py install
 popd
 
 rm -f ./*.tar.gz
 rm -f ./*.tgz
-rm -rf ./spark-3.0.0-bin-openmldbspark
+rm -rf "./spark-${VERSION}-bin-openmldbspark"
