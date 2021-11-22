@@ -14,45 +14,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pyspark.sql import SparkSession
-import numpy as np
 import lightgbm as lgb
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import GridSearchCV
+from pyspark.sql import SparkSession
+from sklearn.model_selection import train_test_split
+import argparse
 
-spark = SparkSession.builder.appName("Dataframe demo").getOrCreate()
+parser = argparse.ArgumentParser()
+parser.add_argument("sql_file", help="specify the sql file")
+parser.add_argument("model_path",  help="specify the model path")
+args = parser.parse_args()
 
-parquet_predict = "./data/taxi_tour_table_predict_simple.snappy.parquet"
+with open(args.sql_file, "r") as fd:
+    sql = fd.read()
+
+# run batch sql and get instances
+spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
 parquet_train = "./data/taxi_tour_table_train_simple.snappy.parquet"
-predict = spark.read.parquet(parquet_predict)
-predict.createOrReplaceTempView("t2")
 train = spark.read.parquet(parquet_train)
 train.createOrReplaceTempView("t1")
-sql_tpl = """select trip_duration, passenger_count,
-sum(pickup_latitude) over w as vendor_sum_pl,
-max(pickup_latitude) over w as vendor_max_pl,
-min(pickup_latitude) over w as vendor_min_pl,
-avg(pickup_latitude) over w as vendor_avg_pl,
-sum(pickup_latitude) over w2 as pc_sum_pl,
-max(pickup_latitude) over w2 as pc_max_pl,
-min(pickup_latitude) over w2 as pc_min_pl,
-avg(pickup_latitude) over w2 as pc_avg_pl ,
-count(vendor_id) over w2 as pc_cnt,
-count(vendor_id) over w as vendor_cnt
-from {}
-window w as (partition by vendor_id order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
-w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW)"""
-train_sql = sql_tpl.format('t1')
-predict_sql = sql_tpl.format('t2')
-train_df = spark.sql(train_sql)
-predict_df = spark.sql(predict_sql)
-train_set = train_df.toPandas()
-predict_set = predict_df.toPandas()
+train_df = spark.sql(sql)
+df = train_df.toPandas()
+train_set, predict_set = train_test_split(df, test_size=0.2)
 y_train = train_set['trip_duration']
 x_train = train_set.drop(columns=['trip_duration'])
 y_predict = predict_set['trip_duration']
 x_predict = predict_set.drop(columns=['trip_duration'])
 
+
+# training model with regression
+print('Starting training...')
 lgb_train = lgb.Dataset(x_train, y_train)
 lgb_eval = lgb.Dataset(x_predict, y_predict, reference=lgb_train)
 
@@ -69,12 +61,11 @@ params = {
     'verbose': 0
 }
 
-print('Starting training...')
 gbm = lgb.train(params,
                 lgb_train,
                 num_boost_round=20,
                 valid_sets=lgb_eval,
                 early_stopping_rounds=5)
-gbm.save_model('/tmp/model.txt')
 
+gbm.save_model(args.model_path)
 print("save model.txt done")

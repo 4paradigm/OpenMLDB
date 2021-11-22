@@ -14,40 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-
-"""
-
 import numpy as np
 import tornado.web
 import tornado.ioloop
 import json
 import lightgbm as lgb
 import sqlalchemy as db
-from sqlalchemy_openmldb.openmldbapi import Type as feType
+import argparse
 
-bst = lgb.Booster(model_file='/tmp/model.txt')
-
-print("load model.txt")
+sql = ""
+bst = None
 
 engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:2181&zkPath=/openmldb')
 connection = engine.connect()
-sql = """select trip_duration, passenger_count,
-sum(pickup_latitude) over w as vendor_sum_pl,
-max(pickup_latitude) over w as vendor_max_pl,
-min(pickup_latitude) over w as vendor_min_pl,
-avg(pickup_latitude) over w as vendor_avg_pl,
-sum(pickup_latitude) over w2 as pc_sum_pl,
-max(pickup_latitude) over w2 as pc_max_pl,
-min(pickup_latitude) over w2 as pc_min_pl,
-avg(pickup_latitude) over w2 as pc_avg_pl ,
-count(vendor_id) over w2 as pc_cnt,
-count(vendor_id) over w as vendor_cnt
-from t1
-window w as (partition by vendor_id order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
-w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);"""
-
-TypeDict = {feType.Bool:"bool", feType.Int16:"smallint", feType.Int32:"int", feType.Int64:"bigint", feType.Float:"float", feType.Double:"double", feType.String:"string", feType.Date:"date", feType.Timestamp:"timestamp"}
 
 table_schema = [
 	("id", "string"),
@@ -113,7 +92,13 @@ def make_app():
     ])
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("sql_file", help="specify the sql file")
+    parser.add_argument("model_path",  help="specify the model path")
+    args = parser.parse_args()
+    with open(args.sql_file, "r") as fd:
+      sql = fd.read()
+    bst = lgb.Booster(model_file=args.model_path)
     app = make_app()
     app.listen(8887)
-    print("predict server started on port 8887")
     tornado.ioloop.IOLoop.current().start()
