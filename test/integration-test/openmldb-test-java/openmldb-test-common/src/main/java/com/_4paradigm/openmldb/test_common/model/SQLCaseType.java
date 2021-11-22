@@ -40,7 +40,8 @@ public enum SQLCaseType {
     kDiffSQLResult("DIFF_SQL_RESULT"),
     kMYSQL("MYSQL"),
     kCLI("CLI"),
-    kStandaloneCLI("CLI"),
+    kStandaloneCLI("StandaloneCLI"),
+    kClusterCLI("ClusterCLI"),
     kInsertPrepared("INSERT_PREPARED"),
     kSelectPrepared("SELECT_PREPARED")
     ;
