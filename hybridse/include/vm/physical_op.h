@@ -1613,6 +1613,7 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
     base::Status InitSchema(PhysicalPlanContext *) override;
     base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
                                  PhysicalOpNode **out) override;
+    static PhysicalLoadDataNode *CastFrom(PhysicalOpNode *node);
 
     const std::string &File() const { return file_; }
     const std::string &Db() const { return db_; }
