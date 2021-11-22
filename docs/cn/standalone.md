@@ -73,7 +73,7 @@ null_value | null值 | String | null | Any String
  ----------
   sum
  ----------
-  1.200004
+  1.200000
  ----------
 
 1 rows in set
@@ -104,7 +104,7 @@ mode | 模式 | String | error_if_exists | error_if_exists/overwrite/append
 > USE demo_db;
 > DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
-上线后可以查看和删除SQL方案
+上线后可以查看SQL方案
 ```sql
 > USE demo_db;
 > SHOW DEPLOYMENTS;
@@ -114,7 +114,6 @@ mode | 模式 | String | error_if_exists | error_if_exists/overwrite/append
   demo_db   demo_data_service
  --------- -------------------
 1 row in set
-> DROP DEPLOYMENT demo_data_service;
 ```
 ### 实时特征计算
 url的格式为:
@@ -130,6 +129,7 @@ http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
 "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
 }'
+{"code":0,"msg":"ok","data":{"data":[["aaa",11,22]],"common_cols_data":[]}}
 ```
 URL中ip和port是`conf/apiserver.flags`中配置的`endpoint`
 

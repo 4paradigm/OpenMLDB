@@ -69,11 +69,11 @@ Below demonstrates a data exploration task.
 ```sql
 > USE demo_db;
 > SET PERFORMANCE_SENSITIVE = false;
-> SELECT sum(c5) as sum FROM demo_table1 where c2=11;
+> SELECT sum(c4) as sum FROM demo_table1 where c2=11;
  ----------
   sum
  ----------
-  1.200004
+  1.200000
  ----------
 
 1 rows in set
@@ -103,7 +103,7 @@ mode | String | error_if_exists | error_if_exists/overwrite/append
 > USE demo_db;
 > DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
-We can also show and drop deployment like this:
+We can also show deployment like this:
 ```sql
 > USE demo_db;
 > SHOW DEPLOYMENTS;
@@ -113,7 +113,6 @@ We can also show and drop deployment like this:
   demo_db   demo_data_service
  --------- -------------------
 1 row in set
-> DROP DEPLOYMENT demo_data_service;
 ```
 ### Online feature extraction
 We can use RESTful APIs to execute online feature extraction.  
@@ -130,6 +129,7 @@ Ex:
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
 "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
 }'
+{"code":0,"msg":"ok","data":{"data":[["aaa",11,22]],"common_cols_data":[]}}
 ```
 The ip and port in url is `endpoint` in `conf/apiserver.flags`
 
