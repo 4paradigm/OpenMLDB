@@ -16,20 +16,24 @@
 
 package com._4paradigm.openmldb.taskmanager
 
-import org.scalatest.FunSuite
+import com._4paradigm.openmldb.taskmanager.dao.JobInfo
+import scala.collection.mutable
 
-class TestYarnClientUtil extends FunSuite {
+object JobInfoManager {
 
-  test("Test parseAppIdStr") {
-    val clusterTimestamp = 1629883521940L
-    val id = 48549
+  // TODO: persist in system table instead of memory
+  val memoryJobInfos = new mutable.ArrayBuffer[JobInfo]()
 
-    val appIdStr = s"application_${clusterTimestamp}_$id"
+  def getJobInfos(): mutable.ArrayBuffer[JobInfo] = {
+    memoryJobInfos
+  }
 
-    val appId = YarnClientUtil.parseAppIdStr(appIdStr)
+  def getJobInfo(id: Int): Option[JobInfo] = {
+    memoryJobInfos.find(p => p.getId == id)
+  }
 
-    assert(appId.getClusterTimestamp == clusterTimestamp)
-    assert(appId.getId == id)
+  def addJobInfo(jobInfo: JobInfo): Unit = {
+    memoryJobInfos.append(jobInfo)
   }
 
 }
