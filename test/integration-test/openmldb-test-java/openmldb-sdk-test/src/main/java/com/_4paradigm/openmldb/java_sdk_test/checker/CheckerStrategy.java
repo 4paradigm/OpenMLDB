@@ -30,7 +30,6 @@ import java.util.List;
 public class CheckerStrategy {
 
     public static List<Checker> build(SQLCase fesqlCase, FesqlResult fesqlResult, SQLCaseType executorType) {
-
         List<Checker> checkList = new ArrayList<>();
         if (null == fesqlCase) {
             return checkList;
@@ -42,7 +41,7 @@ public class CheckerStrategy {
         if (CollectionUtils.isNotEmpty(expect.getColumns())) {
             if(executorType==SQLCaseType.kSQLITE3 || executorType==SQLCaseType.kMYSQL){
                 checkList.add(new ColumnsCheckerByJBDC(expect, fesqlResult));
-            }else if(executorType==SQLCaseType.kCLI||executorType==SQLCaseType.kStandaloneCLI){
+            }else if(executorType==SQLCaseType.kCLI||executorType==SQLCaseType.kStandaloneCLI||executorType==SQLCaseType.kClusterCLI){
                 checkList.add(new ColumnsCheckerByCli(expect, fesqlResult));
             }else {
                 checkList.add(new ColumnsChecker(expect, fesqlResult));
@@ -51,7 +50,7 @@ public class CheckerStrategy {
         if (!expect.getRows().isEmpty()) {
             if(executorType==SQLCaseType.kSQLITE3){
                 checkList.add(new ResultCheckerByJDBC(expect, fesqlResult));
-            }else if(executorType==SQLCaseType.kCLI||executorType==SQLCaseType.kStandaloneCLI){
+            }else if(executorType==SQLCaseType.kCLI||executorType==SQLCaseType.kStandaloneCLI||executorType==SQLCaseType.kClusterCLI){
                 checkList.add(new ResultCheckerByCli(expect, fesqlResult));
             }else {
                 checkList.add(new ResultChecker(expect, fesqlResult));
