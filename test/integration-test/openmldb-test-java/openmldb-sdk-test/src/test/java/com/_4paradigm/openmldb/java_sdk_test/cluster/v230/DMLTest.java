@@ -49,4 +49,11 @@ public class DMLTest extends FedbTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
     }
 
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
+    @Story("insert")
+    public void testInsertByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+
 }
