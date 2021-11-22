@@ -144,7 +144,7 @@ class FileOptionsParser {
 
 class ReadFileOptionsParser : public FileOptionsParser {
  public:
-    ReadFileOptionsParser() { quote_ = '\0'; };
+    ReadFileOptionsParser() { quote_ = '\0'; }
 };
 
 class WriteFileOptionsParser : public FileOptionsParser {

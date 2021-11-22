@@ -135,7 +135,8 @@ void SQLSDKTest::CreateDB(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                           std::shared_ptr<SQLRouter> router) {
     std::unordered_set<std::string> input_dbs;
     if (sql_case.db().empty()) {
-        sql_case.db_ = hybridse::sqlcase::SqlCase::GenRand("auto_db") + std::to_string(static_cast<int64_t>(time(NULL)));
+        sql_case.db_ = hybridse::sqlcase::SqlCase::GenRand("auto_db") +
+            std::to_string(static_cast<int64_t>(time(NULL)));
     }
     input_dbs.insert(sql_case.db_);
 
@@ -167,8 +168,8 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
     // create and insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))),
-                                    i);
+            sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+                    std::to_string(static_cast<int64_t>(time(NULL))), i);
         }
         std::string input_db_name = sql_case.inputs_[i].db_.empty() ? sql_case.db() : sql_case.inputs_[i].db_;
         // create table
@@ -211,7 +212,8 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     DLOG(INFO) << "Create Procedure BEGIN";
     hybridse::sdk::Status status;
     if (sql_case.inputs()[0].name_.empty()) {
-        sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))), 0);
+        sql_case.set_input_name(hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+                std::to_string(static_cast<int64_t>(time(NULL))), 0);
     }
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
@@ -222,7 +224,8 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
             std::to_string(static_cast<int64_t>(time(NULL))));
     boost::trim(sql);
     LOG(INFO) << sql;
-    sql_case.sp_name_ = hybridse::sqlcase::SqlCase::GenRand("auto_sp") + std::to_string(static_cast<int64_t>(time(NULL)));
+    sql_case.sp_name_ = hybridse::sqlcase::SqlCase::GenRand("auto_sp") +
+        std::to_string(static_cast<int64_t>(time(NULL)));
     std::string create_sp;
     if (is_batch) {
         hybridse::type::TableDef batch_request_schema;
@@ -397,8 +400,8 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
     DLOG(INFO) << "format sql 1";
-    boost::replace_all(sql, "{auto}",
-                       hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))));
+    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+            std::to_string(static_cast<int64_t>(time(NULL))));
     for (size_t endpoint_id = 0; endpoint_id < tbEndpoints.size(); endpoint_id++) {
         boost::replace_all(sql, "{tb_endpoint_" + std::to_string(endpoint_id) + "}", tbEndpoints.at(endpoint_id));
     }
