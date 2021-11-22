@@ -776,7 +776,6 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
 
     // Renew having condition if necessary
     node::ExprNode* new_having_condition = nullptr;
-    const node::ExprNode* having_condition = agg_op->having_condition_.condition();
     if (agg_op->having_condition_.ValidCondition()) {
         const node::ExprNode* having_condition = agg_op->having_condition_.condition();
         bool need_update =
