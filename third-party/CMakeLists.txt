@@ -25,12 +25,41 @@ set(DEPS_DOWNLOAD_DIR "${DEPS_BUILD_DIR}/downloads" CACHE PATH "Dependencies dow
 set(DEPS_INSTALL_DIR "${CMAKE_BINARY_DIR}/usr" CACHE PATH "Dependencies install directory.")
 set(SRC_INSTALL_DIR "${CMAKE_BINARY_DIR}/src" CACHE PATH "Source code install directory.")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -03 -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -03 -fPIC")
+
 # convention: put all options here
 # By default, thirdparty dependencies was fetched/build into the same directory with OpenMLDB
 option(BUILD_BUNDLED "Build dependencies from source" OFF)
 option(BUILD_BUNDLED_ZETASQL "Build zetasql from source" ${BUILD_BUNDLED})
+
+# implementation limit, two steps to install hybridsql-asserts
+# 1. if 'BUILD_BUNDLED_HYBRIDSQL_ASSERTS' is OFF, hybridsql asserts will always download
+# 2. if you want to compile anything from source, e.g by setting BUILD_BUNDLED_GTEST=ON, gtest will compile
+#    and replace those in hybridsql asserts
 option(BUILD_BUNDLED_HYBRIDSQL_ASSERTS "Build hybridsql asserts from source" OFF)
+option(BUILD_BUNDLED_ABSL "Build abseil-cpp from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_PROTOBUF "Build protobuf from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_GTEST "Build google test from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_GLOG "build glog from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_GFLAGS "Build gflags from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_GPERF "Build gerftools from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_BENCHMARK "Build benchmark from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_ZLIB "Build zlib from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_BISON "Build bison from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_SWIG "Build swig from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_YAMLCPP "Build yaml-cpp from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_SNAPPY "Build snappy from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_LEVELDB "Build leveldb from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_LIBUNWIND "Build libunwind from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_SQLITE3 "Build sqlite3 from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_OPENSSL "Build openssl from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_BRPC "Build brpc from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_ZOOKEEPER "Build zookeeper from source" ${BUILD_BUNDLED})
+
 option(USE_BUNDLED_SRC "Use bundled hybridsql asserts source" ON)
+
+set(MAKEOPTS "$ENV{MAKEOPTS}" CACHE STRING "Extra options to make")
 
 message(STATUS "Install bundled dependencies into ${DEPS_INSTALL_DIR}")
 
@@ -75,6 +104,78 @@ if(NOT BUILD_BUNDLED_HYBRIDSQL_ASSERTS)
 else()
   message(
     FATAL_ERROR "Build hybridsql asserts from source is unsupported currently.")
+endif()
+
+if (BUILD_BUNDLED_GTEST)
+  include(FetchGoogleTest)
+endif()
+
+if (BUILD_BUNDLED_GLOG)
+  include(FetchGlog)
+endif()
+
+if (BUILD_BUNDLED_GFLAGS)
+  include(FetchGflags)
+endif()
+
+if (BUILD_BUNDLED_GPERF)
+  include(FetchGperf)
+endif()
+
+if (BUILD_BUNDLED_BENCHMARK)
+  include(FetchBenchmark)
+endif()
+
+if (BUILD_BUNDLED_ABSL)
+  include(FetchAbsl)
+endif()
+
+if (BUILD_BUNDLED_PROTOBUF)
+  include(FetchProtobuf)
+endif()
+
+if (BUILD_BUNDLED_ZLIB)
+  include(FetchZlib)
+endif()
+
+if (BUILD_BUNDLED_BISON)
+  include(FetchBison)
+endif()
+
+if (BUILD_BUNDLED_SWIG)
+  include(FetchSwig)
+endif()
+
+if (BUILD_BUNDLED_YAMLCPP)
+  include(FetchYamlcpp)
+endif()
+
+if (BUILD_BUNDLED_SNAPPY)
+  include(FetchSnappy)
+endif()
+
+if (BUILD_BUNDLED_LEVELDB)
+  include(FetchLeveldb)
+endif()
+
+if (BUILD_BUNDLED_LIBUNWIND)
+  include(FetchLibunwind)
+endif()
+
+if (BUILD_BUNDLED_SQLITE3)
+  include(FetchSqlite3)
+endif()
+
+if (BUILD_BUNDLED_OPENSSL)
+  include(FetchOpenssl)
+endif()
+
+if (BUILD_BUNDLED_BRPC)
+  include(FetchBrpc)
+endif()
+
+if (BUILD_BUNDLED_ZOOKEEPER)
+  include(FetchZookeeper)
 endif()
 
 if (USE_BUNDLED_SRC)

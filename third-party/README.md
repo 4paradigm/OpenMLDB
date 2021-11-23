@@ -14,8 +14,8 @@ third-party/
 └── build/
     ├── build/
     │   ├── downloads        # dependencies artifacts download directory
-    │   ├── src              # dependencies source code (from VCS) download directory
-    │   └── tmp
+    │   ├── src              # dependencies source code (from VCS) download directory, or unpacked directory from downloaded artifacts
+    │   └── tmp              # temporary files directory
     ├── src/                 # source code install directory
     └── usr/                 # compiled libraries install directory
         ├── bin
