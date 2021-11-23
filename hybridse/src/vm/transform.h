@@ -285,6 +285,8 @@ class RequestModeTransformer : public BatchModeTransformer {
                                    PhysicalOpNode** output) override;
     Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output) override;
 
+    Status TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) override;
+
  private:
     bool enable_batch_request_opt_;
     vm::Schema request_schema_;

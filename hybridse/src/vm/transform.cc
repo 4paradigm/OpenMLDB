@@ -2179,5 +2179,9 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
     return;
 }
 
+Status RequestModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output){
+    FAIL_STATUS(common::kPlanError, "Non-support LoadData in request mode");
+}
+
 }  // namespace vm
 }  // namespace hybridse
