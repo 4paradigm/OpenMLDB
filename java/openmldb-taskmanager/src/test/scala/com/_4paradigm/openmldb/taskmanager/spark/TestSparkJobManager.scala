@@ -30,16 +30,13 @@ class TestSparkJobManager extends FunSuite {
     //val mainClass = "com._4paradigm.openmldb.batchjob.SparkVersionApp"
 
     val jobType = "DummySparkApp"
-    val cluster = "local"
     val sparkConf = Map(SparkLauncher.DRIVER_EXTRA_CLASSPATH -> System.getProperty("java.class.path"))
 
-    SparkJobManager.submitSparkJob(mainClass, jobType, cluster, null, sparkConf)
+    SparkJobManager.submitSparkJob(mainClass, jobType, null, sparkConf)
 
-    val jobInfo = JobInfoManager.getJobInfo(1)
-
-    println(jobInfo)
+    JobInfoManager.getAllJobs().map(println)
     Thread.sleep(5000)
-    println(jobInfo)
+    JobInfoManager.getAllJobs().map(println)
 
   }
 

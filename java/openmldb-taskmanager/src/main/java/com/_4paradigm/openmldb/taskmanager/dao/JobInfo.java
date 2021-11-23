@@ -1,6 +1,6 @@
 package com._4paradigm.openmldb.taskmanager.dao;
 
-import lombok.Data;
+import com._4paradigm.openmldb.taskmanager.JobInfoManager;
 import java.sql.Timestamp;
 import java.util.Arrays;
 
@@ -13,15 +13,32 @@ enum JobType {
 
 public class JobInfo {
 
+    public static String[] FINAL_State = new String[] {"finished", "failed", "killed", "lost"};
+
     private int id;
     private String jobType;
     private String state;
     private Timestamp startTime;
     private Timestamp endTime;
-    private String cluster;
     private String parameter;
     private String applicationId;
     private String error;
+
+    public JobInfo() {
+
+    }
+
+    public JobInfo(int id, String jobType, String state, Timestamp startTime, Timestamp endTime, String parameter,
+                   String applicationId, String error) {
+        this.id = id;
+        this.jobType = jobType;
+        this.state = state;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.parameter = parameter;
+        this.applicationId = applicationId;
+        this.error = error;
+    }
 
     public int getId() {
         return id;
@@ -63,14 +80,6 @@ public class JobInfo {
         this.endTime = endTime;
     }
 
-    public String getCluster() {
-        return cluster;
-    }
-
-    public void setCluster(String cluster) {
-        this.cluster = cluster;
-    }
-
     public String getParameter() {
         return parameter;
     }
@@ -97,14 +106,16 @@ public class JobInfo {
 
     @Override
     public String toString() {
-        return String.format("id: %d, jobType: %s, state: %s, cluster: %s, parameter: %s, applicationId: %s, error: %s",
-                id, jobType, state, cluster, parameter, applicationId, error);
+        return String.format("id: %d, jobType: %s, state: %s, parameter: %s, applicationId: %s, error: %s",
+                id, jobType, state, parameter, applicationId, error);
     }
 
-    public boolean isFinal() {
-        String[] finalState = new String[] {"finished", "failed", "killed", "lost"};
-        return Arrays.asList(finalState).contains(state.toLowerCase()) ? true : false;
+    public boolean isFinished() {
+        return Arrays.asList(FINAL_State).contains(state.toLowerCase());
+    }
 
+    public void sync() {
+        JobInfoManager.syncJob(this);
     }
 
 }
