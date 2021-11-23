@@ -45,13 +45,9 @@ jobs:
             echo "PUSH=true" >> $GITHUB_ENV
             IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
             VERSION=${{ github.event.inputs.OPENMLDB_VERSION }}
-            GHCR_TAG=$IMAGE_ID:$VERSION
             DOCKERHUB_TAG=${{ secrets.DOCKERHUB_REPO }}/$IMAGE_NAME:$VERSION
-            echo "GitHub Docker Registry Tag: $GHCR_TAG"
             echo "DockerHub Tag: $DOCKERHUB_TAG"
             echo "COMMIT=${{ github.sha }}"
-
-            echo "GHCR_TAG=$GHCR_TAG" >> $GITHUB_ENV
             echo "DOCKERHUB_TAG=$DOCKERHUB_TAG" >> $GITHUB_ENV
           else
             echo "PUSH=false" >> $GITHUB_ENV
@@ -80,6 +76,5 @@ jobs:
           push: ${{ env.PUSH }}
           platforms: linux/amd64
           tags: |
-            ${{ env.GHCR_TAG }}
             ${{ env.DOCKERHUB_TAG }}
           build-args: OPENMLDB_VERSION=${{ github.event.inputs.OPENMLDB_VERSION }}
