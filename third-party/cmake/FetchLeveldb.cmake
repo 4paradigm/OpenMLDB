@@ -16,7 +16,7 @@ set(LEVELDB_URL https://github.com/google/leveldb/archive/refs/tags/v1.20.tar.gz
 
 message(STATUS "build leveldb from ${LEVELDB_URL}")
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 ExternalProject_Add(
   leveldb
   URL ${LEVELDB_URL}

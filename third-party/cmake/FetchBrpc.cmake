@@ -24,7 +24,7 @@ ExternalProject_Add(
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   DEPENDS gflags glog protobuf snappy leveldb gperf openssl
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -H<SOURCE_DIR> -B . -DWITH_GLOG=ON -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_DIR} -DCMAKE_INSTALL_PREFIX=${DEPS_INSTALL_DIR}
-  BUILD_COMMAND ${CMAKE_COMMAND} --build . -- ${MAKEOPTS}
+  BUILD_COMMAND ${CMAKE_COMMAND} --build . --target brpc-static -- ${MAKEOPTS}
   INSTALL_COMMAND bash -c "cp -rvf output/include/* <INSTALL_DIR>/include/"
     COMMAND cp -v output/lib/libbrpc.a <INSTALL_DIR>/lib)
 

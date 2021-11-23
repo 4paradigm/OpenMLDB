@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 ExternalProject_Add(
   protobuf
   URL https://github.com/protocolbuffers/protobuf/archive/v3.6.1.3.tar.gz

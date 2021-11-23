@@ -16,7 +16,7 @@ set(BISON_URL https://ftp.gnu.org/gnu/bison/bison-3.4.tar.gz)
 
 message(STATUS "build bison from ${BISON_URL}")
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 
 ExternalProject_Add(
   bison

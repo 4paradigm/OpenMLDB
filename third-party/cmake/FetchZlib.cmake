@@ -17,7 +17,7 @@ set(ZLIB_URL https://github.com/madler/zlib/archive/v1.2.11.tar.gz)
 
 message(STATUS "build zlib from ${ZLIB_URL}")
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 
 ExternalProject_Add(
   zlib

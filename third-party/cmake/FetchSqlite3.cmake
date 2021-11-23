@@ -17,7 +17,8 @@ set(SQLITE_URL https://github.com/sqlite/sqlite/archive/version-3.32.3.zip)
 
 message(STATUS "build sqlite3 from ${SQLITE_URL}")
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
+find_program(TCLSH NAMES tclsh REQUIRED)
 
 ExternalProject_Add(
   sqlite3

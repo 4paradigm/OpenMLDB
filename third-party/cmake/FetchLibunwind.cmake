@@ -29,7 +29,7 @@ endif()
 
 message(STATUS "build libunwind from ${LIBUNWIND_URL}")
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 
 ExternalProject_Add(
   libunwind

@@ -17,7 +17,7 @@ set(SNAPPY_URL https://src.fedoraproject.org/lookaside/pkgs/snappy/snappy-1.1.1.
 
 message(STATUS "build snappy from ${SNAPPY_URL}")
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 
 ExternalProject_Add(
   snappy

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
   set(OPENSSL_URL https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1k.tar.gz)
   set(OPENSSL_HASH b92f9d3d12043c02860e5e602e50a73ed21a69947bcc74d391f41148e9f6aa95)

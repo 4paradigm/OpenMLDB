@@ -17,7 +17,7 @@ set(COMMON_URL https://github.com/4paradigm/common/archive/refs/tags/v1.0.0.tar.
 
 message(STATUS "build baidu common from ${COMMON_URL}")
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(BOOST_PATCH bash -c "sed -i '' 's/^#include <syscall.h>/#include <pthread.h>/' src/logging.cc"
         COMMAND bash -c "sed -i '' 's/thread_id = syscall(__NR_gettid)/pthread_threadid_np(0, \&thread_id)/' src/logging.cc")
@@ -34,5 +34,5 @@ ExternalProject_Add(
   BUILD_IN_SOURCE True
   PATCH_COMMAND ${BOOST_PATCH}
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS} INCLUDE_PATH="-Iinclude -I<INSTALL_DIR>/include" PREFIX=<INSTALL_DIR> install
+  BUILD_COMMAND bash -c "${MAKE_EXE} ${MAKEOPTS} INCLUDE_PATH='-Iinclude -I<INSTALL_DIR>/include' PREFIX=<INSTALL_DIR> install"
   INSTALL_COMMAND "")

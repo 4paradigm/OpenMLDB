@@ -20,13 +20,18 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(ZOOKEEPER_CONF COMMAND bash -c "CC=clang CFLAGS='-O3 -fPIC' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
 else()
   find_program(AUTORECONF NAMES autoreconf REQUIRED)
+  include(Findcppunit)
+  if (NOT CPPUNIT_FOUND)
+    message(FATAL_ERROR "zookeeper require cppunit")
+  endif()
+
   set(ZOOKEEPER_CONF COMMAND ${AUTORECONF} -if
     COMMAND bash -c "CFLAGS='-O3 -fPIC -Wno-error=format-overflow=' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
 endif()
 
 message(STATUS "build zookeeper from ${ZOOKEEPER_URL}")
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 
 ExternalProject_Add(
   zookeeper

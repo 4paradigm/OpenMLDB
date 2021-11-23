@@ -33,11 +33,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -03 -fPIC")
 option(BUILD_BUNDLED "Build dependencies from source" OFF)
 option(BUILD_BUNDLED_ZETASQL "Build zetasql from source" ${BUILD_BUNDLED})
 
-# implementation limit, two steps to install hybridsql-asserts
-# 1. if 'BUILD_BUNDLED_HYBRIDSQL_ASSERTS' is OFF, hybridsql asserts will always download
-# 2. if you want to compile anything from source, e.g by setting BUILD_BUNDLED_GTEST=ON, gtest will compile
-#    and replace those in hybridsql asserts
-option(BUILD_BUNDLED_HYBRIDSQL_ASSERTS "Build hybridsql asserts from source" OFF)
 option(BUILD_BUNDLED_ABSL "Build abseil-cpp from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_PROTOBUF "Build protobuf from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_GTEST "Build google test from source" ${BUILD_BUNDLED})
@@ -88,7 +83,7 @@ set(HYBRIDSQL_ASSERTS_SRC_HASH 6bd44f5d870d6a4e52ed4c8748cc4a53ceff8744609db36d0
 include(FetchZetasql)
 
 # Fetch hybridsql asserts
-if(NOT BUILD_BUNDLED_HYBRIDSQL_ASSERTS)
+if(NOT BUILD_BUNDLED)
   message(STATUS "Download pre-compiled hybridsql assert from ${HYBRIDSQL_ASSERTS_URL}")
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
     message(WARNING pre-compiled hybridsql aseerts for arm64 may out-of-date, consider build from source by '-DBUILD_BUNDLED_HYBRIDSQL_ASSERTS=ON')
@@ -104,9 +99,6 @@ if(NOT BUILD_BUNDLED_HYBRIDSQL_ASSERTS)
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
-else()
-  message(
-    FATAL_ERROR "Build hybridsql asserts from source is unsupported currently.")
 endif()
 
 if (BUILD_BUNDLED_GTEST)
@@ -185,7 +177,7 @@ if (BUILD_BUNDLED_BOOST)
   include(FetchBoost)
 endif()
 
-if (BUILD_BUNDLED_LLVMc)
+if (BUILD_BUNDLED_LLVM)
   include(FetchLLVM)
 endif()
 

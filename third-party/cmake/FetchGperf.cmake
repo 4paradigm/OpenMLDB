@@ -16,7 +16,7 @@ set(GPERF_URL https://github.com/gperftools/gperftools/releases/download/gperfto
 
 message(STATUS "build gperftools from ${GPERF_URL}")
 
-find_program(MAKE_EXE NAMES gmake nmake make)
+find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 ExternalProject_Add(
   gperf
   URL ${GPERF_URL}
