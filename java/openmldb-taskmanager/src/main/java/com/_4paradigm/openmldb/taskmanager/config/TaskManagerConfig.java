@@ -25,7 +25,11 @@ public class TaskManagerConfig {
     public static int IO_THREAD = 4;
     public static String ZK_CLUSTER;
     public static String ZK_ROOTPATH;
-    public static int ZK_SESSION_TIMEOUT = 5000;
+    public static int ZK_SESSION_TIMEOUT;
+    public static int ZK_CONNECTION_TIMEOUT;
+    public static int ZK_BASE_SLEEP_TIME;
+    public static int ZK_MAX_CONNECT_WAIT_TIME;
+    public static int ZK_MAX_RETRIES;
     public static String HIVE_METASTORE_ENDPOINT;
     public static String SPARK_MASTER;
     public static String BATCHJOB_JAR_PATH;
@@ -43,6 +47,10 @@ public class TaskManagerConfig {
             ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
             ZK_CLUSTER = prop.getProperty("zookeeper.cluster");
             ZK_ROOTPATH = prop.getProperty("zookeeper.root_path");
+            ZK_CONNECTION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.connection_Timeout"));
+            ZK_BASE_SLEEP_TIME = Integer.parseInt(prop.getProperty("zookeeper.base_sleep_time"));
+            ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries"));
+            ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime"));
             HIVE_METASTORE_ENDPOINT = prop.getProperty("hive.metastore.endpoint");
             SPARK_MASTER = prop.getProperty("spark.master", "yarn");
             BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");

@@ -16,16 +16,20 @@
 
 package com._4paradigm.openmldb.taskmanager.server.impl;
 
+import com._4paradigm.openmldb.common.zk.ZKClient;
 import com._4paradigm.openmldb.proto.TaskManager;
 import com._4paradigm.openmldb.taskmanager.OpenmldbBatchjobManager;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerServer;
+import com._4paradigm.openmldb.taskmanager.zk.ZKConnector;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class TaskManagerServerImpl implements TaskManagerServer {
+    private ZKClient zkClient;
 
     public TaskManagerServerImpl() {
-
+        ZKConnector zkConnector = new ZKConnector();
+        this.zkClient = zkConnector.getZkClient();
     }
 
     public TaskManager.YarnJobResponse runBatchSql(TaskManager.RunBatchSqlRequest request) {
