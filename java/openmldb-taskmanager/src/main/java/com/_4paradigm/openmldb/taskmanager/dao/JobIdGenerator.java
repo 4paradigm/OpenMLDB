@@ -16,12 +16,51 @@
 
 package com._4paradigm.openmldb.taskmanager.dao;
 
+import com._4paradigm.openmldb.common.zk.ZKClient;
+import com._4paradigm.openmldb.common.zk.ZKConfig;
+import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
+
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class JobIdGenerator {
     private static final AtomicInteger jobId = new AtomicInteger();
 
-    public static int getUniqueJobID() {
-        return jobId.getAndIncrement();
+    private volatile static ZKClient zkClient;
+
+    private JobIdGenerator() {
+    }
+
+    public static int getUniqueJobID() throws Exception {
+        if (zkClient == null) {
+            synchronized (JobIdGenerator.class) {
+                if (zkClient == null) {
+                    zkClient = new ZKClient(ZKConfig.builder()
+                            .cluster(TaskManagerConfig.ZK_CLUSTER)
+                            .namespace(TaskManagerConfig.ZK_ROOT_PATH)
+                            .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
+                            .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
+                            .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
+                            .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
+                            .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
+                            .build());
+                    zkClient.connect();
+                    zkClient.createNode(
+                            TaskManagerConfig.ZK_ROOT_PATH + "/TaskManager/max_oneBatch_job_id",
+                           "0".getBytes(StandardCharsets.UTF_8));
+                    //fix: jobId.set(zkClient.getNodeValue);
+                    jobId.set(0);
+                }
+                if ((jobId.get()+1) % TaskManagerConfig.MAX_ONEBATCH_JOB_ID == 0) {
+                    zkClient.setNodeValue(TaskManagerConfig.ZK_ROOT_PATH + "/TaskManager/max_oneBatch_job_id",
+                            String.valueOf(jobId.get()+1).getBytes(StandardCharsets.UTF_8));
+                    //fix: jobId.set(zkClient.getNodeValue);
+                    jobId.set(0);
+                }
+                return jobId.getAndIncrement();
+            }
+        } else {
+            return jobId.getAndIncrement();
+        }
     }
 }
