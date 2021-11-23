@@ -14,20 +14,273 @@
 
 cases:
   - id: 1
-    desc: 简单SELECT后过滤,效果等同于先过滤再SELECT
-    sql: SELECT COL1 FROM t1 having COL1>1;
-  - id: 2
-    desc: 简单SELECT后过滤, 过滤条件表达式复杂
-    sql: SELECT COL1, COL2, COL3 FROM t1 HAVING COL1 > 10 and COL2 = 20 or COL1 =0;
-  - id: 3
     desc: 分组聚合后过滤
-    sql: SELECT SUM(COL2) as sum_col2 FROM t1 group by col1 having sum_col2 > 0;
+    sql: SELECT SUM(COL2) as sum_col2 FROM t1 group by col1 having SUM(COL2) > 0;
+    mode: request-unsupport
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list:
+          |  +-expr[column ref]
+          |    +-relation_name: <nil>
+          |    +-column_name: col1
+          +-having_expr:
+          |  +-expr[binary]
+          |    +->[list]:
+          |      +-0:
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL2
+          |      +-1:
+          |        +-expr[primary]
+          |          +-value: 0
+          |          +-type: int32
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL2
+          |      +-name: sum_col2
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
   - id: 4
     desc: 先过滤再分组聚合再过滤
-    sql: SELECT sum(COL3) as col3sum, * FROM t1 where col2 > 10 group by COL1 having col3sum > 0;
+    mode: request-unsupport
+    sql: SELECT COL1, sum(COL3) as col3sum, * FROM t1 where COL2 > 10 group by COL1 having sum(COL3) > 0;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[binary]
+          |    +->[list]:
+          |      +-0:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: COL2
+          |      +-1:
+          |        +-expr[primary]
+          |          +-value: 10
+          |          +-type: int32
+          +-group_expr_list:
+          |  +-expr[column ref]
+          |    +-relation_name: <nil>
+          |    +-column_name: COL1
+          +-having_expr:
+          |  +-expr[binary]
+          |    +->[list]:
+          |      +-0:
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL3
+          |      +-1:
+          |        +-expr[primary]
+          |          +-value: 0
+          |          +-type: int32
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: <nil>
+          |  |    |    +-column_name: COL1
+          |  |    +-name: <nil>
+          |  +-1:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[function]
+          |  |    |    +-function:
+          |  |    |    |  [Unresolved](sum)
+          |  |    |    +-arg[0]:
+          |  |    |      +-expr[column ref]
+          |  |    |        +-relation_name: <nil>
+          |  |    |        +-column_name: COL3
+          |  |    +-name: col3sum
+          |  +-2:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[all]
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
+
   - id: 5
     desc: 先过滤再按两列分组聚合再过滤
-    sql: SELECT sum(COL3) as col3sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col3sum > 0;
+    mode: request-unsupport
+    sql: SELECT COL1, COL2, sum(COL3) as col3sum FROM t1 where COL2 > 10 group by COL1, COL2 having sum(COL3) > 0;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[binary]
+          |    +->[list]:
+          |      +-0:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: COL2
+          |      +-1:
+          |        +-expr[primary]
+          |          +-value: 10
+          |          +-type: int32
+          +-group_expr_list:
+          |  +-expr[column ref]
+          |    +-relation_name: <nil>
+          |    +-column_name: COL1
+          |  +-expr[column ref]
+          |    +-relation_name: <nil>
+          |    +-column_name: COL2
+          +-having_expr:
+          |  +-expr[binary]
+          |    +->[list]:
+          |      +-0:
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL3
+          |      +-1:
+          |        +-expr[primary]
+          |          +-value: 0
+          |          +-type: int32
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: <nil>
+          |  |    |    +-column_name: COL1
+          |  |    +-name: <nil>
+          |  +-1:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: <nil>
+          |  |    |    +-column_name: COL2
+          |  |    +-name: <nil>
+          |  +-2:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL3
+          |      +-name: col3sum
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
+
   - id: 6
     desc: 先过滤再分组聚合再过滤再排序
-    sql: SELECT sum(COL3) as col3sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col3sum > 0 Order By COL1;
+    mode: request-unsupport
+    sql: SELECT COL1, COL2, sum(COL3) as col3sum FROM t1 where col2 > 10 group by COL1, COL2 having sum(COL3) > 0;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[binary]
+          |    +->[list]:
+          |      +-0:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: col2
+          |      +-1:
+          |        +-expr[primary]
+          |          +-value: 10
+          |          +-type: int32
+          +-group_expr_list:
+          |  +-expr[column ref]
+          |    +-relation_name: <nil>
+          |    +-column_name: COL1
+          |  +-expr[column ref]
+          |    +-relation_name: <nil>
+          |    +-column_name: COL2
+          +-having_expr:
+          |  +-expr[binary]
+          |    +->[list]:
+          |      +-0:
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL3
+          |      +-1:
+          |        +-expr[primary]
+          |          +-value: 0
+          |          +-type: int32
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: <nil>
+          |  |    |    +-column_name: COL1
+          |  |    +-name: <nil>
+          |  +-1:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: <nil>
+          |  |    |    +-column_name: COL2
+          |  |    +-name: <nil>
+          |  +-2:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL3
+          |      +-name: col3sum
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
+

@@ -75,3 +75,22 @@ cases:
   - id: set_statement
     desc: unsupported value type
     sql: SET SELECT_MODE = 1 + 2;
+  - id: group_complex_expression
+    desc: SELECT GROUP BY complex expression is unsupport
+    sql: SELECT COL1+COL2 FROM t1 group by COL1+COL2;
+  - id: group_window_clause
+    desc: Can't support group clause and window clause simultaneousl
+    sql: |
+      SELECT COL1 FROM t1 GROUP BY COL1
+      window as w1(partition by col0 order by col5 rows between 100 preceding and current row);
+  - id: having_window_clause
+    desc: Can't support having clause and window clause simultaneously
+    sql: |
+      SELECT COL1 FROM t1 having SUM(COL1)>1
+      window as w1(partition by col0 order by col5 rows between 100 preceding and current row);
+  - id: table_aggregation_and_window_clause
+    desc: Can't support table aggregation and window aggregation simultaneously
+    sql: |
+      SELECT SUM(COL1), SUM(COL) over w1 FROM t1
+      window as w1(partition by col0 order by col5 rows between 100 preceding and current row);
+
