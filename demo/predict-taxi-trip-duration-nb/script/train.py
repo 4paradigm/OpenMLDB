@@ -31,7 +31,7 @@ with open(args.sql_file, "r") as fd:
 
 # run batch sql and get instances
 spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
-parquet_train = "./data/taxi_tour_table_train_simple.snappy.parquet"
+parquet_train = "file:////work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet"
 train = spark.read.parquet(parquet_train)
 train.createOrReplaceTempView("t1")
 train_df = spark.sql(sql)
