@@ -19,7 +19,8 @@ set(ZOOKEEPER_WORK_DIR zookeeper-client/zookeeper-client-c/)
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(ZOOKEEPER_CONF COMMAND bash -c "CC=clang CFLAGS='-O3 -fPIC' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
 else()
-  set(ZOOKEEPER_CONF COMMAND autoreconf -if
+  find_program(AUTORECONF NAMES autoreconf REQUIRED)
+  set(ZOOKEEPER_CONF COMMAND ${AUTORECONF} -if
     COMMAND bash -c "CFLAGS='-O3 -fPIC -Wno-error=format-overflow=' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
 endif()
 

@@ -56,6 +56,9 @@ option(BUILD_BUNDLED_SQLITE3 "Build sqlite3 from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_OPENSSL "Build openssl from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_BRPC "Build brpc from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_ZOOKEEPER "Build zookeeper from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_BOOST "Build boost from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_LLVM "Build llvm from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_COMMON "Build baidu common from source" ${BUILD_BUNDLED})
 
 option(USE_BUNDLED_SRC "Use bundled hybridsql asserts source" ON)
 
@@ -176,6 +179,18 @@ endif()
 
 if (BUILD_BUNDLED_ZOOKEEPER)
   include(FetchZookeeper)
+endif()
+
+if (BUILD_BUNDLED_BOOST)
+  include(FetchBoost)
+endif()
+
+if (BUILD_BUNDLED_LLVMc)
+  include(FetchLLVM)
+endif()
+
+if (BUILD_BUNDLED_COMMON)
+  include(FetchBaiduCommon)
 endif()
 
 if (USE_BUNDLED_SRC)
