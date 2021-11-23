@@ -22,7 +22,26 @@
         <scala.binary.version>2.12</scala.binary.version>
         <spark.version>3.1.2</spark.version>
         <hadoop.version>2.8.5</hadoop.version>
+        <openmldb-common.version>0.3.2</openmldb-common.version>
     </properties>
+
+    <profiles>
+        <profile>
+            <id>default</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <openmldb-common.version>0.3.2</openmldb-common.version>
+            </properties>
+        </profile>
+        <profile>
+            <id>macos</id>
+            <properties>
+                <openmldb-common.version>0.3.2-macos</openmldb-common.version>
+            </properties>
+        </profile>
+    </profiles>
 
     <dependencies>
 
@@ -96,6 +115,13 @@
             <artifactId>lombok</artifactId>
             <version>1.18.4</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- OpenMLDB -->
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-common</artifactId>
+            <version>${openmldb-common.version}</version>
         </dependency>
 
         <!-- Hadoop -->
