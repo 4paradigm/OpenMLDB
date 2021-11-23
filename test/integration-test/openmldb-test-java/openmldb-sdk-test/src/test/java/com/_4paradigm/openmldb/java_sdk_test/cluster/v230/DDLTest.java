@@ -58,6 +58,27 @@ public class DDLTest extends FedbTest {
     @Yaml(filePaths = "function/ddl/test_create_index.yaml")
     @Story("create_index")
     public void testCreateIndex(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create.yaml")
+    @Story("create")
+    public void testCreateByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
+    @Story("ttl")
+    public void testTTLByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_options.yaml")
+    @Story("options")
+    public void testOptionsByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
 }

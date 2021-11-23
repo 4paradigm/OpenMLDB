@@ -41,6 +41,8 @@ public class ExecutorFactory {
                 return new CommandExecutor(fesqlCase,type);
             case kStandaloneCLI:
                 return new StandaloneCliExecutor(fesqlCase,type);
+            case kClusterCLI:
+                return new ClusterCliExecutor(fesqlCase,type);
         }
         return null;
     }

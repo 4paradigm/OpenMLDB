@@ -17,6 +17,7 @@ package com._4paradigm.openmldb.java_sdk_test.command;
 
 
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
 import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
@@ -69,6 +70,7 @@ public class OpenMLDBCommandUtil {
                 //create table
                 String createSql = inputDesc.extractCreate();
                 createSql = SQLCase.formatSql(createSql, i, tableName);
+                createSql = FesqlUtil.formatSql(createSql, fedbInfo);
                 if (!createSql.isEmpty()) {
                     FesqlResult res = OpenMLDBComamndFacade.sql(fedbInfo,dbName,createSql);
                     if (!res.isOk()) {

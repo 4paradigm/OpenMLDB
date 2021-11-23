@@ -32,10 +32,10 @@ class SparkJobListener(jobInfo: JobInfo) extends SparkAppHandle.Listener{
     // TODO: Sync job info with system table
     // Set state
     jobInfo.setState(state.toString)
-    println("Job(id=%d) state change to %s".format(jobInfo.getId, state))
+    logger.info("Job(id=%d) state change to %s".format(jobInfo.getId, state))
 
     // Set application id
-    if (jobInfo.getApplicationId != null && handle.getAppId != null) {
+    if (handle.getAppId != null) {
       jobInfo.setApplicationId(handle.getAppId)
     }
 
