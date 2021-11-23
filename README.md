@@ -59,8 +59,10 @@ Since OpenMLDB v0.3.0, we introduce two operating modes, which are cluster mode 
 
 We demonstrate the workflow of using the cluster and standalone modes:
 
-- Cluster mode: please read the :point_right: [quickstart guide](docs/en/cluster.md) and :point_right: [related demo code](demo/predict-taxi-trip-duration-nb/script)
-- Standalone mode: please read the :point_right: [quickstart guide with demo code](docs/en/standalone.md).
+- [Demo code](demo)
+
+- Cluster mode: please read the :point_right: [quickstart guide](docs/en/cluster.md)
+- Standalone mode: please read the :point_right: [quickstart guide](docs/en/standalone.md)
 
 ## 5. Roadmap
 
