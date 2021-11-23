@@ -16,13 +16,12 @@
 
 package com._4paradigm.openmldb.taskmanager.dao;
 
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class JobId {
-    private static final AtomicLong jobId = new AtomicLong();
+public class JobIdGenerator {
+    private static final AtomicInteger jobId = new AtomicInteger();
 
-    public static long getUniqueJobID() {
+    public static int getUniqueJobID() {
         return jobId.getAndIncrement();
     }
 }
