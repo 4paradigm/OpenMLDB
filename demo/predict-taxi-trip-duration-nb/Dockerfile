@@ -10,7 +10,7 @@ RUN  apt-get update \
 COPY script /work/taxi-trip/
 
 ENV LANG=en_US.UTF-8
-ARG OPENMLDB_VERSION
+ARG OPENMLDB_VERSION=0.3.0
 
 COPY setup_openmldb.sh /
 RUN /setup_openmldb.sh "${OPENMLDB_VERSION}"  && rm /setup_openmldb.sh
