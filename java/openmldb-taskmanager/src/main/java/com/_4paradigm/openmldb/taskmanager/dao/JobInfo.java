@@ -28,7 +28,7 @@ enum JobType {
 
 public class JobInfo {
 
-    private long id;
+    private int id;
     private String jobType;
     private String state;
     private Timestamp startTime;
@@ -38,11 +38,11 @@ public class JobInfo {
     private String applicationId;
     private String error;
 
-    public long getId() {
+    public int getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(int id) {
         this.id = id;
     }
 
