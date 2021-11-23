@@ -5,11 +5,11 @@
 
 OpenMLDB提供了Java和Python SDKs，该示例中，我们使用Python SDK。
 
-为了方便理解，我们会基于Kaggle比赛[Predict Taxi Tour Duration数据集](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/demo/data)，来介绍整个流程。数据集和相关代码可以在[这里](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/demo)查看，并且可以根据步骤尝试运行。
+为了方便理解，我们会基于Kaggle比赛[Predict Taxi Tour Duration数据集](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script/data)，来介绍整个流程。数据集和相关代码可以在[这里](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script)查看，并且可以根据步骤尝试运行。
 
 ## 离线
 ### 特征抽取
-对于特征抽取，用户首先需要通过对数据集的了解，构建特征抽取的SQL脚本，例如，在Taxi Tour Duration数据集中，我们可以构建如下特征抽取的[SQL](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/fe.sql):
+对于特征抽取，用户首先需要通过对数据集的了解，构建特征抽取的SQL脚本，例如，在Taxi Tour Duration数据集中，我们可以构建如下特征抽取的[SQL](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script/fe.sql):
 ```sql
 select trip_duration, passenger_count,
 sum(pickup_latitude) over w as vendor_sum_pl,
@@ -33,29 +33,20 @@ w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 
 对于离线特征抽取的输入数据，可以直接存放在本地文件或者HDFS上面，然后通过Spark执行特征抽取SQL。
 
 
-Python示例代码如下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/openmldb_batch.py)）：
+Python示例代码如下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script/train.py)）：
 
 ```python
 from pyspark.sql import SparkSession
 import numpy as np
 import pandas as pd
 
-
-def run_batch_sql(sql):
-    spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
-    parquet_predict = "./data/taxi_tour_table_predict_simple.snappy.parquet"
-    parquet_train = "./data/taxi_tour_table_train_simple.snappy.parquet"
-    train = spark.read.parquet(parquet_train)
-    train.createOrReplaceTempView("t1")
-    train_df = spark.sql(sql)
-    train_set = train_df.toPandas()
-    predict = spark.read.parquet(parquet_predict)
-    predict.createOrReplaceTempView("t1")
-    predict_df = spark.sql(sql)
-    predict_set = predict_df.toPandas()
-    return train_set, predict_set
+spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
+parquet_train = "./data/taxi_tour_table_train_simple.snappy.parquet"
+train = spark.read.parquet(parquet_train)
+train.createOrReplaceTempView("t1")
+train_df = spark.sql(sql)
+df = train_df.toPandas()
 ```
-
 
 ***注意***：需要使用[OpenMLDB Spark Distribution](https://github.com/4paradigm/OpenMLDB/blob/main/docs/en/compile.md#optimized-spark-distribution-for-openmldb-optional)
 
@@ -64,13 +55,12 @@ def run_batch_sql(sql):
 通过特征抽取，获得训练和预测数据集，就可以使用标准的模型训练方式，来进行模型训练。
 
 
-下面示例使用Gradient Boosting Machine (GBM) 进行模型训练，并将训练好的模型保存在`model_path`路径下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/train.py)）：
+下面示例使用Gradient Boosting Machine (GBM) 进行模型训练，并将训练好的模型保存在`model_path`路径下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script/train.py)）：
 ```python
 import lightgbm as lgb
-import openmldb_batch
+from sklearn.model_selection import train_test_split
 
-
-train_set, predict_set = openmldb_batch.run_batch_sql(sql)
+train_set, predict_set = train_test_split(df, test_size=0.2)
 y_train = train_set['trip_duration']
 x_train = train_set.drop(columns=['trip_duration'])
 y_predict = predict_set['trip_duration']
@@ -97,7 +87,7 @@ gbm.save_model(model_path)
 ### 在线数据导入
 在线数据集可以通过类似数据库的导入方式，导入OpenMLDB。
 
-下面示例展示如何从csv文件导入数据到OpenMLDB，和标准数据库导入数据类似（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/import.py)）
+下面示例展示如何从csv文件导入数据到OpenMLDB，和标准数据库导入数据类似（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script/import.py)）
 
 ```python
 import sqlalchemy as db
@@ -137,7 +127,7 @@ with open('data/taxi_tour_table_train_simple.csv', 'r') as fd:
 ```
 
 ### 在线特征抽取
-对于在线特征抽取，需要根据输入的数据，以及在线数据集，通过和离线特征相同的特征抽取[SQL](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo/fe.sql)，获得特征。
+对于在线特征抽取，需要根据输入的数据，以及在线数据集，通过和离线特征相同的特征抽取[SQL](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script/fe.sql)，获得特征。
 
 
 示例代码如下：
@@ -163,4 +153,4 @@ bst = lgb.Booster(model_path)
 duration = bst.predict(feature)
 ```
 
-***注***：实际中，会启动预估服务，通过线上服务的方式，接收在线输入的数据，进行模型预测，然后再把预测结果返回给用户。这里省略了服务上线的过程，不过在[demo](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/demo)的上手示例中，包含了模型上线的过程。
+***注***：实际中，会启动预估服务，通过线上服务的方式，接收在线输入的数据，进行模型预测，然后再把预测结果返回给用户。这里省略了服务上线的过程，不过在[demo](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script)的上手示例中，包含了模型上线的过程。

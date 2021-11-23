@@ -208,26 +208,44 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
         }
         case kPhysicalOpProject: {
             auto project_op = dynamic_cast<PhysicalProjectNode*>(node);
-            if (kWindowAggregation != project_op->project_type_) {
-                break;
-            }
-            auto window_agg_op =
-                dynamic_cast<PhysicalWindowAggrerationNode*>(node);
-            CHECK_STATUS(GenWindow(&window_agg_op->window_,
-                                   window_agg_op->producers()[0]));
-            for (auto& window_union :
-                 window_agg_op->window_unions_.window_unions_) {
-                CHECK_STATUS(InitFnInfo(window_union.first, visited),
-                             "Fail Gen Window Union Sub Query Plan");
-            }
-            CHECK_STATUS(GenWindowUnionList(&window_agg_op->window_unions_,
-                                            window_agg_op->producers()[0]));
-            for (auto& pair : window_agg_op->window_joins_.window_joins()) {
-                CHECK_STATUS(InitFnInfo(pair.first, visited),
-                             "Fail Gen Window Join Sub Query Plan");
-            }
-            CHECK_STATUS(GenWindowJoinList(window_agg_op,
+            switch (project_op->project_type_) {
+                case kGroupAggregation: {
+                    // Code generation for having condition
+                    CHECK_STATUS(
+                        GenHavingFilter(&(dynamic_cast<PhysicalGroupAggrerationNode*>(node))->having_condition_,
+                                        project_op->producers()[0]->schemas_ctx()));
+                    break;
+                }
+                case kAggregation: {
+                    // Code generation for having condition
+                    CHECK_STATUS(GenHavingFilter(&(dynamic_cast<PhysicalAggrerationNode*>(node))->having_condition_,
+                                                    project_op->producers()[0]->schemas_ctx()));
+                    break;
+                }
+                case kWindowAggregation: {
+                    auto window_agg_op =
+                        dynamic_cast<PhysicalWindowAggrerationNode*>(node);
+                    CHECK_STATUS(GenWindow(&window_agg_op->window_,
                                            window_agg_op->producers()[0]));
+                    for (auto& window_union :
+                        window_agg_op->window_unions_.window_unions_) {
+                        CHECK_STATUS(InitFnInfo(window_union.first, visited),
+                                     "Fail Gen Window Union Sub Query Plan");
+                    }
+                    CHECK_STATUS(GenWindowUnionList(&window_agg_op->window_unions_,
+                                                    window_agg_op->producers()[0]));
+                    for (auto& pair : window_agg_op->window_joins_.window_joins()) {
+                        CHECK_STATUS(InitFnInfo(pair.first, visited),
+                                     "Fail Gen Window Join Sub Query Plan");
+                    }
+                    CHECK_STATUS(GenWindowJoinList(window_agg_op,
+                                                   window_agg_op->producers()[0]));
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
             break;
         }
         case kPhysicalOpSimpleProject:
@@ -939,7 +957,108 @@ bool BatchModeTransformer::AddDefaultPasses() {
     AddPass(PhysicalPlanPassType::kPassClusterOptimized);
     return false;
 }
+Status BatchModeTransformer::ValidateOnlyFullGroupBy(const node::ProjectListNode* project_list,
+                                                     const node::ExprListNode* group_keys,
+                                                     const SchemasContext* schemas_ctx) {
+    CHECK_TRUE(project_list != nullptr && schemas_ctx != nullptr, common::kNullInputPointer,
+               "input parameters are null");
 
+    const node::ExprNode* having_condition = project_list->GetHavingCondition();
+    // query without GROUP BY
+    if (node::ExprListNullOrEmpty(group_keys)) {
+        // ONLY_FULL_GROUP_BY Rule #1: OpenMLDB only support ONLY_FULL_GROUP_BY mode
+        // In aggregated query without GROUP BY, expression #%u of %s contains nonaggregated column '%s';
+        // this is incompatible with sql_mode=only_full_group_by
+        // -- unacceptable sql
+        // SELECT col1, col2, SUM(col3) from t1;
+        if (project_list->HasAggProject() && project_list->HasRowProject()) {
+            for (size_t idx = 0; idx < project_list->GetProjects().size(); idx++) {
+                node::ProjectNode* project = dynamic_cast<node::ProjectNode*>(project_list->GetProjects()[idx]);
+                CHECK_TRUE(project->IsAgg(), common::kPlanError,
+                           "In aggregated query without GROUP BY, expression #", project->GetPos(),
+                           " of SELECT list contains nonaggregated project '",
+                           project->GetExpression()->GetExprString(),
+                           "'; this is incompatible with sql_mode=only_full_group_by")
+            }
+        }
+        // HAVING
+        if (nullptr != having_condition) {
+            // ONLY_FULL_GROUP_BY Rule #2: Having clause can only be used in conjunction with aggregated query
+            CHECK_TRUE(project_list->HasAggProject(), common::kPlanError,
+                       "Having clause can only be used in conjunction with aggregated query")
+            // ONLY_FULL_GROUP_BY Rule #3: OpenMLDB only support ONLY_FULL_GROUP_BY mode
+            // In aggregated query without GROUP BY, Having clause contains nonaggregated column '%s';
+            // this is incompatible with sql_mode=only_full_group_by
+            CHECK_TRUE(node::IsAggregationExpression(library_, having_condition), common::kPlanError,
+                       "In aggregated query without GROUP BY, "
+                       "Having clause contains nonaggregated project '",
+                       having_condition->GetExprString(), "'; this is incompatible with sql_mode=only_full_group_by")
+        }
+    } else {
+        // query with GROUP BY
+        std::set<size_t> group_column_ids;
+        CHECK_STATUS(schemas_ctx->ResolveExprDependentColumns(group_keys, &group_column_ids));
+        // ONLY_FULL_GROUP_BY Rule #4: OpenMLDB only support ONLY_FULL_GROUP_BY mode
+        // Expression #%u of %s is not in GROUP BY clause and contains nonaggregated column '%s'
+        // which is not functionally dependent on columns in GROUP BY clause;
+        // this is incompatible with sql_mode=only_full_group_by
+        // e.g.
+        // -- invalid with ONLY_FULL_GROUP_BY
+        // ```
+        // SELECT name, address, MAX(age) FROM t GROUP BY name;
+        if (project_list->HasRowProject()) {
+            for (size_t idx = 0; idx < project_list->GetProjects().size(); idx++) {
+                node::ProjectNode* project = dynamic_cast<node::ProjectNode*>(project_list->GetProjects()[idx]);
+                if (!project->IsAgg()) {
+                    std::set<size_t> depend_column_ids;
+                    CHECK_STATUS(
+                        schemas_ctx->ResolveExprDependentColumns(project->GetExpression(), &depend_column_ids));
+                    for (auto& column_id : depend_column_ids) {
+                        if (group_column_ids.count(column_id) == 0) {
+                            std::string db;
+                            std::string table;
+                            std::string column;
+                            CHECK_STATUS(schemas_ctx->ResolveDbTableColumnByID(column_id, &db, &table, &column));
+                            std::string column_path = db + "." + table + "." + column;
+                            FAIL_STATUS(common::kPlanError, "Expression #", project->GetPos(),
+                                        " of SELECT list is not in GROUP BY clause and contains nonaggregated column '",
+                                        column_path,
+                                        "' which is not functionally dependent on columns in GROUP BY clause; this is "
+                                        "incompatible with sql_mode=only_full_group_by")
+                        }
+                    }
+                }
+            }
+        }
+        // GROUP BY ... HAVING ...
+        if (nullptr != having_condition) {
+            // ONLY_FULL_GROUP_BY Rule #5:
+            // Expression #%u of %s is not in GROUP BY clause and contains nonaggregated column '%s'
+            // which is not functionally dependent on columns in GROUP BY clause;
+            // this is incompatible with sql_mode=only_full_group_by
+            if (!node::IsAggregationExpression(library_, having_condition)) {
+                std::set<size_t> depend_column_ids;
+                CHECK_STATUS(schemas_ctx->ResolveExprDependentColumns(having_condition, &depend_column_ids))
+
+                for (auto column_id : depend_column_ids) {
+                    if (group_column_ids.count(column_id) == 0) {
+                        std::string db;
+                        std::string table;
+                        std::string column;
+                        CHECK_STATUS(schemas_ctx->ResolveDbTableColumnByID(column_id, &db, &table, &column));
+                        std::string column_path = db + "." + table + "." + column;
+                        FAIL_STATUS(common::kPlanError,
+                                    "Having clause is not in GROUP BY clause and contains nonaggregated column '",
+                                    column_path,
+                                    "' which is not functionally dependent on columns in GROUP BY clause; this is "
+                                    "incompatible with sql_mode=only_full_group_by")
+                    }
+                }
+            }
+        }
+    }
+    return base::Status::OK();
+}
 Status BatchModeTransformer::CreatePhysicalConstProjectNode(
     node::ProjectListNode* project_list, PhysicalOpNode** output) {
     CHECK_TRUE(project_list != nullptr && output != nullptr, kPlanError,
@@ -976,7 +1095,14 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
                "project list node or output node is null");
 
     const node::PlanNodeList& projects = project_list->GetProjects();
-
+    const node::ExprNode* having_condition = project_list->GetHavingCondition();
+    const node::ExprListNode* group_keys = nullptr;
+    if (kGroupAggregation == project_type) {
+        CHECK_STATUS(ExtractGroupKeys(depend, &group_keys));
+    }
+    if (nullptr == project_list->GetW()) {
+        CHECK_STATUS(ValidateOnlyFullGroupBy(project_list, group_keys, depend->schemas_ctx()));
+    }
     // extract window frame if any
     const node::FrameNode* primary_frame = nullptr;
     if (project_list->GetW() != nullptr) {
@@ -1028,6 +1154,8 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
     // Create physical project op
     switch (project_type) {
         case kRowProject: {
+            CHECK_TRUE(having_condition == nullptr, kPlanError,
+                       "Can't support having clause and row project simultaneously")
             if (IsSimpleProject(column_projects)) {
                 PhysicalSimpleProjectNode* simple_project_op = nullptr;
                 CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(
@@ -1042,6 +1170,8 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
             break;
         }
         case kTableProject: {
+            CHECK_TRUE(having_condition == nullptr, kPlanError,
+                       "Can't support having clause and table project simultaneously")
             if (IsSimpleProject(column_projects)) {
                 PhysicalSimpleProjectNode* simple_project_op = nullptr;
                 CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(
@@ -1058,23 +1188,25 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
         case kAggregation: {
             PhysicalAggrerationNode* agg_op = nullptr;
             CHECK_STATUS(CreateOp<PhysicalAggrerationNode>(&agg_op, depend,
-                                                           column_projects));
+                                                           column_projects, having_condition));
             *output = agg_op;
             break;
         }
         case kGroupAggregation: {
-            const node::ExprListNode* keys = nullptr;
-            CHECK_STATUS(ExtractGroupKeys(depend, &keys));
-            CHECK_TRUE(keys != nullptr, kPlanError,
+            CHECK_TRUE(!node::ExprListNullOrEmpty(group_keys), kPlanError,
                        "Can not create group agg with non group keys");
+
             PhysicalGroupAggrerationNode* agg_op = nullptr;
             CHECK_STATUS(CreateOp<PhysicalGroupAggrerationNode>(
-                &agg_op, depend, column_projects, keys));
+                &agg_op, depend, column_projects, having_condition, group_keys));
             *output = agg_op;
             break;
         }
         case kWindowAggregation: {
             PhysicalWindowAggrerationNode* window_agg_op = nullptr;
+            // window clause and having clause cannot exist simultaneously
+            CHECK_TRUE(nullptr == having_condition, kPlanError,
+                       "Can't support having clause and window clause simultaneously")
             CHECK_STATUS(CreateOp<PhysicalWindowAggrerationNode>(
                 &window_agg_op, depend, column_projects,
                 WindowOp(project_list->w_ptr_),
@@ -1350,7 +1482,7 @@ Status BatchModeTransformer::ValidateWindowIndexOptimization(
 //    - not aggregation over table
 Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
     CHECK_TRUE(nullptr != node, kPlanError, "Invalid physical node: null");
-    // TODO: create a `visitor` method for nodes, single dfs applied
+    // TODO(liguo): create a `visitor` method for nodes, single dfs applied
     CHECK_STATUS(ValidatePlanSupported(node));
     if (performance_sensitive_mode_) {
         CHECK_STATUS(ValidateIndexOptimization(node),
@@ -1413,7 +1545,7 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
                     // union table's partition key not check
                     // physical plan generation will fail because of schema not match
 
-                    for (const auto& join: win_agg_op->window_joins_.window_joins_) {
+                    for (const auto& join : win_agg_op->window_joins_.window_joins_) {
                         CHECK_STATUS(CheckPartitionColumn(join.second.right_key().keys(), join.first->schemas_ctx()));
                     }
                     break;
@@ -1651,6 +1783,15 @@ Status BatchModeTransformer::GenConditionFilter(
         node::ExprListNode expr_list;
         expr_list.AddChild(const_cast<node::ExprNode*>(filter->condition()));
         CHECK_STATUS(plan_ctx_.InitFnDef(&expr_list, schemas_ctx, true, filter))
+    }
+    return Status::OK();
+}
+Status BatchModeTransformer::GenHavingFilter(
+    ConditionFilter* filter, const SchemasContext* schemas_ctx) {
+    if (nullptr != filter->condition()) {
+        node::ExprListNode expr_list;
+        expr_list.AddChild(const_cast<node::ExprNode*>(filter->condition()));
+        CHECK_STATUS(plan_ctx_.InitFnDef(&expr_list, schemas_ctx, false, filter))
     }
     return Status::OK();
 }
@@ -1909,6 +2050,7 @@ RequestModeTransformer::RequestModeTransformer(node::NodeManager* node_manager, 
 
 RequestModeTransformer::~RequestModeTransformer() {}
 
+
 // transform project plan in request mode
 Status RequestModeTransformer::TransformProjectPlanOp(
     const node::ProjectPlanNode* node, PhysicalOpNode** output) {
@@ -2094,6 +2236,7 @@ Status RequestModeTransformer::ValidatePrimaryPath(
     }
     return Status::OK();
 }
+
 Status RequestModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* depend,
     bool append_input, PhysicalOpNode** output) {

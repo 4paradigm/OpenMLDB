@@ -39,25 +39,25 @@ public class MultiDBTest extends FedbTest {
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"function/multiple_databases/"})
     @Step("{testCase.desc}")
-    public void testSelect(SQLCase testCase) throws Exception {
+    public void testMultiDB(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"function/multiple_databases/"})
-    public void testSelectRequestMode(SQLCase testCase) throws Exception {
+    public void testMultiDBRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"function/multiple_databases/"})
-    public void testSelectRequestModeWithSp(SQLCase testCase) throws Exception {
+    public void testMultiDBRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"function/multiple_databases/"})
-    public void testSelectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+    public void testMultiDBRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }
 }
