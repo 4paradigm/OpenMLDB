@@ -13,7 +13,7 @@ enum JobType {
 
 public class JobInfo {
 
-    private int id;
+    private long id;
     private String jobType;
     private String state;
     private Timestamp startTime;
@@ -23,11 +23,11 @@ public class JobInfo {
     private String applicationId;
     private String error;
 
-    public int getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(long id) {
         this.id = id;
     }
 
@@ -103,7 +103,7 @@ public class JobInfo {
 
     public boolean isFinal() {
         String[] finalState = new String[] {"finished", "failed", "killed", "lost"};
-        return Arrays.asList(finalState).contains(state.toLowerCase()) ? true : false;
+        return Arrays.asList(finalState).contains(state.toLowerCase());
 
     }
 

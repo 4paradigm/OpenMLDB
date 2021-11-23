@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.taskmanager.spark
 
 import com._4paradigm.openmldb.taskmanager.JobInfoManager
 import SparkLauncherUtil.createSparkLauncher
-import com._4paradigm.openmldb.taskmanager.dao.JobInfo
+import com._4paradigm.openmldb.taskmanager.dao.{JobId, JobInfo}
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 
 import java.util.Calendar
@@ -47,8 +47,7 @@ object SparkJobManager {
 
   def submitSparkJob(mainClass: String, jobType: String, cluster: String, args: Array[String]=null,
                      sparkConf: Map[String, String]=Map()): Unit = {
-    // TODO: Generate unique job id
-    val jobId = 1
+    val jobId = JobId.getUniqueJobID
     val startTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())
 
     // Generate JobInfo
