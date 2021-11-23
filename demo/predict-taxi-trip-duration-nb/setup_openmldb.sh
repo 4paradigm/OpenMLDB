@@ -17,6 +17,10 @@
 
 set -eE -x
 VERSION="$1"
+if [[ -z ${VERSION} ]]; then
+    VERSION=0.3.0
+fi
+echo "version: ${VERSION}"
 
 curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
 curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux.tar.gz"
