@@ -3,8 +3,8 @@ services:
   sut:
     build:
       context: .
-    args:
-      OPENMLDB_VERSION: 0.3.0
+      args:
+        OPENMLDB_VERSION: 0.3.0
     command: >
       bash -c "
       ./init.sh && python3 import.py &&
