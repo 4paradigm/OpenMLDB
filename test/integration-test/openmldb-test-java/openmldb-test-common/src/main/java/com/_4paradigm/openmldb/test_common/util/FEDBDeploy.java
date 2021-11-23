@@ -196,6 +196,7 @@ public class FEDBDeploy {
             }
             if(isCluster){
                 commands.add("sed -i 's#--enable_distsql=.*#--enable_distsql=true#' " + testPath + ns_name + "/conf/nameserver.flags");
+                commands.add("echo '--enable_distsql=true' >> " + testPath + ns_name + "/conf/nameserver.flags");
             }else{
                 commands.add("sed -i 's#--enable_distsql=.*#--enable_distsql=false#' " + testPath + ns_name + "/conf/nameserver.flags");
             }
