@@ -140,6 +140,13 @@
             <version>13.0.0</version>
         </dependency>
 
+        <!-- OpenMLDB client -->
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-jdbc</artifactId>
+            <version>0.3.1-allinone</version>
+        </dependency>
+
     </dependencies>
 
     <build>
