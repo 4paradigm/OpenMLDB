@@ -403,7 +403,7 @@ TEST_F(TransformTest, RequestModeUnsupportLoadData){
 
     auto catalog = BuildSimpleCatalog(db);
 
-    const std::string sql = R"sql(LOAD DATA INFILE a.csv INTO TABLE t1 OPTIONS(foo='bar', num=1);)sql";
+    const std::string sql = R"sql(LOAD DATA INFILE 'a.csv' INTO TABLE t1 OPTIONS(foo='bar', num=1);)sql";
 
     PhysicalPlanFailCheck(catalog, sql, kRequestMode, common::kPlanError, "Non-support LoadData in request mode");
 }

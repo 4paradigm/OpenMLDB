@@ -30,15 +30,13 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %include stl.i
 %include stdint.i
 %include std_vector.i
-
-namespace std {
-    %template(StringVector) vector<string>;
-}
+%include std_unordered_map.i
 
 %shared_ptr(hybridse::vm::Catalog);
 %shared_ptr(hybridse::vm::SimpleCatalog);
 %shared_ptr(hybridse::vm::CompileInfo);
 %shared_ptr(hybridse::vm::SqlCompileInfo);
+%shared_ptr(hybridse::node::OptionsMap);
 
 %typemap(jni) hybridse::vm::RawPtrHandle "jlong"
 %typemap(jtype) hybridse::vm::RawPtrHandle "long"
@@ -60,32 +58,6 @@ namespace std {
 }
 %typemap(javain) hybridse::vm::ByteArrayPtr "$javainput"
 %typemap(javaout) hybridse::vm::ByteArrayPtr "{ return $jnicall; }"
-#endif
-
-// Fix for Java shared_ptr unref
-// %feature("unref") hybridse::vm::Catalog "delete $this;"
-
-
-#ifdef SWIGJAVA
-// Enable namespace feature for Java
-%nspace;
-
-// Fix for wrapper class imports
-%typemap(javaimports) SWIGTYPE "import com._4paradigm.*;"
-
-// Enable protobuf interfaces
-%include "swig_library/java/protobuf.i"
-%protobuf_enum(hybridse::type::Type, com._4paradigm.hybridse.type.TypeOuterClass.Type);
-%protobuf(hybridse::type::Database, com._4paradigm.hybridse.type.TypeOuterClass.Database);
-%protobuf(hybridse::type::TableDef, com._4paradigm.hybridse.type.TypeOuterClass.TableDef);
-%protobuf_repeated_typedef(hybridse::codec::Schema, com._4paradigm.hybridse.type.TypeOuterClass.ColumnDef);
-
-// Enable direct buffer interfaces
-%include "swig_library/java/buffer.i"
-%as_direct_buffer(hybridse::base::RawBuffer);
-
-// Enable common numeric types
-%include "swig_library/java/numerics.i"
 #endif
 
 %{
@@ -127,6 +99,33 @@ using hybridse::codec::WindowIterator;
 using hybridse::node::DataType;
 %}
 
+// Fix for Java shared_ptr unref
+// %feature("unref") hybridse::vm::Catalog "delete $this;"
+
+%template(OptionsMap) std::unordered_map<std::string, const hybridse::node::ConstNode*>;
+
+#ifdef SWIGJAVA
+// Enable namespace feature for Java
+%nspace;
+
+// Fix for wrapper class imports
+%typemap(javaimports) SWIGTYPE "import com._4paradigm.*;"
+
+// Enable protobuf interfaces
+%include "swig_library/java/protobuf.i"
+%protobuf_enum(hybridse::type::Type, com._4paradigm.hybridse.type.TypeOuterClass.Type);
+%protobuf(hybridse::type::Database, com._4paradigm.hybridse.type.TypeOuterClass.Database);
+%protobuf(hybridse::type::TableDef, com._4paradigm.hybridse.type.TypeOuterClass.TableDef);
+%protobuf_repeated_typedef(hybridse::codec::Schema, com._4paradigm.hybridse.type.TypeOuterClass.ColumnDef);
+
+// Enable direct buffer interfaces
+%include "swig_library/java/buffer.i"
+%as_direct_buffer(hybridse::base::RawBuffer);
+
+// Enable common numeric types
+%include "swig_library/java/numerics.i"
+#endif
+
 %rename(BaseStatus) hybridse::base::Status;
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;
@@ -143,7 +142,7 @@ using hybridse::node::DataType;
 %ignore hybridse::vm::DataHandlerRepeater;
 %ignore hybridse::vm::LocalTabletTableHandler;
 %ignore hybridse::vm::AysncRowHandler;
-%ignore DataTypeName; // TODO: Geneerate duplicated class
+%ignore DataTypeName; // TODO: Generate duplicated class
 %ignore hybridse::vm::HybridSeJitWrapper::AddModule;
 
 // Ignore the unique_ptr functions
