@@ -26,6 +26,8 @@ class TestSparkJobManager extends FunSuite {
 
   test("Test submitSparkJob") {
 
+    JobInfoManager.createJobSystemTable()
+
     val mainClass = classOf[DummySparkApp].getName
     //val mainClass = "com._4paradigm.openmldb.batchjob.SparkVersionApp"
 

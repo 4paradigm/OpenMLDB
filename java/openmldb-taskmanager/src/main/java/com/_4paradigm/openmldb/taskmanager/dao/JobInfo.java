@@ -21,21 +21,19 @@ public class JobInfo {
     private Timestamp startTime;
     private Timestamp endTime;
     private String parameter;
+    private String cluster;
     private String applicationId;
     private String error;
 
-    public JobInfo() {
-
-    }
-
     public JobInfo(int id, String jobType, String state, Timestamp startTime, Timestamp endTime, String parameter,
-                   String applicationId, String error) {
+                   String cluster, String applicationId, String error) {
         this.id = id;
         this.jobType = jobType;
         this.state = state;
         this.startTime = startTime;
         this.endTime = endTime;
         this.parameter = parameter;
+        this.cluster = cluster;
         this.applicationId = applicationId;
         this.error = error;
     }
@@ -88,6 +86,14 @@ public class JobInfo {
         this.parameter = parameter;
     }
 
+    public String getCluster() {
+        return cluster;
+    }
+
+    public void setCluster(String cluster) {
+        this.cluster = cluster;
+    }
+
     public String getApplicationId() {
         return applicationId;
     }
@@ -106,8 +112,8 @@ public class JobInfo {
 
     @Override
     public String toString() {
-        return String.format("id: %d, jobType: %s, state: %s, parameter: %s, applicationId: %s, error: %s",
-                id, jobType, state, parameter, applicationId, error);
+        return String.format("id: %d, jobType: %s, state: %s, parameter: %s, cluster: %s applicationId: %s, error: %s",
+                id, jobType, state, parameter, cluster, applicationId, error);
     }
 
     public boolean isFinished() {
