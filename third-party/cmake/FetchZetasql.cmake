@@ -17,14 +17,8 @@ set(ZETASQL_VERSION 0.2.2)
 set(ZETASQL_TAG origin/feat/hybridse-zetasql)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  if (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-    # aarch64 support is experimental
-    set(ZETASQL_URL "https://github.com/aceforeverd/zetasql/releases/download/v0.2.1.beta9/libzetasql-0.2.1.beta9-linux-gnu-aarch64.tar.gz")
-    set(ZETASQL_HASH bba03f6d15504305412d217926092fb4c52051ea3960e1aa82f7445f27f9fb44)
-  else()
-    set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64.tar.gz")
-    set(ZETASQL_HASH e0f598a2bc676f5a443b71e30c494c94cfae71ef6154328742d4835021f3ae4c)
-  endif()
+  set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64.tar.gz")
+  set(ZETASQL_HASH e0f598a2bc676f5a443b71e30c494c94cfae71ef6154328742d4835021f3ae4c)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz")
   set(ZETASQL_HASH a0abc902c45ceaf8bcb6de375ae4dddd0682b9bdd7ff067025f5e21ef53f8393)
@@ -32,10 +26,10 @@ endif()
 
 
 if (NOT BUILD_BUNDLED_ZETASQL)
-  message(STATUS "Download pre-compiled zetasql from ${ZETASQL_URL}")
   if (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-    message(WARNING pre-compiled zetasql for arm64 may out-of-date, consider build zetasql from source by '-DBUILD_BUNDLED_ZETASQL=ON')
+    message(FATAL_ERROR pre-compiled zetasql for arm64 not available, please build zetasql from source instead by '-DBUILD_BUNDLED_ZETASQL=ON')
   endif()
+  message(STATUS "Download pre-compiled zetasql from ${ZETASQL_URL}")
   # download pre-compiled zetasql from GitHub Release
   ExternalProject_Add(zetasql
     URL ${ZETASQL_URL}
