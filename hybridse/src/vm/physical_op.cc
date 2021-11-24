@@ -1251,16 +1251,16 @@ void PhysicalLoadDataNode::Print(std::ostream& output, const std::string& tab) c
     PhysicalOpNode::Print(output, tab);
     output << "("
            << "file=" << File() << ", db=" << Db() << ", table=" << Table();
-    auto options = Options();
-    if (options) {
+
+    if (options_) {
         output << ", options=";
-        if (options->empty()) {
+        if (options_->empty()) {
             output << "<nil>";
         } else {
-            auto it = options->begin();
+            auto it = options_->begin();
             output << "(" << it->first << ":" << it->second->GetExprString();
             it++;
-            for (; it != options->end(); ++it) {
+            for (; it != options_->end(); ++it) {
                 output << ", " << it->first << ":" << it->second->GetExprString();
             }
             output << ")";
