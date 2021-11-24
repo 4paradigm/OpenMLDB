@@ -45,7 +45,7 @@ sh bin/stop-all.sh
 ### 创建表
 ```sql
 > USE demo_db;
-> CREATE TABLE demo_table1(c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, index(ts=c7));
+> CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date, index(ts=c6));
 ```
 **注**: 需要至少指定一个index并设置`ts`列。`ts`列是用来做ORDERBY的那一列
 ### 导入数据
@@ -69,24 +69,24 @@ null_value | null值 | String | null | Any String
 ```sql
 > USE demo_db;
 > SET PERFORMANCE_SENSITIVE = false;
-> SELECT sum(c5) as sum FROM demo_table1 where c3=11;
+> SELECT sum(c4) as sum FROM demo_table1 where c2=11;
  ----------
   sum
  ----------
-  56.000004
+  1.200000
  ----------
 
 1 rows in set
 ```
 ### 生成方案SQL
 ```sql
-SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 ### 批量计算特征
 ```sql
 > USE demo_db;
 > SET performance_sensitive=false;
-> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
+> SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 ```
 可以通过option指定额外的配置
 Name | Meaning | Type |  Default | Options
@@ -96,15 +96,15 @@ header | 是否有header| Boolean | true | true/false
 null_value | null值 | String | null | Any String
 mode | 模式 | String | error_if_exists | error_if_exists/overwrite/append
 ```sql
-> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' OPTIONS (mode = 'overwrite', delimiter=',');
+> SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' OPTIONS (mode = 'overwrite', delimiter=',');
 ```
 ### SQL方案上线
 将探索好的SQL方案Deploy到线上
 ```sql
 > USE demo_db;
-> DEPLOY demo_data_service SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+> DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
-上线后可以查看和删除SQL方案
+上线后可以查看SQL方案
 ```sql
 > USE demo_db;
 > SHOW DEPLOYMENTS;
@@ -114,7 +114,6 @@ mode | 模式 | String | error_if_exists | error_if_exists/overwrite/append
   demo_db   demo_data_service
  --------- -------------------
 1 row in set
-> DROP DEPLOYMENT demo_data_service;
 ```
 ### 实时特征计算
 url的格式为:
@@ -130,5 +129,8 @@ http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
 "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
 }'
+{"code":0,"msg":"ok","data":{"data":[["aaa",11,22]],"common_cols_data":[]}}
 ```
 URL中ip和port是`conf/apiserver.flags`中配置的`endpoint`
+
+为了方便理解，我们会基于Kaggle比赛[Predict Taxi Tour Duration数据集](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script/data)，来介绍整个流程。数据集和相关代码可以在[这里](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script)查看，并且可以根据步骤尝试运行。

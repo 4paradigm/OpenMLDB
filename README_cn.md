@@ -56,7 +56,7 @@ OpenMLDB 是一个开源机器学习数据库，为机器学习应用高效供�
 
 我们演示基于这两种模式的 demo 和快速上手指南：
 
-- 集群模式：请阅读 :point_right: [快速上手指南](docs/cn/cluster.md)，以及 :point_right: [相关的 demo 代码](demo/predict-taxi-trip-duration-nb/demo)
+- 集群模式：请阅读 :point_right: [快速上手指南](docs/cn/cluster.md)，以及 :point_right: [相关的 demo 代码](demo/predict-taxi-trip-duration-nb/script)
 - 单机模式：请阅读  :point_right: [快速上手和相关 demo 代码](docs/cn/standalone.md)
 
 ## 5. 开发计划

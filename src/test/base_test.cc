@@ -507,6 +507,7 @@ void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::strin
             rows_map[key].second = true;
         } else {
             row_view.Reset(rows[index++].buf());
+            CheckRow(row_view, rs);
         }
     }
 }

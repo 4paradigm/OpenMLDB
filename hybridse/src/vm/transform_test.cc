@@ -443,13 +443,10 @@ TEST_F(TransformTest, PhysicalPlanFailOnGroupType) {
 
     auto catalog = BuildSimpleCatalog(db);
 
-    const std::string sql = "SELECT col1, col2, col3 FROM t1 GROUP BY col3";
+    const std::string sql = "SELECT sum(col1), col3 FROM t1 GROUP BY col3";
 
     PhysicalPlanFailCheck(
         catalog, sql, kBatchMode, common::kPhysicalPlanError,
-        "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
-    PhysicalPlanFailCheck(
-        catalog, sql, kRequestMode, common::kPhysicalPlanError,
         "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
 }
 
@@ -511,6 +508,48 @@ TEST_F(TransformTest, PhysicalPlanFailOnLastJoinWindow) {
         "unsupported partition key: 't2.col3', type is float, should be bool, intxx, string, date or timestamp");
 }
 
+// OpenMLDB only support ONLY_FULL_GROUP_BY mode
+TEST_F(TransformTest, PhysicalPlanFailOnOnlyFullGroupBy) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+    // ONLY_FULL_GROUP_BY Rule #1:
+    PhysicalPlanFailCheck(
+        catalog, "SELECT col1, SUM(col3) from t1;", kBatchMode, common::kPlanError,
+        "In aggregated query without GROUP BY, expression #0 of SELECT list contains nonaggregated "
+        "project 'col1'; this is incompatible with sql_mode=only_full_group_by");
+    // ONLY_FULL_GROUP_BY Rule #1:
+    PhysicalPlanFailCheck(catalog, "SELECT col1, SUM(col2) from t1 HAVING SUM(col2) > 0;", kBatchMode,
+                          common::kPlanError,
+                          "In aggregated query without GROUP BY, expression #0 of SELECT list contains nonaggregated "
+                          "project 'col1'; this is incompatible with sql_mode=only_full_group_by");
+
+    // ONLY_FULL_GROUP_BY Rule #2:
+    PhysicalPlanFailCheck(catalog,
+                          "SELECT col1 from t1 HAVING SUM(col2) > 0;", kBatchMode, common::kPlanError,
+                          "Having clause can only be used in conjunction with aggregated query");
+    // ONLY_FULL_GROUP_BY Rule #3:
+    PhysicalPlanFailCheck(catalog, "SELECT SUM(col1) from t1 HAVING col2 > 0;", kBatchMode, common::kPlanError,
+                          "In aggregated query without GROUP BY, Having clause contains nonaggregated project 'col2 > "
+                          "0'; this is incompatible with sql_mode=only_full_group_by");
+    // ONLY_FULL_GROUP_BY Rule #4:
+    PhysicalPlanFailCheck(
+        catalog, "SELECT col1, SUM(col3) from t1 GROUP BY col2;", kBatchMode, common::kPlanError,
+        "Expression #0 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'db.t1.col1' which "
+        "is not "
+        "functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by");
+
+    // ONLY_FULL_GROUP_BY Rule #5:
+    PhysicalPlanFailCheck(
+        catalog, "SELECT col1, SUM(col3) from t1 GROUP BY col1 HAVING col2 > 0;", kBatchMode, common::kPlanError,
+        "Having clause is not in GROUP BY clause and contains nonaggregated column 'db.t1.col2' which is not "
+        "functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by");
+}
 
 TEST_F(TransformTest, TransfromConditionsTest) {
     std::vector<std::pair<std::string, std::vector<std::string>>> sql_exp;
@@ -854,7 +893,35 @@ class TransformPassOptimizedTest
     TransformPassOptimizedTest() {}
     ~TransformPassOptimizedTest() {}
 };
-
+INSTANTIATE_TEST_SUITE_P(
+    GroupHavingOptimized, TransformPassOptimizedTest,
+    testing::Values(
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1 HAVING sum(col2) > 100;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1), having_condition=sum(col2) > 100)\n"
+            "  DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2 HAVING sum(col2) > 100;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1,col2), having_condition=sum(col2) > 100)\n"
+            "  DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col6 HAVING sum(col2) > 100;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col6), having_condition=sum(col2) > 100)\n"
+            "  GROUP_BY(group_keys=(col6))\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col6, col2, col1 HAVING col1 > 0 AND col2 > 0;",
+            "PROJECT(type=GroupAggregation, group_keys=(col6,col2,col1), having_condition=col1 > 0 AND col2 > 0)\n"
+            "  GROUP_BY(group_keys=(col6))\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM (select c1 as col1, c2 as col2 , "
+            "c6 as col6 from tc) group by col6, col2, col1 HAVING col1 > 0;",
+            "PROJECT(type=GroupAggregation, group_keys=(col6,col2,col1), having_condition=col1 > 0)\n"
+            "  GROUP_BY(group_keys=(col6))\n"
+            "    SIMPLE_PROJECT(sources=(c1 -> col1, c2 -> col2, c6 -> col6))\n"
+            "      DATA_PROVIDER(type=Partition, table=tc, "
+            "index=index12_tc)")));
 INSTANTIATE_TEST_SUITE_P(
     GroupOptimized, TransformPassOptimizedTest,
     testing::Values(
@@ -1401,6 +1468,7 @@ TEST_P(SimpleCataLogTransformPassOptimizedTest, PassOptimizedTest) {
     auto in_out = GetParam();
     PhysicalPlanCheck(simple_catalog, in_out.first, in_out.second);
 }
+
 }  // namespace vm
 }  // namespace hybridse
 int main(int argc, char** argv) {

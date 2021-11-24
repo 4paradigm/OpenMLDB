@@ -341,15 +341,17 @@ Status PhysicalSimpleProjectNode::WithNewChildren(node::NodeManager* nm, const s
 Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
                                             PhysicalOpNode** out) {
     CHECK_TRUE(children.size() == 1, common::kPlanError);
-    passes::ExprReplacer replacer;
-    for (size_t i = 0; i < project_.size(); ++i) {
-        auto expr = project_.GetExpr(i);
-        CHECK_STATUS(
-            BuildColumnReplacement(expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
-    }
+    // Renew Expressions in SELECT list with new child's schema context
     ColumnProjects new_projects;
-    CHECK_STATUS(project_.ReplaceExpr(replacer, nm, &new_projects));
-
+    {
+        passes::ExprReplacer replacer;
+        for (size_t i = 0; i < project_.size(); ++i) {
+            auto expr = project_.GetExpr(i);
+            CHECK_STATUS(
+                BuildColumnReplacement(expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
+        }
+        CHECK_STATUS(project_.ReplaceExpr(replacer, nm, &new_projects));
+    }
     PhysicalProjectNode* op;
     switch (project_type_) {
         case kRowProject: {
@@ -361,7 +363,55 @@ Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::ve
             break;
         }
         case kAggregation: {
-            op = new PhysicalAggrerationNode(children[0], new_projects);
+            // Renew Having Condition
+            ConditionFilter new_having_condition;
+            {
+                auto& having_condition =
+                    dynamic_cast<PhysicalAggrerationNode*>(this)->having_condition_;
+                std::vector<const node::ExprNode*> having_condition_depend_columns;
+                having_condition.ResolvedRelatedColumns(&having_condition_depend_columns);
+                passes::ExprReplacer having_replacer;
+                for (auto col_expr : having_condition_depend_columns) {
+                    CHECK_STATUS(BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(),
+                                                        children[0]->schemas_ctx(), nm, &having_replacer));
+                }
+                CHECK_STATUS(having_condition.ReplaceExpr(having_replacer, nm, &new_having_condition));
+            }
+
+            op = new PhysicalAggrerationNode(children[0], new_projects, new_having_condition.condition());
+            break;
+        }
+        case kGroupAggregation: {
+            // Renew Having Condition
+            ConditionFilter new_having_condition;
+            {
+                auto& having_condition =
+                    dynamic_cast<PhysicalGroupAggrerationNode*>(this)->having_condition_;
+                std::vector<const node::ExprNode*> having_condition_depend_columns;
+                having_condition.ResolvedRelatedColumns(&having_condition_depend_columns);
+                passes::ExprReplacer having_replacer;
+                for (auto col_expr : having_condition_depend_columns) {
+                    CHECK_STATUS(BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(),
+                                                        children[0]->schemas_ctx(), nm, &having_replacer));
+                }
+                CHECK_STATUS(having_condition.ReplaceExpr(having_replacer, nm, &new_having_condition));
+            }
+
+            Key new_group;
+            // Renew Group Keys
+            {
+                auto& group = dynamic_cast<PhysicalGroupAggrerationNode*>(this)->group_;
+                std::vector<const node::ExprNode*> group_depend_columns;
+                group.ResolvedRelatedColumns(&group_depend_columns);
+                passes::ExprReplacer group_replacer;
+                for (auto col_expr : group_depend_columns) {
+                    CHECK_STATUS(BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(),
+                                                        children[0]->schemas_ctx(), nm, &group_replacer));
+                }
+                CHECK_STATUS(group.ReplaceExpr(group_replacer, nm, &new_group));
+            }
+            op = new PhysicalGroupAggrerationNode(
+                children[0], new_projects, new_having_condition.condition(), new_group.keys());
             break;
         }
         default:
@@ -448,37 +498,29 @@ PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(PhysicalO
     return dynamic_cast<PhysicalWindowAggrerationNode*>(node);
 }
 
-Status PhysicalGroupAggrerationNode::WithNewChildren(node::NodeManager* nm,
-                                                     const std::vector<PhysicalOpNode*>& children,
-                                                     PhysicalOpNode** out) {
-    CHECK_TRUE(children.size() == 1, common::kPlanError);
-    passes::ExprReplacer replacer;
-    for (size_t i = 0; i < project_.size(); ++i) {
-        auto expr = project_.GetExpr(i);
-        CHECK_STATUS(
-            BuildColumnReplacement(expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
-    }
-    ColumnProjects new_projects;
-    CHECK_STATUS(project_.ReplaceExpr(replacer, nm, &new_projects));
 
-    auto* op = new PhysicalGroupAggrerationNode(children[0], new_projects, group_.keys());
-
-    std::vector<const node::ExprNode*> group_depend_columns;
-    group_.ResolvedRelatedColumns(&group_depend_columns);
-    passes::ExprReplacer group_replacer;
-    for (auto col_expr : group_depend_columns) {
-        CHECK_STATUS(BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm,
-                                            &group_replacer));
+void PhysicalAggrerationNode::Print(std::ostream& output,
+                                         const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(type=" << ProjectTypeName(project_type_);
+    if (having_condition_.ValidCondition()) {
+        output << ", having_" << having_condition_.ToString();
     }
-    CHECK_STATUS(group_.ReplaceExpr(group_replacer, nm, &op->group_));
-    *out = nm->RegisterNode(op);
-    return Status::OK();
+    if (limit_cnt_ > 0) {
+        output << ", limit=" << limit_cnt_;
+    }
+    output << ")";
+    output << "\n";
+    PrintChildren(output, tab);
 }
-
-void PhysicalGroupAggrerationNode::Print(std::ostream& output, const std::string& tab) const {
+void PhysicalGroupAggrerationNode::Print(std::ostream& output,
+                                         const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_) << ", "
            << "group_" << group_.ToString();
+    if (having_condition_.ValidCondition()) {
+        output << ", having_" << having_condition_.ToString();
+    }
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }

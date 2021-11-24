@@ -278,13 +278,17 @@ void ProjectListNode::Print(std::ostream &output,
     if (nullptr == w_ptr_) {
         output << "\n";
         PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on table ", false);
+                        "projects on table ", nullptr == this->having_condition_);
+        if (nullptr != this->having_condition_) {
+            PrintSqlNode(output, org_tab + INDENT, having_condition_,
+                            "having condition: ", true);
+        }
     } else {
         output << "\n";
         PrintPlanNode(output, org_tab + INDENT, (w_ptr_), "", false);
         output << "\n";
         PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on window ", false);
+                        "projects on window ", true);
     }
 }
 
@@ -295,6 +299,10 @@ bool ProjectListNode::MergeProjectList(node::ProjectListNode *project_list1,
         nullptr == merged_project) {
         LOG(WARNING) << "can't merge project list: input projects or output "
                         "projects is null";
+        return false;
+    }
+    if (nullptr != project_list1->having_condition_ && nullptr != project_list2->having_condition_) {
+        LOG(WARNING) << "can't merge project list: input projects have having condition";
         return false;
     }
     auto iter1 = project_list1->GetProjects().cbegin();
@@ -343,6 +351,7 @@ bool ProjectListNode::Equals(const PlanNode *node) const {
 
     return this->has_row_project_ == that->has_row_project_ &&
            this->has_agg_project_ == that->has_agg_project_ &&
+           node::ExprEquals(this->having_condition_, that->having_condition_) &&
            node::PlanEquals(this->w_ptr_, that->w_ptr_) &&
            PlanListEquals(this->projects, that->projects) &&
            LeafPlanNode::Equals(node);
@@ -359,6 +368,9 @@ bool ProjectListNode::IsSimpleProjectList() {
         if (!node::ExprIsSimple(expr)) {
             return false;
         }
+    }
+    if (nullptr != having_condition_ && !node::ExprIsSimple(having_condition_)) {
+        return false;
     }
     return true;
 }

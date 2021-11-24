@@ -126,6 +126,8 @@ class BatchModeTransformer {
 
     Status GenJoin(Join* join, PhysicalOpNode* in);
     Status GenFilter(Filter* filter, PhysicalOpNode* in);
+    Status GenHavingFilter(ConditionFilter* filter,
+                              const SchemasContext* schemas_ctx);
     Status GenConditionFilter(ConditionFilter* filter,
                               const SchemasContext* schemas_ctx);
     Status GenKey(Key* hash, const SchemasContext* schemas_ctx);
@@ -148,6 +150,8 @@ class BatchModeTransformer {
                                                 PhysicalOpNode* in);
     Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
     Status ValidateNotAggregationOverTable(PhysicalOpNode* physical_plan);
+    Status ValidateOnlyFullGroupBy(const node::ProjectListNode* project_list, const node::ExprListNode* group_keys,
+                                   const SchemasContext* schemas_ctx);
     PhysicalPlanContext* GetPlanContext() { return &plan_ctx_; }
 
  protected:
@@ -190,7 +194,6 @@ class BatchModeTransformer {
                                         const node::ExprListNode* partition,
                                         const node::WindowPlanNode* window_plan,
                                         PhysicalRequestUnionNode** output);
-
     virtual Status CreatePhysicalProjectNode(
         const ProjectType project_type, PhysicalOpNode* node,
         node::ProjectListNode* project_list, bool append_input,

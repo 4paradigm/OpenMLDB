@@ -388,6 +388,7 @@ Status CommonColumnOptimize::ProcessSimpleProject(
 static Status CreateNewProject(PhysicalPlanContext* ctx, ProjectType ptype,
                                PhysicalOpNode* input,
                                const ColumnProjects& projects,
+                               const node::ExprNode* having_condition,
                                PhysicalOpNode** out) {
     switch (ptype) {
         case ProjectType::kRowProject: {
@@ -407,7 +408,7 @@ static Status CreateNewProject(PhysicalPlanContext* ctx, ProjectType ptype,
         case ProjectType::kAggregation: {
             PhysicalAggrerationNode* op = nullptr;
             CHECK_STATUS(
-                ctx->CreateOp<PhysicalAggrerationNode>(&op, input, projects));
+                ctx->CreateOp<PhysicalAggrerationNode>(&op, input, projects, having_condition));
             *out = op;
             break;
         }
@@ -481,6 +482,29 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
         new_input = input_state->non_common_op;
     }
 
+    // Renew having condition if necessary
+    node::ExprNode* new_having_condition = nullptr;
+//    const node::ExprNode* having_condition = project_op->having_condition_.condition();
+    vm::ConditionFilter having_condition;
+    if (project_op->project_type_ == vm::kAggregation) {
+        having_condition = dynamic_cast<vm::PhysicalAggrerationNode*>(project_op)->having_condition_;
+    } else if (project_op->project_type_ == vm::kGroupAggregation) {
+        having_condition = dynamic_cast<vm::PhysicalGroupAggrerationNode*>(project_op)->having_condition_;
+    }
+    if (having_condition.ValidCondition()) {
+        bool need_update =
+            !ExprDependOnlyOnLeft(having_condition.condition(), new_input, nullptr);
+        auto origin_having_condition = having_condition.condition()->ShadowCopy(ctx->node_manager());
+        if (need_update) {
+            passes::ExprReplacer replacer;
+            CHECK_STATUS(BuildColumnReplacement(having_condition.condition(), new_input->schemas_ctx(),
+                                                new_input->schemas_ctx(), ctx->node_manager(), &replacer));
+            CHECK_STATUS(replacer.Replace(origin_having_condition, &new_having_condition));
+        } else {
+            new_having_condition = origin_having_condition;
+        }
+    }
+
     // create two new project ops
     if (common_projects.size() == origin_projects.size() &&
         input_state->common_op == input_op) {
@@ -489,6 +513,7 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
         PhysicalOpNode* common_project_op = nullptr;
         CHECK_STATUS(CreateNewProject(ctx, project_op->project_type_,
                                       input_state->common_op, common_projects,
+                                      new_having_condition,
                                       &common_project_op));
         state->common_op = common_project_op;
     } else {
@@ -502,6 +527,7 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
         PhysicalOpNode* non_common_project_op = nullptr;
         CHECK_STATUS(CreateNewProject(ctx, project_op->project_type_, new_input,
                                       non_common_projects,
+                                      new_having_condition,
                                       &non_common_project_op));
         state->non_common_op = non_common_project_op;
     } else {
@@ -748,6 +774,22 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
         }
     }
 
+    // Renew having condition if necessary
+    node::ExprNode* new_having_condition = nullptr;
+    if (agg_op->having_condition_.ValidCondition()) {
+        const node::ExprNode* having_condition = agg_op->having_condition_.condition();
+        bool need_update =
+            !ExprDependOnlyOnLeft(having_condition, agg_request_concat, nullptr);
+        auto origin_having_condition = having_condition->ShadowCopy(ctx->node_manager());
+        if (need_update) {
+            passes::ExprReplacer replacer;
+            CHECK_STATUS(BuildColumnReplacement(having_condition, agg_request_concat->schemas_ctx(),
+                                                agg_request_concat->schemas_ctx(), ctx->node_manager(), &replacer));
+            CHECK_STATUS(replacer.Replace(origin_having_condition, &new_having_condition));
+        } else {
+            new_having_condition = origin_having_condition;
+        }
+    }
     // create two new project ops
     if (common_projects.size() == origin_projects.size() &&
         new_union == agg_op->GetProducer(0)) {
@@ -755,7 +797,7 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
     } else if (common_projects.size() > 0) {
         PhysicalAggrerationNode* common_project_op = nullptr;
         CHECK_STATUS(ctx->CreateOp<PhysicalAggrerationNode>(
-            &common_project_op, new_union, common_projects));
+            &common_project_op, new_union, common_projects, new_having_condition));
         state->common_op = common_project_op;
     } else {
         state->common_op = nullptr;
@@ -767,7 +809,7 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
     } else if (non_common_projects.size() > 0) {
         PhysicalAggrerationNode* non_common_project_op = nullptr;
         CHECK_STATUS(ctx->CreateOp<PhysicalAggrerationNode>(
-            &non_common_project_op, new_union, non_common_projects));
+            &non_common_project_op, new_union, non_common_projects, new_having_condition));
         state->non_common_op = non_common_project_op;
     } else {
         state->non_common_op = nullptr;

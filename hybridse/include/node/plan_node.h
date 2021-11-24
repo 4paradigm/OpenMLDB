@@ -287,9 +287,19 @@ class WindowPlanNode : public LeafPlanNode {
 class ProjectListNode : public LeafPlanNode {
  public:
     ProjectListNode()
-        : LeafPlanNode(kProjectList), has_row_project_(false), has_agg_project_(false), w_ptr_(nullptr), projects({}) {}
-    ProjectListNode(const WindowPlanNode *w_ptr, const bool is_agg)
-        : LeafPlanNode(kProjectList), has_row_project_(false), has_agg_project_(false), w_ptr_(w_ptr), projects({}) {}
+        : LeafPlanNode(kProjectList),
+          has_row_project_(false),
+          has_agg_project_(false),
+          w_ptr_(nullptr),
+          having_condition_(nullptr),
+          projects({}) {}
+    ProjectListNode(const WindowPlanNode *w_ptr, const bool has_agg)
+        : LeafPlanNode(kProjectList),
+          has_row_project_(false),
+          has_agg_project_(has_agg),
+          w_ptr_(w_ptr),
+          having_condition_(nullptr),
+          projects({}) {}
     ~ProjectListNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -302,8 +312,11 @@ class ProjectListNode : public LeafPlanNode {
             has_row_project_ = true;
         }
     }
-
     const WindowPlanNode *GetW() const { return w_ptr_; }
+    const ExprNode* GetHavingCondition() const { return having_condition_;}
+    void SetHavingCondition(const node::ExprNode* having_condition) {
+        this->having_condition_ = having_condition;
+    }
     const bool HasRowProject() const { return has_row_project_; }
     const bool HasAggProject() const { return has_agg_project_; }
     const bool IsWindowProject() const { return nullptr != w_ptr_; }
@@ -318,6 +331,7 @@ class ProjectListNode : public LeafPlanNode {
     bool IsSimpleProjectList();
 
  private:
+    const ExprNode* having_condition_;
     PlanNodeList projects;
 };
 

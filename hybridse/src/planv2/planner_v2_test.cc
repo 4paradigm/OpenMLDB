@@ -1799,14 +1799,28 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
     auto expect_converted = [&](const std::string &sql, const int code, const std::string &msg) {
       base::Status status;
       node::PlanNodeList plan_trees;
-      ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true));
+      ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true)) << status;
       ASSERT_EQ(code, status.code) << status;
       ASSERT_EQ(msg, status.msg) << status;
       std::cout << msg << std::endl;
     };
 
-    expect_converted("SELECT COL1, COL2, SUM(COL3) from t1;", common::kPlanError,
-                     "Can't support table aggregation project and table row project simultaneously");
+
+    // Rule #1
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) over w1 from t1 GROUP BY COL1
+        WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
+        )",
+        common::kPlanError, "Can't support group clause and window clause simultaneously");
+    // Rule #2
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) over w1 from t1 HAVING SUM(COL2) >0
+        WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
+        )",
+        common::kPlanError, "Can't support having clause and window clause simultaneously");
+    // Rule #3
     expect_converted(
         R"(
         SELECT SUM(COL2) over w1,  SUM(COL3) from t1

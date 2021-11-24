@@ -15,12 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -eE
-VERSION=0.3.0
+set -eE -x
+VERSION="$1"
+if [[ -z ${VERSION} ]]; then
+    VERSION=0.3.0
+fi
+echo "version: ${VERSION}"
 
 curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
-curl -SLo openmldb.tar.gz https://github.com/4paradigm/OpenMLDB/releases/download/v$VERSION/openmldb-$VERSION-linux.tar.gz
-curl -SLo spark-3.0.0-bin-openmldbspark.tgz https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.2.3/spark-3.0.0-bin-openmldbspark.tgz
+curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux.tar.gz"
+curl -SLo spark-3.0.0-bin-openmldbspark.tgz "https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb${VERSION}/spark-3.0.0-bin-openmldbspark.tgz"
 
 WORKDIR=/work
 
@@ -31,10 +35,10 @@ pushd $WORKDIR/zookeeper-3.4.14/
 mv conf/zoo_sample.cfg conf/zoo.cfg
 popd
 
-mkdir -p $WORKDIR/openmldb
-tar xzf openmldb.tar.gz -C "$WORKDIR/openmldb" --strip-components 1
+mkdir -p "${WORKDIR}/openmldb"
+tar xzf openmldb.tar.gz -C "${WORKDIR}/openmldb" --strip-components 1
 # remove symbols and sections
-strip -s $WORKDIR/openmldb/bin/openmldb
+strip -s "${WORKDIR}/openmldb/bin/openmldb"
 
 tar xzf spark-3.0.0-bin-openmldbspark.tgz
 pushd spark-3.0.0-bin-openmldbspark/python/

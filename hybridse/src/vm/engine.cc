@@ -499,8 +499,8 @@ int32_t BatchRunSession::Run(const Row& parameter_row, std::vector<Row>& rows, u
     RunnerContext ctx(&sql_ctx.cluster_job, parameter_row, is_debug_);
     auto output = sql_ctx.cluster_job.GetTask(0).GetRoot()->RunWithCache(ctx);
     if (!output) {
-        LOG(WARNING) << "Run batch plan output is null";
-        return -1;
+        DLOG(INFO) << "Run batch plan output is empty";
+        return 0;
     }
     switch (output->GetHanlderType()) {
         case kTableHandler: {
