@@ -13,7 +13,7 @@ enum JobType {
 
 public class JobInfo {
 
-    public static String[] FINAL_State = new String[] {"finished", "failed", "killed", "lost"};
+    public static String[] FINAL_STATE = new String[] {"finished", "failed", "killed", "lost"};
 
     private int id;
     private String jobType;
@@ -111,7 +111,7 @@ public class JobInfo {
     }
 
     public boolean isFinished() {
-        return Arrays.asList(FINAL_State).contains(state.toLowerCase());
+        return Arrays.asList(FINAL_STATE).contains(state.toLowerCase());
     }
 
     public void sync() {
