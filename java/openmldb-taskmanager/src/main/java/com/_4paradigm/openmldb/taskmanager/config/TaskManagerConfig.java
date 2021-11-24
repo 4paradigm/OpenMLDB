@@ -30,11 +30,12 @@ public class TaskManagerConfig {
     public static String SPARK_MASTER;
     public static String BATCHJOB_JAR_PATH;
     public static String SPARK_YARN_JARS;
+    public static String SPARK_HOME;
 
     static {
         try {
             Properties prop = new Properties();
-            prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("openmldb-taskmanager.properties"));
+            prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
             HOST = prop.getProperty("server.host", "127.0.0.1");
             PORT = Integer.parseInt(prop.getProperty("server.port", "9902"));
             WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "4"));
@@ -46,6 +47,7 @@ public class TaskManagerConfig {
             SPARK_MASTER = prop.getProperty("spark.master", "yarn");
             BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
+            SPARK_HOME = prop.getProperty("spark.home");
         } catch (Exception e) {
             e.printStackTrace();
         }

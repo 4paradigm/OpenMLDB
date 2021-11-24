@@ -15,15 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -eE
+set -eE -x
+VERSION="$1"
+if [[ -z ${VERSION} ]]; then
+    VERSION=0.3.0
+fi
+echo "version: ${VERSION}"
 
 curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
-if [[ $OSTYPE = 'linux-gnu' && $(arch) = 'aarch64' ]]; then
-    curl -SLo openmldb.tar.gz https://github.com/4paradigm/OpenMLDB/releases/download/v0.2.0/openmldb-0.2.0-210802-linux-gnu-aarch64.tar.gz
-    curl -SLo _sql_router_sdk.so https://github.com/4paradigm/OpenMLDB/releases/download/v0.2.0/_sql_router_sdk_210802_aarch64.so
-else
-    curl -SLo openmldb.tar.gz https://github.com/4paradigm/OpenMLDB/releases/download/v0.2.0/openmldb-0.2.0-linux.tar.gz
-fi
+curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux.tar.gz"
+curl -SLo spark-3.0.0-bin-openmldbspark.tgz "https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb${VERSION}/spark-3.0.0-bin-openmldbspark.tgz"
 
 WORKDIR=/work
 
@@ -34,19 +35,16 @@ pushd $WORKDIR/zookeeper-3.4.14/
 mv conf/zoo_sample.cfg conf/zoo.cfg
 popd
 
-mkdir -p $WORKDIR/openmldb
-tar xzf openmldb.tar.gz -C "$WORKDIR/openmldb" --strip-components 1
+mkdir -p "${WORKDIR}/openmldb"
+tar xzf openmldb.tar.gz -C "${WORKDIR}/openmldb" --strip-components 1
+# remove symbols and sections
+strip -s "${WORKDIR}/openmldb/bin/openmldb"
 
-pushd $WORKDIR/openmldb/batch
-tar xzf spark-3.0.0-bin-openmldb.tar.gz
-rm -f spark-3.0.0-bin-openmldb.tar.gz
-pushd spark-3.0.0-bin-openmldb/python/
+tar xzf spark-3.0.0-bin-openmldbspark.tgz
+pushd spark-3.0.0-bin-openmldbspark/python/
 python3 setup.py install
 popd
-popd
-
-if [[ $OSTYPE = 'linux-gnu' && $(arch) = 'aarch64' ]]; then
-    mv _sql_router_sdk.so /usr/local/lib/python3.8/site-packages/sqlalchemy_openmldb/openmldbapi/_sql_router_sdk.so
-fi
 
 rm -f ./*.tar.gz
+rm -f ./*.tgz
+rm -rf ./spark-3.0.0-bin-openmldbspark

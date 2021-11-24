@@ -453,6 +453,7 @@ cases:
   -
     id: 16
     desc: pk包含空串
+    mode: cli-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -488,6 +489,7 @@ cases:
   -
     id: 17
     desc: pk包含空串和null
+    mode: cli-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

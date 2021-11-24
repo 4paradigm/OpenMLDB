@@ -352,6 +352,34 @@ inline const std::string DataTypeName(const DataType &type) {
     return "";
 }
 
+inline const std::string TypeName(type::Type type) {
+    switch (type) {
+        case type::kInt16:
+            return "smallint";
+        case type::kInt32:
+            return "int";
+        case type::kInt64:
+            return "bigint";
+        case type::kFloat:
+            return "float";
+        case type::kDouble:
+            return "double";
+        case type::kVarchar:
+            return "string";
+        case type::kTimestamp:
+            return "timestamp";
+        case type::kDate:
+            return "date";
+        case type::kBool:
+            return "bool";
+        case type::kBlob:
+            return "blob";
+        case type::kNull:
+            return "null";
+    }
+    return "unknown";
+}
+
 /**
  * Convert string to corresponding DataType. e.g. "i32" => kInt32
  *
@@ -2594,7 +2622,7 @@ bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
 bool TypeEquals(const TypeNode *left, const TypeNode *right);
 bool WindowOfExpression(const std::map<std::string, const WindowDefNode *>& windows, ExprNode *node_ptr,
                         const WindowDefNode **output);
-bool IsAggregationExpression(const udf::UdfLibrary* lib, ExprNode* node_ptr);
+bool IsAggregationExpression(const udf::UdfLibrary* lib, const node::ExprNode* node_ptr);
 void ColumnOfExpression(const ExprNode *node_ptr,
                         std::vector<const node::ExprNode *> *columns);  // NOLINT
 void FillSqlNodeList2NodeVector(SqlNodeList *node_list_ptr,

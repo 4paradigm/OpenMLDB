@@ -108,7 +108,7 @@ cases:
       success: false
   - id: 2-2
     desc: Where条件未命中索引-离线支持
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport,cli-unsupport
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=5 and col1 < 2;
@@ -145,7 +145,7 @@ cases:
       success: false
   - id: 3-2
     desc: Where条件未命中索引示例2
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport,cli-unsupport
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col1=col5 and col1 > 1;

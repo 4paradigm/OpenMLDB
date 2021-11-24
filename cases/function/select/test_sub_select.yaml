@@ -19,6 +19,7 @@ cases:
     id: 0
     desc: 正常使用子查询
     sqlDialect: ["HybridSQL","SQLITE3"]
+    mode: cli-unsupport
     tags: ["mysql要求派生表必须有别名"]
     inputs:
       -
@@ -79,6 +80,7 @@ cases:
   -
     id: 3
     desc: 子查询中有空串
+    mode: cli-unsupport
     sqlDialect: ["HybridSQL","SQLITE3"]
     inputs:
       -
@@ -156,15 +158,15 @@ cases:
       card_no,
       trx_time,
       substr(card_no, 1, 6) as card_no_prefix,
-      sum(trx_amt) over w30d,
-      count(merchant_id) over w10d
+      sum(trx_amt) over w30d as sum_trx_amt,
+      count(merchant_id) over w10d as count_merchant_id
       from  {0}
       window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
       w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
       last join {1} order by {1}.crd_lst_isu_dte on trx_fe.card_no = {1}.crd_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte;
     expect:
       columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string",
-                "sum(trx_amt)over w30d float", "count(merchant_id)over w10d int64", "crd_lst_isu_dte timestamp",
+                "sum_trx_amt float", "count_merchant_id int64", "crd_lst_isu_dte timestamp",
                 "crd_nbr string"]
       order: id
       rows:
@@ -175,7 +177,7 @@ cases:
     id: 7
     desc: window样本表和副表都作子查询
     sqlDialect: ["HybridSQL"]
-    mode: rtidb-batch-unsupport, python-unsupport, cluster-unsupport
+    mode: rtidb-batch-unsupport, python-unsupport, cluster-unsupport,cli-unsupport
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
@@ -256,7 +258,7 @@ cases:
   -
     id: 9
     desc: 特征拼接
-    mode: rtidb-batch-unsupport, offline-unsupport, python-unsupport
+    mode: rtidb-batch-unsupport, offline-unsupport, python-unsupport,cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-debugs:
+debugs: []
 cases:
   - id: 0
     desc: select const number
@@ -52,12 +52,12 @@ cases:
     mode: request-unsupport
     db: db1
     sql: |
-      select 1 as id, substring("hello world", 3) as col1;
+      select 1 as id, substring("hello_world", 3) as col1;
     expect:
       schema: id:int32, col1:string
       order: id
       rows:
-        - [1, "llo world"]
+        - [1, "llo_world"]
   - id: 4
     desc: const concat 1
     mode: request-unsupport

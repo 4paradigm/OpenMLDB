@@ -221,6 +221,7 @@ cases:
   - id: 8
     desc: IFNULL
     sqlDialect: ["HybridSQL"]
+    mode: cli-unsupport
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
         indexs: ["index1:col1:col4"]
@@ -285,6 +286,7 @@ cases:
     expect:
       success: false
   - id: 11-2
+    mode: cli-unsupport
     desc: NVL is synonyms to ifnull
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
