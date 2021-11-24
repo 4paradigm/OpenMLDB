@@ -138,7 +138,7 @@ hybridse-configure: thirdparty
 hybridse-coverage: hybridse-coverage-configure
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
-	@cd java && mvn prepare-package
+	cd hybridse/java && mvn prepare-package
 
 hybridse-coverage-configure:
 	$(MAKE) hybridse-configure CMAKE_BUILD_TYPE=Debug COVERAGE_ENABLE=ON
