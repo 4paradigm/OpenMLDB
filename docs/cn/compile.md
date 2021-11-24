@@ -14,17 +14,41 @@
     ```
     docker run -v `pwd`:/OpenMLDB -it ghcr.io/4paradigm/hybridsql:0.4.0 bash
     ```
-4. 下载依赖包并初始化环境(只需要初始化一次)
+4. 编译OpenMLDB
     ```
-    cd /OpenMLDB
-    bash steps/init_env.sh  
-    ``` 
-5. 编译OpenMLDB
+    make
     ```
-    mkdir build && cd build
-    cmake ..
-    make -j5 openmldb
-    ```
+
+## make 额外参数
+
+控制 `make` 的行为. 例如，将默认编译模式改成 Debug:
+
+```bash
+make CMAKE_BUILD_TYPE=Debug
+```
+
+- CMAKE_BUILD_TYPE
+
+  Default: RelWithDebInfo
+
+- SQL_PYSDK_ENABLE
+
+  enable build python sdk
+
+  Default: OFF
+
+- SQL_JAVASDK_ENABLE
+
+  enable build java sdk
+
+  Default: OFF
+
+- TESTING_ENABLE
+
+  enable build test targets
+
+  Default: OFF
+
 
 ## 针对OpenMLDB优化的Spark发行版（可选）
 

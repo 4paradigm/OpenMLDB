@@ -116,7 +116,6 @@ if(SQL_PYSDK_ENABLE)
 endif()
 
 if(SQL_JAVASDK_ENABLE)
-    set(JAVA_HOME ${PROJECT_SOURCE_DIR}/thirdparty/jdk1.8.0_141)
     set_property(SOURCE sql_router_sdk.i PROPERTY CPLUSPLUS ON)
     find_package(Java COMPONENTS Development REQUIRED)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
@@ -149,7 +148,7 @@ if(SQL_JAVASDK_ENABLE)
       DEPENDS
         sql_jsdk
         cp_sql_resource
-        COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
+        COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true ${MAVEN_FLAGS}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
     )
 endif()

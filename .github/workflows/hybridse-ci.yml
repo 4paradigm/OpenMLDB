@@ -13,10 +13,6 @@ on:
       - hybridse/**/*
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: hybridse
-
 env:
   HYBRIDSE_PATH: hybridse
 
@@ -51,11 +47,11 @@ jobs:
 
       - name: Build Core
         run: |
-          ./tools/hybridse_build.sh
+          make hybridse-build
 
       - name: Core Test
         run: |
-          ./tools/hybridse_core_test.sh
+          make hybridse-test
 
       - name: Upload Cpp UT Results
         if: always()
@@ -66,8 +62,8 @@ jobs:
             ${{ env.HYBRIDSE_PATH }}/build/*.xml
 
       - name: Java SDK Test
+        working-directory: ${{ env.HYBRIDSE_PATH }}/java
         run: |
-          cd java/
           mvn -U clean compile test
 
       - name: Upload Java UT Results
@@ -90,7 +86,7 @@ jobs:
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=$(echo $VERSION | sed -e 's/^hybridse-v//')
-          ./java/prepare_release.sh $VERSION
+          .${{ env.HYBRIDSE_PATH }}/java/prepare_release.sh $VERSION
 
       - name: Publish Java Library
         if: ${{ github.event_name == 'push' }}
@@ -153,11 +149,11 @@ jobs:
 
       - name: Build Core
         run: |
-          ./tools/hybridse_build.sh
+          make hybridse-build
 
       - name: Core Test
         run: |
-          ./tools/hybridse_core_test.sh
+          make hybridse-test
 
       - name: Upload Cpp UT Results
         if: always()
@@ -168,8 +164,8 @@ jobs:
             ${{ env.HYBRIDSE_PATH }}/build/*.xml
 
       - name: Java SDK Test
+        working-directory: ${{ env.HYBRIDSE_PATH }}/java
         run: |
-          cd java/
           mvn -U clean compile test
 
       - name: Upload Java UT Results
@@ -192,7 +188,7 @@ jobs:
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=$(echo $VERSION | sed -e 's/^hybridse-v//')
-          ./java/prepare_release.sh $VERSION
+          ./${{ env.HYBRIDSE_PATH }}/java/prepare_release.sh $VERSION
 
       - name: Publish Java Library
         if: ${{ github.event_name == 'push' }}
@@ -260,18 +256,18 @@ jobs:
 
       - name: Build Core
         run: |
-          ./tools/hybridse_build_jsdk.sh
+          make hybridse-build
 
       - name: Copy Dylib
         run: |
-          cp libhybridse_*.dylib java/hybridse-native/src/main/resources/
+          cp libhybridse_*.dylib ${{ env.HYBRIDSE_PATH }}/java/hybridse-native/src/main/resources/
 
       - name: Prepare Maven Release Deploy
         if: startsWith(github.ref, 'refs/tags/hybridse-v')
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=$(echo $VERSION | sed -e 's/^hybridse-v//')
-          ./java/prepare_release.sh $VERSION
+          .${{ env.HYBRIDSE_PATH }}/java/prepare_release.sh $VERSION
 
       - name: Publish Java Library
         working-directory: ${{ env.HYBRIDSE_PATH }}/java
@@ -343,7 +339,7 @@ jobs:
 
       - name: Build and Coverage
         run: |
-          ./tools/compile_and_coverage.sh
+          make coverage
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v2
