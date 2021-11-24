@@ -121,7 +121,7 @@ using hybridse::node::PlanType;
 using hybridse::codec::WindowIterator;
 using hybridse::node::DataType;
 %}
-%template(OptionsList) std::vector<std::pair<std::string, const hybridse::node::ConstNode*>>;
+
 %rename(BaseStatus) hybridse::base::Status;
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;
