@@ -61,6 +61,7 @@ using hybridse::sqlcase::SqlCase;
 const std::vector<std::string> FILTERS({"physical-plan-unsupport",
                                         "zetasql-unsupport",
                                         "logical-plan-unsupport",
+                                        "batch-unsupport",
                                         "parser-unsupport"});
 
 class TransformTest : public ::testing::TestWithParam<SqlCase> {

@@ -208,7 +208,7 @@ Status SchemasContext::ResolveColumnIndexByName(
         CHECK_TRUE(iter != column_name_map_.end(), kColumnNotFound,
                    "Fail to find column `", column_name, "`");
         if (iter->second.size() > 1) {
-            CHECK_TRUE(!IsColumnAmbiguous(column_name), kColumnNotFound,
+            CHECK_TRUE(!IsColumnAmbiguous(column_name), common::kColumnAmbiguous,
                        "Ambiguous column name ", column_name);
         }
         auto pair = iter->second[0];
@@ -235,7 +235,7 @@ Status SchemasContext::ResolveColumnIndexByName(
                     cur_col_idx = pair.second;
                     cur_schema_idx = pair.first;
                 } else {
-                    CHECK_TRUE(cur_column_id == source->GetColumnID(pair.second), kColumnNotFound,
+                    CHECK_TRUE(cur_column_id == source->GetColumnID(pair.second), common::kColumnAmbiguous,
                                "Ambiguous column name ", db_name, ".", relation_name, ".", column_name);
                 }
             }
@@ -557,8 +557,8 @@ Status SchemasContext::ResolveColumnID(
         if (iter != column_name_map_.end()) {
             // exit if find ambiguous match
             if (iter->second.size() > 1) {
-                CHECK_TRUE(!IsColumnAmbiguous(column_name), kColumnNotFound,
-                           "Ambiguous column name ", relation_name, ".",
+                CHECK_TRUE(!IsColumnAmbiguous(column_name), common::kColumnAmbiguous,
+                           "Ambiguous column name ", db_name, ".", relation_name, ".",
                            column_name);
             }
 
@@ -616,7 +616,11 @@ Status SchemasContext::ResolveColumnID(
             relation_name, column_name, &cur_child_column_id,
             &sub_child_path_idx, &sub_child_column_id, &sub_source_column_id,
             &sub_source_node);
+
         if (!status.isOK()) {
+            if (common::kColumnAmbiguous == status.code) {
+                CHECK_STATUS(status);
+            }
             continue;
         }
 
@@ -641,7 +645,7 @@ Status SchemasContext::ResolveColumnID(
 
         // check if candidate is ambiguous
         if (found) {
-            CHECK_TRUE(*column_id == cand_column_id, kColumnNotFound,
+            CHECK_TRUE(*column_id == cand_column_id, common::kColumnAmbiguous,
                        "Ambiguous column ", db_name, ".", relation_name, ".", column_name,
                        ": #", *column_id, " and #", cand_column_id);
         } else {

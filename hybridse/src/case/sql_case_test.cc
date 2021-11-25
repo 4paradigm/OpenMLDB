@@ -989,6 +989,8 @@ TEST_F(SqlCaseTest, ExtractYamlSqlCase2) {
         ASSERT_TRUE(sql_case.expect().columns_.empty());
         ASSERT_TRUE(sql_case.expect().rows_.empty());
         ASSERT_FALSE(sql_case.expect().success_);
+        ASSERT_EQ(1000, sql_case.expect().code_);
+        ASSERT_EQ("unknow error", sql_case.expect().msg_);
     }
     {
         SqlCase& sql_case = cases[3];
