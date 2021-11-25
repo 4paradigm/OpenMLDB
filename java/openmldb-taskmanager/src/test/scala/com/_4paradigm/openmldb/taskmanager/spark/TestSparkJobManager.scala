@@ -38,7 +38,7 @@ class TestSparkJobManager extends FunSuite {
     val jobType = "DummySparkApp"
     val sparkConf = Map(SparkLauncher.DRIVER_EXTRA_CLASSPATH -> System.getProperty("java.class.path"))
 
-    SparkJobManager.submitSparkJob(jobType, mainClass, null, sparkConf)
+    SparkJobManager.submitSparkJob(jobType, mainClass, List[String](), sparkConf)
 
     JobInfoManager.getAllJobs().map(println)
     Thread.sleep(5000)

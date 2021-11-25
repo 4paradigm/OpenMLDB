@@ -62,7 +62,7 @@ object SparkJobManager {
   def submitSparkJob(jobType: String, mainClass: String, args: List[String] = List(),
                      sparkConf: Map[String, String] = Map()): JobInfo = {
 
-    val jobInfo = JobInfoManager.createJobInfo(jobType)
+    val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
 
     // Submit Spark application with SparkLauncher
     val launcher = createSparkLauncher(mainClass)
