@@ -173,7 +173,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     }
 
     if (node.GetNodeId() == destNodeId) {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.DestNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), NodeIndexInfo(indexColumnName, NodeIndexType.DestNode))
       // Return if handle the dest node
       return
     }
@@ -181,10 +181,10 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     // Check if it is concat join node
     if (node.GetOpType() == PhysicalOpType.kPhysicalOpJoin
       && PhysicalJoinNode.CastFrom(node).join().join_type() == JoinType.kJoinTypeConcat) {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalConcatJoinNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), NodeIndexInfo(indexColumnName, NodeIndexType.InternalConcatJoinNode))
       processedConcatJoinNodeIds.add(node.GetNodeId())
     } else {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalComputeNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), NodeIndexInfo(indexColumnName, NodeIndexType.InternalComputeNode))
       processedConcatJoinNodeIds.add(node.GetNodeId())
     }
 
@@ -301,13 +301,13 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
 
     if (config.enableWindowParallelization) {
       logger.info("Enable window parallelization optimization")
-      engineOptions.set_enable_batch_window_parallelization(true)
+      engineOptions.SetEnableBatchWindowParallelization(true)
     } else {
       logger.info("Disable window parallelization optimization, enable by setting openmldb.window.parallelization")
     }
 
     if (config.enableUnsafeRowOptimization) {
-      engineOptions.set_enable_spark_unsaferow_format(true)
+      engineOptions.SetEnableSparkUnsaferowFormat(true)
     }
 
     try {

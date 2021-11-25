@@ -39,7 +39,7 @@
 		<spark.version>3.0.0</spark.version>
 		<spark.dependencyScope>provided</spark.dependencyScope>
 		<default.project.version>0.3.0</default.project.version>
-		<default.hybridse.sdk.version>0.3.0</default.hybridse.sdk.version>
+		<default.hybridse.sdk.version>0.4.0</default.hybridse.sdk.version>
 	</properties>
 
 	<profiles>
@@ -50,21 +50,21 @@
 			</activation>
 			<properties>
 				<revision>${default.project.version}-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}</hybridseCommonVersionFromProfile>
+				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-SNAPSHOT</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>macos</id>
 			<properties>
 				<revision>${default.project.version}-macos-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-macos</hybridseCommonVersionFromProfile>
+				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-macos-SNAPSHOT</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>allinone</id>
 			<properties>
 				<revision>${default.project.version}-allinone-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-allinone</hybridseCommonVersionFromProfile>
+				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-allinone-SNAPSHOT</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 	</profiles>
