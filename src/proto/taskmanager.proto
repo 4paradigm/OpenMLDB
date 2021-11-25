@@ -8,38 +8,93 @@ option java_package = "com._4paradigm.openmldb.proto";
 option java_outer_classname = "TaskManager";
 option cc_generic_services = true;
 
+message JobInfo {
+    required int32 id = 1;
+    optional string job_type = 2;
+    optional string state = 3;
+    optional int64 start_time = 4;
+    optional int64 end_time = 5;
+    optional string parameter = 6;
+    optional string cluster = 7;
+    optional string application_id = 8;
+    optional string error = 9;
+    optional string tracking_url = 10;
+    optional float progress = 11;
+}
+
+message ShowJobsRequest {
+    optional bool unfinished = 1 [default = false];
+};
+
+message ShowJobsResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    repeated JobInfo jobs = 3;
+}
+
+message ShowJobRequest {
+    required int32 id = 1;
+};
+
+message ShowJobResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    optional JobInfo job = 3;
+};
+
+message StopJobRequest {
+    required int32 id = 1;
+};
+
+message StopJobResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    optional JobInfo job = 3;
+};
+
+message DeleteJobRequest {
+    required int32 id = 1;
+};
+
+message DeleteJobResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+};
+
+message ShowBatchVersionRequest {};
 
 message RunBatchSqlRequest {
     required string sql = 1;
-    optional string db_name = 2;
-    optional string output_table_name = 3;
+    required string output_path = 2;
+    map<string, string> conf = 3;
 };
 
-message YarnJobResponse {
-    required int32 code = 1;
-    optional string msg = 2;
-    optional string app_id = 3;
+message RunBatchAndShowRequest {
+    required string sql = 1;
+    map<string, string> conf = 2;
 };
 
-message ImportHdfsFileRequest {
-    optional string file_type = 1;
-    required string file_path = 2;
-    optional string db_name = 3;
-    optional string output_table_name = 4;
+message ImportOnlineDataRequest {
+    required string sql = 1;
+    map<string, string> conf = 2;
 };
 
-message GetYarnJobStateRequest {
-    required string job_id = 1;
-};
-
-message YarnJobStateResponse {
-    required int32 code = 1;
-    optional string msg = 2;
-    optional string state = 3;
+message ImportOfflineDataRequest {
+    required string sql = 1;
+    map<string, string> conf = 2;
 };
 
 service TaskManagerServer {
-    rpc RunBatchSql(RunBatchSqlRequest) returns (YarnJobResponse);
-    rpc ImportHdfsFile(ImportHdfsFileRequest) returns (YarnJobResponse);
-    rpc GetYarnJobState(GetYarnJobStateRequest) returns (YarnJobStateResponse);
+    // Job management
+    rpc ShowJobs(ShowJobsRequest) returns (ShowJobsResponse);
+    rpc ShowJob(ShowJobRequest) returns (ShowJobResponse);
+    rpc StopJob(StopJobRequest) returns (StopJobResponse);
+    rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse);
+
+    // Spark jobs
+    rpc ShowBatchVersion(ShowBatchVersionRequest) returns (ShowJobResponse);
+    rpc RunBatchSql(RunBatchSqlRequest) returns (ShowJobResponse);
+    rpc RunBatchAndShow(RunBatchAndShowRequest) returns (ShowJobResponse);
+    rpc ImportOnlineData(ImportOnlineDataRequest) returns (ShowJobResponse);
+    rpc ImportOfflineData(ImportOfflineDataRequest) returns (ShowJobResponse);
 };

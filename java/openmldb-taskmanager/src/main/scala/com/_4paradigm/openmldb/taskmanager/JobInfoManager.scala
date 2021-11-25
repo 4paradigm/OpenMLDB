@@ -20,6 +20,7 @@ import com._4paradigm.openmldb.sdk.SdkOption
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
+import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 
 import java.sql.{PreparedStatement, ResultSet, SQLException, Timestamp}
 import java.util.Calendar
@@ -76,6 +77,23 @@ object JobInfoManager {
     val sql = s"SELECT * FROM $tableName WHERE state NOT IN (${JobInfo.FINAL_STATE.mkString(",")}) "
     val rs = sqlExecutor.executeSQL(dbName, sql)
     resultSetToJobs(rs)
+  }
+
+  def stopJob(jobId: Int): JobInfo = {
+    val sql = s"SELECT * FROM $tableName WHERE id = $jobId"
+    val rs = sqlExecutor.executeSQL(dbName, sql)
+    val jobInfo = resultSetToJob(rs)
+    if (jobInfo.isYarnJob || jobInfo.getApplicationId != null) {
+      YarnClientUtil.killYarnJob(jobInfo.getApplicationId)
+      // TODO: Maybe start new thread to track the state
+      jobInfo.setState(YarnClientUtil.getYarnJobState(jobInfo.getApplicationId).toString)
+      jobInfo.sync()
+    }
+    jobInfo
+  }
+
+  def deleteJob(jobId: Int): Unit = {
+    // TODO: Can not support deleting single row row
   }
 
   def getJob(jobId: Int): JobInfo = {

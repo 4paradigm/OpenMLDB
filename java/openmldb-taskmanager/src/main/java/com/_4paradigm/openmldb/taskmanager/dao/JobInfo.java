@@ -120,6 +120,10 @@ public class JobInfo {
         return Arrays.asList(FINAL_STATE).contains(state.toLowerCase());
     }
 
+    public boolean isYarnJob() {
+        return cluster.toLowerCase().equals("yarn");
+    }
+
     public void sync() {
         JobInfoManager.syncJob(this);
     }

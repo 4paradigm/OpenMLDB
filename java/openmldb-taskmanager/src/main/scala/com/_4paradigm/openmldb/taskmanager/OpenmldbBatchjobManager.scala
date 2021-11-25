@@ -16,62 +16,62 @@
 
 package com._4paradigm.openmldb.taskmanager
 
-import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
-import com._4paradigm.openmldb.taskmanager.spark.SparkLauncherUtil
-import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
+import com._4paradigm.openmldb.taskmanager.dao.JobInfo
+import com._4paradigm.openmldb.taskmanager.spark.SparkJobManager
 import org.slf4j.LoggerFactory
+import scala.collection.JavaConverters._
 
 object OpenmldbBatchjobManager {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   /**
-   * Run the Spark job to print the Spark version.
+   * Run the Spark job to print the OpenMLDB Spark version.
    */
-  def showSparkVersion(): Unit = {
-    val mainClass = "com._4paradigm.openmldb.batchjob.SparkVersionApp"
-    SparkLauncherUtil.submitSparkAndWait(mainClass)
+  def showBatchVersion(): JobInfo = {
+    val jobType = "RunBatchSql"
+    val mainClass = "com._4paradigm.openmldb.batchjob.ShowBatchVersion"
+
+    SparkJobManager.submitSparkJob(jobType, mainClass)
   }
 
   /**
-   * Run the SparkSQL job and save output as new table.
+   * Run the SparkSQL job and save output to specified path.
    *
    * @param sql the SQL text
-   * @param dbName the database name of output table
-   * @param outputTableName the table name of output table
+   * @param outputPath the output path
    * @return the Yarn AppId in String format
    */
-  def batchRunSql(sql: String, dbName: String, outputTableName: String): String = {
-    val mainClass = "com._4paradigm.openmldb.batchjob.BatchRunSql"
-    val args = List(TaskManagerConfig.HIVE_METASTORE_ENDPOINT, sql, dbName, outputTableName)
+  def runBatchSql(sql: String, outputPath: String, sparkConf: java.util.Map[String, String]): JobInfo = {
+    val jobType = "RunBatchSql"
+    val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchSql"
+    val args = List(sql, outputPath)
 
-    SparkLauncherUtil.submitSparkGetAppId(mainClass, args.toArray)
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap)
   }
 
-  /**
-   * Run the Spark job to import HDFS files as new table.
-   *
-   * @param fileType the file type
-   * @param filePath the path of input file
-   * @param dbName the database name of output table
-   * @param outputTableName the table name of output table
-   * @return the Yarn AppId in String format
-   */
-  def importHdfsFile(fileType: String, filePath: String, dbName: String, outputTableName: String): String = {
-    val mainClass = "com._4paradigm.openmldb.batchjob.ImportHdfsFile"
-    val args = List(TaskManagerConfig.HIVE_METASTORE_ENDPOINT, fileType, filePath, dbName, outputTableName)
+  def runBatchAndShow(sql: String, sparkConf: java.util.Map[String, String]): JobInfo = {
+    val jobType = "RunBatchAndShow"
+    val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchAndShow"
+    val args = List(sql)
 
-    SparkLauncherUtil.submitSparkGetAppId(mainClass, args.toArray)
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap)
   }
 
-  /**
-   * Get Spark job state from Yarn app id.
-   *
-   * @param appIdStr the string app id
-   * @return the string state
-   */
-  def getJobState(appIdStr: String): String = {
-    YarnClientUtil.getYarnJobState(appIdStr).toString
+  def importOnlineData(sql: String, sparkConf: java.util.Map[String, String]): JobInfo = {
+    val jobType = "ImportOnlineData"
+    val mainClass = "com._4paradigm.openmldb.batchjob.ImportOnlineData"
+    val args = List(sql)
+
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap)
+  }
+
+  def importOfflineData(sql: String, sparkConf: java.util.Map[String, String]): JobInfo = {
+    val jobType = "ImportOfflineData"
+    val mainClass = "com._4paradigm.openmldb.batchjob.ImportOfflineData"
+    val args = List(sql)
+
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap)
   }
 
 }

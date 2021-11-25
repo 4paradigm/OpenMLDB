@@ -20,12 +20,30 @@ import com._4paradigm.openmldb.proto.TaskManager;
 import com.baidu.brpc.protocol.BrpcMeta;
 
 public interface TaskManagerServer {
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ShowJobs")
+    TaskManager.ShowJobsResponse ShowJobs(TaskManager.ShowJobsRequest request);
+
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ShowJob")
+    TaskManager.ShowJobResponse ShowJob(TaskManager.ShowJobRequest request);
+
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "StopJob")
+    TaskManager.StopJobResponse StopJob(TaskManager.StopJobRequest request);
+
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "DeleteJob")
+    TaskManager.DeleteJobResponse DeleteJob(TaskManager.DeleteJobRequest request);
+
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ShowBatchVersion")
+    TaskManager.ShowJobResponse ShowBatchVersion(TaskManager.ShowBatchVersionRequest request);
+
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "RunBatchSql")
-    TaskManager.YarnJobResponse runBatchSql(TaskManager.RunBatchSqlRequest request);
+    TaskManager.ShowJobResponse RunBatchSql(TaskManager.RunBatchSqlRequest request);
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ImportHdfsFile")
-    TaskManager.YarnJobResponse importHdfsFile(TaskManager.ImportHdfsFileRequest request);
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "RunBatchAndShow")
+    TaskManager.ShowJobResponse RunBatchAndShow(TaskManager.RunBatchAndShowRequest request);
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "GetYarnJobState")
-    TaskManager.YarnJobStateResponse getYarnJobState(TaskManager.GetYarnJobStateRequest request);
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ImportOnlineData")
+    TaskManager.ShowJobResponse ImportOnlineData(TaskManager.ImportOnlineDataRequest request);
+
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ImportOfflineData")
+    TaskManager.ShowJobResponse ImportOfflineData(TaskManager.ImportOfflineDataRequest request);
 }
