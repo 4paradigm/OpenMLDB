@@ -17,12 +17,11 @@
 package com._4paradigm.openmldb.taskmanager.spark
 
 import com._4paradigm.openmldb.taskmanager.{DummySparkApp, JobInfoManager}
-import com._4paradigm.openmldb.taskmanager.spark.SparkJobManager
 import org.apache.spark.launcher.{SparkAppHandle, SparkLauncher}
 import org.scalatest.{FunSuite, Ignore}
 
 // TODO: need to run with SPARK_HOME
-//@Ignore
+@Ignore
 class TestSparkJobManager extends FunSuite {
 
   test("Test createSparkLauncher") {
@@ -39,7 +38,7 @@ class TestSparkJobManager extends FunSuite {
     val jobType = "DummySparkApp"
     val sparkConf = Map(SparkLauncher.DRIVER_EXTRA_CLASSPATH -> System.getProperty("java.class.path"))
 
-    SparkJobManager.submitSparkJob(mainClass, jobType, null, sparkConf)
+    SparkJobManager.submitSparkJob(jobType, mainClass, null, sparkConf)
 
     JobInfoManager.getAllJobs().map(println)
     Thread.sleep(5000)

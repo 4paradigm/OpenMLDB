@@ -38,9 +38,10 @@ object JobInfoManager {
 
   def createJobSystemTable(): Unit = {
     // TODO: Check db
-    println(sqlExecutor.createDB(dbName))
+    sqlExecutor.createDB(dbName)
 
-    val createTableSql = s"CREATE TABLE $tableName (id int,\n" +
+    val createTableSql = s"CREATE TABLE $tableName ( \n" +
+      "                   id int,\n" +
       "                   job_type string,\n" +
       "                   state string,\n" +
       "                   start_time timestamp,\n" +
@@ -49,11 +50,10 @@ object JobInfoManager {
       "                   cluster string,\n" +
       "                   application_id string,\n" +
       "                   error string,\n" +
-      "                   index(name=index1, key=state, ttl=1, ttl_type=latest),\n" +
-      "                   index(name=index2, key=id, ttl=1, ttl_type=latest))"
-
+      "                   index(key=id, ttl=1, ttl_type=latest)\n" +
+      "                   )"
     // TODO: Check table
-    println(sqlExecutor.executeDDL(dbName, createTableSql))
+    sqlExecutor.executeDDL(dbName, createTableSql)
   }
 
   def createJobInfo(jobType: String): JobInfo = {
@@ -113,7 +113,7 @@ object JobInfoManager {
     var pstmt: PreparedStatement = null
     try {
       pstmt = sqlExecutor.getInsertPreparedStmt(dbName, insertSql)
-      println("Insert: " + pstmt.execute)
+      pstmt.execute()
     } catch {
       case e: SQLException =>
         e.printStackTrace()
