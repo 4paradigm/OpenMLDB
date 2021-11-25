@@ -1,5 +1,5 @@
 
-# QuickStart (Cluster Version)
+# QuickStart (Cluster Mode)
 
 This tutorial is targeted at the cluster version of OpenMLDB and it will cover the whole lifecycle of how to build a machine learning application with the help of OpenMLDB,
 including feature extraction, model training; online data import, online feature extraction, model prediction, etc.

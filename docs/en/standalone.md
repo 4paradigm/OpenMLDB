@@ -1,4 +1,4 @@
-# QuickStart (Standalone Version)
+# QuickStart (Standalone Mode)
 
 ## Deployment
 ### Modify Config
