@@ -2,26 +2,26 @@
 
 ## Backgroud
 
-OpenMLDB contains hundreds of build-in functions helping data scientist to exetract features and analyze data. For example, now we have aggregation functions like `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`, etc,  to aggregate data over a table or over a specific window. In addition of that, we also have scalar functions like `MINUTE`, `HOUR`, `SECOND`, `SIN`, `COS`, `LOG`, etc, to extract features based on one row data. 
+OpenMLDB contains hundreds of build-in functions helping data scientist to exetract features and analyze data. For example, now we have aggregation functions like `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`, etc,  to aggregate data over a table or over a specific window. In addition to that, we also have scalar functions like `MINUTE`, `HOUR`, `SECOND`, `SIN`, `COS`, `LOG`, etc, to extract features based on one-row data. 
 
-In article is a a hands-on guide to developing buit-in function in OpenMLDB. We welcome developers join us community and help us extend our functions.
+The article is a hands-on guide to developing built-in functions in OpenMLDB. We welcome developers to join our community and help us extend our functions.
 
 ## Functions
 
-OpenMLDB classify functions as aggregate, scalar, depending on the input data values and result values.
+OpenMLDB classifies functions as aggregate, scalar, depending on the input data values and result values.
 
 - An *aggregate function* receives a set of values for each argument (such as the values of a column) and returns a single-value result for the set of input values. 
-- A *scalar function* receives a single value for each argument and returns a single-value result. 
+- A *scalar function* receives a single value for each argument and returns a single value result. 
 
-This article is focusing on built-in scalar function develop guide. We will not dive into aggregate function development here.
+This article is focusing on the built-in scalar functions development. We will not dive into aggregate function development here.
 
 ## Register Built-In Function
 
-OpenMLDB provides `ExternalFuncRegistryHelper` to help developers registering built-in functions into the *default library*. After registering a function, users can access and call the function in SQL queries.  In this section, we are going to introduce the basic steps to registering built-in functions into OpenMLDB default library.
+OpenMLDB provides `ExternalFuncRegistryHelper` to help developers registering built-in functions into the *default library*. After registering a function, users can access and call the function in SQL queries.  In this section, we are going to introduce the basic steps to registering built-in functions into the OpenMLDB default library.
 
 ### ExternalFuncRegistryHelper API
 
-`RegisterExternal` can be used to registered a built-in function.
+`RegisterExternal` can be used to register a built-in function.
 
 ```c++
 RegisterExternal(function_name)
@@ -34,12 +34,12 @@ RegisterExternal(function_name)
 - `RegisterExternal(function_name)`: create an instance of `ExternalFuncRegistryHelper` with specific register name. SQL can 
 - `built_in_fn_pointer`: built-in function pointer
 - `args<arg_type,...>`: configure argument types
--  `returns<return_type>`: configure return type:
--  `return_by_arg()`  : configure whether return value will be store in parameters or not.
+- `returns<return_type>`: configure return type:
+- `return_by_arg()`  : configure whether return value will be store in parameters or not.
   - When **return_by_arg(false)** , result will be return directly. OpenMLDB configure  `return_by_arg(false) ` by default.
-  - When **return_by_arg(true)** , the result will be stored and returned by parameters.
-    - if return type is ***non-nullable***, the result will be stored and returned via the last parameter.
-    - if return type is **nullable**, the ***result value*** will be stored in the second-to-last parameter and the ***null flag*** will be stored in the last parameter. if ***null flag*** is true, function result is **null**, otherwise, function result is obtained from second-to-last parameter.
+  - When **return_by_arg(true)**, the result will be stored and returned by parameters.
+    - if the return type is ***non-nullable***, the result will be stored and returned via the last parameter.
+    - if the return type is **nullable**, the ***result value*** will be stored in the second-to-last parameter and the ***null flag*** will be stored in the last parameter. if ***null flag*** is true, function result is **null**, otherwise, function result is obtained from second-to-last parameter.
 - `doc()`: documenting the function
 
 ### Register built-in function returns the result
@@ -82,7 +82,7 @@ RegisterExternal("month")
         )");
 ```
 
-Now, the `v1:month` has been registered into default library with name `month`. As a result, we are able to call `month` in SQL query:
+Now, the `v1:month` has been registered into the default library with the name `month`. As a result, we can call `month` in SQL query:
 
 ```SQL
 select month(timestamp(1590115420000)) as m1,  month(1590115420000) as m2;
@@ -97,11 +97,11 @@ select month(timestamp(1590115420000)) as m1,  month(1590115420000) as m2;
 
 ### Register built-in function returns a result in argument
 
-If the registered function output a structural type result, like `timestamp`, `date`, `StringRef`, it should be implemented in a way that return the result by argument. In addition, we should configure `return_by_arg` as `true`. If the result is ***nullable***, we have to reserve another argument for the null flag.
+If the registered function output a structural type result, like `timestamp`, `date`, `StringRef`, it should be implemented in a way that returns the result by argument. In addition, we should configure `return_by_arg` as `true`. If the result is ***nullable***, we have to reserve another argument for the null flag.
 
 #### step 1: implement built-in functions to be registered
 
-We implement a function `timestamp_to_date`to get the month part for a given `timestamp`. The input is `timestamp` and the output is nullable `date` which is returned by argurements `codec::Date *output` and `bool *is_null`. One stores the output date value and the other one stores null flag.
+We implement a function `timestamp_to_date`to get the month part for a given `timestamp`. The input is `timestamp` and the output is nullable `date` which is returned by arguments `codec::Date *output` and `bool *is_null`. One store the output date value and the other one stores the null flag.
 
 ```c++
 namespace v1 {
@@ -149,13 +149,13 @@ RegisterExternal("date")
 
 ## Function Documentation
 
-`ExternalFuncRegistryHelper` provides api `doc(doc_string)`  to document function. Documenting function is describing its use and functionality to the users. While it may be helpful in the development process, the main intended audience is the users.  So we expect the docstring to be **clear** and **legible**. 
+`ExternalFuncRegistryHelper` provides API `doc(doc_string)`  to document function. Documenting function is describing its use and functionality to the users. While it may be helpful in the development process, the main intended audience is the users.  So we expect the docstring to be **clear** and **legible**. 
 
 Function docstrings should contain the following information:
 
-- **@brief** command to add a brief summary of the function's purpose and behavior. 
+- **@brief** command to add a summary of the function's purpose and behaviour. 
 - **@param** command to document the parameters.
-- **Examples** of the function's usage from SQL queries. Demo sql should be placed in a `@code/@endcode` block
+- **Examples** of the function's usage from SQL queries. Demo SQL should be placed in a `@code/@endcode` block
 - **@since** command to specify the production version when the function was added to OpenMLDB 
 
 **Example:**
@@ -212,4 +212,3 @@ TEST_F(UdfIRBuilderTest, timestamp_to_date_test_null_0) {
     CheckUdf<Nullable<Date>, Nullable<Timestamp>>("date", nullptr, nullptr);
 }
 ```
-
