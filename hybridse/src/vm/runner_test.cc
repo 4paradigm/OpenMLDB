@@ -66,7 +66,9 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     SqlGroupPlan, RunnerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
-
+INSTANTIATE_TEST_SUITE_P(
+    SqlHavingPlan, RunnerTest,
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(
     SqlJoinPlan, RunnerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));

@@ -17,6 +17,8 @@
 package com._4paradigm.openmldb.taskmanager
 
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
+import com._4paradigm.openmldb.taskmanager.spark.SparkLauncherUtil
+import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.slf4j.LoggerFactory
 
 object OpenmldbBatchjobManager {

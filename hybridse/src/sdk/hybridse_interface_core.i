@@ -31,10 +31,6 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %include stdint.i
 %include std_vector.i
 
-namespace std {
-    %template(StringVector) vector<string>;
-}
-
 %shared_ptr(hybridse::vm::Catalog);
 %shared_ptr(hybridse::vm::SimpleCatalog);
 %shared_ptr(hybridse::vm::CompileInfo);
@@ -64,7 +60,6 @@ namespace std {
 
 // Fix for Java shared_ptr unref
 // %feature("unref") hybridse::vm::Catalog "delete $this;"
-
 
 #ifdef SWIGJAVA
 // Enable namespace feature for Java
@@ -143,7 +138,7 @@ using hybridse::node::DataType;
 %ignore hybridse::vm::DataHandlerRepeater;
 %ignore hybridse::vm::LocalTabletTableHandler;
 %ignore hybridse::vm::AysncRowHandler;
-%ignore DataTypeName; // TODO: Geneerate duplicated class
+%ignore DataTypeName; // TODO: Generate duplicated class
 %ignore hybridse::vm::HybridSeJitWrapper::AddModule;
 
 // Ignore the unique_ptr functions
