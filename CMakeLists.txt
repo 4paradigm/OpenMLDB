@@ -99,8 +99,15 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/thirdparty)
+    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
 endif()
+
+if (DEFINED ENV{CI})
+  # suppress useless maven log (e.g download log) on CI environment
+  set(MAVEN_FLAGS --batch-mode)
+endif()
+
+add_subdirectory(hybridse)
 
 set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags boost_filesystem boost_date_time boost_regex)
 set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
@@ -116,7 +123,7 @@ find_package(absl REQUIRED)
 # modify absl::time_zone INTERFACE_LINK_LIBRARIES
 set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$<PLATFORM_ID:Darwin>:-framework CoreFoundation>")
 
-find_package(GTest 1.10 EXACT REQUIRED)
+find_package(GTest REQUIRED)
 
 #set(Protobuf_USE_STATIC_LIBS ON)
 #find_package(Protobuf 3.6 EXACT REQUIRED)
@@ -175,11 +182,11 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")
 
-include_directories(${CMAKE_PREFIX_PATH}/include
-        ${CMAKE_PREFIX_PATH}/hybridse/include)
+include_directories(
+  ${CMAKE_PREFIX_PATH}/include
+  ${CMAKE_SOURCE_DIR}/hybridse/include
+  ${CMAKE_BINARY_DIR}/hybridse/src)
 
-link_directories(${CMAKE_PREFIX_PATH}/lib
-    ${CMAKE_PREFIX_PATH}/lib64
-    ${CMAKE_PREFIX_PATH}/hybridse/lib)
+link_directories(${CMAKE_PREFIX_PATH}/lib ${CMAKE_PREFIX_PATH}/lib64)
 
 add_subdirectory(src)

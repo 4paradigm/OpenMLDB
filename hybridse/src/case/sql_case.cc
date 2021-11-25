@@ -429,8 +429,7 @@ bool SqlCase::ExtractInputData(const TableInfo& input,
 
 bool SqlCase::ExtractOutputData(std::vector<Row>& rows) const {
     if (expect_.data_.empty() && expect_.rows_.empty()) {
-        LOG(WARNING) << "ExtractOutputData Fail: Empty Data";
-        return false;
+        return true;
     }
     type::TableDef table;
     if (!ExtractOutputSchema(table)) {

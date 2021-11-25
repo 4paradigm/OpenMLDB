@@ -36,16 +36,6 @@ OUTPUT_ARCHIVE="$OUTPUT_DIR.tar.gz"
 
 echo -e "${GREEN}deploying with HYBRIDSE_VERSION=$HYBRIDSE_VERSION${NC}"
 
-if uname -a | grep -q Darwin; then
-    # in case coreutils not install on mac
-    alias nproc='sysctl -n hw.logicalcpu'
-fi
-
-mkdir -p build
-pushd build/
-
-cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DCMAKE_INSTALL_PREFIX="hybridse"
-make -j "$(nproc)" install
 mv hybridse "$OUTPUT_DIR"
 tar czf "../$OUTPUT_ARCHIVE" "$OUTPUT_DIR"
 

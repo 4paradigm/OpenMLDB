@@ -11,6 +11,11 @@ on:
       - .github/workflows/openmldb-docker.yml
       - demo/predict-taxi-trip-duration-nb/**/*
   workflow_dispatch:
+    inputs:
+      OPENMLDB_VERSION:
+        description: 'The openmldb version installed in docker. ex: 0.3.0'
+        required: true
+        default: '0.3.0'
 
 env:
   IMAGE_NAME: openmldb
@@ -34,38 +39,15 @@ jobs:
         run: |
           docker-compose -f docker-compose.test.yml -- up
 
-      - name: Decide the Tag
-        if: ${{ github.event_name == 'push' }}
-        run: |
-          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
-
-          # Change all uppercase to lowercase
-          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-
-          # Strip git ref prefix from version
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-
-          # Strip "docker" prefix from tag name
-          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-
-          # Use Docker `latest` tag convention
-          [ "$VERSION" == "main" ] && VERSION=latest
-
-          echo VERSION=$VERSION
-
-          GHCR_TAG=$IMAGE_ID:$VERSION
-          DOCKERHUB_TAG=${{ secrets.DOCKERHUB_REPO }}/$IMAGE_NAME:$VERSION
-          echo "GitHub Docker Registry Tag: $GHCR_TAG"
-          echo "DockerHub Tag: $DOCKERHUB_TAG"
-          echo "COMMIT=${{ github.sha }}"
-
-          echo "GHCR_TAG=$GHCR_TAG" >> $GITHUB_ENV
-          echo "DOCKERHUB_TAG=$DOCKERHUB_TAG" >> $GITHUB_ENV
-
       - name: Decide Push
         run: |
-          if [[ ${{ github.event_name }} = 'push' ]]; then
+          if [[ ${{ github.event_name }} = 'workflow_dispatch' ]]; then
             echo "PUSH=true" >> $GITHUB_ENV
+            VERSION=${{ github.event.inputs.OPENMLDB_VERSION }}
+            DOCKERHUB_TAG=${{ secrets.DOCKERHUB_REPO }}/$IMAGE_NAME:$VERSION
+            echo "DockerHub Tag: $DOCKERHUB_TAG"
+            echo "COMMIT=${{ github.sha }}"
+            echo "DOCKERHUB_TAG=$DOCKERHUB_TAG" >> $GITHUB_ENV
           else
             echo "PUSH=false" >> $GITHUB_ENV
           fi
@@ -77,15 +59,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Login to GitHub Container Registry
-        if: ${{ github.event_name == 'push' }}
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-
       - name: Build And Push
         id: docker_build
         uses: docker/build-push-action@v2
@@ -94,5 +67,5 @@ jobs:
           push: ${{ env.PUSH }}
           platforms: linux/amd64
           tags: |
-            ${{ env.GHCR_TAG }}
             ${{ env.DOCKERHUB_TAG }}
+          build-args: OPENMLDB_VERSION=${{ github.event.inputs.OPENMLDB_VERSION }}

@@ -1117,9 +1117,9 @@ void ColumnOfExpression(const ExprNode *node_ptr, std::vector<const node::ExprNo
     }
 }
 // Check if given expression is or based on an aggregation expression.
-bool IsAggregationExpression(const udf::UdfLibrary* lib, ExprNode* node_ptr) {
+bool IsAggregationExpression(const udf::UdfLibrary* lib, const ExprNode* node_ptr) {
     if (kExprCall == node_ptr->GetExprType()) {
-        CallExprNode *func_node_ptr = dynamic_cast<CallExprNode *>(node_ptr);
+        const CallExprNode *func_node_ptr = dynamic_cast<const CallExprNode *>(node_ptr);
         if (lib->IsUdaf(func_node_ptr->GetFnDef()->GetName(), func_node_ptr->GetChildNum())) {
             return true;
         }
