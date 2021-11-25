@@ -66,16 +66,11 @@
       <scope>${spark.scope}</scope>
     </dependency>
 
-    <!-- Iceberg -->
+    <!-- OpenMLDB Batch -->
     <dependency>
-      <groupId>org.apache.iceberg</groupId>
-      <artifactId>iceberg-spark3-runtime</artifactId>
-      <version>0.11.1</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.iceberg</groupId>
-      <artifactId>iceberg-hive</artifactId>
-      <version>0.9.1</version>
+      <groupId>com.4paradigm.openmldb</groupId>
+      <artifactId>openmldb-batch</artifactId>
+      <version>0.3.0-allinone</version>
     </dependency>
 
   </dependencies>
