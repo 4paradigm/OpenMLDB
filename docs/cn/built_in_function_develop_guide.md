@@ -2,11 +2,11 @@
 
 ## 背景
 
-​	OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特征抽取。目前，我们提供聚合类函数(Aggregate Function)如 `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`来支持全表聚合和窗口聚合。与此同时，我们还提供了单行函数(Scalar Function)如`ABS`, `SIN`, `COS`, `DATE`, `YEAR`等提供单行的数据特征抽取。
+​	OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特征抽取。目前，我们提供聚合类函数(Aggregate Function)如 `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`来支持全表聚合和窗口聚合。同时，我们还提供了单行函数(Scalar Function)如`ABS`, `SIN`, `COS`, `DATE`, `YEAR`等支持单行数据处理。
 
 ​	本文是SQL内置函数的开发入门指南，旨在指引开发者快速掌握基础的内置函数开发方法。我们诚挚欢迎更多的开发者加入社区，帮助我们扩展和开发内置函数集。
 
-## Functions
+## 函数分类
 
 OpenMLDB将函数分类两大类：聚合类函数和单行处理函数:
 
@@ -17,13 +17,15 @@ OpenMLDB将函数分类两大类：聚合类函数和单行处理函数:
   - 日期函数
   - 字符串函数
 
+本文将介绍单行函数的开发，暂不深入更为复杂的聚合函数开发细节。
+
 ## 开发和注册内置函数
 
-OpenMLDB provides `ExternalFuncRegistryHelper` to help developers registering built-in functions into the *default library*. After registering a function, users can access and call the function in SQL queries.  In this section, we are going to introduce the basic steps to registering built-in functions into OpenMLDB default library.
+`ExternalFuncRegistryHelper` is OpenMLDB的内置函数开发最重要的辅助类。它提供一套API来配置函数，并将配置好的函数注册到相应的函数库中。完成函数注册后，可以在SQL查询语句中调用函数。本章节主要介绍内置函数的注册和配置的基本步骤和并提供若干示范。
 
-### RegisterExternal API
+### ExternalFuncRegistryHelper API
 
-`RegisterExternal` can be used to registered a built-in function.
+OpenMLDB内置的函数都应该注册到默认函数库`DefaultUdfLibrary`(src/udf/default_udf_library.cc)中。`DefaultUdfLibrary`提供`RegisterExternal` 接口来创建一个函数注册助手。它负责配置函数的参数，配置返回值了行，并注册函数到默认函数库中。
 
 ```c++
 RegisterExternal(function_name)
@@ -33,24 +35,28 @@ RegisterExternal(function_name)
   .doc(documentation)
 ```
 
-- `RegisterExternal(function_name)`: create an instance of `ExternalFuncRegistryHelper` with specific register name. SQL can 
-- `built_in_fn_pointer`: built-in function pointer
-- `args<arg_type,...>`: configure argument types
--  `returns<return_type>`: configure return type:
--  `return_by_arg()`  : configure whether return value will be store in parameters or not.
-  - When **return_by_arg(false)** , result will be return directly. OpenMLDB configure  `return_by_arg(false) ` by default.
-  - When **return_by_arg(true)** , the result will be stored and returned by parameters.
-    - if return type is ***non-nullable***, the result will be stored and returned via the last parameter.
-    - if return type is **nullable**, the ***result value*** will be stored in the second-to-last parameter and the ***null flag*** will be stored in the last parameter.
-- `doc()`: configure the documentation of the function by following template
+- `RegisterExternal(function_name)`: 可以创建一个`ExternalFuncRegistryHelper`对象，初始化函数的注册名。SQL使用这个名字来调用函数。
+- `built_in_fn_pointer`: 被注册的C++函数指针
+- `args<arg_type,...>`: 配置函数参数类型
+-  `returns<return_type>`: 配置函数返回值类型
+-  `return_by_arg()`  : 配置结果是否通过参数返回
+  - 当 **return_by_arg(false)**时 , 结果直接通过`return`返回. OpenMLDB 默认配置  `return_by_arg(false) ` .
+  - 当 **return_by_arg(true)** 时,结果通过参数返回。
+    - 若返回类型是***non-nullable***, 函数结果将通过最后一个参数返回。
+    - 若返回类型是**nullable**, 函数结果值将通过倒数第二个参数返回，而 ***null flag*** 将通过最后一个参数返回。如果***null flag***为***true***, 那么函数结果为***null***，否则函数结果从倒数第二个参数读取。
+- `doc()`: 配置函数文档
 
-### Register built-in function returns the result
+### Register built-in function `return_by_arg(false)`
 
-`ExternalFuncRegistryHelper` provides api `return_by_arg` to configure if the result can be return by parameter or not. Normally, functions returned one numerical type (smallint, int, bigint, float, double) or bool type should be registered with `return_by_arg(false)`. Actually, `ExternalFuncRegistryHelper` configure `return_by_arg` as `false` by default.
+一般来说，当函数的结果是一个数值或者bool值时，我们配置`return_by_arg` as `false` 。那意味着，函数结果将直接return返回。
 
-#### step 1: implement built-in functions to be registered
+#### step 1: 实现待注册的内置函数
 
-We implement two c++ functions to get the month part for a given `timestamp` or `int64_t`. (Developer can implement function in `src/udf/udf.h` and  `src/udf/udf.cc`)
+一般地，开发者可以在(`src/udf/udf.h` 和  `src/udf/udf.cc`)中实现内置函数。
+
+**示例：**
+
+我们在`udf.cc`中实现两个`month()`函数。month()函数返回一个整数值，它表示指定日期的月份。month()函数接受一个参数，该参数可以是`timestamp`的时间戳，也可以是`bigint`的毫秒数。
 
 ```c++
 namespace v1 {
@@ -64,9 +70,13 @@ namespace v1 {
 } // namespace v1
 ```
 
-#### step 2: register built-in function into default library
+#### step 2: 配置函数，并注册到默认函数库中
 
-We register `int32_t month(int64_t ts)` and  `int32_t month(codec::Timestamp *ts)` into default library with registered name `month`
+使用`ExternalFuncRegistryHelper`工具类配置参数和注册函数到默认库中。
+
+**示例：**
+
+我们将前一节中实现的两个c++函数注册到默认库中。
 
 ```c++
 RegisterExternal("month")
@@ -84,7 +94,7 @@ RegisterExternal("month")
         )");
 ```
 
-Now, the `v1:month` has been registered into default library with name `month`. As a result, we are able to call `month` in SQL query:
+注册后，我们可以在SQL语句中调用month函数：
 
 ```SQL
 select month(timestamp(1590115420000)) as m1,  month(1590115420000) as m2;
@@ -95,15 +105,15 @@ select month(timestamp(1590115420000)) as m1,  month(1590115420000) as m2;
  ---- ---- 
 ```
 
+### Register built-in function  `return_by_arg(true)`
 
+当函数的结果是一个结构体时（如时间戳，日期，字符串），应该将结果存放在参数中返回。若结果是 ***nullable**，则需额外保留一个bool参数来存放null标志。
 
-### Register built-in function returns a result in argument
+#### step 1: 实现待注册的内置函数
 
-If the registered function output a structural type result, like `timestamp`, `date`, `StringRef`, it should be implemented in a way that return the result by argument. In addition, we should configure `return_by_arg` as `true`. If the result is ***nullable***, we have to reserve another argument for the null flag.
+**示例：**
 
-#### step 1: implement built-in functions to be registered
-
-We implement a function `timestamp_to_date`to get the month part for a given `timestamp`. The input is `timestamp` and the output is nullable `date` which is returned by argurements `codec::Date *output` and `bool *is_null`. One stores the output date value and the other one stores null flag.
+我们在`udf.cc`中实现两个`timestamp_to_date()`函数。timestamp_to_date接受一个`timestamp`参数，并将`timestamp`转成`date`。由于OpenMLDB的`date`类型是一个结构体类型，设计函数是，不直接返回结果，而是将结果存放在参数中返回。与此同时，考虑到日期转换可能有异常或失败，转换失败是，应返回null。所以，我们额外增加一个null flag作为最后一个参数。
 
 ```c++
 namespace v1 {
@@ -122,11 +132,14 @@ namespace v1 {
 } // namespace v1
 ```
 
-#### step 2: register built-in function into default library
+#### step 2: 配置参数，返回值并注册函数
 
-The followed example registered built-in function ` v1::timestamp_to_date` into the default library with name `"date"`. 
+**示例:**
 
-Given the result is a nullable date type, we configure  **return_by_arg** as ***true*** and return type as `Nullable<Date>`
+函数名和函数参数的配置和普通函数配置一样。但需要额外注意返回值类型的配置：
+
+- 因为函数结果存放在参数中返回，所以配置`return_by_arg(true)`
+- 因为函数结果可能为null,所以配置`.returns<Nullable<Date>>`
 
 ```c++
 RegisterExternal("date")
@@ -149,18 +162,18 @@ RegisterExternal("date")
             @since 0.1.0)");
 ```
 
-## Function Documentation
+## 函数文档配置
 
-`ExternalFuncRegistryHelper` provides api `doc(doc_string)`  to document function. Documenting function is describing its use and functionality to the users. While it may be helpful in the development process, the main intended audience is the users.  So we expect the docstring to be **clear** and **legible**. 
+`ExternalFuncRegistryHelper` 提供了`doc(doc_string)`API来配置文档。函数文档用来描述函数的功能和用法。它的主要受众是普通用户。所以，文档需要清晰易懂。
 
-Function docstrings should contain the following information:
+函数文档一般需要包含一下几类信息：
 
-- **@brief** command to add a brief summary of the function's purpose and behavior. 
-- **@param** command to document the parameters.
-- **Examples** of the function's usage from SQL queries. Demo sql should be placed in a `@code/@endcode` block
-- **@since** command to specify the production version when the function was added to OpenMLDB 
+- **@brief** ：简要描述函数的功能
+- **@param**：函数参数描述
+- **Examples**： 函数的使用示例。一般需要提供SQL的查询示例。SQL语句需要放置在 a `@code/@endcode` 代码块中。
+- **@since** ：指明引入该函数的OpenMLDB版本
 
-**Example:**
+**示例:**
 
 ```c++
 RegisterExternal("my_function")
@@ -179,26 +192,24 @@ RegisterExternal("my_function")
             @since 0.4.0)");
 ```
 
+## 函数测试
 
+函数开发完成后，开发者还需要添加相对应的测试例以确保系统运行正确。
 
-## Function Unit Test
+### `UdfIRBuilderTest`中添加单测
 
-Once registered/developed a function, the developer should add some related unit tests to make sure everything is going well.
-
-### Add Unit Test to `UdfIRBuilderTest`
-
-We provide  `CheckUdf` in `src/codegen/udf_ir_builder_test.cc` so that the developer can perform function checking easily.
+一般地，可以在`src/codegen/udf_ir_builder_test.cc`中添加`TEST_F`单测。我们提供了CheckUdf函数以便开发者检验函数结果。
 
 ```c++
 CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,...);
 ```
 
-For each function signature, we at least have to:
+对每一个函数（每一种参数组合），我们至少需要实现:
 
-- Add a unit test with a normal result
-- Add a unit test with a null result if the result is **nullable**
+- 添加一个单测，验证普通结果
+- 如果结果是***nullable***,需要添加一个单测，验证结果为空
 
-**Example**:
+**示例:**
 
 ```c++
 // month(timestamp) normal check

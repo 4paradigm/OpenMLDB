@@ -4,7 +4,7 @@
 
 OpenMLDB contains hundreds of build-in functions helping data scientist to exetract features and analyze data. For example, now we have aggregation functions like `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`, etc,  to aggregate data over a table or over a specific window. In addition of that, we also have scalar functions like `MINUTE`, `HOUR`, `SECOND`, `SIN`, `COS`, `LOG`, etc, to extract features based on one row data. 
 
-We welcome developers join us community and help us extend our functions.
+In article is a a hands-on guide to developing buit-in function in OpenMLDB. We welcome developers join us community and help us extend our functions.
 
 ## Functions
 
@@ -13,11 +13,13 @@ OpenMLDB classify functions as aggregate, scalar, depending on the input data va
 - An *aggregate function* receives a set of values for each argument (such as the values of a column) and returns a single-value result for the set of input values. 
 - A *scalar function* receives a single value for each argument and returns a single-value result. 
 
+This article is focusing on built-in scalar function develop guide. We will not dive into aggregate function development here.
+
 ## Register Built-In Function
 
 OpenMLDB provides `ExternalFuncRegistryHelper` to help developers registering built-in functions into the *default library*. After registering a function, users can access and call the function in SQL queries.  In this section, we are going to introduce the basic steps to registering built-in functions into OpenMLDB default library.
 
-### RegisterExternal API
+### ExternalFuncRegistryHelper API
 
 `RegisterExternal` can be used to registered a built-in function.
 
@@ -37,8 +39,8 @@ RegisterExternal(function_name)
   - When **return_by_arg(false)** , result will be return directly. OpenMLDB configure  `return_by_arg(false) ` by default.
   - When **return_by_arg(true)** , the result will be stored and returned by parameters.
     - if return type is ***non-nullable***, the result will be stored and returned via the last parameter.
-    - if return type is **nullable**, the ***result value*** will be stored in the second-to-last parameter and the ***null flag*** will be stored in the last parameter.
-- `doc()`: configure the documentation of the function by following template
+    - if return type is **nullable**, the ***result value*** will be stored in the second-to-last parameter and the ***null flag*** will be stored in the last parameter. if ***null flag*** is true, function result is **null**, otherwise, function result is obtained from second-to-last parameter.
+- `doc()`: documenting the function
 
 ### Register built-in function returns the result
 
@@ -174,8 +176,6 @@ RegisterExternal("my_function")
             @endcode
             @since 0.4.0)");
 ```
-
-
 
 ## Function Unit Test
 
