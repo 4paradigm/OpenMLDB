@@ -52,6 +52,7 @@ class SparkJobListener(jobInfo: JobInfo) extends SparkAppHandle.Listener{
 
     }
 
+    jobInfo.sync()
   }
 
   override def infoChanged(handle: SparkAppHandle): Unit = {

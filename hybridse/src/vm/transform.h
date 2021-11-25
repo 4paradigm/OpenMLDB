@@ -180,6 +180,8 @@ class BatchModeTransformer {
                                      PhysicalOpNode** output);
     virtual Status TransformDistinctOp(const node::DistinctPlanNode* node,
                                        PhysicalOpNode** output);
+    virtual Status TransformLoadDataOp(const node::LoadDataPlanNode* node,
+                                       PhysicalOpNode** output);
 
     virtual Status CreatePhysicalConstProjectNode(
         node::ProjectListNode* project_list, PhysicalOpNode** output);
@@ -285,6 +287,8 @@ class RequestModeTransformer : public BatchModeTransformer {
     Status TransformJoinOp(const node::JoinPlanNode* node,
                                    PhysicalOpNode** output) override;
     Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output) override;
+
+    Status TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) override;
 
  private:
     bool enable_batch_request_opt_;

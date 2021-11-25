@@ -15,7 +15,6 @@
  */
 
 #include "vm/transform.h"
-#include <map>
 #include <set>
 #include <stack>
 #include <unordered_map>
@@ -166,6 +165,11 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
             CHECK_STATUS(TransformDistinctOp(
                 dynamic_cast<const ::hybridse::node::DistinctPlanNode*>(node),
                 &op));
+            break;
+        }
+        case node::kPlanTypeLoadData: {
+            CHECK_STATUS(TransformLoadDataOp(dynamic_cast<const ::hybridse::node::LoadDataPlanNode*>(node),
+                                             &op));
             break;
         }
         default: {
@@ -903,6 +907,17 @@ Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode
                                                 ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
     return TransformPlanOp(node->GetChildren()[0], output);
+}
+
+Status BatchModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node,
+                                   PhysicalOpNode** output){
+    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
+               "Input node or output node is null");
+    PhysicalLoadDataNode* load_data_op = nullptr;
+    // db.table should be checked when you get the physical plan
+    CHECK_STATUS(CreateOp<PhysicalLoadDataNode>(&load_data_op, node->File(), node->Db(), node->Table(), node->Options()));
+    *output = load_data_op;
+    return Status::OK();
 }
 
 bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
@@ -1721,6 +1736,9 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
                     dynamic_cast<const ::hybridse::node::CreateProcedurePlanNode*>(node);
                 return TransformPhysicalPlan(sp_plan->GetInnerPlanNodeList(), output);
             }
+            case ::hybridse::node::kPlanTypeLoadData: {
+                return TransformPlanOp(node, output);
+            }
             default: {
                 return Status(kPlanError, "Plan type not supported: " + node::NameOfPlanNodeType(node->GetType()));
             }
@@ -2302,6 +2320,10 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
         batch_request_optimizer.GetOutputCommonColumnIndices();
     *output = batch_request_plan;
     return;
+}
+
+Status RequestModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output){
+    FAIL_STATUS(common::kPlanError, "Non-support LoadData in request mode");
 }
 
 }  // namespace vm

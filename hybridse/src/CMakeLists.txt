@@ -58,7 +58,7 @@ if (LLVM_EXT_ENABLE)
     add_definitions(-DLLVM_EXT_ENABLE)
 endif ()
 
-add_library(hybridse_flags STATIC ${CMAKE_SOURCE_DIR}/src/flags.cc)
+add_library(hybridse_flags STATIC ${CMAKE_CURRENT_SOURCE_DIR}/flags.cc)
 target_link_libraries(hybridse_flags gflags)
 # hybridse core library
 add_library(hybridse_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
@@ -74,7 +74,7 @@ else ()
 endif ()
 add_subdirectory(testing)
 # hybridse core unittests
-if (TESTING_ENABLE AND CORE_TESTING_ENABLE)
+if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
 
     get_property(TEST_FILE_LIST_STR GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
     string(REPLACE " " ";" TEST_FILE_LIST ${TEST_FILE_LIST_STR})

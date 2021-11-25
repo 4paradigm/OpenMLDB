@@ -14,17 +14,41 @@
     ```bash
     docker run -v `pwd`:/OpenMLDB -it ghcr.io/4paradigm/hybridsql:0.4.0 bash
     ```
-4. Download dependencies and initialize env (done once only)
-    ```bash
-    cd /OpenMLDB
-    bash steps/init_env.sh  
+4. Compile OpenMLDB
     ```
-5. Build OpenMLDB
-    ```bash
-    mkdir build && cd build
-    cmake ..
-    make -j5 openmldb
+    make
     ```
+
+### Extra Options for make
+
+customize make behavior by passing following arguments. E.g, change the build type to Debug:
+
+```bash
+make CMAKE_BUILD_TYPE=Debug
+```
+
+- CMAKE_BUILD_TYPE
+
+  Default: RelWithDebInfo
+
+- SQL_PYSDK_ENABLE
+
+  enable build python sdk
+
+  Default: OFF
+
+- SQL_JAVASDK_ENABLE
+
+  enable build java sdk
+
+  Default: OFF
+
+- TESTING_ENABLE
+
+  enable build test targets
+
+  Default: ON
+
 
 ## Optimized Spark Distribution for OpenMLDB (Optional)
 
