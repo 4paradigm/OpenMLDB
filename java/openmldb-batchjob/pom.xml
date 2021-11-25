@@ -71,6 +71,7 @@
       <groupId>com.4paradigm.openmldb</groupId>
       <artifactId>openmldb-batch</artifactId>
       <version>0.3.0-allinone</version>
+      <scope>provided</scope>
     </dependency>
 
   </dependencies>
