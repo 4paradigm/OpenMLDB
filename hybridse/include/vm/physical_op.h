@@ -54,6 +54,7 @@ enum PhysicalOpType {
     kPhysicalOpRequestJoin,
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
+    kPhysicalOpLoadData,
 };
 
 enum PhysicalSchemaType { kSchemaTypeTable, kSchemaTypeRow, kSchemaTypeGroup };
@@ -95,6 +96,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "REQUEST_JOIN";
         case kPhysicalOpIndexSeek:
             return "INDEX_SEEK";
+        case kPhysicalOpLoadData:
+            return "LOAD_DATA";
         default:
             return "UNKNOW";
     }
@@ -1602,6 +1605,37 @@ class PhysicalDistinctNode : public PhysicalUnaryNode {
                                  PhysicalOpNode **out) override;
 
     virtual ~PhysicalDistinctNode() {}
+};
+
+class PhysicalLoadDataNode : public PhysicalOpNode {
+ public:
+    PhysicalLoadDataNode(const std::string &file, const std::string &db, const std::string &table,
+                         std::shared_ptr<node::OptionsMap> options)
+        : PhysicalOpNode(kPhysicalOpLoadData, false), file_(file), db_(db), table_(table), options_(std::move(options)) {}
+    ~PhysicalLoadDataNode() override = default;
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status InitSchema(PhysicalPlanContext *) override;
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+    static PhysicalLoadDataNode *CastFrom(PhysicalOpNode *node);
+
+    const std::string &File() const { return file_; }
+    const std::string &Db() const { return db_; }
+    const std::string &Table() const { return table_; }
+    // avoid to use map<A, B*>, the B* will result in python swig errors, e.g. no member named 'type_name' in 'swig::traits<B>'
+    // vector<pair<>> is too complex, and will get a class in the package root dir.
+    const hybridse::node::ConstNode *GetOption(const std::string &option) const {
+        if (!options_) {
+            return nullptr;
+        }
+        auto it = options_->find(option);
+        return it == options_->end() ? nullptr : it->second;
+    }
+
+    std::string file_;
+    std::string db_;
+    std::string table_;
+    std::shared_ptr<node::OptionsMap> options_;
 };
 
 /**

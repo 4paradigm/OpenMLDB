@@ -204,6 +204,9 @@ TEST_P(TransformTest, TransformPhysicalPlan) {
     PhysicalOpNode* physical_plan = nullptr;
     base::Status status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
     EXPECT_EQ(sql_case.expect().success_, status.isOK()) << status;
+    std::ostringstream oss;
+    physical_plan->Print(oss, "");
+    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 }
 
 TEST_P(TransformTest, TransformPhysicalPlanEnableWindowParalled) {
@@ -388,6 +391,21 @@ void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog,
     status = transform->TransformPhysicalPlan(plan_trees, &physical_plan);
     EXPECT_EQ(err_code, status.code) << status;
     EXPECT_EQ(err_msg.c_str(), status.msg);
+}
+
+TEST_F(TransformTest, RequestModeUnsupportLoadData){
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    const std::string sql = R"sql(LOAD DATA INFILE 'a.csv' INTO TABLE t1 OPTIONS(foo='bar', num=1);)sql";
+
+    PhysicalPlanFailCheck(catalog, sql, kRequestMode, common::kPlanError, "Non-support LoadData in request mode");
 }
 
 // physical plan transform will fail if the partition key of a window is not in the supported type list
