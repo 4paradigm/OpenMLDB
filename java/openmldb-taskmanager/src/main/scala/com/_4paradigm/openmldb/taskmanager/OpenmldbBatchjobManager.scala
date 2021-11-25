@@ -29,7 +29,7 @@ object OpenmldbBatchjobManager {
    * Run the Spark job to print the OpenMLDB Spark version.
    */
   def showBatchVersion(): JobInfo = {
-    val jobType = "RunBatchSql"
+    val jobType = "ShowBatchVersion"
     val mainClass = "com._4paradigm.openmldb.batchjob.ShowBatchVersion"
 
     SparkJobManager.submitSparkJob(jobType, mainClass)
