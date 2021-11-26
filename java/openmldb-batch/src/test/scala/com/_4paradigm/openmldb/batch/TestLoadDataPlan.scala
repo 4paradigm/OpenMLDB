@@ -16,11 +16,6 @@
 
 package com._4paradigm.openmldb.batch
 
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.types._
-
-import scala.collection.JavaConverters.seqAsJavaListConverter
-
 class TestLoadDataPlan extends SparkTestSuite {
 
   test("Test LoadData") {

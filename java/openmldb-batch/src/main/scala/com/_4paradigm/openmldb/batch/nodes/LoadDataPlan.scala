@@ -78,14 +78,10 @@ object LoadDataPlan {
     val (format, options) = parseOptions(node)
     logger.info("format {}, options {}", format, options: Any)
     val df = spark.read.options(options).format(format).load(inputFile)
-    logger.info("got {} rows, schema {}", df.count(), df.schema)
 
     // write, offline address may contains some files, use append mode
     df.write.mode("append").parquet(offlineAddress)
 
-    // TODO(hw): return df?
-    import spark.sqlContext.implicits._
-    val ret = spark.createDataset(List("succeed"))
-    SparkInstance.fromDataFrame(ret.toDF("result"))
+    SparkInstance.fromDataFrame(spark.emptyDataFrame)
   }
 }
