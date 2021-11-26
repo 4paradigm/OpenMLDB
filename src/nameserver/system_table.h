@@ -17,6 +17,7 @@
 #ifndef SRC_NAMESERVER_SYSTEM_TABLE_H_
 #define SRC_NAMESERVER_SYSTEM_TABLE_H_
 
+#include <memory>
 #include <string>
 #include "base/status.h"
 #include "gflags/gflags.h"
@@ -35,7 +36,7 @@ enum class SystemTableType {
 };
 
 class SystemTable {
- public:    
+ public:
     static std::shared_ptr<::openmldb::nameserver::TableInfo> GetTableInfo(const std::string& table_name,
             SystemTableType table_type) {
         auto table_info = std::make_shared<::openmldb::nameserver::TableInfo>();
@@ -67,14 +68,16 @@ class SystemTable {
         }
         return table_info;
     }
- private:    
-    static void SetColumnDesc(const std::string& name, openmldb::type::DataType type, openmldb::common::ColumnDesc* field) {
+
+ private:
+    static void SetColumnDesc(const std::string& name, openmldb::type::DataType type,
+            openmldb::common::ColumnDesc* field) {
         if (field != nullptr) {
             field->set_name(name);
             field->set_data_type(type);
         }
     }
-};    
+};
 
 }  // namespace nameserver
 }  // namespace openmldb

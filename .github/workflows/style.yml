@@ -22,7 +22,7 @@ jobs:
       - uses: reviewdog/action-cpplint@master
         with:
           github_token: ${{ secrets.github_token }}
-          #level: info
+          level: info
           reporter: github-pr-review
           flags: --linelength=120
 

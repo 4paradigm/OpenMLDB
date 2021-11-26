@@ -5586,13 +5586,20 @@ void NameServerImpl::OnLocked() {
     if (!Recover()) {
         PDLOG(WARNING, "recover failed");
     }
-    if (IsClusterMode && db_table_info_.empty() || db_table_info_[INTERNAL_DB].empty()) {
+    if (IsClusterMode() && (db_table_info_.empty() || db_table_info_[INTERNAL_DB].empty())) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
             LOG(FATAL) << "tablet num " << tablets_.size()
                 << " is less then system table replica num " << FLAGS_system_table_replica_num;
             exit(1);
         }
-        CreateSystemTable("JOB_INFO", SystemTableType::kJobInfo);
+        if (!CreateDatabase(INTERNAL_DB).OK()) {
+            LOG(FATAL) << "create internal database failed";
+            exit(1);
+        }
+        if (!CreateSystemTable("JOB_INFO", SystemTableType::kJobInfo).OK()) {
+            LOG(FATAL) << "create system table failed";
+            exit(1);
+        }
     }
     running_.store(true, std::memory_order_release);
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval,
@@ -9504,7 +9511,11 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    const std::string& db_name = request->db();
+    auto status = CreateDatabase(request->db());
+    SetResponseStatus(status, response);
+}
+
+base::Status NameServerImpl::CreateDatabase(const std::string& db_name) {
     bool is_exists = true;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -9514,20 +9525,16 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         }
     }
     if (is_exists) {
-        response->set_code(::openmldb::base::ReturnCode::kDatabaseAlreadyExists);
-        response->set_msg("database already exists");
         PDLOG(INFO, "database %s already exists", db_name.c_str());
+        return {::openmldb::base::ReturnCode::kDatabaseAlreadyExists, "database already exists"};
     } else {
-        if (IsClusterMode() && !zk_client_->CreateNode(zk_path_.db_path_ + "/" + request->db(), "")) {
-            PDLOG(WARNING, "create db node[%s/%s] failed!", zk_path_.db_path_.c_str(), request->db().c_str());
-            response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
-            response->set_msg("set zk failed");
-            return;
+        if (IsClusterMode() && !zk_client_->CreateNode(zk_path_.db_path_ + "/" + db_name, "")) {
+            PDLOG(WARNING, "create db node[%s/%s] failed!", zk_path_.db_path_.c_str(), db_name.c_str());
+            return {::openmldb::base::ReturnCode::kSetZkFailed, "set zk failed"};
         }
-        response->set_code(::openmldb::base::ReturnCode::kOk);
-        response->set_msg("ok");
         PDLOG(INFO, "create database %s success", db_name.c_str());
     }
+    return {};
 }
 
 void NameServerImpl::UseDatabase(RpcController* controller, const UseDatabaseRequest* request,
