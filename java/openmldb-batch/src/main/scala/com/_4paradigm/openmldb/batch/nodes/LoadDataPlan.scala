@@ -29,12 +29,11 @@ object LoadDataPlan {
     var format = "csv"
     var option = node.GetOption("format")
     if (option != null) {
-      val f = option.GetStr()
-      if (f.equalsIgnoreCase("parquet")) {
-        format = "parquet"
-      } else if (!f.equalsIgnoreCase("csv")) {
+      val f = option.GetStr().toLowerCase
+      if (f != "csv" && f != "parquet") {
         throw new HybridSeException("file format unsupported")
       }
+      format = f
     }
 
     val options: mutable.Map[String, String] = mutable.Map()
