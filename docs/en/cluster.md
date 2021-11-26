@@ -1,5 +1,5 @@
 
-# QuickStart (Cluster Mode)
+# OpenMLDB QuickStart (Cluster Mode)
 
 This tutorial is targeted at the cluster mode of OpenMLDB and it will cover the whole lifecycle of how to build a machine learning application with the help of OpenMLDB,
 including feature extraction, model training, online data import, online feature extraction, model prediction, etc.
@@ -53,8 +53,7 @@ train_df = spark.sql(sql)
 df = train_df.toPandas()
 ```
 
-
-***NOTE***: [OpenMLDB Spark Distribution](https://github.com/4paradigm/OpenMLDB/blob/main/docs/en/compile.md#optimized-spark-distribution-for-openmldb-optional) is used
+***NOTE***: [OpenMLDB Spark Distribution](https://github.com/4paradigm/OpenMLDB/blob/main/docs/en/compile.md#optimized-spark-distribution-for-openmldb-optional) is used for this example
 
 
 ### 1.2. Model Training
@@ -87,8 +86,8 @@ Online service requires two inputs:
 - the model trained from offline process
 - online dataset
 
-The feature extraction SQL is generally based on time windows. Thus in the online model prediction, we usually need history data to extract features from time ranges of data.
-The history data is called online dataset. Online dataset is generally restricted to the recent time range, which is small compared to the offline dataset.
+The feature extraction SQL is generally based on time windows. Thus in the online model prediction, we usually need recent history data to extract features from time ranges of data.
+This recent history data is called online dataset. Online dataset is generally restricted to the recent time range, which is small compared to the offline dataset.
 
 ### 2.1. Online Dataset Import
 The online dataset can be imported to OpenMLDB in a similar way to the traditional database.

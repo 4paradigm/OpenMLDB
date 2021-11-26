@@ -15,7 +15,7 @@
     docker run -v `pwd`:/OpenMLDB -it 4pdosc/hybridsql:0.4.0 bash
     ```
 4. Compile OpenMLDB in the docker
-    ```
+    ```bash
     cd /OpenMLDB
     make
     ```
@@ -42,7 +42,7 @@ make CMAKE_BUILD_TYPE=Debug
 
 - TESTING_ENABLE: enabling building the test targets
 
-  Default: ON
+  Default: OFF
 
 
 ## Optimized Spark Distribution for OpenMLDB (Optional)
@@ -63,7 +63,7 @@ cd ./spark/
 ./dev/make-distribution.sh --name openmldbspark --pip --tgz -Phadoop-2.7 -Pyarn -Pallinone
 ```
 
-2. Setting up the default Spark home as the OpenMLDB Spark distribution
+2. Setting up the environment variable `SPARK_HOME` to make the OpenMLDB Spark distribution for OpenMLDB or other Spark applications
 
 ```bash
 tar xzvf ./spark-3.0.0-bin-openmldbspark.tgz

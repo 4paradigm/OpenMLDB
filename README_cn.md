@@ -49,7 +49,7 @@ OpenMLDB 提供了一个强大的整合的命令行客户端。基于命令行�
 
 ## 3. 编译和安装
 
-:point_right: [点击这里](docs/en/compile.md)
+:point_right: [点击这里](docs/cn/compile.md)
 
 ## 4. Demo & QuickStart
 
@@ -60,6 +60,7 @@ OpenMLDB 提供了一个强大的整合的命令行客户端。基于命令行�
 - :point_right: [Demo 代码](demo)
 - :point_right: [集群模式快速上手指南](docs/cn/cluster.md)
 - :point_right: [单机模式快速上手指南](docs/cn/standalone.md)
+- :point_right: [性能敏感模式说明](docs/cn/performance_sensitive_mode.md)
 
 ## 5. 开发计划
 
