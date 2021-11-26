@@ -54,12 +54,12 @@ We provide a powerful integrated CLI for SQL programming, job management, online
 
 Since OpenMLDB v0.3.0, we have introduced two operating modes, which are cluster mode and standalone mode. The cluster mode is suitable for large-scale datasets and real-world applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone mode running on a single node is ideal for small businesses and demonstration. 
 
-We demonstrate the workflow of using the cluster and standalone modes:
+We demonstrate the workflow of using the cluster and standalone modes, as well one of the important concepts "performance-sensitive mode":
 
 - :point_right: [Demo code](demo)
 - :point_right: [QuickStart for the cluster mode](docs/en/cluster.md)
 - :point_right: [QuickStart for the standalone mode](docs/en/standalone.md)
-- :point_right: [About performance-sensitive mode](docs/en/performance_sensitive_mode.md)
+- :point_right: [The performance-sensitive mode](docs/en/performance_sensitive_mode.md)
 
 ## 5. Roadmap
 

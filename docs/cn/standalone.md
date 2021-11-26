@@ -14,8 +14,6 @@
    --endpoint=127.0.0.1:6527
    # 和conf/tablet.flags中endpoint保持一致
    --tablet=127.0.0.1:9921
-   #--zk_cluster=127.0.0.1:7181
-   #--zk_root_path=/openmldb_cluste
    ```
 * conf/apiserver.flags
    ```bash

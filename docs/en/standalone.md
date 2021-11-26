@@ -6,19 +6,17 @@
 2. (Optional) Please change the port number if it is occupied by another service
 
 * conf/tablet.flags
-   ```
+   ```bash
    --endpoint=127.0.0.1:9921
    ```
 * conf/nameserver.flags
-   ```
+   ```bash
    --endpoint=127.0.0.1:6527
    # set the same value as the endpoint in conf/tablet.flags
    --tablet=127.0.0.1:9921
-   #--zk_cluster=127.0.0.1:7181
-   #--zk_root_path=/openmldb_cluste
    ```
 * conf/apiserver.flags
-   ```
+   ```bash
    --endpoint=127.0.0.1:8080
    # set the same value as the endpoint in conf/nameserver.flags
    --nameserver=127.0.0.1:6527
@@ -131,7 +129,7 @@ Later on, if you would like to discard a deployment, you can use the command `DR
 
 We can use RESTful APIs to execute online feature extraction. The format of URL is as follows:
 
-```
+```bash
 http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
         \___________/      \____/              \_____________/
               |               |                        |
