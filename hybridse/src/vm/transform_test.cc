@@ -552,6 +552,89 @@ TEST_F(TransformTest, PhysicalPlanFailOnOnlyFullGroupBy) {
         "functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by");
 }
 
+// OpenMLDB column resolve failure check
+TEST_F(TransformTest, PhysicalColumnResolveFailTest) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col1 as c1, col3 from t1) as tt;",
+        kBatchMode, common::kOk,
+        "ok");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col1 as c1, col3 from t1) as tt;",
+        kRequestMode, common::kOk,
+        "ok");
+
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from t1;",
+        kBatchMode, common::kColumnNotFound,
+        "Fail to find column c1");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from t1;",
+        kRequestMode, common::kColumnNotFound,
+        "Fail to find column c1");
+
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col2 as c1, col3 from t1) as tt;",
+        kBatchMode, common::kColumnAmbiguous,
+        "Ambiguous column name c1");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col2 as c1, col3 from t1) as tt;",
+        kRequestMode, common::kColumnAmbiguous,
+        "Ambiguous column name c1");
+
+    PhysicalPlanFailCheck(
+        catalog,
+        "select * from\n"
+        "      (\n"
+        "      SELECT\n"
+        "      col1 as id,\n"
+        "      col1 as id,\n"
+        "      sum(col2) OVER w1 as w1_col2_sum,\n"
+        "      FROM t1 WINDOW\n"
+        "      w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)\n"
+        "      ) as out0 LAST JOIN\n"
+        "      (\n"
+        "      SELECT\n"
+        "      col1 as id,\n"
+        "      sum(col2) OVER w2 as w2_col2_sum FROM t1 WINDOW\n"
+        "      w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)\n"
+        "      ) as out1 ON out0.id = out1.id;",
+        kRequestMode, common::kOk,
+        "ok");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select * from\n"
+        "      (\n"
+        "      SELECT\n"
+        "      col1 as id,\n"
+        "      col2 as id,\n"
+        "      sum(col2) OVER w1 as w1_col2_sum,\n"
+        "      FROM t1 WINDOW\n"
+        "      w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)\n"
+        "      ) as out0 LAST JOIN\n"
+        "      (\n"
+        "      SELECT\n"
+        "      col1 as id,\n"
+        "      sum(col2) OVER w2 as w2_col2_sum FROM t1 WINDOW\n"
+        "      w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)\n"
+        "      ) as out1 ON out0.id = out1.id;",
+        kRequestMode, common::kColumnAmbiguous,
+        "Ambiguous column name .out0.id");
+}
+
 TEST_F(TransformTest, TransfromConditionsTest) {
     std::vector<std::pair<std::string, std::vector<std::string>>> sql_exp;
 

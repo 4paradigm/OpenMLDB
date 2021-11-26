@@ -206,7 +206,7 @@ Status SchemasContext::ResolveColumnIndexByName(
         // if relation name not specified, resolve in current context only
         auto iter = column_name_map_.find(column_name);
         CHECK_TRUE(iter != column_name_map_.end(), kColumnNotFound,
-                   "Fail to find column `", column_name, "`");
+                   "Fail to find column ", column_name);
         if (iter->second.size() > 1) {
             CHECK_TRUE(!IsColumnAmbiguous(column_name), common::kColumnAmbiguous,
                        "Ambiguous column name ", column_name);
@@ -219,7 +219,7 @@ Status SchemasContext::ResolveColumnIndexByName(
         // fallback logic if this is not a schema context bind to plan node
         auto iter = column_name_map_.find(column_name);
         CHECK_TRUE(iter != column_name_map_.end(), kColumnNotFound,
-                   "Fail to find column `", column_name, "`");
+                   "Fail to find column ", column_name);
         bool found = false;
         size_t cur_column_id = 0;
         size_t cur_col_idx = 0;
