@@ -16,13 +16,14 @@
 
 package com._4paradigm.openmldb.batchjob
 
+import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import org.apache.spark.sql.SparkSession
 
-object SparkVersionApp {
+object ShowBatchVersion {
 
   def main(args: Array[String]): Unit = {
-    val spark = SparkSession.builder().getOrCreate()
-    println(s"Spark version: ${spark.version}")
+    val spark = new OpenmldbSession(SparkSession.builder().getOrCreate())
+    println(s"OpenMLDB Batch version: ${spark.version}")
   }
 
 }
