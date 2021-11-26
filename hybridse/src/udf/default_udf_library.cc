@@ -666,9 +666,37 @@ void DefaultUdfLibrary::InitStringUdf() {
                 select date_format(date(1590115420000),"%Y-%m-%d");
                 --output "2020-05-22"
             @endcode)");
+    RegisterExternal("upper")
+        .args<StringRef, StringRef>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::upper))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Convert all the characters to uppercase.
+
+            Example:
+
+            @code{.sql}
+                SELECT UPPER('Sql') as str1;
+                --output "SQL"
+            @endcode
+            @since 0.4.0)");
+    RegisterExternal("ucase")
+        .args<StringRef, StringRef>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::ucase))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Convert all the characters to uppercase.
+
+            Example:
+
+            @code{.sql}
+                SELECT UCASE('Sql') as str1;
+                --output "SQL"
+            @endcode
+            @since 0.4.0)");
 }
 
-void DefaultUdfLibrary::IniMathUdf() {
+void DefaultUdfLibrary::InitMathUdf() {
     RegisterExternal("log")
         .doc(R"(
             @brief log(base, expr)
@@ -1726,7 +1754,7 @@ void DefaultUdfLibrary::Init() {
     InitUtilityUdf();
     InitDateUdf();
     InitTypeUdf();
-    IniMathUdf();
+    InitMathUdf();
     InitStringUdf();
     InitTrigonometricUdf();
     InitWindowFunctions();

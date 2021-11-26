@@ -652,6 +652,23 @@ int32_t strcmp(hybridse::codec::StringRef *s1, hybridse::codec::StringRef *s2) {
     return hybridse::codec::StringRef::compare(*s1, *s2);
 }
 
+void upper(codec::StringRef *str, hybridse::codec::StringRef *output, bool *is_null_ptr) {
+    return ucase(str, output, is_null_ptr);
+}
+
+void ucase(codec::StringRef *str, hybridse::codec::StringRef *output, bool *is_null_ptr) {
+    if (str == nullptr || str->size_ == 0 || output == nullptr || is_null_ptr == nullptr) {
+        return;
+    }
+    char *buffer = AllocManagedStringBuf(str->size_);
+    output->size_ = str->size_;
+    for (uint32_t i = 0; i < str->size_; i++) {
+        buffer[i] = std::toupper(str->data_[i]);
+    }
+    output->data_ = buffer;
+    *is_null_ptr = false;
+}
+
 //
 
 template <>
