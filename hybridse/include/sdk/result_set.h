@@ -49,57 +49,55 @@ class ResultSet {
     }
 
     const bool GetAsString(uint32_t idx, std::string* val) {
-        std::string unsafe_val = GetAsStringUnsafe(idx, "NA");
-        // TODO(zekai): "NA" may be the value of a column, it will cause wrong judgment. Need fix
-        if (unsafe_val == "NA") {
-            return false;
-        } else {
-            *val = unsafe_val;
-            return true;
-        }
-    }
-
-    const std::string GetAsStringUnsafe(uint32_t idx, const std::string& default_na_value = "NA") {
         if (nullptr == GetSchema()) {
-            return default_na_value;
+            return false;
         }
         int schema_size = GetSchema()->GetColumnCnt();
         if (0 == schema_size) {
-            return default_na_value;
+            return false;
         }
 
         if ((int32_t)idx >= schema_size) {
-            return default_na_value;
+            return false;
         }
 
         if (IsNULL(idx)) {
-            return "NULL";
+            *val = "NULL";
+            return true;
         }
         auto type = GetSchema()->GetColumnType(idx);
         switch (type) {
             case kTypeInt32: {
-                return std::to_string(GetInt32Unsafe(idx));
+                *val = std::to_string(GetInt32Unsafe(idx));
+                return true;
             }
             case kTypeInt64: {
-                return std::to_string(GetInt64Unsafe(idx));
+                *val = std::to_string(GetInt64Unsafe(idx));
+                return true;
             }
             case kTypeInt16: {
-                return std::to_string(GetInt16Unsafe(idx));
+                *val = std::to_string(GetInt16Unsafe(idx));
+                return true;
             }
             case kTypeFloat: {
-                return std::to_string(GetFloatUnsafe(idx));
+                *val = std::to_string(GetFloatUnsafe(idx));
+                return true;
             }
             case kTypeDouble: {
-                return std::to_string(GetDoubleUnsafe(idx));
+                *val = std::to_string(GetDoubleUnsafe(idx));
+                return true;
             }
             case kTypeBool: {
-                return GetBoolUnsafe(idx) ? "true" : "false";
+                *val = GetBoolUnsafe(idx) ? "true" : "false";
+                return true;
             }
             case kTypeString: {
-                return GetStringUnsafe(idx);
+                *val = GetStringUnsafe(idx);
+                return true;
             }
             case kTypeTimestamp: {
-                return std::to_string(GetTimeUnsafe(idx));
+                *val = std::to_string(GetTimeUnsafe(idx));
+                return true;
             }
             case kTypeDate: {
                 int32_t year;
@@ -108,16 +106,26 @@ class ResultSet {
                 if (GetDate(idx, &year, &month, &day)) {
                     char date[11];
                     snprintf(date, 11u, "%4d-%.2d-%.2d", year, month, day);
-                    return std::string(date);
+                    *val = std::string(date);
+                    return true;
                 } else {
-                    return default_na_value;
+                    return false;
                 }
             }
             default: {
                 break;
             }
         }
-        return default_na_value;
+        return false;
+    }
+
+    const std::string GetAsStringUnsafe(uint32_t idx, const std::string& default_na_value = "NA") {
+        std::string val = 0;
+        if (!GetAsString(idx, &val)) {
+            return default_na_value;
+        } else {
+            return val;
+        }
     }
 
     inline std::string GetRowString() {
