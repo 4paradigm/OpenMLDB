@@ -128,12 +128,16 @@ public class JobInfo {
 
     @Override
     public String toString() {
-        return String.format("id: %d, jobType: %s, state: %s, parameter: %s, cluster: %s applicationId: %s, error: %s",
+        return String.format("id: %d, jobType: %s, state: %s, parameter: %s, cluster: %s, applicationId: %s, error: %s",
                 id, jobType, state, parameter, cluster, applicationId, error);
     }
 
     public boolean isFinished() {
         return Arrays.asList(FINAL_STATE).contains(state.toLowerCase());
+    }
+
+    public boolean isYarnJob() {
+        return cluster.toLowerCase().equals("yarn");
     }
 
     public void sync() {

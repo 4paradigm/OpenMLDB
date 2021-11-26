@@ -17,16 +17,52 @@
 package com._4paradigm.openmldb.taskmanager.spark
 
 import com._4paradigm.openmldb.taskmanager.JobInfoManager
-import SparkLauncherUtil.createSparkLauncher
+import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.{JobIdGenerator, JobInfo}
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
-
-import java.util.Calendar
+import org.apache.spark.launcher.SparkLauncher
 
 object SparkJobManager {
 
-  def submitSparkJob(jobInfo: JobInfo, mainClass: String, args: Array[String],
-                     sparkConf: Map[String, String]): Unit = {
+  /**
+   * Create the SparkLauncher object with pre-set parameters like yarn-cluster.
+   *
+   * @param mainClass the full-qualified Java class name
+   * @return the SparkLauncher object
+   */
+  def createSparkLauncher(mainClass: String): SparkLauncher = {
+
+    val launcher = new SparkLauncher()
+      .setAppResource(TaskManagerConfig.BATCHJOB_JAR_PATH)
+      .setMainClass(mainClass)
+
+    if (TaskManagerConfig.SPARK_HOME != null && TaskManagerConfig.SPARK_HOME.nonEmpty) {
+      launcher.setSparkHome(TaskManagerConfig.SPARK_HOME)
+    }
+
+    TaskManagerConfig.SPARK_MASTER.toLowerCase match {
+      case "local" => {
+        launcher.setMaster("local")
+      }
+      case "yarn" => {
+        launcher.setMaster("yarn")
+          .setDeployMode("cluster")
+          .setConf("spark.yarn.maxAppAttempts", "1")
+      }
+      case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
+    }
+
+    if (TaskManagerConfig.SPARK_YARN_JARS != null && TaskManagerConfig.SPARK_YARN_JARS.nonEmpty) {
+      launcher.setConf("spark.yarn.jars", TaskManagerConfig.SPARK_YARN_JARS)
+    }
+
+    launcher
+  }
+
+  def submitSparkJob(jobType: String, mainClass: String, args: List[String] = List(),
+                     sparkConf: Map[String, String] = Map()): JobInfo = {
+
+    val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
 
     // Submit Spark application with SparkLauncher
     val launcher = createSparkLauncher(mainClass)
@@ -41,13 +77,8 @@ object SparkJobManager {
 
     // Submit Spark application and watch state with custom listener
     launcher.startApplication(new SparkJobListener(jobInfo))
-  }
 
-  def submitSparkJob(mainClass: String, jobType: String, args: Array[String]=null,
-                     sparkConf: Map[String, String]=Map()): Unit = {
-
-    val jobInfo = JobInfoManager.createJobInfo(jobType)
-    submitSparkJob(jobInfo, mainClass, args, sparkConf)
+    jobInfo
   }
 
   def stopSparkYarnJob(jobInfo: JobInfo): Unit = {
