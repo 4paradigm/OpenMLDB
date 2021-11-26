@@ -27,8 +27,6 @@ object SparkJobManager {
 
   def submitSparkJob(jobInfo: JobInfo, mainClass: String, args: Array[String],
                      sparkConf: Map[String, String]): Unit = {
-    // TODO: Request NameServer to write jobInfo into system table
-    JobInfoManager.addJobInfo(jobInfo)
 
     // Submit Spark application with SparkLauncher
     val launcher = createSparkLauncher(mainClass)
@@ -45,23 +43,15 @@ object SparkJobManager {
     launcher.startApplication(new SparkJobListener(jobInfo))
   }
 
-  def submitSparkJob(mainClass: String, jobType: String, cluster: String, args: Array[String]=null,
+  def submitSparkJob(mainClass: String, jobType: String, args: Array[String]=null,
                      sparkConf: Map[String, String]=Map()): Unit = {
-    val jobId = JobIdGenerator.getUniqueJobID
-    val startTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())
-
-    // Generate JobInfo
-    val jobInfo = new JobInfo()
-    jobInfo.setId(jobId)
-    jobInfo.setJobType(jobType)
-    jobInfo.setStartTime(startTime)
-    jobInfo.setCluster(cluster)
-
+   
+    val jobInfo = JobInfoManager.createJobInfo(jobType)
     submitSparkJob(jobInfo, mainClass, args, sparkConf)
   }
 
   def stopSparkYarnJob(jobInfo: JobInfo): Unit = {
-    if (jobInfo.isFinal) {
+    if (jobInfo.isFinished) {
       // TODO: return error message
     } else if (jobInfo.getApplicationId == null) {
 

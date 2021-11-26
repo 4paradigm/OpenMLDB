@@ -100,9 +100,6 @@ INSTANTIATE_TEST_SUITE_P(SqlSimpleQueryParse, TransformRequestModeTest,
 INSTANTIATE_TEST_SUITE_P(SqlWindowQueryParse, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 
-INSTANTIATE_TEST_SUITE_P(SqlHavingPlan, TransformRequestModeTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
-
 INSTANTIATE_TEST_SUITE_P(SqlOrderPlan, TransformRequestModeTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/order_query.yaml", FILTERS)));
 
@@ -260,31 +257,6 @@ INSTANTIATE_TEST_SUITE_P(
                                    "range=(col5, -3, 0), index_keys=)\n"
                                    "      DATA_PROVIDER(request=t1)\n"
                                    "      DATA_PROVIDER(table=t1)")));
-INSTANTIATE_TEST_SUITE_P(
-    GroupOptimized, TransformRequestModePassOptimizedTest,
-    testing::Values(std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col1;",
-                                   "PROJECT(type=Aggregation)\n"
-                                   "  REQUEST_UNION(partition_keys=(), orders=, index_keys=(col1))\n"
-                                   "    DATA_PROVIDER(request=t1)\n"
-                                   "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
-                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
-                                   "PROJECT(type=Aggregation)\n"
-                                   "  REQUEST_UNION(partition_keys=(), orders=, "
-                                   "index_keys=(col1,col2))\n"
-                                   "    DATA_PROVIDER(request=t1)\n"
-                                   "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
-                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col6;",
-                                   "PROJECT(type=Aggregation)\n"
-                                   "  REQUEST_UNION(partition_keys=(col6), orders=, "
-                                   "index_keys=(col1,col2))\n"
-                                   "    DATA_PROVIDER(request=t1)\n"
-                                   "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
-                    std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col6, col2, col1;",
-                                   "PROJECT(type=Aggregation)\n"
-                                   "  REQUEST_UNION(partition_keys=(col6), orders=, "
-                                   "index_keys=(col2,col1))\n"
-                                   "    DATA_PROVIDER(request=t1)\n"
-                                   "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
 
 INSTANTIATE_TEST_SUITE_P(
     JoinFilterOptimized, TransformRequestModePassOptimizedTest,

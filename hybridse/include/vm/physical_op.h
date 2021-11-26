@@ -54,6 +54,7 @@ enum PhysicalOpType {
     kPhysicalOpRequestJoin,
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
+    kPhysicalOpLoadData,
 };
 
 enum PhysicalSchemaType { kSchemaTypeTable, kSchemaTypeRow, kSchemaTypeGroup };
@@ -95,6 +96,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "REQUEST_JOIN";
         case kPhysicalOpIndexSeek:
             return "INDEX_SEEK";
+        case kPhysicalOpLoadData:
+            return "LOAD_DATA";
         default:
             return "UNKNOW";
     }
@@ -278,6 +281,8 @@ class Range : public FnComponent {
 
 class ConditionFilter : public FnComponent {
  public:
+    ConditionFilter()
+        : condition_(nullptr) {}
     explicit ConditionFilter(const node::ExprNode *condition)
         : condition_(condition) {}
     virtual ~ConditionFilter() {}
@@ -785,31 +790,33 @@ class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
 
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
-    PhysicalAggrerationNode(PhysicalOpNode *node, const ColumnProjects &project)
-        : PhysicalProjectNode(node, kAggregation, project, true) {
+    PhysicalAggrerationNode(PhysicalOpNode *node, const ColumnProjects &project, const node::ExprNode *condition)
+        : PhysicalProjectNode(node, kAggregation, project, true), having_condition_(condition) {
         output_type_ = kSchemaTypeRow;
+        fn_infos_.push_back(&having_condition_.fn_info());
     }
     virtual ~PhysicalAggrerationNode() {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    ConditionFilter having_condition_;
 };
 
 class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalGroupAggrerationNode(PhysicalOpNode *node,
                                  const ColumnProjects &project,
+                                 const node::ExprNode* having_condition,
                                  const node::ExprListNode *groups)
         : PhysicalProjectNode(node, kGroupAggregation, project, true),
+          having_condition_(having_condition),
           group_(groups) {
         output_type_ = kSchemaTypeTable;
+        fn_infos_.push_back(&having_condition_.fn_info());
         fn_infos_.push_back(&group_.fn_info());
     }
     virtual ~PhysicalGroupAggrerationNode() {}
-
-    base::Status WithNewChildren(node::NodeManager *nm,
-                                 const std::vector<PhysicalOpNode *> &children,
-                                 PhysicalOpNode **out) override;
-
     static PhysicalGroupAggrerationNode *CastFrom(PhysicalOpNode *node);
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    ConditionFilter having_condition_;
     Key group_;
 };
 
@@ -1598,6 +1605,37 @@ class PhysicalDistinctNode : public PhysicalUnaryNode {
                                  PhysicalOpNode **out) override;
 
     virtual ~PhysicalDistinctNode() {}
+};
+
+class PhysicalLoadDataNode : public PhysicalOpNode {
+ public:
+    PhysicalLoadDataNode(const std::string &file, const std::string &db, const std::string &table,
+                         std::shared_ptr<node::OptionsMap> options)
+        : PhysicalOpNode(kPhysicalOpLoadData, false), file_(file), db_(db), table_(table), options_(std::move(options)) {}
+    ~PhysicalLoadDataNode() override = default;
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status InitSchema(PhysicalPlanContext *) override;
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+    static PhysicalLoadDataNode *CastFrom(PhysicalOpNode *node);
+
+    const std::string &File() const { return file_; }
+    const std::string &Db() const { return db_; }
+    const std::string &Table() const { return table_; }
+    // avoid to use map<A, B*>, the B* will result in python swig errors, e.g. no member named 'type_name' in 'swig::traits<B>'
+    // vector<pair<>> is too complex, and will get a class in the package root dir.
+    const hybridse::node::ConstNode *GetOption(const std::string &option) const {
+        if (!options_) {
+            return nullptr;
+        }
+        auto it = options_->find(option);
+        return it == options_->end() ? nullptr : it->second;
+    }
+
+    std::string file_;
+    std::string db_;
+    std::string table_;
+    std::shared_ptr<node::OptionsMap> options_;
 };
 
 /**

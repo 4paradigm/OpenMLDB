@@ -24,10 +24,7 @@ w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 
 ## Running the demo with cluster mode
 
 ```
-docker run -dt ghcr.io/4paradigm/openmldb:0.3.0
-# find the container id
-CONTAINER_ID=`docker ps | grep openmldb | awk '{print $1}'`
-docker exec -it ${CONTAINER_ID} /bin/bash
+docker run -it 4pdosc/openmldb:0.3.2 bash
 
 # Initilize the environment
 ./init.sh
@@ -55,7 +52,7 @@ To read more details about cluster mode, please refer [here](https://github.com/
 ## Running the demo with standalone mode
 ### Start docker
 ```bash
-docker run -it ghcr.io/4paradigm/openmldb:0.3.0 bash
+docker run -it 4pdosc/openmldb:0.3.2 bash
 ```
 ### Initilize environment
 ```bash
