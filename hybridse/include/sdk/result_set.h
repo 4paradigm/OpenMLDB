@@ -48,7 +48,7 @@ class ResultSet {
         return val;
     }
 
-    const bool GetAsString(uint32_t idx, std::string* val) {
+    const bool GetAsString(uint32_t idx, std::string& val) {
         if (nullptr == GetSchema()) {
             return false;
         }
@@ -62,41 +62,41 @@ class ResultSet {
         }
 
         if (IsNULL(idx)) {
-            *val = "NULL";
+            val = "NULL";
             return true;
         }
         auto type = GetSchema()->GetColumnType(idx);
         switch (type) {
             case kTypeInt32: {
-                *val = std::to_string(GetInt32Unsafe(idx));
+                val = std::to_string(GetInt32Unsafe(idx));
                 return true;
             }
             case kTypeInt64: {
-                *val = std::to_string(GetInt64Unsafe(idx));
+                val = std::to_string(GetInt64Unsafe(idx));
                 return true;
             }
             case kTypeInt16: {
-                *val = std::to_string(GetInt16Unsafe(idx));
+                val = std::to_string(GetInt16Unsafe(idx));
                 return true;
             }
             case kTypeFloat: {
-                *val = std::to_string(GetFloatUnsafe(idx));
+                val = std::to_string(GetFloatUnsafe(idx));
                 return true;
             }
             case kTypeDouble: {
-                *val = std::to_string(GetDoubleUnsafe(idx));
+                val = std::to_string(GetDoubleUnsafe(idx));
                 return true;
             }
             case kTypeBool: {
-                *val = GetBoolUnsafe(idx) ? "true" : "false";
+                val = GetBoolUnsafe(idx) ? "true" : "false";
                 return true;
             }
             case kTypeString: {
-                *val = GetStringUnsafe(idx);
+                val = GetStringUnsafe(idx);
                 return true;
             }
             case kTypeTimestamp: {
-                *val = std::to_string(GetTimeUnsafe(idx));
+                val = std::to_string(GetTimeUnsafe(idx));
                 return true;
             }
             case kTypeDate: {
@@ -106,7 +106,7 @@ class ResultSet {
                 if (GetDate(idx, &year, &month, &day)) {
                     char date[11];
                     snprintf(date, 11u, "%4d-%.2d-%.2d", year, month, day);
-                    *val = std::string(date);
+                    val = std::string(date);
                     return true;
                 } else {
                     return false;
@@ -120,8 +120,8 @@ class ResultSet {
     }
 
     const std::string GetAsStringUnsafe(uint32_t idx, const std::string& default_na_value = "NA") {
-        std::string val = 0;
-        if (!GetAsString(idx, &val)) {
+        std::string val;
+        if (!GetAsString(idx, val)) {
             return default_na_value;
         } else {
             return val;
