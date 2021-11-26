@@ -36,6 +36,7 @@
 #include "client/tablet_client.h"
 #include "codec/schema_codec.h"
 #include "nameserver/cluster_info.h"
+#include "nameserver/system_table.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
@@ -353,6 +354,8 @@ class NameServerImpl : public NameServer {
 
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
+
+    base::Status CreateSystemTable(const std::string& table_name, SystemTableType table_type);
 
  private:
     // Recover all memory status, the steps
