@@ -29,10 +29,6 @@ public class JobIdGenerator {
     private JobIdGenerator() {
     }
 
-    public static void closeZkClient() {
-        zkClient = null;
-    }
-
     public static int getUniqueJobID() throws Exception {
         synchronized (JobIdGenerator.class) {
             if (zkClient == null) {
@@ -58,9 +54,12 @@ public class JobIdGenerator {
                 // Get the node value from zk
                 jobId = Integer.parseInt(zkClient.getNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH));
             }
-            if ((jobId + 1) % TaskManagerConfig.MAX_JOB_ID == 0) {
+            // Pre-set job id in zookeeper.
+            // If taskmanager failed, pre-set job id in zk can avoid duplicate ID.
+            if ((jobId + 1) >= TaskManagerConfig.MAX_JOB_ID) {
                 zkClient.setNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH,
                         String.valueOf(jobId + 1 + TaskManagerConfig.MAX_JOB_ID).getBytes());
+                TaskManagerConfig.MAX_JOB_ID = jobId + 1 + TaskManagerConfig.MAX_JOB_ID;
             }
             return ++jobId;
         }

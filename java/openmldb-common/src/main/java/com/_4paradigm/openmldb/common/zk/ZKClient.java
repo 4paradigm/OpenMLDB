@@ -23,7 +23,6 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
 
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -63,13 +62,13 @@ public class ZKClient {
         }
     }
 
-    public void createNode(String path, byte[] data) throws Exception{
+    public void createNode(String path, byte[] data) throws Exception {
         if (client.checkExists().forPath(path) == null) {
             client.create().forPath(path, data);
         }
     }
 
-    public void setNodeValue(String path, byte[] data) throws Exception{
+    public void setNodeValue(String path, byte[] data) throws Exception {
         if (client.checkExists().forPath(path) == null) {
             client.create().forPath(path, data);
         } else {
@@ -77,7 +76,7 @@ public class ZKClient {
         }
     }
 
-    public String getNodeValue(String path) throws Exception{
+    public String getNodeValue(String path) throws Exception {
         if (client.checkExists().forPath(path) == null) {
             throw new RuntimeException("Zookeeper node is null!");
         } else {
