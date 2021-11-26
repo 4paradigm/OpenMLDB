@@ -39,13 +39,13 @@ sh bin/stop-all.sh
 ```sql
 > CREATE DATABASE demo_db;
 > USE demo_db;
-> CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date, INDEX(ts=c6));
+> CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date, INDEX(key=c1, ts=c6));
 ```
-The `INDEX` function used in `CREATE TABLE` accepts two important parameters `ts` and `key`. 
+The `INDEX` function used in `CREATE TABLE` accepts two important parameters `key` and `ts`. 
 
-- `ts` specifies the ordered column, which is used by `ORDER BY`. Only the `timestamp` and `bigint` columns can be specified as `ts`. If `ts ` is not specified, OpenMLDB will use the timestamps of importing the row as the `ts` column.
-- `key` specifies the index column. If it is not specified, OpenMLDB will use the first applicable column as the index column automatically. Necessary indexes will be built when deploying online SQL. You can also specific multiple indexes by more than one `INDEX` functions.
-- `ts` and `key` also determine whether certain SQL queries can be executed, please refer to [Introduction to OpenMLDB's Performance-Sensitive Mode](performance_sensitive_mode.md) for more details. In this example, as `key` is unspecified, thus most offline queries have to be executed with `PERFORMANCE_SENSITIVE=false` .
+- `key` specifies the index column. If it is not specified, OpenMLDB will use the first applicable column as the index column automatically. Necessary indexes will be built when deploying online SQL. 
+- `ts` specifies the ordered column, which is used by `ORDER BY`. Only the `timestamp` and `bigint` columns can be specified as `ts`. 
+- `ts` and `key` also determine whether certain SQL queries can be executed offline, please refer to [Introduction to OpenMLDB's Performance-Sensitive Mode](performance_sensitive_mode.md) for more details.
 
 ### 2.3. Data Import
 We import a `csv` file for feature extraction (a sample csv file can be downloaded [here](../../demo/standalone/data/data.csv)).
@@ -59,12 +59,11 @@ The below SQL performs the feature extraction and outputs the result features in
 
 ```sql
 > USE demo_db;
-> SET performance_sensitive=false;
 > SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 ```
 ### 2.5. Online SQL Deployment
 
-Now we are ready to deploy our feature extraction solution for the online serving. 
+Now we are ready to deploy our feature extraction SQL for the online serving. Note that the same SQL script should be used for both offline and online feature extraction.
 
 ```sql
 > USE demo_db;

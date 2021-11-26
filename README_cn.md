@@ -60,7 +60,6 @@ OpenMLDB 提供了一个强大的整合的命令行客户端。基于命令行�
 - :point_right: [Demo 代码](demo)
 - :point_right: [集群模式快速上手指南](docs/cn/cluster.md)
 - :point_right: [单机模式快速上手指南](docs/cn/standalone.md)
-- :point_right: [性能敏感模式说明](docs/cn/performance_sensitive_mode.md)
 
 ## 5. 开发计划
 
