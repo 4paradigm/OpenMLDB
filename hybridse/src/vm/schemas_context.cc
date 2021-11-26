@@ -274,7 +274,26 @@ Status SchemasContext::ResolveColumnIndexByID(size_t column_id,
     *index = find_iter->second.second;
     return Status::OK();
 }
+Status SchemasContext::ResolveDbTableColumnByID(size_t column_id,
+                                   std::string*db, std::string *table, std::string* column) const {
+    CHECK_TRUE(this->CheckBuild(), kColumnNotFound,
+               "Schemas context is not fully build");
+    auto iter = column_id_map_.find(column_id);
+    CHECK_TRUE(iter != column_id_map_.end(), kColumnNotFound,
+               "Fail to find column id #", column_id,
+               " in current schema context");
+    auto sc = GetSchemaSource(iter->second.first);
 
+    CHECK_TRUE(sc != nullptr, kColumnNotFound, iter->second.first,
+               "th schema source not found");
+    *db = sc->GetSourceDB();
+    *table = sc->GetSourceName();
+    auto schema = sc->GetSchema();
+    CHECK_TRUE(schema != nullptr, kColumnNotFound, iter->second.first,
+               "th schema not found");
+    *column = schema->Get(iter->second.second).name();
+    return Status::OK();
+}
 Status SchemasContext::ResolveColumnNameByID(size_t column_id,
                                              std::string* name) const {
     CHECK_TRUE(this->CheckBuild(), kColumnNotFound,

@@ -45,7 +45,7 @@ sh bin/stop-all.sh
 ### Create Table
 ```sql
 > USE demo_db;
-> CREATE TABLE demo_table1(c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, index(ts=c7));
+> CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date, index(ts=c6));
 ```
 **Note**: Specify at least one index and set the `ts` column which is used for ORDERBY. The `ts` column is the key in `index` option and can be setted with `timestamp` or `bigint` column only. 
 ### Import Data
@@ -69,24 +69,24 @@ Below demonstrates a data exploration task.
 ```sql
 > USE demo_db;
 > SET PERFORMANCE_SENSITIVE = false;
-> SELECT sum(c5) as sum FROM demo_table1 where c3=11;
+> SELECT sum(c4) as sum FROM demo_table1 where c2=11;
  ----------
   sum
  ----------
-  56.000004
+  1.200000
  ----------
 
 1 rows in set
 ```
 ### Generate SQL
 ```sql
-SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 ### Offline feature extraction
 ```sql
 > USE demo_db;
 > SET performance_sensitive=false;
-> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
+> SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 ```
 Alternatively, you may use the below options for the advanced usage.
 Name | Type |  Default | Options
@@ -96,14 +96,14 @@ header | Boolean | true | true/false
 null_value | String | null | Any String
 mode | String | error_if_exists | error_if_exists/overwrite/append
 ```sql
-> SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' OPTIONS (mode = 'overwrite', delimiter=',');
+> SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv' OPTIONS (mode = 'overwrite', delimiter=',');
 ```
 ### Deploy SQL to online
 ```sql
 > USE demo_db;
-> DEPLOY demo_data_service SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+> DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 as w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
-We can also show and drop deployment like this:
+We can also show deployment like this:
 ```sql
 > USE demo_db;
 > SHOW DEPLOYMENTS;
@@ -113,7 +113,6 @@ We can also show and drop deployment like this:
   demo_db   demo_data_service
  --------- -------------------
 1 row in set
-> DROP DEPLOYMENT demo_data_service;
 ```
 ### Online feature extraction
 We can use RESTful APIs to execute online feature extraction.  
@@ -130,5 +129,10 @@ Ex:
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
 "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
 }'
+{"code":0,"msg":"ok","data":{"data":[["aaa",11,22]],"common_cols_data":[]}}
 ```
 The ip and port in url is `endpoint` in `conf/apiserver.flags`
+
+In order to better understand the workflow, we use Kaggle Competition [Predict Taxi Tour Duration Dataset](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script/data)
+to demostrate the whole process. Dataset and source code can be found
+[here](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script).

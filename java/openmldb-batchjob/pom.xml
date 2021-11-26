@@ -7,7 +7,7 @@
   <parent>
       <artifactId>openmldb-parent</artifactId>
       <groupId>com.4paradigm.openmldb</groupId>
-      <version>0.2.4-SNAPSHOT</version>
+      <version>0.4.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>openmldb-batchjob</artifactId>
@@ -66,16 +66,12 @@
       <scope>${spark.scope}</scope>
     </dependency>
 
-    <!-- Iceberg -->
+    <!-- OpenMLDB Batch -->
     <dependency>
-      <groupId>org.apache.iceberg</groupId>
-      <artifactId>iceberg-spark3-runtime</artifactId>
-      <version>0.11.1</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.iceberg</groupId>
-      <artifactId>iceberg-hive</artifactId>
-      <version>0.9.1</version>
+      <groupId>com.4paradigm.openmldb</groupId>
+      <artifactId>openmldb-batch</artifactId>
+      <version>0.3.0-allinone</version>
+      <scope>provided</scope>
     </dependency>
 
   </dependencies>
@@ -185,15 +181,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.9.1</version>
-        <executions>
-          <execution>
-            <id>attach-javadocs</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
 
     </plugins>

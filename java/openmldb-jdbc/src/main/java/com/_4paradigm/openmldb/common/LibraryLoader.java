@@ -38,7 +38,7 @@ public class LibraryLoader {
             // try load from environment
             try {
                 System.loadLibrary(libraryPath);
-                logger.info("Successfully load library %s", libraryPath);
+                logger.info("Successfully load library {}", libraryPath);
                 return;
             } catch (Throwable t) {
                 logger.debug(String.format("Failed to load %s", libraryPath), t);

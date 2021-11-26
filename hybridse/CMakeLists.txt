@@ -34,16 +34,16 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules")
 
 project(hybridse)
 
 set(HYBRIDSE_VERSION_MAJOR 0)
-set(HYBRIDSE_VERSION_MINOR 2)
-set(HYBRIDSE_VERSION_BUG 4)
+set(HYBRIDSE_VERSION_MINOR 4)
+set(HYBRIDSE_VERSION_BUG 0)
 
 option(TESTING_ENABLE "Enable Test" ON)
-option(CORE_TESTING_ENABLE "Enable Core Test" ON)
+option(HYBRIDSE_TESTING_ENABLE "Enable Hybridse Test" ON)
 option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
 option(COVERAGE_ENABLE "Enable Coverage" OFF)
@@ -53,8 +53,9 @@ option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
 
+set(DEPS_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/.deps/usr" CACHE PATH "Path prefix for finding dependencies")
 if (NOT DEFINED CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/thirdparty)
+    set(CMAKE_PREFIX_PATH ${DEPS_PREFIX})
 endif()
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
@@ -120,6 +121,10 @@ configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
         "${PROJECT_SOURCE_DIR}/src/hybridse_version.h"
 )
+if (DEFINED ENV{CI})
+  # suppress useless maven log (e.g download log) on CI environment
+  set(MAVEN_FLAGS --batch-mode)
+endif()
 
 if (TESTING_ENABLE)
     enable_testing()
@@ -161,7 +166,7 @@ find_package(SWIG REQUIRED)
 include(UseSWIG)
 
 include_directories(${CMAKE_PREFIX_PATH}/include)
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 link_directories(${CMAKE_PREFIX_PATH}/lib)
 link_directories(${CMAKE_PREFIX_PATH}/lib64)
 
@@ -239,6 +244,7 @@ endif ()
 if (CMAKE_INSTALL_PREFIX STREQUAL "")
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
 endif ()
+message(STATUS "Hybridse will install to ${CMAKE_INSTALL_PREFIX}")
 install(TARGETS hybridse_core hybridse_sdk hybridse_flags
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

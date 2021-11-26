@@ -15,11 +15,13 @@
  */
 
 #include "vm/transform.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
@@ -40,12 +42,11 @@
 #include "node/node_manager.h"
 #include "passes/physical/condition_optimized.h"
 #include "plan/plan_api.h"
+#include "testing/test_base.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/simple_catalog.h"
 #include "vm/sql_compiler.h"
-#include "testing/test_base.h"
-
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
@@ -203,6 +204,9 @@ TEST_P(TransformTest, TransformPhysicalPlan) {
     PhysicalOpNode* physical_plan = nullptr;
     base::Status status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
     EXPECT_EQ(sql_case.expect().success_, status.isOK()) << status;
+    std::ostringstream oss;
+    physical_plan->Print(oss, "");
+    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 }
 
 TEST_P(TransformTest, TransformPhysicalPlanEnableWindowParalled) {
@@ -297,7 +301,8 @@ TEST_P(TransformTest, TransformPhysicalPlanEnableWindowParalled) {
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    EXPECT_EQ(sql_case.expect().success_, transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
+    auto status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
+    EXPECT_EQ(sql_case.expect().success_, status.isOK()) << status;
 }
 
 void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
@@ -341,6 +346,209 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     LOG(INFO) << "schema:\n" << ss.str() << std::endl;
 
     ASSERT_EQ(oos.str(), exp);
+}
+
+void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog,
+                           const std::string& sql,
+                           const vm::EngineMode runner_mode,
+                           int err_code,
+                           const std::string& err_msg) {
+    const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
+
+    ::hybridse::node::NodeManager manager;
+    ::hybridse::node::PlanNodeList plan_trees;
+    ::hybridse::base::Status status;
+
+    bool is_batch_mode = runner_mode == kBatchMode;
+
+    // logical plan consider pass
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &manager, status, is_batch_mode)) << status;
+    ASSERT_EQ(common::kOk, status.code);
+
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_op_generator", *ctx);
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
+    std::unique_ptr<BatchModeTransformer> transform;
+    switch (runner_mode) {
+        case kBatchMode: {
+            transform.reset(new BatchModeTransformer(&manager, "db", catalog, nullptr, m.get(), lib));
+            break;
+        }
+        case kRequestMode: {
+            transform.reset(new RequestModeTransformer(&manager, "db",
+                                                       catalog, nullptr, m.get(), lib, {}, false, false, false, false));
+            break;
+        }
+        default: {
+            ASSERT_TRUE(false) << "unsupported runner mode: " << runner_mode;
+            return;
+        }
+    }
+
+    transform->AddDefaultPasses();
+    PhysicalOpNode* physical_plan = nullptr;
+
+    status = transform->TransformPhysicalPlan(plan_trees, &physical_plan);
+    EXPECT_EQ(err_code, status.code) << status;
+    EXPECT_EQ(err_msg.c_str(), status.msg);
+}
+
+TEST_F(TransformTest, RequestModeUnsupportLoadData){
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    const std::string sql = R"sql(LOAD DATA INFILE 'a.csv' INTO TABLE t1 OPTIONS(foo='bar', num=1);)sql";
+
+    PhysicalPlanFailCheck(catalog, sql, kRequestMode, common::kPlanError, "Non-support LoadData in request mode");
+}
+
+// physical plan transform will fail if the partition key of a window is not in the supported type list
+//  which is [bool, intxx, data, timestamp, string]
+TEST_F(TransformTest, PhysicalPlanFailOnWindowPartitionType) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    const std::string sql = R"sql(SELECT sum(col1) OVER w1 as w1_c4_sum FROM t1
+                                  WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);)sql";
+
+    PhysicalPlanFailCheck(
+        catalog, sql, kBatchMode, common::kPhysicalPlanError,
+        "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(
+        catalog, sql, kRequestMode, common::kPhysicalPlanError,
+        "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
+}
+
+// physical plan transform will fail if the group key is not in the supported type list
+//  which is [bool, intxx, data, timestamp, string]
+TEST_F(TransformTest, PhysicalPlanFailOnGroupType) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    const std::string sql = "SELECT sum(col1), col3 FROM t1 GROUP BY col3";
+
+    PhysicalPlanFailCheck(
+        catalog, sql, kBatchMode, common::kPhysicalPlanError,
+        "unsupported partition key: 'col3', type is float, should be bool, intxx, string, date or timestamp");
+}
+
+
+// physical plan transform will fail if the right key of a join op is not in the supported type list
+//  which is [bool, intxx, data, timestamp, string]
+TEST_F(TransformTest, PhysicalPlanFailOnRightKeyTypeOfJoin) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    hybridse::type::TableDef table_def2;
+    BuildTableT2Def(table_def2);
+    AddTable(db, table_def2);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    const std::string sql =
+        R"sql(SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
+              last join t2 order by t2.col5 on t1.col4 = t2.col4 AND t1.col5 = t2.col5;)sql";
+
+    PhysicalPlanFailCheck(
+        catalog, sql, kBatchMode, common::kPhysicalPlanError,
+        "unsupported partition key: 't2.col4', type is double, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(
+        catalog, sql, kRequestMode, common::kPhysicalPlanError,
+        "unsupported partition key: 't2.col4', type is double, should be bool, intxx, string, date or timestamp");
+}
+
+TEST_F(TransformTest, PhysicalPlanFailOnLastJoinWindow) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    hybridse::type::TableDef table_def2;
+    BuildTableT2Def(table_def2);
+    AddTable(db, table_def2);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    const std::string last_join_window = R"sql(
+      SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5,
+      sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER w1 as w1_col3_sum,
+      sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER w1 as w1_t2_col2_sum,
+      sum(t1.col5) OVER w1 as w1_col5_sum,
+      str1 as t2_str1 FROM t1
+      last join t2 order by t2.col5 on t1.col3=t2.col3 and t1.col5 = t2.col5
+      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;
+    )sql";
+    PhysicalPlanFailCheck(catalog, last_join_window, kBatchMode, common::kPhysicalPlanError,
+        "unsupported partition key: 't2.col3', type is float, should be bool, intxx, string, date or timestamp");
+    PhysicalPlanFailCheck(catalog, last_join_window, kRequestMode, common::kPhysicalPlanError,
+        "unsupported partition key: 't2.col3', type is float, should be bool, intxx, string, date or timestamp");
+}
+
+// OpenMLDB only support ONLY_FULL_GROUP_BY mode
+TEST_F(TransformTest, PhysicalPlanFailOnOnlyFullGroupBy) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+    // ONLY_FULL_GROUP_BY Rule #1:
+    PhysicalPlanFailCheck(
+        catalog, "SELECT col1, SUM(col3) from t1;", kBatchMode, common::kPlanError,
+        "In aggregated query without GROUP BY, expression #0 of SELECT list contains nonaggregated "
+        "project 'col1'; this is incompatible with sql_mode=only_full_group_by");
+    // ONLY_FULL_GROUP_BY Rule #1:
+    PhysicalPlanFailCheck(catalog, "SELECT col1, SUM(col2) from t1 HAVING SUM(col2) > 0;", kBatchMode,
+                          common::kPlanError,
+                          "In aggregated query without GROUP BY, expression #0 of SELECT list contains nonaggregated "
+                          "project 'col1'; this is incompatible with sql_mode=only_full_group_by");
+
+    // ONLY_FULL_GROUP_BY Rule #2:
+    PhysicalPlanFailCheck(catalog,
+                          "SELECT col1 from t1 HAVING SUM(col2) > 0;", kBatchMode, common::kPlanError,
+                          "Having clause can only be used in conjunction with aggregated query");
+    // ONLY_FULL_GROUP_BY Rule #3:
+    PhysicalPlanFailCheck(catalog, "SELECT SUM(col1) from t1 HAVING col2 > 0;", kBatchMode, common::kPlanError,
+                          "In aggregated query without GROUP BY, Having clause contains nonaggregated project 'col2 > "
+                          "0'; this is incompatible with sql_mode=only_full_group_by");
+    // ONLY_FULL_GROUP_BY Rule #4:
+    PhysicalPlanFailCheck(
+        catalog, "SELECT col1, SUM(col3) from t1 GROUP BY col2;", kBatchMode, common::kPlanError,
+        "Expression #0 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'db.t1.col1' which "
+        "is not "
+        "functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by");
+
+    // ONLY_FULL_GROUP_BY Rule #5:
+    PhysicalPlanFailCheck(
+        catalog, "SELECT col1, SUM(col3) from t1 GROUP BY col1 HAVING col2 > 0;", kBatchMode, common::kPlanError,
+        "Having clause is not in GROUP BY clause and contains nonaggregated column 'db.t1.col2' which is not "
+        "functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by");
 }
 
 TEST_F(TransformTest, TransfromConditionsTest) {
@@ -685,7 +893,35 @@ class TransformPassOptimizedTest
     TransformPassOptimizedTest() {}
     ~TransformPassOptimizedTest() {}
 };
-
+INSTANTIATE_TEST_SUITE_P(
+    GroupHavingOptimized, TransformPassOptimizedTest,
+    testing::Values(
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1 HAVING sum(col2) > 100;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1), having_condition=sum(col2) > 100)\n"
+            "  DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2 HAVING sum(col2) > 100;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1,col2), having_condition=sum(col2) > 100)\n"
+            "  DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col6 HAVING sum(col2) > 100;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col6), having_condition=sum(col2) > 100)\n"
+            "  GROUP_BY(group_keys=(col6))\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM t1 group by col6, col2, col1 HAVING col1 > 0 AND col2 > 0;",
+            "PROJECT(type=GroupAggregation, group_keys=(col6,col2,col1), having_condition=col1 > 0 AND col2 > 0)\n"
+            "  GROUP_BY(group_keys=(col6))\n"
+            "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT sum(col1) as col1sum FROM (select c1 as col1, c2 as col2 , "
+            "c6 as col6 from tc) group by col6, col2, col1 HAVING col1 > 0;",
+            "PROJECT(type=GroupAggregation, group_keys=(col6,col2,col1), having_condition=col1 > 0)\n"
+            "  GROUP_BY(group_keys=(col6))\n"
+            "    SIMPLE_PROJECT(sources=(c1 -> col1, c2 -> col2, c6 -> col6))\n"
+            "      DATA_PROVIDER(type=Partition, table=tc, "
+            "index=index12_tc)")));
 INSTANTIATE_TEST_SUITE_P(
     GroupOptimized, TransformPassOptimizedTest,
     testing::Values(
@@ -698,21 +934,21 @@ INSTANTIATE_TEST_SUITE_P(
             "PROJECT(type=GroupAggregation, group_keys=(col1,col2))\n"
             "  DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
-            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
-            "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col3))\n"
-            "  GROUP_BY(group_keys=(col3))\n"
+            "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col6;",
+            "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col6))\n"
+            "  GROUP_BY(group_keys=(col6))\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
-            "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
-            "PROJECT(type=GroupAggregation, group_keys=(col3,col2,col1))\n"
-            "  GROUP_BY(group_keys=(col3))\n"
+            "SELECT sum(col1) as col1sum FROM t1 group by col6, col2, col1;",
+            "PROJECT(type=GroupAggregation, group_keys=(col6,col2,col1))\n"
+            "  GROUP_BY(group_keys=(col6))\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
             "SELECT sum(col1) as col1sum FROM (select c1 as col1, c2 as col2 , "
-            "c3 as col3 from tc) group by col3, col2, col1;",
-            "PROJECT(type=GroupAggregation, group_keys=(col3,col2,col1))\n"
-            "  GROUP_BY(group_keys=(col3))\n"
-            "    SIMPLE_PROJECT(sources=(c1 -> col1, c2 -> col2, c3 -> col3))\n"
+            "c6 as col6 from tc) group by col6, col2, col1;",
+            "PROJECT(type=GroupAggregation, group_keys=(col6,col2,col1))\n"
+            "  GROUP_BY(group_keys=(col6))\n"
+            "    SIMPLE_PROJECT(sources=(c1 -> col1, c2 -> col2, c6 -> col6))\n"
             "      DATA_PROVIDER(type=Partition, table=tc, "
             "index=index12_tc)")));
 INSTANTIATE_TEST_SUITE_P(
@@ -759,10 +995,10 @@ INSTANTIATE_TEST_SUITE_P(
                        "PROJECT(type=GroupAggregation, group_keys=(col1))\n"
                        "  FILTER_BY(condition=20 = col2, left_keys=(), right_keys=(), index_keys=)\n"
                        "    DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
-        std::make_pair("SELECT sum(col1) as col1sum FROM t1 where col1 = 10 and col2 = 20 group by col1, col2, col3;",
-                       "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col3))\n"
+        std::make_pair("SELECT sum(col1) as col1sum FROM t1 where col1 = 10 and col2 = 20 group by col1, col2, col6;",
+                       "PROJECT(type=GroupAggregation, group_keys=(col1,col2,col6))\n"
                        "  FILTER_BY(condition=10 = col1 AND 20 = col2, left_keys=(), right_keys=(), index_keys=)\n"
-                       "    GROUP_BY(group_keys=(col3))\n"
+                       "    GROUP_BY(group_keys=(col6))\n"
                        "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair("SELECT sum(col1) as col1sum FROM (select c1 as col1, c2 as col2 , "
                        "c3 as col3 from tc) where col1 = 10 and col2 = 20 group by col2, col1;",
@@ -803,12 +1039,12 @@ INSTANTIATE_TEST_SUITE_P(
                        "col1, "
                        "sum(col3) OVER w1 as w1_col3_sum, "
                        "sum(col2) OVER w1 as w1_col2_sum "
-                       "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col5 "
+                       "FROM t1 WINDOW w1 AS (PARTITION BY col6 ORDER BY col5 "
                        "ROWS_RANGE BETWEEN 3 "
                        "PRECEDING AND CURRENT ROW) limit 10;",
                        "LIMIT(limit=10, optimized)\n"
                        "  PROJECT(type=WindowAggregation, limit=10)\n"
-                       "    +-WINDOW(partition_keys=(col3), orders=(col5 ASC), "
+                       "    +-WINDOW(partition_keys=(col6), orders=(col5 ASC), "
                        "range=(col5, "
                        "-3, 0))\n"
                        "    DATA_PROVIDER(table=t1)")));
@@ -1232,6 +1468,7 @@ TEST_P(SimpleCataLogTransformPassOptimizedTest, PassOptimizedTest) {
     auto in_out = GetParam();
     PhysicalPlanCheck(simple_catalog, in_out.first, in_out.second);
 }
+
 }  // namespace vm
 }  // namespace hybridse
 int main(int argc, char** argv) {

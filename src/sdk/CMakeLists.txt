@@ -13,8 +13,8 @@
 # limitations under the License.
 
 if(TESTING_ENABLE)
-    add_library(mini_cluster_bm_common STATIC mini_cluster_bm.cc sql_sdk_test.cc)
-    add_library(base_test STATIC ../test/base_test.cc)
+    add_library(mini_cluster_bm_common STATIC mini_cluster_bm.cc)
+    add_library(base_test STATIC sql_sdk_base_test.cc ../test/base_test.cc)
 
     set(HYBRIDSE_CASE_LIBS base_test yaml-cpp)
 
@@ -36,14 +36,14 @@ if(TESTING_ENABLE)
     add_executable(sql_request_row_test sql_request_row_test.cc)
     target_link_libraries(sql_request_row_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} ${ZETASQL_LIBS} benchmark_main benchmark gtest)
 
-    add_executable(mini_cluster_bm mini_cluster_microbenchmark.cc)
-    target_link_libraries(mini_cluster_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    add_executable(mini_cluster_batch_bm mini_cluster_batch_bm.cc)
+    target_link_libraries(mini_cluster_batch_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
-    add_executable(mini_cluster_bm_request_batch mini_cluster_bm_request_batch.cc)
-    target_link_libraries(mini_cluster_bm_request_batch mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    add_executable(mini_cluster_request_batch_bm mini_cluster_request_batch_bm.cc)
+    target_link_libraries(mini_cluster_request_batch_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
-    add_executable(mini_cluster_bm_request mini_cluster_bm_request.cc)
-    target_link_libraries(mini_cluster_bm_request mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    add_executable(mini_cluster_request_bm mini_cluster_request_bm.cc)
+    target_link_libraries(mini_cluster_request_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 endif()
 
 set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${ZETASQL_LIBS})
@@ -116,7 +116,6 @@ if(SQL_PYSDK_ENABLE)
 endif()
 
 if(SQL_JAVASDK_ENABLE)
-    set(JAVA_HOME ${PROJECT_SOURCE_DIR}/thirdparty/jdk1.8.0_141)
     set_property(SOURCE sql_router_sdk.i PROPERTY CPLUSPLUS ON)
     find_package(Java COMPONENTS Development REQUIRED)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
@@ -149,7 +148,7 @@ if(SQL_JAVASDK_ENABLE)
       DEPENDS
         sql_jsdk
         cp_sql_resource
-        COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
+        COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true ${MAVEN_FLAGS}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
     )
 endif()

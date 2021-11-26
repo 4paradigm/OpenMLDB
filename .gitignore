@@ -29,7 +29,6 @@
 *.app
 # idea
 *.class
-java/target
 *.idea
 *.iml
 *.DS_store
@@ -47,8 +46,7 @@ build
 build_mac
 thirdparty*/
 thirdsrc
-.vscode/
-onebox/*.log
+**/*.log
 onebox/*binlogs*
 onebox/*bin*
 onebox/logs
@@ -66,20 +64,35 @@ src/version.h
 src/config.h
 java/openmldb-native/src/main/resources
 java/openmldb-native/src/main/java
-java/openmldb-native/target/
-java/openmldb-jdbc/target/
+java/openmldb-common/src/main/java/com/_4paradigm/openmldb/proto/
 java/openmldb-import/src/main/java/com/_4paradigm/openmldb/proto/
 java/openmldb-nearline-tablet/src/main/java/com/_4paradigm/openmldb/proto/
 java/openmldb-taskmanager/src/main/java/com/_4paradigm/openmldb/proto/
 python/logs
 /python/test/*.xml
 
-.vscode/settings.json
+**/target/
+**/.settings/
+**/.classpath
+**/.project
+**/.factorypath
+**/.cache/
+
+**/.vscode/
+**/.metals/
+**/.bloop/
 
 # ignore openmldb release dir & pkg
 /openmldb-*
 
 /cmake-*
+
+**/.deps/
+
+**/compile_commands.json
+**/pom.xml.versionsBackup
+**/dependency-reduced-pom.xml
+**/scalastyle-output.xml
 
 # test
 logs

@@ -55,7 +55,7 @@ public class DMLTest extends StandaloneTest {
     }
 
     @Story("insert-multi")
-    @Test
+    // @Test
     public void testInsertMulti1000(){
         String createSql = "create table auto_multi_insert_1000 (id int not null,\n" +
                 "          c1 int not null,\n" +

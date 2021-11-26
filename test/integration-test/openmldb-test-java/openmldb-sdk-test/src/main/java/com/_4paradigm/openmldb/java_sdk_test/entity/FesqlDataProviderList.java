@@ -17,8 +17,8 @@
 package com._4paradigm.openmldb.java_sdk_test.entity;
 
 
+import com._4paradigm.openmldb.java_sdk_test.common.BaseTest;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.util.Tool;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import org.apache.commons.lang3.StringUtils;
@@ -37,7 +37,7 @@ public class FesqlDataProviderList {
         for (FesqlDataProvider dataProvider : dataProviderList) {
             for (SQLCase sqlCase : dataProvider.getCases(FedbConfig.FESQL_CASE_LEVELS)) {
                 if (!StringUtils.isEmpty(FedbConfig.FESQL_CASE_NAME) &&
-                        !FedbConfig.FESQL_CASE_NAME.equals(FedbTest.CaseNameFormat(sqlCase))) {
+                        !FedbConfig.FESQL_CASE_NAME.equals(BaseTest.CaseNameFormat(sqlCase))) {
                     continue;
                 }
                 if (!StringUtils.isEmpty(FedbConfig.FESQL_CASE_ID)

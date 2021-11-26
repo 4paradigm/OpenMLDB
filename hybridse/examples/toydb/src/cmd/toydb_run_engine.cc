@@ -26,6 +26,7 @@ DEFINE_bool(
     "Specify whether perform batch request optimization in batch request mode");
 DEFINE_bool(enable_expr_opt, true,
             "Specify whether do expression optimization");
+DEFINE_bool(enable_perf_sensitive, true, "enable performance sensitive mode");
 DEFINE_bool(
     enable_batch_window_parallelization, false,
     "Specify whether enable window parallelization in spark batch mode");
@@ -54,6 +55,7 @@ int DoRunEngine(const SqlCase& sql_case, const EngineOptions& options,
         runner = std::make_shared<ToydbBatchRequestEngineTestRunner>(
             sql_case, options, sql_case.batch_request().common_column_indices_);
     }
+    runner->GetSession()->SetPerformanceSensitive(FLAGS_enable_perf_sensitive);
     if (FLAGS_run_iters > 0) {
         runner->RunBenchmark(FLAGS_run_iters);
     } else {

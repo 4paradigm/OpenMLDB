@@ -25,6 +25,18 @@ public class Column {
     public Column() {
     }
 
+    public Column(String columnName, int sqlType) {
+        this.columnName = columnName;
+        this.sqlType = sqlType;
+    }
+
+    public Column(String columnName, int sqlType, boolean isNotNull, boolean isConstant) {
+        this.columnName = columnName;
+        this.sqlType = sqlType;
+        this.isNotNull = isNotNull;
+        this.isConstant = isConstant;
+    }
+
     public String getColumnName() {
         return columnName;
     }

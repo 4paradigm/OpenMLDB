@@ -50,12 +50,8 @@ class TestGraphvizUtil extends SparkTestSuite {
   )
   val sql: String =
     """
-      | SELECT id, `time`, amt, sum(amt) OVER w AS w_amt_sum FROM t
-      | GROUP BY id
-      | WINDOW w AS (
-      |    PARTITION BY id
-      |    ORDER BY `time`
-      |    ROWS BETWEEN 3 PRECEDING AND 0 FOLLOWING);
+      | SELECT id, sum(amt) amt_sum FROM t
+      | GROUP BY id;
      """.stripMargin
 
   test("Test drawPhysicalPlan") {
@@ -90,7 +86,7 @@ class TestGraphvizUtil extends SparkTestSuite {
       engine.close()
     }
 
-    assert(mutablenode.toString == "[78]GroupAgg{}->[46]GroupBy::")
+    assert(mutablenode.toString == "[49]GroupAgg{}->[22]GroupBy::")
   }
 
   test("Test visitPhysicalOp") {
@@ -107,6 +103,6 @@ class TestGraphvizUtil extends SparkTestSuite {
     if (engine != null) {
       engine.close()
     }
-    assert(mutablenode.toString == "[78]GroupAgg{}->")
+    assert(mutablenode.toString == "[49]GroupAgg{}->")
   }
 }

@@ -7,13 +7,12 @@
 	<parent>
 		<artifactId>openmldb-parent</artifactId>
 		<groupId>com.4paradigm.openmldb</groupId>
-		<version>0.2.3</version>
+		<version>0.4.0-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>openmldb-batch</artifactId>
 	<name>openmldb-batch</name>
 	<packaging>jar</packaging>
-	<version>${revision}</version>
 
 	<description>OpenMLDB Batch is the LLVM-based and high-performance batch execution engine for feature engineering.</description>
 
@@ -36,11 +35,11 @@
         <maven.compiler.target>1.8</maven.compiler.target>
 		<scala.version>2.12.8</scala.version>
 		<scala.binary.version>2.12</scala.binary.version>
-		<hadoop.version>2.7.1</hadoop.version>
+		<hadoop.version>2.7.4</hadoop.version>
 		<spark.version>3.0.0</spark.version>
 		<spark.dependencyScope>provided</spark.dependencyScope>
-		<default.project.version>0.2.4</default.project.version>
-		<default.hybridse.sdk.version>0.2.4</default.hybridse.sdk.version>
+		<default.project.version>0.3.2</default.project.version>
+		<default.hybridse.sdk.version>0.3.2</default.hybridse.sdk.version>
 	</properties>
 
 	<profiles>
@@ -51,21 +50,21 @@
 			</activation>
 			<properties>
 				<revision>${default.project.version}-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-SNAPSHOT</hybridseCommonVersionFromProfile>
+				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>macos</id>
 			<properties>
 				<revision>${default.project.version}-macos-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-macos-SNAPSHOT</hybridseCommonVersionFromProfile>
+				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-macos</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>allinone</id>
 			<properties>
 				<revision>${default.project.version}-allinone-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-allinone-SNAPSHOT</hybridseCommonVersionFromProfile>
+				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-allinone</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 	</profiles>
@@ -187,6 +186,13 @@
 			<groupId>io.trino</groupId>
 			<artifactId>trino-jdbc</artifactId>
 			<version>360</version>
+		</dependency>
+
+		<!-- OpenMLDB -->
+		<dependency>
+			<groupId>com.4paradigm.openmldb</groupId>
+			<artifactId>openmldb-native</artifactId>
+			<version>0.4.0-SNAPSHOT</version>
 		</dependency>
 
 	</dependencies>
@@ -421,35 +427,12 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>2.9.1</version>
-				<executions>
-					<execution>
-						<id>attach-javadocs</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
 			</plugin>
 
 			<!-- Generate properties file with git info -->
 			<plugin>
 				<groupId>pl.project13.maven</groupId>
 				<artifactId>git-commit-id-plugin</artifactId>
-				<version>2.2.4</version>
-				<executions>
-					<execution>
-						<id>get-the-git-infos</id>
-						<goals>
-							<goal>revision</goal>
-						</goals>
-						<phase>initialize</phase>
-					</execution>
-				</executions>
-				<configuration>
-					<generateGitPropertiesFile>true</generateGitPropertiesFile>
-					<generateGitPropertiesFilename>${project.build.outputDirectory}/openmldb_git.properties</generateGitPropertiesFilename>
-				</configuration>
 			</plugin>
 
 			<!-- Generate report for spotbugs -->
