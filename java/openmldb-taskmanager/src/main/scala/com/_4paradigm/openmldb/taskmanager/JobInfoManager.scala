@@ -20,6 +20,7 @@ import com._4paradigm.openmldb.sdk.SdkOption
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
+import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 
 import java.sql.{PreparedStatement, ResultSet, SQLException, Timestamp}
 import java.util.Calendar
@@ -37,9 +38,10 @@ object JobInfoManager {
 
   def createJobSystemTable(): Unit = {
     // TODO: Check db
-    println(sqlExecutor.createDB(dbName))
+    sqlExecutor.createDB(dbName)
 
-    val createTableSql = s"CREATE TABLE $tableName (id int,\n" +
+    val createTableSql = s"CREATE TABLE $tableName ( \n" +
+      "                   id int,\n" +
       "                   job_type string,\n" +
       "                   state string,\n" +
       "                   start_time timestamp,\n" +
@@ -48,19 +50,24 @@ object JobInfoManager {
       "                   cluster string,\n" +
       "                   application_id string,\n" +
       "                   error string,\n" +
-      "                   index(name=index1, key=state, ttl=1, ttl_type=latest),\n" +
-      "                   index(name=index2, key=id, ttl=1, ttl_type=latest))"
-
+      "                   index(key=id, ttl=1, ttl_type=latest)\n" +
+      "                   )"
     // TODO: Check table
-    println(sqlExecutor.executeDDL(dbName, createTableSql))
+    sqlExecutor.executeDDL(dbName, createTableSql)
   }
 
-  def createJobInfo(jobType: String): JobInfo = {
+  def createJobInfo(jobType: String, args: List[String] = List(), sparkConf: Map[String, String] = Map()): JobInfo = {
     // TODO: Generate unique job id
     val jobId = 1
     val startTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())
+    val initialState = "Submitted"
+    val parameter = if (args != null && args.length>0) args.mkString(",") else ""
+    val cluster = sparkConf.getOrElse("spark.master", TaskManagerConfig.SPARK_MASTER)
+    // TODO: Require endTime is not null for insert sql
+    val defaultEndTime = startTime
 
-    val jobInfo = new JobInfo(jobId, jobType, "SUBMITTED", startTime, new Timestamp(0l), "", "Yarn", "", "")
+    // TODO: Parse if run in yarn or local
+    val jobInfo = new JobInfo(jobId, jobType, initialState, startTime, defaultEndTime, parameter, cluster, "", "")
     jobInfo.sync()
     jobInfo
   }
@@ -72,10 +79,39 @@ object JobInfoManager {
   }
 
   def getUnfinishedJobs(): List[JobInfo] = {
-    // TODO: Require to support multiple indexes when creating table, https://github.com/4paradigm/OpenMLDB/issues/763
-    val sql = s"SELECT * FROM $tableName WHERE state NOT IN (${JobInfo.FINAL_STATE.mkString(",")}) "
+    // TODO: Now we can not add index for `state` and run sql with
+    //  s"SELECT * FROM $tableName WHERE state NOT IN (${JobInfo.FINAL_STATE.mkString(",")})"
+    val sql = s"SELECT * FROM $tableName"
     val rs = sqlExecutor.executeSQL(dbName, sql)
-    resultSetToJobs(rs)
+
+    val jobs = mutable.ArrayBuffer[JobInfo]()
+    while(rs.next()) {
+      if (!JobInfo.FINAL_STATE.contains(rs.getString(3).toLowerCase)) { // Check if state is finished
+        val jobInfo = new JobInfo(rs.getInt(1), rs.getString(2), rs.getString(3),
+          rs.getTimestamp(4), rs.getTimestamp(5), rs.getString(6),
+          rs.getString(7), rs.getString(8), rs.getString(9))
+        jobs.append(jobInfo)
+      }
+    }
+
+    jobs.toList
+  }
+
+  def stopJob(jobId: Int): JobInfo = {
+    val sql = s"SELECT * FROM $tableName WHERE id = $jobId"
+    val rs = sqlExecutor.executeSQL(dbName, sql)
+    val jobInfo = resultSetToJob(rs)
+    if (jobInfo.isYarnJob && jobInfo.getApplicationId != null) {
+      YarnClientUtil.killYarnJob(jobInfo.getApplicationId)
+      // TODO: Maybe start new thread to track the state
+      jobInfo.setState(YarnClientUtil.getYarnJobState(jobInfo.getApplicationId).toString)
+      jobInfo.sync()
+    }
+    jobInfo
+  }
+
+  def deleteJob(jobId: Int): Unit = {
+    // TODO: Can not support deleting single row row
   }
 
   def getJob(jobId: Int): JobInfo = {
@@ -95,7 +131,7 @@ object JobInfoManager {
     var pstmt: PreparedStatement = null
     try {
       pstmt = sqlExecutor.getInsertPreparedStmt(dbName, insertSql)
-      println("Insert: " + pstmt.execute)
+      pstmt.execute()
     } catch {
       case e: SQLException =>
         e.printStackTrace()
