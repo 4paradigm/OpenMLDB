@@ -45,7 +45,7 @@ object SparkJobManager {
 
   def submitSparkJob(mainClass: String, jobType: String, args: Array[String]=null,
                      sparkConf: Map[String, String]=Map()): Unit = {
-   
+
     val jobInfo = JobInfoManager.createJobInfo(jobType)
     submitSparkJob(jobInfo, mainClass, args, sparkConf)
   }

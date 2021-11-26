@@ -19,7 +19,7 @@ package com._4paradigm.openmldb.taskmanager
 import com._4paradigm.openmldb.sdk.SdkOption
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
-import com._4paradigm.openmldb.taskmanager.dao.JobInfo
+import com._4paradigm.openmldb.taskmanager.dao.{JobIdGenerator, JobInfo}
 
 import java.sql.{PreparedStatement, ResultSet, SQLException, Timestamp}
 import java.util.Calendar
@@ -56,8 +56,9 @@ object JobInfoManager {
   }
 
   def createJobInfo(jobType: String): JobInfo = {
-    // TODO: Generate unique job id
-    val jobId = 1
+
+    val jobId = JobIdGenerator.getUniqueJobID
+
     val startTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())
 
     val jobInfo = new JobInfo(jobId, jobType, "SUBMITTED", startTime, new Timestamp(0l), "", "Yarn", "", "")
@@ -109,9 +110,9 @@ object JobInfoManager {
   }
 
   def resultSetToJob(rs: ResultSet): JobInfo = {
-    if(rs.getFetchSize == 1) {
+    if (rs.getFetchSize == 1) {
       if (rs.next()) {
-       return new JobInfo(rs.getInt(1), rs.getString(2), rs.getString(3),
+        return new JobInfo(rs.getInt(1), rs.getString(2), rs.getString(3),
           rs.getTimestamp(4), rs.getTimestamp(5), rs.getString(6),
           rs.getString(7), rs.getString(8), rs.getString(9))
       }
@@ -121,7 +122,7 @@ object JobInfoManager {
 
   def resultSetToJobs(rs: ResultSet): List[JobInfo] = {
     val jobs = mutable.ArrayBuffer[JobInfo]()
-    while(rs.next()) {
+    while (rs.next()) {
       val jobInfo = new JobInfo(rs.getInt(1), rs.getString(2), rs.getString(3),
         rs.getTimestamp(4), rs.getTimestamp(5), rs.getString(6),
         rs.getString(7), rs.getString(8), rs.getString(9))

@@ -25,24 +25,6 @@
         <openmldb-common.version>0.3.2</openmldb-common.version>
     </properties>
 
-    <profiles>
-        <profile>
-            <id>default</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <openmldb-common.version>0.3.2</openmldb-common.version>
-            </properties>
-        </profile>
-        <profile>
-            <id>macos</id>
-            <properties>
-                <openmldb-common.version>0.3.2-macos</openmldb-common.version>
-            </properties>
-        </profile>
-    </profiles>
-
     <dependencies>
 
         <!-- Scala -->

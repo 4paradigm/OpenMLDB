@@ -21,11 +21,9 @@ import com._4paradigm.openmldb.common.zk.ZKConfig;
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class JobIdGenerator {
-    private static final AtomicInteger jobId = new AtomicInteger();
-
+    private static int jobId = 0;
     private volatile static ZKClient zkClient;
 
     private JobIdGenerator() {
@@ -45,18 +43,15 @@ public class JobIdGenerator {
                         .build());
                 zkClient.connect();
                 zkClient.createNode(
-                        TaskManagerConfig.ZK_ROOT_PATH + "/TaskManager/max_oneBatch_job_id",
-                       "0".getBytes(StandardCharsets.UTF_8));
-                //fix: jobId.set(zkClient.getNodeValue);
-                jobId.set(0);
+                        TaskManagerConfig.ZK_UID_PATH, "0".getBytes(StandardCharsets.UTF_8));
+                jobId = zkClient.getNodeValue(TaskManagerConfig.ZK_UID_PATH);
             }
-            if ((jobId.get()+1) % TaskManagerConfig.MAX_ONEBATCH_JOB_ID == 0) {
-                zkClient.setNodeValue(TaskManagerConfig.ZK_ROOT_PATH + "/TaskManager/max_oneBatch_job_id",
-                        String.valueOf(jobId.get()+1).getBytes(StandardCharsets.UTF_8));
-                //fix: jobId.set(zkClient.getNodeValue);
-                jobId.set(0);
+            if ((jobId+1) % TaskManagerConfig.MAX_JOB_ID == 0) {
+                zkClient.setNodeValue(TaskManagerConfig.ZK_UID_PATH,
+                        String.valueOf(jobId+1).getBytes(StandardCharsets.UTF_8));
+                jobId = zkClient.getNodeValue(TaskManagerConfig.ZK_UID_PATH);
             }
-            return jobId.getAndIncrement();
+            return ++jobId;
         }
     }
 }
