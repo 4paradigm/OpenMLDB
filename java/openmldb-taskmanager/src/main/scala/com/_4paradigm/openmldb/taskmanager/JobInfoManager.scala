@@ -61,7 +61,7 @@ object JobInfoManager {
     val jobId = 1
     val startTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())
     val initialState = "Submitted"
-    val parameter = if (args != null || args.length>0) args.mkString(",") else ""
+    val parameter = if (args != null && args.length>0) args.mkString(",") else ""
     val cluster = sparkConf.getOrElse("spark.master", TaskManagerConfig.SPARK_MASTER)
     // TODO: Require endTime is not null for insert sql
     val defaultEndTime = startTime
@@ -101,7 +101,7 @@ object JobInfoManager {
     val sql = s"SELECT * FROM $tableName WHERE id = $jobId"
     val rs = sqlExecutor.executeSQL(dbName, sql)
     val jobInfo = resultSetToJob(rs)
-    if (jobInfo.isYarnJob || jobInfo.getApplicationId != null) {
+    if (jobInfo.isYarnJob && jobInfo.getApplicationId != null) {
       YarnClientUtil.killYarnJob(jobInfo.getApplicationId)
       // TODO: Maybe start new thread to track the state
       jobInfo.setState(YarnClientUtil.getYarnJobState(jobInfo.getApplicationId).toString)
