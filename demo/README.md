@@ -1,26 +1,26 @@
 #  Taxi Tour Duration Prediction
 
-We demonstrate how to use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) together with other opensource software to develop an application for predicting the New York City Taxi Trip Duration (reading more about this application on [Kaggle](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview)).
+We demonstrate how to use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) together with other opensource software to develop a complete machine learning application for predicting the New York City Taxi Trip Duration (read more about this application on [Kaggle](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview)).
 
 ## 1. Feature Extraction SQL Script
 
 The below script shows the feature extraction SQL used for this application.
 
 ```sql
-sql_tpl = ""select trip_duration, passenger_count,
-sum(pickup_latitude) over w as vendor_sum_pl,
-max(pickup_latitude) over w as vendor_max_pl,
-min(pickup_latitude) over w as vendor_min_pl,
-avg(pickup_latitude) over w as vendor_avg_pl,
-sum(pickup_latitude) over w2 as pc_sum_pl,
-max(pickup_latitude) over w2 as pc_max_pl,
-min(pickup_latitude) over w2 as pc_min_pl,
-avg(pickup_latitude) over w2 as pc_avg_pl ,
-count(vendor_id) over w2 as pc_cnt,
-count(vendor_id) over w as vendor_cnt
-from {}
-window w as (partition by vendor_id order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
-w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW)"""
+sql_tpl = ""SELECT trip_duration, passenger_count,
+sum(pickup_latitude) OVER w AS vendor_sum_pl,
+max(pickup_latitude) OVER w AS vendor_max_pl,
+min(pickup_latitude) OVER w AS vendor_min_pl,
+avg(pickup_latitude) OVER w AS vendor_avg_pl,
+sum(pickup_latitude) OVER w2 AS pc_sum_pl,
+max(pickup_latitude) OVER w2 AS pc_max_pl,
+min(pickup_latitude) OVER w2 AS pc_min_pl,
+avg(pickup_latitude) OVER w2 AS pc_avg_pl ,
+count(vendor_id) OVER w2 AS pc_cnt,
+count(vendor_id) OVER w AS vendor_cnt
+FROM {}
+WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
+w2 as (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW)"""
 ```
 
 ## 2. Demo with The Cluster Mode
@@ -70,29 +70,31 @@ docker run -it 4pdosc/openmldb:0.3.2 bash
 ../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
 ```sql
+# The below commands are executed in the CLI
 > CREATE DATABASE demo_db;
 > USE demo_db;
-> CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double,dropoff_latitude double, store_and_fwd_flag string,trip_duration int, index(ts=pickup_datetime));
+> CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double,dropoff_latitude double, store_and_fwd_flag string,trip_duration int, INDEX(ts=pickup_datetime));
 > LOAD DATA INFILE './data/taxi_tour.csv' INTO TABLE t1;
 ```
 **Run offline feature extraction**
 
 ```sql
+# The below commands are executed in the CLI
 > SET PERFORMANCE_SENSITIVE = false;
-> select trip_duration, passenger_count,
-sum(pickup_latitude) over w as vendor_sum_pl,
-max(pickup_latitude) over w as vendor_max_pl,
-min(pickup_latitude) over w as vendor_min_pl,
-avg(pickup_latitude) over w as vendor_avg_pl,
-sum(pickup_latitude) over w2 as pc_sum_pl,
-max(pickup_latitude) over w2 as pc_max_pl,
-min(pickup_latitude) over w2 as pc_min_pl,
-avg(pickup_latitude) over w2 as pc_avg_pl ,
-count(vendor_id) over w2 as pc_cnt,
-count(vendor_id) over w as vendor_cnt
-from t1
-window w as (partition by vendor_id order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
-w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
+> SELECT trip_duration, passenger_count,
+sum(pickup_latitude) OVER w AS vendor_sum_pl,
+max(pickup_latitude) OVER w AS vendor_max_pl,
+min(pickup_latitude) OVER w AS vendor_min_pl,
+avg(pickup_latitude) OVER w AS vendor_avg_pl,
+sum(pickup_latitude) OVER w2 AS pc_sum_pl,
+max(pickup_latitude) OVER w2 AS pc_max_pl,
+min(pickup_latitude) OVER w2 AS pc_min_pl,
+avg(pickup_latitude) OVER w2 AS pc_avg_pl,
+count(vendor_id) OVER w2 AS pc_cnt,
+count(vendor_id) OVER w AS vendor_cnt
+FROM t1
+WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
+w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 > quit
 ```
 **Train model**
@@ -107,21 +109,22 @@ python3 train_s.py /tmp/feature.csv /tmp/model.txt
 ../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
 ```sql
+# The below commands are executed in the CLI
 > USE demo_db;
-> DEPLOY demo select trip_duration, passenger_count,
-sum(pickup_latitude) over w as vendor_sum_pl,
-max(pickup_latitude) over w as vendor_max_pl,
-min(pickup_latitude) over w as vendor_min_pl,
-avg(pickup_latitude) over w as vendor_avg_pl,
-sum(pickup_latitude) over w2 as pc_sum_pl,
-max(pickup_latitude) over w2 as pc_max_pl,
-min(pickup_latitude) over w2 as pc_min_pl,
-avg(pickup_latitude) over w2 as pc_avg_pl ,
-count(vendor_id) over w2 as pc_cnt,
-count(vendor_id) over w as vendor_cnt
-from t1
-window w as (partition by vendor_id order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
-w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
+> DEPLOY demo SELECT trip_duration, passenger_count,
+sum(pickup_latitude) OVER w AS vendor_sum_pl,
+max(pickup_latitude) OVER w AS vendor_max_pl,
+min(pickup_latitude) OVER w AS vendor_min_pl,
+avg(pickup_latitude) OVER w AS vendor_avg_pl,
+sum(pickup_latitude) OVER w2 AS pc_sum_pl,
+max(pickup_latitude) OVER w2 AS pc_max_pl,
+min(pickup_latitude) OVER w2 AS pc_min_pl,
+avg(pickup_latitude) OVER w2 AS pc_avg_pl,
+count(vendor_id) OVER w2 AS pc_cnt,
+count(vendor_id) OVER w AS vendor_cnt
+FROM t1
+WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
+w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
 > quit
 ```
 :bulb: Note that:

@@ -3,37 +3,30 @@
 本教程针对 OpenMLDB 集群模式，会涵盖使用 OpenMLDB 构建机器学习应用的整个流程，包括离线特征抽取、模型训练，以及在线的数据导入、在线特征抽取、模型预测等步骤。希望通过该教程，读者可以了解通过 OpenMLDB，如何快速完成从原始数据处理到模型上线的整个生命周期。
 
 
-OpenMLDB 提供了 Java 和 Python SDKs，该示例中，我们使用 Python SDK。
-
-为了方便理解，我们会基于Kaggle比赛 [Predict Taxi Tour Duration 数据集](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script/data)，来介绍整个流程。数据集和相关代码可以在[这里](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script)查看，并且可以根据步骤尝试运行。
+OpenMLDB 提供了 Java 和 Python SDKs，该示例中，我们使用 Python SDK。为了方便理解，我们会基于Kaggle比赛 [Predict Taxi Tour Duration 数据集](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script/data)，来介绍整个流程。数据集和相关代码可以在[这里](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script)查看，并且可以根据步骤尝试运行。
 
 ## 1. 离线流程
 ### 1.1. 特征抽取
 对于特征抽取，用户首先需要通过对数据集的了解，构建特征抽取的 SQL 脚本，例如，在 Taxi Tour Duration 数据集中，我们可以构建如下特征抽取的 [SQL](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script/fe.sql):
 ```sql
-select trip_duration, passenger_count,
-sum(pickup_latitude) over w as vendor_sum_pl,
-max(pickup_latitude) over w as vendor_max_pl,
-min(pickup_latitude) over w as vendor_min_pl,
-avg(pickup_latitude) over w as vendor_avg_pl,
-sum(pickup_latitude) over w2 as pc_sum_pl,
-max(pickup_latitude) over w2 as pc_max_pl,
-min(pickup_latitude) over w2 as pc_min_pl,
-avg(pickup_latitude) over w2 as pc_avg_pl ,
-count(vendor_id) over w2 as pc_cnt,
-count(vendor_id) over w as vendor_cnt
-from t1
-window w as (partition by vendor_id order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
-w2 as (partition by passenger_count order by pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
+SELECT trip_duration, passenger_count,
+sum(pickup_latitude) OVER w AS vendor_sum_pl,
+max(pickup_latitude) OVER w AS vendor_max_pl,
+min(pickup_latitude) OVER w AS vendor_min_pl,
+avg(pickup_latitude) OVER w AS vendor_avg_pl,
+sum(pickup_latitude) OVER w2 AS pc_sum_pl,
+max(pickup_latitude) OVER w2 AS pc_max_pl,
+min(pickup_latitude) OVER w2 AS pc_min_pl,
+avg(pickup_latitude) OVER w2 AS pc_avg_pl,
+count(vendor_id) OVER w2 AS pc_cnt,
+count(vendor_id) OVER w AS vendor_cnt
+FROM t1
+WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
+w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
 ```
 
 
-通过执行特征抽取的 SQL，可以从原数据里提取出我们需要的特征数据集，用来进行训练。
-
-对于离线特征抽取的输入数据，可以直接存放在本地文件或者 HDFS 上面，然后通过 Spark 执行特征抽取 SQL。
-
-
-Python 示例代码如下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script/train.py)）：
+通过执行特征抽取的 SQL，可以从原数据里提取出我们需要的特征数据集，用来进行训练。对于离线特征抽取的输入数据，可以直接存放在本地文件或者 HDFS 上面，然后通过 Spark 执行特征抽取 SQL。Python 示例代码如下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script/train.py)）：
 
 ```python
 from pyspark.sql import SparkSession
@@ -52,10 +45,8 @@ df = train_df.toPandas()
 
 
 ### 1.2. 模型训练 
-通过特征抽取，获得训练和预测数据集，就可以使用标准的模型训练方式，来进行模型训练。
+通过特征抽取，获得训练和预测数据集，就可以使用标准的模型训练方式，来进行模型训练。下面示例使用 Gradient Boosting Machine (GBM) 进行模型训练，并将训练好的模型保存在`model_path`路径下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script/train.py)）：
 
-
-下面示例使用 Gradient Boosting Machine (GBM) 进行模型训练，并将训练好的模型保存在`model_path`路径下（完整代码参考[这里](https://github.com/4paradigm/OpenMLDB/blob/main/demo/predict-taxi-trip-duration-nb/script/train.py)）：
 ```python
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
@@ -88,7 +79,6 @@ gbm.save_model(model_path)
 
 ```python
 import sqlalchemy as db
-
 
 ddl="""
 create table t1(
