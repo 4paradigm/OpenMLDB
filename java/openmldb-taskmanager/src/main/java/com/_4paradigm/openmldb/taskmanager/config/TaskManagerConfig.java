@@ -25,7 +25,7 @@ public class TaskManagerConfig {
     public static int IO_THREAD = 4;
     public static String ZK_CLUSTER;
     public static String ZK_ROOT_PATH;
-    public static String ZK_UID_PATH;
+    public static String ZK_MAX_JOB_ID_PATH;
     public static int ZK_SESSION_TIMEOUT;
     public static int ZK_CONNECTION_TIMEOUT;
     public static int ZK_BASE_SLEEP_TIME;
@@ -49,7 +49,7 @@ public class TaskManagerConfig {
             ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
             ZK_CLUSTER = prop.getProperty("zookeeper.cluster");
             ZK_ROOT_PATH = prop.getProperty("zookeeper.root_path");
-            ZK_UID_PATH = ZK_ROOT_PATH + "/taskManager/max_job_id";
+            ZK_MAX_JOB_ID_PATH = ZK_ROOT_PATH + "/taskManager/max_job_id";
             ZK_CONNECTION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.connection_Timeout"));
             ZK_BASE_SLEEP_TIME = Integer.parseInt(prop.getProperty("zookeeper.base_sleep_time"));
             ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries"));
