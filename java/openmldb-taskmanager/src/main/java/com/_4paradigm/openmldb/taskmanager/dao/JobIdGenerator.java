@@ -29,6 +29,10 @@ public class JobIdGenerator {
     private JobIdGenerator() {
     }
 
+    public static void closeZkClient() {
+        zkClient = null;
+    }
+
     public static int getUniqueJobID() throws Exception {
         synchronized (JobIdGenerator.class) {
             if (zkClient == null) {
@@ -41,17 +45,22 @@ public class JobIdGenerator {
                         .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
                         .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
                         .build());
-                zkClient.connect();
+                if (!zkClient.connect()) {
+                    throw new RuntimeException("Fail to connect zookeeper!");
+                }
                 // If node exists, will not to create node.
+                zkClient.createNode(
+                        TaskManagerConfig.ZK_ROOT_PATH, "".getBytes());
                 zkClient.createNode(
                         TaskManagerConfig.ZK_TASKMANAGER_PATH, "".getBytes());
                 zkClient.createNode(
-                        TaskManagerConfig.ZK_MAX_JOB_ID_PATH, "".getBytes());
+                        TaskManagerConfig.ZK_MAX_JOB_ID_PATH, String.valueOf(TaskManagerConfig.MAX_JOB_ID).getBytes());
+                // Get the node value from zk
                 jobId = Integer.parseInt(zkClient.getNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH));
             }
-            if ((jobId+1) % TaskManagerConfig.MAX_JOB_ID == 0) {
+            if ((jobId + 1) % TaskManagerConfig.MAX_JOB_ID == 0) {
                 zkClient.setNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH,
-                        String.valueOf(jobId+1).getBytes());
+                        String.valueOf(jobId + 1 + TaskManagerConfig.MAX_JOB_ID).getBytes());
             }
             return ++jobId;
         }
