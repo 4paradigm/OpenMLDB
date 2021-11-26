@@ -81,7 +81,7 @@ public class ZKClient {
         if (client.checkExists().forPath(path) == null) {
             throw new RuntimeException("Zookeeper node is null!");
         } else {
-            return Arrays.toString(client.getData().forPath(path));
+            return new String(client.getData().forPath(path));
         }
     }
 }

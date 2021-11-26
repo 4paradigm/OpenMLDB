@@ -44,12 +44,14 @@ public class JobIdGenerator {
                 zkClient.connect();
                 // If node exists, will not to create node.
                 zkClient.createNode(
-                        TaskManagerConfig.ZK_MAX_JOB_ID_PATH, "0".getBytes(StandardCharsets.UTF_8));
-                jobId = zkClient.getNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH);
+                        TaskManagerConfig.ZK_TASKMANAGER_PATH, "".getBytes());
+                zkClient.createNode(
+                        TaskManagerConfig.ZK_MAX_JOB_ID_PATH, "".getBytes());
+                jobId = Integer.parseInt(zkClient.getNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH));
             }
             if ((jobId+1) % TaskManagerConfig.MAX_JOB_ID == 0) {
                 zkClient.setNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH,
-                        String.valueOf(jobId+1).getBytes(StandardCharsets.UTF_8));
+                        String.valueOf(jobId+1).getBytes());
             }
             return ++jobId;
         }

@@ -25,6 +25,7 @@ public class TaskManagerConfig {
     public static int IO_THREAD = 4;
     public static String ZK_CLUSTER;
     public static String ZK_ROOT_PATH;
+    public static String ZK_TASKMANAGER_PATH;
     public static String ZK_MAX_JOB_ID_PATH;
     public static int ZK_SESSION_TIMEOUT;
     public static int ZK_CONNECTION_TIMEOUT;
@@ -49,7 +50,8 @@ public class TaskManagerConfig {
             ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
             ZK_CLUSTER = prop.getProperty("zookeeper.cluster");
             ZK_ROOT_PATH = prop.getProperty("zookeeper.root_path");
-            ZK_MAX_JOB_ID_PATH = ZK_ROOT_PATH + "/taskManager/max_job_id";
+            ZK_TASKMANAGER_PATH = ZK_ROOT_PATH + "/taskmanager";
+            ZK_MAX_JOB_ID_PATH = ZK_TASKMANAGER_PATH + "/max_job_id";
             ZK_CONNECTION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.connection_Timeout"));
             ZK_BASE_SLEEP_TIME = Integer.parseInt(prop.getProperty("zookeeper.base_sleep_time"));
             ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries"));
@@ -59,6 +61,7 @@ public class TaskManagerConfig {
             BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
             SPARK_HOME = prop.getProperty("spark.home");
+            MAX_JOB_ID = Integer.parseInt(prop.getProperty("max.job.id"));
         } catch (Exception e) {
             e.printStackTrace();
         }

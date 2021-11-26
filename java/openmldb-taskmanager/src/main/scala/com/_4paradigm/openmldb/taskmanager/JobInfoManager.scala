@@ -32,7 +32,7 @@ object JobInfoManager {
 
   val option = new SdkOption
   option.setZkCluster(TaskManagerConfig.ZK_CLUSTER)
-  option.setZkPath(TaskManagerConfig.ZK_ROOTPATH)
+  option.setZkPath(TaskManagerConfig.ZK_ROOT_PATH)
   val sqlExecutor = new SqlClusterExecutor(option)
 
   def createJobSystemTable(): Unit = {
