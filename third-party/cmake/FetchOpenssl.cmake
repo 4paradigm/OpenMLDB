@@ -39,7 +39,7 @@ ExternalProject_Add(
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
   PATCH_COMMAND ${OPENSSL_PATCH}
-  CONFIGURE_COMMAND ./config --prefix=<INSTALL_DIR> --openssldir=<INSTALL_DIR> ${OPENSSL_FLAGS}
+  CONFIGURE_COMMAND bash -c "${CONFIGURE_OPTS} ./config --prefix=<INSTALL_DIR> --openssldir=<INSTALL_DIR> ${OPENSSL_FLAGS}"
   BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
   INSTALL_COMMAND ${MAKE_EXE} install
     COMMAND bash -c "rm -rvf <INSTALL_DIR>/lib/libssl.so*"

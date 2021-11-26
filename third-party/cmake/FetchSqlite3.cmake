@@ -27,6 +27,6 @@ ExternalProject_Add(
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/sqlite3
   INSTALL_DIR ${DEPS_INSTALL_DIR}
-  CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --disable-tcl --enable-shared=no
+  CONFIGURE_COMMAND bash -c "${CONFIGURE_OPTS} <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --disable-tcl --enable-shared=no"
   BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
   INSTALL_COMMAND ${MAKE_EXE} install)

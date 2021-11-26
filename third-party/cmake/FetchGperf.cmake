@@ -26,6 +26,6 @@ ExternalProject_Add(
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
   CONFIGURE_COMMAND
-    ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler --prefix=<INSTALL_DIR> --enable-shared=no
+    bash -c "${CONFIGURE_OPTS} ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler --prefix=<INSTALL_DIR> --enable-shared=no"
   BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
   INSTALL_COMMAND ${MAKE_EXE} install)

@@ -27,6 +27,6 @@ ExternalProject_Add(
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/snappy
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
-  CONFIGURE_COMMAND ./configure --prefix=<INSTALL_DIR> --disable-shared --with-pic
+  CONFIGURE_COMMAND bash -c "${CONFIGURE_OPTS} ./configure --prefix=<INSTALL_DIR> --disable-shared --with-pic"
   BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
   INSTALL_COMMAND ${MAKE_EXE} install)

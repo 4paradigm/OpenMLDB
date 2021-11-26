@@ -25,9 +25,6 @@ set(DEPS_DOWNLOAD_DIR "${DEPS_BUILD_DIR}/downloads" CACHE PATH "Dependencies dow
 set(DEPS_INSTALL_DIR "${CMAKE_BINARY_DIR}/usr" CACHE PATH "Dependencies install directory.")
 set(SRC_INSTALL_DIR "${CMAKE_BINARY_DIR}/src" CACHE PATH "Source code install directory.")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -03 -fPIC")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -03 -fPIC")
-
 # convention: put all options here
 # By default, thirdparty dependencies was fetched/build into the same directory with OpenMLDB
 option(BUILD_BUNDLED "Build dependencies from source" OFF)
@@ -57,6 +54,16 @@ option(BUILD_BUNDLED_COMMON "Build baidu common from source" ${BUILD_BUNDLED})
 
 option(USE_BUNDLED_SRC "Use bundled hybridsql asserts source" ON)
 
+# '-O3 -fPIC' reserved for thirdparty compilation
+set(CMAKE_CXX_FLAGS "-O3 -fPIC ${CMAKE_CXX_FLAGS}")
+set(CMAKE_C_FLAGS "-O3 -fPIC ${CMAKE_C_FLAGS}")
+# Since ExternalProject don't inherit cmake settings, need pass specific toolchain configuration through command line
+# this is the default environment variables passed, either though './configure'
+set(CONFIGURE_OPTS "CFLAGS='${CMAKE_C_FLAGS}' CXXFLAGS='${CMAKE_CXX_FLAGS}'")
+set(CMAKE_OPTS -DCMAKE_C_FLAGS='${CMAKE_C_FLAGS}' -DCMAKE_CXX_FLAGS='${CMAKE_CXX_FLAGS}')
+# default options psssed to unix make, used when a dependency compilation:
+# 1. use make directly
+# 2. cmake project generate Unix Makefile project
 set(MAKEOPTS "$ENV{MAKEOPTS}" CACHE STRING "Extra options to make")
 
 message(STATUS "Install bundled dependencies into ${DEPS_INSTALL_DIR}")

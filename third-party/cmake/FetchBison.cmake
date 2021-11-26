@@ -26,7 +26,7 @@ ExternalProject_Add(
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/bison
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
-  CONFIGURE_COMMAND ./configure --prefix=<INSTALL_DIR> --enable-relocatable
+  CONFIGURE_COMMAND bash -c "${CONFIGURE_OPTS} ./configure --prefix=<INSTALL_DIR> --enable-relocatable"
   BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
   INSTALL_COMMAND ${MAKE_EXE} install)
 

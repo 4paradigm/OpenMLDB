@@ -22,6 +22,6 @@ ExternalProject_Add(
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
   CONFIGURE_COMMAND ./autogen.sh
-    COMMAND bash -c "./configure --disable-shared --with-pic --prefix=<INSTALL_DIR> CPPFLAGS=-I<INSTALL_DIR>/include LDFLAGS=-L<INSTALL_DIR>/lib CXXFLAGS=-std=c++11"
+    COMMAND bash -c "${CONFIGURE_OPTS} ./configure --disable-shared --with-pic --prefix=<INSTALL_DIR> CPPFLAGS=-I<INSTALL_DIR>/include LDFLAGS=-L<INSTALL_DIR>/lib CXXFLAGS=-std=c++11"
   BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
   INSTALL_COMMAND ${MAKE_EXE} install)

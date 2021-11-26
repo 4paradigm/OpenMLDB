@@ -42,7 +42,8 @@ if (NOT BUILD_BUNDLED_ZETASQL)
     BUILD_COMMAND ""
     INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
 else()
-  find_program(BAZEL_EXE NAMES bazel REQUIRED DOC "Building zetasql require bazel")
+  find_program(BAZEL_EXE NAMES bazel REQUIRED DOC "Compile zetasql require bazel")
+  find_program(PYTHON_EXE NAMES python REQUIRED DOC "Compile zetasql require python")
   message(STATUS "Compile zetasql from source: ${ZETASQL_HOME}@${ZETASQL_TAG}")
   ExternalProject_Add(zetasql
     GIT_REPOSITORY ${ZETASQL_HOME}

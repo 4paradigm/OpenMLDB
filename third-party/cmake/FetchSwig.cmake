@@ -28,6 +28,6 @@ ExternalProject_Add(
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
   CONFIGURE_COMMAND ./autogen.sh
-    COMMAND ./configure --without-pcre --prefix=<INSTALL_DIR>
+    COMMAND bash -c "${CONFIGURE_OPTS} ./configure --without-pcre --prefix=<INSTALL_DIR>"
   BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
   INSTALL_COMMAND ${MAKE_EXE} install)
