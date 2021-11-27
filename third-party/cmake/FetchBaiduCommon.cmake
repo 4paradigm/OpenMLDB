@@ -13,26 +13,27 @@
 # limitations under the License.
 
 
-set(COMMON_URL https://github.com/4paradigm/common/archive/refs/tags/v1.0.0.tar.gz)
+set(COMMON_HOME https://github.com/4paradigm/common)
+set(COMMON_TAG 5fd6418a65116e223372c45cc949893467895637)
 
 message(STATUS "build baidu common from ${COMMON_URL}")
 
 find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  set(BOOST_PATCH bash -c "sed -i '' 's/^#include <syscall.h>/#include <pthread.h>/' src/logging.cc"
-        COMMAND bash -c "sed -i '' 's/thread_id = syscall(__NR_gettid)/pthread_threadid_np(0, \&thread_id)/' src/logging.cc")
+  set(COMMON_PATCH git apply ${PROJECT_SOURCE_DIR}/patches/baidu_common_darwin.patch)
 endif()
 
 ExternalProject_Add(
   baiducommon
   DEPENDS boost
-  URL ${COMMON_URL}
-  URL_HASH SHA256=458d525809a53e491890eaa78318c22b3261fc3a8cc8cfdbbdb0715767f4f434
+  GIT_REPOSITORY ${COMMON_HOME}
+  GIT_TAG ${COMMON_TAG}
+  GIT_SHALLOW TRUE
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/baiducommon
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
-  PATCH_COMMAND ${BOOST_PATCH}
+  PATCH_COMMAND ${COMMON_PATCH}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND bash -c "${CONFIGURE_OPTS} ${MAKE_EXE} ${MAKEOPTS} INCLUDE_PATH='-Iinclude -I<INSTALL_DIR>/include' PREFIX=<INSTALL_DIR> install"
   INSTALL_COMMAND "")

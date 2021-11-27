@@ -20,6 +20,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(BOOST_FLAGS compiler.blacklist clang -with-toolset=clang)
 endif()
 
+# boost require python development package, python-dev on debian or python-devel on redhat
 ExternalProject_Add(
   boost
   URL ${BOOST_URL}
