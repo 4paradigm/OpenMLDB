@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(LLVM_URL https://releases.llvm.org/9.0.0/llvm-9.0.0.src.tar.xz)
+set(LLVM_URL //github.com/llvm/llvm-project/releases/download/llvmorg-9.0.1/llvm-9.0.1.src.tar.xz)
 message(STATUS "build llvm from ${LLVM_URL}")
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
@@ -26,7 +26,7 @@ endif()
 ExternalProject_Add(
   llvm
   URL ${LLVM_URL}
-  URL_HASH SHA256=d6a0565cf21f22e9b4353b2eb92622e8365000a9e90a16b09b56f8157eabfe84
+  URL_HASH SHA256=00a1ee1f389f81e9979f3a640a01c431b3021de0d42278f6508391a2f0b81c9a
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/llvm
   INSTALL_DIR ${DEPS_INSTALL_DIR}
