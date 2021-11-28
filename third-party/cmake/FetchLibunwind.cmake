@@ -27,7 +27,7 @@ else()
   set(LIBUNWIND_CFLAGS "-O3 -fPIC")
   if (CMAKE_C_COMPILER_ID MATCHES "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 10)
     # gcc 10 compile fail https://github.com/libunwind/libunwind/pull/166
-    set(LIBUNWIND_CFLAGS "-O3 -fPIC -fno-common")
+    set(LIBUNWIND_CFLAGS "-O3 -fPIC -fcommon")
   endif()
   set(LIBUNWIND_PATCH ${AUTORECONF} -i)
 endif()
