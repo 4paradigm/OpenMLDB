@@ -16,6 +16,8 @@ set(ZOOKEEPER_URL https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zoo
 set(ZOOKEEPER_HASH b14f7a0fece8bd34c7fffa46039e563ac5367607c612517aa7bd37306afbd1cd)
 set(ZOOKEEPER_WORK_DIR zookeeper-client/zookeeper-client-c/)
 
+option(BUILD_ZOOKEEPER_PATCH "apply workaround patch to zookeeper, which may useful for gcc >= 9" ON)
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(ZOOKEEPER_CONF COMMAND bash -c "CC=clang CFLAGS='-O3 -fPIC' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
 else()
@@ -25,8 +27,15 @@ else()
     message(FATAL_ERROR "zookeeper require cppunit")
   endif()
 
+  if (BUILD_ZOOKEEPER_PATCH)
+    set(ZOOKEEPER_PATCH "patch -p 3 -N < ${PROJECT_SOURCE_DIR}/patches/zookeeper.patch")
+    set(ZOOKEEPER_CFLAGS "-O3 -fPIC -Wno-error=format-overflow= -Wno-maybe-uninitialized")
+  else()
+    set(ZOOKEEPER_CFLAGS "-O3 -fPIC -Wno-error=format-overflow=")
+  endif()
+
   set(ZOOKEEPER_CONF COMMAND ${AUTORECONF} -if
-    COMMAND bash -c "CFLAGS='-O3 -fPIC -Wno-error=format-overflow=' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
+    COMMAND bash -c "CFLAGS='${ZOOKEEPER_CFLAGS}' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
 endif()
 
 message(STATUS "build zookeeper from ${ZOOKEEPER_URL}")
@@ -41,6 +50,7 @@ ExternalProject_Add(
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/zookeeper
   BINARY_DIR ${DEPS_BUILD_DIR}/src/zookeeper/${ZOOKEEPER_WORK_DIR}
   INSTALL_DIR ${DEPS_INSTALL_DIR}
+  PATCH_COMMAND ${ZOOKEEPER_PATCH}
   CONFIGURE_COMMAND ${ZOOKEEPER_CONF}
   BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
   INSTALL_COMMAND ${MAKE_EXE} install)

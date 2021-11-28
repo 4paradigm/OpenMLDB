@@ -1,0 +1,54 @@
+diff -Naur zookeeper-3.4.14/zookeeper-client/zookeeper-client-c/Makefile.am zookeeper-3.4.14-patch/zookeeper-client/zookeeper-client-c/Makefile.am
+--- zookeeper-3.4.14/zookeeper-client/zookeeper-client-c/Makefile.am	2019-03-07 00:50:47.000000000 +0800
++++ zookeeper-3.4.14-patch/zookeeper-client/zookeeper-client-c/Makefile.am	2021-11-28 11:53:05.000000000 +0800
+@@ -99,14 +99,14 @@
+ TESTS_ENVIRONMENT = ZKROOT=${srcdir}/../.. \
+                     CLASSPATH=$$CLASSPATH:$$CLOVER_HOME/lib/clover*.jar
+ nodist_zktest_st_SOURCES = $(TEST_SOURCES)
+-zktest_st_LDADD = libzkst.la libhashtable.la $(CPPUNIT_LIBS)
++zktest_st_LDADD = libzkst.la libhashtable.la $(CPPUNIT_LIBS) -ldl
+ zktest_st_CXXFLAGS = -DUSE_STATIC_LIB $(CPPUNIT_CFLAGS) $(USEIPV6) $(SOLARIS_CPPFLAGS)
+ zktest_st_LDFLAGS = -static-libtool-libs $(SYMBOL_WRAPPERS) $(SOLARIS_LIB_LDFLAGS)
+ 
+ if WANT_SYNCAPI
+   check_PROGRAMS += zktest-mt
+   nodist_zktest_mt_SOURCES = $(TEST_SOURCES) tests/PthreadMocks.cc
+-  zktest_mt_LDADD = libzkmt.la libhashtable.la -lpthread $(CPPUNIT_LIBS)
++  zktest_mt_LDADD = libzkmt.la libhashtable.la -lpthread $(CPPUNIT_LIBS) -ldl
+   zktest_mt_CXXFLAGS = -DUSE_STATIC_LIB -DTHREADED $(CPPUNIT_CFLAGS) $(USEIPV6)
+ if SOLARIS
+   SHELL_SYMBOL_WRAPPERS_MT = cat ${srcdir}/tests/wrappers-mt.opt
+diff -Naur zookeeper-3.4.14/zookeeper-client/zookeeper-client-c/acinclude.m4 zookeeper-3.4.14-patch/zookeeper-client/zookeeper-client-c/acinclude.m4
+--- zookeeper-3.4.14/zookeeper-client/zookeeper-client-c/acinclude.m4	2019-03-07 00:50:47.000000000 +0800
++++ zookeeper-3.4.14-patch/zookeeper-client/zookeeper-client-c/acinclude.m4	2021-11-28 11:37:18.000000000 +0800
+@@ -310,3 +310,18 @@
+ #echo DX_FLAG_ps=$DX_FLAG_ps
+ #echo DX_ENV=$DX_ENV
+ ])
++
++# CHECK_CPPUNIT
++# ------------------
++# Check for cppunit presence.
++AC_DEFUN([CHECK_CPPUNIT], [
++  ifdef(
++    [AM_PATH_CPPUNIT],
++    [AM_PATH_CPPUNIT($1)],
++    [ifdef(
++      [PKG_CHECK_MODULES],
++      [PKG_CHECK_MODULES([CPPUNIT], [cppunit >= $1])],
++      [m4_fatal([Missing AM_PATH_CPPUNIT or PKG_CHECK_MODULES m4 macro.])]
++    )]
++  )
++])
+diff -Naur zookeeper-3.4.14/zookeeper-client/zookeeper-client-c/configure.ac zookeeper-3.4.14-patch/zookeeper-client/zookeeper-client-c/configure.ac
+--- zookeeper-3.4.14/zookeeper-client/zookeeper-client-c/configure.ac	2019-03-07 00:50:47.000000000 +0800
++++ zookeeper-3.4.14-patch/zookeeper-client/zookeeper-client-c/configure.ac	2021-11-28 11:37:18.000000000 +0800
+@@ -34,7 +34,7 @@
+    CPPUNIT_INCLUDE=
+    CPPUNIT_LIBS=
+ else
+-   AM_PATH_CPPUNIT(1.10.2)
++   CHECK_CPPUNIT(1.10.2)
+ fi
+ 
+ if test "$CALLER" = "ANT" ; then
