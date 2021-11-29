@@ -2,6 +2,7 @@ package com._4paradigm.openmldb.taskmanager;
 
 import com._4paradigm.openmldb.taskmanager.dao.JobIdGenerator;
 import org.testng.Assert;
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
 import java.util.concurrent.*;
@@ -25,6 +26,7 @@ public class TestJobIdGenerator {
         }
     }
 
+    @Ignore
     @Test
     public void TestJobIdUnique() {
         ExecutorService executorService = Executors.newFixedThreadPool(8);
