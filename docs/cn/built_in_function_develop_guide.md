@@ -77,7 +77,7 @@
 
 #### 默认函数库DefaultUdfLibrary的介绍
 
-OpenMLDB的默认函数库声明和定义在[hybridse/src/udf/default_udf_library.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.h)和[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)中。因此，注册函数的工作在[default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)中完成。
+OpenMLDB的 `DefaultUdfLibrary` 负责存放和管理内置的全局SQL函数。开发者需要先将自己开发的的C++函数注册到默认函数库 `DefaultUdfLibrary` 中。而后，用户才能通过SQL语句访问这个函数。默认函数库`DefaultUdfLibrary` 声明在`DefaultUdfLibrary`的实现类里进行函数注册的操作。一般地，可按函数类型在相应的`DefaultUdfLibrary::InitXXXXUdf()` 函数里注册函数。
 
 具体来说:
 
@@ -89,7 +89,20 @@ OpenMLDB的默认函数库声明和定义在[hybridse/src/udf/default_udf_librar
 
 #### 注册函数相关接口和配置介绍
 
-`DefaultUdfLibrary`提供`RegisterExternal` 接口来创建一个`ExternalFuncRegistryHelper`助手。`ExternalFuncRegistryHelper` is OpenMLDB的内置函数开发最重要的辅助类。它提供一套API来配置函数，并将配置好的函数注册到相应的函数库中。它负责配置函数的参数，配置返回值，并注册函数到默认函数库中。
+`DefaultUdfLibrary`提供`RegisterExternal` 接口用以创建一个`ExternalFuncRegistryHelper`对象，并初始化函数的注册名。
+
+```c++
+ExternalFuncRegistryHelper helper = RegisterExternal("register_func");
+// ... ignore function configuration details
+```
+
+注册成功后，用户在SQL语句中使用这个名字来调用函数。请注意，SQL中的函数大小写不敏感。
+
+```SQL
+SELECT register_func(col1) FROM t1;
+```
+
+`ExternalFuncRegistryHelper` is OpenMLDB的内置函数开发最重要的辅助类。它提供一套API来配置函数，并将配置好的函数注册到相应的函数库中。
 
 ```c++
 ExternalFuncRegistryHelper helper = RegisterExternal(function_name);
@@ -100,16 +113,15 @@ helper
   .doc(documentation)
 ```
 
-- `RegisterExternal(function_name)`: 可以创建一个`ExternalFuncRegistryHelper`对象，初始化函数的注册名。SQL使用这个名字来调用函数。请注意，SQL中的函数大小写不敏感。
-- `built_in_fn_pointer`: C++函数指针。
 - `args<arg_type,...>`: 配置参数类型
-- `returns<return_type>`: 配置函数返回值类型。特别要注意的是，当函数结果时nullable时，需要将***return type***显示地配置***returns<Nullable<return_type>>。
+- `built_in_fn_pointer`: C++函数指针
+- `returns<return_type>`: 配置函数返回值类型。特别要注意的是，当函数结果时nullable时，需要将***return type***显示地配置***returns<Nullable<return_type>>***
 -  `return_by_arg()`  : 配置结果是否通过参数返回
-  - 当 **return_by_arg(false)**时 , 结果直接通过`return`返回. OpenMLDB 默认配置  `return_by_arg(false) ` .
-  - 当 **return_by_arg(true)** 时,结果通过参数返回。
-    - 若返回类型是***non-nullable***, 函数结果将通过最后一个参数返回。
-    - 若返回类型是**nullable**, 函数结果值将通过倒数第二个参数返回，而 ***null flag*** 将通过最后一个参数返回。如果***null flag***为***true***, 那么函数结果为***null***，否则函数结果从倒数第二个参数读取。
-- `doc()`: 配置函数文档。文档配置请遵循[函数文档配置](#函数文档配置)的规范。
+  - 当 **return_by_arg(false)**时 , 结果直接通过`return`返回. OpenMLDB 默认配置  `return_by_arg(false) ` 
+  - 当 **return_by_arg(true)** 时,结果通过参数返回
+    - 若返回类型是***non-nullable***, 函数结果将通过最后一个参数返回
+    - 若返回类型是**nullable**, 函数结果值将通过倒数第二个参数返回，而 ***null flag*** 将通过最后一个参数返回。如果***null flag***为***true***, 那么函数结果为***null***，否则函数结果从倒数第二个参数读取
+- `doc()`: 配置函数文档。文档配置请遵循[函数文档配置](#函数文档配置)的规范
 
 ### 场景1: 函数结果直接返回 `return_by_arg(false)`
 
@@ -160,11 +172,11 @@ RegisterExternal("my_func")
 
 #### 例子：实现和注册`INT Month(TIMESTAMP)`函数
 
-Month()函数返回一个整数值，它表示指定日期的月份。month()函数接受一个参数，该参数可以是`timestamp`的时间戳，也可以是`bigint`的毫秒数。
+Month()函数接受一个**TIMESTAMP**的时间戳参数，返回一个**INT**整数值，它表示指定日期的月份。
 
 **step 1: 实现待注册的内置函数**
 
-我们在`hybridse/src/udf/udf.h`声明month()函数：
+在`hybridse/src/udf/udf.h`声明`month()`函数：
 
 ```c++
 # hybridse/src/udf/udf.h
@@ -199,18 +211,6 @@ namespace udf {
 
 ```c++
 RegisterExternal("month")
-        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::month))
-        .doc(R"(
-            @brief Return the month part of a timestamp milliseconds
-
-            Example:
-            @code{.sql}
-                select month(1590115420000);
-                -- output 5
-            @endcode
-            @since 0.1.0
-        )");
-RegisterExternal("month")
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::month))
         .doc(R"(
             @brief Return the month part of a timestamp
@@ -224,38 +224,16 @@ RegisterExternal("month")
         )");
 ```
 
-因为两个函数同名，且返回值相同，所以可以合并在一起注册：
-
-```c++
-RegisterExternal("month")
-        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::month))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::month))
-        .doc(R"(
-            @brief Return the month part of a timestamp or millisecond
-
-            Example:
-            @code{.sql}
-                select month(timestamp(1590115420000));
-                -- output 5
-                select month(1590115420000);
-                -- output 5
-            @endcode
-            @since 0.1.0
-        )");
-```
-
-注册后，我们可以在SQL语句中调用month函数：
+注册后，我们可以在SQL语句中调用month函数，函数名大小写不敏感：
 
 ```SQL
-select month(timestamp(1590115420000)) as m1,  month(1590115420000) as m2;
+select MONTH(TIMESTAMP(1590115420000)) as m1, month(timestamp(1590115420000)) as m2;
  ---- ---- 
   m1   m2  
  ---- ---- 
-  5    5   
+  5    5  
  ---- ---- 
 ```
-
-
 
 ### 场景2: 函数结果通过参数返回，结果不为null
 
@@ -296,13 +274,13 @@ RegisterExternal("my_func")
 
 #### Example：实现和注册`STRING String(BOOL)`函数
 
-String()函数接受一个BOOL参数，并将BOOL值转为STRING返回。
+`STRING String(BOOL)`函数接受一个**BOOL**参数，并将BOOL值转为**STRING**类型的值输出。
 
 **step 1: 实现待注册的内置函数**
 
-由于OpenMLDB的`STRING`类型是一个结构体类型，对应的C++函数不返回结果，而是将结果存放在`code::Date*`参数中返回。
+由于OpenMLDB的`STRING`类型是一个结构体类型，对应的C++函数并不直接RETURN结果，而是将结果存放在`code::Date*`参数中返回。
 
-我们在[hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)声明**bool_to_string()**)函数：
+在[hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)声明**bool_to_string()**)函数：
 
 ```c++
 # hybridse/src/udf/udf.h
@@ -338,7 +316,7 @@ namespace udf {
 
 **step 2: 配置参数，返回值并注册函数**
 
-函数名和函数参数的配置和普通函数配置一样。但需要额外注意返回值类型的配置：
+使用`ExternalFuncRegistryHelper`工具类配置参数和并注册函数到默认库中。需要额外注意返回值类型的配置：
 
 - 因为函数结果存放在参数中返回，所以配置`return_by_arg(true)`
 
@@ -360,6 +338,17 @@ namespace udf {
                 -- output "false"
             @endcode
             @since 0.1.0)");
+```
+
+注册后，我们可以在SQL语句中调用string函数，函数名大小写不敏感：
+
+```SQL
+select STRING(true) as str_true, string(false) as str_false;
+ ----------  ---------- 
+  str_true   str_false  
+ ----------  ---------- 
+   true        true
+ ----------  ---------- 
 ```
 
 ### 内置函数注册场景3: 函数结果可能为空，并且结果通过参数返回
@@ -406,13 +395,13 @@ RegisterExternal("my_func")
         )");
 ```
 
-#### Example：实现和注册`TIMESTAMP Date(TIMESTAMP)`函数
+#### Example：实现和注册`DATE Date(TIMESTAMP)`函数
 
-Date函数接受一个`timestamp`参数，并将`timestamp`转成`date`。
+`DATE Date(TIMESTAMP)`函数接受一个`TIMESTAMP`参数，并将转成`DATE`类型输出。
 
 **step 1: 实现待注册的内置函数**
 
-由于OpenMLDB的`date`类型是一个结构体类型，设计函数是，不直接返回结果，而是将结果存放在参数中返回。同时，考虑到日期转换可能有异常或失败，返回结果是***nullable***的。因此，我们额外增加一个is_null参数保存结果是否为空。
+由于OpenMLDB的`date`类型是一个结构体类型，设计函数是，不直接返回结果，而是将结果存放在参数中返回。同时，考虑到日期转换可能有异常或失败，返回结果是***nullable***的。因此，我们额外增加一个***is_null***参数保存结果是否为空。
 
 我们在`hybridse/src/udf/udf.h`声明timestamp_to_date()函数：
 
@@ -474,7 +463,7 @@ namespace udf {
 
 ###  注册函数别名
 
-一个函数可以有多个别名。如SUBSTR()函数和SUBSTRING()函数,CEILING()函数和CEIL()函数等。这种情况下，不需要对每一个函数实现一套C++函数并注册。只需要在DefaultUdfLibrary中为已经注册好的函数关联别名即可。
+一个函数可以有多个别名。如SUBSTR()函数和SUBSTRING()函数本质上是同一函数；CEILING()函数和CEIL()函数也是相同功能的函数。这种情况下，不需要对每一个函数实现一套C++函数并注册。只需要在`DefaultUdfLibrary`中为已经注册好的函数关联别名即可。
 
 ```c++
 // substring() is registered into default library already 
@@ -492,7 +481,7 @@ RegisterAlias("ceiling", "ceil");
 - **@brief** ：简要描述函数的功能
 - **@param**：函数参数描述
 - **Examples**： 函数的使用示例。一般需要提供SQL的查询示例。SQL语句需要放置在 `@code/@endcode` 代码块中。
-- **@since** ：指明引入该函数的OpenMLDB版本
+- **@since** ：指明引入该函数的OpenMLDB版本。OpenMLDB版本可以从项目的 [CMakeList.txt](https://github.com/4paradigm/OpenMLDB/blob/main/CMakeLists.txt)获得:` ${OPENMLDB_VERSION_MAJOR}.${OPENMLDB_VERSION_MINOR}.${OPENMLDB_VERSION_BUG}`
 
 **示例:**
 

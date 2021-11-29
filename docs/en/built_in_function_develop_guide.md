@@ -83,7 +83,7 @@ Developers need to **take care of the following** rules when developing a functi
 
 #### OpenMLDB Default Library
 
-OpenMLDB  `DefaultUdfLibrary` stores and manages the global built-in functions. Developer need to register a C++ function to the `DefaultUdfLibrary` such that users can access the function from a SQL query.`DefaultUdfLibrary` has been declared at [hybridse/src/udf/default_udf_library.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.h) and implemented at [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc). Developers can register functions in corresponding `DefaultUdfLibrary::InitXXXXUdf()` methods. For instance:
+OpenMLDB  `DefaultUdfLibrary` stores and manages the global built-in SQL functions. Developer need to register a C++ function to the `DefaultUdfLibrary` such that users can access the function from a SQL query.`DefaultUdfLibrary` has been declared at [hybridse/src/udf/default_udf_library.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.h) and implemented at [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc). Developers can register functions in corresponding `DefaultUdfLibrary::InitXXXXUdf()` methods. For instance:
 
 - **Mathematical function** can be registered in `void DefaultUdfLibrary::IniMathUdf()`
 - **Logical function** can be registered in `void DefaultUdfLibrary::InitLogicalUdf()`
@@ -167,9 +167,9 @@ RegisterExternal("my_func")
 
 #### Example: Implement and register `INT Month(TIMESTAMP)` function
 
-**Month()** function return the month part for a given `timestamp` or `int64_t`. 
+`INT Month(TIMESTAMP)` function return the month part for a given `timestamp` or `int64_t`. 
 
-**step 1: declare and implement C++ functions**
+**Step 1: declare and implement C++ functions**
 
 ```c++
 # hybridse/src/udf/udf.h
@@ -194,7 +194,7 @@ namespace v1 {
 } // namespace v1
 ```
 
-**step 2: register C++ function to default library**
+**Step 2: register C++ function to default library**
 
 We register the `int32_t month(codec::Timestamp *ts)` into default library with a registered name `month`
 
@@ -216,12 +216,12 @@ RegisterExternal("month")
 Now, the `udf::v1:month` has been registered into the default library with the name `month`. As a result, we can call `month` in SQL query:
 
 ```SQL
-select month(timestamp(1590115420000)) as m1,  month(1590115420000) as m2;
- ---- ---- 
-  m1   m2  
- ---- ---- 
-  5    5   
- ---- ---- 
+select month(timestamp(1590115420000)) as m1;
+ ---- 
+  m1     
+ ----
+  5     
+ ----
 ```
 
 ### Case2: Register a function which returns result in parameter
@@ -264,9 +264,9 @@ RegisterExternal("my_func")
 
 #### Example: Implement and register `STRING String(BOOL)` function
 
-**String()** function accepts a BOOL type input and converts it to a STRING type output.
+`STRING String(BOOL)` function accepts a BOOL type input and converts it to a STRING type output.
 
-**step 1: declare and implement C++ functions**
+**Step 1: declare and implement C++ functions**
 
 Since the SQL function return **STRING**, the C++ function result should be returned by parameter `codec::StringRef * output`. 
 
@@ -300,7 +300,7 @@ namespace udf {
 } // namespace udf
 ```
 
-**step 2: register C++ function into default library**
+**Step 2: register C++ function into default library**
 
 The followed example registered built-in function ` v1::bool_to_string` into the default library with name `"string"`. 
 
@@ -383,9 +383,9 @@ RegisterExternal("my_func")
 
 #### Example: Implement and register `DATE Date(TIMESTAMP)` function
 
-**Date()** function converts **TIMESTAMP** type to **DATE** type.
+`DATE Date(TIMESTAMP)()` function converts **TIMESTAMP** type to **DATE** type.
 
-**step 1: declare and implement built-in functions**
+**Step 1: declare and implement built-in functions**
 
 We implement a function `timestamp_to_date`to convert `timestamp`  to date type. The input is `timestamp` and the output is nullable `date` which is returned by arguments `codec::Date *output` and `bool *is_null`. 
 
@@ -419,7 +419,7 @@ namespace udf{
 } // udf
 ```
 
-#### step 2: register built-in function into default library
+**Step 2: register built-in function into default library**
 
 The followed example registered built-in function ` v1::timestamp_to_date` into the default library with name `"date"`. 
 
@@ -472,14 +472,14 @@ RegisterAlias("ceiling", "ceil");
 
 ## Function Documentation
 
-`ExternalFuncRegistryHelper` provides API `doc(doc_string)`  to document function. Documenting function is describing its use and functionality to the users. While it may be helpful in the development process, the main intended audience is the users.  So we expect the docstring to be **clear** and **legible**. 
+`ExternalFuncRegistryHelper` provides API `doc(doc_string)`  to document a function. Documenting function is describing its use and functionality to the users. While it may be helpful in the development process, the main intended audience is the users.  So we expect the docstring to be **clear** and **legible**. 
 
 Function docstrings should contain the following information:
 
 - **@brief** command to add a summary of the function's purpose and behaviour. 
 - **@param** command to document the parameters.
 - **Examples** of the function's usage from SQL queries. Demo SQL should be placed in a `@code/@endcode` block
-- **@since** command to specify the production version when the function was added to OpenMLDB 
+- **@since** command to specify the production version when the function was added to OpenMLDB. The version can be obtained from project's [CMakeList.txt](https://github.com/4paradigm/OpenMLDB/blob/main/CMakeLists.txt): ` ${OPENMLDB_VERSION_MAJOR}.${OPENMLDB_VERSION_MINOR}.${OPENMLDB_VERSION_BUG}`
 
 **Example:**
 
