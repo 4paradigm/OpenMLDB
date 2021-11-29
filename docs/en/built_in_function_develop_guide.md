@@ -40,25 +40,25 @@ Developers need to **take care of the following** rules when developing a functi
 
   - The correspondence between the SQL data type and the C++ data type is shown here:
 
-  - | SQL Type       | C++ Type           |
-    | :------------- | :----------------- |
-    | BOOL           | `bool`             |
-    | SMALLINT       | int16_t            |
-    | INT            | `int32_t`          |
-    | BIGINT         | `int64_t`          |
-    | FLOAT          | `float`            |
-    | DOUBLE         | `double`           |
-    | STRING/VARCHAR | `codec::StringRef` |
-    | TIMESTAMP      | `codec::Timestamp` |
-    | DATE           | `codec::Date`      |
+  - | SQL Type  | C++ Type           |
+    | :-------- | :----------------- |
+    | BOOL      | `bool`             |
+    | SMALLINT  | int16_t            |
+    | INT       | `int32_t`          |
+    | BIGINT    | `int64_t`          |
+    | FLOAT     | `float`            |
+    | DOUBLE    | `double`           |
+    | STRING    | `codec::StringRef` |
+    | TIMESTAMP | `codec::Timestamp` |
+    | DATE      | `codec::Date`      |
 
 - Parameters and result
 
-  - SQL function parameters and C++ function parameters have the same position order
+  - SQL function parameters and C++ function parameters have the same position order.
 
   - SQL function return type:
 
-    - If SQL function return BOOL or Numeric type(e.g., **BOOL**, **SMALLINT**, **INT**, **BIGINT**, **FLOAT**, **DOUBLE**), the C++ function should be designed to return corresponding C++  type（`bool`, `int16_t`, `int32_t`, `int64_t`, `float`, `double`)
+    - If SQL function return BOOL or Numeric type(e.g., **BOOL**, **SMALLINT**, **INT**, **BIGINT**, **FLOAT**, **DOUBLE**), the C++ function should be designed to return corresponding C++  type（`bool`, `int16_t`, `int32_t`, `int64_t`, `float`, `double`).
 
       - ```c++
         // SQL: DOUBLE FUNC_DOUBLE(INT)
@@ -72,7 +72,7 @@ Developers need to **take care of the following** rules when developing a functi
         void func_output_str(int32_t, codec::StringRef*); 
         ```
 
-    - If SQL function return type is ***Nullable***, we need one more `bool*`parameter to store a `is_null` flag
+    - If SQL function return type is ***Nullable***, we need one more `bool*`parameter to return a `is_null` flag.
 
       - ```c++
         // SQL: Nullable<DATE> FUNC_NULLABLE_DATE(BIGINT)
@@ -116,15 +116,15 @@ RegisterExternal(function_name)
   .doc(documentation)
 ```
 
-- `args<arg_type,...>`: configure argument types
-- `built_in_fn_pointer`: built-in function pointer
+- `args<arg_type,...>`: configure argument types.
+- `built_in_fn_pointer`: built-in function pointer.
 - `returns<return_type>`: configure return type. Notice that when function result is Nullable, we should configure ***return type*** as ***returns<Nullable<return_type>>*** explicitly.
 - `return_by_arg()`  : configure whether return value will be store in parameters or not.
   - When **return_by_arg(false)** , result will be return directly. OpenMLDB configure  `return_by_arg(false) ` by default.
   - When **return_by_arg(true)**, the result will be stored and returned by parameters.
     - if the return type is ***non-nullable***, the result will be stored and returned via the last parameter.
     - if the return type is **nullable**, the ***result value*** will be stored in the second-to-last parameter and the ***null flag*** will be stored in the last parameter. if ***null flag*** is true, function result is **null**, otherwise, function result is obtained from second-to-last parameter.
-- `doc()`: documenting the function
+- `doc()`: documenting the function.
 
 ### Case 1: Register a function which returns BOOL or Numeric type
 
@@ -196,7 +196,7 @@ namespace v1 {
 
 **Step 2: register C++ function to default library**
 
-We register the `int32_t month(codec::Timestamp *ts)` into default library with a registered name `month`
+We register the `int32_t month(codec::Timestamp *ts)` into default library with a registered name `month`.
 
 ```c++
 RegisterExternal("month")
@@ -213,7 +213,7 @@ RegisterExternal("month")
         )");
 ```
 
-Now, the `udf::v1:month` has been registered into the default library with the name `month`. As a result, we can call `month` in SQL query:
+Now, the `udf::v1:month` has been registered into the default library with the name `month`. As a result, we can call `month` in SQL query.
 
 ```SQL
 select month(timestamp(1590115420000)) as m1;
@@ -326,15 +326,15 @@ RegisterExternal("string")
             @since 0.1.0)");
 ```
 
-Now, the `udf::v1:bool_to_string` has been registered into the default library with the name `string`. As a result, we can call `string()` in SQL query:
+Now, the `udf::v1:bool_to_string` has been registered into the default library with the name `string`. As a result, we can call `string()` in SQL query.
 
 ```SQL
-select string(123) as str;
- --------
-  str
- --------
-  123 
- --------
+select STRING(true) as str_true, string(false) as str_false;
+ ----------  ---------- 
+  str_true   str_false  
+ ----------  ---------- 
+   true        true
+ ----------  ---------- 
 ```
 
 ### Case3: Register a function which returns a Nullable result in argurement
@@ -423,7 +423,7 @@ namespace udf{
 
 The followed example registered built-in function ` v1::timestamp_to_date` into the default library with name `"date"`. 
 
-Given the result is a nullable date type, we configure  **return_by_arg** as ***true*** and return type as `Nullable<Date>`
+Given the result is a nullable date type, we configure  **return_by_arg** as ***true*** and return type as `Nullable<Date>`.
 
 ```c++
 RegisterExternal("date")
@@ -446,7 +446,7 @@ RegisterExternal("date")
             @since 0.1.0)");
 ```
 
-Now, the `udf::v1:timestamp_to_date` has been registered into the default library with the name `date`. As a result, we can call `date()` in SQL query:
+Now, the `udf::v1:timestamp_to_date` has been registered into the default library with the name `date`. As a result, we can call `date()` in SQL query.
 
 ```SQL
 select date(timestamp(1590115420000)) as dt;
@@ -478,7 +478,7 @@ Function docstrings should contain the following information:
 
 - **@brief** command to add a summary of the function's purpose and behaviour. 
 - **@param** command to document the parameters.
-- **Examples** of the function's usage from SQL queries. Demo SQL should be placed in a `@code/@endcode` block
+- **Examples** of the function's usage from SQL queries. Demo SQL should be placed in a `@code/@endcode` block.
 - **@since** command to specify the production version when the function was added to OpenMLDB. The version can be obtained from project's [CMakeList.txt](https://github.com/4paradigm/OpenMLDB/blob/main/CMakeLists.txt): ` ${OPENMLDB_VERSION_MAJOR}.${OPENMLDB_VERSION_MINOR}.${OPENMLDB_VERSION_BUG}`
 
 **Example:**
@@ -543,18 +543,17 @@ cd ./hybridse
 mkdir -p build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=ON
-make -j"$(nproc)"
 make udf_ir_builder_test -j4
 SQL_CASE_BASE_DIR=${OPENMLDB_DIR} ./src/codegen/udf_ir_builder_test
 ```
 
-### Add integration case (Optional)
+### Add Integration Test Case (Optional)
 
 Developers can add integration yaml case in [cases/query/udf_query.yaml](https://github.com/4paradigm/OpenMLDB/blob/main/cases/query/udf_query.yaml) to test newly registered function end-to-end
 
 ```yaml
 cases:
-	- id: 1
+  - id: 1
     desc: test substring(col, position)
     inputs:
       - name: t1
@@ -580,7 +579,6 @@ cd ./hybridse
 mkdir -p build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=ON -DEXAMPLES_ENABLE=ON
-make -j"$(nproc)"
 make toydb_engine_test -j4
 SQL_CASE_BASE_DIR=${OPENMLDB_DIR} ./examples/toydb/src/testing/toydb_engine_test --gtest_filter=EngineUdfQuery*
 ```

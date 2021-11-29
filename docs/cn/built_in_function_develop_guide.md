@@ -32,17 +32,17 @@
 
 - 数据类型：C++的数据类型和SQL类型的对应关系如下
 
-  - | SQL类型        | C/C++ 类型         |
-    | :------------- | :----------------- |
-    | BOOL           | `bool`             |
-    | SMALLINT       | int16_t            |
-    | INT            | `int32_t`          |
-    | BIGINT         | `int64_t`          |
-    | FLOAT          | `float`            |
-    | DOUBLE         | `double`           |
-    | STRING/VARCHAR | `codec::StringRef` |
-    | TIMESTAMP      | `codec::Timestamp` |
-    | DATE           | `codec::Date`      |
+  - | SQL类型   | C/C++ 类型         |
+    | :-------- | :----------------- |
+    | BOOL      | `bool`             |
+    | SMALLINT  | int16_t            |
+    | INT       | `int32_t`          |
+    | BIGINT    | `int64_t`          |
+    | FLOAT     | `float`            |
+    | DOUBLE    | `double`           |
+    | STRING    | `codec::StringRef` |
+    | TIMESTAMP | `codec::Timestamp` |
+    | DATE      | `codec::Date`      |
 
 - 函数参数和返回值：
 
@@ -176,7 +176,7 @@ Month()函数接受一个**TIMESTAMP**的时间戳参数，返回一个**INT**�
 
 **step 1: 实现待注册的内置函数**
 
-在`hybridse/src/udf/udf.h`声明`month()`函数：
+在[hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)声明`month()`函数：
 
 ```c++
 # hybridse/src/udf/udf.h
@@ -188,7 +188,7 @@ namespace udf{
 } // namespace udf
 ```
 
-在``hybridse/src/udf/udf.cc`中实现`month()`函数:
+在[hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)中实现`month()`函数:
 
 ```c++
 # hybridse/src/udf/udf.cc
@@ -207,7 +207,7 @@ namespace udf {
 
 **step 2: 配置函数，并注册到默认函数库中**
 
-使用`ExternalFuncRegistryHelper`工具类配置参数和并注册函数到默认库中。
+使用`ExternalFuncRegistryHelper`工具类配置参数和并注册函数到默认库中:
 
 ```c++
 RegisterExternal("month")
@@ -351,7 +351,7 @@ select STRING(true) as str_true, string(false) as str_false;
  ----------  ---------- 
 ```
 
-### 内置函数注册场景3: 函数结果可能为空，并且结果通过参数返回
+### 场景3: 函数结果可能为空，并且结果通过参数返回
 
 当函数的结果是一个结构体时（如时间戳，日期，字符串），应该将结果存放在参数中返回。因结果是 ***nullable***，所以需额外保留一个***bool***参数来存放null标志位。
 
@@ -403,7 +403,7 @@ RegisterExternal("my_func")
 
 由于OpenMLDB的`date`类型是一个结构体类型，设计函数是，不直接返回结果，而是将结果存放在参数中返回。同时，考虑到日期转换可能有异常或失败，返回结果是***nullable***的。因此，我们额外增加一个***is_null***参数保存结果是否为空。
 
-我们在`hybridse/src/udf/udf.h`声明timestamp_to_date()函数：
+在[hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)声明`timestamp_to_date()`函数：
 
 ```c++
 # hybridse/src/udf/udf.h
@@ -415,7 +415,7 @@ namespace udf{
 } // namespace udf
 ```
 
-在``hybridse/src/udf/udf.cc`中实现`timestamp_to_date()`函数:
+在[hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)中实现`timestamp_to_date()`函数:
 
 ```c++
 # hybridse/src/udf/udf.cc
@@ -508,7 +508,7 @@ RegisterExternal("my_function")
 
 ### `UdfIRBuilderTest`中添加单测（必要）
 
-一般地，可以在`src/codegen/udf_ir_builder_test.cc`中添加`TEST_F`单测。我们提供了CheckUdf函数以便开发者检验函数结果。
+一般地，可以在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc)中添加`TEST_F`单测。我们提供了CheckUdf函数以便开发者检验函数结果。
 
 ```c++
 CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,...);
@@ -527,6 +527,7 @@ TEST_F(UdfIRBuilderTest, month_timestamp_udf_test) {
     Timestamp time(1589958000000L);
     CheckUdf<int32_t, Timestamp>("month", 5, time);
 }
+
 // date(timestamp) normal check
 TEST_F(UdfIRBuilderTest, timestamp_to_date_test_0) {
     CheckUdf<Nullable<Date>, Nullable<Timestamp>>(
@@ -545,7 +546,6 @@ cd ./hybridse
 mkdir -p build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=ON
-make -j"$(nproc)"
 make udf_ir_builder_test -j4
 SQL_CASE_BASE_DIR=${OPENMLDB_DIR} ./src/codegen/udf_ir_builder_test
 ```
@@ -556,7 +556,7 @@ SQL_CASE_BASE_DIR=${OPENMLDB_DIR} ./src/codegen/udf_ir_builder_test
 
 ```yaml
 cases:
-	- id: 1
+  - id: 1
     desc: test substring(col, position)
     inputs:
       - name: t1
@@ -582,7 +582,6 @@ cd ./hybridse
 mkdir -p build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=ON -DEXAMPLES_ENABLE=ON
-make -j"$(nproc)"
 make toydb_engine_test -j4
 SQL_CASE_BASE_DIR=${OPENMLDB_DIR} ./examples/toydb/src/testing/toydb_engine_test --gtest_filter=EngineUdfQuery*
 ```
