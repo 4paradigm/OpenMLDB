@@ -667,9 +667,10 @@ void DefaultUdfLibrary::InitStringUdf() {
                 --output "2020-05-22"
             @endcode)");
     RegisterExternal("upper")
-        .args<StringRef, StringRef>(
+        .args<codec::StringRef>(
             static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::upper))
         .return_by_arg(true)
+        .returns<Nullable<codec::StringRef>>()
         .doc(R"(
             @brief Convert all the characters to uppercase.
 
@@ -681,9 +682,10 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
             @since 0.4.0)");
     RegisterExternal("ucase")
-        .args<StringRef, StringRef>(
+        .args<codec::StringRef>(
             static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::ucase))
         .return_by_arg(true)
+        .returns<Nullable<codec::StringRef>>()
         .doc(R"(
             @brief Convert all the characters to uppercase.
 
