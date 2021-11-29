@@ -48,8 +48,6 @@
 
   - SQL参数与C++函数的参数相对位置相同
 
-  - SQL函数参数类型和C++函数的参数类型遵循上述的数据类型映射关系
-
   - SQL函数返回值要考虑以下几种情况：
 
     - 当SQL函数返回值为布尔或数值类型（如**BOOL**, **SMALLINT**, **INT**, **BIGINT**, **FLOAT**, **DOUBLE**）时，一般地，C++的函数返回值为与之对应的C++类型（`bool`, `int16_t`, `int32_t`, `int64_t`, `float`, `double`)。
@@ -72,6 +70,8 @@
         // SQL: Nullable<DATE> FUNC_NULLABLE_DATE(BIGINT)
         void func_output_nullable_date(int64_t, codec::Date*, bool*); 
         ```
+
+
 
 ### 2. 注册C++函数到默认函数库中
 
@@ -100,10 +100,10 @@ helper
   .doc(documentation)
 ```
 
-- `RegisterExternal(function_name)`: 可以创建一个`ExternalFuncRegistryHelper`对象，初始化函数的注册名。SQL使用这个名字来调用函数。请注意，**注册时，函数名均为小写，但**SQL中的调用函数大小写不敏感。如注册名为"func1"的函数，可以使用`FUNC1()`，`Func1()`来调用。
+- `RegisterExternal(function_name)`: 可以创建一个`ExternalFuncRegistryHelper`对象，初始化函数的注册名。SQL使用这个名字来调用函数。请注意，SQL中的函数大小写不敏感。
 - `built_in_fn_pointer`: C++函数指针。
 - `args<arg_type,...>`: 配置参数类型
-- `returns<return_type>`: 配置函数返回值类型。特别要注意的是，当函数结果时nullable时，需要将***return type***显示地配置***returns<Nullable<return_type>>***，否则编译器将无从知晓返回值是否可能为空。
+- `returns<return_type>`: 配置函数返回值类型。特别要注意的是，当函数结果时nullable时，需要将***return type***显示地配置***returns<Nullable<return_type>>。
 -  `return_by_arg()`  : 配置结果是否通过参数返回
   - 当 **return_by_arg(false)**时 , 结果直接通过`return`返回. OpenMLDB 默认配置  `return_by_arg(false) ` .
   - 当 **return_by_arg(true)** 时,结果通过参数返回。
@@ -167,6 +167,7 @@ Month()函数返回一个整数值，它表示指定日期的月份。month()函
 我们在`hybridse/src/udf/udf.h`声明month()函数：
 
 ```c++
+# hybridse/src/udf/udf.h
 namespace udf{
   namespace v1 {
     int32_t month(int64_t ts);
@@ -178,6 +179,7 @@ namespace udf{
 在``hybridse/src/udf/udf.cc`中实现`month()`函数:
 
 ```c++
+# hybridse/src/udf/udf.cc
 namespace udf {
   namespace v1 {
     int32_t month(int64_t ts) {
@@ -303,6 +305,7 @@ String()函数接受一个BOOL参数，并将BOOL值转为STRING返回。
 我们在[hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)声明**bool_to_string()**)函数：
 
 ```c++
+# hybridse/src/udf/udf.h
 namespace udf{
   namespace v1 {
     void bool_to_string(bool v, hybridse::codec::StringRef *output);
@@ -313,6 +316,7 @@ namespace udf{
 在[hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)中实现**bool_to_string()**函数:
 
 ```c++
+# hybridse/src/udf/udf.cc
 namespace udf {
   namespace v1 {
       void bool_to_string(bool v, hybridse::codec::StringRef *output) {
@@ -402,7 +406,7 @@ RegisterExternal("my_func")
         )");
 ```
 
-#### Example：实现和注册Date()函数
+#### Example：实现和注册`TIMESTAMP Date(TIMESTAMP)`函数
 
 Date函数接受一个`timestamp`参数，并将`timestamp`转成`date`。
 
@@ -413,6 +417,7 @@ Date函数接受一个`timestamp`参数，并将`timestamp`转成`date`。
 我们在`hybridse/src/udf/udf.h`声明timestamp_to_date()函数：
 
 ```c++
+# hybridse/src/udf/udf.h
 namespace udf{
   namespace v1 {
     void timestamp_to_date(codec::Timestamp *timestamp,
@@ -424,6 +429,7 @@ namespace udf{
 在``hybridse/src/udf/udf.cc`中实现`timestamp_to_date()`函数:
 
 ```c++
+# hybridse/src/udf/udf.cc
 namespace udf {
   namespace v1 {
       void timestamp_to_date(codec::Timestamp *timestamp,
@@ -464,6 +470,17 @@ namespace udf {
                 -- output 2020-05-22
             @endcode
             @since 0.1.0)");
+```
+
+###  注册函数别名
+
+一个函数可以有多个别名。如SUBSTR()函数和SUBSTRING()函数,CEILING()函数和CEIL()函数等。这种情况下，不需要对每一个函数实现一套C++函数并注册。只需要在DefaultUdfLibrary中为已经注册好的函数关联别名即可。
+
+```c++
+// substring() is registered into default library already 
+RegisterAlias("substr", "substring");
+// ceil() is registered into default library already 
+RegisterAlias("ceiling", "ceil");
 ```
 
 ## 函数文档配置
