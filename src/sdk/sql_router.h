@@ -73,6 +73,9 @@ class SQLRouter {
 
     virtual bool DropDB(const std::string& db, hybridse::sdk::Status* status) = 0;
 
+    virtual bool ShowDbTables(const std::string& db, std::vector<std::string>* tableNames,
+                              hybridse::sdk::Status* status) = 0;
+
     virtual void SetPerformanceSensitive(bool performance_sensitive) = 0;
 
     virtual bool ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) = 0;

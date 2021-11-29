@@ -210,6 +210,12 @@ TEST_F(SQLClusterTest, ClusterInsert) {
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
+
+    // Test ShowDbTables
+    std::vector<std::string> tableNames;
+    ASSERT_TRUE(router->ShowDbTables(db, &tableNames, &status));
+    ASSERT_EQ(tableNames[0], name);
+
     std::map<uint32_t, std::vector<std::string>> key_map;
     for (int i = 0; i < 100; i++) {
         std::string key = "hello" + std::to_string(i);
@@ -626,7 +632,7 @@ TEST_F(SQLClusterTest, GetTableSchema) {
 int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     FLAGS_zk_session_timeout = 100000;
-    ::openmldb::sdk::MiniCluster mc(6181);
+    ::openmldb::sdk::MiniCluster mc(2181);
     ::openmldb::sdk::mc_ = &mc;
     FLAGS_enable_distsql = true;
     int ok = ::openmldb::sdk::mc_->SetUp(3);

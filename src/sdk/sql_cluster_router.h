@@ -106,11 +106,14 @@ class SQLClusterRouter : public SQLRouter {
 
     bool Init();
 
+    bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
+
     bool CreateDB(const std::string& db, hybridse::sdk::Status* status) override;
 
     bool DropDB(const std::string& db, hybridse::sdk::Status* status) override;
 
-    bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
+    bool ShowDbTables(const std::string& db, std::vector<std::string>* tableNames,
+                      hybridse::sdk::Status* status) override;
 
     void SetPerformanceSensitive(const bool performance_sensitive) override;
 

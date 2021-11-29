@@ -652,6 +652,30 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     return true;
 }
 
+bool SQLClusterRouter::ShowDbTables(const std::string& db, std::vector<std::string>* tableNames,
+                  hybridse::sdk::Status* status) {
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        LOG(WARNING) << "no nameserver exist";
+        return false;
+    }
+    std::string err;
+
+    std::vector<::openmldb::nameserver::TableInfo>* tableInfos;
+    base::Status baseStatus = ns_ptr->ShowDBTable(db, tableInfos);
+    bool ok = baseStatus.OK();
+    if (!ok) {
+        status->msg = "fail to show db tables: " + err;
+        LOG(WARNING) << status->msg;
+        status->code = -1;
+        return false;
+    }
+    for (auto info = tableInfos->begin(); info != tableInfos->end(); ++info) {
+        tableNames->push_back(info->name());
+    }
+    return true;
+}
+
 void SQLClusterRouter::SetPerformanceSensitive(const bool performance_sensitive) {
     performance_sensitive_ = performance_sensitive;
 }
