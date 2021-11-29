@@ -17,7 +17,9 @@
 package com._4paradigm.openmldb.batch.catalog
 
 import com._4paradigm.hybridse.LibraryLoader
-import com._4paradigm.openmldb.{SQLRouterOptions, sql_router_sdk}
+import com._4paradigm.openmldb.{SQLRouterOptions, Status, VectorString, sql_router_sdk}
+
+import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 
 class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
 
@@ -35,6 +37,29 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
     throw new Exception("fail to create sql executor")
   }
 
-  // TODO: use sql router to get catalog data from NameServer
+  def getDatabases(): List[String] = {
+    val databases = new VectorString()
+    val status = new Status
+
+    sqlRouter.ShowDB(databases, status)
+    if (status.getCode == 0) {
+      databases.toList
+    } else {
+      null
+    }
+
+  }
+
+  def getTables(dbName: String): List[String] = {
+    val tables = new VectorString()
+    val status = new Status
+
+    sqlRouter.ShowDbTables(dbName, tables, status)
+    if (status.getCode == 0) {
+      tables.toList
+    } else {
+      null
+    }
+  }
 
 }
