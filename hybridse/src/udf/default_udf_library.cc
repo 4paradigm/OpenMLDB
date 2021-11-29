@@ -1039,6 +1039,7 @@ void DefaultUdfLibrary::IniMathUdf() {
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("truncate", {cast}, nullptr);
         });
+    InitTrigonometricUdf();
 }
 
 void DefaultUdfLibrary::InitTrigonometricUdf() {
@@ -1247,7 +1248,7 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
     RegisterExternal("tan").args<float>(static_cast<float (*)(float)>(tanf));
 }
 
-void DefaultUdfLibrary::InitUtilityUdf() {
+void DefaultUdfLibrary::InitLogicalUdf() {
     RegisterExprUdf("is_null")
         .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* input) {
             return ctx->node_manager()->MakeUnaryExprNode(input,
@@ -1484,7 +1485,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .returns<Nullable<Timestamp>>();
 }
 
-void DefaultUdfLibrary::InitDateUdf() {
+void DefaultUdfLibrary::InitTimeAndDateUdf() {
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::year))
@@ -1723,12 +1724,12 @@ void DefaultUdfLibrary::InitDateUdf() {
 
 void DefaultUdfLibrary::Init() {
     udf::RegisterNativeUdfToModule(this->node_manager());
-    InitUtilityUdf();
-    InitDateUdf();
+    InitLogicalUdf();
+    InitTimeAndDateUdf();
     InitTypeUdf();
     IniMathUdf();
     InitStringUdf();
-    InitTrigonometricUdf();
+
     InitWindowFunctions();
     InitUdaf();
     InitFeatureZero();

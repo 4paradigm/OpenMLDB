@@ -30,9 +30,9 @@ class DefaultUdfLibrary : public UdfLibrary {
     void IniMathUdf();
     void InitStringUdf();
     void InitTrigonometricUdf();
-    void InitDateUdf();
+    void InitTimeAndDateUdf();
     void InitTypeUdf();
-    void InitUtilityUdf();
+    void InitLogicalUdf();
     void InitWindowFunctions();
     void InitUdaf();
     void InitAggByCateUdafs();
