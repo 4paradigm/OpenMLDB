@@ -5592,11 +5592,12 @@ void NameServerImpl::OnLocked() {
                 << " is less then system table replica num " << FLAGS_system_table_replica_num;
             exit(1);
         }
-        if (!CreateDatabase(INTERNAL_DB).OK()) {
+        auto status = CreateDatabase(INTERNAL_DB);
+        if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
             LOG(FATAL) << "create internal database failed";
             exit(1);
         }
-        if (!CreateSystemTable("JOB_INFO", SystemTableType::kJobInfo).OK()) {
+        if (FLAGS_system_table_replica_num > 0 && !CreateSystemTable("JOB_INFO", SystemTableType::kJobInfo).OK()) {
             LOG(FATAL) << "create system table failed";
             exit(1);
         }
