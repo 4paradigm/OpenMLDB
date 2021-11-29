@@ -37,7 +37,7 @@ TEST_F(LRUCacheTest, upsert) {
     // insert 2, key 1 will be evicted
     cache.upsert(2, 2);
     ASSERT_FALSE(cache.contains(1));
-    ASSET_EQ(cache.get(0), -1);
+    ASSERT_EQ(cache.get(0), -1);
 }
 
 }  // namespace openmldb::base
