@@ -37,7 +37,7 @@ public class TaskManagerConfig {
     public static String BATCHJOB_JAR_PATH;
     public static String SPARK_YARN_JARS;
     public static String SPARK_HOME;
-    public static int MAX_JOB_ID = 100;
+    public static int PREFETCH_JOB_NUM = 100;
 
     static {
         try {
@@ -61,7 +61,7 @@ public class TaskManagerConfig {
             BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
             SPARK_HOME = prop.getProperty("spark.home");
-            MAX_JOB_ID = Integer.parseInt(prop.getProperty("max.job.id"));
+            PREFETCH_JOB_NUM = Integer.parseInt(prop.getProperty("prefetch.job.num"));
         } catch (Exception e) {
             e.printStackTrace();
         }

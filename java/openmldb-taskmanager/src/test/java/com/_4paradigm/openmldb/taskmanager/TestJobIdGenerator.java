@@ -4,14 +4,10 @@ import com._4paradigm.openmldb.taskmanager.dao.JobIdGenerator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.HashSet;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 public class TestJobIdGenerator {
-    public HashSet<Integer> jobIdSet = new HashSet<>();
+    public CopyOnWriteArrayList<Integer> jobIdSet = new CopyOnWriteArrayList<>();
     public int num = 0;
 
     public class ChildThread implements Callable<Void> {

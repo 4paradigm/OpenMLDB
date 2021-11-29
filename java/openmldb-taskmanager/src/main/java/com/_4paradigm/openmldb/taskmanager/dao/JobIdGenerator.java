@@ -23,6 +23,7 @@ import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 import java.nio.charset.StandardCharsets;
 
 public class JobIdGenerator {
+    private static int maxJobId = 0;
     private static int jobId = 0;
     private volatile static ZKClient zkClient;
 
@@ -31,6 +32,7 @@ public class JobIdGenerator {
 
     public static int getUniqueJobID() throws Exception {
         synchronized (JobIdGenerator.class) {
+            // TODO: Remove these codes, if we support to initialize zkClient when start
             if (zkClient == null) {
                 zkClient = new ZKClient(ZKConfig.builder()
                         .cluster(TaskManagerConfig.ZK_CLUSTER)
@@ -50,16 +52,17 @@ public class JobIdGenerator {
                 zkClient.createNode(
                         TaskManagerConfig.ZK_TASKMANAGER_PATH, "".getBytes());
                 zkClient.createNode(
-                        TaskManagerConfig.ZK_MAX_JOB_ID_PATH, String.valueOf(TaskManagerConfig.MAX_JOB_ID).getBytes());
+                        TaskManagerConfig.ZK_MAX_JOB_ID_PATH, String.valueOf(TaskManagerConfig.PREFETCH_JOB_NUM).getBytes());
                 // Get the node value from zk
-                jobId = Integer.parseInt(zkClient.getNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH));
+                maxJobId = Integer.parseInt(zkClient.getNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH));
+                jobId = maxJobId;
             }
             // Pre-set job id in zookeeper.
             // If taskmanager failed, pre-set job id in zk can avoid duplicate ID.
-            if ((jobId + 1) >= TaskManagerConfig.MAX_JOB_ID) {
-                TaskManagerConfig.MAX_JOB_ID = jobId + 1 + TaskManagerConfig.MAX_JOB_ID;
+            if ((jobId + 1) >= maxJobId) {
+                maxJobId = jobId + 1 + maxJobId;
                 zkClient.setNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH,
-                        String.valueOf(TaskManagerConfig.MAX_JOB_ID).getBytes());
+                        String.valueOf(maxJobId).getBytes());
             }
             return ++jobId;
         }
