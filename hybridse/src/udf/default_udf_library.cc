@@ -667,8 +667,8 @@ void DefaultUdfLibrary::InitStringUdf() {
                 --output "2020-05-22"
             @endcode)");
     RegisterExternal("upper")
-        .args<codec::StringRef>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::upper))
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::upper)))
         .return_by_arg(true)
         .returns<Nullable<codec::StringRef>>()
         .doc(R"(
@@ -682,8 +682,8 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
             @since 0.4.0)");
     RegisterExternal("ucase")
-        .args<codec::StringRef>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::ucase))
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::ucase)))
         .return_by_arg(true)
         .returns<Nullable<codec::StringRef>>()
         .doc(R"(

@@ -252,8 +252,8 @@ void string_to_bigint(codec::StringRef *str, int64_t *v, bool *is_null_ptr);
 void string_to_float(codec::StringRef *str, float *v, bool *is_null_ptr);
 void string_to_double(codec::StringRef *str, double *v, bool *is_null_ptr);
 
-void upper(codec::StringRef *str, hybridse::codec::StringRef *output, bool *is_null_ptr);
-void ucase(codec::StringRef *str, hybridse::codec::StringRef *output, bool *is_null_ptr);
+void upper(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr);
+void ucase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr);
 /**
  * Allocate string buffer from jit runtime.
  */
