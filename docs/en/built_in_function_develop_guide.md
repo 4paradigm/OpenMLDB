@@ -2,19 +2,6 @@
 
 ## Backgroud
 
-​	OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特征抽取。目前，我们提供聚合类函数(Aggregate Function)如 `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`来支持全表聚合和窗口聚合。同时，我们还提供了单行函数(Scalar Function)如`ABS`, `SIN`, `COS`, `DATE`, `YEAR`等支持单行数据处理。
-
-- 聚合函数（Aggregate Function）对数据集（如一列数据）执行计算，并返回单个值。
-
-- 单行函数（Scalar Function）对若干数据执行计算，并返回单个值。单行函数按功能不同，又可分为：
-  - 数学函数
-  - 逻辑函数
-  - 时间和日期函数
-  - 字符串函数
-  - 类型转换函数
-
-​	本文是SQL内置函数的开发入门指南，旨在指引开发者快速掌握基础的单行内置函数开发方法，暂不深入更为复杂的聚合函数开发细节。我们诚挚欢迎更多的开发者加入社区，帮助我们扩展和开发内置函数集。
-
 OpenMLDB contains hundreds of build-in functions helping data scientist to exetract features and analyze data. For example, now we have aggregation functions like `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`, etc,  to aggregate data over a table or over a specific window. In addition to that, we also have scalar functions like `MINUTE`, `HOUR`, `SECOND`, `SIN`, `COS`, `LOG`, etc, to extract features based on one-row data. 
 
 OpenMLDB classifies functions as aggregate, scalar, depending on the input data values and result values.
