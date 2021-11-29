@@ -1,14 +1,16 @@
 # OpenMLDB Build-In Function Develop Guide
 
-## Backgroud
+## Background
 
-OpenMLDB contains hundreds of build-in functions helping data scientist to exetract features and analyze data. For example, now we have aggregation functions like `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`, etc,  to aggregate data over a table or over a specific window. In addition to that, we also have scalar functions like `MINUTE`, `HOUR`, `SECOND`, `SIN`, `COS`, `LOG`, etc, to extract features based on one-row data. 
+OpenMLDB contains hundreds of build-in functions helping data scientists to extract features and analyze data. For example, now we have aggregation functions like **SUM(), AVG(), MAX(), MIN(), COUNT()**, etc, to aggregate data over a table or a specific window. In addition to that, we also have scalar functions like **MINUTE(), HOUR(), SECOND(), SIN(), LOG()**, etc, to extract features based on one-row data. 
 
 OpenMLDB classifies functions as aggregate, scalar, depending on the input data values and result values.
 
-- An *aggregate function* receives a set of values for each argument (such as the values of a column) and returns a single-value result for the set of input values. 
-- A *scalar function* receives a single value for each argument and returns a single value result. Scalar function can be classified as several groups:
-  - Mathematical function
+- An *aggregate function* receives **a set of** values for each argument (such as the values of a column) and returns a single-value result for the set of input values. 
+
+- A *scalar function* receives **a single value** for each argument and returns a single value result. A scalar function can be classified into several groups:
+
+- - Mathematical function
   - Logical function
   - Date & Time function
   - String function
@@ -22,7 +24,7 @@ In this section, we are going to introduce the basic steps to implement a C++ bu
 
 ### 1. Develop Built-In C++ Function
 
-Generally, develepers should implement a C++ function for each SQL function. Thus, uses will invoke the C++ function when they call the coresponding function from SQL.
+Generally, developers should implement a C++ function for each SQL function. Thus, uses will invoke the C++ function when they call the corresponding function from SQL.
 
 Developers need to **take care of the following** rules when developing a function:
 
@@ -126,7 +128,7 @@ RegisterExternal(function_name)
     - if the return type is **nullable**, the ***result value*** will be stored in the second-to-last parameter and the ***null flag*** will be stored in the last parameter. if ***null flag*** is true, function result is **null**, otherwise, function result is obtained from second-to-last parameter.
 - `doc()`: documenting the function.
 
-### Case 1: Register a function which returns BOOL or Numeric type
+### Case 1: Register a function that returns BOOL or Numeric type
 
 If SQL function return BOOL or Numeric type(e.g., **BOOL**, **SMALLINT**, **INT**, **BIGINT**, **FLOAT**, **DOUBLE**), the C++ function should be designed to return corresponding C++ type（`bool`, `int16_t`, `int32_t`, `int64_t`, `float`, `double`).
 
@@ -224,7 +226,7 @@ select month(timestamp(1590115420000)) as m1;
  ----
 ```
 
-### Case2: Register a function which returns result in parameter
+### Case2: Register a function that returns result in parameter
 
 If SQL function return **STRING**, **TIMESTAMP** or **DATE**, the C++ function result should be returned in parameter with the corresponding C++ pointer type (`codec::StringRef*`, `codec::Timestamp*`, `codec::Date*`).
 
@@ -337,7 +339,7 @@ select STRING(true) as str_true, string(false) as str_false;
  ----------  ---------- 
 ```
 
-### Case3: Register a function which returns a Nullable result in argurement
+### Case3: Register a function that returns a Nullable result in an argument
 
 If the registered function output a structural type result, like `timestamp`, `date`, `StringRef`, it should be implemented in a way that returns the result by argument. In addition, since the result is ***nullable***, we have to reserve another argument `bool*`for the null flag.
 
