@@ -2,7 +2,7 @@
 
 ## Background
 
-OpenMLDB contains hundreds of build-in functions helping data scientists to extract features and analyze data. For example, now we have aggregation functions like **SUM(), AVG(), MAX(), MIN(), COUNT()**, etc, to aggregate data over a table or a specific window. In addition to that, we also have scalar functions like **MINUTE(), HOUR(), SECOND(), SIN(), LOG()**, etc, to extract features based on one-row data. 
+OpenMLDB contains hundreds of build-in functions helping data scientists to extract features and analyze data. For example, now we have aggregation functions like `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`, etc, to aggregate data over a table or a specific window. In addition to that, we also have scalar functions like `ABS`, `SIN`, `COS`, `DATE`, `YEAR`, etc, to extract features based on one-row data. 
 
 OpenMLDB classifies functions as aggregate, scalar, depending on the input data values and result values.
 
