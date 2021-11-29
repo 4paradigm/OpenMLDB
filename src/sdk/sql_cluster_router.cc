@@ -507,6 +507,7 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(const std::string& db, cons
             auto cached_info = value.value()->table_info;
             auto current_info = cluster_sdk_->GetTableInfo(db, cached_info->name());
             if (cached_info->tid() != current_info->tid()) {
+                // just leave, this invalid value will be updated by SetCache()
                 return {};
             }
             return value.value();
