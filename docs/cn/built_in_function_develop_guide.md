@@ -149,13 +149,13 @@ RegisterExternal(function_name)
 
 - 配置C++函数指针: `func_ptr`。注意，考虑代码的可读性和编译安全，需要使用static_cast将指针转为的函数指针。
 - 配置参数类型：`args<arg_type,...>`
-- 配置返回值类型：`returns<return_type>`. 一般不需要显示地指明返回类型。但如果函数结果时nullable时，需要将***return type***显示地配置***returns<Nullable<return_type>>***
--   配置返回方式：`return_by_arg()`  
+- 配置返回值类型：`returns<return_type>`。一般不需要显示地指明返回类型。但如果函数结果时nullable时，需要将***return type***显示地配置***returns<Nullable<return_type>>***
+-   配置返回方式：`return_by_arg()`  .
   
-  - 当 **return_by_arg(false)**时 , 结果直接通过`return`返回. OpenMLDB 默认配置  `return_by_arg(false) ` 
-  - 当 **return_by_arg(true)** 时,结果通过参数返回
-    - 若返回类型是***non-nullable***, 函数结果将通过最后一个参数返回
-    - 若返回类型是**nullable**, 函数结果值将通过倒数第二个参数返回，而 ***null flag*** 将通过最后一个参数返回。如果***null flag***为***true***, 那么函数结果为***null***，否则函数结果从倒数第二个参数读取
+  - 当 **return_by_arg(false)** 时，结果直接通过`return`返回。 OpenMLDB 默认配置  `return_by_arg(false) ` 
+  - 当 **return_by_arg(true)** 时，结果通过参数返回
+    - 若返回类型是***non-nullable***，函数结果将通过最后一个参数返回
+    - 若返回类型是**nullable**，函数结果值将通过倒数第二个参数返回，而 ***null flag*** 将通过最后一个参数返回。如果***null flag***为***true***, 那么函数结果为***null***，否则函数结果从倒数第二个参数读取
 
 #### 2.2.3 配置函数文档
 
@@ -282,9 +282,11 @@ SQL_CASE_BASE_DIR=${OPENMLDB_DIR} ./src/codegen/udf_ir_builder_test
 
 ```c++
 # hybridse/src/udf/udf.h
-namespace udf {
-  namespace v1 {
-    Ret func(Arg1 arg1, Arg2 arg2, ...);
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      Ret func(Arg1 arg1, Arg2 arg2, ...);
+    }
   }
 }
 
@@ -292,11 +294,13 @@ namespace udf {
 
 ```c++
 # hybridse/src/udf/udf.cc
-namespace udf {
-  namespace v1 {
-    Ret func(Arg1 arg1, Arg2 arg2, ...) {
-      // ...
-      return ans; 
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      Ret func(Arg1 arg1, Arg2 arg2, ...) {
+        // ...
+        return ans; 
+      }
     }
   }
 }
@@ -305,6 +309,7 @@ namespace udf {
 同时，在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)中注册和配置函数：
 
 ```c++
+# hybridse/src/udf/default_udf_library.cc
 RegisterExternal("my_func")
         .args<Arg1, Arg2, ...>(static_cast<R (*)(Arg1, Arg2, ...)>(v1::func))
         .doc(R"(
@@ -320,9 +325,11 @@ RegisterExternal("my_func")
 
 ```c++
 # hybridse/src/udf/udf.h
-namespace udf {
-  namespace v1 {
-    void func(Arg1 arg1, Arg2 arg2, ..., Ret* result);
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      void func(Arg1 arg1, Arg2 arg2, ..., Ret* result);
+    }
   }
 }
 
@@ -330,11 +337,13 @@ namespace udf {
 
 ```c++
 # hybridse/src/udf/udf.cc
-namespace udf {
-  namespace v1 {
-    void func(Arg1 arg1, Arg2 arg2, ..., Ret* ret) {
-      // ...
-      // *ret = result value
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      void func(Arg1 arg1, Arg2 arg2, ..., Ret* ret) {
+        // ...
+        // *ret = result value
+      }
     }
   }
 }
@@ -360,9 +369,11 @@ RegisterExternal("my_func")
 
 ```c++
 # hybridse/src/udf/udf.h
-namespace udf {
-  namespace v1 {
-    void func(Arg1 arg1, Arg2 arg2, ..., Ret* result, bool* null_flag);
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      void func(Arg1 arg1, Arg2 arg2, ..., Ret* result, bool* null_flag);
+    }
   }
 }
 
@@ -370,23 +381,26 @@ namespace udf {
 
 ```c++
 # hybridse/src/udf/udf.cc
-namespace udf {
-  namespace v1 {
-    void func(Arg1 arg1, Arg2 arg2, ..., Ret* ret, bool* null_flag) {
-      // ...
-      // if result value is null
-      // 	*null_flag = true
-     	// else 
-      // 	*ret = result value
-      // *null_flag = false
-    }
-  }
-}
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      void func(Arg1 arg1, Arg2 arg2, ..., Ret* ret, bool* null_flag) {
+        // ...
+        // if result value is null
+        // 	*null_flag = true
+        // else 
+        // 	*ret = result value
+        // *null_flag = false
+      }
+    } 
+  } 
+} 
 ```
 
 同时，在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)中注册和配置函数：
 
 ```c++
+# hybridse/src/udf/default_udf_library.cc
 RegisterExternal("my_func")
         .args<Arg1, Arg2, ...>(static_cast<R (*)(Arg1, Arg2, ...)>(v1::func))
   			.return_by_arg(true)
@@ -408,29 +422,33 @@ Month()函数接受一个**TIMESTAMP**的时间戳参数，返回一个**INT**�
 
 ```c++
 # hybridse/src/udf/udf.h
-namespace udf{
-  namespace v1 {
-    int32_t month(int64_t ts);
-    int32_t month(codec::Timestamp *ts);
-  } // namespace v1
-} // namespace udf
+namespace hybridse {
+  namespace udf{
+    namespace v1 {
+      int32_t month(int64_t ts);
+      int32_t month(codec::Timestamp *ts);
+    } // namespace v1
+  } // namespace udf
+} // namepsace hybridse
 ```
 
 在[hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)中实现`month()`函数:
 
 ```c++
 # hybridse/src/udf/udf.cc
-namespace udf {
-  namespace v1 {
-    int32_t month(int64_t ts) {
-        time_t time = (ts + TZ_OFFSET) / 1000;
-        struct tm t;
-        gmtime_r(&time, &t);
-        return t.tm_mon + 1;
-    }
-    int32_t month(codec::Timestamp *ts) { return month(ts->ts_); }
-  } // namespace v1
-} // namespace udf
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      int32_t month(int64_t ts) {
+          time_t time = (ts + TZ_OFFSET) / 1000;
+          struct tm t;
+          gmtime_r(&time, &t);
+          return t.tm_mon + 1;
+      }
+      int32_t month(codec::Timestamp *ts) { return month(ts->ts_); }
+    } // namespace v1
+  } // namespace udf
+} // namepsace hybridse
 ```
 
 #### **step 2: 配置函数，并注册到默认函数库中**
@@ -438,6 +456,7 @@ namespace udf {
 在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)中注册和配置函数：
 
 ```c++
+namespace hybridse {
 namespace udf {
   void DefaultUdfLibrary::InitTimeAndDateUdf() {
     // ...
@@ -455,6 +474,7 @@ namespace udf {
           )");
   }
 } // namespace udf
+} // namepsace hybridse
 ```
 
 #### step 3: 函数单元测试
@@ -492,34 +512,38 @@ select MONTH(TIMESTAMP(1590115420000)) as m1, month(timestamp(1590115420000)) as
 
 ```c++
 # hybridse/src/udf/udf.h
-namespace udf{
-  namespace v1 {
-    void bool_to_string(bool v, hybridse::codec::StringRef *output);
-  } // namespace v1
-} // namespace udf
+namespace hybridse {
+  namespace udf{
+    namespace v1 {
+      void bool_to_string(bool v, hybridse::codec::StringRef *output);
+    } // namespace v1
+  } // namespace udf
+} // namepsace hybridse
 ```
 
 在[hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)中实现**bool_to_string()**函数:
 
 ```c++
 # hybridse/src/udf/udf.cc
-namespace udf {
-  namespace v1 {
-      void bool_to_string(bool v, hybridse::codec::StringRef *output) {
-          if (v) {
-              char *buffer = AllocManagedStringBuf(4);
-              output->size_ = 4;
-              memcpy(buffer, "true", output->size_);
-              output->data_ = buffer;
-          } else {
-              char *buffer = AllocManagedStringBuf(5);
-              output->size_ = 5;
-              memcpy(buffer, "false", output->size_);
-              output->data_ = buffer;
-          }
-      }
-  } // namespace v1
-} // namespace udf
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+        void bool_to_string(bool v, hybridse::codec::StringRef *output) {
+            if (v) {
+                char *buffer = AllocManagedStringBuf(4);
+                output->size_ = 4;
+                memcpy(buffer, "true", output->size_);
+                output->data_ = buffer;
+            } else {
+                char *buffer = AllocManagedStringBuf(5);
+                output->size_ = 5;
+                memcpy(buffer, "false", output->size_);
+                output->data_ = buffer;
+            }
+        }
+    } // namespace v1
+  } // namespace udf
+ } // namepsace hybridse
 ```
 
 #### **step 2: 配置参数，返回值并注册函数**
@@ -527,26 +551,30 @@ namespace udf {
 `STRING String(BOOL)`时类型转换函数，建议在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)的`DefaultUdfLibrary::InitTypeUdf()`方法中注册和配置函数。
 
 ```c++
-namespace udf {
-  void DefaultUdfLibrary::InitTypeUdf() {
-    // ...    
-			RegisterExternal("string")
-        .args<bool>(static_cast<void (*)(bool, codec::StringRef*)>(
-                        udf::v1::bool_to_string))
-        .return_by_arg(true)
-        .doc(R"(
-            @brief Return string converted from bool expression
+namespace hybridse {
+	namespace udf {
+    void DefaultUdfLibrary::InitTypeUdf() {
+      // ...    
+        RegisterExternal("string")
+          .args<bool>(static_cast<void (*)(bool, codec::StringRef*)>(
+                          udf::v1::bool_to_string))
+          .return_by_arg(true)
+          .doc(R"(
+              @brief Return string converted from bool expression
 
-            Example:
+              Example:
 
-            @code{.sql}
-                select string(true);
-                -- output "true"
+              @code{.sql}
+                  select string(true);
+                  -- output "true"
 
-                select string(false);
-                -- output "false"
-            @endcode
-            @since 0.1.0)");
+                  select string(false);
+                  -- output "false"
+              @endcode
+              @since 0.1.0)");
+    }
+  } // namespace udf
+} // namepsace hybridse
 ```
 
 #### step 3: 函数单元测试
@@ -587,34 +615,38 @@ select STRING(true) as str_true, string(false) as str_false;
 
 ```c++
 # hybridse/src/udf/udf.h
-namespace udf{
-  namespace v1 {
-    void timestamp_to_date(codec::Timestamp *timestamp,
-      		codec::Date *ret /*result output*/, bool *is_null /*null flag*/);
-  } // namespace v1
-} // namespace udf
+namespace hybridse {
+  namespace udf{
+    namespace v1 {
+      void timestamp_to_date(codec::Timestamp *timestamp,
+            codec::Date *ret /*result output*/, bool *is_null /*null flag*/);
+    } // namespace v1
+  } // namespace udf
+} // namespace hybridse
 ```
 
 在[hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)中实现`timestamp_to_date()`函数:
 
 ```c++
 # hybridse/src/udf/udf.cc
-namespace udf {
-  namespace v1 {
-      void timestamp_to_date(codec::Timestamp *timestamp,
-       			codec::Date *ret /*result output*/, bool *is_null /*null flag*/) {
-        time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
-        struct tm t;
-        if (nullptr == gmtime_r(&time, &t)) {
-            *is_null = true;
-            return;
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+        void timestamp_to_date(codec::Timestamp *timestamp,
+              codec::Date *ret /*result output*/, bool *is_null /*null flag*/) {
+          time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
+          struct tm t;
+          if (nullptr == gmtime_r(&time, &t)) {
+              *is_null = true;
+              return;
+          }
+          *ret = codec::Date(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+          *is_null = false;
+          return;
         }
-        *ret = codec::Date(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
-        *is_null = false;
-        return;
-      }
-  } // namespace v1
-} // namespace udf
+    } // namespace v1
+  } // namespace udf
+} // namespace hybridse
 ```
 
 #### **step 2: 配置参数，返回值并注册函数**
@@ -622,30 +654,32 @@ namespace udf {
 函数名和函数参数的配置和普通函数配置一样。但需要额外注意返回值类型的配置：
 
 - 因为函数结果存放在参数中返回，所以配置`return_by_arg(true)`
-- 因为函数结果可能为null,所以配置`.returns<Nullable<Date>>`
+- 因为函数结果可能为null所以配置`.returns<Nullable<Date>>`
 
 因为`DATE Date(TIMESTAMP)`函数是时间和日期函数，所以建议在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)的`DefaultUdfLibrary::InitTimeAndDateUdf()`方法中注册和配置函数：
 
 ```c++
-namespace udf {
-  void DefaultUdfLibrary::InitTimeAndDateUdf() {
-    // ...    
-			RegisterExternal("date")
-        .args<codec::Timestamp>(
-            static_cast<void (*)(Timestamp*, Date*, bool*)>(v1::timestamp_to_date))
-        .return_by_arg(true)
-        .returns<Nullable<Date>>()
-        .doc(R"(
-            @brief Cast timestamp or string expression to date
-            Example:
+namespace hybridse {
+  namespace udf {
+    void DefaultUdfLibrary::InitTimeAndDateUdf() {
+      // ...    
+        RegisterExternal("date")
+          .args<codec::Timestamp>(
+              static_cast<void (*)(Timestamp*, Date*, bool*)>(v1::timestamp_to_date))
+          .return_by_arg(true)
+          .returns<Nullable<Date>>()
+          .doc(R"(
+              @brief Cast timestamp or string expression to date
+              Example:
 
-            @code{.sql}
-                select date(timestamp(1590115420000));
-                -- output 2020-05-22
-            @endcode
-            @since 0.1.0)");
-  }
-}
+              @code{.sql}
+                  select date(timestamp(1590115420000));
+                  -- output 2020-05-22
+              @endcode
+              @since 0.1.0)");
+    }
+  } // namespace udf
+} // namespace hybridse
 ```
 
 #### step 3: 函数单元测试
