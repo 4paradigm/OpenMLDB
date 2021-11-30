@@ -656,11 +656,11 @@ void ucase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
     if (str == nullptr || str->size_ == 0 || output == nullptr || is_null_ptr == nullptr) {
         return;
     }
-    char *buffer = AllocManagedStringBuf(str->size_);
-    output->size_ = str->size_;
-    for (uint32_t i = 0; i < str->size_; i++) {
-        buffer[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(str->data_[i])));
-    }
+    std::string input(str->data_, str->size_);
+    boost::to_upper(input);
+    char *buffer = AllocManagedStringBuf(input.length());
+    memcpy(buffer, input.c_str(), input.length());
+    output->size_ = input.length();
     output->data_ = buffer;
     *is_null_ptr = false;
 }
