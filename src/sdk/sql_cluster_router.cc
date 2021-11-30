@@ -661,8 +661,8 @@ bool SQLClusterRouter::ShowDbTables(const std::string& db, std::vector<std::stri
     }
     std::string err;
 
-    std::vector<::openmldb::nameserver::TableInfo>* tableInfos;
-    base::Status baseStatus = ns_ptr->ShowDBTable(db, tableInfos);
+    std::vector<::openmldb::nameserver::TableInfo> tableInfos;
+    base::Status baseStatus = ns_ptr->ShowDBTable(db, &tableInfos);
     bool ok = baseStatus.OK();
     if (!ok) {
         status->msg = "fail to show db tables: " + err;
