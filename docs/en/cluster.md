@@ -1,7 +1,7 @@
 
 # OpenMLDB QuickStart (Cluster Mode)
 
-This tutorial is targeted at the cluster mode of OpenMLDB and it will cover the whole lifecycle of how to build a machine learning application with the help of OpenMLDB, including feature extraction, model training, online data import, online feature extraction, model prediction, etc. From this tutorial, readers can understand how to use OpenMLDB to complete the machine learning lifecycle from raw data to model deployment. OpenMLDB provides both Java and Python SDKs. In this tutorial, we will Python SDK.
+This tutorial is targeted at the cluster mode of OpenMLDB and it will cover the whole lifecycle of how to build a machine learning application with the help of OpenMLDB, including feature extraction, model training, online data import, online feature extraction, model prediction, etc. From this tutorial, readers can understand how to use OpenMLDB to complete the machine learning lifecycle from raw data to model deployment. OpenMLDB provides both Java and Python SDKs. In this tutorial, we will use Python SDK.
 
 In order to better understand the workflow, we use Kaggle Competition [Predict Taxi Tour Duration Dataset](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script/data) to demonstrate the whole process. Dataset and source code can be found
 [here](https://github.com/4paradigm/OpenMLDB/tree/main/demo/predict-taxi-trip-duration-nb/script).
