@@ -560,6 +560,7 @@ TEST_F(UdfIRBuilderTest, substring_pos_udf_test) {
 TEST_F(UdfIRBuilderTest, upper_ucase) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", StringRef("SQL"), StringRef("Sql"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("SQL"), StringRef("Sql"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("!ABC?"), StringRef("!Abc?"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", nullptr, nullptr);
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", nullptr, nullptr);
 }

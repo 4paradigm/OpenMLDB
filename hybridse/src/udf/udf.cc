@@ -663,7 +663,7 @@ void ucase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
     char *buffer = AllocManagedStringBuf(str->size_);
     output->size_ = str->size_;
     for (uint32_t i = 0; i < str->size_; i++) {
-        buffer[i] = std::toupper(str->data_[i]);
+        buffer[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(str->data_[i])));
     }
     output->data_ = buffer;
     *is_null_ptr = false;
