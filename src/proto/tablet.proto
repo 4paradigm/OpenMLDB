@@ -291,6 +291,12 @@ message AddReplicaResponse {
     optional string msg = 2;
 }
 
+message OfflineTableMeta {
+    required string path = 1;
+    required string format = 2;
+    map<string, string> options = 3;
+}
+
 message TableMeta {
     optional int32 tid = 1;
     optional string name = 2;
@@ -311,12 +317,6 @@ message TableMeta {
     repeated common.VersionPair schema_versions = 15;
     repeated common.TablePartition table_partition = 16;
     optional OfflineTableMeta offline_table_meta = 17;
-}
-
-message OfflineTableMeta {
-    required string path = 1;
-    required string format = 2;
-    map<string, string> options = 3;
 }
 
 message CreateTableRequest {
