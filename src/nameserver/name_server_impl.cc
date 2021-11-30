@@ -5597,7 +5597,7 @@ void NameServerImpl::OnLocked() {
             LOG(FATAL) << "create internal database failed";
             exit(1);
         }
-        if (FLAGS_system_table_replica_num > 0 && !CreateSystemTable("JOB_INFO", SystemTableType::kJobInfo).OK()) {
+        if (FLAGS_system_table_replica_num > 0 && !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
             LOG(FATAL) << "create system table failed";
             exit(1);
         }
