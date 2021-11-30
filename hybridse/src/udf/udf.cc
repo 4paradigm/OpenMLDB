@@ -652,10 +652,6 @@ int32_t strcmp(hybridse::codec::StringRef *s1, hybridse::codec::StringRef *s2) {
     return hybridse::codec::StringRef::compare(*s1, *s2);
 }
 
-void upper(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
-    return ucase(str, output, is_null_ptr);
-}
-
 void ucase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
     if (str == nullptr || str->size_ == 0 || output == nullptr || is_null_ptr == nullptr) {
         return;
