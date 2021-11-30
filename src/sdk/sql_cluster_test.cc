@@ -33,7 +33,7 @@
 #include "sdk/sql_router.h"
 #include "sdk/sql_sdk_test.h"
 #include "vm/catalog.h"
-DECLARE_uint32(system_table_replica_num);
+
 namespace openmldb {
 namespace sdk {
 
@@ -629,7 +629,6 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
     FLAGS_enable_distsql = true;
-    FLAGS_system_table_replica_num = 0;
     int ok = ::openmldb::sdk::mc_->SetUp(3);
     sleep(1);
     ::testing::InitGoogleTest(&argc, argv);
