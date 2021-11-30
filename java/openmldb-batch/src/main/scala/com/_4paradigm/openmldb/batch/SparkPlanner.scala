@@ -38,7 +38,7 @@ import scala.collection.mutable
 import scala.collection.JavaConversions.seqAsJavaList
 
 
-class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: String) {
+class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppName: String) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -50,8 +50,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
   }
   Engine.InitializeGlobalLLVM()
 
-  def this(session: SparkSession, dbName: String) = {
-    this(session, OpenmldbBatchConfig.fromSparkSession(session), dbName)
+  def this(session: SparkSession, sparkAppName: String) = {
+    this(session, OpenmldbBatchConfig.fromSparkSession(session), sparkAppName)
   }
 
   def this(session: SparkSession, config: OpenmldbBatchConfig) = {
@@ -64,7 +64,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
 
   def plan(sql: String, registeredTables: mutable.Map[String, mutable.Map[String, DataFrame]]): SparkInstance = {
     // Translation state
-    val tag = s"$dbName-$sql"
+    val tag = s"$sparkAppName-$sql"
     val planCtx = new PlanContext(tag, session, this, config)
 
     // Set input tables
