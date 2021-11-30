@@ -659,7 +659,7 @@ void ucase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
     std::string input(str->data_, str->size_);
     boost::to_upper(input);
     char *buffer = AllocManagedStringBuf(input.length());
-    memcpy(buffer, input.c_str(), input.length());
+    memcpy(buffer, input.data(), input.length());
     output->size_ = input.length();
     output->data_ = buffer;
     *is_null_ptr = false;
