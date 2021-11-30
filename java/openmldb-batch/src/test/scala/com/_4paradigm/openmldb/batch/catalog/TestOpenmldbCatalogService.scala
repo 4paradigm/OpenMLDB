@@ -18,10 +18,9 @@ package com._4paradigm.openmldb.batch.catalog
 
 import org.scalatest.{FunSuite, Ignore}
 
-
+@Ignore
 class TestOpenmldbCatalogService extends FunSuite {
 
-  @Ignore
   test("TestOpenmldbCatalogService") {
     val zkCluster = "127.0.0.1:2181"
     val zkPath = "/openmldb_cluster"
