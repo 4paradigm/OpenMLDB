@@ -139,6 +139,9 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.zookeeper.path", doc="The path of ZooKeeper for NameServer")
   val openmldbZkPath = ""
 
+
+  @ConfigOption(name="openmldb.default.db", doc="The default database for OpenMLDB SQL")
+  val defaultDb = ""
 }
 
 

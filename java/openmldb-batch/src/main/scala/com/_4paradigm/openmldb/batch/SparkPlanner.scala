@@ -34,8 +34,8 @@ import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeInde
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
+import scala.collection.JavaConversions.seqAsJavaList
 
 
 class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: String) {
@@ -62,17 +62,18 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     this(session, OpenmldbBatchConfig.fromSparkSession(session), session.conf.get("spark.app.name"))
   }
 
-  def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
+  def plan(sql: String, registeredTables: mutable.Map[String, mutable.Map[String, DataFrame]]): SparkInstance = {
     // Translation state
     val tag = s"$dbName-$sql"
     val planCtx = new PlanContext(tag, session, this, config)
 
     // Set input tables
-    tableDict.foreach {
-      case (name, df) => planCtx.registerDataFrame(name, df)
-    }
+    planCtx.setRegisteredTables(registeredTables)
 
-    withSQLEngine(sql, HybridseUtil.getDatabase(dbName, tableDict), config) { engine =>
+    val databases: List[Database] = HybridseUtil.getDatabases(registeredTables)
+
+    withSQLEngine(sql, databases, config) { engine =>
+
       val irBuffer = engine.getIrBuffer
       planCtx.setModuleBuffer(irBuffer)
 
@@ -103,6 +104,13 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
         getSparkOutput(root, planCtx)
       }
     }
+
+  }
+
+  def plan(sql: String, registeredDefauoltDbTables: Map[String, DataFrame]): SparkInstance = {
+    val registeredTables = new mutable.HashMap[String, mutable.Map[String, DataFrame]]()
+    registeredTables.put(config.defaultDb, collection.mutable.Map(registeredDefauoltDbTables.toSeq: _*) )
+    plan(sql, registeredTables)
   }
 
   // Visit the physical plan to get all ConcatJoinNode
@@ -300,7 +308,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     SparkInstance.fromDataFrame(sess.read.parquet(cacheDataPath))
   }
 
-  private def withSQLEngine[T](sql: String, db: Database, config: OpenmldbBatchConfig)(body: SqlEngine => T): T = {
+  private def withSQLEngine[T](sql: String, dbs: List[Database],
+                               config: OpenmldbBatchConfig)(body: SqlEngine => T): T = {
     var engine: SqlEngine = null
 
     val engineOptions = SqlEngine.createDefaultEngineOptions()
@@ -317,7 +326,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     }
 
     try {
-      engine = new SqlEngine(sql, db, engineOptions)
+      engine = new SqlEngine(sql, dbs, engineOptions, config.defaultDb)
       val res = body(engine)
       res
     } finally {
