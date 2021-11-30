@@ -35,6 +35,8 @@
 #include "sdk/mini_cluster.h"
 #include "vm/catalog.h"
 
+DECLARE_uint32(system_table_replica_num);
+
 namespace openmldb {
 namespace sdk {
 
@@ -1092,6 +1094,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_zk_session_timeout = 100000;
+    FLAGS_system_table_replica_num = 0;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
     int ok = ::openmldb::sdk::mc_->SetUp(1);
