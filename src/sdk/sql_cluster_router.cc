@@ -670,7 +670,7 @@ bool SQLClusterRouter::ShowDbTables(const std::string& db, std::vector<std::stri
         status->code = -1;
         return false;
     }
-    for (auto info = tableInfos->begin(); info != tableInfos->end(); ++info) {
+    for (auto info = tableInfos.begin(); info != tableInfos.end(); ++info) {
         tableNames->push_back(info->name());
     }
     return true;
