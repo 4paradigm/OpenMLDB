@@ -26,6 +26,10 @@ import com.baidu.brpc.server.RpcServerOptions;
 public class TaskManagerServer {
 
     public static void main(String[] args) {
+        runBrpcServer();
+    }
+
+    public static void runBrpcServer() {
 
         // TODO: Register leader in ZooKeeper and support high availability
 
