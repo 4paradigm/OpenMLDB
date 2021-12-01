@@ -16,20 +16,44 @@
 
 package com._4paradigm.openmldb.taskmanager.server;
 
+import com._4paradigm.openmldb.taskmanager.zk.FailoverWatcher;
 import lombok.extern.slf4j.Slf4j;
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 import com._4paradigm.openmldb.taskmanager.server.impl.TaskManagerImpl;
 import com.baidu.brpc.server.RpcServer;
 import com.baidu.brpc.server.RpcServerOptions;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.io.IOException;
 
 @Slf4j
 public class TaskManagerServer {
+    private static final Log logger = LogFactory.getLog(TaskManagerServer.class);
 
-    public static void main(String[] args) {
-        runBrpcServer();
+    public TaskManagerServer() {
+        try {
+            FailoverWatcher failoverWatcher = new FailoverWatcher();
+
+
+            logger.info("The server runs and prepares for leader election");
+            if (failoverWatcher.blockUntilActive()) {
+                logger.info("The server becomes active master and prepare to do business logic");
+                runBrpcServer();
+            }
+            failoverWatcher.close();
+            logger.info("The server exits after running business logic");
+
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    public static void runBrpcServer() {
+
+
+    public void runBrpcServer() {
 
         // TODO: Register leader in ZooKeeper and support high availability
 
@@ -56,4 +80,10 @@ public class TaskManagerServer {
             log.error("Fail to start TaskManager, " + e.getMessage());
         }
     }
+
+    public static void main(String[] args) {
+        TaskManagerServer server = new TaskManagerServer();
+        server.runBrpcServer();
+    }
+
 }

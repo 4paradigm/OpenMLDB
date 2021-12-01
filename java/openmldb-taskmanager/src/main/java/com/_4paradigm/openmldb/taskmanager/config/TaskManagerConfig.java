@@ -19,8 +19,6 @@ package com._4paradigm.openmldb.taskmanager.config;
 import java.util.Properties;
 
 public class TaskManagerConfig {
-    public static Properties properties;
-
     public static String HOST = "127.0.0.1";
     public static int PORT = 9902;
     public static int WORKER_THREAD = 4;
@@ -36,7 +34,7 @@ public class TaskManagerConfig {
 
     static {
         try {
-            properties = new Properties();
+            Properties properties = new Properties();
             properties.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
             HOST = properties.getProperty("server.host", "127.0.0.1");
             PORT = Integer.parseInt(properties.getProperty("server.port", "9902"));
