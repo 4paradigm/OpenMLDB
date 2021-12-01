@@ -557,6 +557,14 @@ TEST_F(UdfIRBuilderTest, substring_pos_udf_test) {
                                             StringRef("1234567890"), -12);
 }
 
+TEST_F(UdfIRBuilderTest, upper_ucase) {
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", StringRef("SQL"), StringRef("Sql"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("SQL"), StringRef("Sql"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("!ABC?"), StringRef("!Abc?"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", nullptr, nullptr);
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", nullptr, nullptr);
+}
+
 TEST_F(UdfIRBuilderTest, concat_str_udf_test) {
     //    concat("12345") == "12345"
     CheckUdf<StringRef, StringRef>("concat", StringRef("12345"),

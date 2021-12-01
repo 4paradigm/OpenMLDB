@@ -666,9 +666,25 @@ void DefaultUdfLibrary::InitStringUdf() {
                 select date_format(date(1590115420000),"%Y-%m-%d");
                 --output "2020-05-22"
             @endcode)");
+    RegisterExternal("ucase")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::ucase)))
+        .return_by_arg(true)
+        .returns<Nullable<codec::StringRef>>()
+        .doc(R"(
+            @brief Convert all the characters to uppercase. Note that characters values > 127 are simply returned.
+
+            Example:
+
+            @code{.sql}
+                SELECT UCASE('Sql') as str1;
+                --output "SQL"
+            @endcode
+            @since 0.4.0)");
+    RegisterAlias("upper", "ucase");
 }
 
-void DefaultUdfLibrary::IniMathUdf() {
+void DefaultUdfLibrary::InitMathUdf() {
     RegisterExternal("log")
         .doc(R"(
             @brief log(base, expr)
@@ -1726,7 +1742,7 @@ void DefaultUdfLibrary::Init() {
     InitUtilityUdf();
     InitDateUdf();
     InitTypeUdf();
-    IniMathUdf();
+    InitMathUdf();
     InitStringUdf();
     InitTrigonometricUdf();
     InitWindowFunctions();

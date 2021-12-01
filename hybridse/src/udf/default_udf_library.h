@@ -27,7 +27,7 @@ class DefaultUdfLibrary : public UdfLibrary {
 
  private:
     void Init();
-    void IniMathUdf();
+    void InitMathUdf();
     void InitStringUdf();
     void InitTrigonometricUdf();
     void InitDateUdf();
