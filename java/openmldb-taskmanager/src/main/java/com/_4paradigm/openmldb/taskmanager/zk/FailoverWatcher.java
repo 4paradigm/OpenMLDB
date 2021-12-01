@@ -34,14 +34,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class FailoverWatcher implements Watcher {
   private static final Log LOG = LogFactory.getLog(FailoverWatcher.class);
 
-  protected final String baseZnode;
-  protected final String masterZnode;
-  protected final String zkQuorum;
-  protected final int sessionTimeout;
-  protected final int connectRetryTimes;
-  protected final HostPort hostPort;
-  
-  protected ZooKeeper zooKeeper;
+  private final String baseZnode;
+  private final String masterZnode;
+  private final String zkQuorum;
+  private final int sessionTimeout;
+  private final int connectRetryTimes;
+  private final HostPort hostPort;
+  private ZooKeeper zooKeeper;
   private final AtomicBoolean hasActiveServer = new AtomicBoolean(false);
 
   /**
@@ -332,21 +331,9 @@ public class FailoverWatcher implements Watcher {
     }
     throw new Exception();
   }
-  
-  public String getMasterZnode() {
-    return masterZnode;
-  }
 
   public ZooKeeper getZooKeeper() {
     return zooKeeper;
-  }
-
-  public boolean hasActiveServer() {
-    return hasActiveServer.get();
-  }
-
-  public HostPort getHostPort() {
-    return hostPort;
   }
 
 }

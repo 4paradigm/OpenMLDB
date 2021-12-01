@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Most code is from HBase ZKUtil and ZooKeeperWatcher is replaced with FailoverWatcher.
@@ -61,7 +60,7 @@ public class ZooKeeperUtil {
       byte[] data) throws KeeperException {
     try {
       LOG.info("Try to create emphemeral znode " + znode);
-      failoverWatcher.getZooKeeper().create(znode, data, createAcl(failoverWatcher, znode), CreateMode.EPHEMERAL);
+      failoverWatcher.getZooKeeper().create(znode, data, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
     } catch (KeeperException.NodeExistsException nee) {
       if (!watchAndCheckExists(failoverWatcher, znode)) {
         // It did exist but now it doesn't, try again
@@ -91,52 +90,6 @@ public class ZooKeeperUtil {
     } catch (InterruptedException ie) {
       LOG.debug("Received InterruptedException, doing nothing here", ie);
       return false;
-    }
-  }
-  
-  public static void deleteNodeRecursively(FailoverWatcher failoverWatcher, String node)
-  throws KeeperException {
-    try {
-      List<String> children = ZooKeeperUtil.listChildrenNoWatch(failoverWatcher, node);
-      // the node is already deleted, so we just finish
-      if (children == null) {
-        return;
-      }
-
-      if(!children.isEmpty()) {
-        for(String child : children) {
-          deleteNodeRecursively(failoverWatcher, node + "/" + child);
-        }
-      }
-      failoverWatcher.getZooKeeper().delete(node, -1);
-    } catch(InterruptedException ie) {
-      LOG.debug("Receive InterruptedException, doing nothing here", ie);
-    }
-  }
-  
-  public static List<String> listChildrenNoWatch(FailoverWatcher failoverWatcher, String znode)
-      throws KeeperException {
-    List<String> children = null;
-    try {
-      // List the children without watching
-      children = failoverWatcher.getZooKeeper().getChildren(znode, null);
-    } catch (KeeperException.NoNodeException nne) {
-      LOG.debug("child '{}' does not exist, we ignore the result:", znode, nne);
-    } catch (InterruptedException ie) {
-      LOG.debug("Receive InterruptedException, doing nothing here", ie);
-    }
-
-    return children;
-  }
-
-  public static void deleteNodeFailSilent(FailoverWatcher failoverWatcher, String node)
-      throws KeeperException {
-    try {
-      failoverWatcher.getZooKeeper().delete(node, -1);
-    } catch (KeeperException.NoNodeException ignored) {
-      //ignore
-    } catch (InterruptedException ie) {
-      LOG.debug("Received InterruptedException, doing nothing here", ie);
     }
   }
 
@@ -172,7 +125,7 @@ public class ZooKeeperUtil {
       LOG.info("Try to create persistent znode " + znode);
       ZooKeeper zk = failoverWatcher.getZooKeeper();
       if (zk.exists(znode, false) == null) {
-        zk.create(znode, new byte[0], createAcl(failoverWatcher, znode), CreateMode.PERSISTENT);
+        zk.create(znode, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
       }
     } catch (KeeperException.NodeExistsException ignore) {
       //we just ignore result if the node already exist
@@ -191,16 +144,6 @@ public class ZooKeeperUtil {
       LOG.debug("Received InterruptedException, re-throw the exception", ie);
       throw ie;
     }
-  }
-
-  /**
-   * Create acl for znodes, anyone could read, but only admin can operate if set scure.
-   *
-   * @param failoverWatcher the watcher which has the configuration
-   * @return the acls
-   */
-  public static ArrayList<ACL> createAcl(FailoverWatcher failoverWatcher, String znode) {
-    return Ids.OPEN_ACL_UNSAFE;
   }
 
 }
