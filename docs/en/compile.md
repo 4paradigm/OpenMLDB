@@ -27,25 +27,31 @@ customize make behavior by passing following arguments. E.g, change the build ty
 make CMAKE_BUILD_TYPE=Debug
 ```
 
+- OPENMLDB_BUILD_DIR
+
+  Binary build directory
+
+  Default: ${PROJECT_ROOT}/build
+
 - CMAKE_BUILD_TYPE
 
   Default: RelWithDebInfo
 
 - SQL_PYSDK_ENABLE
 
-  enable build python sdk
+  Enable build python sdk
 
   Default: OFF
 
 - SQL_JAVASDK_ENABLE
 
-  enable build java sdk
+  Enable build java sdk
 
   Default: OFF
 
 - TESTING_ENABLE
 
-  enable build test targets
+  Enable build test targets
 
   Default: ON
 

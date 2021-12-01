@@ -27,27 +27,33 @@
 make CMAKE_BUILD_TYPE=Debug
 ```
 
+- OPENMLDB_BUILD_DIR
+
+  代码编译路径
+
+  默认: ${PROJECT_ROOT}/build
+
 - CMAKE_BUILD_TYPE
 
-  Default: RelWithDebInfo
+  默认: RelWithDebInfo
 
 - SQL_PYSDK_ENABLE
 
-  enable build python sdk
+  编译 Python SDK
 
-  Default: OFF
+  默认: OFF
 
 - SQL_JAVASDK_ENABLE
 
-  enable build java sdk
+  编译 Java SDK
 
-  Default: OFF
+  默认: OFF
 
 - TESTING_ENABLE
 
-  enable build test targets
+  编译测试程序
 
-  Default: OFF
+  默认: OFF
 
 
 ## 针对OpenMLDB优化的Spark发行版（可选）
