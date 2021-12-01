@@ -57,7 +57,6 @@
 
 - C++内置函数名统一使用[snake_case](https://en.wikipedia.org/wiki/Snake_case)风格
 - 要求函数名能清晰表达函数功能
-- **不要求**与对外暴露的SQL函数名**完全一致**。因为C++函数与SQL函数名是通过函数注册操作关联在一起
 
 #### 2.1.3 C++类型与SQL类型对应关系
 
@@ -106,9 +105,42 @@
     
   - 注意， SQL 函数返回值将对内置函数的实现和注册方式产生较大的影响，我们将在后续分别讨论，详情参见[3. SQL函数开发模版](#3.-SQL函数开发模版)。
 
+#### 2.1.5 内存管理
+
+- C++内置函数中，不允许使用`new`操作符或者`malloc`函数开辟空间。
+- 若需要动态开辟空间，需要使用OpenMLDB提供的内存管理接口`hybridse::udf::v1::AllocManagedStringBuf(size)`。系统会从内存池`ByteMemoryPool`中分配指定大小的连续空间给该函数，并在安全的时候释放空间。
+- 若空间size大于2048字节，则分配失败，返回nullptr。
+- 若空间size < 0，则分配失败，返回nullptr。
+
+**例子:**
+
+`hybridse::udf::v1::bool_to_string()`负责将bool值转位字符串"true"或者"false"。需要`AllocManagedStringBuf`动态开辟相应空间存放字符串。
+
+```c++
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      void bool_to_string(bool v, hybridse::codec::StringRef *output) {
+          if (v) {
+              char *buffer = AllocManagedStringBuf(4);
+              output->size_ = 4;
+              memcpy(buffer, "true", output->size_);
+              output->data_ = buffer;
+          } else {
+              char *buffer = AllocManagedStringBuf(5);
+              output->size_ = 5;
+              memcpy(buffer, "false", output->size_);
+              output->data_ = buffer;
+          }
+      }
+    }
+  }
+}
+```
+
 ### 2.2. 注册和配置接口
 
-#### 2.2.1 注册位置
+#### 2.2.1 默认函数库
 
 OpenMLDB的 `DefaultUdfLibrary` 负责存放和管理内置的全局SQL函数。默认函数库`DefaultUdfLibrary` 声明在文件[hybridse/src/udf/default_udf_library.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.h)文件中，实现在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)文件中。
 
@@ -132,14 +164,14 @@ OpenMLDB的 `DefaultUdfLibrary` 负责存放和管理内置的全局SQL函数。
 `DefaultUdfLibrary`提供`RegisterExternal` 接口用以创建一个`ExternalFuncRegistryHelper`对象，来辅助内置函数的注册，并初始化函数的注册名。
 
 ```c++
-ExternalFuncRegistryHelper helper = RegisterExternal("register_func");
+ExternalFuncRegistryHelper helper = RegisterExternal("register_func_name");
 // ... ignore function configuration details
 ```
 
 `ExternalFuncRegistryHelper` 是OpenMLDB的内置函数开发最重要的辅助类。它提供一套API来配置函数，并将配置好的函数注册到相应的函数库中。
 
 ```c++
-RegisterExternal(function_name)
+RegisterExternal("register_func_name")
   .args<arg_type, ...>(static_cast<return_type (*)(arg_type, ...)>(v1::func_ptr))
   .return_by_arg(bool_value)
   .returns<return_type>
@@ -157,7 +189,7 @@ RegisterExternal(function_name)
     - 若返回类型是***non-nullable***，函数结果将通过最后一个参数返回
     - 若返回类型是**nullable**，函数结果值将通过倒数第二个参数返回，而 ***null flag*** 将通过最后一个参数返回。如果***null flag***为***true***, 那么函数结果为***null***，否则函数结果从倒数第二个参数读取
 
-#### 2.2.3 配置函数文档
+#### 2.2.4 配置函数文档
 
 `ExternalFuncRegistryHelper` 提供了`doc(doc_string)`API来配置文档。函数文档用来描述函数的功能和用法。它的主要受众是普通用户。因此，要求文档清晰易懂。一般需要包含一下几类信息：
 
@@ -167,7 +199,7 @@ RegisterExternal(function_name)
 - **@since** ：指明引入该函数的OpenMLDB版本。OpenMLDB版本可以从项目的 [CMakeList.txt](https://github.com/4paradigm/OpenMLDB/blob/main/CMakeLists.txt)获得:` ${OPENMLDB_VERSION_MAJOR}.${OPENMLDB_VERSION_MINOR}.${OPENMLDB_VERSION_BUG}`
 
 ```c++
-RegisterExternal(function_name)
+RegisterExternal("function_name")
 //...
 .doc(R"(
       		@brief a brief summary of the my_function's purpose and behavior
@@ -183,7 +215,7 @@ RegisterExternal(function_name)
           @since 0.4.0)");
 ```
 
-#### 2.2.4 注册函数别名
+#### 2.2.5 注册函数别名
 
 一般情况下，需要开发C++函数，然后注册到`DefaultUdfLibrary`中去。但开发已有函数的别名函数时，则不需要遵循标准开发流程；仅需要使用`RegisterAlias("alias_func", "original_func")`API将别名关联到到已注册函数上即可。
 
@@ -354,7 +386,7 @@ namespace hybridse {
 ```c++
 # hybridse/src/udf/default_udf_library.cc
 RegisterExternal("my_func")
-        .args<Arg1, Arg2, ...>(static_cast<R (*)(Arg1, Arg2, ...)>(v1::func))
+        .args<Arg1, Arg2, ...>(static_cast<R (*)(Arg1, Arg2, ..., Ret*)>(v1::func))
   			.return_by_arg(true)
         .doc(R"(
             documenting my_func
@@ -500,7 +532,7 @@ select MONTH(TIMESTAMP(1590115420000)) as m1, month(timestamp(1590115420000)) as
  ---- ---- 
 ```
 
-### 4.2 3.2 SQL函数返回值为**STRING**, **TIMESTAMP**或DATE - `STRING String(BOOL)`函数
+### 4.2 SQL函数返回值为**STRING**, **TIMESTAMP**或DATE - `STRING String(BOOL)`函数
 
 `STRING String(BOOL)`函数接受一个**BOOL**参数，并将BOOL值转为**STRING**类型的值输出。详情参考[3.2 SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**](#3.2-SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**)
 
@@ -544,9 +576,11 @@ namespace hybridse {
  } // namepsace hybridse
 ```
 
+请注意，我们使用`AllocManagedStringBuf`向OpenMLDB的内存池申请空间，而不使用`new`操作符或者`malloc`函数。
+
 #### **step 2: 配置参数，返回值并注册函数**
 
-`STRING String(BOOL)`时类型转换函数，建议在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)的`DefaultUdfLibrary::InitTypeUdf()`方法中注册和配置函数。
+`STRING String(BOOL)`是类型转换函数，建议在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)的`DefaultUdfLibrary::InitTypeUdf()`方法中注册和配置函数。
 
 ```c++
 namespace hybridse {
