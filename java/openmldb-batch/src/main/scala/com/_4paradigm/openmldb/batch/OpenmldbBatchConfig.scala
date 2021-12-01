@@ -141,7 +141,7 @@ class OpenmldbBatchConfig extends Serializable {
 
 
   @ConfigOption(name="openmldb.default.db", doc="The default database for OpenMLDB SQL")
-  val defaultDb = ""
+  val defaultDb = "default_db"
 }
 
 
