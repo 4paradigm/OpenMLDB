@@ -503,12 +503,16 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(const std::string& db, cons
     if (it != input_lru_cache_.end()) {
         auto value = it->second.get(sql);
         if (value != boost::none) {
-            // check cache validation, the name is the same, but the tid may be different
+            // Check cache validation, the name is the same, but the tid may be different.
+            // Notice that we won't check it when table_info is disabled and router is enabled.
+            //  invalid router info doesn't have tid, so it won't get confused.
             auto cached_info = value.value()->table_info;
-            auto current_info = cluster_sdk_->GetTableInfo(db, cached_info->name());
-            if (cached_info->tid() != current_info->tid()) {
-                // just leave, this invalid value will be updated by SetCache()
-                return {};
+            if (cached_info) {
+                auto current_info = cluster_sdk_->GetTableInfo(db, cached_info->name());
+                if (!current_info || cached_info->tid() != current_info->tid()) {
+                    // just leave, this invalid value will be updated by SetCache()
+                    return {};
+                }
             }
             return value.value();
         }
@@ -688,14 +692,14 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     auto cache = GetCache(db, sql);
     auto parameter_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(parameter_schema_raw);
     if (cache && cache->IsCompatibleCache(parameter_schema)) {
-        cache = std::shared_ptr<SQLCache>();
+        cache.reset();
     }
     if (!cache) {
         ::hybridse::vm::ExplainOutput explain;
         ::hybridse::base::Status vm_status;
         if (cluster_sdk_->GetEngine()->Explain(sql, db, engine_mode, parameter_schema_raw, &explain, &vm_status)) {
             std::shared_ptr<::hybridse::sdk::SchemaImpl> schema;
-            if (explain.input_schema.size() > 0) {
+            if (!explain.input_schema.empty()) {
                 schema = std::make_shared<::hybridse::sdk::SchemaImpl>(explain.input_schema);
             } else {
                 const std::string& main_table = explain.router.GetMainTable();
