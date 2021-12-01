@@ -280,7 +280,7 @@
                     <programs>
                         <program>
                             <mainClass>com._4paradigm.openmldb.taskmanager.server.TaskManagerServer</mainClass>
-                            <name>TaskManagerServer</name>
+                            <name>taskmanager</name>
                         </program>
                     </programs>
                 </configuration>

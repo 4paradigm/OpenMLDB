@@ -19,6 +19,8 @@ package com._4paradigm.openmldb.taskmanager.config;
 import java.util.Properties;
 
 public class TaskManagerConfig {
+    public static Properties properties;
+
     public static String HOST = "127.0.0.1";
     public static int PORT = 9902;
     public static int WORKER_THREAD = 4;
@@ -34,20 +36,20 @@ public class TaskManagerConfig {
 
     static {
         try {
-            Properties prop = new Properties();
-            prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
-            HOST = prop.getProperty("server.host", "127.0.0.1");
-            PORT = Integer.parseInt(prop.getProperty("server.port", "9902"));
-            WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "4"));
-            IO_THREAD = Integer.parseInt(prop.getProperty("server.io_threads", "4"));
-            ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
-            ZK_CLUSTER = prop.getProperty("zookeeper.cluster");
-            ZK_ROOTPATH = prop.getProperty("zookeeper.root_path");
-            ZK_LEADER_PATH = prop.getProperty("zookeeper.leader.path", "/taskmanager/leader");
-            SPARK_MASTER = prop.getProperty("spark.master", "yarn");
-            BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");
-            SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
-            SPARK_HOME = prop.getProperty("spark.home");
+            properties = new Properties();
+            properties.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
+            HOST = properties.getProperty("server.host", "127.0.0.1");
+            PORT = Integer.parseInt(properties.getProperty("server.port", "9902"));
+            WORKER_THREAD = Integer.parseInt(properties.getProperty("server.worker_threads", "4"));
+            IO_THREAD = Integer.parseInt(properties.getProperty("server.io_threads", "4"));
+            ZK_SESSION_TIMEOUT = Integer.parseInt(properties.getProperty("zookeeper.session_timeout", "5000"));
+            ZK_CLUSTER = properties.getProperty("zookeeper.cluster");
+            ZK_ROOTPATH = properties.getProperty("zookeeper.root_path");
+            ZK_LEADER_PATH = properties.getProperty("zookeeper.leader.path", "/taskmanager/leader");
+            SPARK_MASTER = properties.getProperty("spark.master", "yarn");
+            BATCHJOB_JAR_PATH = properties.getProperty("batchjob.jar.path");
+            SPARK_YARN_JARS = properties.getProperty("spark.yarn.jars");
+            SPARK_HOME = properties.getProperty("spark.home");
         } catch (Exception e) {
             e.printStackTrace();
         }
