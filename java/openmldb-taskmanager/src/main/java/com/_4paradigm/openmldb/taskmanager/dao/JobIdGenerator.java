@@ -60,7 +60,7 @@ public class JobIdGenerator {
             // Pre-set job id in zookeeper.
             // If taskmanager failed, pre-set job id in zk can avoid duplicate ID.
             if ((jobId + 1) >= maxJobId) {
-                maxJobId = jobId + 1 + maxJobId;
+                maxJobId = jobId + 1 + TaskManagerConfig.PREFETCH_JOB_NUM;
                 zkClient.setNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH,
                         String.valueOf(maxJobId).getBytes());
             }
