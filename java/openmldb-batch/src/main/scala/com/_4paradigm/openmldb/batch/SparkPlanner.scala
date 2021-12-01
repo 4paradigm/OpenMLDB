@@ -18,10 +18,14 @@ package com._4paradigm.openmldb.batch
 
 import com._4paradigm.hybridse.HybridSeLibrary
 import com._4paradigm.hybridse.`type`.TypeOuterClass.Database
-import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode, PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalLoadDataNode, PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode, PhysicalSortNode, PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType}
-import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
 import com._4paradigm.hybridse.node.JoinType
-import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan, JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, SortByPlan, WindowAggPlan}
+import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
+import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
+  PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalLoadDataNode,
+  PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode,
+  PhysicalSortNode, PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType}
+import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan,
+  JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, SortByPlan, WindowAggPlan}
 import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -87,7 +91,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
       logger.info("Visit concat join node to add node index info")
       val processedConcatJoinNodeIds = mutable.HashSet[Long]()
       val indexColumnName = "__CONCATJOIN_INDEX__" + System.currentTimeMillis()
-      concatJoinNodes.foreach(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds, indexColumnName))
+      concatJoinNodes.foreach(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds,
+        indexColumnName))
 
       if (config.slowRunCacheDir != null) {
         slowRunWithHDFSCache(root, planCtx, config.slowRunCacheDir, isRoot = true)
