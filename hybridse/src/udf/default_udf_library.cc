@@ -672,7 +672,7 @@ void DefaultUdfLibrary::InitStringUdf() {
         .return_by_arg(true)
         .returns<Nullable<codec::StringRef>>()
         .doc(R"(
-            @brief Convert all the characters to uppercase.
+            @brief Convert all the characters to uppercase. Note that characters values > 127 are simply returned.
 
             Example:
 
