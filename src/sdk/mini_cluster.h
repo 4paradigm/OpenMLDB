@@ -51,6 +51,7 @@ DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
 DECLARE_bool(enable_distsql);
+DECLARE_uint32(system_table_replica_num);
 
 namespace openmldb {
 namespace sdk {
@@ -68,6 +69,7 @@ class MiniCluster {
         if (tablet_num > MAX_TABLET_NUM) {
             return false;
         }
+        FLAGS_system_table_replica_num = 0;
         srand(time(NULL));
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);

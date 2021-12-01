@@ -17,6 +17,7 @@
 #ifndef SRC_SDK_SQL_SDK_TEST_H_
 #define SRC_SDK_SQL_SDK_TEST_H_
 
+#include <string>
 #include "base/glog_wapper.h"
 #include "sdk/sql_sdk_base_test.h"
 
