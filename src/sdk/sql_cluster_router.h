@@ -27,7 +27,6 @@
 #include "base/random.h"
 #include "base/spinlock.h"
 #include "boost/compute/detail/lru_cache.hpp"
-#include "catalog/schema_adapter.h"
 #include "client/tablet_client.h"
 #include "sdk/db_sdk.h"
 #include "sdk/sql_router.h"

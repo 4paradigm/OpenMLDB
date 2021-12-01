@@ -45,12 +45,12 @@
 #include "base/strings.h"
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
-#include "catalog/schema_adapter.h"
 #include "codec/codec.h"
 #include "codec/row_codec.h"
 #include "codec/sql_rpc_row_codec.h"
 #include "common/timer.h"
 #include "glog/logging.h"
+#include "schema/schema_adapter.h"
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
@@ -1503,7 +1503,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
             auto column = parameter_schema.Add();
             hybridse::type::Type hybridse_type;
 
-            if (!openmldb::catalog::SchemaAdapter::ConvertType(request->parameter_types(i), &hybridse_type)) {
+            if (!openmldb::schema::SchemaAdapter::ConvertType(request->parameter_types(i), &hybridse_type)) {
                 response->set_msg("Invalid parameter type: " +
                                   openmldb::type::DataType_Name(request->parameter_types(i)));
                 response->set_code(::openmldb::base::kSQLCompileError);

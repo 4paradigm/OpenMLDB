@@ -30,7 +30,6 @@
 
 #include "base/hash.h"
 #include "base/strings.h"
-#include "catalog/schema_adapter.h"
 #include "glog/logging.h"
 
 namespace openmldb::sdk {

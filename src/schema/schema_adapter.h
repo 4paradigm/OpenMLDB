@@ -31,7 +31,7 @@
 #include "vm/catalog.h"
 
 namespace openmldb {
-namespace catalog {
+namespace schema {
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 
@@ -396,6 +396,6 @@ class SchemaAdapter {
     }
 };
 
-}  // namespace catalog
+}  // namespace schema
 }  // namespace openmldb
 #endif  // SRC_CATALOG_SCHEMA_ADAPTER_H_
