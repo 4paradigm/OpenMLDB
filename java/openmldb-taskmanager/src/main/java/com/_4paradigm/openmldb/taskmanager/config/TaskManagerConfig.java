@@ -26,7 +26,6 @@ public class TaskManagerConfig {
     public static String ZK_CLUSTER;
     public static String ZK_ROOTPATH;
     public static int ZK_SESSION_TIMEOUT = 5000;
-    public static String ZK_LEADER_PATH;
     public static String SPARK_MASTER;
     public static String BATCHJOB_JAR_PATH;
     public static String SPARK_YARN_JARS;
@@ -43,7 +42,6 @@ public class TaskManagerConfig {
             ZK_SESSION_TIMEOUT = Integer.parseInt(properties.getProperty("zookeeper.session_timeout", "5000"));
             ZK_CLUSTER = properties.getProperty("zookeeper.cluster");
             ZK_ROOTPATH = properties.getProperty("zookeeper.root_path");
-            ZK_LEADER_PATH = properties.getProperty("zookeeper.leader.path", "/taskmanager/leader");
             SPARK_MASTER = properties.getProperty("spark.master", "yarn");
             BATCHJOB_JAR_PATH = properties.getProperty("batchjob.jar.path");
             SPARK_YARN_JARS = properties.getProperty("spark.yarn.jars");

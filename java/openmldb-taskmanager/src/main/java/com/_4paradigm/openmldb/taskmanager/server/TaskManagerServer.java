@@ -35,7 +35,6 @@ public class TaskManagerServer {
         try {
             FailoverWatcher failoverWatcher = new FailoverWatcher();
 
-
             logger.info("The server runs and prepares for leader election");
             if (failoverWatcher.blockUntilActive()) {
                 logger.info("The server becomes active master and prepare to do business logic");
@@ -44,19 +43,12 @@ public class TaskManagerServer {
             failoverWatcher.close();
             logger.info("The server exits after running business logic");
 
-
-
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-
-
     public void runBrpcServer() {
-
-        // TODO: Register leader in ZooKeeper and support high availability
-
         try {
             RpcServerOptions options = new RpcServerOptions();
             options.setReceiveBufferSize(64 * 1024 * 1024);

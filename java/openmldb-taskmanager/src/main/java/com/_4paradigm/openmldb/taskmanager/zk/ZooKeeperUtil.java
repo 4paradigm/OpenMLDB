@@ -1,16 +1,29 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com._4paradigm.openmldb.taskmanager.zk;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.ACL;
-import org.apache.zookeeper.data.Id;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
@@ -180,42 +193,6 @@ public class ZooKeeperUtil {
     }
   }
 
-  public static void setData(FailoverWatcher failoverWatcher, String znode, byte[] data)
-      throws KeeperException {
-    setData(failoverWatcher, znode, data, -1);
-  }
-
-  public static boolean setData(FailoverWatcher failoverWatcher, String znode, byte[] data,
-      int expectedVersion) throws KeeperException {
-    try {
-      return failoverWatcher.getZooKeeper().setData(znode, data, expectedVersion) != null;
-    } catch (InterruptedException e) {
-      LOG.debug("Received InterruptedException, doing nothing here", e);
-      return false;
-    }
-  }
-
-  public static List<String> listChildrenAndWatchForNewChildren(FailoverWatcher failoverWatcher,
-      String znode) {
-    try {
-      return failoverWatcher.getZooKeeper().getChildren(znode, failoverWatcher);
-    } catch (KeeperException.NoNodeException ke) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Unable to list children of znode " + znode + " "
-            + "because node does not exist (not an error)");
-      }
-      return null;
-    } catch (KeeperException e) {
-      LOG.warn("Unable to list children of znode " + znode + " ", e);
-      LOG.warn("Received unexpected KeeperException, re-throwing exception");
-      return null;
-    } catch (InterruptedException e) {
-      LOG.warn("Unable to list children of znode " + znode + " ", e);
-      LOG.warn("Received InterruptedException, doing nothing here");
-      return null;
-    }
-  }
-
   /**
    * Create acl for znodes, anyone could read, but only admin can operate if set scure.
    *
@@ -223,51 +200,7 @@ public class ZooKeeperUtil {
    * @return the acls
    */
   public static ArrayList<ACL> createAcl(FailoverWatcher failoverWatcher, String znode) {
-    if ("/chronos".equals(znode)) {
-      return Ids.OPEN_ACL_UNSAFE;
-    }
-
-    /*
-    if (failoverWatcher.isZkSecure()) {
-      ArrayList<ACL> acls = new ArrayList<>();
-      acls.add(new ACL(ZooDefs.Perms.READ, Ids.ANYONE_ID_UNSAFE));
-      acls.add(new ACL(ZooDefs.Perms.ALL, new Id("sasl", failoverWatcher.getZkAdmin())));
-      return acls;
-    }
-    */
-
     return Ids.OPEN_ACL_UNSAFE;
-  }
-
-  /**
-   * Convert long value to byte array.
-   *
-   * @param val the long value
-   * @return the byte array of this value
-   */
-  public static byte[] longToBytes(long val) {
-    byte[] b = new byte[Byte.SIZE];
-    for (int i = 7; i > 0; i--) {
-      b[i] = (byte) val;
-      val >>>= 8;
-    }
-    b[0] = (byte) val;
-    return b;
-  }
-
-  /**
-   * Convert byte array to original long value.
-   *
-   * @param bytes the byte array
-   * @return the original long value
-   */
-  public static long bytesToLong(byte[] bytes) {
-    long l = 0;
-    for (int i = 0; i < Byte.SIZE; i++) {
-      l <<= 8;
-      l ^= bytes[i] & 0xFF;
-    }
-    return l;
   }
 
 }
