@@ -18,6 +18,7 @@
 #define SRC_SDK_NODE_ADAPTER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include "node/node_manager.h"

@@ -107,7 +107,7 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
             start = ++line;
             // Will get line until end if only one enclosed ['"']
             for (; *line; line++) {
-                // TODO:(zekai) Support \ , so we can load data like "abc\"def\"ghi"
+                // TODO(zekai): Support \ , so we can load data like "abc\"def\"ghi"
                 if (*line == enclosed) {
                     line++;
                     break;
@@ -125,7 +125,7 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
             // Skip all trailing whitespace
             for (end = line; end > start; --end) {
                 if (!absl::ascii_isspace(end[-1])) {
-                    DCHECK(memcmp(end - delimiter_len, delimiter, delimiter_len) != 0);
+                    DCHECK_NE(memcmp(end - delimiter_len, delimiter, delimiter_len), 0);
                     break;
                 }
             }
@@ -138,7 +138,7 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
         // incorrect.
         const bool need_another_column = (line + delimiter_len == end_of_line);
         if (need_another_column) {
-            DCHECK(memcmp(line, delimiter, delimiter_len) == 0);
+            DCHECK_EQ(memcmp(line, delimiter, delimiter_len), 0);
             cols->push_back(end);
         }
         DCHECK(*line == '\0' || memcmp(line, delimiter, delimiter_len) == 0);

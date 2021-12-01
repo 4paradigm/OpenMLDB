@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.hybridse.sdk.HybridSeException
+import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
@@ -30,7 +31,6 @@ import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
 
 
@@ -38,7 +38,6 @@ import scala.collection.mutable
  * The class to provide SparkSession-like API.
  */
 class OpenmldbSession {
-
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   private var sparkSession: SparkSession = _
@@ -50,6 +49,8 @@ class OpenmldbSession {
 
   var planner: SparkPlanner = _
 
+  var openmldbCatalogService: OpenmldbCatalogService = _
+
   /**
    * Construct with Spark session.
    *
@@ -60,6 +61,9 @@ class OpenmldbSession {
     this.sparkSession = sparkSession
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
     this.setDefaultSparkConfig()
+    if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkPath.nonEmpty) {
+      openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkPath)
+    }
   }
 
   /**
