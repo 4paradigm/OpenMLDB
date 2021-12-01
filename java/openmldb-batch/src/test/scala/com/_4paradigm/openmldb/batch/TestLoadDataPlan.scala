@@ -16,6 +16,8 @@
 
 package com._4paradigm.openmldb.batch
 
+import com._4paradigm.hybridse.sdk.HybridSeException
+
 class TestLoadDataPlan extends SparkTestSuite {
 
   test("Test LoadData") {
@@ -25,17 +27,29 @@ class TestLoadDataPlan extends SparkTestSuite {
     val t1 = sess.emptyDataFrame
 
     val planner = new SparkPlanner(sess)
-    var res = planner.plan("load data infile 'openmldb-batch/src/test/resources/test.csv' into table t1 options(format='csv', foo='bar', " +
-      "header=false);", Map("t1" -> t1))
-
-    // after loaded
+    // use overwrite mode to avoid the error that "/tmp/test_dir" already exists,
+    // should be removed after load data plan fully functioned.
+    var res = planner.plan("load data infile 'openmldb-batch/src/test/resources/test.csv' into table t1 " +
+      "options(format='csv', foo='bar', " +
+      "header=false, mode='overwrite');", Map("t1" -> t1))
     val output = res.getDf()
     output.show()
 
-    // abnormal delimiter
-    res = planner.plan("load data infile 'openmldb-batch/src/test/resources/test.csv' into table t1 options(format='csv', foo='bar', " +
-      "header=false, delimiter=\"++\");", Map("t1" -> t1))
+    // strange delimiter
+    res = planner.plan("load data infile 'openmldb-batch/src/test/resources/test.csv' into table t1 " +
+      "options(format='csv', foo='bar', " +
+      "header=false, delimiter='++', mode='overwrite');", Map("t1" -> t1))
     res.getDf().show()
+
+    // invalid format option
+    try {
+      planner.plan("load data infile 'openmldb-batch/src/test/resources/test.csv' into table t1 " +
+        "options(format='txt', mode='overwrite');", Map("t1" -> t1))
+      fail("unreachable")
+    } catch {
+      case e: HybridSeException => assert(e.getMessage == "file format unsupported")
+      case _: Throwable => fail("should throw parse exception")
+    }
   }
 
 }

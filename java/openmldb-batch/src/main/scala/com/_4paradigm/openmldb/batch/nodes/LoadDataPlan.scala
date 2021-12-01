@@ -25,7 +25,7 @@ import scala.collection.mutable
 object LoadDataPlan {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def parseOptions(node: PhysicalLoadDataNode): (String, Map[String, String]) = {
+  def parseOptions(node: PhysicalLoadDataNode): (String, String, Map[String, String]) = {
     var format = "csv"
     var option = node.GetOption("format")
     if (option != null) {
@@ -34,6 +34,16 @@ object LoadDataPlan {
         throw new HybridSeException("file format unsupported")
       }
       format = f
+    }
+
+    var mode = "ErrorIfExists"
+    option = node.GetOption("mode")
+    if (option != null) {
+      val m = option.GetStr().toLowerCase
+      // overwrite/append need to reassign
+      if (m != "error_if_exists") {
+        mode = m
+      }
     }
 
     val options: mutable.Map[String, String] = mutable.Map()
@@ -63,7 +73,7 @@ object LoadDataPlan {
       options += ("quote" -> option.GetStr())
     }
 
-    (format, options.toMap)
+    (format, mode, options.toMap)
   }
 
   def gen(ctx: PlanContext, node: PhysicalLoadDataNode): SparkInstance = {
@@ -74,12 +84,12 @@ object LoadDataPlan {
     val spark = ctx.getSparkSession
 
     // read input file
-    val (format, options) = parseOptions(node)
-    logger.info("format {}, options {}", format, options: Any)
+    val (format, mode, options) = parseOptions(node)
+    logger.info("format {}, mode {}, options {}", format, mode, options)
     val df = spark.read.options(options).format(format).load(inputFile)
 
-    // write, offline address may contains some files, use append mode
-    df.write.mode("append").parquet(offlineAddress)
+    // write, offline address may contains some files, should choose the mode
+    df.write.mode(mode).parquet(offlineAddress)
 
     SparkInstance.fromDataFrame(spark.emptyDataFrame)
   }
