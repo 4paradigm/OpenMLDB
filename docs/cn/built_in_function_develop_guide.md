@@ -412,7 +412,7 @@ RegisterExternal("my_func")
 
 ## 4. SQL函数开发实例
 
-### 4.1 `INT Month(TIMESTAMP)`函数
+### 4.1 SQL函数返回值为布尔或数值类型 - `INT Month(TIMESTAMP)`函数
 
 Month()函数接受一个**TIMESTAMP**的时间戳参数，返回一个**INT**整数值，它表示指定日期的月份。参考[3.1 SQL函数返回值为布尔或数值类型](#3.1-SQL函数返回值为布尔或数值类型)
 
@@ -500,11 +500,9 @@ select MONTH(TIMESTAMP(1590115420000)) as m1, month(timestamp(1590115420000)) as
  ---- ---- 
 ```
 
-### 4.2 `STRING String(BOOL)`函数
+### 4.2 3.2 SQL函数返回值为**STRING**, **TIMESTAMP**或DATE - `STRING String(BOOL)`函数
 
-`STRING String(BOOL)`函数接受一个**BOOL**参数，并将BOOL值转为**STRING**类型的值输出。
-
-参考[3.2 SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**](#3.2-SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**)
+`STRING String(BOOL)`函数接受一个**BOOL**参数，并将BOOL值转为**STRING**类型的值输出。详情参考[3.2 SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**](#3.2-SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**)
 
 #### **step 1: 实现待注册的内置函数**
 
@@ -601,7 +599,7 @@ select STRING(true) as str_true, string(false) as str_false;
  ----------  ---------- 
 ```
 
-### 4.3  `DATE Date(TIMESTAMP)`函数
+### 4.3 SQL函数的返回值类型是Nullable - `DATE Date(TIMESTAMP)`函数
 
 `DATE Date(TIMESTAMP)`函数接受一个`TIMESTAMP`参数，并将转成`DATE`类型输出。
 
