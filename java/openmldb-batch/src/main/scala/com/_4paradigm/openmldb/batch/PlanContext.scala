@@ -36,7 +36,7 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
 
   private val planResults = mutable.HashMap[Long, SparkInstance]()
 
-  private val namedSparkDataFrames = mutable.HashMap[String, DataFrame]()
+  private var registeredTables = mutable.Map[String, mutable.Map[String, DataFrame]]()
 
   // Record the index info for all the physical node, key is physical node id, value is index info
   private val nodeIndexInfoMap = mutable.HashMap[Long, NodeIndexInfo]()
@@ -66,12 +66,19 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
     planResults.put(nodeId, res)
   }
 
-  def registerDataFrame(name: String, df: DataFrame): Unit = {
-    namedSparkDataFrames += name -> df
+  def setRegisteredTables(registeredTables: mutable.Map[String, mutable.Map[String, DataFrame]]): Unit = {
+    this.registeredTables = registeredTables
   }
 
-  def getDataFrame(name: String): Option[DataFrame] = {
-    namedSparkDataFrames.get(name)
+  def getDataFrame(dbName: String, tableName: String): Option[DataFrame] = {
+    if (!registeredTables.contains(dbName)) {
+      return None
+    }
+    registeredTables.get(dbName).get.get(tableName)
+  }
+
+  def getDataFrame(tableName: String): Option[DataFrame] = {
+    getDataFrame(config.defaultDb, tableName)
   }
 
   def getSparkOutput(root: PhysicalOpNode): SparkInstance = {
