@@ -15,17 +15,10 @@
  */
 
 #include "schema/schema_adapter.h"
-#include <memory>
 #include <set>
 #include <string>
-#include <unordered_map>
 #include <vector>
-#include "catalog/base.h"
 #include "glog/logging.h"
-#include "node/node_enum.h"
-#include "proto/common.pb.h"
-#include "proto/tablet.pb.h"
-#include "schema/index_util.h"
 
 namespace openmldb {
 namespace schema {

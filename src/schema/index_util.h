@@ -37,9 +37,9 @@ class IndexUtil {
 
     static bool CheckTTL(const ::openmldb::common::TTLSt& ttl);
 
-    static bool AddDefaultIndex(TableInfo* table_info);
+    static bool AddDefaultIndex(openmldb::nameserver::TableInfo* table_info);
 
-    static bool FillColumnKey(TableInfo* table_info);
+    static bool FillColumnKey(openmldb::nameserver::TableInfo* table_info);
 
 };
 

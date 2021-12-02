@@ -17,6 +17,7 @@
 #include "schema/index_util.h"
 #include <string>
 #include <set>
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "vm/catalog.h"
 
@@ -25,8 +26,6 @@ DECLARE_uint32(latest_ttl_max);
 
 namespace openmldb {
 namespace schema {
-
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> PBIndex;
 
 static const std::unordered_map<::openmldb::type::TTLType, ::hybridse::type::TTLType> TTL_TYPE_MAP = {
     {::openmldb::type::kAbsoluteTime, ::hybridse::type::kTTLTimeLive},
@@ -111,7 +110,7 @@ bool IndexUtil::CheckTTL(const ::openmldb::common::TTLSt& ttl) {
     return true;
 }
 
-bool IndexUtil::AddDefaultIndex(TableInfo* table_info) {
+bool IndexUtil::AddDefaultIndex(openmldb::nameserver::TableInfo* table_info) {
     if (table_info == nullptr) {
         return false;
     }
@@ -134,7 +133,7 @@ bool IndexUtil::AddDefaultIndex(TableInfo* table_info) {
     return true;
 }
 
-bool IndexUtil::FillColumnKey(TableInfo* table_info) {
+bool IndexUtil::FillColumnKey(openmldb::nameserver::TableInfo* table_info) {
     if (table_info == nullptr) {
         return false;
     }
