@@ -1,10 +1,10 @@
-# OpenMLDB Build-In Function Develop Guide
+# OpenMLDB Built-In Function Development Guide
 
 ## 1. Background
 
-OpenMLDB contains hundreds of build-in functions helping data scientists to extract features and analyze data. For example, now we have aggregation functions like `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`, etc, to aggregate data over a table or a specific window. In addition to that, we also have scalar functions like `ABS`, `SIN`, `COS`, `DATE`, `YEAR`, etc, to extract features based on one-row data. 
+OpenMLDB contains hundreds of built-in functions that help data scientists extract features and analyze data. For instance, we now have aggregation functions like `SUM`, `AVG`, `MAX`, `MIN`, `COUNT`, etc, to aggregate data over a table or a specific window. In addition to that, we also have scalar functions like `ABS`, `SIN`, `COS`, `DATE`, `YEAR`, etc, to extract features based on one-row data. 
 
-OpenMLDB classifies functions as aggregate, scalar, depending on the input data values and result values.
+OpenMLDB classifies functions as aggregate or scalar depending on the input data values and result values.
 
 - An *aggregate function* receives **a set of** values for each argument (such as the values of a column) and returns a single-value result for the set of input values. 
 
@@ -16,19 +16,19 @@ OpenMLDB classifies functions as aggregate, scalar, depending on the input data 
   - String function
   - Conversion function
 
-The article is a hands-on guide for built-in scalar functions development in OpenMLDB. We will not dive into aggregate function development detail. We truly welcome developers to join our community and help us extend our functions.
+This article is a hands-on guide for built-in scalar function development in OpenMLDB. We will not dive into aggregate function development in detail. We truly welcome developers who want to join our community and help extend our functions.
 
-## 2. Develop Built-in SQL Function
+## 2. Develop a Built-In SQL Function
 
-In this section, we are going to introduce the basic steps to implement and register a SQL built-in function. Basically, built-in SQL function developement involes following steps:
+In this section, we are going to introduce the basic steps to implement and register an SQL built-in function. Basically, built-in SQL function developement involves the following steps:
 
-- Develop built-in C++ function
-- Register and configure function
-- Function unit test
+- Develop a built-in C++ function
+- Register and configure the function
+- Create function unit tests
 
-### 2.1 Develop Built-In C++ Function
+### 2.1 Develop a Built-In C++ Function
 
-Generally, developers should implement a C++ function for each SQL function. Thus, uses will invoke the C++ function when they call the corresponding function from SQL.
+Generally, developers should implement a C++ function for each SQL function. Thus, users will invoke the C++ function when they call the corresponding function from SQL.
 
 Developers need to **take care of the following** rules when developing a function:
 
@@ -38,12 +38,12 @@ Developers can declare function in [hybridse/src/udf/udf.h](https://github.com/4
 
 #### 2.1.2 C++ Function Naming Rules
 
-- Fuction names are all lowercase, with underscores between words. Check [snake_case](https://en.wikipedia.org/wiki/Snake_case) for more details.
-- Function names would be clear and readable. Use names that describe the purpose or intent of the function.
+- Function names are all lowercase, with underscores between words. Check [snake_case](https://en.wikipedia.org/wiki/Snake_case) for more details.
+- Function names should be clear and readable. Use names that describe the purpose or intent of the function.
 
 #### 2.1.3 C++ and SQL Data Type
 
-C++ built-in function can use limited data types, including BOOL, Numeric, String, Timestamp and Date.The correspondence between the SQL data type and the C++ data type is shown as followed:
+C++ built-in functions can use limited data types, including BOOL, Numeric, String, Timestamp and Date.The correspondence between the SQL data type and the C++ data type is shown as follows:
 
 - | SQL Type  | C++ Type           |
   | :-------- | :----------------- |
@@ -61,7 +61,7 @@ C++ built-in function can use limited data types, including BOOL, Numeric, Strin
 
 - SQL function parameters and C++ function parameters have the same position order.
 
-- C++ function Parameter types should be match with SQL type. Check [2.1.3 C++ and SQL Data Type](#2.1.3-C++ and SQL Data Type) for details.
+- C++ function parameter types should match the SQL types. Check [2.1.3 C++ and SQL Data Type](#2.1.3-C++ and SQL Data Type) for more details.
 
 - SQL function return type:
 
@@ -86,7 +86,7 @@ C++ built-in function can use limited data types, including BOOL, Numeric, Strin
       void func_output_nullable_date(int64_t, codec::Date*, bool*); 
       ```
 
-  - Notice that return types have greate impart on built-in function developing behaviours. We will discuss the details in later section [3. Built-in Function Development Template](#3.-Built-in Function Development Template).
+  - Notice that return types have greater impact on built-in function developing behaviours. We will cover the details in a later section [3. Built-in Function Development Template](#3.-Built-in Function Development Template).
 
 #### 2.1.5 Memory Management
 
@@ -127,7 +127,7 @@ namespace hybridse {
 
 #### 2.2.1 DefaultUdfLibrary
 
-OpenMLDB  `DefaultUdfLibrary` stores and manages the global built-in SQL functions. Developer need to register a C++ function to the `DefaultUdfLibrary` such that users can access the function from a SQL query.`DefaultUdfLibrary` has been declared at [hybridse/src/udf/default_udf_library.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.h) and implemented at [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc). Developers can register functions in corresponding `DefaultUdfLibrary::InitXXXXUdf()` methods. For instance:
+OpenMLDB  `DefaultUdfLibrary` stores and manages the global built-in SQL functions. Developers need to register a C++ function to the `DefaultUdfLibrary` such that users can access the function from a SQL query. `DefaultUdfLibrary` has been declared at [hybridse/src/udf/default_udf_library.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.h) and implemented at [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc). Developers can register functions in the corresponding `DefaultUdfLibrary::InitXXXXUdf()` methods. For instance:
 
 - **Mathematical function** can be registered in `void DefaultUdfLibrary::InitMathUdf()`
 - **Logical function** can be registered in `void DefaultUdfLibrary::InitLogicalUdf()`
@@ -137,10 +137,10 @@ OpenMLDB  `DefaultUdfLibrary` stores and manages the global built-in SQL functio
 
 #### 2.2.2 Register Name
 
-- Users access a SQL function by its register name
+- Users access an SQL function by its register name
 - Register names are all lowercase, with underscores between words. Check [snake_case](https://en.wikipedia.org/wiki/Snake_case) for more details.
-- SQL function name and C++ function name isn't necessary be consistent, since SQL function name will be linked to C++ function via registry.
-- Uses call SQL function name ignore case. In other words, SQL function names are case-insensitive. For instance, given register name "aaa_bb", the users can access it by calling`AAA_BB()`, `Aaa_Bb()`, `aAa_bb()` in SQL.
+- The SQL function name does not have to be the same as the C++ function name, since the SQL function name will be linked to the C++ function via the registry.
+- SQL function names are case-insensitive. For instance, given register name "aaa_bb", the users can access it by calling `AAA_BB()`, `Aaa_Bb()`, `aAa_bb()` in SQL.
 
 #### 2.2.3 Register and Configure Function
 
@@ -179,7 +179,7 @@ Function docstrings should contain the following information:
 - **@brief** command to add a summary of the function's purpose and behaviour. 
 - **@param** command to document the parameters.
 - **Examples** of the function's usage from SQL queries. Demo SQL should be placed in a `@code/@endcode` block.
-- **@since** command to specify the production version when the function was added to OpenMLDB. The version can be obtained from project's [CMakeList.txt](https://github.com/4paradigm/OpenMLDB/blob/main/CMakeLists.txt): ` ${OPENMLDB_VERSION_MAJOR}.${OPENMLDB_VERSION_MINOR}.${OPENMLDB_VERSION_BUG}`
+- **@since** command to specify the production version when the function was added to OpenMLDB. The version can be obtained from the project's [CMakeList.txt](https://github.com/4paradigm/OpenMLDB/blob/main/CMakeLists.txt): ` ${OPENMLDB_VERSION_MAJOR}.${OPENMLDB_VERSION_MINOR}.${OPENMLDB_VERSION_BUG}`
 
 ```c++
 RegisterExternal("register_func_name")
@@ -200,7 +200,7 @@ RegisterExternal("register_func_name")
 
 #### 2.2.5 RegisterAlias
 
-Sometimes, we don't have to implement and register a function when it is alias to another function already exist in the default library. We can simply use api `RegisterAlias("alias_func", "original_func")` to link current register function name with an existing registered name.
+Sometimes, we don't have to implement and register a function when it is an alias to another function that already exists in the default library. We can simply use api `RegisterAlias("alias_func", "original_func")` to link the current register function name with an existing registered name.
 
 ```c++
 RegisterExternal("substring")
@@ -237,11 +237,11 @@ RegisterAlias("substr", "substring");
 
 ## 2.3 Function Unit Test
 
-Once registered/developed a function, the developer should add some related unit tests to make sure everything is going well. 
+Once a function is registered/developed, the developer should add some related unit tests to make sure everything is going well. 
 
 #### 2.3.1 Add Unit Tests
 
-Generally, developer can add `TEST_F` cases to [src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc).
+Generally, developers can add `TEST_F` cases to [src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc).
 
 OpenMLDB provides `CheckUdf` in  [src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) so that the developer can perform function checking easily.
 
@@ -302,13 +302,13 @@ We classified built-in function into 3 types based on its return type:
 
 - SQL functions return ***Nullable*** type
 
-Since return types have greate impart on built-in function developing behaviours. We will introduce details of the three types of SQL functions' development respectively in the following sections.
+Return types have a greater impact on the built-in function's behaviour. We will cover the details of the three types of SQL functions in the following sections.
 
 ### 3.1 SQL functions return **BOOL** or Numeric types
 
-If SQL function return BOOL or Numeric type(e.g., **BOOL**, **SMALLINT**, **INT**, **BIGINT**, **FLOAT**, **DOUBLE**), the C++ function should be designed to return corresponding C++ type（`bool`, `int16_t`, `int32_t`, `int64_t`, `float`, `double`).
+If an SQL function returns a BOOL or Numeric type (e.g., **BOOL**, **SMALLINT**, **INT**, **BIGINT**, **FLOAT**, **DOUBLE**), then the C++ function should be designed to return the corresponding C++ type（`bool`, `int16_t`, `int32_t`, `int64_t`, `float`, `double`).
 
-The C++ function can be declared and implemented as followed:
+The C++ function can be declared and implemented as follows:
 
 ```c++
 # hybridse/src/udf/udf.h
@@ -348,9 +348,9 @@ RegisterExternal("my_func")
 
 ### 3.2 SQL functions return **STRING**, **TIMESTAMP** or **DATE**
 
-If SQL function return **STRING**, **TIMESTAMP** or **DATE**, the C++ function result should be returned in parameter with the corresponding C++ pointer type (`codec::StringRef*`, `codec::Timestamp*`, `codec::Date*`).
+If an SQL function returns **STRING**, **TIMESTAMP** or **DATE**, then the C++ function result should be returned in the parameter with the corresponding C++ pointer type (`codec::StringRef*`, `codec::Timestamp*`, `codec::Date*`).
 
-Thus the C++ function can be declared and implemented as followed:
+Thus the C++ function can be declared and implemented as follows:
 
 ```c++
 # hybridse/src/udf/udf.h
@@ -373,7 +373,7 @@ namespace udf {
 } // namespace udf
 ```
 
-Configure and register function into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
+Configure and register the function into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
 
 ```c++
 # hybridse/src/udf/default_udf_library.cc
@@ -387,9 +387,9 @@ RegisterExternal("my_func")
 
 ### 3.3 SQL functions return ***Nullable*** type
 
-If SQL function return type is ***Nullable***, we need one more `bool*`parameter to return a `is_null` flag.
+If an SQL function return type is ***Nullable***, then we need one more `bool*` parameter to return a `is_null` flag.
 
-Thus the C++ function can be declared and implemented as followed:
+Thus the C++ function can be declared and implemented as follows:
 
 ```c++
 # hybridse/src/udf/udf.h
@@ -421,7 +421,7 @@ namespace hybridse {
 } 
 ```
 
-Configure and register function into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
+Configure and register the function into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
 
 ```c++
 # hybridse/src/udf/default_udf_library.cc
@@ -438,7 +438,7 @@ RegisterExternal("my_func")
 
 ### 4.1 SQL functions return **BOOL** or Numeric types: `INT Month(TIMESTAMP)` function
 
-`INT Month(TIMESTAMP)` function return the month part for a given `timestamp`. Check [3.1 SQL functions return **BOOL** or Numeric types](#3.1-SQL functions return **BOOL** or Numeric types) for more details. 
+`INT Month(TIMESTAMP)` function returns the month for a given `timestamp`. Check [3.1 SQL functions return **BOOL** or Numeric types](#3.1-SQL functions return **BOOL** or Numeric types) for more details. 
 
 #### Step 1: declare and implement C++ functions
 
@@ -513,7 +513,7 @@ TEST_F(UdfIRBuilderTest, month_timestamp_udf_test) {
 }
 ```
 
-Now, the `udf::v1:month` has been registered into the default library with the name `month`. As a result, we can call `month` in SQL query ignoring upper and lower cases.
+Now, the `udf::v1:month` has been registered into the default library with the name `month`. As a result, we can call `month` in an SQL query while ignoring upper and lower cases.
 
 ```SQL
 select MONTH(TIMESTAMP(1590115420000)) as m1, month(timestamp(1590115420000)) as m2;
@@ -526,11 +526,11 @@ select MONTH(TIMESTAMP(1590115420000)) as m1, month(timestamp(1590115420000)) as
 
 ### 4.2 SQL functions return **STRING**, **TIMESTAMP** or **DATE** -  `STRING String(BOOL)`
 
-`STRING String(BOOL)` function accepts a BOOL type input and converts it to a STRING type output. Check [3.2 SQL functions return **STRING**, **TIMESTAMP** or **DATE**](#3.2-SQL functions return **STRING**, **TIMESTAMP** or **DATE**) for more details.
+The `STRING String(BOOL)` function accepts a BOOL type input and converts it to an output of type STRING. Check [3.2 SQL functions return **STRING**, **TIMESTAMP** or **DATE**](#3.2-SQL functions return **STRING**, **TIMESTAMP** or **DATE**) for more details.
 
 #### Step 1: declare and implement C++ functions
 
-Since the SQL function return **STRING**, the C++ function result should be returned by parameter `codec::StringRef * output`. 
+Since the SQL function returns **STRING**, the C++ function result should be returned by parameter `codec::StringRef * output`. 
 
 Declare `bool_to_string()` function in [hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)：
 
@@ -545,7 +545,7 @@ namespace hybridse {
 } // namepsace hybridse
 ```
 
-Implement `bool_to_string()` function in [hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)：
+Implement the `bool_to_string()` function in [hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)：
 
 ```c++
 # hybridse/src/udf/udf.cc
@@ -570,11 +570,11 @@ namespace hybridse {
  } // namepsace hybridse
 ```
 
-Notice that we used `AllocManagedStringBuf` to allocate memory from OpenMLDB Memory pool instead of using `new` operator or `malloc` api.
+Notice that we used `AllocManagedStringBuf` to allocate memory from OpenMLDB Memory pool instead of using the `new` operator or the `malloc` api.
 
 #### Step 2: register C++ function into default library
 
-`STRING String(BOOL)` is Type Conversion function, developer should configure and register within `DefaultUdfLibrary::InitTypeUdf()` in [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc).
+`STRING String(BOOL)` is a type conversion function, which the developer should configure and register within `DefaultUdfLibrary::InitTypeUdf()` in [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc).
 
 ```c++
 namespace hybridse {
@@ -616,7 +616,7 @@ TEST_F(UdfIRBuilderTest, bool_to_string_test) {
 }
 ```
 
-Now, the `udf::v1:bool_to_string()` function has been registered into the default library with the name `string`. As a result, we can  `string` in SQL query ignoring upper and lower cases.
+Now, the `udf::v1:bool_to_string()` function has been registered into the default library with the name `string`. As a result, we can call `string` in an SQL query while ignoring upper and lower cases.
 
 ```SQL
 select STRING(true) as str_true, string(false) as str_false;
@@ -635,9 +635,9 @@ select STRING(true) as str_true, string(false) as str_false;
 
 #### Step 1: declare and implement built-in functions
 
-We implement a function `timestamp_to_date`to convert `timestamp`  to date type. The input is `timestamp` and the output is nullable `date` which is returned by arguments `codec::Date *output` and `bool *is_null`. 
+We implement a function `timestamp_to_date`to convert `timestamp` to the date type. The input is `timestamp` and the output is nullable `date` which is returned by arguments `codec::Date *output` and `bool *is_null`. 
 
-Declare `timestamp_to_date()` function in [hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)：
+Declare the `timestamp_to_date()` function in [hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)：
 
 ```c++
 # hybridse/src/udf/udf.h
@@ -651,7 +651,7 @@ namespace hybridse {
 } // namespace hybridse
 ```
 
-Implement `timestamp_to_date()` function in [hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)：
+Implement the `timestamp_to_date()` function in [hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)：
 
 ```c++
 # hybridse/src/udf/udf.cc
@@ -677,7 +677,7 @@ namespace hybridse {
 
 #### Step 2: register built-in function into default library
 
-The followed example registered built-in function ` v1::timestamp_to_date` into the default library with name `"date"`. 
+The following example registers the built-in function ` v1::timestamp_to_date` into the default library with the name `"date"`. 
 
 Given the result is a nullable date type, we configure  **return_by_arg** as ***true*** and return type as `Nullable<Date>`.
 
@@ -723,7 +723,7 @@ TEST_F(UdfIRBuilderTest, timestamp_to_date_test_null_0) {
 }
 ```
 
-Now, the `udf::v1:timestamp_to_date` has been registered into the default library with the name `date`. As a result, we can call `date()` in SQL query.
+Now, the `udf::v1:timestamp_to_date` has been registered into the default library with the name `date`. As a result, we can call `date()` in an SQL query.
 
 ```SQL
 select date(timestamp(1590115420000)) as dt;
