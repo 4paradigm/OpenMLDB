@@ -48,7 +48,7 @@ C++ built-in functions can use limited data types, including BOOL, Numeric, Stri
 - | SQL Type  | C++ Type           |
   | :-------- | :----------------- |
   | BOOL      | `bool`             |
-  | SMALLINT  | int16_t            |
+  | SMALLINT  | `int16_t`          |
   | INT       | `int32_t`          |
   | BIGINT    | `int64_t`          |
   | FLOAT     | `float`            |
