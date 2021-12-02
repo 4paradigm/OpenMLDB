@@ -664,6 +664,60 @@ TEST_F(ExternUdfTest, TestCompoundTypedExternalCall) {
         &library, "make_tuple", TupleResT(1, nullptr, 3), 1, nullptr, 3);
 }
 
+TEST_F(ExternUdfTest, LikeMatchTest) {
+    auto check_func = [](bool match, bool is_null, std::string_view name, std::string_view pattern, const char escape) -> void {
+        codec::StringRef name_ref(name.size(), name.data());
+        codec::StringRef pattern_ref(pattern.size(), pattern.data());
+        bool ret = false;
+        bool ret_null = false;
+        v1::like_match(&name_ref, &pattern_ref, &escape, &ret, &ret_null);
+        EXPECT_EQ(match, ret)
+            << name << " LIKE " << pattern << " ESCAPE " << escape;
+        EXPECT_EQ(is_null, ret_null)
+            << name << " LIKE " << pattern << " ESCAPE " << escape;
+    };
+    check_func(true, false, "abc", "abc", '\\');
+    check_func(true, false, "Mary", "M%", '\\');
+    // case insensitive
+    check_func(true, false, "Mary", "m%", '\\');
+    check_func(true, false, "mary", "MARy", '\\');
+
+    check_func(true, false, "Mary", "M_ry", '\\');
+    check_func(true, false, "Mary", "m_ry", '\\');
+
+    // esacpe character
+    check_func(true, false, "Evan_W", "%\\_%", '\\');
+    check_func(true, false, "Evan_W", "%$_%", '$');
+    check_func(true, false, "Evan%W", "eva_p%w", 'p');
+
+    // not match
+    check_func(false, false, "Mike", "mary", '\\');
+    check_func(false, false, "Evan_W", "%_x", '\\');
+    // it is exact match
+    check_func(false, false, "Evan_W", "Evan", '\\');
+    check_func(false, false, "Super", "SupberGlob", '\\');
+}
+
+TEST_F(ExternUdfTest, LikeMatchNullable) {
+    auto check_null = [](codec::StringRef* name_ref, codec::StringRef* pattern_ref, const char* escape) -> void {
+        bool ret = false;
+        bool ret_null = false;
+        v1::like_match(name_ref, pattern_ref, escape, &ret, &ret_null);
+        EXPECT_EQ(true, ret_null)
+            << (name_ref ? "<null>" : name_ref->ToString()) << " LIKE " <<
+            (pattern_ref ? "<null>" : pattern_ref->ToString()) << " ESCAPE " << (escape ? "<null>" : escape );
+    };
+    char escape = '\\';
+    codec::StringRef name("Mary");
+    codec::StringRef pattern("Ma_y");
+    check_null(nullptr, &pattern, &escape);
+    check_null(&name, nullptr, &escape);
+    check_null(&name, &pattern, nullptr);
+    check_null(nullptr, &pattern, nullptr);
+    check_null(&name, nullptr, nullptr);
+    check_null(nullptr, nullptr, nullptr);
+}
+
 }  // namespace udf
 }  // namespace hybridse
 int main(int argc, char** argv) {
