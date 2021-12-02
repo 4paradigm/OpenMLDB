@@ -19,7 +19,10 @@ Here is the general contribution workflow:
 
 - Fork the OpenMLDB repository into your personal space
 - Create a branch from where you want to base your code (usually it is the main branch)
-- Make commits of your code and test cases, make sure the commit messages follow our [convention](https://github.com/4paradigm/rfcs/blob/main/style-guide/commit-convention.md)
+- Make commits of your code and test cases, make sure:
+  - your coding style follows our [code convention](https://github.com/4paradigm/rfcs/blob/main/style-guide/code-convention.md) 
+  - the commit messages follow our [commit convention](https://github.com/4paradigm/rfcs/blob/main/style-guide/commit-convention.md)
+
 - Push your commits to your forked repository
 - Submit a pull request to merge from your branch to the OpenMLDB's base branch
 - Address any comments from our community about your PR
