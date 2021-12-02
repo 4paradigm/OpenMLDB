@@ -26,7 +26,7 @@ object ImportOfflineData {
       throw new Exception(s"Require args: sql but get args: ${args.mkString(",")}")
     }
 
-    importOfflineData(args(1))
+    importOfflineData(args(0))
   }
 
   def importOfflineData(sql: String): Unit = {
