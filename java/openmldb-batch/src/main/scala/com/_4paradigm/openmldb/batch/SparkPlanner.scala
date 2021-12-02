@@ -107,9 +107,9 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
 
   }
 
-  def plan(sql: String, registeredDefauoltDbTables: Map[String, DataFrame]): SparkInstance = {
+  def plan(sql: String, registeredDefaultDbTables: Map[String, DataFrame]): SparkInstance = {
     val registeredTables = new mutable.HashMap[String, mutable.Map[String, DataFrame]]()
-    registeredTables.put(config.defaultDb, collection.mutable.Map(registeredDefauoltDbTables.toSeq: _*) )
+    registeredTables.put(config.defaultDb, collection.mutable.Map(registeredDefaultDbTables.toSeq: _*) )
     plan(sql, registeredTables)
   }
 
