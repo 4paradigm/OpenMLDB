@@ -45,9 +45,7 @@ public class FailoverWatcher implements Watcher {
 
   /**
    * Initialize FailoverWatcher with properties.
-   * 
-   * @param properties the basic settings for FailoverWathcer
-   * @param canInitZnode should create the base znode or not
+   *
    * @throws IOException throw when can't connect with ZooKeeper
    */
   public FailoverWatcher() throws IOException {
@@ -88,7 +86,7 @@ public class FailoverWatcher implements Watcher {
   }
 
   /**
-   * Initialize the base znodes of chronos.
+   * Initialize the base znodes.
    */
   protected void initZnode() {
     try {
