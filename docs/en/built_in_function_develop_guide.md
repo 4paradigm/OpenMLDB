@@ -1,4 +1,4 @@
-# OpenMLDB Build-In Function Develop Guide
+# OpenMLDB Built-In Function Development Guide
 
 ## 1. Background
 
@@ -18,7 +18,7 @@ OpenMLDB classifies functions as aggregate or scalar depending on the input data
 
 This article is a hands-on guide for built-in scalar function development in OpenMLDB. We will not dive into aggregate function development in detail. We truly welcome developers who want to join our community and help extend our functions.
 
-## 2. Develop Built-in SQL Function
+## 2. Develop a Built-In SQL Function
 
 In this section, we are going to introduce the basic steps to implement and register an SQL built-in function. Basically, built-in SQL function developement involves the following steps:
 
@@ -26,7 +26,7 @@ In this section, we are going to introduce the basic steps to implement and regi
 - Register and configure the function
 - Create function unit tests
 
-### 2.1 Develop Built-In C++ Function
+### 2.1 Develop a Built-In C++ Function
 
 Generally, developers should implement a C++ function for each SQL function. Thus, users will invoke the C++ function when they call the corresponding function from SQL.
 
