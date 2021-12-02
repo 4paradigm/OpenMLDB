@@ -21,17 +21,14 @@ English version|[中文版](README_cn.md)
 
 OpenMLDB is an open-source database particularly designed to efficiently provide consistent data for machine learning.  A database for machine learning consists of two major tasks: feature extraction and feature access, which are served as data provisioning for offline training and online inference. Without OpenMLDB, there are two separate systems for online and offline data provisioning, which cost significant effort to verify the online-offline consistency. On the contrary, OpenMLDB supports the unified SQL programming and its execution engine for both online and offline data provisioning. As a result, the online-offline consistency is inherently guaranteed. Moreover, the system is carefully designed and optimized to ensure the efficiency. By taking advantages of OpenMLDB, database engineers are now able to write SQL scripts only to efficiently provide consistent data to machine learning, and an offline model can be immediately deployed for online serving with little cost involved.
 <p align="center">
- <img src="images/workflow.png" alt="image-20211103103052252" width=850 />
+ <img src="images/workflow.png" alt="image-20211103103052252" width=700 />
  </p>
-
-
-
 The above figure illustrates the OpenMLDB workflow. SQL engineers first write SQL scripts for offline feature extraction, which provides data for offline model training. When the model quality is satisfied, the online feature extraction and access can be enabled immediately for online serving without additional efforts involved. Thanks to the unified SQL programming and execution engine, the online-offline consistency verification is eliminated, which is inherently guaranteed by OpenMLDB. Furthermore, certain optimization techniques (e.g., data skew optimization and in-memory indexing for offline and online feature extraction, respectively) are adopted to ensure that the performance requirement can be met for both offline training and online inference. In summary, OpenMLDB enables SQL as the only programming interface for consistent and efficient data provisioning for both offline model training and online inference serving.
 
 ## 2. Highlight Features
 ### 2.1. SQL Programming APIs 
 
-We believe SQL is the most suitable programming APIs for feature engineering because of its elegant design and popularity. OpenMLDB enables SQL as the only programming APIs for developers for both offline and online feature extraction. Besides, we extend the capability of standard SQL and make it more powerful for feature extraction. 
+We believe SQL is the most suitable programming APIs for feature engineering because of its elegant design and popularity. OpenMLDB enables SQL as the programming APIs for developers for both offline and online feature extraction. Besides, we extend the capability of standard SQL and make it more powerful for feature extraction. 
 
 ### 2.2 Online-Offline Consistency
 
@@ -45,24 +42,23 @@ You can read our below  section (7. Publications & Blogs) for more technical det
 
 ### 2.4 Integrated CLI
 
-We provide an integrated and powerful CLI for SQL programming, job management, online and offline deployment, and database administration. Developers who are familiar with database's CLIs should be very comfortable with our tool.
+We provide a powerful integrated CLI for SQL programming, job management, online and offline deployment, and database administration. Developers who are familiar with database's CLIs should be very comfortable with our tool.
 
-*Note that, the CLI of current release 0.3.0 only supports the cluster mode partially. It will be fully supported in the next release of 0.4.0* 
+*Note that, the CLI of current release 0.3.0 supports the cluster mode partially. It will be fully supported in the next release of 0.4.0* 
 
 ## 3. Build & Install
 
 :point_right: [Read more](docs/en/compile.md)
 
-## 4. Quickstart & Demo
+## 4. Demo & QuickStart
 
-Since OpenMLDB v0.3.0, we introduce two operating modes, which are cluster mode and standalone mode. The cluster mode is suitable for large-scale datasets and real-world applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone mode running on a single node is ideal for small businesses and demonstration. 
+Since OpenMLDB v0.3.0, we have introduced two operating modes, which are cluster mode and standalone mode. The cluster mode is suitable for large-scale datasets and real-world applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone mode running on a single node is ideal for small businesses and demonstration. 
 
-We demonstrate the workflow of using the cluster and standalone modes:
+We demonstrate the workflow using the cluster and standalone modes:
 
-- [Demo code](demo)
-
-- Cluster mode: please read the :point_right: [quickstart guide](docs/en/cluster.md)
-- Standalone mode: please read the :point_right: [quickstart guide](docs/en/standalone.md)
+- :point_right: [Demo code](demo)
+- :point_right: [QuickStart for the cluster mode](docs/en/cluster.md)
+- :point_right: [QuickStart for the standalone mode](docs/en/standalone.md)
 
 ## 5. Roadmap
 
@@ -70,18 +66,20 @@ We list a few highlight features that we have planned in the future releases. Pl
 
 | Version | Est. release date | Highlight features                                           |
 | ------- | ----------------- | ------------------------------------------------------------ |
-| 0.4.0   | End of 2021       | - Full support of standalone and cluster modes in integrated CLI |
-| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Kafka/Pulsar connector support for online data source |
+| 0.4.0   | End of 2021       | - Full support of standalone and cluster modes in the integrated CLI |
+| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Efficient queries over a fairly long period of time by window functions <br />- Kafka/Pulsar connector support for online data source |
 
 ## 6. Community
 
 You may join our community for feedback and discussion
 
+- **Email**: [contact@openmldb.ai](mailto:contact@openmldb.ai)
+
 - **[Slack Workspace](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)**: You may find useful information of release notes, user support, development discussion and even more from our various Slack channels. 
 
-- **Github Issues and Discussions**: If you are a serious developer, you are most welcome to join our discussion on Github. **Issues** are used to report bugs and collect new requirements. **Discussions** are mostly used by our project maintainers to publish and comment RFCs.
+- **GitHub Issues and Discussions**: If you are a serious developer, you are most welcome to join our discussion on GitHub. **GitHub Issues** are used to report bugs and collect new requirements. **GitHub Discussions** are mostly used by our project maintainers to publish and comment RFCs.
 
-- **Forum (Chinese)**: (coming soon)
+- [**Blogs (Chinese)**](https://www.zhihu.com/column/c_1417199590352916480)
 
 - **WeChat Groups (Chinese)**:
 
