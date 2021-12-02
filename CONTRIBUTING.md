@@ -10,8 +10,8 @@ OpenMLDB is a community-driven opensource project. We welcome all kinds of contr
 
 We encourage you to discuss with us first before coding. Your discussion channel may depend on what you want to contribute:
 
-- If it is a simple bugfix, or an independent function/module that will not affect other modules: You may just raise an issue in our [GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues) and describe your solutions. We will provide necessary feedback to you as soon as possible.
-- If it is related to many modules, or an architectural change/improvement: Please contact us in the community and let us have more understanding about your ideas. Meanwhile, we also encourage you to write a formal RFC and post it to the [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions/categories/rfcs).
+- If it is a simple bugfix, or an independent function/module that will not affect other modules: You may just raise an issue on our [GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues) and describe your solutions. We will provide necessary feedback to you as soon as possible.
+- If the change may affect a few modules, or an architectural change/improvement: Please contact us in the community and let us have more understanding about your ideas. Meanwhile, we also encourage you to write a formal RFC and post it to the [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions/categories/rfcs).
 
 ### Code Contribution Workflow
 
