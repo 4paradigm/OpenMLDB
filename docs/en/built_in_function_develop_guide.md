@@ -86,7 +86,7 @@ C++ built-in function can use limited data types, including BOOL, Numeric, Strin
       void func_output_nullable_date(int64_t, codec::Date*, bool*); 
       ```
 
-  - Notice that return types have greate impart on built-in function developing behaviours. We will discuss the details in later section. []()
+  - Notice that return types have greate impart on built-in function developing behaviours. We will discuss the details in later section [3. Built-in Function Development Template](#3.-Built-in Function Development Template).
 
 #### 2.1.5 Memory Management
 
