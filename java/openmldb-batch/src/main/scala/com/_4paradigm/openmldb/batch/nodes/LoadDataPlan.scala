@@ -28,9 +28,9 @@ object LoadDataPlan {
   def parseOptions(node: PhysicalLoadDataNode): (String, String, Map[String, String]) = {
     var format = "csv"
     var option = node.GetOption("format")
-    if (option != null) {
-      val f = option.GetStr().toLowerCase
-      if (f != "csv" && f != "parquet") {
+    if (option != null && option.GetStr() != null) {
+      val f = option.GetStr()
+      if (f.compareToIgnoreCase("csv") != 0 && f.compareToIgnoreCase("parquet") != 0) {
         throw new HybridSeException("file format unsupported")
       }
       format = f
