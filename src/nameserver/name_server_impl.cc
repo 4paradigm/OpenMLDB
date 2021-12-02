@@ -8877,7 +8877,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     const std::string& db = request->db();
     const std::string& index_name = request->column_key().index_name();
     std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> tablet_client_map;
-    if (!GetTableInfo(request->name(), request->db(), &table_info)) {
+    if (!GetTableInfo(name, db, &table_info)) {
         base::SetResponseStatus(ReturnCode::kTableIsNotExist, "table is not exist!", response);
         LOG(WARNING) << "table[" << name << "] is not exist!";
         return;
@@ -8888,15 +8888,10 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         return;
     }
     int32_t index_pos = 0;
-    for (index_pos = 0; index_pos < table_info->column_key_size(); index_pos++) {
-        if (table_info->column_key(index_pos).index_name() == index_name) {
-            if (table_info->column_key(index_pos).flag() == 0) {
-                base::SetResponseStatus(ReturnCode::kIndexAlreadyExists, "index has already exist!", response);
-                LOG(WARNING) << "index" << index_name << " has already exist! table " << name;
-                return;
-            }
-            break;
-        }
+    if (schema::IndexUtil::CheckExist(request->column_key(), table_info->column_key(), &index_pos)) {
+        base::SetResponseStatus(ReturnCode::kIndexAlreadyExists, "index has already exist!", response);
+        LOG(WARNING) << "index" << index_name << " has already exist! table " << name;
+        return;
     }
     if ((uint32_t)table_info->table_partition_size() > FLAGS_name_server_task_max_concurrency) {
         base::SetResponseStatus(ReturnCode::kTooManyPartition,
@@ -8907,29 +8902,16 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         return;
     }
     std::map<std::string, ::openmldb::common::ColumnDesc> col_map;
-    std::set<std::string> ts_set;
     for (const auto& column_desc : table_info->column_desc()) {
         col_map.insert(std::make_pair(column_desc.name(), column_desc));
-    }
-    for (const auto& column_key : table_info->column_key()) {
-        if (column_key.has_ts_name() && !column_key.ts_name().empty()) {
-            ts_set.insert(column_key.ts_name());
-        }
     }
     for (const auto& col : table_info->added_column_desc()) {
         col_map.insert(std::make_pair(col.name(), col));
     }
-    if (!request->column_key().ts_name().empty()) {
-        auto it = ts_set.find(request->column_key().ts_name());
-        if (it == ts_set.end()) {
-            base::SetResponseStatus(ReturnCode::kWrongColumnKey, "wrong column key!", response);
-            LOG(WARNING) << " ts " << request->column_key().ts_name() << " not exist, table " << name;
-            return;
-        }
-    }
-    if (request->column_key().ts_name().empty() && !ts_set.empty()) {
-        base::SetResponseStatus(ReturnCode::kWrongColumnKey, "wrong column key!", response);
-        LOG(WARNING) << "column key " << index_name << " should contain ts_col, table " << name;
+    auto status = schema::IndexUtil::CheckNewIndex(request->column_key(), *table_info);
+    if (!status.OK()) {
+        base::SetResponseStatus(ReturnCode::kWrongColumnKey, status.msg, response);
+        LOG(WARNING) << status.msg;
         return;
     }
     std::map<std::string, openmldb::common::ColumnDesc> request_cols;

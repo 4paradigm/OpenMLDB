@@ -17,6 +17,8 @@
 #ifndef SRC_SCHEMA_INDEX_UTIL_H_
 #define SRC_SCHEMA_INDEX_UTIL_H_
 
+#include <map>
+#include <string>
 #include "base/status.h"
 #include "proto/common.pb.h"
 #include "proto/name_server.pb.h"
@@ -32,8 +34,14 @@ class IndexUtil {
  public:
     static bool ConvertIndex(const PBIndex& index, ::hybridse::vm::IndexList* output);
 
-    static base::Status CheckIndex(const std::map<std::string, ::openmldb::type::DataType>& column_map,
+    static base::Status CheckIndex(const std::map<std::string, ::openmldb::common::ColumnDesc>& column_map,
             const PBIndex& index);
+
+    static base::Status CheckNewIndex(const ::openmldb::common::ColumnKey& column_key,
+            const openmldb::nameserver::TableInfo& table_info);
+
+    static bool CheckExist(const ::openmldb::common::ColumnKey& column_key,
+            const PBIndex& index, int32_t* pos);
 
     static bool CheckTTL(const ::openmldb::common::TTLSt& ttl);
 
@@ -41,6 +49,8 @@ class IndexUtil {
 
     static bool FillColumnKey(openmldb::nameserver::TableInfo* table_info);
 
+ private:
+    static std::string GetIDStr(const ::openmldb::common::ColumnKey& column_key);
 };
 
 }  // namespace schema

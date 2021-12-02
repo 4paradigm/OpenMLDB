@@ -15,6 +15,7 @@
  */
 
 #include "schema/schema_adapter.h"
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -23,8 +24,9 @@
 namespace openmldb {
 namespace schema {
 
-bool SchemaAdapter::ConvertSchemaAndIndex(const ::hybridse::vm::Schema& sql_schema, const ::hybridse::vm::IndexList& index,
-                                  PBSchema* schema_output, PBIndex* index_output) {
+bool SchemaAdapter::ConvertSchemaAndIndex(const ::hybridse::vm::Schema& sql_schema,
+        const ::hybridse::vm::IndexList& index,
+        PBSchema* schema_output, PBIndex* index_output) {
     if (nullptr == schema_output || nullptr == index_output) {
         LOG(WARNING) << "schema or index output ptr is null";
         return false;
@@ -45,8 +47,8 @@ bool SchemaAdapter::ConvertSchemaAndIndex(const ::hybridse::vm::Schema& sql_sche
 
     for (int32_t i = 0; i < sql_schema.size(); i++) {
         auto& sql_column = sql_schema.Get(i);
-        auto fedb_column = schema_output->Add();
-        if (!ConvertType(sql_column, fedb_column)) {
+        auto column = schema_output->Add();
+        if (!ConvertColumn(sql_column, column)) {
             return false;
         }
     }
@@ -67,17 +69,17 @@ bool SchemaAdapter::SubSchema(const ::hybridse::vm::Schema* schema,
     return true;
 }
 
-bool SchemaAdapter::ConvertSchema(const PBSchema& fedb_schema, ::hybridse::vm::Schema* output) {
+bool SchemaAdapter::ConvertSchema(const PBSchema& schema, ::hybridse::vm::Schema* output) {
     if (output == nullptr) {
         LOG(WARNING) << "output ptr is null";
         return false;
     }
-    if (fedb_schema.empty()) {
-        LOG(WARNING) << "fedb_schema is empty";
+    if (schema.empty()) {
+        LOG(WARNING) << "schema is empty";
         return false;
     }
-    for (int32_t i = 0; i < fedb_schema.size(); i++) {
-        const common::ColumnDesc& column = fedb_schema.Get(i);
+    for (int32_t i = 0; i < schema.size(); i++) {
+        const common::ColumnDesc& column = schema.Get(i);
         ::hybridse::type::ColumnDef* new_column = output->Add();
         new_column->set_name(column.name());
         new_column->set_is_not_null(column.not_null());
@@ -120,52 +122,52 @@ bool SchemaAdapter::ConvertSchema(const PBSchema& fedb_schema, ::hybridse::vm::S
     return true;
 }
 
-bool SchemaAdapter::ConvertSchema(const ::hybridse::vm::Schema& hybridse_schema, PBSchema* fedb_schema) {
-    if (fedb_schema == nullptr) {
-        LOG(WARNING) << "fedb_schema is null";
+bool SchemaAdapter::ConvertSchema(const ::hybridse::vm::Schema& hybridse_schema, PBSchema* schema) {
+    if (schema == nullptr) {
+        LOG(WARNING) << "schema is null";
         return false;
     }
     for (int32_t i = 0; i < hybridse_schema.size(); i++) {
         const hybridse::type::ColumnDef& sql_column = hybridse_schema.Get(i);
-        openmldb::common::ColumnDesc* fedb_column = fedb_schema->Add();
-        if (!ConvertType(sql_column, fedb_column)) {
+        openmldb::common::ColumnDesc* column = schema->Add();
+        if (!ConvertColumn(sql_column, column)) {
             return false;
         }
     }
     return true;
 }
 
-bool SchemaAdapter::ConvertType(hybridse::node::DataType hybridse_type, openmldb::type::DataType* fedb_type) {
-    if (fedb_type == nullptr) {
+bool SchemaAdapter::ConvertType(hybridse::node::DataType hybridse_type, openmldb::type::DataType* type) {
+    if (type == nullptr) {
         return false;
     }
     switch (hybridse_type) {
         case hybridse::node::kBool:
-            *fedb_type = openmldb::type::kBool;
+            *type = openmldb::type::kBool;
             break;
         case hybridse::node::kInt16:
-            *fedb_type = openmldb::type::kSmallInt;
+            *type = openmldb::type::kSmallInt;
             break;
         case hybridse::node::kInt32:
-            *fedb_type = openmldb::type::kInt;
+            *type = openmldb::type::kInt;
             break;
         case hybridse::node::kInt64:
-            *fedb_type = openmldb::type::kBigInt;
+            *type = openmldb::type::kBigInt;
             break;
         case hybridse::node::kFloat:
-            *fedb_type = openmldb::type::kFloat;
+            *type = openmldb::type::kFloat;
             break;
         case hybridse::node::kDouble:
-            *fedb_type = openmldb::type::kDouble;
+            *type = openmldb::type::kDouble;
             break;
         case hybridse::node::kDate:
-            *fedb_type = openmldb::type::kDate;
+            *type = openmldb::type::kDate;
             break;
         case hybridse::node::kTimestamp:
-            *fedb_type = openmldb::type::kTimestamp;
+            *type = openmldb::type::kTimestamp;
             break;
         case hybridse::node::kVarchar:
-            *fedb_type = openmldb::type::kVarchar;
+            *type = openmldb::type::kVarchar;
             break;
         default:
             LOG(WARNING) << "unsupported type" << hybridse_type;
@@ -320,20 +322,20 @@ bool SchemaAdapter::ConvertType(hybridse::sdk::DataType type, openmldb::type::Da
     }
 }
 
-bool SchemaAdapter::ConvertType(const hybridse::type::ColumnDef& sql_column, openmldb::common::ColumnDesc* fedb_column) {
-    if (fedb_column == nullptr) {
-        LOG(WARNING) << "fedb_column is null";
+bool SchemaAdapter::ConvertColumn(const hybridse::type::ColumnDef& sql_column, openmldb::common::ColumnDesc* column) {
+    if (column == nullptr) {
+        LOG(WARNING) << "column is null";
         return false;
     }
-    fedb_column->set_name(sql_column.name());
-    fedb_column->set_not_null(sql_column.is_not_null());
-    fedb_column->set_is_constant(sql_column.is_constant());
+    column->set_name(sql_column.name());
+    column->set_not_null(sql_column.is_not_null());
+    column->set_is_constant(sql_column.is_constant());
     openmldb::type::DataType openmldb_type;
     if (!ConvertType(sql_column.type(), &openmldb_type)) {
         LOG(WARNING) << "type " << hybridse::type::Type_Name(sql_column.type()) << " is not supported";
         return false;
     }
-    fedb_column->set_data_type(openmldb_type);
+    column->set_data_type(openmldb_type);
     return true;
 }
 
@@ -341,9 +343,9 @@ base::Status SchemaAdapter::CheckTableMeta(const ::openmldb::nameserver::TableIn
     if (table_info.column_desc_size() == 0) {
         return {base::ReturnCode::kError, "no column"};
     }
-    std::map<std::string, ::openmldb::type::DataType> column_map;
+    std::map<std::string, ::openmldb::common::ColumnDesc> column_map;
     for (const auto& column_desc : table_info.column_desc()) {
-        if (!column_map.emplace(column_desc.name(), column_desc.data_type()).second) {
+        if (!column_map.emplace(column_desc.name(), column_desc).second) {
             return {base::ReturnCode::kError, "duplicated column: " + column_desc.name()};
         }
     }

@@ -30,7 +30,6 @@ namespace schema {
 
 class SchemaAdapter {
  public:
-
     static bool ConvertSchemaAndIndex(const ::hybridse::vm::Schema& sql_schema,
             const ::hybridse::vm::IndexList& index,
             PBSchema* schema_output, PBIndex* index_output);
@@ -39,11 +38,11 @@ class SchemaAdapter {
             const ::google::protobuf::RepeatedField<uint32_t>& projection,
             hybridse::vm::Schema* output);
 
-    static bool ConvertSchema(const PBSchema& fedb_schema, ::hybridse::vm::Schema* output);
+    static bool ConvertSchema(const PBSchema& schema, ::hybridse::vm::Schema* output);
 
-    static bool ConvertSchema(const ::hybridse::vm::Schema& hybridse_schema, PBSchema* fedb_schema);
+    static bool ConvertSchema(const ::hybridse::vm::Schema& hybridse_schema, PBSchema* schema);
 
-    static bool ConvertType(hybridse::node::DataType hybridse_type, openmldb::type::DataType* fedb_type);
+    static bool ConvertType(hybridse::node::DataType hybridse_type, openmldb::type::DataType* type);
 
     static bool ConvertType(hybridse::type::Type hybridse_type, openmldb::type::DataType* oepnmldb_type);
 
@@ -53,9 +52,10 @@ class SchemaAdapter {
 
     static bool ConvertType(hybridse::sdk::DataType type, openmldb::type::DataType *cased_type);
 
-    static bool ConvertType(const hybridse::type::ColumnDef& sql_column, openmldb::common::ColumnDesc* fedb_column);
-
     static base::Status CheckTableMeta(const ::openmldb::nameserver::TableInfo& table_info);
+
+ private:
+    static bool ConvertColumn(const hybridse::type::ColumnDef& sql_column, openmldb::common::ColumnDesc* column);
 };
 
 }  // namespace schema
