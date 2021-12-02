@@ -41,7 +41,7 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
 endfunction(compile_lib)
 
 function(compile_test DIR)
-    set(TEST_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal
+    set(TEST_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog schema client zk_client replica base storage openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${ZETASQL_LIBS}
@@ -74,6 +74,7 @@ compile_proto(taskmanager ${PROJECT_SOURCE_DIR})
 
 compile_lib(openmldb_codec codec "")
 compile_lib(openmldb_catalog catalog "")
+compile_lib(schema schema "")
 compile_lib(client client "")
 compile_lib(base base "")
 compile_lib(zk_client zk "")
@@ -89,7 +90,7 @@ add_library(openmldb_proto STATIC proto/type.pb.cc proto/common.pb.cc proto/tabl
 
 add_library(openmldb_flags flags.cc)
 
-set(BIN_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal
+set(BIN_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec schema openmldb_proto log common zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${ZETASQL_LIBS}

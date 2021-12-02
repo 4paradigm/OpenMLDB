@@ -18,6 +18,7 @@
 
 #include "base/hash.h"
 #include "glog/logging.h"
+#include "schema/index_util.h"
 #include "schema/schema_adapter.h"
 
 namespace openmldb {
@@ -41,7 +42,7 @@ bool SDKTableHandler::Init() {
         return false;
     }
 
-    ok = schema::SchemaAdapter::ConvertIndex(meta_.column_key(), &index_list_);
+    ok = schema::IndexUtil::ConvertIndex(meta_.column_key(), &index_list_);
     if (!ok) {
         LOG(WARNING) << "fail to conver index to sql index";
         return false;

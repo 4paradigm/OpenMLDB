@@ -25,6 +25,7 @@
 #include "catalog/distribute_iterator.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
+#include "schema/index_util.h"
 #include "schema/schema_adapter.h"
 
 DECLARE_bool(enable_localtablet);
@@ -82,7 +83,7 @@ bool TabletTableHandler::UpdateIndex(
         const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs) {
     index_list_.Clear();
     index_hint_.clear();
-    if (!schema::SchemaAdapter::ConvertIndex(indexs, &index_list_)) {
+    if (!schema::IndexUtil::ConvertIndex(indexs, &index_list_)) {
         LOG(WARNING) << "fail to conver index to sql index";
         return false;
     }
