@@ -48,12 +48,12 @@ class SystemTable {
         switch (table_type) {
             case SystemTableType::kJobInfo: {
                 SetColumnDesc("id", openmldb::type::DataType::kBigInt, table_info->add_column_desc());
-                SetColumnDesc("job", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("job_type", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("state", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("start_time", openmldb::type::DataType::kTimestamp, table_info->add_column_desc());
                 SetColumnDesc("end_time", openmldb::type::DataType::kTimestamp, table_info->add_column_desc());
-                SetColumnDesc("cluster", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("parameter", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("cluster", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("application_id", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("error", openmldb::type::DataType::kString, table_info->add_column_desc());
                 auto index = table_info->add_column_key();

@@ -1,49 +1,62 @@
 # Introduction to OpenMLDB's Performance-Sensitive Mode
 
-## Concept
+## 1. Introduction
 
 OpenMLDB supports execution under different levels of performance sensitivity.
-When `performance_sensitive` mode is enabled, complex SQL queries cannot be executed without index-optimization.
-When `performance_sensitive` mode is disabled, most SQL queries can be executed with no restrictions.
+When `performance_sensitive` mode is enabled, SQL queries cannot be executed without corresponding index-optimization. When `performance_sensitive` mode is disabled, SQL queries can be executed with no restrictions.
 
-For instance:
-Table `t1` has been created with index `(key = col2, ts = col4)`:
+**Note that, currently the performance-sensitive mode configuration is applicable to the standalone mode only. For the cluster mode, the performance-sensitive mode is always enabled.**
+
+To determine whether a query can be executed with the performance-sensitive mode enabled, it depends on the `index` option when creating tables `CREATE TABLE ...(..., index(key=..., ts=...))`. Specifically, `key` represents the column for indexing, and `ts` represents the ordered column applicable to `ORDER BY`. The below SQL clauses cannot be executed with the mode enabled if the requirements are unsatisfied:
+
+- `PARTITION BY`: it must be the index column specified by `key`
+- `ORDER BY`: it must be the ordered column specified by `ts`
+- `WHERE`: it must be the index column specified by `key`
+- `GROUP BY`: it must be the index column specified by `key`
+- `LAST JOIN`: it must be the index column specified by `key`
+
+## 2. Examples
+
+Table `t1` has been created with the index option `(key=col2, ts=col4)`:
+
 ```sqlite
-CREATE table t1(
+CREATE TABLE t1(
     col1 string,
     col2 string,
     col3 double,
     col4 timestamp,
-    index(key = col2, ts = col4));
+    INDEX(key=col2, ts=col4));
 ```
-### Case 1: the following SQL
+**Case 1:** 
+
 ```sql
-SELECT col1, col2, SUM(col3) over w1 as w1_sum_col3 from t1 
-window w1 as (PARTITION BY col1 ORDER BY col4 ROWS BETWEEN 100 PRECEDING AND CURRENT ROW);
+SELECT col1, col2, SUM(col3) OVER w1 AS w1_sum_col3 FROM t1 
+    WINDOW w1 AS (PARTITION BY col1 ORDER BY col4 
+    ROWS BETWEEN 100 PRECEDING AND CURRENT ROW);
 ```
-- cannot be executed when we enable `performance_sensitive` mode, since the SQL fail to be optimized.
-- can be executed when we disable `performance_sensitive` mode.
+- It cannot be executed with the `performance_sensitive` enabled, since the clause `PARTITION BY col1` does not match the index column `col2`.
+- It can be executed with the `performance_sensitive` disabled.
 
-### Case 2: the following SQL
+**Case 2:** 
+
 ```sql
--- 
-SELECT col1, col2, SUM(col3) over w2 as w2_sum_col3 from t1
-                                                             window w2 as (PARTITION BY col2 ORDER BY col4 ROWS 
-BETWEEN 100 PRECEDING AND CURRENT ROW);
+SELECT col1, col2, SUM(col3) OVER w2 AS w2_sum_col3 FROM t1 
+    WINDOW w2 AS (PARTITION BY col2 ORDER BY col4 
+    ROWS BETWEEN 100 PRECEDING AND CURRENT ROW);
 ```
-- can be executed when we enable `performance_sensitive` mode, since the SQL can be optimized.
-- can be executed when we disable `performance_sensitive` mode.
+- It can be executed with the `performance_sensitive` enabled, since the clause `PARTITION BY col2` and `ORDER BY col4` match the index column `col2` and ordered column `col4` respectively.
+- It can be executed with the `performance_sensitive` disabled.
 
 
-## Usage
+## 3. Mode Configuration (Standalone Mode Only)
 
-### Default config
-- OpenMLDB online: turn on performance_sensitive by default.
-- OpenMLDB CLI: turn on performance_sensitive by default.
-- OpenMLDB-batch: turn off performance_sensitive by default.
+### 3.1. Default configuration
+- OpenMLDB online: performance_sensitive **enabled** by default
+- OpenMLDB CLI: performance_sensitive **enabled** by default
+- OpenMLDB-batch: performance_sensitive **disabled** by default
 
-### Config via CLI
-CLI provides the command to enable/disable `performance_sensitive` mode
+### 3.2. Configuration via CLI
+CLI provides the command to enable/disable `performance_sensitive` mode for the standalone mode.
 - Using `SET performance_sensitive=true` to enable `performance_sensitive` mode
 ```sqlite
 > CREATE DATABASE db1;
@@ -57,6 +70,6 @@ CLI provides the command to enable/disable `performance_sensitive` mode
 > USE db1;
 > SET performance_sensitive=false
 ```
-### Future work
-Now, we only support to config `performance_sensitive` via CLI command.
-We will support configuration via SDK(JAVA/PYTHON) in the future.
+### 4. Future Work
+We support to config `performance_sensitive` via CLI for the standalone mode only at this moment. We will support configuration via SDK (Java/Python) in the near future.
+

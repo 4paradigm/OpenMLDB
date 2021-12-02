@@ -27,12 +27,12 @@ class DefaultUdfLibrary : public UdfLibrary {
 
  private:
     void Init();
-    void IniMathUdf();
+    void InitMathUdf();
     void InitStringUdf();
     void InitTrigonometricUdf();
-    void InitDateUdf();
+    void InitTimeAndDateUdf();
     void InitTypeUdf();
-    void InitUtilityUdf();
+    void InitLogicalUdf();
     void InitWindowFunctions();
     void InitUdaf();
     void InitAggByCateUdafs();
