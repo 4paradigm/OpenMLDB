@@ -29,21 +29,21 @@ class TestLoadDataPlan extends SparkTestSuite {
     val planner = new SparkPlanner(sess)
     // use overwrite mode to avoid the error that "/tmp/test_dir" already exists,
     // should be removed after load data plan fully functioned.
-    var res = planner.plan("load data infile 'openmldb-batch/src/test/resources/test.csv' into table t1 " +
+    var res = planner.plan("load data infile 'src/test/resources/test.csv' into table t1 " +
       "options(format='csv', foo='bar', " +
       "header=false, mode='overwrite');", Map("t1" -> t1))
     val output = res.getDf()
     output.show()
 
     // strange delimiter
-    res = planner.plan("load data infile 'openmldb-batch/src/test/resources/test.csv' into table t1 " +
+    res = planner.plan("load data infile 'src/test/resources/test.csv' into table t1 " +
       "options(format='csv', foo='bar', " +
       "header=false, delimiter='++', mode='overwrite');", Map("t1" -> t1))
     res.getDf().show()
 
     // invalid format option
     try {
-      planner.plan("load data infile 'openmldb-batch/src/test/resources/test.csv' into table t1 " +
+      planner.plan("load data infile 'src/test/resources/test.csv' into table t1 " +
         "options(format='txt', mode='overwrite');", Map("t1" -> t1))
       fail("unreachable")
     } catch {
