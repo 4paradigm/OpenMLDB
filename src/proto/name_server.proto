@@ -78,6 +78,12 @@ message UpdateTTLResponse {
     optional string msg = 2;
 }
 
+message OfflineTableInfo {
+    required string path = 1;
+    required string format = 2;
+    map<string, string> options = 3;
+}
+
 message TableInfo {
     optional string name = 1;
     optional uint32 seg_cnt = 2 [default = 8];
@@ -94,6 +100,7 @@ message TableInfo {
     optional string db = 13 [default = ""];
     repeated string partition_key = 14;
     repeated common.VersionPair schema_versions = 15;
+    optional OfflineTableInfo offline_table_info = 16;
 }
 
 message CreateTableRequest {
