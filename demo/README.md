@@ -73,13 +73,14 @@ docker run -it 4pdosc/openmldb:0.3.2 bash
 # The below commands are executed in the CLI
 > CREATE DATABASE demo_db;
 > USE demo_db;
-> CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double,dropoff_latitude double, store_and_fwd_flag string,trip_duration int, INDEX(key=vendor_id, ts=pickup_datetime), INDEX(key=passenger_count, ts=pickup_datetime));
+> CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int, INDEX(ts=pickup_datetime));
 > LOAD DATA INFILE './data/taxi_tour.csv' INTO TABLE t1;
 ```
 **Run offline feature extraction**
 
 ```sql
 # The below commands are executed in the CLI
+> SET PERFORMANCE_SENSITIVE = false;
 > SELECT trip_duration, passenger_count,
 sum(pickup_latitude) OVER w AS vendor_sum_pl,
 max(pickup_latitude) OVER w AS vendor_max_pl,
