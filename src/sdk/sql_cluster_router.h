@@ -26,7 +26,7 @@
 
 #include "base/random.h"
 #include "base/spinlock.h"
-#include "boost/compute/detail/lru_cache.hpp"
+#include "base/lru_cache.h"
 #include "client/tablet_client.h"
 #include "sdk/db_sdk.h"
 #include "sdk/sql_router.h"
@@ -208,7 +208,7 @@ class SQLClusterRouter : public SQLRouter {
     bool IsConstQuery(::hybridse::vm::PhysicalOpNode* node);
     std::shared_ptr<SQLCache> GetCache(const std::string& db, const std::string& sql);
 
-    void SetCache(const std::string& db, const std::string& sql, std::shared_ptr<SQLCache> router_cache);
+    void SetCache(const std::string& db, const std::string& sql, const std::shared_ptr<SQLCache>& router_cache);
 
     bool GetSQLPlan(const std::string& sql, ::hybridse::node::NodeManager* nm, ::hybridse::node::PlanNodeList* plan);
 
@@ -229,14 +229,14 @@ class SQLClusterRouter : public SQLRouter {
 
     std::shared_ptr<openmldb::client::TabletClient> GetTablet(const std::string& db, const std::string& sp_name,
                                                               hybridse::sdk::Status* status);
-    bool ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema> schema,
+    bool ExtractDBTypes(std::shared_ptr<hybridse::sdk::Schema> schema,
                         std::vector<openmldb::type::DataType>& parameter_types);  // NOLINT
 
  private:
     std::atomic<bool> performance_sensitive_ = true;
     SQLRouterOptions options_;
     DBSDK* cluster_sdk_;
-    std::map<std::string, boost::compute::detail::lru_cache<std::string, std::shared_ptr<SQLCache>>> input_lru_cache_;
+    std::map<std::string, base::lru_cache<std::string, std::shared_ptr<SQLCache>>> input_lru_cache_;
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
 };

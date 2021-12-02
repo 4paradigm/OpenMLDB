@@ -49,6 +49,7 @@ using hybridse::codec::StringRef;
 // TODO(chenjing): 时区统一配置
 const int32_t TZ = 8;
 const time_t TZ_OFFSET = TZ * 3600000;
+const int MAX_ALLOC_SIZE = 2048;
 bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
 int32_t dayofmonth(int64_t ts) {
@@ -788,6 +789,9 @@ uint32_t format_string<codec::StringRef>(const codec::StringRef &v,
 
 char *AllocManagedStringBuf(int32_t bytes) {
     if (bytes < 0) {
+        return nullptr;
+    }
+    if (bytes > MAX_ALLOC_SIZE) {
         return nullptr;
     }
     return reinterpret_cast<char *>(vm::JitRuntime::get()->AllocManaged(bytes));

@@ -298,7 +298,7 @@ void SQLCaseTest::PrintResultSetYamlFormat(std::vector<std::shared_ptr<hybridse:
         while (rs->Next()) {
             oss << "- [";
             for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
-                std::string str = rs->GetAsString(idx);
+                std::string str = rs->GetAsStringUnsafe(idx);
                 auto col = schema->GetColumnName(idx);
                 auto type = schema->GetColumnType(idx);
                 if (DataTypeName(type) == "string" || DataTypeName(type) == "date") {
@@ -336,7 +336,7 @@ void SQLCaseTest::PrintResultSet(std::shared_ptr<hybridse::sdk::ResultSet> rs) {
     rs->Reset();
     while (rs->Next()) {
         for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
-            std::string str = rs->GetAsString(idx);
+            std::string str = rs->GetAsStringUnsafe(idx);
             t.add(str);
             if (t.current_columns_size() >= 20) {
                 t.add("...");
@@ -378,7 +378,7 @@ void SQLCaseTest::PrintResultSet(std::vector<std::shared_ptr<hybridse::sdk::Resu
     for (auto rs : results) {
         while (rs->Next()) {
             for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
-                std::string str = rs->GetAsString(idx);
+                std::string str = rs->GetAsStringUnsafe(idx);
                 t.add(str);
                 if (t.current_columns_size() >= 20) {
                     t.add("...");
@@ -497,7 +497,7 @@ void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::strin
     std::vector<hybridse::codec::Row> result_rows;
     while (rs->Next()) {
         if (order_idx >= 0) {
-            std::string key = rs->GetAsString(order_idx);
+            std::string key = rs->GetAsStringUnsafe(order_idx);
             LOG(INFO) << "key : " << key;
             ASSERT_TRUE(rows_map.find(key) != rows_map.cend())
                 << "CheckRows fail: row[" << index << "] order not expected";
@@ -622,7 +622,7 @@ void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::strin
         rs->Reset();
         while (rs->Next()) {
             if (order_idx >= 0) {
-                std::string key = rs->GetAsString(order_idx);
+                std::string key = rs->GetAsStringUnsafe(order_idx);
                 row_view.Reset(rows_map[key].buf());
             } else {
                 row_view.Reset(rows[index++].buf());

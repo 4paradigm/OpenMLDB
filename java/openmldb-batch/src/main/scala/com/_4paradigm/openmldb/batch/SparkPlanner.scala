@@ -18,18 +18,14 @@ package com._4paradigm.openmldb.batch
 
 import com._4paradigm.hybridse.HybridSeLibrary
 import com._4paradigm.hybridse.`type`.TypeOuterClass.Database
-import com._4paradigm.hybridse.vm.{
-  CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
-  PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalOpNode,
-  PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode, PhysicalSortNode,
-  PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType
-}
-import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
 import com._4paradigm.hybridse.node.JoinType
-import com._4paradigm.openmldb.batch.nodes.{
-  ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan,
-  GroupByPlan, JoinPlan, LimitPlan, SortByPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, WindowAggPlan
-}
+import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
+import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
+  PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalLoadDataNode,
+  PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode,
+  PhysicalSortNode, PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType}
+import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan,
+  JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, SortByPlan, WindowAggPlan}
 import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -95,7 +91,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
       logger.info("Visit concat join node to add node index info")
       val processedConcatJoinNodeIds = mutable.HashSet[Long]()
       val indexColumnName = "__CONCATJOIN_INDEX__" + System.currentTimeMillis()
-      concatJoinNodes.map(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds, indexColumnName))
+      concatJoinNodes.foreach(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds,
+        indexColumnName))
 
       if (config.slowRunCacheDir != null) {
         slowRunWithHDFSCache(root, planCtx, config.slowRunCacheDir, isRoot = true)
@@ -181,7 +178,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     }
 
     if (node.GetNodeId() == destNodeId) {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.DestNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), NodeIndexInfo(indexColumnName, NodeIndexType.DestNode))
       // Return if handle the dest node
       return
     }
@@ -189,10 +186,10 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     // Check if it is concat join node
     if (node.GetOpType() == PhysicalOpType.kPhysicalOpJoin
       && PhysicalJoinNode.CastFrom(node).join().join_type() == JoinType.kJoinTypeConcat) {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalConcatJoinNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), NodeIndexInfo(indexColumnName, NodeIndexType.InternalConcatJoinNode))
       processedConcatJoinNodeIds.add(node.GetNodeId())
     } else {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalComputeNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), NodeIndexInfo(indexColumnName, NodeIndexType.InternalComputeNode))
       processedConcatJoinNodeIds.add(node.GetNodeId())
     }
 
@@ -248,6 +245,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
         SortByPlan.gen(ctx, PhysicalSortNode.CastFrom(root), children.head)
       //case PhysicalOpType.kPhysicalOpFilter =>
       //  FilterPlan.gen(ctx, PhysicalFilterNode.CastFrom(root), children.head)
+      case PhysicalOpType.kPhysicalOpLoadData =>
+        LoadDataPlan.gen(ctx, PhysicalLoadDataNode.CastFrom(root))
       case _ =>
         throw new UnsupportedHybridSeException(s"Plan type $opType not supported")
     }
