@@ -129,7 +129,7 @@ namespace hybridse {
 
 OpenMLDB  `DefaultUdfLibrary` stores and manages the global built-in SQL functions. Developer need to register a C++ function to the `DefaultUdfLibrary` such that users can access the function from a SQL query.`DefaultUdfLibrary` has been declared at [hybridse/src/udf/default_udf_library.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.h) and implemented at [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc). Developers can register functions in corresponding `DefaultUdfLibrary::InitXXXXUdf()` methods. For instance:
 
-- **Mathematical function** can be registered in `void DefaultUdfLibrary::IniMathUdf()`
+- **Mathematical function** can be registered in `void DefaultUdfLibrary::InitMathUdf()`
 - **Logical function** can be registered in `void DefaultUdfLibrary::InitLogicalUdf()`
 - **Date & Time function** can be registered in `void DefaultUdfLibrary::InitTimeAndDateUdf()`
 - **String function** can be registered in void `DefaultUdfLibrary::InitStringUdf()`

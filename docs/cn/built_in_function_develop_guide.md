@@ -146,7 +146,7 @@ OpenMLDB的 `DefaultUdfLibrary` 负责存放和管理内置的全局SQL函数。
 
 开发者先在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)中将C++函数注册到默认函数库 `DefaultUdfLibrary` 中，用户才能通过SQL语句访问这个函数。为了更好的管理函数注册，`DefaultUdfLibrary`提供几类`DefaultUdfLibrary::InitXXXXUdf()` 接口来管理不同功能的函数配置注册:
 
-- 数学函数：在`DefaultUdfLibrary::IniMathUdf()`中注册
+- 数学函数：在`DefaultUdfLibrary::InitMathUdf()`中注册
 - 逻辑函数：在`DefaultUdfLibrary::InitLogicalUdf()`中注册
 - 时间和日期函数：在`DefaultUdfLibrary::InitTimeAndDateUdf()`中注册
 - 字符串函数：在`DefaultUdfLibrary::InitStringUdf()`中注册
