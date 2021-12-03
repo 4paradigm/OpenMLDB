@@ -89,6 +89,7 @@ enum SqlNodeType {
     kLoadDataStmt,
     kDeployStmt,
     kSetStmt,
+    kDeleteStmt,
     kUnknow = -1
 };
 
@@ -250,7 +251,6 @@ enum CmdType {
     kCmdShowJobs,
     kCmdShowJob,
     kCmdStopJob,
-    kCmdDeleteJob,
     kCmdUnknown = -1
 };
 enum ExplainType {

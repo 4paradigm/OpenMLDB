@@ -1064,6 +1064,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kSetStmt:
             output = "kSetStmt";
             break;
+        case kDeleteStmt:
+            output = "kDeleteStmt";
+            break;
         case kUnknow:
             output = "kUnknow";
             break;
@@ -2267,6 +2270,24 @@ void InputParameterNode::Print(std::ostream &output, const std::string &org_tab)
     PrintValue(output, tab, DataTypeName(column_type_), "column_type", false);
     output << "\n";
     PrintValue(output, tab, std::to_string(is_constant_), "is_constant", true);
+}
+
+void DeleteNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, GetTargetString(), "target", false);
+    output << "\n";
+    PrintValue(output, tab, GetJobId(), "job_id", true);
+}
+
+std::string DeleteNode::GetTargetString() const {
+    switch (target_) {
+        case DeleteTarget::JOB: {
+            return "JOB";
+        }
+    }
+    return "unknown";
 }
 
 Status StringToDataType(const std::string identifier, DataType *type) {

@@ -87,8 +87,6 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "show job";
         case kCmdShowJobs:
             return "show jobs";
-        case kCmdDeleteJob:
-            return "delete job";
         case kCmdStopJob:
             return "stop job";
         case kCmdUnknown:
@@ -566,7 +564,8 @@ class ExprNode : public SqlNode {
     static Status BetweenTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* low,
                                     const TypeNode* high, const TypeNode** output_type);
 
-    static Status LikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs, const TypeNode** output);
+    static Status LikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
+                                 const TypeNode** output);
 
  private:
     const TypeNode *output_type_ = nullptr;
@@ -2049,6 +2048,26 @@ class CmdNode : public SqlNode {
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
+};
+
+class DeleteNode : public SqlNode {
+ public:
+    enum class DeleteTarget {
+        JOB
+    };
+    explicit DeleteNode(DeleteTarget t, std::string job_id)
+    : SqlNode(kDeleteStmt, 0, 0), target_(t), job_id_(job_id) {}
+    ~DeleteNode() {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    std::string GetTargetString() const;
+
+    DeleteTarget GetTarget() const { return target_; }
+    const std::string& GetJobId() const { return job_id_; }
+
+ private:
+    DeleteTarget target_;
+    std::string job_id_;
 };
 
 class SelectIntoNode : public SqlNode {

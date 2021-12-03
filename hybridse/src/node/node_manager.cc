@@ -755,6 +755,10 @@ DeployPlanNode *NodeManager::MakeDeployPlanNode(const std::string &name, const S
     DeployPlanNode *node = new DeployPlanNode(name, stmt, stmt_str, if_not_exist);
     return RegisterNode(node);
 }
+DeleteNode* NodeManager::MakeDeleteNode(DeleteNode::DeleteTarget target, std::string_view job_id) {
+    auto node = new DeleteNode(target, std::string(job_id.data(), job_id.size()));
+    return RegisterNode(node);
+}
 LoadDataNode *NodeManager::MakeLoadDataNode(const std::string &file_name, const std::string& db,
                                             const std::string &table, const std::shared_ptr<OptionsMap> options) {
     LoadDataNode *node = new LoadDataNode(file_name, db, table, options);
