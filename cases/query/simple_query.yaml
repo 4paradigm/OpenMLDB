@@ -490,6 +490,7 @@ cases:
       rows:
         - [false]
   - id: like_match_3
+    desc: disable escape feature
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
@@ -501,8 +502,9 @@ cases:
     expect:
       columns: ["col2:bool"]
       rows:
-        - [true]
+        - [false]
   - id: like_match_4
+    desc: MC is null
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
@@ -670,8 +672,8 @@ cases:
         columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
         indexs: ["index1:col1:std_ts"]
         rows:
-          - [1, 1590115420001, Ace ]
-          - [2, 1590115420001, A_e ]
+          - [1, 1590115420001, A_e ]
+          - [2, 1590115420001, A&ke ]
           - [3, 1590115420001, A&_e ]
     sql: |
       select col1, col2 LIKE 'a&_e' ESCAPE '' as col2 from t1;

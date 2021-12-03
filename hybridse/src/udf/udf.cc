@@ -274,8 +274,19 @@ bool like_match_internal(std::string_view name,
         }
 
         char c = *it;
-        if (escape != nullptr && c == *escape) {
+        if (escape == nullptr) {
+            // escape feature is disabled
+            if (!equal(c, *n_it)) {
+                return false;
+            }
+
+            std::advance(it, 1);
+        } else if (c == *escape) {
             // exact character match
+            if (std::next(it) == end) {
+                // the pattern is terminated with escape character, just return false
+                return false;
+            }
             c = *std::next(it);
             if (!equal(c, *n_it)) {
                 return false;
