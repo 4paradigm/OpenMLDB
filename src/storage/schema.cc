@@ -28,11 +28,14 @@ namespace openmldb {
 namespace storage {
 
 ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null)
-    : name_(name), id_(id), type_(type), not_null_(not_null), ts_idx_(-1) {}
+    : name_(name), id_(id), type_(type), not_null_(not_null) {}
 
-ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null,
-                     int32_t ts_idx)
-    : name_(name), id_(id), type_(type), not_null_(not_null), ts_idx_(ts_idx) {}
+ColumnDef::ColumnDef(const ColumnDef& col) {
+    name_ = col.GetName();
+    id_ = col.GetId();
+    type_ = col.GetType();
+    not_null_ = col.NotNull();
+}
 
 std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
     if (idx < columns_.size()) {
@@ -142,9 +145,7 @@ TableIndex::TableIndex() {
         column_key_2_inner_index_.emplace_back(std::make_shared<std::atomic<int32_t>>(-1));
     }
     pk_index_ = std::shared_ptr<IndexDef>();
-    combine_col_name_map_ = std::make_shared<std::unordered_map<std::string, std::shared_ptr<IndexDef>>>();
     col_name_vec_ = std::make_shared<std::vector<std::string>>();
-    unique_col_name_vec_ = std::make_shared<std::vector<std::string>>();
 }
 
 void TableIndex::ReSet() {
@@ -160,63 +161,43 @@ void TableIndex::ReSet() {
 
     pk_index_.reset();
 
-    auto new_map = std::make_shared<std::unordered_map<std::string, std::shared_ptr<IndexDef>>>();
-    std::atomic_store_explicit(&combine_col_name_map_, new_map, std::memory_order_relaxed);
-
     auto new_vec = std::make_shared<std::vector<std::string>>();
     std::atomic_store_explicit(&col_name_vec_, new_vec, std::memory_order_relaxed);
-
-    auto new_unique_vec = std::make_shared<std::vector<std::string>>();
-    std::atomic_store_explicit(&unique_col_name_vec_, new_unique_vec, std::memory_order_relaxed);
 }
 
-int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta,
-                              std::map<std::string, uint8_t>* ts_mapping) {
-    if (ts_mapping == nullptr) {
-        return -1;
-    }
+int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
     ReSet();
-    ts_mapping->clear();
     uint32_t tid = table_meta.tid();
     uint32_t pid = table_meta.pid();
+    int ts_cnt = 0;
     if (table_meta.column_desc_size() > 0) {
         std::set<std::string> ts_col_set;
-        int set_ts_cnt = 0;
         for (const auto& column_key : table_meta.column_key()) {
             if (!column_key.ts_name().empty()) {
-                set_ts_cnt++;
+                ts_cnt++;
                 ts_col_set.insert(column_key.ts_name());
             }
         }
-        if (set_ts_cnt > 0 && set_ts_cnt != table_meta.column_key_size()) {
+        if (ts_cnt > 0 && ts_cnt != table_meta.column_key_size()) {
             LOG(WARNING) << "must set ts col in all column key, tid " << tid;
             return -1;
         }
-        uint32_t key_idx = 0;
-        uint32_t ts_idx = 0;
         std::map<std::string, std::shared_ptr<ColumnDef>> col_map;
         for (int idx = 0; idx < table_meta.column_desc_size(); idx++) {
             const auto& column_desc = table_meta.column_desc(idx);
             std::shared_ptr<ColumnDef> col;
             ::openmldb::type::DataType type = column_desc.data_type();
             const std::string& name = column_desc.name();
-            col = std::make_shared<ColumnDef>(name, key_idx, type, true);
+            col = std::make_shared<ColumnDef>(name, idx, type, column_desc.not_null());
             col_map.emplace(name, col);
             if (ts_col_set.find(name) != ts_col_set.end()) {
                 if (!ColumnDef::CheckTsType(type)) {
                     LOG(WARNING) << "type mismatch, col " << name << " is can not set ts col, tid " << tid;
                     return -1;
                 }
-                col->SetTsIdx(ts_idx);
-                ts_mapping->insert(std::make_pair(name, ts_idx));
-                ts_idx++;
             }
         }
-        if (ts_idx > UINT8_MAX) {
-            LOG(WARNING) << "ts column more than " << UINT8_MAX + 1 << " tid " << tid;
-            return -1;
-        }
-        key_idx = 0;
+        uint32_t key_idx = 0;
         for (int pos = 0; pos < table_meta.column_key_size(); pos++) {
             const auto& column_key = table_meta.column_key(pos);
             std::string name = column_key.index_name();
@@ -256,7 +237,7 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta,
         index->SetTTL(TTLSt());
         LOG(INFO) << "no index specified with default. tid " << tid << ", pid " << pid;
     }
-    FillIndexVal(table_meta, ts_mapping->size());
+    FillIndexVal(table_meta, ts_cnt);
     if (!indexs_->empty()) {
         pk_index_ = indexs_->front();
     } else {
@@ -365,7 +346,7 @@ std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx, uint32_t ts_idx) {
     if (idx < indexs->size()) {
         auto index = indexs->at(idx);
         auto ts_col = index->GetTsColumn();
-        if (ts_col && ts_col->GetTsIdx() == static_cast<int>(ts_idx)) {
+        if (ts_col && ts_col->GetId() == ts_idx) {
             return index;
         }
     }
@@ -387,7 +368,7 @@ std::shared_ptr<IndexDef> TableIndex::GetIndex(const std::string& name, uint32_t
     for (const auto& index : *indexs) {
         if (index->GetName() == name) {
             auto ts_col = index->GetTsColumn();
-            if (ts_col && ts_col->GetTsIdx() == static_cast<int>(ts_idx)) {
+            if (ts_col && ts_col->GetId() == ts_idx) {
                 return index;
             }
             break;
@@ -420,8 +401,6 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
 
     auto old_vec = std::atomic_load_explicit(&col_name_vec_, std::memory_order_relaxed);
     auto new_vec = std::make_shared<std::vector<std::string>>(*old_vec);
-    auto old_unique_vec = std::atomic_load_explicit(&unique_col_name_vec_, std::memory_order_relaxed);
-    auto new_unique_vec = std::make_shared<std::vector<std::string>>(*old_unique_vec);
     std::string combine_name = "";
     for (auto& col_def : index_def->GetColumns()) {
         if (!combine_name.empty()) {
@@ -429,17 +408,8 @@ int TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
         }
         combine_name.append(col_def.GetName());
         new_vec->push_back(col_def.GetName());
-        if (index_def->GetType() == ::openmldb::type::kUnique) {
-            new_unique_vec->push_back(col_def.GetName());
-        }
     }
     std::atomic_store_explicit(&col_name_vec_, new_vec, std::memory_order_relaxed);
-    std::atomic_store_explicit(&unique_col_name_vec_, new_unique_vec, std::memory_order_relaxed);
-
-    auto old_map = std::atomic_load_explicit(&combine_col_name_map_, std::memory_order_relaxed);
-    auto new_map = std::make_shared<std::unordered_map<std::string, std::shared_ptr<IndexDef>>>(*old_map);
-    new_map->insert(std::make_pair(combine_name, index_def));
-    std::atomic_store_explicit(&combine_col_name_map_, new_map, std::memory_order_relaxed);
     return 0;
 }
 
@@ -465,27 +435,8 @@ bool TableIndex::HasAutoGen() {
 
 std::shared_ptr<IndexDef> TableIndex::GetPkIndex() { return pk_index_; }
 
-const std::shared_ptr<IndexDef> TableIndex::GetIndexByCombineStr(const std::string& combine_str) {
-    auto map = std::atomic_load_explicit(&combine_col_name_map_, std::memory_order_relaxed);
-    auto it = map->find(combine_str);
-    if (it != map->end()) {
-        return it->second;
-    } else {
-        return std::shared_ptr<IndexDef>();
-    }
-}
-
 bool TableIndex::IsColName(const std::string& name) {
     auto vec = std::atomic_load_explicit(&col_name_vec_, std::memory_order_relaxed);
-    auto iter = std::find(vec->begin(), vec->end(), name);
-    if (iter == vec->end()) {
-        return false;
-    }
-    return true;
-}
-
-bool TableIndex::IsUniqueColName(const std::string& name) {
-    auto vec = std::atomic_load_explicit(&unique_col_name_vec_, std::memory_order_relaxed);
     auto iter = std::find(vec->begin(), vec->end(), name);
     if (iter == vec->end()) {
         return false;

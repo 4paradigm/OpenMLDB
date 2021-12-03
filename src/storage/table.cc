@@ -95,8 +95,7 @@ void Table::SetTableMeta(::openmldb::api::TableMeta& table_meta) {  // NOLINT
 }
 
 int Table::InitColumnDesc() {
-    ts_mapping_.clear();
-    if (table_index_.ParseFromMeta(*table_meta_, &ts_mapping_) < 0) {
+    if (table_index_.ParseFromMeta(*table_meta_) < 0) {
         DLOG(WARNING) << "parse meta failed";
         return -1;
     }

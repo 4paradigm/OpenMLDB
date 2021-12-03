@@ -174,7 +174,6 @@ class Table {
     uint64_t ttl_offset_;
     bool is_leader_;
     std::atomic<uint32_t> table_status_;
-    std::map<std::string, uint8_t> ts_mapping_;
     TableIndex table_index_;
     ::openmldb::type::CompressType compress_type_;
     std::shared_ptr<::openmldb::api::TableMeta> table_meta_;

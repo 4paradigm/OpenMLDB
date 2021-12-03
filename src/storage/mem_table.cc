@@ -221,13 +221,13 @@ bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimensio
             if (ts_col) {
                 bool has_found_ts = false;
                 for (const auto& ts_dimension : ts_dimensions) {
-                    if (static_cast<int>(ts_dimension.idx()) == ts_col->GetTsIdx()) {
+                    if (ts_dimension.idx() == ts_col->GetId()) {
                         has_found_ts = true;
                         break;
                     }
                 }
                 if (!has_found_ts) {
-                    DEBUGLOG("cannot find ts col %d. tid %u pid %u", ts_col->GetTsIdx(), id_, pid_);
+                    DEBUGLOG("cannot find ts col %d. tid %u pid %u", ts_col->GetId(), id_, pid_);
                     continue;
                 }
             }
@@ -327,7 +327,7 @@ void MemTable::SchedGc() {
             auto cur_index = real_index[pos];
             auto ts_col = cur_index->GetTsColumn();
             if (ts_col) {
-                ttl_st_map.emplace(ts_col->GetTsIdx(), *(cur_index->GetTTL()));
+                ttl_st_map.emplace(ts_col->GetId(), *(cur_index->GetTTL()));
             } else {
                 ttl_st_map.emplace(0, *(cur_index->GetTTL()));
             }
@@ -448,7 +448,7 @@ bool MemTable::IsExpire(const LogEntry& entry) {
             auto ts_col = index_def->GetTsColumn();
             int32_t ts_idx = -1;
             if (ts_col) {
-                ts_idx = ts_col->GetTsIdx();
+                ts_idx = ts_col->GetId();
                 auto iter = ts_dimemsions_map.find(ts_idx);
                 if (iter == ts_dimemsions_map.end()) {
                     continue;
@@ -495,7 +495,7 @@ int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
     Segment* segment = segments_[real_idx][seg_idx];
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return segment->GetCount(spk, ts_col->GetTsIdx(), count);
+        return segment->GetCount(spk, ts_col->GetId(), count);
     }
     return segment->GetCount(spk, count);
 }
@@ -517,7 +517,7 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     Segment* segment = segments_[real_idx][seg_idx];
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return segment->NewIterator(spk, ts_col->GetTsIdx(), ticket);
+        return segment->NewIterator(spk, ts_col->GetId(), ticket);
     }
     return segment->NewIterator(spk, ticket);
 }
@@ -616,15 +616,6 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
         added_column_key->CopyFrom(column_key);
     }
     if (!index_def) {
-        std::vector<uint32_t> ts_vec;
-        if (!column_key.ts_name().empty()) {
-            auto ts_iter = ts_mapping_.find(column_key.ts_name());
-            if (ts_iter == ts_mapping_.end()) {
-                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name().c_str(), id_, pid_);
-                return false;
-            }
-            ts_vec.push_back(ts_iter->second);
-        }
         auto cols = GetSchema();
         if (!cols) {
             return false;
@@ -642,6 +633,15 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
                 return false;
             }
             col_vec.push_back(it->second);
+        }
+        std::vector<uint32_t> ts_vec;
+        if (!column_key.ts_name().empty()) {
+            auto ts_iter = schema.find(column_key.ts_name());
+            if (ts_iter == schema.end()) {
+                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name().c_str(), id_, pid_);
+                return false;
+            }
+            ts_vec.push_back(ts_iter->second.GetId());
         }
         uint32_t inner_id = table_index_.GetAllInnerIndex()->size();
         Segment** seg_arr = new Segment*[seg_cnt_];
@@ -666,9 +666,8 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
         }
         segments_[inner_id] = seg_arr;
         if (!column_key.ts_name().empty()) {
-            auto ts_col = std::make_shared<ColumnDef>(column_key.ts_name(), 0, ::openmldb::type::kTimestamp, true,
-                                                      ts_mapping_[column_key.ts_name()]);
-            index_def->SetTsColumn(ts_col);
+            auto ts_iter = schema.find(column_key.ts_name());
+            index_def->SetTsColumn(std::make_shared<ColumnDef>(ts_iter->second));
         }
         if (column_key.has_ttl()) {
             index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
@@ -727,7 +726,7 @@ bool MemTable::DeleteIndex(const std::string& idx_name) {
     auto ts_col = index_def->GetTsColumn();
     uint32_t ts_idx = 0;
     if (ts_col) {
-        ts_idx = ts_col->GetTsIdx();
+        ts_idx = ts_col->GetId();
     }
     return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx);
 }
@@ -749,7 +748,7 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
         return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt,
-                                            ts_col->GetTsIdx());
+                                            ts_col->GetId());
     }
     return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
 }
@@ -775,7 +774,7 @@ bool MemTable::GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response) 
             new_def->set_ts_idx(-1);
             auto ts_col = index_def->GetTsColumn();
             if (ts_col) {
-                new_def->set_ts_idx(ts_col->GetTsIdx());
+                new_def->set_ts_idx(ts_col->GetId());
             }
         }
     }
