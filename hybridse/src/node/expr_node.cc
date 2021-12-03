@@ -525,6 +525,22 @@ Status ExprNode::BetweenTypeAccept(node::NodeManager* nm, const TypeNode* lhs, c
     return Status::OK();
 }
 
+// MC LIKE PC ESCAPE EC
+// rules:
+// 1. MC & PC is string or null
+// 2. EC is string
+Status ExprNode::LikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs, const TypeNode** output) {
+    CHECK_TRUE(lhs != nullptr && rhs != nullptr, kTypeError);
+    CHECK_TRUE(lhs->IsNull() || lhs->IsString(), kTypeError, "invalid 'LIKE' lhs: ", lhs->GetName());
+    if (rhs->IsTuple()) {
+        CHECK_TRUE(rhs->GetGenericSize() == 2, kTypeError, "'LIKE' with ESCAPE have invalid size");
+    } else {
+        CHECK_TRUE(rhs->IsNull() || rhs->IsString(), kTypeError, "invalid 'LIKE' rhs: ", rhs->GetName());
+    }
+    *output = nm->MakeTypeNode(kBool);
+    return Status::OK();
+}
+
 Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2, kTypeError);
     auto left_type = GetChild(0)->GetOutputType();
@@ -617,6 +633,13 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             return ctx->InferAsUdf(this, "at");
             break;
         }
+        case kFnOpLike: {
+            const TypeNode* top_type = nullptr;
+            CHECK_STATUS(LikeTypeAccept(ctx->node_manager(), left_type, right_type, &top_type));
+            SetOutputType(top_type);
+            SetNullable(nullable);
+            break;
+            }
         default:
             return Status(common::kTypeError,
                           "Unknown binary op type: " + ExprOpTypeName(GetOp()));
@@ -812,7 +835,22 @@ EscapedExpr* EscapedExpr::ShadowCopy(NodeManager * nm) const {
     return nm->MakeEscapeExpr(GetPattern(), GetEscape());
 }
 
-Status EscapedExpr::InferAttr(ExprAnalysisContext *ctx) {
+// EscapedExpr output is only meaningful when using together with BinaryExpr[LIKE]
+// - output: tuple of (pattern, escape)
+// - nullable: pattern's nullable
+Status EscapedExpr::InferAttr(ExprAnalysisContext* ctx) {
+    TypeNode* top_type = nullptr;
+
+    CHECK_TRUE(GetPattern()->GetOutputType()->IsString() || GetPattern()->GetOutputType()->IsNull(), kTypeError,
+               "invalid 'LIKE' rhs: ", GetPattern()->GetOutputType()->GetName())
+    CHECK_TRUE(GetEscape()->GetOutputType()->IsString(), kTypeError,
+               "invalid 'LIKE' ESCAPE clause: ", GetEscape()->GetOutputType()->GetName())
+
+    top_type = ctx->node_manager()->MakeTypeNode(node::kTuple);
+    top_type->AddGeneric(GetPattern()->GetOutputType(), GetPattern()->nullable());
+    top_type->AddGeneric(GetEscape()->GetOutputType(), GetEscape()->nullable());
+    SetOutputType(top_type);
+    SetNullable(GetPattern()->nullable());
     return Status::OK();
 }
 

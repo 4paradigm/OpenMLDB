@@ -352,6 +352,11 @@ void like_match(codec::StringRef* name,
     });
 }
 
+void like_match(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
+    static codec::StringRef default_esc(1, "\\");
+    like_match(name, pattern, &default_esc, out, is_null);
+}
+
 /* case insensitive regex match */
 void regexp_match(codec::StringRef* name, codec::StringRef* pattern,
                   bool* out, bool* is_null) {

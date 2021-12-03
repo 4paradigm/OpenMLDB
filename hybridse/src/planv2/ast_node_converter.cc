@@ -225,8 +225,10 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     return status;
                 }
             }
-            auto out = node_manager->MakeBinaryExprNode(lhs, rhs, op);
-            out->SetIsNot(binary_expression->is_not());
+            node::ExprNode* out = node_manager->MakeBinaryExprNode(lhs, rhs, op);
+            if (binary_expression->is_not()) {
+                out = node_manager->MakeUnaryExprNode(out, node::FnOperator::kFnOpNot);
+            }
             *output = out;
             return base::Status::OK();
         }
@@ -488,7 +490,8 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             CHECK_STATUS(ConvertExprNode(escaped_expr->escape(), node_manager, &escape));
             // limit: escape node is const string, string size can't >=2
             CHECK_TRUE(escape->GetExprType() == node::kExprPrimary &&
-                       dynamic_cast<node::ConstNode*>(escape)->GetDataType() == node::DataType::kVarchar,
+                       dynamic_cast<node::ConstNode*>(escape)->GetDataType() == node::DataType::kVarchar &&
+                       dynamic_cast<node::ConstNode*>(escape)->GetAsString().size() <= 1,
                        common::kUnsupportSql, "escape value is not string or string size >= 2");
 
             *output = node_manager->MakeEscapeExpr(pattern, escape);

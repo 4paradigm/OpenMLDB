@@ -558,6 +558,8 @@ class ExprNode : public SqlNode {
     static Status BetweenTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* low,
                                     const TypeNode* high, const TypeNode** output_type);
 
+    static Status LikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs, const TypeNode** output);
+
  private:
     const TypeNode *output_type_ = nullptr;
     bool nullable_ = true;
@@ -1508,8 +1510,6 @@ class BinaryExpr : public ExprNode {
     BinaryExpr() : ExprNode(kExprBinary) {}
     explicit BinaryExpr(FnOperator op) : ExprNode(kExprBinary), op_(op) {}
     FnOperator GetOp() const { return op_; }
-    bool IsNot() const { return is_not_; }
-    void SetIsNot(bool is_not) { is_not_ = is_not; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
@@ -1520,7 +1520,6 @@ class BinaryExpr : public ExprNode {
 
  private:
     FnOperator op_;
-    bool is_not_ = false;
 };
 
 class UnaryExpr : public ExprNode {

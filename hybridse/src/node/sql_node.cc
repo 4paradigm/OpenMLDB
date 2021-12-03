@@ -1390,11 +1390,6 @@ void InsertStmt::Print(std::ostream &output, const std::string &org_tab) const {
 void BinaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
-    if (this->GetOp() == kFnOpLike) {
-        output << "\n";
-        // currentl is_not is only useful for like
-        PrintValue(output, tab, IsNot() ? "true" : "false", "is_not", false);
-    }
     output << "\n";
     PrintSqlVector(output, tab, children_, ExprOpTypeName(op_), true);
 }

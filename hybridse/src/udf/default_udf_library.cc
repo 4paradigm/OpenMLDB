@@ -667,20 +667,22 @@ void DefaultUdfLibrary::InitStringUdf() {
                 --output "2020-05-22"
             @endcode)");
     RegisterExternal("like_match")
-        .args<StringRef, StringRef, StringRef>(
-                reinterpret_cast<void *>(
-                static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(udf::v1::like_match)))
-            .return_by_arg(true)
-            .returns<Nullable<bool>>()
-            .doc(R"r(
-            @brief perform SQL LIKE match
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void *>(
+            static_cast<void (*)(codec::StringRef *, codec::StringRef *, codec::StringRef *, bool *, bool *)>(
+                udf::v1::like_match)))
+        .args<StringRef, StringRef>(reinterpret_cast<void *>(
+            static_cast<void (*)(codec::StringRef *, codec::StringRef *, bool *, bool *)>(udf::v1::like_match)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief perform SQL LIKE match
 
-            Example:
-            @code{.sql}
-                select 'Mike' LIKE 'mi_k';
-                -- output: true
-            @endcode
-    )r");
+                Example:
+                @code{.sql}
+                    select 'Mike' LIKE 'mi_k';
+                    -- output: true
+                @endcode
+        )r");
 }
 
 void DefaultUdfLibrary::IniMathUdf() {
