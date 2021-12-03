@@ -346,7 +346,7 @@ void like_match(codec::StringRef* name,
     std::string_view pattern_view(pattern->data_, pattern->size_);
 
     *is_null = false;
-    const char* esc = escape ? escape->data_ : nullptr;
+    const char* esc = escape && escape->size_ > 0 ? escape->data_ : nullptr;
     *out = like_match_internal(name_view, pattern_view, esc, [](char lhs, char rhs) {
         return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
     });
