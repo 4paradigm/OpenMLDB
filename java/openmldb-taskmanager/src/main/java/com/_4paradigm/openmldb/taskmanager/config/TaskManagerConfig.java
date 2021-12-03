@@ -16,8 +16,6 @@
 
 package com._4paradigm.openmldb.taskmanager.config;
 
-import sun.jvm.hotspot.utilities.Assert;
-
 import java.util.Properties;
 
 public class TaskManagerConfig {
