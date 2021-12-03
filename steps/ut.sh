@@ -48,7 +48,7 @@ else
     ROOT_DIR=$(pwd)
     echo "WORK_DIR: ${ROOT_DIR}"
     echo "sql c++ sdk test : case_level ${CASE_LEVEL}, case_file ${CASE_NAME}"
-    GLOG_minloglevel=2 HYBRIDSE_LEVEL=${CASE_LEVEL} YMAL_CASE_BASE_DIR=${ROOT_DIR} ./build/bin/${CASE_NAME} --gtest_output=xml:./reports/${CASE_NAME}.xml
+    GLOG_minloglevel=2 HYBRIDSE_LEVEL=${CASE_LEVEL} YMAL_CASE_BASE_DIR=${ROOT_DIR} "./build/bin/${CASE_NAME}" "--gtest_output=xml:./reports/${CASE_NAME}.xml"
     RET=$?
     echo "${CASE_NAME} result code is: $RET"
     if [ $RET -ne 0 ];then
@@ -57,7 +57,7 @@ else
 fi
 code=$(cat $TMPFILE)
 echo "code result: $code"
-rm $TMPFILE
+rm ${TMPFILE}
 cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh stop
 cd - || exit
-exit $code
+exit "${code}"

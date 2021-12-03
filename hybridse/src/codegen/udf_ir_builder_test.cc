@@ -185,12 +185,12 @@ TEST_F(UdfIRBuilderTest, weekofyear_timestamp_udf_test) {
 }
 
 TEST_F(UdfIRBuilderTest, month_timestamp_udf_test) {
-    Date date(2020, 05, 22);
-    CheckUdf<int32_t, Date>("month", 5, date);
+    Timestamp time(1590115420000L);
+    CheckUdf<int32_t, Timestamp>("month", 5, time);
 }
 TEST_F(UdfIRBuilderTest, year_timestamp_udf_test) {
-    Date date(2020, 05, 22);
-    CheckUdf<int32_t, Date>("year", 2020, date);
+    Timestamp time(1590115420000L);
+    CheckUdf<int32_t, Timestamp>("year", 2020, time);
 }
 
 TEST_F(UdfIRBuilderTest, minute_int64_udf_test) {
@@ -555,6 +555,14 @@ TEST_F(UdfIRBuilderTest, substring_pos_udf_test) {
                                             StringRef("1234567890"), 12);
     CheckUdf<StringRef, StringRef, int32_t>("substring", StringRef(""),
                                             StringRef("1234567890"), -12);
+}
+
+TEST_F(UdfIRBuilderTest, upper_ucase) {
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", StringRef("SQL"), StringRef("Sql"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("SQL"), StringRef("Sql"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("!ABC?"), StringRef("!Abc?"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", nullptr, nullptr);
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", nullptr, nullptr);
 }
 
 TEST_F(UdfIRBuilderTest, concat_str_udf_test) {

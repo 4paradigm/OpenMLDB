@@ -5583,9 +5583,24 @@ int NameServerImpl::CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data) {
 
 void NameServerImpl::OnLocked() {
     PDLOG(INFO, "become the leader name server");
-    bool ok = Recover();
-    if (!ok) {
+    if (!Recover()) {
         PDLOG(WARNING, "recover failed");
+    }
+    if (IsClusterMode() && (db_table_info_.empty() || db_table_info_[INTERNAL_DB].empty())) {
+        if (tablets_.size() < FLAGS_system_table_replica_num) {
+            LOG(FATAL) << "tablet num " << tablets_.size()
+                << " is less then system table replica num " << FLAGS_system_table_replica_num;
+            exit(1);
+        }
+        auto status = CreateDatabase(INTERNAL_DB);
+        if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+            LOG(FATAL) << "create internal database failed";
+            exit(1);
+        }
+        if (FLAGS_system_table_replica_num > 0 && !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
+            LOG(FATAL) << "create system table failed";
+            exit(1);
+        }
     }
     running_.store(true, std::memory_order_release);
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval,
@@ -9497,7 +9512,11 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    const std::string& db_name = request->db();
+    auto status = CreateDatabase(request->db());
+    SetResponseStatus(status, response);
+}
+
+base::Status NameServerImpl::CreateDatabase(const std::string& db_name) {
     bool is_exists = true;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -9507,20 +9526,16 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         }
     }
     if (is_exists) {
-        response->set_code(::openmldb::base::ReturnCode::kDatabaseAlreadyExists);
-        response->set_msg("database already exists");
         PDLOG(INFO, "database %s already exists", db_name.c_str());
+        return {::openmldb::base::ReturnCode::kDatabaseAlreadyExists, "database already exists"};
     } else {
-        if (IsClusterMode() && !zk_client_->CreateNode(zk_path_.db_path_ + "/" + request->db(), "")) {
-            PDLOG(WARNING, "create db node[%s/%s] failed!", zk_path_.db_path_.c_str(), request->db().c_str());
-            response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
-            response->set_msg("set zk failed");
-            return;
+        if (IsClusterMode() && !zk_client_->CreateNode(zk_path_.db_path_ + "/" + db_name, "")) {
+            PDLOG(WARNING, "create db node[%s/%s] failed!", zk_path_.db_path_.c_str(), db_name.c_str());
+            return {::openmldb::base::ReturnCode::kSetZkFailed, "set zk failed"};
         }
-        response->set_code(::openmldb::base::ReturnCode::kOk);
-        response->set_msg("ok");
         PDLOG(INFO, "create database %s success", db_name.c_str());
     }
+    return {};
 }
 
 void NameServerImpl::UseDatabase(RpcController* controller, const UseDatabaseRequest* request,
@@ -9556,7 +9571,9 @@ void NameServerImpl::ShowDatabase(RpcController* controller, const GeneralReques
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& db : databases_) {
-            response->add_db(db);
+            if (db != INTERNAL_DB) {
+                response->add_db(db);
+            }
         }
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -9567,9 +9584,14 @@ void NameServerImpl::DropDatabase(RpcController* controller, const DropDatabaseR
                                   GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(::openmldb::base::ReturnCode::kNameserverIsNotLeader);
-        response->set_msg("nameserver is not leader");
-        PDLOG(WARNING, "cur nameserver is not leader");
+        response->set_code(::openmldb::base::ReturnCode::kError);
+        response->set_msg("cannot drop internal database");
+        PDLOG(WARNING, "cannot drop internal database");
+        return;
+    }
+    if (request->db() == INTERNAL_DB) {
+        response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
+        response->set_msg("database not found");
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
@@ -10198,6 +10220,31 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoin
         return {};
     }
     return tablet_ptr;
+}
+
+base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, SystemTableType table_type) {
+    auto table_info = SystemTable::GetTableInfo(table_name, table_type);
+    if (!table_info) {
+        LOG(WARNING) << "fail to get table info. name is " << table_name;
+        return {base::ReturnCode::kError, "nullptr"};
+    }
+    uint32_t tid = 0;
+    if (!AllocateTableId(&tid)) {
+        return {base::ReturnCode::kError, "allocate tid failed"};
+    }
+    table_info->set_tid(tid);
+    if (SetPartitionInfo(*table_info) < 0) {
+        LOG(WARNING) << "set partition info failed. name is " << table_name;
+        return {base::ReturnCode::kError, "set partition info failed"};
+    }
+    uint64_t cur_term = GetTerm();
+    GeneralResponse response;
+    CreateTableInternel(response, table_info, cur_term, tid, nullptr);
+    if (response.code() != 0) {
+        return {base::ReturnCode::kError, response.msg()};
+    }
+    LOG(INFO) << "create system table ok. name is " << table_name;
+    return {};
 }
 
 }  // namespace nameserver

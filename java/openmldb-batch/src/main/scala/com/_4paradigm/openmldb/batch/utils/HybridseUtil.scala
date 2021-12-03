@@ -17,17 +17,14 @@
 package com._4paradigm.openmldb.batch.utils
 
 import java.util
-
 import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, TableDef, Type}
 import com._4paradigm.hybridse.vm.PhysicalOpNode
 import com._4paradigm.hybridse.node.{DataType => InnerDataType}
 import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
   ShortType, StringType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, Row}
-
 import scala.collection.JavaConverters.asScalaBufferConverter
-
-
+import scala.collection.mutable
 
 
 object HybridseUtil {
@@ -37,6 +34,12 @@ object HybridseUtil {
       val columnDefs = node.GetOutputSchemaSource(i).GetSchema()
       getSparkSchema(columnDefs)
     }).toArray
+  }
+
+  def getDatabases(tableMap: mutable.Map[String, mutable.Map[String, DataFrame]]): List[Database] = {
+    tableMap.map { case (dbName, tableDfMap) =>
+      getDatabase(dbName, tableDfMap.toMap)
+    }.toList
   }
 
   def getDatabase(databaseName: String, dict: Map[String, DataFrame]): Database = {

@@ -26,6 +26,8 @@
 
 #include "brpc/server.h"
 #include "gflags/gflags.h"
+#include "nameserver/name_server_impl.h"
+#include "tablet/tablet_impl.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(tablet);

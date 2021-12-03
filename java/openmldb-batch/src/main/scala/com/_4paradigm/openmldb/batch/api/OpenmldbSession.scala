@@ -43,7 +43,9 @@ class OpenmldbSession {
   private var sparkSession: SparkSession = _
   private var sparkMaster: String = _
 
-  val registeredTables: mutable.Map[String, DataFrame] = mutable.HashMap[String, DataFrame]()
+  // The map of "DatabaseName -> TableName -> Spark DataFrame"
+  val registeredTables: mutable.Map[String, mutable.Map[String, DataFrame]] =
+    mutable.HashMap[String, mutable.Map[String, DataFrame]]()
 
   private var config: OpenmldbBatchConfig = _
 
@@ -185,7 +187,7 @@ class OpenmldbSession {
     }
     val planner = new SparkPlanner(getSparkSession, config)
     this.planner = planner
-    val df = planner.plan(sql, registeredTables.toMap).getDf()
+    val df = planner.plan(sql, registeredTables).getDf()
     OpenmldbDataframe(this, df)
   }
 
@@ -234,28 +236,21 @@ class OpenmldbSession {
     }
   }
 
-  /**
-   * Record the registered tables to run.
-   *
-   * @param name the registered name of table
-   * @param df the Spark DataFrame
-   */
-  def registerTable(name: String, df: DataFrame): Unit = {
-    registeredTables.put(name, df)
+  def registerTable(dbName: String, tableName: String, df: DataFrame): Unit = {
+    if (!registeredTables.contains(dbName)) {
+      registeredTables.put(dbName, new mutable.HashMap[String, DataFrame]())
+    }
+    registeredTables(dbName).put(tableName, df)
   }
 
   /**
-   * Read table from Spark catalog and databases to register in OpenMLDB engine.
+   * Record the registered tables to run.
+   *
+   * @param tableName the registered name of table
+   * @param df the Spark DataFrame
    */
-  def registerCatalogTables(): Unit = {
-    val spark = this.sparkSession
-    spark.catalog.listDatabases().collect().flatMap(db => {
-      spark.catalog.listTables(db.name).collect().map(x => {
-        val fullyQualifiedName = s"${db.name}.${x.name}"
-        logger.info("Register table " + fullyQualifiedName)
-        registerTable(fullyQualifiedName, spark.table(fullyQualifiedName))
-      })
-    })
+  def registerTable(tableName: String, df: DataFrame): Unit = {
+    registerTable(config.defaultDb, tableName, df)
   }
 
   /**
