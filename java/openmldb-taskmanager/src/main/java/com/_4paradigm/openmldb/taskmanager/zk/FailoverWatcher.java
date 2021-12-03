@@ -42,6 +42,7 @@ public class FailoverWatcher implements Watcher {
   private final HostPort hostPort;
   private ZooKeeper zooKeeper;
   private final AtomicBoolean hasActiveServer = new AtomicBoolean(false);
+  private final AtomicBoolean becomeActiveServer = new AtomicBoolean(false);
 
   /**
    * Initialize FailoverWatcher with properties.
@@ -154,6 +155,11 @@ public class FailoverWatcher implements Watcher {
       break;
     case Disconnected: // be triggered when kill the server or the leader of zk cluster 
       LOG.warn(hostPort.getHostPort() + " received disconnected from ZooKeeper");
+
+      if (becomeActiveServer.get()) {
+        // Exit if this is master and disconnect from ZK
+        System.exit(0);
+      }
       break;
     case AuthFailed:
       LOG.fatal(hostPort.getHostPort() + " auth fail, exit immediately");
@@ -249,6 +255,7 @@ public class FailoverWatcher implements Watcher {
 
           // We are the master, return
           hasActiveServer.set(true);
+          becomeActiveServer.set(true);
           LOG.info("Become active master in " + hostPort.getHostPort());
           return true;
         }
