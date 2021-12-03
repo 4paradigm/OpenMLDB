@@ -30,13 +30,6 @@ namespace storage {
 ColumnDef::ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null)
     : name_(name), id_(id), type_(type), not_null_(not_null) {}
 
-ColumnDef::ColumnDef(const ColumnDef& col) {
-    name_ = col.GetName();
-    id_ = col.GetId();
-    type_ = col.GetType();
-    not_null_ = col.NotNull();
-}
-
 std::shared_ptr<ColumnDef> TableColumn::GetColumn(uint32_t idx) {
     if (idx < columns_.size()) {
         return columns_.at(idx);

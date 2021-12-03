@@ -18,6 +18,7 @@
 
 #include "base/glog_wapper.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "storage/mem_table.h"
@@ -557,6 +558,7 @@ TEST_F(TableTest, TableIteratorTS) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
+    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "price", ::openmldb::type::kBigInt);
@@ -567,26 +569,24 @@ TEST_F(TableTest, TableIteratorTS) {
     SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts1", ::openmldb::type::kAbsoluteTime, 0, 0);
     MemTable table(table_meta);
     table.Init();
+    codec::SDKCodec codec(table_meta);
 
     for (int i = 0; i < 1000; i++) {
+        std::vector<std::string> row = {"card" + std::to_string(i % 100), "mcc" + std::to_string(i),
+            "13", std::to_string(1000 + i), std::to_string(1000 + i)};
         ::openmldb::api::PutRequest request;
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
-        dim->set_key("card" + std::to_string(i % 100));
+        dim->set_key(row[0]);
         dim = request.add_dimensions();
         dim->set_idx(1);
-        dim->set_key("card" + std::to_string(i % 100));
+        dim->set_key(row[0]);
         dim = request.add_dimensions();
         dim->set_idx(2);
-        dim->set_key("mcc" + std::to_string(i));
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
-        ts->set_ts(1000 + i);
-        ts = request.add_ts_dimensions();
-        ts->set_idx(1);
-        ts->set_ts(10000 + i);
-        std::string value = "value" + std::to_string(i);
-        table.Put(request.dimensions(), request.ts_dimensions(), value);
+        dim->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table.Put(request.dimensions(), value);
     }
     TableIterator* it = table.NewTraverseIterator(0);
     it->SeekToFirst();
@@ -651,6 +651,7 @@ TEST_F(TableTest, TraverseIteratorCount) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
+    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "price", ::openmldb::type::kBigInt);
@@ -662,26 +663,24 @@ TEST_F(TableTest, TraverseIteratorCount) {
 
     MemTable table(table_meta);
     table.Init();
+    codec::SDKCodec codec(table_meta);
 
     for (int i = 0; i < 1000; i++) {
+        std::vector<std::string> row = {"card" + std::to_string(i % 100), "mcc" + std::to_string(i),
+            "13", std::to_string(1000 + i), std::to_string(10000 + i)};
         ::openmldb::api::PutRequest request;
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
-        dim->set_key("card" + std::to_string(i % 100));
+        dim->set_key(row[0]);
         dim = request.add_dimensions();
         dim->set_idx(1);
-        dim->set_key("card" + std::to_string(i % 100));
+        dim->set_key(row[0]);
         dim = request.add_dimensions();
         dim->set_idx(2);
-        dim->set_key("mcc" + std::to_string(i));
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
-        ts->set_ts(1000 + i);
-        ts = request.add_ts_dimensions();
-        ts->set_idx(1);
-        ts->set_ts(10000 + i);
-        std::string value = "value" + std::to_string(i);
-        table.Put(request.dimensions(), request.ts_dimensions(), value);
+        dim->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table.Put(request.dimensions(), value);
     }
     TableIterator* it = table.NewTraverseIterator(0);
     it->SeekToFirst();
@@ -745,6 +744,7 @@ void BuildTableMeta(::openmldb::api::TableMeta* table_meta) {
     table_meta->set_seg_cnt(8);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta->set_key_entry_max_height(8);
+    table_meta->set_format_version(1);
 }
 
 TEST_F(TableTest, AbsAndLatSetGet) {
@@ -760,8 +760,11 @@ TEST_F(TableTest, AbsAndLatSetGet) {
     SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc1", "mcc", "ts2", ::openmldb::type::kAbsAndLat, 2, 10);
     MemTable table(table_meta);
     table.Init();
+    codec::SDKCodec codec(table_meta);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (int i = 0; i < 10; i++) {
+        std::vector<std::string> row = {"card", "mcc",
+            "13", std::to_string(now - i * (60 * 1000)), std::to_string(now - i * (60 * 1000))};
         ::openmldb::api::PutRequest request;
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
@@ -769,14 +772,9 @@ TEST_F(TableTest, AbsAndLatSetGet) {
         dim = request.add_dimensions();
         dim->set_idx(1);
         dim->set_key("mcc");
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
-        ts->set_ts(now - i * (60 * 1000));
-        ts = request.add_ts_dimensions();
-        ts->set_idx(1);
-        ts->set_ts(now - i * (60 * 1000));
-        std::string value = "value";
-        table.Put(request.dimensions(), request.ts_dimensions(), value);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table.Put(request.dimensions(), value);
     }
     // test get and set ttl
     ASSERT_EQ(10, (int64_t)table.GetIndex(0)->GetTTL()->abs_ttl / (10 * 6000));
@@ -801,10 +799,10 @@ TEST_F(TableTest, AbsAndLatSetGet) {
         dim->set_idx(1);
         dim->set_key("mcc");
         ::openmldb::api::TSDimension* ts = entry.add_ts_dimensions();
-        ts->set_idx(0);
+        ts->set_idx(3);
         ts->set_ts(now - 10 * (60 * 1000));
         ts = entry.add_ts_dimensions();
-        ts->set_idx(1);
+        ts->set_idx(4);
         ts->set_ts(now - 2 * (60 * 1000));
         entry.set_value("value");
         ASSERT_FALSE(table.IsExpire(entry));
@@ -819,10 +817,10 @@ TEST_F(TableTest, AbsAndLatSetGet) {
         dim->set_idx(1);
         dim->set_key("mcc");
         ::openmldb::api::TSDimension* ts = entry.add_ts_dimensions();
-        ts->set_idx(0);
+        ts->set_idx(3);
         ts->set_ts(now - 12 * (60 * 1000));
         ts = entry.add_ts_dimensions();
-        ts->set_idx(1);
+        ts->set_idx(4);
         ts->set_ts(now - 10 * (60 * 1000));
         entry.set_value("value");
         ASSERT_TRUE(table.IsExpire(entry));
@@ -849,8 +847,11 @@ TEST_F(TableTest, AbsOrLatSetGet) {
 
     MemTable table(table_meta);
     table.Init();
+    codec::SDKCodec codec(table_meta);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (int i = 0; i < 10; i++) {
+        std::vector<std::string> row = {"card", "mcc",
+            "13", std::to_string(now - i * (60 * 1000)), std::to_string(now - i * (60 * 1000))};
         ::openmldb::api::PutRequest request;
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
@@ -858,14 +859,9 @@ TEST_F(TableTest, AbsOrLatSetGet) {
         dim = request.add_dimensions();
         dim->set_idx(1);
         dim->set_key("mcc");
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
-        ts->set_ts(now - i * (60 * 1000));
-        ts = request.add_ts_dimensions();
-        ts->set_idx(1);
-        ts->set_ts(now - i * (60 * 1000));
-        std::string value = "value";
-        table.Put(request.dimensions(), request.ts_dimensions(), value);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table.Put(request.dimensions(), value);
     }
     // test get and set ttl
     ASSERT_EQ(10, (int64_t)table.GetIndex(0)->GetTTL()->abs_ttl / (10 * 6000));
@@ -892,10 +888,10 @@ TEST_F(TableTest, AbsOrLatSetGet) {
         dim->set_idx(1);
         dim->set_key("mcc");
         ::openmldb::api::TSDimension* ts = entry.add_ts_dimensions();
-        ts->set_idx(0);
+        ts->set_idx(3);
         ts->set_ts(now - 10 * (60 * 1000));
         ts = entry.add_ts_dimensions();
-        ts->set_idx(1);
+        ts->set_idx(4);
         ts->set_ts(now - 2 * (60 * 1000) + 1000);
         entry.set_value("value");
         ASSERT_FALSE(table.IsExpire(entry));
@@ -910,10 +906,10 @@ TEST_F(TableTest, AbsOrLatSetGet) {
         dim->set_idx(1);
         dim->set_key("mcc");
         ::openmldb::api::TSDimension* ts = entry.add_ts_dimensions();
-        ts->set_idx(0);
+        ts->set_idx(3);
         ts->set_ts(now - 12 * (60 * 1000));
         ts = entry.add_ts_dimensions();
-        ts->set_idx(1);
+        ts->set_idx(4);
         ts->set_ts(now - 10 * (60 * 1000));
         entry.set_value("value");
         ASSERT_TRUE(table.IsExpire(entry));

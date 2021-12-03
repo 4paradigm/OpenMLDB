@@ -26,6 +26,7 @@
 #include "base/strings.h"
 #include "codec/flat_array.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
@@ -61,6 +62,7 @@ void CreateBaseTable(::openmldb::storage::Table*& table,  // NOLINT
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
+    table_meta.set_format_version(1);
 
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
@@ -74,22 +76,20 @@ void CreateBaseTable(::openmldb::storage::Table*& table,  // NOLINT
 
     table = new ::openmldb::storage::MemTable(table_meta);
     table->Init();
+    codec::SDKCodec codec(table_meta);
     for (int i = 0; i < 1000; i++) {
+        std::vector<std::string> row = {"card" + std::to_string(i % 100), "mcc" + std::to_string(i),
+            "13", std::to_string(start_ts + i), std::to_string(start_ts + i)};
         ::openmldb::api::PutRequest request;
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
-        dim->set_key("card" + std::to_string(i % 100));
+        dim->set_key(row[0]);
         dim = request.add_dimensions();
         dim->set_idx(1);
-        dim->set_key("mcc" + std::to_string(i));
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
-        ts->set_ts(start_ts + i);
-        ts = request.add_ts_dimensions();
-        ts->set_idx(1);
-        ts->set_ts(start_ts + i);
-        std::string value = "value" + std::to_string(i);
-        ASSERT_TRUE(table->Put(request.dimensions(), request.ts_dimensions(), value));
+        dim->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        ASSERT_TRUE(table->Put(request.dimensions(), value));
     }
     return;
 }

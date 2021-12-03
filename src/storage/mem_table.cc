@@ -195,9 +195,13 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     return true;
 }
 
-bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimensions, const std::string& value) {
-    if (dimensions.empty() || ts_dimensions.empty()) {
+bool MemTable::Put(const Dimensions& dimensions, const std::string& value) {
+    if (dimensions.empty()) {
         PDLOG(WARNING, "empty dimension. tid %u pid %u", id_, pid_);
+        return false;
+    }
+    if (value.length() < codec::HEADER_LENGTH) {
+        PDLOG(WARNING, "invalid value. tid %u pid %u", id_, pid_);
         return false;
     }
     std::map<int32_t, Slice> inner_index_key_map;
@@ -210,6 +214,14 @@ bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimensio
         inner_index_key_map.emplace(inner_pos, iter->key());
     }
     uint32_t real_ref_cnt = 0;
+    const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+    uint8_t version = codec::RowView::GetSchemaVersion(data);
+    auto decoder = GetVersionDecoder(version);
+    if (decoder == nullptr) {
+        PDLOG(WARNING, "invalid schema version %u, tid %u pid %u", version, id_, pid_);
+        return false;
+    }
+    std::map<int32_t, uint64_t> ts_map;
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
         if (!inner_index) {
@@ -219,22 +231,18 @@ bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimensio
         for (const auto& index_def : inner_index->GetIndex()) {
             auto ts_col = index_def->GetTsColumn();
             if (ts_col) {
-                bool has_found_ts = false;
-                for (const auto& ts_dimension : ts_dimensions) {
-                    if (ts_dimension.idx() == ts_col->GetId()) {
-                        has_found_ts = true;
-                        break;
-                    }
-                }
-                if (!has_found_ts) {
-                    DEBUGLOG("cannot find ts col %d. tid %u pid %u", ts_col->GetId(), id_, pid_);
-                    continue;
+                int64_t ts = 0;
+                if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) == 0) {
+                    ts_map.emplace(ts_col->GetId(), ts);
                 }
             }
             if (index_def->IsReady()) {
                 real_ref_cnt++;
             }
         }
+    }
+    if (ts_map.empty()) {
+        return false;
     }
     auto* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (const auto& kv : inner_index_key_map) {
@@ -253,7 +261,7 @@ bool MemTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimensio
                 seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
             }
             Segment* segment = segments_[kv.first][seg_idx];
-            segment->Put(::openmldb::base::Slice(kv.second), ts_dimensions, block);
+            segment->Put(::openmldb::base::Slice(kv.second), ts_map, block);
         }
     }
     record_cnt_.fetch_add(1, std::memory_order_relaxed);

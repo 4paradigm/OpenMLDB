@@ -149,7 +149,6 @@ enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
 class ColumnDef {
  public:
     ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null);
-    ColumnDef(const ColumnDef& col);
     inline uint32_t GetId() const { return id_; }
     inline const std::string& GetName() const { return name_; }
     inline ::openmldb::type::DataType GetType() const { return type_; }

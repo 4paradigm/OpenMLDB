@@ -612,7 +612,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         if (request->ts_dimensions_size() > 0) {
             DLOG(INFO) << "put data to tid " << request->tid() << " pid " << request->pid() << " with key "
                        << request->dimensions(0).key() << " ts " << request->ts_dimensions(0).ts();
-            ok = table->Put(request->dimensions(), request->ts_dimensions(), request->value());
+            ok = table->Put(request->dimensions(), request->value());
         } else {
             DLOG(INFO) << "put data to tid " << request->tid() << " pid " << request->pid() << " with key "
                        << request->dimensions(0).key() << " ts " << request->time();

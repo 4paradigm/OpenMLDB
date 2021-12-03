@@ -68,6 +68,8 @@ Table::Table(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, b
 void Table::AddVersionSchema(const ::openmldb::api::TableMeta& table_meta) {
     auto new_versions = std::make_shared<std::map<int32_t, std::shared_ptr<Schema>>>();
     new_versions->insert(std::make_pair(1, std::make_shared<Schema>(table_meta.column_desc())));
+    auto version_decoder = std::make_shared<std::map<int32_t, std::shared_ptr<codec::RowView>>>();
+    version_decoder->emplace(1, std::make_shared<codec::RowView>(table_meta.column_desc()));
     for (const auto& ver : table_meta.schema_versions()) {
         int remain_size = ver.field_count() - table_meta.column_desc_size();
         if (remain_size < 0) {
@@ -83,9 +85,11 @@ void Table::AddVersionSchema(const ::openmldb::api::TableMeta& table_meta) {
             openmldb::common::ColumnDesc* col = new_schema->Add();
             col->CopyFrom(table_meta.added_column_desc(i));
         }
-        new_versions->insert(std::make_pair(ver.id(), new_schema));
+        new_versions->emplace(ver.id(), new_schema);
+        version_decoder->emplace(ver.id(), std::make_shared<codec::RowView>(*new_schema));
     }
     std::atomic_store_explicit(&version_schema_, new_versions, std::memory_order_relaxed);
+    std::atomic_store_explicit(&version_decoder_, version_decoder, std::memory_order_relaxed);
 }
 
 void Table::SetTableMeta(::openmldb::api::TableMeta& table_meta) {  // NOLINT

@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 
+#include "codec/codec.h"
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
 #include "storage/schema.h"
@@ -52,11 +53,11 @@ class Table {
 
     virtual bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) = 0;
 
-    virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, const std::string& value) = 0;
+    virtual bool Put(const Dimensions& dimensions, const std::string& value) = 0;
 
     bool Put(const ::openmldb::api::LogEntry& entry) {
         if (entry.dimensions_size() > 0) {
-            return entry.ts_dimensions_size() > 0 ? Put(entry.dimensions(), entry.ts_dimensions(), entry.value())
+            return entry.ts_dimensions_size() > 0 ? Put(entry.dimensions(), entry.value())
                                                   : Put(entry.ts(), entry.value(), entry.dimensions());
         } else {
             return Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
@@ -129,6 +130,15 @@ class Table {
         return it->second;
     }
 
+    std::shared_ptr<codec::RowView> GetVersionDecoder(int32_t ver) {
+        auto versions = std::atomic_load_explicit(&version_decoder_, std::memory_order_relaxed);
+        auto it = versions->find(ver);
+        if (it == versions->end()) {
+            return nullptr;
+        }
+        return it->second;
+    }
+
     std::shared_ptr<Schema> GetSchema() {
         auto versions = std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
         if (!versions->empty()) {
@@ -179,6 +189,7 @@ class Table {
     std::shared_ptr<::openmldb::api::TableMeta> table_meta_;
     int64_t last_make_snapshot_time_;
     std::shared_ptr<std::map<int32_t, std::shared_ptr<Schema>>> version_schema_;
+    std::shared_ptr<std::map<int32_t, std::shared_ptr<codec::RowView>>> version_decoder_;
     std::shared_ptr<std::vector<::openmldb::storage::UpdateTTLMeta>> update_ttl_;
 };
 
