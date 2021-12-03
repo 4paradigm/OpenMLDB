@@ -20,51 +20,57 @@ import com._4paradigm.openmldb.common.zk.ZKClient;
 import com._4paradigm.openmldb.common.zk.ZKConfig;
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 
-import java.nio.charset.StandardCharsets;
-
 public class JobIdGenerator {
-    private static int maxJobId = 0;
-    private static int jobId = 0;
+    private volatile static int maxJobId;
+    private volatile static int currentJobId;
     private volatile static ZKClient zkClient;
+
+    static {
+        try {
+            zkClient = new ZKClient(ZKConfig.builder()
+                    .cluster(TaskManagerConfig.ZK_CLUSTER)
+                    .namespace(TaskManagerConfig.ZK_ROOT_PATH)
+                    .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
+                    .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
+                    .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
+                    .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
+                    .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
+                    .build());
+            zkClient.connect();
+            // Initialize zk nodes
+            zkClient.createNode(TaskManagerConfig.ZK_ROOT_PATH, "".getBytes());
+            zkClient.createNode(TaskManagerConfig.ZK_TASKMANAGER_PATH, "".getBytes());
+
+            int lastMaxJobId = 0;
+            if (zkClient.checkExists(TaskManagerConfig.ZK_MAX_JOB_ID_PATH)) {
+                // Get last max job id from zk
+                lastMaxJobId = Integer.parseInt(zkClient.getNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH));
+            }
+            currentJobId = lastMaxJobId;
+            maxJobId = lastMaxJobId + TaskManagerConfig.PREFETCH_JOBID_NUM;
+            // set max job id in zk
+            zkClient.setNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH, String.valueOf(maxJobId).getBytes());
+
+        } catch (Exception e) {
+            zkClient = null;
+            e.printStackTrace();
+
+
+        }
+    }
 
     private JobIdGenerator() {
     }
 
-    public static int getUniqueJobID() throws Exception {
+    public static int getUniqueId() throws Exception {
         synchronized (JobIdGenerator.class) {
-            // TODO: Remove these codes, if we support to initialize zkClient when start
-            if (zkClient == null) {
-                zkClient = new ZKClient(ZKConfig.builder()
-                        .cluster(TaskManagerConfig.ZK_CLUSTER)
-                        .namespace(TaskManagerConfig.ZK_ROOT_PATH)
-                        .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
-                        .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
-                        .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
-                        .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
-                        .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
-                        .build());
-                if (!zkClient.connect()) {
-                    throw new RuntimeException("Fail to connect zookeeper!");
-                }
-                // If node exists, will not to create node.
-                zkClient.createNode(
-                        TaskManagerConfig.ZK_ROOT_PATH, "".getBytes());
-                zkClient.createNode(
-                        TaskManagerConfig.ZK_TASKMANAGER_PATH, "".getBytes());
-                zkClient.createNode(
-                        TaskManagerConfig.ZK_MAX_JOB_ID_PATH, String.valueOf(TaskManagerConfig.PREFETCH_JOB_NUM).getBytes());
-                // Get the node value from zk
-                maxJobId = Integer.parseInt(zkClient.getNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH));
-                jobId = maxJobId;
+            currentJobId += 1;
+            if (currentJobId > maxJobId) {
+                // Update zk before returning job id
+                maxJobId += TaskManagerConfig.PREFETCH_JOBID_NUM;
+                zkClient.setNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH, String.valueOf(maxJobId).getBytes());
             }
-            // Pre-set job id in zookeeper.
-            // If taskmanager failed, pre-set job id in zk can avoid duplicate ID.
-            if ((jobId + 1) >= maxJobId) {
-                maxJobId = jobId + 1 + TaskManagerConfig.PREFETCH_JOB_NUM;
-                zkClient.setNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH,
-                        String.valueOf(maxJobId).getBytes());
-            }
-            return ++jobId;
+            return currentJobId;
         }
     }
 }

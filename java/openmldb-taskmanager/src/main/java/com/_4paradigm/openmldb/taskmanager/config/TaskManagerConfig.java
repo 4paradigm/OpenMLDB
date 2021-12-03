@@ -16,6 +16,8 @@
 
 package com._4paradigm.openmldb.taskmanager.config;
 
+import sun.jvm.hotspot.utilities.Assert;
+
 import java.util.Properties;
 
 public class TaskManagerConfig {
@@ -37,7 +39,7 @@ public class TaskManagerConfig {
     public static String BATCHJOB_JAR_PATH;
     public static String SPARK_YARN_JARS;
     public static String SPARK_HOME;
-    public static int PREFETCH_JOB_NUM = 100;
+    public static int PREFETCH_JOBID_NUM;
 
     static {
         try {
@@ -52,16 +54,16 @@ public class TaskManagerConfig {
             ZK_ROOT_PATH = prop.getProperty("zookeeper.root_path");
             ZK_TASKMANAGER_PATH = ZK_ROOT_PATH + "/taskmanager";
             ZK_MAX_JOB_ID_PATH = ZK_TASKMANAGER_PATH + "/max_job_id";
-            ZK_CONNECTION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.connection_Timeout"));
-            ZK_BASE_SLEEP_TIME = Integer.parseInt(prop.getProperty("zookeeper.base_sleep_time"));
-            ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries"));
-            ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime"));
+            ZK_CONNECTION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.connection_timeout", "5000"));
+            ZK_BASE_SLEEP_TIME = Integer.parseInt(prop.getProperty("zookeeper.base_sleep_time", "1000"));
+            ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries", "10"));
+            ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
             HIVE_METASTORE_ENDPOINT = prop.getProperty("hive.metastore.endpoint");
             SPARK_MASTER = prop.getProperty("spark.master", "yarn");
             BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
             SPARK_HOME = prop.getProperty("spark.home");
-            PREFETCH_JOB_NUM = Integer.parseInt(prop.getProperty("prefetch.job.num"));
+            PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.job.num", "10"));
         } catch (Exception e) {
             e.printStackTrace();
         }

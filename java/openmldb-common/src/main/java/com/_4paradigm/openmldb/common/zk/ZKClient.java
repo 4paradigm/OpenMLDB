@@ -34,6 +34,14 @@ public class ZKClient {
         this.config = config;
     }
 
+    public ZKConfig getConfig() {
+        return config;
+    }
+
+    public CuratorFramework getClient() {
+        return client;
+    }
+
     public boolean connect() throws Exception {
         log.info("ZKClient connect with config: {}", config);
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(config.getBaseSleepTime(), config.getMaxRetries());
@@ -60,6 +68,10 @@ public class ZKClient {
         } else {
             log.error("create ephemeral node failed. node {} is exist", realPath);
         }
+    }
+
+    public boolean checkExists(String path) throws Exception  {
+        return client.checkExists().forPath(path) != null;
     }
 
     public void createNode(String path, byte[] data) throws Exception {

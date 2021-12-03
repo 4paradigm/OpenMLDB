@@ -57,7 +57,7 @@ object JobInfoManager {
   }
 
   def createJobInfo(jobType: String, args: List[String] = List(), sparkConf: Map[String, String] = Map()): JobInfo = {
-    val jobId = JobIdGenerator.getUniqueJobID
+    val jobId = JobIdGenerator.getUniqueId
     val startTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())
     val initialState = "Submitted"
     val parameter = if (args != null && args.length>0) args.mkString(",") else ""
