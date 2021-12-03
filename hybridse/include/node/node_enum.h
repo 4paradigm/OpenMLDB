@@ -247,6 +247,10 @@ enum CmdType {
     kCmdShowDeployment,
     kCmdShowDeployments,
     kCmdDropDeployment,
+    kCmdShowJobs,
+    kCmdShowJob,
+    kCmdStopJob,
+    kCmdDeleteJob,
     kCmdUnknown = -1
 };
 enum ExplainType {

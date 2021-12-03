@@ -83,6 +83,14 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "show deployments";
         case kCmdDropDeployment:
             return "drop deployment";
+        case kCmdShowJob:
+            return "show job";
+        case kCmdShowJobs:
+            return "show jobs";
+        case kCmdDeleteJob:
+            return "delete job";
+        case kCmdStopJob:
+            return "stop job";
         case kCmdUnknown:
             return "unknown cmd type";
     }

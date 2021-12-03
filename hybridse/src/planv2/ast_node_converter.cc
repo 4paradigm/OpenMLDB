@@ -15,6 +15,7 @@
  */
 #include "planv2/ast_node_converter.h"
 
+#include "absl/strings/match.h"
 #include "base/fe_status.h"
 #include "zetasql/parser/ast_node_kind.h"
 
@@ -562,32 +563,47 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             CHECK_TRUE(nullptr != show_statement->identifier(), common::kSqlAstError, "not an ASTShowStatement")
             auto show_id = show_statement->identifier()->GetAsStringView();
 
-            if (boost::iequals(show_id, "DATABASES")) {
+            if (absl::EqualsIgnoreCase(show_id, "DATABASES")) {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowDatabases));
-            } else if (boost::iequals(show_id, "TABLES")) {
+            } else if (absl::EqualsIgnoreCase(show_id, "TABLES")) {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowTables));
-            } else if (boost::iequals(show_id, "PROCEDURES") || boost::iequals(show_id, "PROCEDURE STATUS")) {
+            } else if (absl::EqualsIgnoreCase(show_id, "PROCEDURES") || absl::EqualsIgnoreCase(show_id, "PROCEDURE STATUS")) {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowProcedures));
-            } else if (boost::iequals(show_id, "DEPLOYMENTS")) {
+            } else if (absl::EqualsIgnoreCase(show_id, "DEPLOYMENTS")) {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowDeployments));
+            } else if (absl::EqualsIgnoreCase(show_id, "JOBS")) {
+                *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowJobs));
             } else if (show_statement->optional_target_name() != nullptr) {
-                const auto names = show_statement->optional_target_name()->target();
                 node::CmdType cmd_type = node::CmdType::kCmdUnknown;
-                if (boost::iequals(show_id, "CREATE PROCEDURE")) {
+                if (absl::EqualsIgnoreCase(show_id, "CREATE PROCEDURE")) {
                     cmd_type = node::CmdType::kCmdShowCreateSp;
-                } else if (boost::iequals(show_id, "DEPLOYMENT")) {
+                } else if (absl::EqualsIgnoreCase(show_id, "DEPLOYMENT")) {
                     cmd_type = node::CmdType::kCmdShowDeployment;
+                } else if (absl::EqualsIgnoreCase(show_id, "JOB")) {
+                    cmd_type = node::CmdType::kCmdShowJob;
                 }
 
-                if (names->num_names() == 1) {
-                    *output = dynamic_cast<node::CmdNode*>(
-                        node_manager->MakeCmdNode(cmd_type, names->first_name()->GetAsString()));
-                } else if (names->num_names() == 2) {
-                    *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(
-                        cmd_type, names->first_name()->GetAsString(), names->last_name()->GetAsString()));
-                } else {
-                    FAIL_STATUS(common::kSqlAstError, "Invalid target name for SHOW ", show_id, ": ",
-                                names->ToIdentifierPathString());
+                const auto names = show_statement->optional_target_name()->target();
+
+                if (names->node_kind() == zetasql::AST_PATH_EXPRESSION) {
+                    const auto path_names = names->GetAsOrNull<const zetasql::ASTPathExpression>();
+                    CHECK_TRUE(path_names != nullptr, common::kSqlAstError, "not an ASTPathExpression");
+                    if (path_names->num_names() == 1) {
+                        *output = dynamic_cast<node::CmdNode*>(
+                        node_manager->MakeCmdNode(cmd_type, path_names->first_name()->GetAsString()));
+                    } else if (path_names->num_names() == 2) {
+                        *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(cmd_type,
+                                                                 path_names->first_name()->GetAsString(),
+                                                                 path_names->last_name()->GetAsString()));
+                    } else {
+                        FAIL_STATUS(common::kSqlAstError, "Invalid target name for SHOW ", show_id, ": ",
+                                    path_names->ToIdentifierPathString());
+                    }
+                } else if (names->node_kind() == zetasql::AST_INT_LITERAL) {
+                    const auto int_name = names->GetAsOrNull<zetasql::ASTIntLiteral>();
+                    CHECK_TRUE(int_name != nullptr, common::kSqlAstError, "not an ASTIntLiteral");
+                    *output = node_manager->MakeCmdNode(cmd_type, std::string(int_name->image().data(),
+                                                        int_name->image().size()));
                 }
             } else {
                 FAIL_STATUS(common::kSqlAstError, "Un-support SHOW: ", show_id)
@@ -711,6 +727,13 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                 CHECK_STATUS(ConvertAstOptionsListToMap(ast_select_into_stmt->options_list(), node_manager, options));
             }
             *output = node_manager->MakeSelectIntoNode(query, ast_select_into_stmt->UnparseQuery(), out_file, options);
+            break;
+        }
+        case zetasql::AST_STOP_STATEMENT: {
+
+            break;
+        }
+        case zetasql::AST_DELETE_STATEMENT: {
             break;
         }
         default: {

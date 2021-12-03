@@ -343,3 +343,17 @@ cases:
     sql: SET SELECT_MODE = 1 + 2;
     expect:
       success: false
+  - id: show jobs
+    sql: SHOW JOBS
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show jobs
+          +-args: []
+  - id: show job
+    sql: SHOW JOB 1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show job
+          +-args: [1]
