@@ -18,27 +18,23 @@ package com._4paradigm.openmldb.batch
 
 import com._4paradigm.hybridse.HybridSeLibrary
 import com._4paradigm.hybridse.`type`.TypeOuterClass.Database
-import com._4paradigm.hybridse.vm.{
-  CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
-  PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalOpNode,
-  PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode, PhysicalSortNode,
-  PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType
-}
-import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
 import com._4paradigm.hybridse.node.JoinType
-import com._4paradigm.openmldb.batch.nodes.{
-  ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan,
-  GroupByPlan, JoinPlan, LimitPlan, SortByPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, WindowAggPlan
-}
+import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
+import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
+  PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalLoadDataNode,
+  PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode,
+  PhysicalSortNode, PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType}
+import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan,
+  JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, SortByPlan, WindowAggPlan}
 import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
+import scala.collection.JavaConversions.seqAsJavaList
 
 
-class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: String) {
+class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppName: String) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -50,8 +46,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
   }
   Engine.InitializeGlobalLLVM()
 
-  def this(session: SparkSession, dbName: String) = {
-    this(session, OpenmldbBatchConfig.fromSparkSession(session), dbName)
+  def this(session: SparkSession, sparkAppName: String) = {
+    this(session, OpenmldbBatchConfig.fromSparkSession(session), sparkAppName)
   }
 
   def this(session: SparkSession, config: OpenmldbBatchConfig) = {
@@ -62,17 +58,18 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     this(session, OpenmldbBatchConfig.fromSparkSession(session), session.conf.get("spark.app.name"))
   }
 
-  def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
+  def plan(sql: String, registeredTables: mutable.Map[String, mutable.Map[String, DataFrame]]): SparkInstance = {
     // Translation state
-    val tag = s"$dbName-$sql"
+    val tag = s"$sparkAppName-$sql"
     val planCtx = new PlanContext(tag, session, this, config)
 
     // Set input tables
-    tableDict.foreach {
-      case (name, df) => planCtx.registerDataFrame(name, df)
-    }
+    planCtx.setRegisteredTables(registeredTables)
 
-    withSQLEngine(sql, HybridseUtil.getDatabase(dbName, tableDict), config) { engine =>
+    val databases: List[Database] = HybridseUtil.getDatabases(registeredTables)
+
+    withSQLEngine(sql, databases, config) { engine =>
+
       val irBuffer = engine.getIrBuffer
       planCtx.setModuleBuffer(irBuffer)
 
@@ -95,7 +92,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
       logger.info("Visit concat join node to add node index info")
       val processedConcatJoinNodeIds = mutable.HashSet[Long]()
       val indexColumnName = "__CONCATJOIN_INDEX__" + System.currentTimeMillis()
-      concatJoinNodes.map(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds, indexColumnName))
+      concatJoinNodes.foreach(joinNode => bindNodeIndexInfo(joinNode, planCtx, processedConcatJoinNodeIds,
+        indexColumnName))
 
       if (config.slowRunCacheDir != null) {
         slowRunWithHDFSCache(root, planCtx, config.slowRunCacheDir, isRoot = true)
@@ -103,6 +101,13 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
         getSparkOutput(root, planCtx)
       }
     }
+
+  }
+
+  def plan(sql: String, registeredDefaultDbTables: Map[String, DataFrame]): SparkInstance = {
+    val registeredTables = new mutable.HashMap[String, mutable.Map[String, DataFrame]]()
+    registeredTables.put(config.defaultDb, collection.mutable.Map(registeredDefaultDbTables.toSeq: _*) )
+    plan(sql, registeredTables)
   }
 
   // Visit the physical plan to get all ConcatJoinNode
@@ -181,7 +186,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     }
 
     if (node.GetNodeId() == destNodeId) {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.DestNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), NodeIndexInfo(indexColumnName, NodeIndexType.DestNode))
       // Return if handle the dest node
       return
     }
@@ -189,10 +194,10 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     // Check if it is concat join node
     if (node.GetOpType() == PhysicalOpType.kPhysicalOpJoin
       && PhysicalJoinNode.CastFrom(node).join().join_type() == JoinType.kJoinTypeConcat) {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalConcatJoinNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), NodeIndexInfo(indexColumnName, NodeIndexType.InternalConcatJoinNode))
       processedConcatJoinNodeIds.add(node.GetNodeId())
     } else {
-      ctx.putNodeIndexInfo(node.GetNodeId(), new NodeIndexInfo(indexColumnName, NodeIndexType.InternalComputeNode))
+      ctx.putNodeIndexInfo(node.GetNodeId(), NodeIndexInfo(indexColumnName, NodeIndexType.InternalComputeNode))
       processedConcatJoinNodeIds.add(node.GetNodeId())
     }
 
@@ -248,6 +253,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
         SortByPlan.gen(ctx, PhysicalSortNode.CastFrom(root), children.head)
       //case PhysicalOpType.kPhysicalOpFilter =>
       //  FilterPlan.gen(ctx, PhysicalFilterNode.CastFrom(root), children.head)
+      case PhysicalOpType.kPhysicalOpLoadData =>
+        LoadDataPlan.gen(ctx, PhysicalLoadDataNode.CastFrom(root))
       case _ =>
         throw new UnsupportedHybridSeException(s"Plan type $opType not supported")
     }
@@ -300,24 +307,25 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, dbName: S
     SparkInstance.fromDataFrame(sess.read.parquet(cacheDataPath))
   }
 
-  private def withSQLEngine[T](sql: String, db: Database, config: OpenmldbBatchConfig)(body: SqlEngine => T): T = {
+  private def withSQLEngine[T](sql: String, dbs: List[Database],
+                               config: OpenmldbBatchConfig)(body: SqlEngine => T): T = {
     var engine: SqlEngine = null
 
     val engineOptions = SqlEngine.createDefaultEngineOptions()
 
     if (config.enableWindowParallelization) {
       logger.info("Enable window parallelization optimization")
-      engineOptions.set_enable_batch_window_parallelization(true)
+      engineOptions.SetEnableBatchWindowParallelization(true)
     } else {
       logger.info("Disable window parallelization optimization, enable by setting openmldb.window.parallelization")
     }
 
     if (config.enableUnsafeRowOptimization) {
-      engineOptions.set_enable_spark_unsaferow_format(true)
+      engineOptions.SetEnableSparkUnsaferowFormat(true)
     }
 
     try {
-      engine = new SqlEngine(sql, db, engineOptions)
+      engine = new SqlEngine(sql, dbs, engineOptions, config.defaultDb)
       val res = body(engine)
       res
     } finally {

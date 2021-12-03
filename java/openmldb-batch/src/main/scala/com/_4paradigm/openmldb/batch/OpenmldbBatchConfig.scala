@@ -133,6 +133,15 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.iceberg.catalog.name", doc="The name of Iceberg catalog")
   val icebergHadoopCatalogName = "iceberg_catalog"
 
+  @ConfigOption(name="openmldb.zookeeper.cluster", doc="The cluster of ZooKeeper for NameServer")
+  val openmldbZkCluster = ""
+
+  @ConfigOption(name="openmldb.zookeeper.path", doc="The path of ZooKeeper for NameServer")
+  val openmldbZkPath = ""
+
+
+  @ConfigOption(name="openmldb.default.db", doc="The default database for OpenMLDB SQL")
+  val defaultDb = "default_db"
 }
 
 

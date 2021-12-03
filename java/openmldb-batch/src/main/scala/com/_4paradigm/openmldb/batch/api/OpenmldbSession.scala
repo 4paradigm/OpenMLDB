@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.hybridse.sdk.HybridSeException
+import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
@@ -30,7 +31,6 @@ import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
 
 
@@ -38,17 +38,20 @@ import scala.collection.mutable
  * The class to provide SparkSession-like API.
  */
 class OpenmldbSession {
-
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   private var sparkSession: SparkSession = _
   private var sparkMaster: String = _
 
-  val registeredTables: mutable.Map[String, DataFrame] = mutable.HashMap[String, DataFrame]()
+  // The map of "DatabaseName -> TableName -> Spark DataFrame"
+  val registeredTables: mutable.Map[String, mutable.Map[String, DataFrame]] =
+    mutable.HashMap[String, mutable.Map[String, DataFrame]]()
 
   private var config: OpenmldbBatchConfig = _
 
   var planner: SparkPlanner = _
+
+  var openmldbCatalogService: OpenmldbCatalogService = _
 
   /**
    * Construct with Spark session.
@@ -60,6 +63,9 @@ class OpenmldbSession {
     this.sparkSession = sparkSession
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
     this.setDefaultSparkConfig()
+    if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkPath.nonEmpty) {
+      openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkPath)
+    }
   }
 
   /**
@@ -181,7 +187,7 @@ class OpenmldbSession {
     }
     val planner = new SparkPlanner(getSparkSession, config)
     this.planner = planner
-    val df = planner.plan(sql, registeredTables.toMap).getDf()
+    val df = planner.plan(sql, registeredTables).getDf()
     OpenmldbDataframe(this, df)
   }
 
@@ -230,28 +236,21 @@ class OpenmldbSession {
     }
   }
 
-  /**
-   * Record the registered tables to run.
-   *
-   * @param name the registered name of table
-   * @param df the Spark DataFrame
-   */
-  def registerTable(name: String, df: DataFrame): Unit = {
-    registeredTables.put(name, df)
+  def registerTable(dbName: String, tableName: String, df: DataFrame): Unit = {
+    if (!registeredTables.contains(dbName)) {
+      registeredTables.put(dbName, new mutable.HashMap[String, DataFrame]())
+    }
+    registeredTables(dbName).put(tableName, df)
   }
 
   /**
-   * Read table from Spark catalog and databases to register in OpenMLDB engine.
+   * Record the registered tables to run.
+   *
+   * @param tableName the registered name of table
+   * @param df the Spark DataFrame
    */
-  def registerCatalogTables(): Unit = {
-    val spark = this.sparkSession
-    spark.catalog.listDatabases().collect().flatMap(db => {
-      spark.catalog.listTables(db.name).collect().map(x => {
-        val fullyQualifiedName = s"${db.name}.${x.name}"
-        logger.info("Register table " + fullyQualifiedName)
-        registerTable(fullyQualifiedName, spark.table(fullyQualifiedName))
-      })
-    })
+  def registerTable(tableName: String, df: DataFrame): Unit = {
+    registerTable(config.defaultDb, tableName, df)
   }
 
   /**

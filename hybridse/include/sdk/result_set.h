@@ -18,7 +18,9 @@
 #define HYBRIDSE_INCLUDE_SDK_RESULT_SET_H_
 
 #include <stdint.h>
+
 #include <string>
+
 #include "sdk/base.h"
 
 namespace hybridse {
@@ -45,48 +47,57 @@ class ResultSet {
         GetString(index, &val);
         return val;
     }
-    const std::string GetAsString(uint32_t idx) {
+
+    const bool GetAsString(uint32_t idx, std::string& val) {
         if (nullptr == GetSchema()) {
-            return "NA";
+            return false;
         }
         int schema_size = GetSchema()->GetColumnCnt();
         if (0 == schema_size) {
-            return "NA";
+            return false;
         }
 
         if ((int32_t)idx >= schema_size) {
-            return "NA";
+            return false;
         }
 
         if (IsNULL(idx)) {
-            return "NULL";
+            val = "NULL";
+            return true;
         }
         auto type = GetSchema()->GetColumnType(idx);
         switch (type) {
             case kTypeInt32: {
-                return std::to_string(GetInt32Unsafe(idx));
+                val = std::to_string(GetInt32Unsafe(idx));
+                return true;
             }
             case kTypeInt64: {
-                return std::to_string(GetInt64Unsafe(idx));
+                val = std::to_string(GetInt64Unsafe(idx));
+                return true;
             }
             case kTypeInt16: {
-                return std::to_string(GetInt16Unsafe(idx));
+                val = std::to_string(GetInt16Unsafe(idx));
+                return true;
             }
             case kTypeFloat: {
-                return std::to_string(GetFloatUnsafe(idx));
+                val = std::to_string(GetFloatUnsafe(idx));
+                return true;
             }
             case kTypeDouble: {
-                return std::to_string(GetDoubleUnsafe(idx));
+                val = std::to_string(GetDoubleUnsafe(idx));
+                return true;
             }
             case kTypeBool: {
-                return GetBoolUnsafe(idx) ? "true" : "false";
+                val = GetBoolUnsafe(idx) ? "true" : "false";
+                return true;
             }
             case kTypeString: {
-                return GetStringUnsafe(idx);
-                break;
+                val = GetStringUnsafe(idx);
+                return true;
             }
             case kTypeTimestamp: {
-                return std::to_string(GetTimeUnsafe(idx));
+                val = std::to_string(GetTimeUnsafe(idx));
+                return true;
             }
             case kTypeDate: {
                 int32_t year;
@@ -95,17 +106,26 @@ class ResultSet {
                 if (GetDate(idx, &year, &month, &day)) {
                     char date[11];
                     snprintf(date, 11u, "%4d-%.2d-%.2d", year, month, day);
-                    return std::string(date);
+                    val = std::string(date);
+                    return true;
                 } else {
-                    return "NA";
+                    return false;
                 }
             }
             default: {
                 break;
             }
         }
+        return false;
+    }
 
-        return "NA";
+    const std::string GetAsStringUnsafe(uint32_t idx, const std::string& default_na_value = "NA") {
+        std::string val;
+        if (!GetAsString(idx, val)) {
+            return default_na_value;
+        } else {
+            return val;
+        }
     }
 
     inline std::string GetRowString() {
@@ -116,7 +136,7 @@ class ResultSet {
         std::string row_str = "";
 
         for (int i = 0; i < schema_size; i++) {
-            row_str.append(GetAsString(i));
+            row_str.append(GetAsStringUnsafe(i));
             if (i != schema_size - 1) {
                 row_str.append(", ");
             }
@@ -184,8 +204,7 @@ class ResultSet {
         return val;
     }
 
-    virtual bool GetDate(uint32_t index, int32_t* year, int32_t* month,
-                         int32_t* day) = 0;
+    virtual bool GetDate(uint32_t index, int32_t* year, int32_t* month, int32_t* day) = 0;
 
     virtual bool GetDate(uint32_t index, int32_t* days) = 0;
 

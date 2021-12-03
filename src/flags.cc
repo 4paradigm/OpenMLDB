@@ -43,9 +43,8 @@ DEFINE_bool(enable_timeseries_table, true, "enable or disable timeseries table")
 DEFINE_int32(max_op_num, 10000, "config the max op num");
 DEFINE_uint32(partition_num, 8, "config the default partition_num");
 DEFINE_uint32(replica_num, 3,
-              "config the default replica_num. if set 3, there is one leader "
-              "and two followers");
-
+              "config the default replica_num. if set 3, there is one leader and two followers");
+DEFINE_uint32(system_table_replica_num, 1, "config the default replica_num of system table.");
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
 DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");

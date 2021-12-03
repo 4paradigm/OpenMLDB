@@ -205,13 +205,9 @@ public class SQLRouterSmokeTest {
             String drop = "drop table tsql1010;";
             ok = router.executeDDL(dbname, drop);
             Assert.assertTrue(ok);
-            // insert into deleted table
+            // insert into deleted table, can't get insert row
             SQLInsertRow insertRow = router.getInsertRow(dbname, insertPlaceholder);
-            insertRow.Init(5);
-            insertRow.AppendInt64(1005);
-            insertRow.AppendString("abc");
-            ok = router.executeInsert(dbname, insertPlaceholder, insertRow);
-            Assert.assertFalse(ok);
+            Assert.assertNull(insertRow);
             // drop database
             ok = router.dropDB(dbname);
             Assert.assertTrue(ok);
