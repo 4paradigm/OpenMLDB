@@ -970,6 +970,10 @@ InExpr *NodeManager::MakeInExpr(ExprNode* lhs, ExprNode* in_list, bool is_not) {
     InExpr* in_expr = new InExpr(lhs, in_list, is_not);
     return RegisterNode(in_expr);
 }
+EscapedExpr *NodeManager::MakeEscapeExpr(ExprNode* pattern, ExprNode* escape) {
+    EscapedExpr* escape_expr = new EscapedExpr(pattern, escape);
+    return RegisterNode(escape_expr);
+}
 ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
     if (node::ExprListNullOrEmpty(expr_list)) {
         return nullptr;

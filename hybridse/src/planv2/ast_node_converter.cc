@@ -15,6 +15,9 @@
  */
 #include "planv2/ast_node_converter.h"
 
+#include "base/fe_status.h"
+#include "zetasql/parser/ast_node_kind.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -222,7 +225,9 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     return status;
                 }
             }
-            *output = node_manager->MakeBinaryExprNode(lhs, rhs, op);
+            auto out = node_manager->MakeBinaryExprNode(lhs, rhs, op);
+            out->SetIsNot(binary_expression->is_not());
+            *output = out;
             return base::Status::OK();
         }
         case zetasql::AST_UNARY_EXPRESSION: {
@@ -471,6 +476,22 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                 return base::Status(common::kUnsupportSql,
                                     "Un-supported: IN predicate with unnest expression as in list");
             }
+            return base::Status::OK();
+        }
+
+        case zetasql::AST_ESCAPED_EXPRESSION: {
+            auto escaped_expr = ast_expression->GetAsOrNull<zetasql::ASTEscapedExpression>();
+            CHECK_TRUE(escaped_expr != nullptr, common::kUnsupportSql, "not and ASTEscapedExpression");
+            node::ExprNode* pattern = nullptr;
+            CHECK_STATUS(ConvertExprNode(escaped_expr->expr(), node_manager, &pattern));
+            node::ExprNode* escape = nullptr;
+            CHECK_STATUS(ConvertExprNode(escaped_expr->escape(), node_manager, &escape));
+            // limit: escape node is const string, string size can't >=2
+            CHECK_TRUE(escape->GetExprType() == node::kExprPrimary &&
+                       dynamic_cast<node::ConstNode*>(escape)->GetDataType() == node::DataType::kVarchar,
+                       common::kUnsupportSql, "escape value is not string or string size >= 2");
+
+            *output = node_manager->MakeEscapeExpr(pattern, escape);
             return base::Status::OK();
         }
 

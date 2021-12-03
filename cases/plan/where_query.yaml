@@ -297,3 +297,117 @@ cases:
           |      +-table: t1
           |      +-alias: <nil>
           +-window_list: []
+
+  - id: like_predicate_1
+    mode: request-unsupport
+    sql: SELECT col1 WHERE col2 LIKE 'kb';
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[binary]
+          |    +-is_not: false
+          |    +-LIKE[list]:
+          |      +-0:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: col2
+          |      +-1:
+          |        +-expr[primary]
+          |          +-value: kb
+          |          +-type: string
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: col1
+          |      +-name: <nil>
+          +-tableref_list: []
+          +-window_list: []
+
+  - id: like_predicate_2
+    mode: request-unsupport
+    sql: SELECT col1 WHERE col2 LIKE 'kb' ESCAPE '\\';
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[binary]
+          |    +-is_not: false
+          |    +-LIKE[list]:
+          |      +-0:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: col2
+          |      +-1:
+          |        +-expr[escape]
+          |          +-pattern:
+          |          |  +-expr[primary]
+          |          |    +-value: kb
+          |          |    +-type: string
+          |          +-escape:
+          |            +-expr[primary]
+          |              +-value: \
+          |              +-type: string
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: col1
+          |      +-name: <nil>
+          +-tableref_list: []
+          +-window_list: []
+
+  - id: like_predicate_2
+    mode: request-unsupport
+    sql: SELECT col1 WHERE col2 NOT LIKE '%k_' ESCAPE '&';
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr:
+          |  +-expr[binary]
+          |    +-is_not: true
+          |    +-LIKE[list]:
+          |      +-0:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: col2
+          |      +-1:
+          |        +-expr[escape]
+          |          +-pattern:
+          |          |  +-expr[primary]
+          |          |    +-value: %k_
+          |          |    +-type: string
+          |          +-escape:
+          |            +-expr[primary]
+          |              +-value: &
+          |              +-type: string
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: <nil>
+          |      |    +-column_name: col1
+          |      +-name: <nil>
+          +-tableref_list: []
+          +-window_list: []

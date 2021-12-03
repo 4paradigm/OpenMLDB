@@ -333,10 +333,10 @@ bool like_match_internal(std::string_view name,
 */
 void like_match(codec::StringRef* name,
                 codec::StringRef* pattern,
-                const char* escape,
+                codec::StringRef* escape,
                 bool* out,
                 bool* is_null) {
-    if (name == nullptr || pattern == nullptr || escape == nullptr) {
+    if (name == nullptr || pattern == nullptr) {
         out = nullptr;
         *is_null = true;
         return;
@@ -346,7 +346,8 @@ void like_match(codec::StringRef* name,
     std::string_view pattern_view(pattern->data_, pattern->size_);
 
     *is_null = false;
-    *out = like_match_internal(name_view, pattern_view, escape, [](char lhs, char rhs) {
+    const char* esc = escape ? escape->data_ : nullptr;
+    *out = like_match_internal(name_view, pattern_view, esc, [](char lhs, char rhs) {
         return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
     });
 }

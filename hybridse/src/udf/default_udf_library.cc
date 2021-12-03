@@ -666,6 +666,21 @@ void DefaultUdfLibrary::InitStringUdf() {
                 select date_format(date(1590115420000),"%Y-%m-%d");
                 --output "2020-05-22"
             @endcode)");
+    RegisterExternal("like_match")
+        .args<StringRef, StringRef, StringRef>(
+                reinterpret_cast<void *>(
+                static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(udf::v1::like_match)))
+            .return_by_arg(true)
+            .returns<Nullable<bool>>()
+            .doc(R"r(
+            @brief perform SQL LIKE match
+
+            Example:
+            @code{.sql}
+                select 'Mike' LIKE 'mi_k';
+                -- output: true
+            @endcode
+    )r");
 }
 
 void DefaultUdfLibrary::IniMathUdf() {

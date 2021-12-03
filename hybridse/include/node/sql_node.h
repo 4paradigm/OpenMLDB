@@ -258,9 +258,10 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "range";
         case kExprOrderExpression:
             return "order";
-        default:
-            return "unknown expr type";
+        case kExprEscaped:
+            return "escape";
     }
+    return "unknown expr type";
 }
 
 inline const std::string FrameTypeName(const FrameType &type) {
@@ -1507,6 +1508,9 @@ class BinaryExpr : public ExprNode {
     BinaryExpr() : ExprNode(kExprBinary) {}
     explicit BinaryExpr(FnOperator op) : ExprNode(kExprBinary), op_(op) {}
     FnOperator GetOp() const { return op_; }
+    bool IsNot() const { return is_not_; }
+    void SetIsNot(bool is_not) { is_not_ = is_not; }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
@@ -1516,6 +1520,7 @@ class BinaryExpr : public ExprNode {
 
  private:
     FnOperator op_;
+    bool is_not_ = false;
 };
 
 class UnaryExpr : public ExprNode {
@@ -1702,16 +1707,39 @@ class InExpr : public ExprNode {
     ExprNode* GetLhs() const { return GetChildOrNull(0); }
     ExprNode* GetInList() const { return GetChildOrNull(1); }
 
-    void Print(std::ostream &output, const std::string &org_tab) const final;
-    const std::string GetExprString() const final;
-    bool Equals(const ExprNode *node) const final;
-    InExpr *ShadowCopy(NodeManager *) const final;
-    Status InferAttr(ExprAnalysisContext *ctx) final;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    bool Equals(const ExprNode *node) const override;
+    InExpr *ShadowCopy(NodeManager *) const override;
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 
     std::string GetInTypeString() const;
 
  private:
     const bool is_not_ = false;
+};
+
+class EscapedExpr final : public ExprNode {
+ public:
+    EscapedExpr(ExprNode* pattern, ExprNode* escape)
+        : ExprNode(kExprEscaped) {
+        AddChild(pattern);
+        AddChild(escape);
+    }
+    ~EscapedExpr() {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    EscapedExpr *ShadowCopy(NodeManager *) const override;
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
+    ExprNode* GetPattern() const {
+        return GetChildOrNull(0);
+    }
+
+    ExprNode* GetEscape() const {
+        return GetChildOrNull(1);
+    }
 };
 
 class ResTarget : public SqlNode {

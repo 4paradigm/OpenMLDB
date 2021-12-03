@@ -808,6 +808,14 @@ Status InExpr::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+EscapedExpr* EscapedExpr::ShadowCopy(NodeManager * nm) const {
+    return nm->MakeEscapeExpr(GetPattern(), GetEscape());
+}
+
+Status EscapedExpr::InferAttr(ExprAnalysisContext *ctx) {
+    return Status::OK();
+}
+
 QueryExpr* QueryExpr::ShadowCopy(NodeManager* nm) const {
     return nm->MakeQueryExprNode(query_);
 }
