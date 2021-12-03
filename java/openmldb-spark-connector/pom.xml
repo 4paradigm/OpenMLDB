@@ -3,76 +3,75 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-	<parent>
-		<artifactId>openmldb-parent</artifactId>
-		<groupId>com.4paradigm.openmldb</groupId>
-		<version>0.4.0-SNAPSHOT</version>
-	</parent>
+    <parent>
+        <artifactId>openmldb-parent</artifactId>
+        <groupId>com.4paradigm.openmldb</groupId>
+        <version>0.4.0-SNAPSHOT</version>
+    </parent>
 
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-spark-connector</artifactId>
     <packaging>jar</packaging>
 
     <description>OpenMLDB Spark Connector is the connector to the OpenMLDB online storage.</description>
-
-	<developers>
-		<developer>
-			<id>hw</id>
-			<name>Huang Wei</name>
-			<email>huangwei@apache.org</email>
-			<url>http://github.com/vagetablechicken</url>
-			<organization>4Paradigm</organization>
-			<organizationUrl>https://www.4paradigm.com/</organizationUrl>
-		</developer>
-	</developers>
+    <developers>
+        <developer>
+            <id>hw</id>
+            <name>Huang Wei</name>
+            <email>huangwei@apache.org</email>
+            <url>http://github.com/vagetablechicken</url>
+            <organization>4Paradigm</organization>
+            <organizationUrl>https://www.4paradigm.com/</organizationUrl>
+        </developer>
+    </developers>
 
     <properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <encoding>UTF-8</encoding>
         <java.version>1.8</java.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-		<scala.version>2.12.8</scala.version>
-		<scala.binary.version>2.12</scala.binary.version>
+        <scala.version>2.12.8</scala.version>
+        <scala.binary.version>2.12</scala.binary.version>
         <spark.version>3.0.0</spark.version>
         <spark.dependencyScope>provided</spark.dependencyScope>
         <default.project.version>0.3.0</default.project.version>
     </properties>
-	<profiles>
-		<profile>
-			<id>default</id>
-			<activation>
-				<activeByDefault>true</activeByDefault>
-			</activation>
-			<properties>
-				<openmldbVersionFromProfile>${default.project.version}</openmldbVersionFromProfile>
-			</properties>
-		</profile>
-		<profile>
-			<id>macos</id>
-			<properties>
-				<openmldbVersionFromProfile>${default.project.version}-macos</openmldbVersionFromProfile>
-			</properties>
-		</profile>
-		<profile>
-			<id>allinone</id>
-			<properties>
-				<openmldbVersionFromProfile>${default.project.version}-allinone</openmldbVersionFromProfile>
-			</properties>
-		</profile>
-	</profiles>
+    <profiles>
+        <profile>
+            <id>default</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <openmldbVersionFromProfile>${default.project.version}</openmldbVersionFromProfile>
+            </properties>
+        </profile>
+        <profile>
+            <id>macos</id>
+            <properties>
+                <openmldbVersionFromProfile>${default.project.version}-macos</openmldbVersionFromProfile>
+            </properties>
+        </profile>
+        <profile>
+            <id>allinone</id>
+            <properties>
+                <openmldbVersionFromProfile>${default.project.version}-allinone</openmldbVersionFromProfile>
+            </properties>
+        </profile>
+    </profiles>
     <dependencies>
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
         </dependency>
-		<dependency>
-			<groupId>org.scalatest</groupId>
-			<artifactId>scalatest_${scala.binary.version}</artifactId>
-			<version>3.0.0</version>
-			<scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${scala.binary.version}</artifactId>
+            <version>3.0.0</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>

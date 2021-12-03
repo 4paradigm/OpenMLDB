@@ -84,6 +84,10 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
         for (int i = 0; i < record.numFields(); i++) {
             // sqlType
             int type = metaData.getColumnType(i + 1);
+            if (record.isNullAt(i)) {
+                preparedStatement.setNull(i + 1, type);
+                continue;
+            }
             switch (type) {
                 case Types.BOOLEAN:
                     preparedStatement.setBoolean(i + 1, record.getBoolean(i));

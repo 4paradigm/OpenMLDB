@@ -26,12 +26,21 @@ class TestWrite extends FunSuite {
   test("Test write a local file to openmldb") {
     val sess = SparkSession.builder().master("local[*]").getOrCreate()
     val readFilePath = currentThread.getContextClassLoader.getResource("test.csv")
-    val df = sess.read.option("header", "true")
+    // read options
+    val df = sess.read.option("header", "true").option("nullValue", "null")
       // spark timestampFormat is DateTime, so in test.csv, the value of c9 can't be long int.
       .schema("c1 boolean, c2 smallint, c3 int, c4 bigint, c5 float, c6 double,c7 string, c8 date, c9 timestamp, " +
         "c10_str string")
       .csv(readFilePath.toString)
     df.show()
+    // check if nullValue option works
+    val nullRow = df.collect()(1)
+    print(nullRow)
+    var i = 0
+    for (i <- 0 until nullRow.length) {
+      assert(nullRow.isNullAt(i))
+    }
+
 
     val zkCluster = "127.0.0.1:6181"
     val zkPath = "/onebox"
