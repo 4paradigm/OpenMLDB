@@ -31,14 +31,14 @@ import java.io.IOException;
 public class TaskManagerServer {
     private static final Log logger = LogFactory.getLog(TaskManagerServer.class);
 
-    public TaskManagerServer() {
+    public void start() {
         try {
             FailoverWatcher failoverWatcher = new FailoverWatcher();
 
             logger.info("The server runs and prepares for leader election");
             if (failoverWatcher.blockUntilActive()) {
                 logger.info("The server becomes active master and prepare to do business logic");
-                runBrpcServer();
+                startBrpcServer();
             }
             failoverWatcher.close();
             logger.info("The server exits after running business logic");
@@ -48,7 +48,7 @@ public class TaskManagerServer {
         }
     }
 
-    public void runBrpcServer() {
+    public void startBrpcServer() {
         try {
             RpcServerOptions options = new RpcServerOptions();
             options.setReceiveBufferSize(64 * 1024 * 1024);
@@ -75,7 +75,7 @@ public class TaskManagerServer {
 
     public static void main(String[] args) {
         TaskManagerServer server = new TaskManagerServer();
-        server.runBrpcServer();
+        server.start();
     }
 
 }
