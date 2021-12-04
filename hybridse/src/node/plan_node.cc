@@ -748,11 +748,11 @@ bool DeletePlanNode::Equals(const PlanNode *that) const {
 }
 void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
     PlanNode::Print(output, tab);
-    const std::string new_tab = tab + INDENT + SPACE_ED;
+    const std::string next_tab = tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, DeleteTargetString(target_), "target", false);
+    PrintValue(output, next_tab, DeleteTargetString(target_), "target", false);
     output << "\n";
-    PrintValue(output, tab, GetJobId(), "job_id", true);
+    PrintValue(output, next_tab, GetJobId(), "job_id", true);
 }
 
 }  // namespace node

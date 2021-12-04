@@ -393,7 +393,7 @@ void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog,
     EXPECT_EQ(err_msg.c_str(), status.msg);
 }
 
-TEST_F(TransformTest, RequestModeUnsupportLoadData){
+TEST_F(TransformTest, RequestModeUnsupportLoadData) {
     hybridse::type::Database db;
     db.set_name("db");
 
@@ -1467,6 +1467,22 @@ TEST_P(SimpleCataLogTransformPassOptimizedTest, PassOptimizedTest) {
     simple_catalog->AddDatabase(db);
     auto in_out = GetParam();
     PhysicalPlanCheck(simple_catalog, in_out.first, in_out.second);
+}
+
+TEST_F(TransformTest, DeleteStmt) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    PhysicalPlanCheck(catalog, "delete job 12", R"r(DELETE(target=JOB, job_id=12))r");
+}
+
+TEST_F(TransformTest, ShowStmt) {
 }
 
 }  // namespace vm

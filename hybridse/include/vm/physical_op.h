@@ -55,6 +55,7 @@ enum PhysicalOpType {
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
     kPhysicalOpLoadData,
+    kPhysicalOpDelete,
 };
 
 enum PhysicalSchemaType { kSchemaTypeTable, kSchemaTypeRow, kSchemaTypeGroup };
@@ -98,6 +99,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "INDEX_SEEK";
         case kPhysicalOpLoadData:
             return "LOAD_DATA";
+        case kPhysicalOpDelete:
+            return "DELETE";
         default:
             return "UNKNOW";
     }
@@ -559,6 +562,9 @@ class PhysicalDataProviderNode : public PhysicalOpNode {
 
     static PhysicalDataProviderNode *CastFrom(PhysicalOpNode *node);
     const std::string &GetName() const;
+    const std::string& GetDb() const {
+        return table_handler_->GetDatabase();
+    }
     const DataProviderType provider_type_;
     const std::shared_ptr<TableHandler> table_handler_;
 };
@@ -1611,7 +1617,11 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
  public:
     PhysicalLoadDataNode(const std::string &file, const std::string &db, const std::string &table,
                          std::shared_ptr<node::OptionsMap> options)
-        : PhysicalOpNode(kPhysicalOpLoadData, false), file_(file), db_(db), table_(table), options_(std::move(options)) {}
+        : PhysicalOpNode(kPhysicalOpLoadData, false),
+          file_(file),
+          db_(db),
+          table_(table),
+          options_(std::move(options)) {}
     ~PhysicalLoadDataNode() override = default;
     void Print(std::ostream &output, const std::string &tab) const override;
     base::Status InitSchema(PhysicalPlanContext *) override;
@@ -1639,6 +1649,29 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
     std::shared_ptr<node::OptionsMap> options_;
 };
 
+// there may more delete variants, don't mark it final
+// the delete node support only 'delete job' statement currently
+class PhysicalDeleteNode : public PhysicalOpNode {
+ public:
+    PhysicalDeleteNode(node::DeleteTarget target, const std::string& job_id)
+        : PhysicalOpNode(kPhysicalOpDelete, false), target_(target), job_id_(job_id) {}
+    ~PhysicalDeleteNode() {}
+
+    const node::DeleteTarget GetTarget() const { return target_; }
+    const std::string& GetJobId() const { return job_id_; }
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status InitSchema(PhysicalPlanContext *) override {
+        return base::Status::OK();
+    }
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override {
+        return base::Status::OK();
+    }
+ private:
+    const node::DeleteTarget target_;
+    const std::string job_id_;
+};
 /**
  * Initialize expression replacer with schema change.
  */

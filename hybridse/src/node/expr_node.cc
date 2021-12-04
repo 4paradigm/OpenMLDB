@@ -529,7 +529,8 @@ Status ExprNode::BetweenTypeAccept(node::NodeManager* nm, const TypeNode* lhs, c
 // rules:
 // 1. MC & PC is string or null
 // 2. EC is string
-Status ExprNode::LikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs, const TypeNode** output) {
+Status ExprNode::LikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
+                                const TypeNode** output) {
     CHECK_TRUE(lhs != nullptr && rhs != nullptr, kTypeError);
     CHECK_TRUE(lhs->IsNull() || lhs->IsString(), kTypeError, "invalid 'LIKE' lhs: ", lhs->GetName());
     if (rhs->IsTuple()) {
