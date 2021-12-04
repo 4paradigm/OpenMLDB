@@ -1725,7 +1725,7 @@ class InExpr : public ExprNode {
     const bool is_not_ = false;
 };
 
-class EscapedExpr final : public ExprNode {
+class EscapedExpr : public ExprNode {
  public:
     EscapedExpr(ExprNode* pattern, ExprNode* escape)
         : ExprNode(kExprEscaped) {
