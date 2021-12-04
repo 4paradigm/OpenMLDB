@@ -453,6 +453,23 @@ class CmdPlanNode : public LeafPlanNode {
     std::vector<std::string> args_;
 };
 
+class DeletePlanNode : public LeafPlanNode {
+ public:
+    DeletePlanNode(DeleteTarget target, std::string job_id)
+        : LeafPlanNode(kPlanTypeDelete), target_(target), job_id_(job_id) {}
+    ~DeletePlanNode() {}
+
+    bool Equals(const PlanNode* that) const override;
+    void Print(std::ostream& output, const std::string& tab) const override;
+
+    const DeleteTarget GetTarget() const { return target_; }
+    const std::string& GetJobId() const { return job_id_; }
+
+ private:
+    const DeleteTarget target_;
+    const std::string job_id_;
+};
+
 class DeployPlanNode : public LeafPlanNode {
  public:
     explicit DeployPlanNode(const std::string& name, const SqlNode* stmt, const std::string& stmt_str,

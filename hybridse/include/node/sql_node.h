@@ -2050,11 +2050,13 @@ class CmdNode : public SqlNode {
     std::vector<std::string> args_;
 };
 
+enum class DeleteTarget {
+    JOB
+};
+std::string DeleteTargetString(DeleteTarget target);
+
 class DeleteNode : public SqlNode {
  public:
-    enum class DeleteTarget {
-        JOB
-    };
     explicit DeleteNode(DeleteTarget t, std::string job_id)
     : SqlNode(kDeleteStmt, 0, 0), target_(t), job_id_(job_id) {}
     ~DeleteNode() {}
@@ -2062,12 +2064,12 @@ class DeleteNode : public SqlNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     std::string GetTargetString() const;
 
-    DeleteTarget GetTarget() const { return target_; }
+    const DeleteTarget GetTarget() const { return target_; }
     const std::string& GetJobId() const { return job_id_; }
 
  private:
-    DeleteTarget target_;
-    std::string job_id_;
+    const DeleteTarget target_;
+    const std::string job_id_;
 };
 
 class SelectIntoNode : public SqlNode {

@@ -1622,7 +1622,8 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
     const std::string &File() const { return file_; }
     const std::string &Db() const { return db_; }
     const std::string &Table() const { return table_; }
-    // avoid to use map<A, B*>, the B* will result in python swig errors, e.g. no member named 'type_name' in 'swig::traits<B>'
+    // avoid to use map<A, B*>, the B* will result in python swig errors,
+    //     e.g. no member named 'type_name' in 'swig::traits<B>'
     // vector<pair<>> is too complex, and will get a class in the package root dir.
     const hybridse::node::ConstNode *GetOption(const std::string &option) const {
         if (!options_) {

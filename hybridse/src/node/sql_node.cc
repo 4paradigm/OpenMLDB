@@ -2281,13 +2281,17 @@ void DeleteNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, GetJobId(), "job_id", true);
 }
 
-std::string DeleteNode::GetTargetString() const {
-    switch (target_) {
+std::string DeleteTargetString(DeleteTarget target) {
+    switch (target) {
         case DeleteTarget::JOB: {
             return "JOB";
         }
     }
     return "unknown";
+}
+
+std::string DeleteNode::GetTargetString() const {
+    return DeleteTargetString(target_);
 }
 
 Status StringToDataType(const std::string identifier, DataType *type) {

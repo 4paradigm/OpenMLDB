@@ -745,7 +745,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                 std::vector<absl::string_view> targets;
                 CHECK_STATUS(ConvertTargetName(delete_stmt->opt_target_name(), targets));
                 CHECK_TRUE(targets.size() == 1, common::kSqlAstError, "unsupported delete job with path name >= 2");
-                *output = node_manager->MakeDeleteNode(node::DeleteNode::DeleteTarget::JOB, targets.front());
+                *output = node_manager->MakeDeleteNode(node::DeleteTarget::JOB, targets.front());
             } else {
                 FAIL_STATUS(common::kSqlAstError, "unsupported type for delete statement: ", id_name);
             }

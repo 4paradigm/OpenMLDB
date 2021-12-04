@@ -284,6 +284,7 @@ enum PlanType {
     kPlanTypeLoadData,
     kPlanTypeDeploy,
     kPlanTypeSet,
+    kPlanTypeDelete,
     kUnknowPlan = -1,
 };
 
