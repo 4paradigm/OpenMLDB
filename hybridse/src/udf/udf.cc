@@ -21,6 +21,7 @@
 #include <regex>
 #include <set>
 #include <utility>
+#include "absl/strings/ascii.h"
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
@@ -49,6 +50,7 @@ using hybridse::codec::StringRef;
 // TODO(chenjing): 时区统一配置
 const int32_t TZ = 8;
 const time_t TZ_OFFSET = TZ * 3600000;
+const int MAX_ALLOC_SIZE = 2048;
 bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
 int32_t dayofmonth(int64_t ts) {
@@ -785,6 +787,19 @@ int32_t strcmp(hybridse::codec::StringRef *s1, hybridse::codec::StringRef *s2) {
     return hybridse::codec::StringRef::compare(*s1, *s2);
 }
 
+void ucase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
+    if (str == nullptr || str->size_ == 0 || output == nullptr || is_null_ptr == nullptr) {
+        return;
+    }
+    char *buffer = AllocManagedStringBuf(str->size_);
+    for (uint32_t i = 0; i < str->size_; i++) {
+        buffer[i] = absl::ascii_toupper(static_cast<unsigned char>(str->data_[i]));
+    }
+    output->size_ = str->size_;
+    output->data_ = buffer;
+    *is_null_ptr = false;
+}
+
 //
 
 template <>
@@ -907,6 +922,9 @@ uint32_t format_string<codec::StringRef>(const codec::StringRef &v,
 
 char *AllocManagedStringBuf(int32_t bytes) {
     if (bytes < 0) {
+        return nullptr;
+    }
+    if (bytes > MAX_ALLOC_SIZE) {
         return nullptr;
     }
     return reinterpret_cast<char *>(vm::JitRuntime::get()->AllocManaged(bytes));

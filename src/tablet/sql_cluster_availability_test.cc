@@ -38,6 +38,7 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_int32(request_timeout_ms);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_bool(auto_failover);
+DECLARE_uint32(system_table_replica_num);
 
 using ::openmldb::nameserver::NameServerImpl;
 using ::openmldb::zk::ZkClient;
@@ -432,5 +433,6 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }

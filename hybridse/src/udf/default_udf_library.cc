@@ -695,9 +695,25 @@ void DefaultUdfLibrary::InitStringUdf() {
                     -- output: true
                 @endcode
         )r");
+    RegisterExternal("ucase")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::ucase)))
+        .return_by_arg(true)
+        .returns<Nullable<codec::StringRef>>()
+        .doc(R"(
+            @brief Convert all the characters to uppercase. Note that characters values > 127 are simply returned.
+
+            Example:
+
+            @code{.sql}
+                SELECT UCASE('Sql') as str1;
+                --output "SQL"
+            @endcode
+            @since 0.4.0)");
+    RegisterAlias("upper", "ucase");
 }
 
-void DefaultUdfLibrary::IniMathUdf() {
+void DefaultUdfLibrary::InitMathUdf() {
     RegisterExternal("log")
         .doc(R"(
             @brief log(base, expr)
@@ -1068,6 +1084,7 @@ void DefaultUdfLibrary::IniMathUdf() {
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("truncate", {cast}, nullptr);
         });
+    InitTrigonometricUdf();
 }
 
 void DefaultUdfLibrary::InitTrigonometricUdf() {
@@ -1276,7 +1293,7 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
     RegisterExternal("tan").args<float>(static_cast<float (*)(float)>(tanf));
 }
 
-void DefaultUdfLibrary::InitUtilityUdf() {
+void DefaultUdfLibrary::InitLogicalUdf() {
     RegisterExprUdf("is_null")
         .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* input) {
             return ctx->node_manager()->MakeUnaryExprNode(input,
@@ -1513,7 +1530,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .returns<Nullable<Timestamp>>();
 }
 
-void DefaultUdfLibrary::InitDateUdf() {
+void DefaultUdfLibrary::InitTimeAndDateUdf() {
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::year))
@@ -1752,12 +1769,12 @@ void DefaultUdfLibrary::InitDateUdf() {
 
 void DefaultUdfLibrary::Init() {
     udf::RegisterNativeUdfToModule(this->node_manager());
-    InitUtilityUdf();
-    InitDateUdf();
+    InitLogicalUdf();
+    InitTimeAndDateUdf();
     InitTypeUdf();
-    IniMathUdf();
+    InitMathUdf();
     InitStringUdf();
-    InitTrigonometricUdf();
+
     InitWindowFunctions();
     InitUdaf();
     InitFeatureZero();

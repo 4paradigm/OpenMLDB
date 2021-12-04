@@ -171,7 +171,7 @@ class Cursor(object):
           driver.sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
           driver.sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
           driver.sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
-          driver.sql_router_sdk.kTypeDate: self._resultSet.GetAsString,
+          driver.sql_router_sdk.kTypeDate: self._resultSet.GetAsStringUnsafe,
           driver.sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
         }
         self.description = [

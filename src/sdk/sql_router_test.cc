@@ -1005,7 +1005,7 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
 
 class TableSchemaBuilder {
  public:
-    TableSchemaBuilder(std::string table_name) : table_name_(table_name) {}
+    explicit TableSchemaBuilder(std::string table_name) : table_name_(table_name) {}
     TableSchemaBuilder& AddCol(std::string name, hybridse::sdk::DataType type) {
         cols_.emplace_back(name, type);
         return *this;
