@@ -18,10 +18,10 @@ set(ZETASQL_TAG origin/feat/hybridse-zetasql)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64.tar.gz")
-  set(ZETASQL_HASH bc17a1979c0f64029f93ffd0ba9ada0f0aba1a317b857332c26be7cfbd972c9c)
+  set(ZETASQL_HASH 1163557f40a1775bed56ccad4190a85e9a5198de079ddb5493a3be984f21677d)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz")
-  set(ZETASQL_HASH 7ec3ef7c7a5c23e21a1c1f54161adcd686ac2f83e8444fa004252eeccd0c19b6)
+  set(ZETASQL_HASH 9857f5111460cd84b64d5be863b9390a671743f6a8e3ed467f118050739e1c86)
 endif()
 
 
