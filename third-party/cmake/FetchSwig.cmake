@@ -18,6 +18,7 @@ set(SWIG_URL https://github.com/swig/swig/archive/v4.0.1.tar.gz)
 message(STATUS "build swig from ${SWIG_URL}")
 
 find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
+find_program(YACC_EXE NAMES yacc REQUIRED)
 
 ExternalProject_Add(
   swig

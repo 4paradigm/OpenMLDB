@@ -38,7 +38,6 @@ option(BUILD_BUNDLED_GFLAGS "Build gflags from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_GPERF "Build gerftools from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_BENCHMARK "Build benchmark from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_ZLIB "Build zlib from source" ${BUILD_BUNDLED})
-option(BUILD_BUNDLED_BISON "Build bison from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_SWIG "Build swig from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_YAMLCPP "Build yaml-cpp from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_SNAPPY "Build snappy from source" ${BUILD_BUNDLED})
@@ -138,10 +137,6 @@ endif()
 
 if (BUILD_BUNDLED_ZLIB)
   include(FetchZlib)
-endif()
-
-if (BUILD_BUNDLED_BISON)
-  include(FetchBison)
 endif()
 
 if (BUILD_BUNDLED_SWIG)
