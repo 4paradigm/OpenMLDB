@@ -76,6 +76,7 @@ The pre-compiled thirdparty for Linux is built on Centos7 with gcc8, and macOS i
 - python3-devel (python3-dev on Debian) and set python3 as default python
 - libcppunit-devel (libcppunit-dev on Debian)
 - bison
+- libtool
 - bazel 1.0.0 or bazelisk
 - tcl
 - make, autoreconf

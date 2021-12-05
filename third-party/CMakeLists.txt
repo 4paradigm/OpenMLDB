@@ -29,6 +29,7 @@ set(SRC_INSTALL_DIR "${CMAKE_BINARY_DIR}/src" CACHE PATH "Source code install di
 # By default, thirdparty dependencies was fetched/build into the same directory with OpenMLDB
 option(BUILD_BUNDLED "Build dependencies from source" OFF)
 option(BUILD_BUNDLED_ZETASQL "Build zetasql from source" ${BUILD_BUNDLED})
+option(WITH_ZETASQL "Download or build zetasql" ON)
 
 option(BUILD_BUNDLED_ABSL "Build abseil-cpp from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_PROTOBUF "Build protobuf from source" ${BUILD_BUNDLED})
@@ -85,8 +86,9 @@ endif()
 set(HYBRIDSQL_ASSERTS_SRC_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz")
 set(HYBRIDSQL_ASSERTS_SRC_HASH 6bd44f5d870d6a4e52ed4c8748cc4a53ceff8744609db36d0a722d3d88c51a00)
 
-# Fetch Zetasql
-include(FetchZetasql)
+if(WITH_ZETASQL)
+  include(FetchZetasql)
+endif()
 
 # Fetch hybridsql asserts
 if(NOT BUILD_BUNDLED)
