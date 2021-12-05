@@ -17,20 +17,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   return()
 endif()
 
-if (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-  set(LIBUNWIND_URL https://github.com/libunwind/libunwind/releases/download/v1.5/libunwind-1.5.0.tar.gz)
-  set(LIBUNWIND_HASH 90337653d92d4a13de590781371c604f9031cdb50520366aa1e3a91e1efb1017)
-else()
-  set(LIBUNWIND_URL https://github.com/libunwind/libunwind/archive/refs/tags/v1.1.tar.gz)
-  set(LIBUNWIND_HASH 2cd6bfa8d1862bcc0b3b1f70f49213c67dec162dc4b0f4e7bb96a60aeb8a0345)
-  find_program(AUTORECONF NAMES autoreconf REQUIRED)
-  set(LIBUNWIND_CFLAGS "-O3 -fPIC")
-  if (CMAKE_C_COMPILER_ID MATCHES "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 10)
-    # gcc 10 compile fail https://github.com/libunwind/libunwind/pull/166
-    set(LIBUNWIND_CFLAGS "-O3 -fPIC -fcommon")
-  endif()
-  set(LIBUNWIND_PATCH ${AUTORECONF} -i)
-endif()
+set(LIBUNWIND_URL https://github.com/libunwind/libunwind/releases/download/v1.5/libunwind-1.5.0.tar.gz)
+set(LIBUNWIND_HASH 90337653d92d4a13de590781371c604f9031cdb50520366aa1e3a91e1efb1017)
 
 message(STATUS "build libunwind from ${LIBUNWIND_URL}")
 
