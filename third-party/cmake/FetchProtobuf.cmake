@@ -17,6 +17,7 @@ ExternalProject_Add(
   protobuf
   URL https://github.com/protocolbuffers/protobuf/archive/v3.6.1.3.tar.gz
   URL_HASH SHA256=73fdad358857e120fd0fa19e071a96e15c0f23bb25f85d3f7009abfd4f264a2a
+  DEPENDS zlib
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/protobuf
   INSTALL_DIR ${DEPS_INSTALL_DIR}

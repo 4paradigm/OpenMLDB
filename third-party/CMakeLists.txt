@@ -131,12 +131,12 @@ if (BUILD_BUNDLED_ABSL)
   include(FetchAbsl)
 endif()
 
-if (BUILD_BUNDLED_PROTOBUF)
-  include(FetchProtobuf)
-endif()
-
 if (BUILD_BUNDLED_ZLIB)
   include(FetchZlib)
+endif()
+
+if (BUILD_BUNDLED_PROTOBUF)
+  include(FetchProtobuf)
 endif()
 
 if (BUILD_BUNDLED_SWIG)
