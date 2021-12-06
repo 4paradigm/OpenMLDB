@@ -3268,13 +3268,11 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
         printf("addreplica - add replica to leader\n");
         printf("changerole - change role\n");
         printf("count - count the num of data in specified key\n");
-        printf("create - create table\n");
         printf("delreplica - delete replica from leader\n");
         printf("delete - delete pk\n");
         printf("deleteindex - delete index\n");
         printf("drop - drop table\n");
         printf("exit - exit client\n");
-        printf("get - get only one record\n");
         printf("gettablestatus - get table status\n");
         printf("getfollower - get follower\n");
         printf("help - get cmd info\n");
@@ -3283,12 +3281,9 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
         printf("makesnapshot - make snapshot\n");
         printf("pausesnapshot - pause snapshot\n");
         printf("preview - preview data\n");
-        printf("put - insert data into table\n");
         printf("quit - exit client\n");
         printf("recoversnapshot - recover snapshot\n");
-        printf("sput - insert data into table of multi dimension\n");
         printf("screate - create multi dimension table\n");
-        printf("scan - get records for a period of time\n");
         printf(
             "sscan - get records for a period of time from multi dimension "
             "table\n");
@@ -3298,15 +3293,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
         printf("showschema - show schema\n");
         printf("setttl - set ttl for partition\n");
     } else if (parts.size() == 2) {
-        if (parts[1] == "create") {
-            printf("desc: create table\n");
-            printf(
-                "usage: create name tid pid ttl segment_cnt [is_leader "
-                "compress_type]\n");
-            printf("ex: create table1 1 0 144000 8\n");
-            printf("ex: create table1 1 0 144000 8 true snappy\n");
-            printf("ex: create table1 1 0 144000 8 false\n");
-        } else if (parts[1] == "screate") {
+        if (parts[1] == "screate") {
             printf("desc: create multi dimension table\n");
             printf(
                 "usage: screate table_name tid pid ttl segment_cnt is_leader "
@@ -3318,20 +3305,6 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
             printf("desc: drop table\n");
             printf("usage: drop tid pid\n");
             printf("ex: drop 1 0\n");
-        } else if (parts[1] == "put") {
-            printf("desc: insert data into table\n");
-            printf("usage: put tid pid pk ts value\n");
-            printf("ex: put 1 0 key1 1528858466000 value1\n");
-        } else if (parts[1] == "sput") {
-            printf("desc: insert data into table of multi dimension\n");
-            printf("usage: sput tid pid ts key1 key2 ... value\n");
-            printf("ex: sput 1 0 1528858466000 card0 merchant0 1.1\n");
-        } else if (parts[1] == "scan") {
-            printf("desc: get records for a period of time\n");
-            printf("usage: scan tid pid pk starttime endtime [limit]\n");
-            printf("ex: scan 1 0 key1 1528858466000 1528858300000\n");
-            printf("ex: scan 1 0 key1 1528858466000 1528858300000 10\n");
-            printf("ex: scan 1 0 key1 0 0 10\n");
         } else if (parts[1] == "sscan") {
             printf(
                 "desc: get records for a period of time from multi dimension "
@@ -3342,11 +3315,6 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
             printf("ex: sscan 1 0 card0 card 1528858466000 1528858300000\n");
             printf("ex: sscan 1 0 card0 card 1528858466000 1528858300000 10\n");
             printf("ex: sscan 1 0 card0 card 0 0 10\n");
-        } else if (parts[1] == "get") {
-            printf("desc: get only one record\n");
-            printf("usage: get tid pid key ts\n");
-            printf("ex: get 1 0 key1 1528858466000\n");
-            printf("ex: get 1 0 key1 0\n");
         } else if (parts[1] == "sget") {
             printf("desc: get only one record from multi dimension table\n");
             printf("usage: sget tid pid key key_name ts\n");
@@ -4411,18 +4379,8 @@ void StartClient() {
         ::openmldb::base::SplitString(buffer, " ", parts);
         if (parts.empty()) {
             continue;
-        } else if (parts[0] == "put") {
-            HandleClientPut(parts, &client);
-        } else if (parts[0] == "sput") {
-            HandleClientSPut(parts, &client);
-        } else if (parts[0] == "create") {
-            HandleClientCreateTable(parts, &client);
-        } else if (parts[0] == "get") {
-            HandleClientGet(parts, &client);
         } else if (parts[0] == "sget") {
             HandleClientSGet(parts, &client);
-        } else if (parts[0] == "scan") {
-            HandleClientScan(parts, &client);
         } else if (parts[0] == "sscan") {
             HandleClientSScan(parts, &client);
         } else if (parts[0] == "delete") {
@@ -4435,14 +4393,6 @@ void StartClient() {
             HandleClientShowSchema(parts, &client);
         } else if (parts[0] == "getfollower") {
             HandleClientGetFollower(parts, &client);
-        } else if (parts[0] == "benput") {
-            HandleClientBenPut(parts, &client);
-        } else if (parts[0] == "benscan") {
-            HandleClientBenScan(parts, &client);
-        } else if (parts[0] == "benget") {
-            HandleClientBenGet(parts, &client);
-        } else if (parts[0] == "benchmark") {
-            HandleClientBenchmark(&client);
         } else if (parts[0] == "drop") {
             HandleClientDropTable(parts, &client);
         } else if (parts[0] == "addreplica") {
