@@ -665,70 +665,167 @@ TEST_F(ExternUdfTest, TestCompoundTypedExternalCall) {
 }
 
 TEST_F(ExternUdfTest, LikeMatchTest) {
-    auto check_func = [](bool match, bool is_null, std::string_view name, std::string_view pattern, const char escape) -> void {
+    auto check_like = [](bool match, bool is_null, const std::string_view name, const std::string_view pattern,
+                         const std::string_view esc) -> void {
         codec::StringRef name_ref(name.size(), name.data());
         codec::StringRef pattern_ref(pattern.size(), pattern.data());
-        codec::StringRef escape_ref(1, &escape);
+        codec::StringRef escape_ref(esc.size(), esc.data());
         bool ret = false;
         bool ret_null = false;
-        v1::like_match(&name_ref, &pattern_ref, &escape_ref, &ret, &ret_null);
-        EXPECT_EQ(match, ret)
-            << name << " LIKE " << pattern << " ESCAPE " << escape;
-        EXPECT_EQ(is_null, ret_null)
-            << name << " LIKE " << pattern << " ESCAPE " << escape;
+        v1::like(&name_ref, &pattern_ref, &escape_ref, &ret, &ret_null);
+        EXPECT_EQ(match, ret) << name << " LIKE '" << pattern << "' ESCAPE '" << esc << "'";
+        EXPECT_EQ(is_null, ret_null) << name << " LIKE '" << pattern << "' ESCAPE '" << esc << "'";
     };
-    check_func(true, false, "abc", "abc", '\\');
-    check_func(true, false, "Mary", "M%", '\\');
-    // case insensitive
-    check_func(true, false, "Mary", "m%", '\\');
-    check_func(true, false, "mary", "MARy", '\\');
+    check_like(true, false, "abc", "abc", "\\");
+    check_like(true, false, "Mary", "M%", "\\");
+    // case sensitive
+    check_like(false, false, "Mary", "m%", "\\");
+    check_like(false, false, "mary", "MARy", "\\");
 
-    check_func(true, false, "Mary", "M_ry", '\\');
-    check_func(true, false, "Mary", "m_ry", '\\');
+    check_like(true, false, "Mary", "M_ry", "\\");
+    check_like(false, false, "Mary", "m_ry", "\\");
+
+    // match empty
+    check_like(true, false, "", "", "\\");
+    check_like(false, false, "abc", "", "\\");
+    check_like(false, false, "", "abc", "\\");
 
     // esacpe character
-    check_func(true, false, "Evan_W", R"r(%\_%)r", '\\');
-    check_func(false, false, "EvansW", R"r(%\_%)r", '\\');
-    check_func(true, false, "Evan_W", "%$_%", '$');
-    check_func(false, false, "EvansW", "%$_%", '$');
-    check_func(true, false, "Evan%W", "eva_p%w", 'p');
+    check_like(true, false, "Evan_W", R"r(%\_%)r", "\\");
+    check_like(false, false, "EvansW", R"r(%\_%)r", "\\");
+    check_like(true, false, "Evan_W", "%$_%", "$");
+    check_like(false, false, "EvansW", "%$_%", "$");
+    check_like(true, false, "Evan%w", "Eva_p%w", "p");
 
     // not match
-    check_func(false, false, "Mike", "mary", '\\');
-    check_func(false, false, "Evan_W", "%_x", '\\');
+    check_like(false, false, "Mike", "mary", "\\");
+    check_like(false, false, "Evan_W", "%_x", "\\");
     // it is exact match
-    check_func(false, false, "Evan_W", "Evan", '\\');
-    check_func(false, false, "Super", "SupberGlob", '\\');
+    check_like(false, false, "Evan_W", "Evan", "\\");
+    check_like(false, false, "Super", "SupberGlob", "\\");
+
+    // disable escape by provide empty string
+    check_like(true, false, R"r(Evan\%w)r", R"r(Evan\%w)r", "");
+    check_like(false, false, R"r(Evan%w)r", R"r(Evan\%w)r", "");
+    check_like(true, false, R"r(Evan%w)r", R"r(Evan\%w)r", "\\");
 }
 
 TEST_F(ExternUdfTest, LikeMatchNullable) {
-    auto check_null = [](codec::StringRef* name_ref, codec::StringRef* pattern_ref, codec::StringRef* escape) -> void {
+    auto check_null = [](bool expect, bool is_null, codec::StringRef* name_ref, codec::StringRef* pattern_ref, codec::StringRef* escape) -> void {
         bool ret = false;
         bool ret_null = false;
-        v1::like_match(name_ref, pattern_ref, escape, &ret, &ret_null);
-        EXPECT_EQ(true, ret_null)
-            << (name_ref ? "<null>" : name_ref->ToString()) << " LIKE " <<
-            (pattern_ref ? "<null>" : pattern_ref->ToString()) << " ESCAPE " << (escape ? "<null>" : escape->ToString());
+        v1::like(name_ref, pattern_ref, escape, &ret, &ret_null);
+        EXPECT_EQ(is_null, ret_null) << (name_ref ? "<null>" : name_ref->ToString()) << " LIKE "
+                                     << (pattern_ref ? "<null>" : pattern_ref->ToString()) << " ESCAPE "
+                                     << (escape ? "<null>" : escape->ToString());
+        if (!is_null) {
+            EXPECT_EQ(expect, ret) << (name_ref ? "<null>" : name_ref->ToString()) << " LIKE "
+                                   << (pattern_ref ? "<null>" : pattern_ref->ToString()) << " ESCAPE "
+                                   << (escape ? "<null>" : escape->ToString());
+        }
     };
     char escape = '\\';
     codec::StringRef escape_ref(1, &escape);
     codec::StringRef name("Mary");
     codec::StringRef pattern("Ma_y");
 
-    check_null(nullptr, &pattern, &escape_ref);
-    check_null(&name, nullptr, &escape_ref);
-    check_null(nullptr, nullptr, &escape_ref);
+    // any of name or pattern is null, return null
+    check_null(false, true, nullptr, &pattern, &escape_ref);
+    check_null(false, true, &name, nullptr, &escape_ref);
+    check_null(false, true, nullptr, nullptr, &escape_ref);
+    check_null(false, true, nullptr, &pattern, nullptr);
+    check_null(false, true, &name, nullptr, nullptr);
+    check_null(false, true, nullptr, nullptr, nullptr);
 
-    check_null(nullptr, &pattern, nullptr);
-    check_null(&name, nullptr, nullptr);
-    check_null(nullptr, nullptr, nullptr);
+    // disable escape by provide nullptr
+    check_null(false, false, &name, &pattern, nullptr);
+    check_null(true, false, &pattern, &pattern, nullptr);
 }
 
-TEST_F(ExternUdfTest, LikeMatchDisableEscape) {
+TEST_F(ExternUdfTest, ILikeMatchTest) {
+    auto check_ilike = [](bool match, bool is_null, const std::string_view name, const std::string_view pattern,
+                         const std::string_view esc) -> void {
+        codec::StringRef name_ref(name.size(), name.data());
+        codec::StringRef pattern_ref(pattern.size(), pattern.data());
+        codec::StringRef escape_ref(esc.size(), esc.data());
+        bool ret = false;
+        bool ret_null = false;
+        v1::ilike(&name_ref, &pattern_ref, &escape_ref, &ret, &ret_null);
+        EXPECT_EQ(match, ret) << name << " ILIKE '" << pattern << "' ESCAPE '" << esc << "'";
+        EXPECT_EQ(is_null, ret_null) << name << " ILIKE '" << pattern << "' ESCAPE '" << esc << "'";
+    };
+    check_ilike(true, false, "abc", "abc", "\\");
+    check_ilike(true, false, "Mary", "M%", "\\");
+    // case insensitive
+    check_ilike(true, false, "Mary", "m%", "\\");
+    check_ilike(true, false, "mary", "MARy", "\\");
+
+    check_ilike(true, false, "Mary", "M_ry", "\\");
+    check_ilike(true, false, "Mary", "m_ry", "\\");
+
+    // match empty
+    check_ilike(true, false, "", "", "\\");
+    check_ilike(false, false, "abc", "", "\\");
+    check_ilike(false, false, "", "abc", "\\");
+
+    // esacpe character
+    check_ilike(true, false, "Evan_W", R"r(%\_%)r", "\\");
+    check_ilike(false, false, "EvansW", R"r(%\_%)r", "\\");
+    check_ilike(true, false, "Evan_W", "%$_%", "$");
+    check_ilike(false, false, "EvansW", "%$_%", "$");
+    check_ilike(true, false, "Evan%W", "eva_p%w", "p");
+
+    // not match
+    check_ilike(false, false, "Mike", "mary", "\\");
+    check_ilike(false, false, "Evan_W", "%_x", "\\");
+    // it is exact match
+    check_ilike(false, false, "Evan_W", "evan", "\\");
+    check_ilike(false, false, "Super", "supberGlob", "\\");
+
+    // disable escape by provide empty string
+    check_ilike(true, false, R"r(Evan\%w)r", R"r(evan\%w)r", "");
+    check_ilike(false, false, R"r(Evan%w)r", R"r(evan\%w)r", "");
+    check_ilike(true, false, R"r(Evan%w)r", R"r(evan\%w)r", "\\");
+}
+
+TEST_F(ExternUdfTest, ILikeMatchNullable) {
+    auto check_null = [](bool expect, bool is_null, codec::StringRef* name_ref, codec::StringRef* pattern_ref,
+                         codec::StringRef* escape) -> void {
+        bool ret = false;
+        bool ret_null = false;
+        v1::ilike(name_ref, pattern_ref, escape, &ret, &ret_null);
+        EXPECT_EQ(is_null, ret_null) << (name_ref ? "<null>" : name_ref->ToString()) << " ILIKE "
+                                     << (pattern_ref ? "<null>" : pattern_ref->ToString()) << " ESCAPE "
+                                     << (escape ? "<null>" : escape->ToString());
+        if (!is_null) {
+            EXPECT_EQ(expect, ret) << (name_ref ? "<null>" : name_ref->ToString()) << " ILIKE "
+                                   << (pattern_ref ? "<null>" : pattern_ref->ToString()) << " ESCAPE "
+                                   << (escape ? "<null>" : escape->ToString());
+        }
+    };
+    char escape = '\\';
+    codec::StringRef escape_ref(1, &escape);
+    codec::StringRef name("Mary");
+    codec::StringRef pattern("ma_y");
+
+    check_null(false, true, nullptr, &pattern, &escape_ref);
+    check_null(false, true, &name, nullptr, &escape_ref);
+    check_null(false, true, nullptr, nullptr, &escape_ref);
+
+    check_null(false, true, nullptr, &pattern, nullptr);
+    check_null(false, true, &name, nullptr, nullptr);
+    check_null(false, true, nullptr, nullptr, nullptr);
+
+    // disable escape by provide nullptr
+    check_null(false, false, &name, &pattern, nullptr);
+    check_null(true, false, &pattern, &pattern, nullptr);
+}
+
+TEST_F(ExternUdfTest, ILikeDisableEscape) {
     auto check_null = [](bool expect, bool is_null, codec::StringRef* name_ref, codec::StringRef* pattern_ref, codec::StringRef* escape) -> void {
         bool ret = false;
         bool ret_null = false;
-        v1::like_match(name_ref, pattern_ref, escape, &ret, &ret_null);
+        v1::ilike(name_ref, pattern_ref, escape, &ret, &ret_null);
         EXPECT_EQ(expect, ret)
             << (name_ref ? "<null>" : name_ref->ToString()) << " LIKE " <<
             (pattern_ref ? "<null>" : pattern_ref->ToString()) << " ESCAPE " << (escape ? "<null>" : escape->ToString() );
@@ -736,7 +833,7 @@ TEST_F(ExternUdfTest, LikeMatchDisableEscape) {
             << (name_ref ? "<null>" : name_ref->ToString()) << " LIKE " <<
             (pattern_ref ? "<null>" : pattern_ref->ToString()) << " ESCAPE " << (escape ? "<null>" : escape->ToString() );
     };
-    codec::StringRef name(R"p(Evan\%w)p");
+    codec::StringRef name(R"r(Evan\%w)r");
     codec::StringRef pattern(R"r(evan\%w)r");
     char escape = '\\';
     codec::StringRef esc_ref(1, &escape);

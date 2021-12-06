@@ -853,7 +853,7 @@ Status ExprIRBuilder::BuildLikeExprAsUdf(const ::hybridse::node::BinaryExpr* exp
     }
 
     node::ExprNode* transformed = nullptr;
-    CHECK_STATUS(library->Transform("like_match", proxy_args, ctx_->node_manager(),
+    CHECK_STATUS(library->Transform("like", proxy_args, ctx_->node_manager(),
                                     &transformed));
     node::ExprNode* target_expr = nullptr;
     node::ExprAnalysisContext analysis_ctx(ctx_->node_manager(), library,

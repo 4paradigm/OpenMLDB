@@ -254,17 +254,25 @@ void date_to_string(codec::Date *date, hybridse::codec::StringRef *output) {
     date_format(date, "%Y-%m-%d", output);
 }
 
-/**
-* escape: null to disable escape feature
+/*
+* SQL style glob match, use
+* - percent sign (%) as zero or more characters
+* - underscore (_) as exactly one.
+* - backslash (\) as escape character by default
+*
+* rules:
+* - escape
+*   - exception(invalid escape character): if escape size >= 2
+*   - exception(invalid escape sequence)[TODO]:
+*     if <escape character> size = 1, and in pattern string, the follower character of <escape character>
+*     is not <escape character>, <underscore> or <precent>
+*   - empty string or null value means disable escape
 *
 * credit:
 *  Michael Cook, https://github.com/MichaelCook/glob_match/blob/master/glob_match.cpp
 */
-template<typename EQUAL>
-bool like_match_internal(std::string_view name,
-                         std::string_view pattern,
-                         const char* escape,
-                         EQUAL&& equal) {
+template <typename EQUAL>
+bool like_internal(std::string_view name, std::string_view pattern, const char *escape, EQUAL &&equal) {
     auto it = pattern.cbegin();
     auto end = pattern.cend();
     auto n_it = name.cbegin();
@@ -300,7 +308,7 @@ bool like_match_internal(std::string_view name,
                 case '%': {
                     std::advance(it, 1);
                     for (auto back = n_end; back >= n_it; std::advance(back, -1)) {
-                        if (like_match_internal(std::string_view(back, std::distance(back, n_end)),
+                        if (like_internal(std::string_view(back, std::distance(back, n_end)),
                                                 std::string_view(it, std::distance(it, end)),
                                                 escape, std::forward<EQUAL>(equal))) {
                             return true;
@@ -329,26 +337,14 @@ bool like_match_internal(std::string_view name,
 }
 
 /*
-* SQL style glob match, it use
-* - percent sign (%) as zero or more characters
-* - underscore (_) as exactly one.
-* - backslash (\) as escape character by default
+* if escape is null or ref to empty string, disable escape feature
 *
-* rules:
-* - default case insensitive
-* - escape
-*   - exception(invalid escape character) if escape size >= 2
-*   - exception(invalid pattern) if pattern is escape character ended
-*   - exception check should check outside, it is not checked here
-*   - empty string means disable escape
-* - nullable
-*   - any of (name, pattern, escape) is null, return null
+* nullable
+* - any of (name, pattern) is null, return null
 */
-void like_match(codec::StringRef* name,
-                codec::StringRef* pattern,
-                codec::StringRef* escape,
-                bool* out,
-                bool* is_null) {
+template <typename EQUAL>
+void like_internal(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, EQUAL &&equal,
+                   bool *out, bool *is_null) {
     if (name == nullptr || pattern == nullptr) {
         out = nullptr;
         *is_null = true;
@@ -359,15 +355,32 @@ void like_match(codec::StringRef* name,
     std::string_view pattern_view(pattern->data_, pattern->size_);
 
     *is_null = false;
-    const char* esc = escape && escape->size_ > 0 ? escape->data_ : nullptr;
-    *out = like_match_internal(name_view, pattern_view, esc, [](char lhs, char rhs) {
-        return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
-    });
+    const char *esc = escape && escape->size_ > 0 ? escape->data_ : nullptr;
+    *out = like_internal(name_view, pattern_view, esc, equal);
 }
 
-void like_match(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
+void like(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out, bool *is_null) {
+    like_internal(
+        name, pattern, escape, [](char lhs, char rhs) { return lhs == rhs; }, out, is_null);
+}
+
+void like(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
     static codec::StringRef default_esc(1, "\\");
-    like_match(name, pattern, &default_esc, out, is_null);
+    like(name, pattern, &default_esc, out, is_null);
+}
+
+void ilike(codec::StringRef* name, codec::StringRef* pattern, codec::StringRef* escape, bool* out, bool* is_null) {
+    like_internal(
+        name, pattern, escape,
+        [](char lhs, char rhs) {
+            return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+        },
+        out, is_null);
+}
+
+void ilike(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
+    static codec::StringRef default_esc(1, "\\");
+    ilike(name, pattern, &default_esc, out, is_null);
 }
 
 /* case insensitive regex match */

@@ -463,7 +463,9 @@ cases:
       columns: ["col1:bool"]
       rows:
         - [true]
-  - id: like_match_1
+
+  # ilike udf
+  - id: ilike_match_1
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
@@ -471,12 +473,12 @@ cases:
         rows:
           - [1, 1590115420001, "Mike"]
     sql: |
-      select like_match(col2, 'm%', '\\')  as col2 from t1;
+      select ilike(col2, 'm%', '\\')  as col2 from t1;
     expect:
       columns: ["col2:bool"]
       rows:
         - [true]
-  - id: like_match_2
+  - id: ilike_match_2
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
@@ -484,12 +486,12 @@ cases:
         rows:
           - [1, 1590115420001, "Mike"]
     sql: |
-      select like_match(col2, 'mi', '\\')  as col2 from t1;
+      select ilike(col2, 'mi', '\\')  as col2 from t1;
     expect:
       columns: ["col2:bool"]
       rows:
         - [false]
-  - id: like_match_3
+  - id: ilike_match_3
     desc: disable escape feature
     inputs:
       - name: t1
@@ -498,12 +500,12 @@ cases:
         rows:
           - [1, 1590115420001, "Mike"]
     sql: |
-      select like_match(col2, 'm%', '')  as col2 from t1;
+      select ilike(col2, 'm%', '')  as col2 from t1;
     expect:
       columns: ["col2:bool"]
       rows:
         - [false]
-  - id: like_match_4
+  - id: ilike_match_4
     desc: MC is null
     inputs:
       - name: t1
@@ -512,12 +514,12 @@ cases:
         rows:
           - [1, 1590115420001, null]
     sql: |
-      select like_match(col2, 'm%', '\\')  as col2 from t1;
+      select ilike(col2, 'm%', '\\')  as col2 from t1;
     expect:
       columns: ["col2:bool"]
       rows:
         - [null]
-  - id: like_match_5
+  - id: ilike_match_5
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
@@ -525,11 +527,12 @@ cases:
         rows:
           - [1, 1590115420001, mike]
     sql: |
-      select like_match(col2, 'm%')  as col2 from t1;
+      select ilike(col2, 'm%')  as col2 from t1;
     expect:
       columns: ["col2:bool"]
       rows:
         - [true]
+
   - id: like_predicate_1
     inputs:
       - name: t1
@@ -538,7 +541,7 @@ cases:
         rows:
           - [1, 1590115420001, "Mike"]
     sql: |
-      select col2 LIKE 'm%' as col2 from t1;
+      select col2 LIKE 'M%' as col2 from t1;
     expect:
       columns: ["col2:bool"]
       rows:
@@ -558,7 +561,7 @@ cases:
       rows:
         - [true]
   - id: like_predicate_3
-    desc: like is case insensitive by default
+    desc: like is case sensitive
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
@@ -570,7 +573,7 @@ cases:
     expect:
       columns: ["col2:bool"]
       rows:
-        - [true]
+        - [false]
   - id: like_predicate_4
     desc: (%) and (_) together
     inputs:
@@ -580,7 +583,7 @@ cases:
         rows:
           - [1, 1590115420001, "Mike"]
     sql: |
-      select col2 LIKE 'm%_e' as col2 from t1;
+      select col2 LIKE 'M%_e' as col2 from t1;
     expect:
       columns: ["col2:bool"]
       rows:
@@ -594,7 +597,7 @@ cases:
         rows:
           - [1, 1590115420001, "Mike"]
     sql: |
-      select col2 LIKE 'mik' as col2 from t1;
+      select col2 LIKE 'Mik' as col2 from t1;
     expect:
       columns: ["col2:bool"]
       rows:
@@ -608,7 +611,7 @@ cases:
         rows:
           - [1, 1590115420001, null]
     sql: |
-      select col2 LIKE 'mike' as col2 from t1;
+      select col2 LIKE 'Mike' as col2 from t1;
     expect:
       columns: ["col2:bool"]
       rows:
@@ -638,7 +641,7 @@ cases:
           - [2, 1590115420001, Mi_e ]
           - [3, 1590115420001, Mi&_e ]
     sql: |
-      select col1, col2 LIKE 'mi_e' ESCAPE '\\' as col2 from t1;
+      select col1, col2 LIKE 'Mi_e' ESCAPE '\\' as col2 from t1;
     expect:
       columns: ["col1:int", "col2:bool"]
       order: col1
@@ -657,7 +660,7 @@ cases:
           - [2, 1590115420001, A_e ]
           - [3, 1590115420001, A&_e ]
     sql: |
-      select col1, col2 not LIKE 'a&_e' ESCAPE '&' as col2 from t1;
+      select col1, col2 not LIKE 'A&_e' ESCAPE '&' as col2 from t1;
     expect:
       columns: ["col1:int", "col2:bool"]
       order: col1
@@ -676,7 +679,7 @@ cases:
           - [2, 1590115420001, A&ke ]
           - [3, 1590115420001, A&_e ]
     sql: |
-      select col1, col2 LIKE 'a&_e' ESCAPE '' as col2 from t1;
+      select col1, col2 LIKE 'A&_e' ESCAPE '' as col2 from t1;
     expect:
       order: col1
       columns: ["col1:int", "col2:bool"]
