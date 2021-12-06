@@ -48,6 +48,14 @@ make CMAKE_BUILD_TYPE=Debug
 
   默认: OFF
 
+- NPROC: 并发编译数
+
+  默认: $(nproc)
+
+- CMAKE_EXTRA_FLAGS: 传递给 cmake 的额外参数
+
+  默认: ‘’
+
 
 ## 针对OpenMLDB优化的Spark发行版（可选）
 

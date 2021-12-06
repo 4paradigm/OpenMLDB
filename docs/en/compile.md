@@ -48,6 +48,14 @@ make CMAKE_BUILD_TYPE=Debug
 
   Default: OFF
 
+- NPROC: parallel build number
+
+  Default: $(nproc)
+
+- CMAKE_EXTRA_FLAGS: extra flags passed to cmake
+
+  默认: ‘’
+
 
 ## Optimized Spark Distribution for OpenMLDB (Optional)
 
