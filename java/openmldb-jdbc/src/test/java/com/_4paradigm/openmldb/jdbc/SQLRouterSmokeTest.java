@@ -18,9 +18,11 @@ package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.SQLInsertRow;
 import com._4paradigm.openmldb.SQLInsertRows;
+import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
+import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import org.testng.Assert;
@@ -57,6 +59,9 @@ public class SQLRouterSmokeTest {
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
+            NS.TableInfo info = router.getTableInfo("db", "tsql1010");
+            Assert.assertEquals(info.getName(), "tsql1010");
+
             // insert normal (1000, 'hello')
             String insert = "insert into tsql1010 values(1000, 'hello');";
             ok = router.executeInsert(dbname, insert);
@@ -592,12 +597,12 @@ public class SQLRouterSmokeTest {
         } catch (SQLException ignored) {
         }
         try {
-            SqlClusterExecutor.genDDL("", Maps.newHashMap());
+            SqlClusterExecutor.genDDL("", Maps.<String, Map<String, Schema>>newHashMap());
             Assert.fail("null input schema will throw an exception");
         } catch (SQLException ignored) {
         }
         try {
-            SqlClusterExecutor.genOutputSchema("", Maps.newHashMap());
+            SqlClusterExecutor.genOutputSchema("", Maps.<String, Map<String, Schema>>newHashMap());
             Assert.fail("null input schema will throw an exception");
         } catch (SQLException ignored) {
         }

@@ -515,6 +515,7 @@ service NameServer {
     rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
     rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
     rpc ShowCatalog(ShowCatalogRequest) returns (ShowCatalogResponse);
+    rpc UpdateOfflineTableInfo(TableInfo) returns (GeneralResponse);
 
     // sql procedure interfaces
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);

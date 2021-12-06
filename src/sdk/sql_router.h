@@ -143,9 +143,11 @@ class SQLRouter {
     virtual std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
                                                                   const std::string& table_name) = 0;
 
-    virtual std::vector<std::string>GetTableNames(const std::string& db) = 0;
+    virtual std::vector<std::string> GetTableNames(const std::string& db) = 0;
 
     virtual ::openmldb::nameserver::TableInfo GetTableInfo(const std::string& db, const std::string& table) = 0;
+
+    virtual bool UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
@@ -200,4 +202,3 @@ std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
 }  // namespace sdk
 }  // namespace openmldb
 #endif  // SRC_SDK_SQL_ROUTER_H_
-

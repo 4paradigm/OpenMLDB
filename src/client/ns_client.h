@@ -224,6 +224,8 @@ class NsClient : public Client {
     bool ShowProcedure(const std::string& db_name, const std::string& sp_name, std::vector<api::ProcedureInfo>* infos,
                        std::string* msg);
 
+    bool UpdateOfflineTableInfo(const nameserver::TableInfo& table_info);
+
  private:
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> client_;
     std::string db_;

@@ -938,5 +938,16 @@ bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_n
     return false;
 }
 
+bool NsClient::UpdateOfflineTableInfo(const nameserver::TableInfo& table_info) {
+    nameserver::GeneralResponse response;
+    bool ok = client_.SendRequest(&nameserver::NameServer_Stub::UpdateOfflineTableInfo, &table_info, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    LOG(WARNING) << "update offline table info failed: " << response.msg();
+    return false;
+}
+
 }  // namespace client
 }  // namespace openmldb

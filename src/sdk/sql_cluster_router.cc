@@ -1475,5 +1475,9 @@ std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) 
     return *table_infos;
 }
 
+bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) {
+    return cluster_sdk_->GetNsClient()->UpdateOfflineTableInfo(info);
+}
+
 }  // namespace sdk
 }  // namespace openmldb

@@ -115,7 +115,7 @@ class OpenmldbSession {
    * Read the file with get dataframe with Spark API.
    *
    * @param filePath the path to read
-   * @param format the format of data
+   * @param format   the format of data
    * @return
    */
   def read(filePath: String, format: String = "parquet"): OpenmldbDataframe = {
@@ -159,7 +159,7 @@ class OpenmldbSession {
     if (!sql.trim.endsWith(";")) {
       sql = sql.trim + ";"
     }
-    val planner = new SparkPlanner(getSparkSession, config)
+    val planner = new SparkPlanner(this, config)
     this.planner = planner
     val df = planner.plan(sql, registeredTables).getDf()
     OpenmldbDataframe(this, df)
@@ -221,7 +221,7 @@ class OpenmldbSession {
    * Record the registered tables to run.
    *
    * @param tableName the registered name of table
-   * @param df the Spark DataFrame
+   * @param df        the Spark DataFrame
    */
   def registerTable(tableName: String, df: DataFrame): Unit = {
     registerTable(config.defaultDb, tableName, df)
@@ -268,7 +268,7 @@ class OpenmldbSession {
     }
 
     // Check if table exists
-    if(catalog.tableExists(tableIdentifier)) {
+    if (catalog.tableExists(tableIdentifier)) {
       catalog.close()
       logger.error("Table %s already exists".format(tableName))
       throw new HybridSeException("Table %s already exists, Please check the table name".format(tableName))
@@ -283,7 +283,7 @@ class OpenmldbSession {
   }
 
   def registerOpenmldbOfflineTable(catalogService: OpenmldbCatalogService): Unit = {
-    val databases = catalogService.getDatabases()
+    val databases = catalogService.getDatabases
     databases.map(dbName => {
       val tableInfos = catalogService.getTableInfos(dbName)
       tableInfos.map(tableInfo => {
@@ -294,6 +294,7 @@ class OpenmldbSession {
           val path = offlineTableInfo.getPath
           val format = offlineTableInfo.getFormat
 
+          // default offlineTableInfo required members 'path' & 'format' won't be null
           if (path != null && path.nonEmpty && format != null && format.nonEmpty) {
             // Has offline table meta
             val df = format.toLowerCase match {
