@@ -419,10 +419,6 @@ bool MemTable::IsExpire(const LogEntry& entry) {
     if (!enable_gc_.load(std::memory_order_relaxed)) {
         return false;
     }
-    std::map<uint32_t, uint64_t> ts_dimemsions_map;
-    for (auto iter = entry.ts_dimensions().begin(); iter != entry.ts_dimensions().end(); iter++) {
-        ts_dimemsions_map.insert(std::make_pair(iter->idx(), iter->ts()));
-    }
     std::map<int32_t, std::string> inner_index_key_map;
     if (entry.dimensions_size() > 0) {
         for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); iter++) {
@@ -436,6 +432,13 @@ bool MemTable::IsExpire(const LogEntry& entry) {
         if (inner_pos >= 0) {
             inner_index_key_map.emplace(inner_pos, entry.pk());
         }
+    }
+    const int8_t* data = reinterpret_cast<const int8_t*>(entry.value().data());
+    uint8_t version = codec::RowView::GetSchemaVersion(data);
+    auto decoder = GetVersionDecoder(version);
+    if (decoder == nullptr) {
+        PDLOG(WARNING, "invalid schema version %u, tid %u pid %u", version, id_, pid_);
+        return false;
     }
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
@@ -452,16 +455,12 @@ bool MemTable::IsExpire(const LogEntry& entry) {
                 return false;
             }
             TTLType ttl_type = index_def->GetTTLType();
-            uint64_t ts = entry.ts();
+            int64_t ts = entry.ts();
             auto ts_col = index_def->GetTsColumn();
-            int32_t ts_idx = -1;
             if (ts_col) {
-                ts_idx = ts_col->GetId();
-                auto iter = ts_dimemsions_map.find(ts_idx);
-                if (iter == ts_dimemsions_map.end()) {
+                if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
                     continue;
                 }
-                ts = iter->second;
             }
             bool is_expire = false;
             uint32_t index_id = index_def->GetId();

@@ -165,6 +165,7 @@ bool IndexUtil::CheckExist(const ::openmldb::common::ColumnKey& column_key,
             return true;
         }
     }
+    *pos = index_pos;
     return false;
 }
 
