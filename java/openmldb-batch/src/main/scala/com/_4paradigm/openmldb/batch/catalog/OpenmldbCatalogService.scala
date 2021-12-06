@@ -16,25 +16,23 @@
 
 package com._4paradigm.openmldb.batch.catalog
 
-import com._4paradigm.hybridse.LibraryLoader
-import com._4paradigm.openmldb.{SQLRouterOptions, sql_router_sdk}
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
+import com._4paradigm.openmldb.sdk.SdkOption
 
 class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
 
-  {
-    LibraryLoader.loadLibrary("sql_jsdk")
+  val option = new SdkOption
+  option.setZkPath(zkCluster)
+  option.setZkCluster(zkPath)
+
+  val sqlExecutor = new SqlClusterExecutor(option)
+
+  def getDatabases(): java.util.List[String] = {
+    sqlExecutor.showDatabases()
   }
 
-  val sqlOpt = new SQLRouterOptions
-  sqlOpt.setZk_cluster(zkCluster)
-  sqlOpt.setZk_path(zkPath)
+  def getTables(): Unit = {
 
-  val sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt)
-  sqlOpt.delete()
-  if (sqlRouter == null) {
-    throw new Exception("fail to create sql executor")
   }
-
-  // TODO: use sql router to get catalog data from NameServer
 
 }

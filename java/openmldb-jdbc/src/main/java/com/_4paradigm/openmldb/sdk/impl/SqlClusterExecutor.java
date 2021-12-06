@@ -42,7 +42,6 @@ import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -343,6 +342,25 @@ public class SqlClusterExecutor implements SqlExecutor {
             sqlRouter.delete();
             sqlRouter = null;
         }
+    }
+
+    public List<String> showDatabases() {
+        List<String> databases = new ArrayList<>();
+
+        Status status = new Status();
+        VectorString dbs = new VectorString();
+        boolean ok = sqlRouter.ShowDB(dbs, status);
+        if (!ok) {
+            logger.error("showDatabases fail: {}", status.getMsg());
+        } else {
+            for (int i=0; i < dbs.size(); ++i) {
+                databases.add(dbs.get(i));
+            }
+        }
+
+        status.delete();
+        dbs.delete();
+        return databases;
     }
 
 }
