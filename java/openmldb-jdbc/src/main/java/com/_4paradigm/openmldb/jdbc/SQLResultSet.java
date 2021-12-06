@@ -1076,7 +1076,7 @@ public class SQLResultSet implements ResultSet {
         if (this.resultSet.IsNULL(i - 1)) {
             return null;
         }
-        return this.resultSet.GetAsString(i - 1);
+        return this.resultSet.GetAsStringUnsafe(i - 1);
     }
 
     @Override

@@ -45,7 +45,7 @@ class FileOptionsParser {
             boost::to_lower(key);
             auto pair = check_map_.find(key);
             if (pair == check_map_.end()) {
-                return {openmldb::base::kSQLCmdRunError, "this option " + key + " is not currently supported"};
+                return {openmldb::base::kSQLCmdRunError, "ERROR: this option " + key + " is not currently supported"};
             }
             auto status = GetOption(item.second, key, pair->second.first, pair->second.second);
             if (!status.OK()) {
@@ -54,7 +54,7 @@ class FileOptionsParser {
         }
         if (delimiter_.find_first_of(quote_) != std::string::npos) {
             return {openmldb::base::kSQLCmdRunError,
-                    "delimiter[" + delimiter_ + "] can't include quote[" + quote_ + "]"};
+                    "ERROR: delimiter[" + delimiter_ + "] can't include quote[" + quote_ + "]"};
         }
         return {};
     }
@@ -82,15 +82,15 @@ class FileOptionsParser {
                                        std::function<bool(const hybridse::node::ConstNode* node)> const& f,
                                        hybridse::node::DataType option_type) {
         if (node == nullptr) {
-            return {base::kSQLCmdRunError, "node is nullptr"};
+            return {base::kSQLCmdRunError, "ERROR: node is nullptr"};
         }
         if (node->GetDataType() != option_type) {
-            return {openmldb::base::kSQLCmdRunError, "wrong type " + hybridse::node::DataTypeName(node->GetDataType()) +
+            return {openmldb::base::kSQLCmdRunError, "ERROR: wrong type " + hybridse::node::DataTypeName(node->GetDataType()) +
                                                          " for option " + option_name + ", it should be " +
                                                          hybridse::node::DataTypeName(option_type)};
         }
         if (!f(node)) {
-            return {base::kSQLCmdRunError, "parse option " + option_name + " failed"};
+            return {base::kSQLCmdRunError, "ERROR: parse option " + option_name + " failed"};
         }
         return {};
     }
@@ -144,7 +144,7 @@ class FileOptionsParser {
 
 class ReadFileOptionsParser : public FileOptionsParser {
  public:
-    ReadFileOptionsParser() { quote_ = '\0'; };
+    ReadFileOptionsParser() { quote_ = '\0'; }
 };
 
 class WriteFileOptionsParser : public FileOptionsParser {

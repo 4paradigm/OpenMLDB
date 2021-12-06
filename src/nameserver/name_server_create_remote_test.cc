@@ -39,6 +39,7 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
+DECLARE_uint32(system_table_replica_num);
 DECLARE_bool(auto_failover);
 
 using ::openmldb::zk::ZkClient;
@@ -1374,6 +1375,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    FLAGS_system_table_replica_num = 0;
     // FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
     return RUN_ALL_TESTS();
 }
