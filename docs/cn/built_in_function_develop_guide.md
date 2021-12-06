@@ -290,12 +290,12 @@ TEST_F(UdfIRBuilderTest, timestamp_to_date_test_null_0) {
 #### 2.3.2 编译和执行单测
 
 ```bash
-cd ./hybridse
+cd ${OPENMLDB_DIR}
 mkdir -p build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTING_ENABLE=ON
 make udf_ir_builder_test -j4
-SQL_CASE_BASE_DIR=${OPENMLDB_DIR} ./src/codegen/udf_ir_builder_test
+SQL_CASE_BASE_DIR=${OPENMLDB_DIR} ./hybridse/src/codegen/udf_ir_builder_test
 ```
 
 ## 3. SQL函数开发模版
