@@ -20,10 +20,8 @@ import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
-import org.apache.hadoop.conf.Configuration
 import org.apache.iceberg.PartitionSpec
 import org.apache.iceberg.catalog.{Namespace, TableIdentifier}
-import org.apache.iceberg.hadoop.HadoopCatalog
 import org.apache.iceberg.hive.HiveCatalog
 import org.apache.iceberg.spark.SparkSchemaUtil
 import org.apache.spark.SparkConf
@@ -32,7 +30,6 @@ import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
-
 
 /**
  * The class to provide SparkSession-like API.
@@ -63,8 +60,10 @@ class OpenmldbSession {
     this.sparkSession = sparkSession
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
     this.setDefaultSparkConfig()
+
     if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkPath.nonEmpty) {
       openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkPath)
+      //registerOpenmldbOfflineTable(openmldbCatalogService)
     }
   }
 
@@ -99,16 +98,7 @@ class OpenmldbSession {
         //logger.debug("Set spark.hadoop.yarn.timeline-service.enabled as false")
         //builder.config("spark.hadoop.yarn.timeline-service.enabled", value = false)
 
-        builder.config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
-        builder.appName("App").master(sparkMaster)
-
-        if (config.enableHiveMetaStore) {
-          builder.enableHiveSupport()
-        }
-
         this.sparkSession = builder.getOrCreate()
-
-        this.setDefaultSparkConfig()
       }
 
       this.sparkSession
@@ -119,22 +109,6 @@ class OpenmldbSession {
     val sparkConf = this.sparkSession.conf
     // Set timezone
     sparkConf.set("spark.sql.session.timeZone", config.timeZone)
-
-    // Set Iceberg catalog
-    if (!config.hadoopWarehousePath.isEmpty) {
-      sparkConf.set("spark.sql.catalog.%s".format(config.icebergHadoopCatalogName),
-        "org.apache.iceberg.spark.SparkCatalog")
-      sparkConf.set("spark.sql.catalog.%s.type".format(config.icebergHadoopCatalogName), "hadoop")
-      sparkConf.set("spark.sql.catalog.%s.warehouse".format(config.icebergHadoopCatalogName),
-        this.config.hadoopWarehousePath)
-    }
-
-    if (config.enableHiveMetaStore) {
-      sparkConf.set("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkSessionCatalog")
-      sparkConf.set("spark.sql.catalog.spark_catalog.type", "hive")
-      // TODO: Check if "hive.metastore.uris" is set or not
-    }
-
   }
 
   /**
@@ -270,14 +244,6 @@ class OpenmldbSession {
   }
 
   /**
-   * Create table and import data from DataFrame to offline storage.
-   */
-  def importToOfflineStorage(databaseName: String, tableName: String, df: DataFrame): Unit = {
-    createHiveTable(databaseName, tableName, df)
-    appendHiveTable(databaseName, tableName, df)
-  }
-
-  /**
    * Create table in offline storage.
    */
   def createHiveTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
@@ -316,67 +282,22 @@ class OpenmldbSession {
     registerTable(s"$databaseName.$tableName", df)
   }
 
-  /**
-   * Create table in offline storage.
-   */
-  def createHadoopCatalogTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
+  def registerOpenmldbOfflineTable(catalogService: OpenmldbCatalogService): Unit = {
 
-    logger.info("Register the table %s to create table in offline storage".format(tableName))
-    df.createOrReplaceTempView(tableName)
+    val databases = catalogService.getDatabases()
+    databases.map(dbName => {
+      val tableInfos = catalogService.getTableInfos(dbName)
+      tableInfos.map(tableInfo => {
+        val tableName = tableInfo.getName
+        if (tableInfo.getOfflineTableInfo == null) {
+          logger.info(s"Register empty dataframe fof $dbName.$tableName")
+          registerTable(dbName, tableName, sparkSession.emptyDataFrame)
+        } else {
+          // TODO: Get hdfs path to read and register
+        }
+      })
+    })
 
-    val hadoopConfiguration = new Configuration()
-    val hadoopCatalog = new HadoopCatalog(hadoopConfiguration, config.hadoopWarehousePath)
-    val icebergSchema = SparkSchemaUtil.schemaForTable(this.getSparkSession, tableName)
-    val partitionSpec = PartitionSpec.builderFor(icebergSchema).build()
-    val tableIdentifier = TableIdentifier.of(databaseName, tableName)
-
-    // Create Iceberg database if not exists
-    val namespace = Namespace.of(databaseName)
-    try {
-      hadoopCatalog.createNamespace(namespace)
-    } catch {
-      case _: org.apache.iceberg.exceptions.AlreadyExistsException => {
-        logger.warn("Database %s already exists".format(databaseName))
-      }
-    }
-
-    // Check if table exists
-    if(hadoopCatalog.tableExists(tableIdentifier)) {
-      hadoopCatalog.close()
-      logger.error("Table %s already exists".format(tableName))
-      throw new HybridSeException("Table %s already exists, Please check the table name".format(tableName))
-    }
-
-    // Create Iceberg table
-    hadoopCatalog.createTable(tableIdentifier, icebergSchema, partitionSpec)
-    hadoopCatalog.close()
-  }
-
-  /**
-   * Append data from DataFrame to offline storage.
-   */
-  def appendHiveTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
-    logger.info("Register the table %s to append data in offline storage".format(tableName))
-    df.createOrReplaceTempView(tableName)
-
-    // TODO: Support other catalog name if possible
-    val icebergTableName = "%s.%s.%s".format("spark_catalog", databaseName, tableName)
-
-    // Insert parquet to Iceberg table
-    getSparkSession.table(tableName).writeTo(icebergTableName).append()
-  }
-
-  /**
-   * Append data from DataFrame to offline storage.
-   */
-  def appendHadoopCatalogTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
-    logger.info("Register the table %s to append data in offline storage".format(tableName))
-    df.createOrReplaceTempView(tableName)
-
-    val icebergTableName = "%s.%s.%s".format(config.icebergHadoopCatalogName, databaseName, tableName)
-
-    // Insert parquet to Iceberg table
-    this.getSparkSession.table(tableName).writeTo(icebergTableName).append()
   }
 
 }

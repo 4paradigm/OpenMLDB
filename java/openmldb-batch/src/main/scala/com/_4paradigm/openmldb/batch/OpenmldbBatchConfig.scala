@@ -124,24 +124,15 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.hybridse.jsdk.path", doc="The path of HybridSE jsdk core file path")
   var hybridseJsdkLibraryPath = ""
 
-  @ConfigOption("openmldb.enable.hive.metastore", "Need to set hive.metastore.uris")
-  var enableHiveMetaStore = false
-
-  @ConfigOption(name="openmldb.hadoop.warehouse.path", doc="The path of Hadoop warehouse")
-  var hadoopWarehousePath = ""
-
-  @ConfigOption(name="openmldb.iceberg.catalog.name", doc="The name of Iceberg catalog")
-  val icebergHadoopCatalogName = "iceberg_catalog"
-
   @ConfigOption(name="openmldb.zookeeper.cluster", doc="The cluster of ZooKeeper for NameServer")
-  val openmldbZkCluster = ""
+  var openmldbZkCluster = ""
 
   @ConfigOption(name="openmldb.zookeeper.path", doc="The path of ZooKeeper for NameServer")
-  val openmldbZkPath = ""
-
+  var openmldbZkPath = ""
 
   @ConfigOption(name="openmldb.default.db", doc="The default database for OpenMLDB SQL")
-  val defaultDb = "default_db"
+  var defaultDb = "default_db"
+
 }
 
 
