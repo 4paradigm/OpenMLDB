@@ -51,7 +51,7 @@ public class FailoverWatcher implements Watcher {
    */
   public FailoverWatcher() throws IOException {
 
-    baseZnode = TaskManagerConfig.ZK_ROOTPATH + "/taskmanager";
+    baseZnode = TaskManagerConfig.ZK_ROOT_PATH + "/taskmanager";
     masterZnode =  baseZnode + "/leader";
     zkQuorum = TaskManagerConfig.ZK_CLUSTER;
     sessionTimeout = TaskManagerConfig.ZK_SESSION_TIMEOUT;
