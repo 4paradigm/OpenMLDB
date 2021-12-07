@@ -19,8 +19,8 @@ package com._4paradigm.openmldb.batch.catalog
 import com._4paradigm.openmldb.proto.NS
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.openmldb.sdk.SdkOption
-
-import java.util
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.mutable
 
 class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
 
@@ -30,24 +30,24 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
 
   val sqlExecutor = new SqlClusterExecutor(option)
 
-  def getDatabases(): java.util.List[String] = {
-    sqlExecutor.showDatabases()
+  def getDatabases(): Array[String] = {
+    sqlExecutor.showDatabases().asScala.toArray
   }
 
-  def getTableNames(db: String): java.util.List[String] = {
-    sqlExecutor.getTableNames(db)
+  def getTableNames(db: String): Array[String] = {
+    sqlExecutor.getTableNames(db).asScala.toArray
   }
 
-  def getTableInfos(db: String): java.util.List[NS.TableInfo] = {
+  def getTableInfos(db: String): Array[NS.TableInfo] = {
     // TODO: Optimize to get all table info within one rpc
     val tableNames = sqlExecutor.getTableNames(db)
 
-    val tableInfos = new util.ArrayList[NS.TableInfo](tableNames.size())
+    val tableInfos = new mutable.ArrayBuffer[NS.TableInfo](tableNames.size())
     tableNames.forEach(tableName =>
-      tableInfos.add(sqlExecutor.getTableInfo(db, tableName))
+      tableInfos.append(sqlExecutor.getTableInfo(db, tableName))
     )
 
-    tableInfos
+    tableInfos.toArray
   }
 
 }

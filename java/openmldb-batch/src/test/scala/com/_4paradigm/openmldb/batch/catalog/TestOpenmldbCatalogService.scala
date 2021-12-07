@@ -30,17 +30,17 @@ class TestOpenmldbCatalogService extends FunSuite {
 
     val databases = openmldbCatalogService.getDatabases()
     for (i <- 0 until databases.size) {
-      println(s"Database $i: ${databases.get(i)}")
+      println(s"Database $i: ${databases(i)}")
     }
 
     val tables = openmldbCatalogService.getTableNames("__INTERNAL_DB")
     for (i <- 0 until tables.size) {
-      println(s"Table $i: ${tables.get(i)}")
+      println(s"Table $i: ${tables(i)}")
     }
 
     val tableInfos = openmldbCatalogService.getTableInfos("__INTERNAL_DB")
     for (i <- 0 until tableInfos.size) {
-      println(s"TableInfo $i: ${tableInfos.get(i)}")
+      println(s"TableInfo $i: ${tableInfos(i)}")
     }
 
   }
