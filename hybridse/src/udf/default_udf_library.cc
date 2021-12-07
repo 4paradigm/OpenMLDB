@@ -817,8 +817,6 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 @param pattern: the glob match pattern
 
-                @param escape: escape character
-
                 @since 0.4.0
         )r");
     RegisterExternal("ucase")
