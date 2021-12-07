@@ -31,8 +31,10 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
     sqlExecutor.showDatabases()
   }
 
-  def getTables(): Unit = {
-
+  def getTableNames(db: String): java.util.List[String] = {
+    sqlExecutor.getTableNames(db)
   }
+
+
 
 }

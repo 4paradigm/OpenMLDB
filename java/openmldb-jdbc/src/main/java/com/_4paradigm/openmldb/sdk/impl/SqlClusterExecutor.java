@@ -363,4 +363,14 @@ public class SqlClusterExecutor implements SqlExecutor {
         return databases;
     }
 
+    public List<String> getTableNames(String db) {
+        List<String> tableNames = new ArrayList<>();
+        VectorString names = sqlRouter.GetTableNames(db);
+        for (int i=0; i < names.size(); ++i) {
+            tableNames.add(names.get(i));
+        }
+        names.delete();
+        return tableNames;
+    }
+
 }
