@@ -115,6 +115,10 @@ TEST_F(UdfIRBuilderTest, dayofweek_date_udf_test) {
     Date date(2020, 05, 22);
     CheckUdf<int32_t, Date>("dayofweek", 6, date);
 }
+TEST_F(UdfIRBuilderTest, dayofyear_date_udf_test) {
+    Date date(2020, 05, 22);
+    CheckUdf<int32_t, Date>("dayofyear", 143, date);
+}
 TEST_F(UdfIRBuilderTest, weekofyear_date_udf_test) {
     {
         Date date(2020, 01, 01);
@@ -179,6 +183,10 @@ TEST_F(UdfIRBuilderTest, dayofweek_timestamp_udf_test) {
     Timestamp time(1590115420000L);
     CheckUdf<int32_t, Timestamp>("dayofweek", 6, time);
 }
+TEST_F(UdfIRBuilderTest, dayofyear_timestamp_udf_test) {
+    Timestamp time(1590115420000L);
+    CheckUdf<int32_t, Timestamp>("dayofyear", 143, time);
+}
 TEST_F(UdfIRBuilderTest, weekofyear_timestamp_udf_test) {
     Timestamp time(1590115420000L);
     CheckUdf<int32_t, Timestamp>("weekofyear", 21, time);
@@ -221,6 +229,12 @@ TEST_F(UdfIRBuilderTest, dayofweek_int64_udf_test) {
     // Sunday
     CheckUdf<int32_t, int64_t>("dayofweek", 1, 1590115420000L + 2 * 86400000L);
     CheckUdf<int32_t, int64_t>("dayofweek", 2, 1590115420000L + 3 * 86400000L);
+}
+TEST_F(UdfIRBuilderTest, dayofyear_int64_udf_test) {
+    CheckUdf<int32_t, int64_t>("dayofyear", 143, 1590115420000L);
+    CheckUdf<int32_t, int64_t>("dayofyear", 144, 1590115420000L + 86400000L);
+    CheckUdf<int32_t, int64_t>("dayofyear", 145, 1590115420000L + 2 * 86400000L);
+    CheckUdf<int32_t, int64_t>("dayofyear", 146, 1590115420000L + 3 * 86400000L);
 }
 TEST_F(UdfIRBuilderTest, weekofyear_int64_udf_test) {
     CheckUdf<int32_t, int64_t>("weekofyear", 21, 1590115420000L);

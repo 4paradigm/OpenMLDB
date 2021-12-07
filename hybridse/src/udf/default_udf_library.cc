@@ -1612,6 +1612,21 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @since 0.1.0
         )");
 
+    RegisterExternal("dayofyear")
+        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofyear))
+        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofyear))
+        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofyear))
+        .doc(R"(
+            @brief Return the day of year for a timestamp or date.
+
+            Example:
+            @code{.sql}
+                select dayofyear(timestamp(1590115420000));
+                -- output 143
+            @endcode
+            @since 0.1.0
+        )");
+
     RegisterExternal("weekofyear")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::weekofyear))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::weekofyear))

@@ -203,6 +203,10 @@ int32_t month(hybridse::codec::Timestamp *ts);
 int32_t year(int64_t ts);
 int32_t year(hybridse::codec::Timestamp *ts);
 
+int32_t dayofyear(int64_t ts);
+int32_t dayofyear(hybridse::codec::Timestamp *ts);
+int32_t dayofyear(hybridse::codec::Date *ts);
+
 int32_t dayofmonth(int64_t ts);
 int32_t dayofmonth(hybridse::codec::Timestamp *ts);
 
