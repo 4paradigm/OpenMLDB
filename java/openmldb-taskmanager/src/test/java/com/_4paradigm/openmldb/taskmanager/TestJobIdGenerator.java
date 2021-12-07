@@ -21,6 +21,7 @@ public class TestJobIdGenerator {
                 if (jobIdSet.contains(jobId)) {
                     throw new Exception("JobId is not unique!");
                 }
+                jobIdSet.add(jobId);
             }
             return null;
         }
