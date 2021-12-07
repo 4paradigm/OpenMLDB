@@ -52,8 +52,6 @@ option(BUILD_BUNDLED_BOOST "Build boost from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_LLVM "Build llvm from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_COMMON "Build baidu common from source" ${BUILD_BUNDLED})
 
-option(USE_BUNDLED_SRC "Use bundled hybridsql asserts source" ON)
-
 # '-O3 -fPIC' reserved for thirdparty compilation
 set(CMAKE_CXX_FLAGS "-O3 -fPIC ${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "-O3 -fPIC ${CMAKE_C_FLAGS}")
@@ -173,9 +171,8 @@ if (BUILD_BUNDLED_BRPC)
   include(FetchBrpc)
 endif()
 
-if (BUILD_BUNDLED_ZOOKEEPER)
-  include(FetchZookeeper)
-endif()
+# zookeeper source always needed
+include(FetchZookeeper)
 
 if (BUILD_BUNDLED_BOOST)
   include(FetchBoost)
@@ -187,22 +184,4 @@ endif()
 
 if (BUILD_BUNDLED_COMMON)
   include(FetchBaiduCommon)
-endif()
-
-if (USE_BUNDLED_SRC)
-  message(STATUS "Install source code into ${SRC_INSTALL_DIR}")
-  message(STATUS "Download hybridsql source code from ${HYBRIDSQL_ASSERTS_SRC_URL}")
-  ExternalProject_Add(
-    hybridsql-asserts-src
-    URL ${HYBRIDSQL_ASSERTS_SRC_URL}
-    URL_HASH SHA256=${HYBRIDSQL_ASSERTS_SRC_HASH}
-    PREFIX ${DEPS_BUILD_DIR}
-    DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/hybridsql-asserts-src"
-    DOWNLOAD_NO_EXTRACT True
-    INSTALL_DIR ${SRC_INSTALL_DIR}
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${SRC_INSTALL_DIR} --strip-components=1")
-else()
-  message(FATAL_ERROR "'USE_BUNDLED_SRC=OFF' is currently unsupported")
 endif()

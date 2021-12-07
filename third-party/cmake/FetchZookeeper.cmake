@@ -18,39 +18,53 @@ set(ZOOKEEPER_WORK_DIR zookeeper-client/zookeeper-client-c/)
 
 option(BUILD_ZOOKEEPER_PATCH "apply workaround patch to zookeeper, which may useful for gcc >= 9" ON)
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  set(ZOOKEEPER_CONF COMMAND bash -c "CC=clang CFLAGS='-O3 -fPIC' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
-else()
-  find_program(AUTORECONF NAMES autoreconf REQUIRED)
-  include(Findcppunit)
-  if (NOT CPPUNIT_FOUND)
-    message(FATAL_ERROR "zookeeper require cppunit")
-  endif()
-
-  if (BUILD_ZOOKEEPER_PATCH)
-    set(ZOOKEEPER_PATCH patch -p 1 -N -i ${PROJECT_SOURCE_DIR}/patches/zookeeper.patch)
-    set(ZOOKEEPER_CFLAGS "-O3 -fPIC -Wno-error=format-overflow= -Wno-maybe-uninitialized -Wno-stringop-truncation")
+if (BUILD_BUNDLED_ZOOKEEPER)
+  if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(ZOOKEEPER_CONF COMMAND bash -c "CC=clang CFLAGS='-O3 -fPIC' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
   else()
-    set(ZOOKEEPER_CFLAGS "-O3 -fPIC -Wno-error=format-overflow=")
+    find_program(AUTORECONF NAMES autoreconf REQUIRED)
+    include(Findcppunit)
+    if (NOT CPPUNIT_FOUND)
+      message(FATAL_ERROR "zookeeper require cppunit")
+    endif()
+
+    if (BUILD_ZOOKEEPER_PATCH)
+      set(ZOOKEEPER_PATCH patch -p 1 -N -i ${PROJECT_SOURCE_DIR}/patches/zookeeper.patch)
+      set(ZOOKEEPER_CFLAGS "-O3 -fPIC -Wno-error=format-overflow= -Wno-maybe-uninitialized -Wno-stringop-truncation")
+    else()
+      set(ZOOKEEPER_CFLAGS "-O3 -fPIC -Wno-error=format-overflow=")
+    endif()
+
+    set(ZOOKEEPER_CONF COMMAND ${AUTORECONF} -if
+      COMMAND bash -c "CFLAGS='${ZOOKEEPER_CFLAGS}' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
   endif()
 
-  set(ZOOKEEPER_CONF COMMAND ${AUTORECONF} -if
-    COMMAND bash -c "CFLAGS='${ZOOKEEPER_CFLAGS}' ./configure --prefix=<INSTALL_DIR> --enable-shared=no")
+  message(STATUS "build zookeeper from ${ZOOKEEPER_URL}")
+  find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
+
+  ExternalProject_Add(
+    zookeeper
+    URL ${ZOOKEEPER_URL}
+    URL_HASH SHA256=${ZOOKEEPER_HASH}
+    PREFIX ${DEPS_BUILD_DIR}
+    DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/zookeeper
+    BINARY_DIR ${DEPS_BUILD_DIR}/src/zookeeper/${ZOOKEEPER_WORK_DIR}
+    INSTALL_DIR ${DEPS_INSTALL_DIR}
+    PATCH_COMMAND ${ZOOKEEPER_PATCH}
+    CONFIGURE_COMMAND ${ZOOKEEPER_CONF}
+    BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
+    INSTALL_COMMAND ${MAKE_EXE} install)
 endif()
 
-message(STATUS "build zookeeper from ${ZOOKEEPER_URL}")
-
-find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
-
 ExternalProject_Add(
-  zookeeper
+  zookeeper-install-src
   URL ${ZOOKEEPER_URL}
   URL_HASH SHA256=${ZOOKEEPER_HASH}
   PREFIX ${DEPS_BUILD_DIR}
-  DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/zookeeper
-  BINARY_DIR ${DEPS_BUILD_DIR}/src/zookeeper/${ZOOKEEPER_WORK_DIR}
-  INSTALL_DIR ${DEPS_INSTALL_DIR}
-  PATCH_COMMAND ${ZOOKEEPER_PATCH}
-  CONFIGURE_COMMAND ${ZOOKEEPER_CONF}
-  BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
-  INSTALL_COMMAND ${MAKE_EXE} install)
+  DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/zookeeper-ins
+  DOWNLOAD_NO_EXTRACT TRUE
+  INSTALL_DIR ${SRC_INSTALL_DIR}
+  PATCH_COMMAND ""
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${SRC_INSTALL_DIR}")
