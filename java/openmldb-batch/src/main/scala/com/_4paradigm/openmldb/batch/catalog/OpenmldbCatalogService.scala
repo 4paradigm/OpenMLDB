@@ -16,14 +16,17 @@
 
 package com._4paradigm.openmldb.batch.catalog
 
+import com._4paradigm.openmldb.proto.NS
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.openmldb.sdk.SdkOption
+
+import java.util
 
 class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
 
   val option = new SdkOption
-  option.setZkPath(zkCluster)
-  option.setZkCluster(zkPath)
+  option.setZkCluster(zkCluster)
+  option.setZkPath(zkPath)
 
   val sqlExecutor = new SqlClusterExecutor(option)
 
@@ -35,6 +38,16 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
     sqlExecutor.getTableNames(db)
   }
 
+  def getTableInfos(db: String): java.util.List[NS.TableInfo] = {
+    // TODO: Optimize to get all table info within one rpc
+    val tableNames = sqlExecutor.getTableNames(db)
 
+    val tableInfos = new util.ArrayList[NS.TableInfo](tableNames.size())
+    tableNames.forEach(tableName =>
+      tableInfos.add(sqlExecutor.getTableInfo(db, tableName))
+    )
+
+    tableInfos
+  }
 
 }

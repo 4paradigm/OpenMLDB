@@ -33,6 +33,7 @@ import com._4paradigm.openmldb.VectorString;
 import com._4paradigm.openmldb.common.LibraryLoader;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
+import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Common;
 import com._4paradigm.openmldb.sdk.Schema;
@@ -355,6 +356,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         } else {
             for (int i=0; i < dbs.size(); ++i) {
                 databases.add(dbs.get(i));
+
             }
         }
 
@@ -370,7 +372,13 @@ public class SqlClusterExecutor implements SqlExecutor {
             tableNames.add(names.get(i));
         }
         names.delete();
+
         return tableNames;
+    }
+
+    public NS.TableInfo getTableInfo(String db, String table) {
+        NS.TableInfo tableInfo = sqlRouter.GetTableInfo(db, table);
+        return tableInfo;
     }
 
 }
