@@ -87,7 +87,7 @@ compile_lib(log log "flags.cc")
 compile_lib(openmldb_sdk sdk "")
 compile_lib(apiserver apiserver "")
 
-add_library(openmldb_proto STATIC proto/type.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/api_server.pb.cc proto/nl_tablet.pb.cc proto/taskmanager.pb.cc)
+add_library(openmldb_proto STATIC proto/type.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/api_server.pb.cc proto/nl_tablet.pb.cc proto/taskmanager.pb.cc proto/name_server.pb.cc)
 
 add_library(openmldb_flags flags.cc)
 
