@@ -734,8 +734,8 @@ cases:
           - [6, null]
         2:
           rows:
-          - [1, null]
-          - [2, null]
+          - [1, a*_b]
+          - [2, a*mb]
           - [3, null]
           - [4, null]
           - [5, null]
@@ -759,8 +759,8 @@ cases:
           - [6, "%a*_%b"]
         2:
           rows:
-          - [1, a*_b]
-          - [2, a*mb]
+          - [1, null]
+          - [2, null]
           - [3, "%a_%b"]
           - [4, "Ta_sub"]
           - [5, "lamrb"]

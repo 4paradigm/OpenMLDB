@@ -688,11 +688,17 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 Example:
                 @code{.sql}
-                    select like_match('Mike', 'Mi_k', '\\')
+                    select like_match('Mike', 'Mi_e', '\\')
                     -- output: true
 
-                    select like_match('Mike', 'Mi_k', '')
+                    select like_match('Mike', 'Mi\\_e', '\\')
                     -- output: false
+
+                    select like_match('Mi_e', 'Mi\\_e', '\\')
+                    -- output: true
+
+                    select like_match('Mi\\ke', 'Mi\\_e', '')
+                    -- output: true
                 @endcode
 
                 @param target: string to match
@@ -758,11 +764,17 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 Example:
                 @code{.sql}
-                    select ilike_match('Mike', 'mi_k', '\\')
+                    select ilike_match('Mike', 'mi_e', '\\')
                     -- output: true
 
-                    select ilike_match('Mike', 'mi_k', '')
+                    select ilike_match('Mike', 'mi\\_e', '\\')
                     -- output: false
+
+                    select ilike_match('Mi_e', 'mi\\_e', '\\')
+                    -- output: true
+
+                    select ilike_match('Mi\\ke', 'mi\\_e', '')
+                    -- output: true
                 @endcode
 
                 @param target: string to match

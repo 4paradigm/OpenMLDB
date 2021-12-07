@@ -284,14 +284,7 @@ bool like_internal(std::string_view name, std::string_view pattern, const char *
         }
 
         char c = *it;
-        if (escape == nullptr) {
-            // escape feature is disabled
-            if (!equal(c, *n_it)) {
-                return false;
-            }
-
-            std::advance(it, 1);
-        } else if (c == *escape) {
+        if (escape != nullptr && c == *escape) {
             // exact character match
             if (std::next(it) == end) {
                 // the pattern is terminated with escape character, just return false
@@ -355,8 +348,16 @@ void like_internal(codec::StringRef *name, codec::StringRef *pattern, codec::Str
     std::string_view pattern_view(pattern->data_, pattern->size_);
 
     *is_null = false;
-    const char *esc = escape && escape->size_ > 0 ? escape->data_ : nullptr;
-    *out = like_internal(name_view, pattern_view, esc, equal);
+    const char *esc = nullptr;
+    if (escape && escape->size_ > 0) {
+        if (escape->size_ >= 2) {
+            DLOG(ERROR) << "data exception: invalid escape character '" << escape->ToString() << "'";
+            *out = false;
+            return;
+        }
+        esc = escape->data_;
+    }
+    *out = like_internal(name_view, pattern_view, esc, std::forward<EQUAL>(equal));
 }
 
 void like(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out, bool *is_null) {

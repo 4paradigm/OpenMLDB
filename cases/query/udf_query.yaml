@@ -280,3 +280,142 @@ cases:
       rows:
         - [1, "hello_world#1234567890#12"]
         - [2, "abcdefghig#9876543210#-12"]
+
+  - id: like_udf_1
+    desc: precent character
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+    dataProvider:
+      - ["like_match", "ilike_match"]
+      - ["M%", "m%"]
+    sql: |
+      select d[0](col2, 'd[1]', '\\')  as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+    expectProvider:
+      0:
+        0:
+          rows:
+            - [true]
+        1:
+          rows:
+            - [false]
+      1:
+        0:
+          rows:
+            - [true]
+        1:
+          rows:
+            - [true]
+  - id: like_udf_2
+    desc: underscore character, 2 pararmeter version
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+    dataProvider:
+      - ["like_match", "ilike_match"]
+      - ["M_ke", "m_ke"]
+    sql: |
+      select d[0](col2, 'd[1]')  as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+    expectProvider:
+      0:
+        0:
+          rows:
+            - [true]
+        1:
+          rows:
+            - [false]
+      1:
+        0:
+          rows:
+            - [true]
+        1:
+          rows:
+            - [true]
+  - id: like_udf_3
+    desc: disable escape
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+    dataProvider:
+      - ["like_match", "ilike_match"]
+      - ["''"]
+    sql: |
+      select d[0](col2, 'm_ke', d[1])  as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+    expectProvider:
+      0:
+        0:
+          rows:
+            - [false]
+        # 1:
+        #   rows:
+        #     - [null]
+      1:
+        0:
+          rows:
+            - [true]
+        # 1:
+        #   rows:
+        #     - [null]
+
+  - id: like_udf_4
+    desc: nullable rules
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+          - [2, 1590115420001, null]
+    dataProvider:
+      - ["like_match", "ilike_match"]
+    sql: |
+      select col1, d[0](col2, 'm_ke', '\\')  as col2 from t1;
+    expect:
+      columns: ["col1:int", "col2:bool"]
+      order: col1
+    expectProvider:
+      0:
+        rows:
+          - [1, false]
+          - [2, null]
+      1:
+        rows:
+          - [1, true]
+          - [2, null]
+  - id: like_udf_5
+    desc: escape character
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "M_ke"]
+    dataProvider:
+      - ["like_match", "ilike_match"]
+    sql: |
+      select d[0](col2, 'm&_ke', '&')  as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+    expectProvider:
+      0:
+        rows:
+          - [false]
+      1:
+        rows:
+          - [true]
+
