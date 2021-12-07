@@ -24,13 +24,20 @@ public class TaskManagerConfig {
     public static int WORKER_THREAD = 4;
     public static int IO_THREAD = 4;
     public static String ZK_CLUSTER;
-    public static String ZK_ROOTPATH;
-    public static int ZK_SESSION_TIMEOUT = 5000;
+    public static String ZK_ROOT_PATH;
+    public static String ZK_TASKMANAGER_PATH;
+    public static String ZK_MAX_JOB_ID_PATH;
+    public static int ZK_SESSION_TIMEOUT;
+    public static int ZK_CONNECTION_TIMEOUT;
+    public static int ZK_BASE_SLEEP_TIME;
+    public static int ZK_MAX_CONNECT_WAIT_TIME;
+    public static int ZK_MAX_RETRIES;
     public static String HIVE_METASTORE_ENDPOINT;
     public static String SPARK_MASTER;
     public static String BATCHJOB_JAR_PATH;
     public static String SPARK_YARN_JARS;
     public static String SPARK_HOME;
+    public static int PREFETCH_JOBID_NUM;
 
     static {
         try {
@@ -42,12 +49,19 @@ public class TaskManagerConfig {
             IO_THREAD = Integer.parseInt(prop.getProperty("server.io_threads", "4"));
             ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
             ZK_CLUSTER = prop.getProperty("zookeeper.cluster");
-            ZK_ROOTPATH = prop.getProperty("zookeeper.root_path");
+            ZK_ROOT_PATH = prop.getProperty("zookeeper.root_path");
+            ZK_TASKMANAGER_PATH = ZK_ROOT_PATH + "/taskmanager";
+            ZK_MAX_JOB_ID_PATH = ZK_TASKMANAGER_PATH + "/max_job_id";
+            ZK_CONNECTION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.connection_timeout", "5000"));
+            ZK_BASE_SLEEP_TIME = Integer.parseInt(prop.getProperty("zookeeper.base_sleep_time", "1000"));
+            ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries", "10"));
+            ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
             HIVE_METASTORE_ENDPOINT = prop.getProperty("hive.metastore.endpoint");
             SPARK_MASTER = prop.getProperty("spark.master", "yarn");
             BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
             SPARK_HOME = prop.getProperty("spark.home");
+            PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.job.num", "10"));
         } catch (Exception e) {
             e.printStackTrace();
         }
