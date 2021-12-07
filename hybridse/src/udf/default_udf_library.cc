@@ -666,7 +666,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 select date_format(date(1590115420000),"%Y-%m-%d");
                 --output "2020-05-22"
             @endcode)");
-    RegisterExternal("like")
+    RegisterExternal("like_match")
         .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
                 udf::v1::like)))
@@ -688,10 +688,10 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 Example:
                 @code{.sql}
-                    select like('Mike', 'Mi_k', '\\')
+                    select like_match('Mike', 'Mi_k', '\\')
                     -- output: true
 
-                    select like('Mike', 'Mi_k', '')
+                    select like_match('Mike', 'Mi_k', '')
                     -- output: false
                 @endcode
 
@@ -703,7 +703,7 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 @since 0.4.0
         )r");
-    RegisterExternal("like")
+    RegisterExternal("like_match")
         .args<StringRef, StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*, bool*)>(udf::v1::like)))
         .return_by_arg(true)
@@ -724,9 +724,9 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 Example:
                 @code{.sql}
-                    select like('Mike', 'Mi_k')
+                    select like_match('Mike', 'Mi_k')
                     -- output: true
-                    select like('Mike', 'mi_k')
+                    select like_match('Mike', 'mi_k')
                     -- output: false
                 @endcode
 
@@ -736,7 +736,7 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 @since 0.4.0
         )r");
-    RegisterExternal("ilike")
+    RegisterExternal("ilike_match")
         .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
                 udf::v1::ilike)))
@@ -758,10 +758,10 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 Example:
                 @code{.sql}
-                    select ilike('Mike', 'mi_k', '\\')
+                    select ilike_match('Mike', 'mi_k', '\\')
                     -- output: true
 
-                    select ilike('Mike', 'mi_k', '')
+                    select ilike_match('Mike', 'mi_k', '')
                     -- output: false
                 @endcode
 
@@ -773,7 +773,7 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 @since 0.4.0
         )r");
-    RegisterExternal("ilike")
+    RegisterExternal("ilike_match")
         .args<StringRef, StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*, bool*)>(udf::v1::ilike)))
         .return_by_arg(true)
@@ -794,10 +794,10 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 Example:
                 @code{.sql}
-                    select ilike('Mike', 'Mi_k')
+                    select ilike_match('Mike', 'Mi_k')
                     -- output: true
 
-                    select like('Mike', 'mi_k')
+                    select ilike_match('Mike', 'mi_k')
                     -- output: true
                 @endcode
 

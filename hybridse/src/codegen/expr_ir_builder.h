@@ -102,10 +102,8 @@ class ExprIRBuilder {
 
     Status BuildExprList(const ::hybridse::node::ExprListNode* node, NativeValue* output);
 
-    Status BuildLikeExprAsUdf(const ::hybridse::node::BinaryExpr* node,
-                              const NativeValue& lhs,
-                              const NativeValue& rhs,
-                              NativeValue* output);
+    Status BuildLikeExprAsUdf(const ::hybridse::node::BinaryExpr* node, const std::string& name, const NativeValue& lhs,
+                              const NativeValue& rhs, NativeValue* output);
 
     Status BuildEscapeExpr(const ::hybridse::node::EscapedExpr* node, NativeValue* output);
 

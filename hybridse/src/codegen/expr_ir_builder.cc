@@ -752,7 +752,11 @@ Status ExprIRBuilder::BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,
             break;
         }
         case ::hybridse::node::kFnOpLike: {
-            CHECK_STATUS(BuildLikeExprAsUdf(node, left, right, output))
+            CHECK_STATUS(BuildLikeExprAsUdf(node, "like_match", left, right, output))
+            break;
+        }
+        case ::hybridse::node::kFnOpILike: {
+            CHECK_STATUS(BuildLikeExprAsUdf(node, "ilike_match", left, right, output))
             break;
         }
         default: {
@@ -818,6 +822,7 @@ Status ExprIRBuilder::BuildAsUdf(const node::ExprNode* expr,
 }
 
 Status ExprIRBuilder::BuildLikeExprAsUdf(const ::hybridse::node::BinaryExpr* expr,
+                                         const std::string& name,
                                          const NativeValue& lhs,
                                          const NativeValue& rhs,
                                          NativeValue* output) {
@@ -853,7 +858,7 @@ Status ExprIRBuilder::BuildLikeExprAsUdf(const ::hybridse::node::BinaryExpr* exp
     }
 
     node::ExprNode* transformed = nullptr;
-    CHECK_STATUS(library->Transform("like", proxy_args, ctx_->node_manager(),
+    CHECK_STATUS(library->Transform(name, proxy_args, ctx_->node_manager(),
                                     &transformed));
     node::ExprNode* target_expr = nullptr;
     node::ExprAnalysisContext analysis_ctx(ctx_->node_manager(), library,

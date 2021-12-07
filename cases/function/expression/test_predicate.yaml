@@ -598,7 +598,7 @@ cases:
           - [7, 1, 1590115450000, false]
           - [9, 1, 1590115460000, true]
   - id: like_predicate_1
-    desc: simple like predicate
+    desc: like predicate without escape
     inputs:
       - columns: ["id int", "std_ts timestamp"]
         indexs: ["index1:id:std_ts"]
@@ -617,15 +617,45 @@ cases:
           - [4, 1590115450000, Dan]
           - [5, 1590115460000, Evan_W]
     dataProvider:
-      - ["", "NOT"] # LIKE / NOT LIKE
+      - ["LIKE", "NOT LIKE", "ILIKE", "NOT ILIKE"] # LIKE / NOT LIKE
       - ["m%", "M_ry" ] # match pattern
     sql: |
-      select {0}.id, col2 from {0} last join {1} ON {0}.id = {1}.id AND col2 d[0] LIKE 'd[1]';
+      select {0}.id, col2 from {0} last join {1} ON {0}.id = {1}.id AND col2 d[0] 'd[1]';
     expect:
       columns: ["id int", "col2 string"]
       order: id
     expectProvider:
       0:
+        0:
+          rows:
+            - [1, null]
+            - [2, null]
+            - [3, mike]
+            - [4, null]
+            - [5, null]
+        1:
+          rows:
+            - [1, null]
+            - [2, Mary]
+            - [3, null]
+            - [4, null]
+            - [5, null]
+      1:
+        0:
+          rows:
+            - [1, John]
+            - [2, Mary]
+            - [3, null]
+            - [4, Dan]
+            - [5, Evan_W]
+        1:
+          rows:
+            - [1, John]
+            - [2, null]
+            - [3, mike]
+            - [4, Dan]
+            - [5, Evan_W]
+      2:
         0:
           rows:
             - [1, null]
@@ -640,7 +670,7 @@ cases:
             - [3, null]
             - [4, null]
             - [5, null]
-      1:
+      3:
         0:
           rows:
             - [1, John]
@@ -656,7 +686,7 @@ cases:
             - [4, Dan]
             - [5, Evan_W]
   - id: like_predicate_2
-    desc: simple like predicate
+    desc: like predicate with escape
     inputs:
       - columns: ["id int", "std_ts timestamp"]
         indexs: ["index1:id:std_ts"]
@@ -677,10 +707,10 @@ cases:
           - [5, 1590115460000, "lamrb"]
           - [6, 1590115470000, "%a*_%b"]
     dataProvider:
-      - ["%a*_%b"] # match pattern
+      - ["LIKE", "NOT ILIKE"]
       - ["%", "*", ""] # escape with % or disable
     sql: |
-      select {0}.id, col2 from {0} last join {1} ON {0}.id = {1}.id AND col2 LIKE 'd[0]' ESCAPE 'd[1]';
+      select {0}.id, col2 from {0} last join {1} ON {0}.id = {1}.id AND col2 d[0] '%a*_%b' ESCAPE 'd[1]';
     expect:
       columns: ["id int", "col2 string"]
       order: id
@@ -710,3 +740,28 @@ cases:
           - [4, null]
           - [5, null]
           - [6, "%a*_%b"]
+      1:
+        0:
+          rows:
+          - [1, null]
+          - [2, null]
+          - [3, "%a_%b"]
+          - [4, "Ta_sub"]
+          - [5, "lamrb"]
+          - [6, "%a*_%b"]
+        1:
+          rows:
+          - [1, a*_b]
+          - [2, a*mb]
+          - [3, null]
+          - [4, null]
+          - [5, "lamrb"]
+          - [6, "%a*_%b"]
+        2:
+          rows:
+          - [1, a*_b]
+          - [2, a*mb]
+          - [3, "%a_%b"]
+          - [4, "Ta_sub"]
+          - [5, "lamrb"]
+          - [6, null]

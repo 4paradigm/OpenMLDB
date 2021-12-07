@@ -166,6 +166,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return ".";
         case kFnOpLike:
             return "LIKE";
+        case kFnOpILike:
+            return "ILIKE";
         case kFnOpIn:
             return "IN";
         case kFnOpBracket:

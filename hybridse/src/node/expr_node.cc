@@ -634,6 +634,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             return ctx->InferAsUdf(this, "at");
             break;
         }
+        case kFnOpILike:
         case kFnOpLike: {
             const TypeNode* top_type = nullptr;
             CHECK_STATUS(LikeTypeAccept(ctx->node_manager(), left_type, right_type, &top_type));

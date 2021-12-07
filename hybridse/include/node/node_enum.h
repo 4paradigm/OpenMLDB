@@ -189,6 +189,7 @@ enum FnOperator {
     kFnOpDot,         // "."
     kFnOpAt,          // "[]"
     kFnOpLike,        // "LIKE"
+    kFnOpILike,        // "ILIKE"
     kFnOpIn,          // "IN"
     kFnOpBracket,     // "()"
     kFnOpIsNull,      // "is_null"
