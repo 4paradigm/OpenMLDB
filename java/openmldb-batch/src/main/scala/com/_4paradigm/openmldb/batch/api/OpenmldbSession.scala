@@ -63,7 +63,7 @@ class OpenmldbSession {
 
     if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkPath.nonEmpty) {
       openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkPath)
-      //registerOpenmldbOfflineTable(openmldbCatalogService)
+      registerOpenmldbOfflineTable(openmldbCatalogService)
     }
   }
 
@@ -283,21 +283,34 @@ class OpenmldbSession {
   }
 
   def registerOpenmldbOfflineTable(catalogService: OpenmldbCatalogService): Unit = {
-
     val databases = catalogService.getDatabases()
     databases.map(dbName => {
       val tableInfos = catalogService.getTableInfos(dbName)
       tableInfos.map(tableInfo => {
         val tableName = tableInfo.getName
-        if (tableInfo.getOfflineTableInfo == null) {
-          logger.info(s"Register empty dataframe fof $dbName.$tableName")
-          registerTable(dbName, tableName, sparkSession.emptyDataFrame)
-        } else {
-          // TODO: Get hdfs path to read and register
+        val offlineTableInfo = tableInfo.getOfflineTableInfo
+
+        if (offlineTableInfo != null) { // offlineTableInfo is always not null
+          val path = offlineTableInfo.getPath
+          val format = offlineTableInfo.getFormat
+
+          if (path != null && path.nonEmpty && format != null && format.nonEmpty) {
+            // Has offline table meta
+            val df = format.toLowerCase match {
+              case "parquet" => sparkSession.read.parquet(path)
+              case "csv" => sparkSession.read.csv(path)
+            }
+            // TODO: Check schema
+            registerTable(dbName, tableName, df)
+          } else {
+            // Register empty df for table
+            logger.info(s"Register empty dataframe fof $dbName.$tableName")
+            // TODO: Create empty df with schema
+            registerTable(dbName, tableName, sparkSession.emptyDataFrame)
+          }
         }
       })
     })
-
   }
 
 }
