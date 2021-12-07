@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
-set(ZETASQL_VERSION 0.2.3)
+set(ZETASQL_HOME https://github.com/aceforeverd/zetasql)
+set(ZETASQL_VERSION 0.2.4.beta2)
 set(ZETASQL_TAG origin/feat/hybridse-zetasql)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64.tar.gz")
-  set(ZETASQL_HASH 1163557f40a1775bed56ccad4190a85e9a5198de079ddb5493a3be984f21677d)
+  set(ZETASQL_HASH 4b32d4248d4a371bb1355bc9e7ad566e67525cfd43e7afaab4f4d9cc432a99be)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz")
-  set(ZETASQL_HASH 9857f5111460cd84b64d5be863b9390a671743f6a8e3ed467f118050739e1c86)
+  set(ZETASQL_HASH f530b5c393b7653e2180747867852c0ddbcf16a6a18a89e0249e8dd2fa9fdb59)
 endif()
 
 
