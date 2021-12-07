@@ -724,7 +724,7 @@ TEST_F(ExternUdfTest, LikeMatchTest) {
     check_like(true, false, R"r(Evan\no\sw)r", R"r(Evan\%\_w)r", "");
 
     // invalid match pattern
-    check_like(false, false, R"r(Evan_w)r", R"r(Evan_\)r", "\\");
+    check_like(false, false, R"r(Evan_w\)r", R"r(Evan_w\)r", "\\");
 }
 
 TEST_F(ExternUdfTest, LikeMatchNullable) {
@@ -821,7 +821,7 @@ TEST_F(ExternUdfTest, ILikeMatchTest) {
     check_ilike(true, false, R"r(Evan\no\sw)r", R"r(evan\%\_w)r", "");
 
     // invalid match pattern
-    check_ilike(false, false, R"r(Evan_w)r", R"r(evan_\)r", "\\");
+    check_ilike(false, false, R"r(Evan_w\)r", R"r(evan_w\)r", "\\");
 }
 
 TEST_F(ExternUdfTest, ILikeMatchNullable) {

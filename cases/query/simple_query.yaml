@@ -619,3 +619,17 @@ cases:
         - [1, false]
         - [2, true]
         - [3, true]
+  - id: like_predicate_11
+    desc: pattern refer to a column
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, Mi_e]
+    sql: |
+      select "Mike" LIKE col2 as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+      rows:
+        - [true]
