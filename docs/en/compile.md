@@ -28,6 +28,10 @@ You can customize the `make` behavior by passing following arguments, e.g., chan
 make CMAKE_BUILD_TYPE=Debug
 ```
 
+- OPENMLDB_BUILD_DIR: Binary build directory
+
+  Default: ${PROJECT_ROOT}/build
+
 - CMAKE_BUILD_TYPE
 
   Default: RelWithDebInfo
@@ -43,6 +47,14 @@ make CMAKE_BUILD_TYPE=Debug
 - TESTING_ENABLE: enabling building the test targets
 
   Default: OFF
+
+- NPROC: parallel build number
+
+  Default: $(nproc)
+
+- CMAKE_EXTRA_FLAGS: extra flags passed to cmake
+
+  默认: ‘’
 
 
 ## Optimized Spark Distribution for OpenMLDB (Optional)
