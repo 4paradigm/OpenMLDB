@@ -116,8 +116,22 @@ TEST_F(UdfIRBuilderTest, dayofweek_date_udf_test) {
     CheckUdf<int32_t, Date>("dayofweek", 6, date);
 }
 TEST_F(UdfIRBuilderTest, dayofyear_date_udf_test) {
-    Date date(2020, 05, 22);
-    CheckUdf<int32_t, Date>("dayofyear", 143, date);
+    {
+        Date date(2020, 05, 22);
+        CheckUdf<int32_t, Date>("dayofyear", 143, date);
+    }
+    {
+        Date date(2021, 01, 01);
+        CheckUdf<int32_t, Date>("dayofyear", 1, date);
+    }
+    {
+        Date date(2020, 12, 31);
+        CheckUdf<int32_t, Date>("dayofyear", 366, date);
+    }
+    {
+        Date date(2021, 12, 31);
+        CheckUdf<int32_t, Date>("dayofyear", 365, date);
+    }
 }
 TEST_F(UdfIRBuilderTest, weekofyear_date_udf_test) {
     {
