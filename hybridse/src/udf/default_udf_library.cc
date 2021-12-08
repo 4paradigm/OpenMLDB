@@ -1609,7 +1609,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 select dayofweek(timestamp(1590115420000));
                 -- output 6
             @endcode
-            @since 0.1.0
+            @since 0.4.0
         )");
 
     RegisterExternal("dayofyear")
@@ -1630,7 +1630,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 select dayofyear(date("2020-05-22"));
                 -- output 143                
             @endcode
-            @since 0.1.0
+            @since 0.4.0
         )");
 
     RegisterExternal("weekofyear")
