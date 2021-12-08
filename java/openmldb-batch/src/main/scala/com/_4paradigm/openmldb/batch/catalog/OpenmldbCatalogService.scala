@@ -16,25 +16,38 @@
 
 package com._4paradigm.openmldb.batch.catalog
 
-import com._4paradigm.hybridse.LibraryLoader
-import com._4paradigm.openmldb.{SQLRouterOptions, sql_router_sdk}
+import com._4paradigm.openmldb.proto.NS
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
+import com._4paradigm.openmldb.sdk.SdkOption
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.mutable
 
 class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
 
-  {
-    LibraryLoader.loadLibrary("sql_jsdk")
+  val option = new SdkOption
+  option.setZkCluster(zkCluster)
+  option.setZkPath(zkPath)
+
+  val sqlExecutor = new SqlClusterExecutor(option)
+
+  def getDatabases(): Array[String] = {
+    sqlExecutor.showDatabases().asScala.toArray
   }
 
-  val sqlOpt = new SQLRouterOptions
-  sqlOpt.setZk_cluster(zkCluster)
-  sqlOpt.setZk_path(zkPath)
-
-  val sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt)
-  sqlOpt.delete()
-  if (sqlRouter == null) {
-    throw new Exception("fail to create sql executor")
+  def getTableNames(db: String): Array[String] = {
+    sqlExecutor.getTableNames(db).asScala.toArray
   }
 
-  // TODO: use sql router to get catalog data from NameServer
+  def getTableInfos(db: String): Array[NS.TableInfo] = {
+    // TODO: Optimize to get all table info within one rpc
+    val tableNames = sqlExecutor.getTableNames(db)
+
+    val tableInfos = new mutable.ArrayBuffer[NS.TableInfo](tableNames.size())
+    tableNames.forEach(tableName =>
+      tableInfos.append(sqlExecutor.getTableInfo(db, tableName))
+    )
+
+    tableInfos.toArray
+  }
 
 }

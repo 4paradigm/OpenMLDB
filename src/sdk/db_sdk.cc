@@ -280,6 +280,20 @@ std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> DBSDK::GetTables
     return tables;
 }
 
+std::vector<std::string> DBSDK::GetTableNames(const std::string& db) {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+    std::vector<std::string> tableNames;
+    auto it = table_to_tablets_.find(db);
+    if (it == table_to_tablets_.end()) {
+        return tableNames;
+    }
+    auto iit = it->second.begin();
+    for (; iit != it->second.end(); ++iit) {
+        tableNames.push_back(iit->second->name());
+    }
+    return tableNames;
+}
+
 bool ClusterSDK::GetRealEndpointFromZk(const std::string& endpoint, std::string* real_endpoint) {
     if (real_endpoint == nullptr) {
         return false;
