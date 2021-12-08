@@ -14,7 +14,7 @@
 
 set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
 set(ZETASQL_VERSION 0.2.2)
-set(ZETASQL_TAG origin/feat/hybridse-zetasql)
+set(ZETASQL_TAG 5cf55cee3d3480101e31fe5c242dbc24f6ec634e)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64.tar.gz")
@@ -42,11 +42,13 @@ if (NOT BUILD_BUNDLED_ZETASQL)
     BUILD_COMMAND ""
     INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
 else()
-  find_program(bazel REQUIRED DOC "Building zetasql require bazel")
+  find_program(BAZEL_EXE NAMES bazel REQUIRED DOC "Compile zetasql require bazel")
+  find_program(PYTHON_EXE NAMES python REQUIRED DOC "Compile zetasql require python")
   message(STATUS "Compile zetasql from source: ${ZETASQL_HOME}@${ZETASQL_TAG}")
   ExternalProject_Add(zetasql
     GIT_REPOSITORY ${ZETASQL_HOME}
     GIT_TAG ${ZETASQL_TAG}
+    GIT_SHALLOW TRUE
     PREFIX ${DEPS_BUILD_DIR}
     INSTALL_DIR ${DEPS_INSTALL_DIR}
     BUILD_IN_SOURCE True
