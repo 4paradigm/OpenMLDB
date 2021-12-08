@@ -1,0 +1,22 @@
+diff --git a/src/logging.cc b/src/logging.cc
+index f577996..2363f80 100644
+--- a/src/logging.cc
++++ b/src/logging.cc
+@@ -15,7 +15,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string>
+-#include <syscall.h>
++#include <pthread.h>
+ #include <sys/time.h>
+ #include <unistd.h>
+ #include <sys/types.h>
+@@ -295,7 +295,7 @@ void Logv(int log_level, const char* format, va_list ap) {
+     static __thread char tid_str[32];
+     static __thread int tid_str_len = 0;
+     if (thread_id == 0) {
+-        thread_id = syscall(__NR_gettid);
++        pthread_threadid_np(0, &thread_id);
+         tid_str_len = snprintf(tid_str, sizeof(tid_str), " %d ", static_cast<int32_t>(thread_id));
+     }
+ 

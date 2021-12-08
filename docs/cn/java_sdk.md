@@ -14,7 +14,7 @@
 
 ## 配置maven pom
 
-添加如下依赖配置, 其中version配置java sdk版本
+添加如下依赖配置, 其中 version 配置 java sdk 版本
 
 ```
 <dependency>
@@ -23,6 +23,8 @@
         <version>0.2.2</version>
 </dependency>
 ```
+
+注意: 由于 java sdk 中包含了 OpenMLDB 编译的 C++ 静态库, 默认是 linux 静态库, macOS 上需将上述 version 改成 `0.2.2-macos`。也可以将 version 改成 `0.2.2-allinone`, 它既包含 Linux 也包含 macOS
 
 ## java使用demo
 
