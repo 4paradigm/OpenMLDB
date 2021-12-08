@@ -21,12 +21,14 @@ import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.{JobIdGenerator, JobInfo}
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
-
+import org.slf4j.LoggerFactory
 import java.sql.{PreparedStatement, ResultSet, SQLException, Timestamp}
 import java.util.Calendar
 import scala.collection.mutable
 
 object JobInfoManager {
+  private val logger = LoggerFactory.getLogger(this.getClass)
+
   // TODO: Check if internal table has been created
   val dbName = "__INTERNAL_DB"
   val tableName = "JOB_INFO"
@@ -121,14 +123,17 @@ object JobInfoManager {
   }
 
   def syncJob(job: JobInfo): Unit = {
+    // Escape double quote for generated SQL string
+    val escapeErrorString = job.getError.replaceAll("\"", "\\\\\\\"")
     val insertSql =
       s"""
          | INSERT INTO $tableName VALUES
-         | (${job.getId}, "${job.getJobType}", "${job.getState}", ${job.getStartTime.getTime}, ${job.getEndTime.getTime}, "${job.getParameter}", "${job.getCluster}", "${job.getApplicationId}", "${job.getError}")
+         | (${job.getId}, "${job.getJobType}", "${job.getState}", ${job.getStartTime.getTime}, ${job.getEndTime.getTime}, "${job.getParameter}", "${job.getCluster}", "${job.getApplicationId}", "${escapeErrorString}")
          |""".stripMargin
 
     var pstmt: PreparedStatement = null
     try {
+      logger.info(s"Run insert SQL: $insertSql")
       pstmt = sqlExecutor.getInsertPreparedStmt(dbName, insertSql)
       pstmt.execute()
     } catch {
