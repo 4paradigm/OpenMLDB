@@ -676,7 +676,7 @@ TEST_F(ExternUdfTest, LikeMatchTest) {
         EXPECT_EQ(match, ret) << "like(" << name << ", " << pattern << ", " << esc << ")";
         EXPECT_EQ(is_null, ret_null) << "like(" << name << ", " << pattern << ", " << esc << ")";
 
-        if (pattern == "\\") {
+        if (esc == "\\") {
             // also check like(x, x)
             bool ret = false;
             bool ret_null = false;
@@ -772,11 +772,11 @@ TEST_F(ExternUdfTest, ILikeMatchTest) {
         EXPECT_EQ(match, ret) << "like(" << name << ", " << pattern << ", " << esc << ")";
         EXPECT_EQ(is_null, ret_null) << "like(" << name << ", " << pattern << ", " << esc << ")";
 
-        if (pattern == "\\") {
+        if (esc == "\\") {
             // also check like(x, x)
             bool ret = false;
             bool ret_null = false;
-            v1::like(&name_ref, &pattern_ref, &ret, &ret_null);
+            v1::ilike(&name_ref, &pattern_ref, &ret, &ret_null);
             EXPECT_EQ(match, ret) << "like(" << name << ", " << pattern << ")";
             EXPECT_EQ(is_null, ret_null) << "like(" << name << ", " << pattern << ")";
         }
@@ -820,8 +820,11 @@ TEST_F(ExternUdfTest, ILikeMatchTest) {
     check_ilike(true, false, R"r(Evan\kkbw)r", R"r(evan\%w)r", "");
     check_ilike(true, false, R"r(Evan\no\sw)r", R"r(evan\%\_w)r", "");
 
+    // might better to throw a exception
     // invalid match pattern
     check_ilike(false, false, R"r(Evan_w\)r", R"r(evan_w\)r", "\\");
+    // invalid escape sequence
+    check_ilike(false, false, "Mary", "M_ry", "ab");
 }
 
 TEST_F(ExternUdfTest, ILikeMatchNullable) {

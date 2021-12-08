@@ -18,7 +18,6 @@
 #include <stdint.h>
 #include <time.h>
 #include <map>
-#include <regex>
 #include <set>
 #include <utility>
 #include "absl/strings/ascii.h"
@@ -382,21 +381,6 @@ void ilike(codec::StringRef* name, codec::StringRef* pattern, codec::StringRef* 
 void ilike(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
     static codec::StringRef default_esc(1, "\\");
     ilike(name, pattern, &default_esc, out, is_null);
-}
-
-/* case insensitive regex match */
-void regexp_match(codec::StringRef* name, codec::StringRef* pattern,
-                  bool* out, bool* is_null) {
-    if (name == nullptr || pattern == nullptr) {
-        *is_null = true;
-        out = nullptr;
-        return;
-    }
-    auto flags = std::regex_constants::ECMAScript | std::regex_constants::icase;
-    std::regex re(pattern->data_, pattern->size_, flags);
-    std::cmatch m;
-    *out = std::regex_match(name->data_, name->data_ + name->size_, m, re);
-    *is_null = false;
 }
 
 void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {
