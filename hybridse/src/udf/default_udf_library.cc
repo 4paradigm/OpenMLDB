@@ -1623,6 +1623,12 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @code{.sql}
                 select dayofyear(timestamp(1590115420000));
                 -- output 143
+
+                select dayofyear(1590115420000);
+                -- output 143
+
+                select dayofyear(date("2020-05-22"));
+                -- output 143                
             @endcode
             @since 0.1.0
         )");
