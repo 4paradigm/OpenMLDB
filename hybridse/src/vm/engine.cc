@@ -33,7 +33,7 @@
 
 DECLARE_bool(logtostderr);
 DECLARE_string(log_dir);
-DECLARE_bool(enable_spark_unsaferow_format);
+extern bool g_enable_spark_unsaferow_format;
 
 namespace hybridse {
 namespace vm {
@@ -50,13 +50,13 @@ EngineOptions::EngineOptions()
       enable_batch_window_parallelization_(false),
       max_sql_cache_size_(50),
       enable_spark_unsaferow_format_(false) {
-    // TODO(chendihao): Pass the parameter to avoid global gflag
-    FLAGS_enable_spark_unsaferow_format = enable_spark_unsaferow_format_;
+    // TODO(chendihao): Pass the parameter to avoid using global variable
+    g_enable_spark_unsaferow_format = enable_spark_unsaferow_format_;
 }
 
 EngineOptions* EngineOptions::SetEnableSparkUnsaferowFormat(bool flag) {
     enable_spark_unsaferow_format_ = flag;
-    FLAGS_enable_spark_unsaferow_format = flag;
+    g_enable_spark_unsaferow_format = flag;
     return this;
 }
 

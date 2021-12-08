@@ -59,6 +59,8 @@ if (LLVM_EXT_ENABLE)
 endif ()
 
 add_library(hybridse_flags STATIC ${CMAKE_CURRENT_SOURCE_DIR}/flags.cc)
+add_library(hybridse_global_variables STATIC ${CMAKE_CURRENT_SOURCE_DIR}/global_variables.cc)
+
 target_link_libraries(hybridse_flags gflags)
 # hybridse core library
 add_library(hybridse_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
@@ -108,8 +110,8 @@ endif ()
 
 # udf exporter
 add_executable(export_udf_info cmd/export_udf_info.cc)
-target_link_libraries(export_udf_info hybridse_core ${ZETASQL_LIBS})
+target_link_libraries(export_udf_info hybridse_core hybridse_global_variables ${ZETASQL_LIBS})
 
 # simple engine demo
 add_executable(simple_engine_demo cmd/simple_engine_demo.cc)
-target_link_libraries(simple_engine_demo hybridse_core ${ZETASQL_LIBS} ${GTEST_LIBRARIES})
+target_link_libraries(simple_engine_demo hybridse_core hybridse_global_variables ${ZETASQL_LIBS} ${GTEST_LIBRARIES})

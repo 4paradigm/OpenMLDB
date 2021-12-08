@@ -17,7 +17,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 
-set(SDK_DEPS_LIBS hybridse_core hybridse_flags
+set(SDK_DEPS_LIBS hybridse_core hybridse_flags hybridse_global_variables
 		${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS} ${OS_LIB} )
 
 # split sdk test and bm

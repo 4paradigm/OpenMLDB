@@ -37,7 +37,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 # bm lib
 add_library(hybridse_bm_lib STATIC ${BENCHMARK_LIB_FILE_LIST})
-target_link_libraries(hybridse_bm_lib hybridse_sdk hybridse_flags ${BENCHMARK_LIIBS})
+target_link_libraries(hybridse_bm_lib hybridse_sdk hybridse_flags hybridse_global_variables ${BENCHMARK_LIIBS})
 # bm executables
 set(BENCHMARK_TARGET_LIST)
 foreach(BENCHMARK_SCRIPT ${BENCHMARK_EXEC_FILE_LIST})
@@ -48,7 +48,7 @@ foreach(BENCHMARK_SCRIPT ${BENCHMARK_EXEC_FILE_LIST})
         add_executable(${BENCHMARK_TARGET_NAME} ${BENCHMARK_SCRIPT})
 
         target_link_libraries(${BENCHMARK_TARGET_NAME}
-            hybridse_sdk hybridse_flags hybridse_bm_lib ${BENCHMARK_LIBS} benchmark)
+            hybridse_sdk hybridse_flags hybridse_global_variables hybridse_bm_lib ${BENCHMARK_LIBS} benchmark)
         list(APPEND BENCHMARK_TARGET_LIST ${BENCHMARK_TARGET_NAME})
 endforeach()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -69,7 +69,7 @@ if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
             --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
 
         target_link_libraries(${TEST_TARGET_NAME}
-            hybridse_bm_lib hybridse_sdk hybridse_flags
+            hybridse_bm_lib hybridse_sdk hybridse_flags hybridse_global_variables
             gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()

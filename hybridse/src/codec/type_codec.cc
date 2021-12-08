@@ -24,7 +24,7 @@
 #include "glog/logging.h"
 #include "proto/fe_type.pb.h"
 
-DECLARE_bool(enable_spark_unsaferow_format);
+extern bool g_enable_spark_unsaferow_format;
 
 namespace hybridse {
 namespace codec {
@@ -38,7 +38,7 @@ uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
     uint32_t total_size = primary_size + str_size;
 
     // Support Spark UnsafeRow format where string field will take up 8 bytes
-    if (FLAGS_enable_spark_unsaferow_format) {
+    if (g_enable_spark_unsaferow_format) {
         // Make sure each string column takes up 8 bytes
         *str_addr_space = 8;
         return total_size + str_field_cnt * 8;
@@ -83,7 +83,7 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
     if (row == NULL || data == NULL || size == NULL) return -1;
 
     // Support Spark UnsafeRow format
-    if (FLAGS_enable_spark_unsaferow_format) {
+    if (g_enable_spark_unsaferow_format) {
         // For UnsafeRow opt, str_start_offset is the nullbitmap size
         const uint32_t bitmap_size = str_start_offset;
         const int8_t* row_with_col_offset = row + HEADER_LENGTH + bitmap_size + col_idx * 8;
@@ -188,7 +188,7 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
                      int8_t* val, uint32_t size, int8_t is_null,
                      uint32_t str_start_offset, uint32_t str_field_offset,
                      uint32_t str_addr_space, uint32_t str_body_offset) {
-    if (FLAGS_enable_spark_unsaferow_format) {
+    if (g_enable_spark_unsaferow_format) {
         // TODO(chenjing): Refactor to support multiple codec instead of reusing the variable
         // For UnsafeRow opt, str_start_offset is the nullbitmap size
         const uint32_t bitmap_size = str_start_offset;

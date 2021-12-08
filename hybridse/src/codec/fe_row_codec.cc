@@ -20,13 +20,13 @@
 #include "codec/type_codec.h"
 #include "glog/logging.h"
 
-DECLARE_bool(enable_spark_unsaferow_format);
+extern bool g_enable_spark_unsaferow_format;
 
 namespace hybridse {
 namespace codec {
 
 const uint32_t BitMapSize(uint32_t size) {
-    if (FLAGS_enable_spark_unsaferow_format) {
+    if (g_enable_spark_unsaferow_format) {
         // For UnsafeRow opt, the nullbit set increases by 8 bytes
         return ((size >> 6) + !!(size&0x7f)) * 8;
     } else {
@@ -52,7 +52,7 @@ const std::unordered_map<::hybridse::type::Type, uint8_t>&
         {::hybridse::type::kDate, 8},  {::hybridse::type::kDouble, 8}};
 
 const std::unordered_map<::hybridse::type::Type, uint8_t>& GetTypeSizeMap() {
-    if (FLAGS_enable_spark_unsaferow_format) {
+    if (g_enable_spark_unsaferow_format) {
         return SPARK_UNSAFEROW_TYPE_SIZE_MAP;
     } else {
         return DEFAULT_TYPE_SIZE_MAP;
@@ -946,7 +946,7 @@ bool RowFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
                << next_offset << " str_field_start_offset "
                << str_field_start_offset_ << " for col " << base_col_info.name;
 
-    if (FLAGS_enable_spark_unsaferow_format) {
+    if (g_enable_spark_unsaferow_format) {
         // Notice that we pass the nullbitmap size as str_field_start_offset
         *res = StringColInfo(base_col_info.name, ty, col_idx, offset, next_offset,
                             BitMapSize(schema_->size()));

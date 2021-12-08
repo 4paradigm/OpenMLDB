@@ -88,4 +88,4 @@ add_executable(toydb cmd/toydb.cc)
 target_link_libraries(toydb toydb_lib toydb_sdk hybridse_sdk hybridse_core hybridse_flags )
 # engine execution
 add_executable(toydb_run_engine cmd/toydb_run_engine.cc)
-target_link_libraries(toydb_run_engine toydb_lib toydb_sdk toydb_flags hybridse_flags hybridse_test_base gtest sqlite3)
+target_link_libraries(toydb_run_engine toydb_lib toydb_sdk toydb_flags hybridse_flags hybridse_global_variables hybridse_test_base gtest sqlite3)

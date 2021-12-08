@@ -25,7 +25,7 @@
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
 
-DECLARE_bool(enable_spark_unsaferow_format);
+extern bool g_enable_spark_unsaferow_format;
 
 namespace hybridse {
 namespace codegen {
@@ -211,7 +211,7 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(const std::map<uint32_t, Na
     str_field_start_offset_ = codec::GetStartOffset(schema_->size());
     for (int32_t idx = 0; idx < schema_->size(); idx++) {
         // Support Spark UnsafeRow format where all fields will take up 8 bytes
-        if (FLAGS_enable_spark_unsaferow_format) {
+        if (g_enable_spark_unsaferow_format) {
             offset_vec_.push_back(str_field_start_offset_);
             str_field_start_offset_ += 8;
             const ::hybridse::type::ColumnDef& column = schema_->Get(idx);
@@ -400,7 +400,7 @@ base::Status BufNativeEncoderIRBuilder::AppendString(::llvm::Value* i8_ptr, ::ll
                                                                              size_ty,    // str_addr_space
                                                                              size_ty);   // str_body_offset
 
-    if (FLAGS_enable_spark_unsaferow_format) {
+    if (g_enable_spark_unsaferow_format) {
         *output = builder.CreateCall(
             callee, ::llvm::ArrayRef<::llvm::Value*>{i8_ptr, buf_size, val_field_idx, data_ptr, fe_str_size, is_null,
                                                      // Notice that we pass nullbitmap size as str_field_start_offset

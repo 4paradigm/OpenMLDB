@@ -46,7 +46,7 @@
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
-DECLARE_bool(enable_spark_unsaferow_format);
+extern bool g_enable_spark_unsaferow_format;
 
 ExitOnError ExitOnErr;
 
@@ -594,7 +594,7 @@ TEST_F(BufIRBuilderTest, native_test_load_string_col) {
 }
 
 TEST_F(BufIRBuilderTest, spark_unsaferow_native_test_load_string) {
-    FLAGS_enable_spark_unsaferow_format = true;
+    g_enable_spark_unsaferow_format = true;
 
     int8_t* ptr = NULL;
     uint32_t size = 0;
@@ -609,7 +609,7 @@ TEST_F(BufIRBuilderTest, spark_unsaferow_native_test_load_string) {
     free(ptr);
 }
 TEST_F(BufIRBuilderTest, spark_unsaferow_native_test_load_int64_col) {
-    FLAGS_enable_spark_unsaferow_format = true;
+    g_enable_spark_unsaferow_format = true;
 
     int8_t* ptr = NULL;
     std::vector<Row> rows;
@@ -620,7 +620,7 @@ TEST_F(BufIRBuilderTest, spark_unsaferow_native_test_load_int64_col) {
     free(ptr);
 }
 TEST_F(BufIRBuilderTest, spark_unsaferow_encode_ir_builder) {
-    FLAGS_enable_spark_unsaferow_format = true;
+    g_enable_spark_unsaferow_format = true;
 
     int8_t* ptr = NULL;
     type::TableDef table;

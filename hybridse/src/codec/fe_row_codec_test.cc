@@ -19,7 +19,7 @@
 #include <vector>
 #include "gtest/gtest.h"
 
-DECLARE_bool(enable_spark_unsaferow_format);
+extern bool g_enable_spark_unsaferow_format;
 
 namespace hybridse {
 namespace codec {
@@ -652,14 +652,14 @@ TEST_F(CodecTest, RowFormatOffsetLongHeaderTest) {
     }
 }
 TEST_F(CodecTest, SparkUnsaferowBitMapSizeTest) {
-    FLAGS_enable_spark_unsaferow_format = false;
+    g_enable_spark_unsaferow_format = false;
     ASSERT_EQ(BitMapSize(3), 1);
     ASSERT_EQ(BitMapSize(8), 1);
     ASSERT_EQ(BitMapSize(9), 2);
     ASSERT_EQ(BitMapSize(20), 3);
     ASSERT_EQ(BitMapSize(65), 9);
 
-    FLAGS_enable_spark_unsaferow_format = true;
+    g_enable_spark_unsaferow_format = true;
     ASSERT_EQ(BitMapSize(3), 8);
     ASSERT_EQ(BitMapSize(8), 8);
     ASSERT_EQ(BitMapSize(9), 8);
@@ -667,7 +667,7 @@ TEST_F(CodecTest, SparkUnsaferowBitMapSizeTest) {
     ASSERT_EQ(BitMapSize(65), 16);
 }
 TEST_F(CodecTest, SparkUnsaferowRowFormatTest) {
-    FLAGS_enable_spark_unsaferow_format = true;
+    g_enable_spark_unsaferow_format = true;
 
     std::vector<int> num_vec = {10, 20, 50, 100, 1000};
     for (auto col_num : num_vec) {
