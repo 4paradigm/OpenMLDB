@@ -26,7 +26,7 @@ object RunBatchSql {
       throw new Exception(s"Require args: sql, outputPath but get args: ${args.mkString(",")}")
     }
 
-    runBatchSql(args(1), args(2))
+    runBatchSql(args(0), args(1))
   }
 
   def runBatchSql(sql: String, outputPath: String): Unit = {

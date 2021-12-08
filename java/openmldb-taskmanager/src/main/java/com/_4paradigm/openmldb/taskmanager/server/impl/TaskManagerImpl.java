@@ -21,14 +21,13 @@ import com._4paradigm.openmldb.taskmanager.JobInfoManager;
 import com._4paradigm.openmldb.taskmanager.OpenmldbBatchjobManager;
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.StatusCode;
-import com._4paradigm.openmldb.taskmanager.server.TaskManagerServer;
+import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
 import java.util.List;
 
 @Slf4j
-public class TaskManagerServerImpl implements TaskManagerServer {
+public class TaskManagerImpl implements TaskManagerInterface {
 
     public TaskManager.JobInfo jobInfoToProto(JobInfo job) {
         TaskManager.JobInfo.Builder builder =  TaskManager.JobInfo.newBuilder();

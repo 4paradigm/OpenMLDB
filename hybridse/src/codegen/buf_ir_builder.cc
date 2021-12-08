@@ -480,18 +480,24 @@ base::Status BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr
         return base::Status::OK();
     }
 
-    ::llvm::Value* total_size = NULL;
     StringIRBuilder string_ir_builder(block_->getModule());
     ::llvm::Type* str_ty = string_ir_builder.GetType();
 
     CHECK_TRUE(str_ty != NULL, common::kCodegenError, "Fail to get str llvm type")
-    // build get string length and call native functon
+    // initialize total string length as int32 zero
+    ::llvm::Value* total_size = builder.getInt32(0);
     ::llvm::Type* size_ty = builder.getInt32Ty();
+    // go through columns value, accumulate string length if there is a string type column
     for (int32_t idx = 0; idx < schema_->size(); ++idx) {
         const ::hybridse::type::ColumnDef& column = schema_->Get(idx);
         DLOG(INFO) << "output column " << column.name() << " " << idx;
         if (column.type() == ::hybridse::type::kVarchar) {
             const NativeValue& fe_str = outputs_->at(idx);
+            // skip accumulate string length once the column is const NULL string
+            if (fe_str.IsConstNull()) {
+                continue;
+            }
+            // build get string length and call native function
             ::llvm::Value* fe_str_st = fe_str.GetValue(&builder);
             CHECK_TRUE(fe_str_st != NULL, common::kCodegenEncodeError, "String output is null for ", column.name())
             ::llvm::Value* fe_str_ptr = builder.CreatePointerCast(fe_str_st, str_ty->getPointerTo());
@@ -501,11 +507,8 @@ base::Status BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr
             ::llvm::Value* fe_str_size = builder.CreateLoad(size_ty, size_i32_ptr, "load_str_length");
             fe_str_size = builder.CreateSelect(fe_str.GetIsNull(&builder), builder.getInt32(0), fe_str_size);
 
-            if (total_size == NULL) {
-                total_size = fe_str_size;
-            } else {
-                total_size = builder.CreateAdd(fe_str_size, total_size, "add_str_length");
-            }
+
+            total_size = builder.CreateAdd(fe_str_size, total_size, "add_str_length");
         }
     }
 

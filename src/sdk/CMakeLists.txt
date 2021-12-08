@@ -14,6 +14,8 @@
 
 if(TESTING_ENABLE)
     add_library(mini_cluster_bm_common STATIC mini_cluster_bm.cc)
+    add_dependencies(mini_cluster_bm_common openmldb_proto hybridse_proto)
+
     add_library(base_test STATIC sql_sdk_base_test.cc ../test/base_test.cc)
     add_dependencies(base_test openmldb_proto hybridse_proto)
 

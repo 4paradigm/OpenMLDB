@@ -19,21 +19,23 @@ package com._4paradigm.openmldb.taskmanager
 import com._4paradigm.openmldb.sdk.SdkOption
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
-import com._4paradigm.openmldb.taskmanager.dao.JobInfo
+import com._4paradigm.openmldb.taskmanager.dao.{JobIdGenerator, JobInfo}
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
-
+import org.slf4j.LoggerFactory
 import java.sql.{PreparedStatement, ResultSet, SQLException, Timestamp}
 import java.util.Calendar
 import scala.collection.mutable
 
 object JobInfoManager {
+  private val logger = LoggerFactory.getLogger(this.getClass)
+
   // TODO: Check if internal table has been created
   val dbName = "__INTERNAL_DB"
   val tableName = "JOB_INFO"
 
   val option = new SdkOption
   option.setZkCluster(TaskManagerConfig.ZK_CLUSTER)
-  option.setZkPath(TaskManagerConfig.ZK_ROOTPATH)
+  option.setZkPath(TaskManagerConfig.ZK_ROOT_PATH)
   val sqlExecutor = new SqlClusterExecutor(option)
 
   def createJobSystemTable(): Unit = {
@@ -57,8 +59,7 @@ object JobInfoManager {
   }
 
   def createJobInfo(jobType: String, args: List[String] = List(), sparkConf: Map[String, String] = Map()): JobInfo = {
-    // TODO: Generate unique job id
-    val jobId = 1
+    val jobId = JobIdGenerator.getUniqueId
     val startTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())
     val initialState = "Submitted"
     val parameter = if (args != null && args.length>0) args.mkString(",") else ""
@@ -122,14 +123,17 @@ object JobInfoManager {
   }
 
   def syncJob(job: JobInfo): Unit = {
+    // Escape double quote for generated SQL string
+    val escapeErrorString = job.getError.replaceAll("\"", "\\\\\\\"")
     val insertSql =
       s"""
          | INSERT INTO $tableName VALUES
-         | (${job.getId}, "${job.getJobType}", "${job.getState}", ${job.getStartTime.getTime}, ${job.getEndTime.getTime}, "${job.getParameter}", "${job.getCluster}", "${job.getApplicationId}", "${job.getError}")
+         | (${job.getId}, "${job.getJobType}", "${job.getState}", ${job.getStartTime.getTime}, ${job.getEndTime.getTime}, "${job.getParameter}", "${job.getCluster}", "${job.getApplicationId}", "${escapeErrorString}")
          |""".stripMargin
 
     var pstmt: PreparedStatement = null
     try {
+      logger.info(s"Run insert SQL: $insertSql")
       pstmt = sqlExecutor.getInsertPreparedStmt(dbName, insertSql)
       pstmt.execute()
     } catch {
@@ -145,9 +149,9 @@ object JobInfoManager {
   }
 
   def resultSetToJob(rs: ResultSet): JobInfo = {
-    if(rs.getFetchSize == 1) {
+    if (rs.getFetchSize == 1) {
       if (rs.next()) {
-       return new JobInfo(rs.getInt(1), rs.getString(2), rs.getString(3),
+        return new JobInfo(rs.getInt(1), rs.getString(2), rs.getString(3),
           rs.getTimestamp(4), rs.getTimestamp(5), rs.getString(6),
           rs.getString(7), rs.getString(8), rs.getString(9))
       }
@@ -157,7 +161,7 @@ object JobInfoManager {
 
   def resultSetToJobs(rs: ResultSet): List[JobInfo] = {
     val jobs = mutable.ArrayBuffer[JobInfo]()
-    while(rs.next()) {
+    while (rs.next()) {
       val jobInfo = new JobInfo(rs.getInt(1), rs.getString(2), rs.getString(3),
         rs.getTimestamp(4), rs.getTimestamp(5), rs.getString(6),
         rs.getString(7), rs.getString(8), rs.getString(9))
