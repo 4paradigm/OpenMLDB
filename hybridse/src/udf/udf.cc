@@ -107,7 +107,7 @@ int32_t dayofyear(codec::Date *date) {
             return 0;
         }
         boost::gregorian::date d(year, month, day);
-        return d.day_of_year() + 1;
+        return d.day_of_year();
     } catch (...) {
         return 0;
     }
