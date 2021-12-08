@@ -332,7 +332,7 @@ bool like_internal(std::string_view name, std::string_view pattern, const char *
 * if escape is null or ref to empty string, disable escape feature
 *
 * nullable
-* - any of (name, pattern) is null, return null
+* - any of (name, pattern, escape) is null, return null
 */
 template <typename EQUAL>
 void like_internal(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, EQUAL &&equal,
