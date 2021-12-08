@@ -342,7 +342,7 @@ cases:
           rows:
             - [true]
   - id: like_udf_3
-    desc: disable escape
+    desc: escape is '' or null
     inputs:
       - name: t1
         columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
@@ -351,7 +351,7 @@ cases:
           - [1, 1590115420001, "Mike"]
     dataProvider:
       - ["like_match", "ilike_match"]
-      - ["''"]
+      - ["''", string(NULL)]
     sql: |
       select d[0](col2, 'm_ke', d[1])  as col2 from t1;
     expect:
@@ -361,16 +361,16 @@ cases:
         0:
           rows:
             - [false]
-        # 1:
-        #   rows:
-        #     - [null]
+        1:
+          rows:
+            - [null]
       1:
         0:
           rows:
             - [true]
-        # 1:
-        #   rows:
-        #     - [null]
+        1:
+          rows:
+            - [null]
 
   - id: like_udf_4
     desc: nullable rules

@@ -337,7 +337,7 @@ bool like_internal(std::string_view name, std::string_view pattern, const char *
 template <typename EQUAL>
 void like_internal(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, EQUAL &&equal,
                    bool *out, bool *is_null) {
-    if (name == nullptr || pattern == nullptr) {
+    if (name == nullptr || pattern == nullptr || escape == nullptr) {
         out = nullptr;
         *is_null = true;
         return;
@@ -348,7 +348,7 @@ void like_internal(codec::StringRef *name, codec::StringRef *pattern, codec::Str
 
     *is_null = false;
     const char *esc = nullptr;
-    if (escape && escape->size_ > 0) {
+    if (escape->size_ > 0) {
         if (escape->size_ >= 2) {
             DLOG(ERROR) << "data exception: invalid escape character '" << escape->ToString() << "'";
             *out = false;

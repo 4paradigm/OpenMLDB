@@ -744,7 +744,7 @@ TEST_F(ExternUdfTest, LikeMatchNullable) {
     };
     char escape = '\\';
     codec::StringRef escape_ref(1, &escape);
-    codec::StringRef name(R"s(Ma\ky)s");
+    codec::StringRef name(R"s(Ma_y)s");
     codec::StringRef pattern(R"s(Ma\_y)s");
 
     // any of name or pattern is null, return null
@@ -754,10 +754,8 @@ TEST_F(ExternUdfTest, LikeMatchNullable) {
     check_null(false, true, nullptr, &pattern, nullptr);
     check_null(false, true, &name, nullptr, nullptr);
     check_null(false, true, nullptr, nullptr, nullptr);
-
-    // disable escape by provide nullptr
-    check_null(true, false, &name, &pattern, nullptr);
-    check_null(false, false, &name, &pattern, &escape_ref);
+    check_null(false, true, &name, &pattern, nullptr);
+    check_null(true, false, &name, &pattern, &escape_ref);
 }
 
 TEST_F(ExternUdfTest, ILikeMatchTest) {
@@ -844,7 +842,7 @@ TEST_F(ExternUdfTest, ILikeMatchNullable) {
     };
     char escape = '\\';
     codec::StringRef escape_ref(1, &escape);
-    codec::StringRef name(R"s(Ma\ky)s");
+    codec::StringRef name(R"s(Ma_y)s");
     codec::StringRef pattern(R"s(ma\_y)s");
 
     check_null(false, true, nullptr, &pattern, &escape_ref);
@@ -854,10 +852,9 @@ TEST_F(ExternUdfTest, ILikeMatchNullable) {
     check_null(false, true, nullptr, &pattern, nullptr);
     check_null(false, true, &name, nullptr, nullptr);
     check_null(false, true, nullptr, nullptr, nullptr);
+    check_null(false, true, &name, &pattern, nullptr);
 
-    // disable escape by provide nullptr
-    check_null(true, false, &name, &pattern, nullptr);
-    check_null(false, false, &name, &pattern, &escape_ref);
+    check_null(true, false, &name, &pattern, &escape_ref);
 }
 
 }  // namespace udf
