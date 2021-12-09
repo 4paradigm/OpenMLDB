@@ -79,16 +79,6 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         // TODO(chenjing): 处理子查询
         table_name = MakeTableName(current_node);
     }
-
-    // Cannot support GROUP BY, WHERE and HAVING clause under Request Mode
-    if (!is_batch_mode_) {
-        CHECK_TRUE(nullptr == root->group_clause_ptr_, common::kPlanError,
-                   "Cannot support GROUP BY clause on RequestMode");
-        CHECK_TRUE(nullptr == root->where_clause_ptr_, common::kPlanError,
-                   "Cannot support WHERE clause on RequestMode");
-        CHECK_TRUE(nullptr == root->having_clause_ptr_, common::kPlanError,
-                   "Cannot support HAVING clause on RequestMode");
-    }
     // group by
     if (nullptr != root->group_clause_ptr_) {
         if (!root->group_clause_ptr_->IsEmpty()) {
@@ -379,28 +369,89 @@ bool Planner::IsTable(node::PlanNode *node, node::PlanNode** output) {
     }
     return false;
 }
-base::Status Planner::ValidatePrimaryPath(node::PlanNode *node, std::vector<node::PlanNode *>& outputs) {
-    CHECK_TRUE(nullptr != node, common::kPlanError, "primary path validate fail: node or output is null")
+/**
+ * Validate online serving op with given plan tree
+ * - Support Ops:
+ *   - TABLE
+ *   - SELECT
+ *   - JOIN
+ *   - WINDOW
+ * - UnSupport Ops::
+ *   - CREATE TABLE
+ *   - INSERT TABLE
+ *   - GROUP BY
+ *   - HAVING clause
+ *   - FILTER
+ *   -
+ * @param node
+ * @return
+ */
+base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
+    CHECK_TRUE(nullptr != node, common::kNullInputPointer,
+               "Fail to validate request table: input node is "
+               "null")
+    switch (node->type_) {
+        case node::kPlanTypeTable: {
+            break;
+        }
+        case node::kPlanTypeProject: {
+            auto project_node = dynamic_cast<node::ProjectPlanNode*>(node);
+
+            for (auto &each : project_node->project_list_vec_) {
+                node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(each);
+                CHECK_TRUE(nullptr == project_list->GetHavingCondition(), common::kPlanError,
+                           "Non-support HAVING Op in online serving")
+                CHECK_TRUE(!(nullptr == project_list->GetW() && project_list->HasAggProject()), common::kPlanError,
+                           "Aggregate over a table cannot be supported in online serving")
+            }
+        }
+        case node::kPlanTypeRename:
+        case node::kPlanTypeLimit:
+        case node::kPlanTypeWindow:
+        case node::kPlanTypeQuery:
+        case node::kPlanTypeJoin: {
+            for (auto *child : node->GetChildren()) {
+                CHECK_STATUS(ValidateOnlineServingOp(child));
+            }
+            break;
+        }
+        default: {
+            FAIL_STATUS(common::kPlanError, "Non-support ", node->GetTypeName(), " Op in online serving");
+            break;
+        }
+    }
+    return base::Status::OK();
+}
+/**
+ * Validate there is one and only one request table existing in the Plan tree
+ * @param node
+ * @param outputs
+ * @return
+ */
+base::Status Planner::ValidateRequestTable(node::PlanNode *node, std::vector<node::PlanNode *>& outputs) {
+    CHECK_TRUE(nullptr != node, common::kNullInputPointer,
+               "Fail to validate request table: input node is "
+               "null")
 
     switch (node->type_) {
         case node::kPlanTypeJoin:
         case node::kPlanTypeUnion: {
             auto binary_op = dynamic_cast<node::BinaryPlanNode *>(node);
-            CHECK_STATUS(ValidatePrimaryPath(binary_op->GetLeft(), outputs),
-                         "primary path validate fail: left path isn't valid")
+            CHECK_TRUE(nullptr != binary_op->GetLeft(), common::kPlanError, "Left child of ", node->GetTypeName(), " "
+                       "is null")
+            CHECK_STATUS(ValidateRequestTable(binary_op->GetLeft(), outputs))
             CHECK_TRUE(!outputs.empty(), common::kPlanError, "PLAN error: No request/primary table exist in left tree");
             node::PlanNode *right_table = nullptr;
 
             // If right side is a table|simple select table|rename table
-            // It isn't necessary to be primary
+            // It isn't necessary to be validate request
             if (IsTable(binary_op->GetRight(), &right_table)) {
                 // Collect table if it is equal with primary table node
                 if (node::PlanEquals(right_table, outputs[0])) {
                     outputs.push_back(right_table);
                 }
             } else {
-                CHECK_STATUS(ValidatePrimaryPath(binary_op->GetRight(), outputs),
-                             "primary path validate fail: right path isn't valid")
+                CHECK_STATUS(ValidateRequestTable(binary_op->GetRight(), outputs))
             }
             return base::Status::OK();
         }
@@ -408,8 +459,9 @@ base::Status Planner::ValidatePrimaryPath(node::PlanNode *node, std::vector<node
             if (outputs.empty()) {
                 outputs.push_back(node);
             } else {
+                // Validate there is only one request table existing in the plan tree
                 CHECK_TRUE(node::PlanEquals(node, outputs[0]), common::kPlanError,
-                           "PLAN error: Non-support multiple primary tables")
+                           "Non-support multiple request tables")
                 outputs.push_back(node);
             }
             return base::Status::OK();
@@ -420,11 +472,11 @@ base::Status Planner::ValidatePrimaryPath(node::PlanNode *node, std::vector<node
         case node::kPlanTypeWindow:
         case node::kProjectList:
         case node::kProjectNode: {
-            FAIL_STATUS(common::kPlanError, "primary path validate fail: invalid node of primary path")
+            FAIL_STATUS(common::kPlanError, "Fail to infer a request table with invalid node", node->GetTypeName())
         }
         default: {
             auto unary_op = dynamic_cast<const node::UnaryPlanNode *>(node);
-            CHECK_STATUS(ValidatePrimaryPath(unary_op->GetDepend(), outputs));
+            CHECK_STATUS(ValidateRequestTable(unary_op->GetDepend(), outputs));
             return base::Status::OK();
         }
     }
@@ -438,20 +490,23 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 CHECK_STATUS(CreateQueryPlan(dynamic_cast<node::QueryNode *>(parser_tree), &query_plan));
 
                 if (!is_batch_mode_) {
-                    // return false if Primary path check fail
-                    std::vector<::hybridse::node::PlanNode*> primary_nodes;
-                    CHECK_STATUS(ValidatePrimaryPath(query_plan, primary_nodes))
-                    CHECK_TRUE(!primary_nodes.empty(), common::kPlanError,
-                               "PLAN error: No request/primary table exist!")
-                    for (auto primary_node : primary_nodes) {
-                        dynamic_cast<node::TablePlanNode *>(primary_node)->SetIsPrimary(true);
+                    // Validate there is one and only request table in the SQL
+                    std::vector<::hybridse::node::PlanNode*> request_tables;
+                    CHECK_STATUS(ValidateRequestTable(query_plan, request_tables))
+                    CHECK_TRUE(!request_tables.empty(), common::kPlanError,
+                               "Invalid SQL for online serving: There ia no request table exist!")
+                    for (auto request_table : request_tables) {
+                        dynamic_cast<node::TablePlanNode *>(request_table)->SetIsPrimary(true);
                     }
+
+                    CHECK_STATUS(ValidateOnlineServingOp(query_plan));
                 }
 
                 plan_trees.push_back(query_plan);
                 break;
             }
             case node::kCreateStmt: {
+                CHECK_TRUE(is_batch_mode_, common::kPlanError, "Non-support CREATE TABLE Op in online serving");
                 PlanNode *create_plan = nullptr;
                 CHECK_STATUS(CreateCreateTablePlan(parser_tree, &create_plan));
                 plan_trees.push_back(create_plan);
@@ -467,12 +522,14 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 break;
             }
             case node::kCmdStmt: {
+                CHECK_TRUE(is_batch_mode_, common::kPlanError, "Non-support Command Op in online serving");
                 node::PlanNode *cmd_plan = nullptr;
                 CHECK_STATUS(CreateCmdPlan(parser_tree, &cmd_plan))
                 plan_trees.push_back(cmd_plan);
                 break;
             }
             case node::kInsertStmt: {
+                CHECK_TRUE(is_batch_mode_, common::kPlanError, "Non-support INSERT Op in online serving");
                 node::PlanNode *insert_plan = nullptr;
                 CHECK_STATUS(CreateInsertPlan(parser_tree, &insert_plan))
                 plan_trees.push_back(insert_plan);
@@ -491,12 +548,15 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 break;
             }
             case ::hybridse::node::kCreateIndexStmt: {
+                CHECK_TRUE(is_batch_mode_, common::kPlanError, "Non-support CREATE INDEX Op in online serving");
                 node::PlanNode *create_index_plan = nullptr;
                 CHECK_STATUS(CreateCreateIndexPlan(parser_tree, &create_index_plan))
                 plan_trees.push_back(create_index_plan);
                 break;
             }
             case ::hybridse::node::kSelectIntoStmt: {
+                CHECK_TRUE(is_batch_mode_, common::kPlanError,
+                           "Non-support SELECT INTO Op in online serving");
                 node::PlanNode *select_into_plan_node = nullptr;
                 CHECK_STATUS(CreateSelectIntoPlanNode(dynamic_cast<node::SelectIntoNode *>(parser_tree),
                                                       &select_into_plan_node));
@@ -504,6 +564,8 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 break;
             }
             case ::hybridse::node::kLoadDataStmt: {
+                CHECK_TRUE(is_batch_mode_, common::kPlanError,
+                           "Non-support LOAD DATA Op in online serving");
                 node::PlanNode *load_data_plan_node = nullptr;
                 CHECK_STATUS(
                     CreateLoadDataPlanNode(dynamic_cast<node::LoadDataNode *>(parser_tree), &load_data_plan_node));
@@ -517,13 +579,15 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 break;
             }
             case ::hybridse::node::kSetStmt: {
+                CHECK_TRUE(is_batch_mode_, common::kPlanError,
+                           "Non-support SET Op in online serving");
                 node::PlanNode *set_plan_node = nullptr;
                 CHECK_STATUS(CreateSetPlanNode(dynamic_cast<node::SetNode *>(parser_tree), &set_plan_node));
                 plan_trees.push_back(set_plan_node);
                 break;
             }
             default: {
-                FAIL_STATUS(common::kPlanError, "can not handle tree type ",
+                FAIL_STATUS(common::kPlanError, "Non-support Op ",
                             node::NameOfSqlNodeType(parser_tree->GetType()))
             }
         }

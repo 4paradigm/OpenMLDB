@@ -118,18 +118,15 @@ TEST_F(EngineCompileTest, EngineLRUCacheTestWithPerformanceSensitive) {
     {
         base::Status get_status;
         BatchRunSession bsession1;
-        bsession1.SetPerformanceSensitive(true);
         ASSERT_TRUE(engine.Get(sql, "simple_db", bsession1, get_status)) << get_status;
         ASSERT_EQ(get_status.code, common::kOk);
 
         BatchRunSession bsession2;
-        bsession2.SetPerformanceSensitive(true);
         ASSERT_TRUE(engine.Get(sql, "simple_db", bsession2, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_EQ(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
 
         BatchRunSession bsession3;
-        bsession3.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "simple_db", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_NE(bsession2.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
@@ -253,25 +250,21 @@ TEST_F(EngineCompileTest, EngineEmptyDefaultDBLRUCacheTest) {
     {
         base::Status get_status;
         BatchRunSession bsession1;
-        bsession1.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "", bsession1, get_status)) << get_status;
         ASSERT_EQ(get_status.code, common::kOk);
         BatchRunSession bsession2;
-        bsession2.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "", bsession2, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_EQ(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
 
         // cache compile info is different under different default db
         BatchRunSession bsession3;
-        bsession3.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "default_db", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_NE(bsession1.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
 
         // cache compile info is different under different default db
         BatchRunSession bsession4;
-        bsession4.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql2, "", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_NE(bsession1.GetCompileInfo().get(), bsession4.GetCompileInfo().get());
@@ -324,7 +317,6 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             BatchRunSession session;
-            session.SetPerformanceSensitive(false);
             ASSERT_TRUE(engine.Get(sqlstr, "simple_db", session, get_status));
         }
     }
@@ -509,7 +501,7 @@ TEST_F(EngineCompileTest, RouterTest) {
         codec::Schema empty_parameter_schema;
         base::Status status;
         ASSERT_TRUE(engine.Explain(sql, "simple_db", kBatchRequestMode,
-                                   empty_parameter_schema, &explain_output, &status, false));
+                                   empty_parameter_schema, &explain_output, &status));
         ASSERT_EQ(explain_output.router.GetMainTable(), "t1");
         ASSERT_EQ(explain_output.router.GetRouterCol(), "col2");
     }
@@ -553,7 +545,7 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
     base::Status status;
     ASSERT_TRUE(engine.Explain(sql, "simple_db", kBatchRequestMode,
                                common_column_indices, &explain_output,
-                               &status, false));
+                               &status));
     ASSERT_TRUE(status.isOK()) << status;
     auto& output_schema = explain_output.output_schema;
     ASSERT_EQ(false, output_schema.Get(0).is_constant());
@@ -611,7 +603,6 @@ TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             BatchRunSession session;
-            session.SetPerformanceSensitive(false);
             ASSERT_TRUE(engine.Get(sqlstr, "", session, get_status)) << get_status;
         }
     }

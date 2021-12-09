@@ -65,10 +65,14 @@ class CompileInfo {
                                 const std::string& tab) = 0;
 };
 
+/// @typedef EngineLRUCache
+/// - EngineMode
+///     - DB name
+///       - SQL string
+///           - CompileInfo
 typedef std::map<EngineMode,
-            std::map<bool,
                 std::map<std::string,
-                    boost::compute::detail::lru_cache<std::string, std::shared_ptr<CompileInfo>>>>>
+                    boost::compute::detail::lru_cache<std::string, std::shared_ptr<CompileInfo>>>>
     EngineLRUCache;
 
 class CompileInfoCache {

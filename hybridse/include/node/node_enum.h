@@ -258,7 +258,6 @@ enum PlanType {
     kPlanTypeCreate,
     kPlanTypeInsert,
     kPlanTypeExplain,
-    kPlanTypeScan,
     kPlanTypeQuery,
     kPlanTypeLimit,
     kPlanTypeFilter,

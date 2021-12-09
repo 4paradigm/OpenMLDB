@@ -257,7 +257,7 @@ bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& 
     ::hybridse::vm::EngineOptions options;
     options.SetKeepIr(true);
     options.SetCompileOnly(true);
-    session->SetPerformanceSensitive(false);
+    options.SetEnableRequestPerformanceSensitive(false);
     auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
 
     ::hybridse::base::Status status;

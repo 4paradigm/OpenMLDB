@@ -67,12 +67,10 @@ class TabletClient : public Client {
 
     bool Query(const std::string& db, const std::string& sql,
                const std::vector<openmldb::type::DataType>& parameter_types, const std::string& parameter_row,
-               brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug = false,
-               bool performance_sensitive = true);
+               brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug = false);
 
     bool Query(const std::string& db, const std::string& sql, const std::string& row, brpc::Controller* cntl,
-               ::openmldb::api::QueryResponse* response, const bool is_debug = false,
-               bool performance_sensitive = true);
+               ::openmldb::api::QueryResponse* response, const bool is_debug = false);
 
     bool SQLBatchRequestQuery(const std::string& db, const std::string& sql,
                               std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch>, brpc::Controller* cntl,

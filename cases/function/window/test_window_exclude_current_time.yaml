@@ -183,7 +183,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 7.0 ]
 
   - id: 5
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     desc: ROWS_RANGE Window and EXCLUDE CURRENT_TIME Window
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
@@ -220,7 +220,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
   - id: 6
     desc: ROWS_RANGE Window with MaxSize 2 and EXCLUDE CURRENT_TIME Window
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -256,7 +256,7 @@ cases:
         - [ "aa", 9, 1590739002000, 2.0, 2.0 ]
   - id: 7
     desc: ROWS_RANGE Window with MaxSize 10 and EXCLUDE CURRENT_TIME Window
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -292,7 +292,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
   - id: 8
     desc: ROWS Window and EXCLUDE CURRENT_TIME Window
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -328,7 +328,7 @@ cases:
         - [ "aa", 9, 1590739002000, 7.0, 7.0 ]
   - id: 9
     desc: ROWS and ROWS Window and EXCLUDE CURRENT_TIME Window
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -375,7 +375,7 @@ cases:
 
   - id: 10
     desc: ROWS_RANGE Window OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -411,7 +411,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
   - id: 11
     desc: ROWS_RANGE Window with MaxSize 2 OPEN PRECEDING amd EXCLUDE CURRENT_TIME Window
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -447,7 +447,7 @@ cases:
         - [ "aa", 9, 1590739002000, 2.0, 2.0 ]
   - id: 12
     desc: ROWS_RANGE Window with MaxSize 10 OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -483,7 +483,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
   - id: 13
     desc: ROWS Window OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -519,7 +519,7 @@ cases:
         - [ "aa", 9, 1590739002000, 7.0, 7.0 ]
   - id: 14
     desc: ROWS and ROWS Window OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -565,7 +565,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 3.0, 2.0, 2.0, 7.0, 7.0 ]
   - id: 16
     desc: ROWS and ROWS Window 各类窗口混合
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: offline-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -694,7 +694,7 @@ cases:
         - [ "aa", 9, 1590738993000, 4.0]
   - id: 19
     desc: ROWS, ROWS_RANGE  Window, Normal Window, OPEN Window,  EXCLUDE CURRENT TIME Window
-    mode: offline-unsupport, rtidb-batch-unsupport
+    mode: batch-unsupport
     tags: ["@chendihao, @baoxinqi, 测试的时候spark需要保证输入数据滑入顺序"]
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]

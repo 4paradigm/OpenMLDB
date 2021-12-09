@@ -47,7 +47,7 @@ TabletClient::~TabletClient() {}
 int TabletClient::Init() { return client_.Init(); }
 
 bool TabletClient::Query(const std::string& db, const std::string& sql, const std::string& row, brpc::Controller* cntl,
-                         openmldb::api::QueryResponse* response, const bool is_debug, bool performance_sensitive) {
+                         openmldb::api::QueryResponse* response, const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
     ::openmldb::api::QueryRequest request;
     request.set_sql(sql);
@@ -56,7 +56,6 @@ bool TabletClient::Query(const std::string& db, const std::string& sql, const st
     request.set_is_debug(is_debug);
     request.set_row_size(row.size());
     request.set_row_slices(1);
-    request.set_is_performance_sensitive(performance_sensitive);
     auto& io_buf = cntl->request_attachment();
     if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()), row.size(), &io_buf)) {
         LOG(WARNING) << "Encode row buffer failed";
@@ -73,8 +72,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql, const st
 bool TabletClient::Query(const std::string& db, const std::string& sql,
                          const std::vector<openmldb::type::DataType>& parameter_types,
                          const std::string& parameter_row,
-                         brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug,
-                         bool performance_sensitive) {
+                         brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
     ::openmldb::api::QueryRequest request;
     request.set_sql(sql);
@@ -83,7 +81,6 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     request.set_is_debug(is_debug);
     request.set_parameter_row_size(parameter_row.size());
     request.set_parameter_row_slices(1);
-    request.set_is_performance_sensitive(performance_sensitive);
     for (auto& type : parameter_types) {
         request.add_parameter_types(type);
     }

@@ -57,35 +57,21 @@ std::ostream& operator<<(std::ostream& output,
     return output << *(thiz.node_);
 }
 
-BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
-                                           const std::shared_ptr<Catalog>& catalog,
-                                           const codec::Schema* parameter_types, ::llvm::Module* module,
-                                           const udf::UdfLibrary* library)
-    : node_manager_(node_manager),
-      db_(db),
-      catalog_(catalog),
-      module_(module),
-      id_(0),
-      performance_sensitive_mode_(false),
-      cluster_optimized_mode_(false),
-      enable_batch_window_parallelization_(false),
-      library_(library),
-      plan_ctx_(node_manager, library, db, catalog, parameter_types, false) {}
 
 BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                                            const std::shared_ptr<Catalog>& catalog,
                                            const codec::Schema* parameter_types, ::llvm::Module* module,
-                                           const udf::UdfLibrary* library, bool performance_sensitive,
-                                           bool cluster_optimized_mode, bool enable_expr_opt,
-                                           bool enable_window_parallelization)
+                                           const udf::UdfLibrary* library, bool cluster_optimized_mode,
+                                           bool enable_expr_opt, bool enable_window_parallelization,
+                                           bool enable_window_column_pruning)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
       module_(module),
       id_(0),
-      performance_sensitive_mode_(performance_sensitive),
       cluster_optimized_mode_(cluster_optimized_mode),
       enable_batch_window_parallelization_(enable_window_parallelization),
+      enable_batch_window_column_pruning_(enable_window_column_pruning),
       library_(library),
       plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt) {}
 
@@ -909,13 +895,13 @@ Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode
     return TransformPlanOp(node->GetChildren()[0], output);
 }
 
-Status BatchModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node,
-                                   PhysicalOpNode** output){
+Status BatchModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
     PhysicalLoadDataNode* load_data_op = nullptr;
     // db.table should be checked when you get the physical plan
-    CHECK_STATUS(CreateOp<PhysicalLoadDataNode>(&load_data_op, node->File(), node->Db(), node->Table(), node->Options()));
+    CHECK_STATUS(
+        CreateOp<PhysicalLoadDataNode>(&load_data_op, node->File(), node->Db(), node->Table(), node->Options()));
     *output = load_data_op;
     return Status::OK();
 }
@@ -1358,7 +1344,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
         DLOG(WARNING) << "Final transformed result is null";
     }
 
-    if (enable_batch_window_parallelization_) {
+    if (enable_batch_window_column_pruning_) {
         DLOG(INFO) << "Apply column pruning for window aggregation";
         WindowColumnPruning pass;
         PhysicalOpNode* pruned_op = nullptr;
@@ -1499,13 +1485,6 @@ Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
     CHECK_TRUE(nullptr != node, kPlanError, "Invalid physical node: null");
     // TODO(liguo): create a `visitor` method for nodes, single dfs applied
     CHECK_STATUS(ValidatePlanSupported(node));
-    if (performance_sensitive_mode_) {
-        CHECK_STATUS(ValidateIndexOptimization(node),
-                     "Fail to support physical plan in "
-                     "performance sensitive mode");
-        CHECK_STATUS(ValidateNotAggregationOverTable(node),
-                     "Fail to support aggregation over table in performance sensitive mode")
-    }
     return Status::OK();
 }
 
@@ -1584,33 +1563,23 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
     return Status::OK();
 }
 
-// Validate plan in request mode
-// Request mode should validate primary path and primary source
+// Override validate plan
+// Validate plan with basic rules defined for general batch mode SQL
+// Validate plan with specific rules designed for request mode SQL, including
+//  - ValidateRequestTable
+//  - ValidateIndexOptimization
+//  - ValidateNotAggregationOverTable
 Status RequestModeTransformer::ValidatePlan(PhysicalOpNode* node) {
     CHECK_STATUS(BatchModeTransformer::ValidatePlan(node))
     PhysicalOpNode* primary_source = nullptr;
-    CHECK_STATUS(ValidatePrimaryPath(node, &primary_source),
-                 "Fail to validate physical plan")
-    return Status::OK();
-}
-Status BatchModeTransformer::ValidateNotAggregationOverTable(PhysicalOpNode* in) {
-    CHECK_TRUE(nullptr != in, kPlanError, "Null physical node")
-    switch (in->GetOpType()) {
-        case kPhysicalOpProject: {
-            auto project_op = dynamic_cast<PhysicalProjectNode*>(in);
-            CHECK_TRUE(in->GetProducerCnt() > 0, kPlanError, "Invalid Project Op with no producers")
-            if (kAggregation == project_op->project_type_) {
-               CHECK_TRUE(!isSourceFromTable(in->GetProducer(0)), kPlanError,
-                           "Aggregation over a table source")
-            }
-            break;
-        }
-        default: {
-            break;
-        }
-    }
-    for (uint32_t i = 0; i < in->GetProducerCnt(); i++) {
-        CHECK_STATUS(ValidateNotAggregationOverTable(in->GetProducer(i)));
+
+    // OnlineServing restriction: Expect to infer one and only one request table from given SQL
+    CHECK_STATUS(ValidateRequestTable(node, &primary_source), "Fail to validate physical plan")
+
+    // For Online serving, SQL queries should be designed extremely performance-sensitive to satisfy the real-time
+    // requirements. Thus, we need to Validate if the SQL has been optimized well enough
+    if (performance_sensitive_) {
+        CHECK_STATUS(ValidateIndexOptimization(node), "Fail to support physical plan in performance sensitive mode");
     }
     return Status::OK();
 }
@@ -2058,11 +2027,11 @@ RequestModeTransformer::RequestModeTransformer(node::NodeManager* node_manager, 
                                                const std::shared_ptr<Catalog>& catalog,
                                                const codec::Schema* parameter_types, ::llvm::Module* module,
                                                udf::UdfLibrary* library, const std::set<size_t>& common_column_indices,
-                                               const bool performance_sensitive, const bool cluster_optimized,
-                                               const bool enable_batch_request_opt, bool enable_expr_opt)
-    : BatchModeTransformer(node_manager, db, catalog, parameter_types, module, library, performance_sensitive,
-                           cluster_optimized, enable_expr_opt, true),
-      enable_batch_request_opt_(enable_batch_request_opt) {
+                                               const bool cluster_optimized, const bool enable_batch_request_opt,
+                                               bool enable_expr_opt, bool performance_sensitive)
+    : BatchModeTransformer(node_manager, db, catalog, parameter_types, module, library, cluster_optimized,
+                           enable_expr_opt, true, false),
+      enable_batch_request_opt_(enable_batch_request_opt), performance_sensitive_(performance_sensitive) {
     batch_request_info_.common_column_indices = common_column_indices;
 }
 
@@ -2186,69 +2155,64 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
         return BatchModeTransformer::TransformScanOp(node, output);
     }
 }
-Status RequestModeTransformer::ValidatePrimaryPath(
-    PhysicalOpNode* node, PhysicalOpNode** primary_source) {
-    CHECK_TRUE(node != NULL, kPlanError, "NULL Physical Node");
+Status RequestModeTransformer::ValidateRequestTable(
+    PhysicalOpNode* in, PhysicalOpNode** request_table) {
+    CHECK_TRUE(in != NULL, kPlanError, "NULL Physical Node");
 
-    switch (node->GetOpType()) {
+    switch (in->GetOpType()) {
         case vm::kPhysicalOpDataProvider: {
             CHECK_TRUE(kProviderTypeRequest ==
-                           dynamic_cast<PhysicalDataProviderNode*>(node)
-                               ->provider_type_,
-                       kPlanError, "Non-support primary source node ",
-                       node->GetTreeString())
-            *primary_source = node;
+                           dynamic_cast<PhysicalDataProviderNode*>(in)
+                               ->provider_type_, kPlanError,
+                       "Expect a request table but a ",
+                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_))
+            *request_table = in;
             return Status::OK();
         }
         case vm::kPhysicalOpJoin:
         case vm::kPhysicalOpUnion:
         case vm::kPhysicalOpPostRequestUnion:
         case vm::kPhysicalOpRequestUnion:
-            // TODO(chenjing): add specific validation code for request union op
         case vm::kPhysicalOpRequestJoin: {
             vm::PhysicalOpNode* left_primary_source = nullptr;
-            CHECK_STATUS(
-                ValidatePrimaryPath(node->GetProducer(0), &left_primary_source))
+            CHECK_STATUS(ValidateRequestTable(in->GetProducer(0), &left_primary_source))
             CHECK_TRUE(
                 nullptr != left_primary_source, kPlanError,
-                "primary path validate fail: left primary source is null")
+                "Fail to infer a request table")
             // Case 1:
             // binary_node
             //    + Left - PrimarySource
             //    + Right - TableProvider
-            if (isSourceFromTableOrPartition(node->GetProducer(1))) {
-                *primary_source = left_primary_source;
+            if (isSourceFromTableOrPartition(in->GetProducer(1))) {
+                *request_table = left_primary_source;
                 return Status::OK();
             }
 
             vm::PhysicalOpNode* right_primary_source = nullptr;
-            CHECK_STATUS(ValidatePrimaryPath(node->GetProducer(1),
-                                             &right_primary_source))
+            CHECK_STATUS(ValidateRequestTable(in->GetProducer(1), &right_primary_source))
             CHECK_TRUE(
                 nullptr != right_primary_source, kPlanError,
-                "primary path validate fail: right primary source is null")
+                "Fail to infer a request table")
             // Case 2:
             // binary_node
             //      + Left <-- SamePrimarySource1
             //      + Right <-- SamePrimarySource1
             CHECK_TRUE(
                 left_primary_source->Equals(right_primary_source), kPlanError,
-                "primary path validate fail: left path and right path has "
-                "different source")
-            *primary_source = left_primary_source;
+                "left path and right path has "
+                "different request table")
+            *request_table = left_primary_source;
             return Status::OK();
         }
         case vm::kPhysicalOpConstProject: {
-            CHECK_TRUE(false, kPlanError,
-                       "Non-support Const Project in request mode",
-                       node->GetTreeString());
+            FAIL_STATUS(kPlanError,
+                       "Non-support Const Project in request mode", in->GetTreeString());
             break;
         }
         default: {
-            CHECK_TRUE(node->GetProducerCnt() == 1, kPlanError,
-                       "Non-support Op ", PhysicalOpTypeName(node->GetOpType()))
-            CHECK_STATUS(
-                ValidatePrimaryPath(node->GetProducer(0), primary_source));
+            CHECK_TRUE(in->GetProducerCnt() == 1, kPlanError,
+                       "Non-support Op ", PhysicalOpTypeName(in->GetOpType()))
+            CHECK_STATUS(ValidateRequestTable(in->GetProducer(0), request_table));
             return Status::OK();
         }
     }
@@ -2322,7 +2286,7 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
     return;
 }
 
-Status RequestModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output){
+Status RequestModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) {
     FAIL_STATUS(common::kPlanError, "Non-support LoadData in request mode");
 }
 

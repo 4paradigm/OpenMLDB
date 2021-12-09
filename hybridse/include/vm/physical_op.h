@@ -1611,7 +1611,11 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
  public:
     PhysicalLoadDataNode(const std::string &file, const std::string &db, const std::string &table,
                          std::shared_ptr<node::OptionsMap> options)
-        : PhysicalOpNode(kPhysicalOpLoadData, false), file_(file), db_(db), table_(table), options_(std::move(options)) {}
+        : PhysicalOpNode(kPhysicalOpLoadData, false),
+          file_(file),
+          db_(db),
+          table_(table),
+          options_(std::move(options)) {}
     ~PhysicalLoadDataNode() override = default;
     void Print(std::ostream &output, const std::string &tab) const override;
     base::Status InitSchema(PhysicalPlanContext *) override;
@@ -1622,8 +1626,8 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
     const std::string &File() const { return file_; }
     const std::string &Db() const { return db_; }
     const std::string &Table() const { return table_; }
-    // avoid to use map<A, B*>, the B* will result in python swig errors, e.g. no member named 'type_name' in 'swig::traits<B>'
-    // vector<pair<>> is too complex, and will get a class in the package root dir.
+    // avoid to use map<A, B*>, the B* will result in python swig errors, e.g. no member named 'type_name' in
+    // 'swig::traits<B>' vector<pair<>> is too complex, and will get a class in the package root dir.
     const hybridse::node::ConstNode *GetOption(const std::string &option) const {
         if (!options_) {
             return nullptr;

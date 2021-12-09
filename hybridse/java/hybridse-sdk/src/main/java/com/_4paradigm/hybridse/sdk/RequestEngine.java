@@ -55,7 +55,6 @@ public class RequestEngine implements AutoCloseable {
         options.SetCompileOnly(true);
         catalog = new SimpleCatalog();
         session = new RequestRunSession();
-        session.SetPerformanceSensitive(false);
         catalog.AddDatabase(database);
         engine = new Engine(catalog, options);
 

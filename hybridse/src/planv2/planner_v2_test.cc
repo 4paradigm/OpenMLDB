@@ -1828,6 +1828,46 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
         )",
         common::kPlanError, "Can't support table aggregation and window aggregation simultaneously");
 }
+
+TEST_F(PlannerV2ErrorTest, NonSupportOnlineServingSQL) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string &sql, const int code, const std::string &msg) {
+      base::Status status;
+      node::PlanNodeList plan_trees;
+      // Generate SQL logical plan for online serving
+      ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, false)) << status;
+      ASSERT_EQ(code, status.code) << status;
+      ASSERT_EQ(msg, status.msg) << status;
+      std::cout << msg << std::endl;
+    };
+
+
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 GROUP BY COL1;
+        )",
+        common::kPlanError, "Non-support kGroupPlan Op in online serving");
+
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) from t1 HAVING SUM(COL2) >0;
+        )",
+        common::kPlanError, "Non-support HAVING Op in online serving");
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) from t1;
+        )",
+        common::kPlanError, "Aggregate over a table cannot be supported in online serving");
+    expect_converted(
+        R"(
+        SELECT COL1 FROM t1 order by COL1;
+        )",
+        common::kPlanError, "Non-support kSortPlan Op in online serving");
+
+    expect_converted(
+        R"(LOAD DATA INFILE 'a.csv' INTO TABLE t1 OPTIONS(foo='bar', num=1);)",
+        common::kPlanError, "Non-support LOAD DATA Op in online serving");
+}
 }  // namespace plan
 }  // namespace hybridse
 
