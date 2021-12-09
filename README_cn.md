@@ -28,8 +28,9 @@ OpenMLDB 致力于闭环解决 AI 工程化落地的数据治理难题，并且�
 MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的关键一环，FeatureOps 负责特征数据供给，前后衔接 DataOps 和 ModelOps。一个完整的可工程化落地的 FeatureOps 需要覆盖特征工程的各个方面，包括特征生成、特征计算、特征上线、特征共享、特征服务、灾备和高可用等。OpenMLDB 提供一套全栈 FeatureOps 企业级解决方案，同时拥有低门槛和极简的使用和管理体验，让特征工程开发回归于本质：专注于高质量的特征抽取脚本开发，不再被工程化落地所羁绊。
 
 <p align="center">
- <img src="images/workflow_cn.png" alt="image-20211103103052252" width=700 />
+ <img src="images/workflow_cn.png" alt="image-20211103103052252" width=800 />
 </p>
+
 
 上图显示了基于 OpenMLDB 的 FeatureOps 的基本使用流程，从特征开发到上线，只需要三个步骤：
 
