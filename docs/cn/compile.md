@@ -19,6 +19,10 @@
     cd /OpenMLDB
     make
     ```
+5. 安装 OpenMLDB, 默认安装到`${PROJECT_ROOT}/openmldb`
+    ```bash
+    make install
+    ```
 
 ## `make` 额外参数
 
@@ -35,6 +39,10 @@ make CMAKE_BUILD_TYPE=Debug
 - CMAKE_BUILD_TYPE
 
   默认: RelWithDebInfo
+
+- CMAKE_INSTALL_PREFIX: 安装路径
+
+  默认: ${PROJECT_ROOT}/openmldb
 
 - SQL_PYSDK_ENABLE：是否编译 Python SDK
 
