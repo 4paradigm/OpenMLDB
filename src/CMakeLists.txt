@@ -122,4 +122,9 @@ target_link_libraries(parse_log ${LINK_LIBS})
 add_executable(openmldb cmd/openmldb.cc base/linenoise.cc)
 target_link_libraries(openmldb ${BIN_LIBS})
 
+install(
+    TARGETS openmldb
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
 add_subdirectory(sdk)

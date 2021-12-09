@@ -36,6 +36,9 @@ endif
 ifdef TESTING_ENABLE
     OPENMLDB_CMAKE_FLAGS += -DTESTING_ENABLE=$(TESTING_ENABLE)
 endif
+ifdef CMAKE_INSTALL_PREFIX
+    OPENMLDB_CMAKE_FLAGS += -DCMAKE_INSTALL_PREFIX=$(CMAKE_INSTALL_PREFIX)
+endif
 
 # Extra cmake flags for HybridSE
 HYBRIDSE_CMAKE_FLAGS := $(CMAKE_FLAGS)
@@ -82,6 +85,9 @@ OPENMLDB_BUILD_DIR ?= $(MAKEFILE_DIR)/build
 
 build: configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target $(OPENMLDB_BUILD_TARGET) -- -j$(NPROC)
+
+install: build
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target install -- -j$(NPROC)
 
 test:
 	$(MAKE) build TESTING_ENABLE=ON OPENMLDB_BUILD_TARGE=$(TEST_TARGET)
