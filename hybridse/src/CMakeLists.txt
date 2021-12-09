@@ -58,18 +58,16 @@ if (LLVM_EXT_ENABLE)
     add_definitions(-DLLVM_EXT_ENABLE)
 endif ()
 
-add_library(hybridse_flags STATIC ${CMAKE_CURRENT_SOURCE_DIR}/flags.cc)
 add_library(hybridse_global_variables STATIC ${CMAKE_CURRENT_SOURCE_DIR}/global_variables.cc)
 
-target_link_libraries(hybridse_flags gflags)
 # hybridse core library
 add_library(hybridse_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
 target_link_libraries(hybridse_core
-        ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB}  hybridse_flags)
+        ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB})
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_library(hybridse_core_shared SHARED ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
     target_link_libraries(hybridse_core_shared
-            ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)
+            ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB})
     set(HYBRIDSE_CORE_LIBS hybridse_core_shared)
 else ()
     set(HYBRIDSE_CORE_LIBS hybridse_core)
@@ -88,7 +86,7 @@ if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
         set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR})
 
         add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT} testing/engine_test_base.cc testing/test_base.cc)
-        target_link_libraries(${TEST_TARGET_NAME} ${GTEST_LIBRARIES} ${HYBRIDSE_CORE_LIBS} hybridse_flags
+        target_link_libraries(${TEST_TARGET_NAME} ${GTEST_LIBRARIES} ${HYBRIDSE_CORE_LIBS} hybridse_global_variables
                 ${yaml_libs} ${ZETASQL_LIBS} ${BRPC_LIBS})
         add_test(${TEST_TARGET_NAME}
                 ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
@@ -110,7 +108,7 @@ endif ()
 
 # udf exporter
 add_executable(export_udf_info cmd/export_udf_info.cc)
-target_link_libraries(export_udf_info hybridse_core hybridse_global_variables ${ZETASQL_LIBS})
+target_link_libraries(export_udf_info hybridse_core hybridse_global_variables gflags ${ZETASQL_LIBS})
 
 # simple engine demo
 add_executable(simple_engine_demo cmd/simple_engine_demo.cc)

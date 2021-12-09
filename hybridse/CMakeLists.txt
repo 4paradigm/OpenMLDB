@@ -245,7 +245,7 @@ if (CMAKE_INSTALL_PREFIX STREQUAL "")
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
 endif ()
 message(STATUS "Hybridse will install to ${CMAKE_INSTALL_PREFIX}")
-install(TARGETS hybridse_core hybridse_sdk hybridse_flags
+install(TARGETS hybridse_core hybridse_sdk hybridse_global_variables
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

@@ -24,7 +24,6 @@
 #include "base/texttable.h"
 #include "boost/algorithm/string.hpp"
 #include "codec/fe_row_codec.h"
-#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "gtest/internal/gtest-param-util.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"

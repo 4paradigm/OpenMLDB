@@ -45,7 +45,7 @@ string(REPLACE " " ";" TOYDB_SRC_FILE_LIST ${TOYDB_SRC_FILE_LIST_STR})
 add_library(toydb_flags STATIC toydb_flags.cc)
 
 # toydb lib
-set(TOYDB_DEPS_LIBS hybridse_core hybridse_sdk hybridse_flags toydb_flags sqlite3
+set(TOYDB_DEPS_LIBS hybridse_core hybridse_sdk hybridse_global_variables toydb_flags sqlite3
         ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB})
 add_library(toydb_lib STATIC ${TOYDB_SRC_FILE_LIST})
 target_link_libraries(toydb_lib ${TOYDB_DEPS_LIBS})
@@ -69,7 +69,7 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
                 ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
                 --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
         target_link_libraries(${TEST_TARGET_NAME}
-                toydb_lib toydb_sdk hybridse_flags sqlite3
+                toydb_lib toydb_sdk hybridse_global_variables sqlite3
                 gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
@@ -85,7 +85,7 @@ endif()
 
 # toydb bin
 add_executable(toydb cmd/toydb.cc)
-target_link_libraries(toydb toydb_lib toydb_sdk hybridse_sdk hybridse_core hybridse_flags )
+target_link_libraries(toydb toydb_lib toydb_sdk hybridse_sdk hybridse_core hybridse_global_variables )
 # engine execution
 add_executable(toydb_run_engine cmd/toydb_run_engine.cc)
-target_link_libraries(toydb_run_engine toydb_lib toydb_sdk toydb_flags hybridse_flags hybridse_global_variables hybridse_test_base gtest sqlite3)
+target_link_libraries(toydb_run_engine toydb_lib toydb_sdk toydb_flags hybridse_global_variables hybridse_test_base gtest sqlite3)

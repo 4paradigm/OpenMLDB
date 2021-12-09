@@ -109,7 +109,7 @@ endif()
 
 add_subdirectory(hybridse)
 
-set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags boost_filesystem boost_date_time boost_regex)
+set(VM_LIBS hybridse_core hybridse_sdk hybridse_global_variables boost_filesystem boost_date_time boost_regex)
 set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
