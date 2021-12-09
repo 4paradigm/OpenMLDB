@@ -95,7 +95,11 @@ test:
 
 # disable building hybridse tests for faster compilation
 HYBRIDSE_CMAKE_DEPS_FLAGS := -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=OFF
+# trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr, will skip make thirdparty
 configure: thirdparty
+	if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
+	    $(MAKE) thirdparty; \
+	fi
 	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(HYBRIDSE_CMAKE_DEPS_FLAGS) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 openmldb-clean:
@@ -103,7 +107,7 @@ openmldb-clean:
 
 THIRD_PARTY_BUILD_DIR ?= $(MAKEFILE_DIR)/.deps
 THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
-THIRD_PARTY_DIR := $(THIRD_PARTY_BUILD_DIR)/usr
+THIRD_PARTY_DIR ?= $(THIRD_PARTY_BUILD_DIR)/usr
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
 thirdparty: thirdparty-configure
