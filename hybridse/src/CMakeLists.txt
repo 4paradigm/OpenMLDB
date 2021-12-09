@@ -63,11 +63,11 @@ add_library(hybridse_global_variables STATIC ${CMAKE_CURRENT_SOURCE_DIR}/global_
 # hybridse core library
 add_library(hybridse_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
 target_link_libraries(hybridse_core
-        ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB})
+        ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_global_variables)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_library(hybridse_core_shared SHARED ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
     target_link_libraries(hybridse_core_shared
-            ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB})
+            ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_global_variables)
     set(HYBRIDSE_CORE_LIBS hybridse_core_shared)
 else ()
     set(HYBRIDSE_CORE_LIBS hybridse_core)
@@ -112,4 +112,4 @@ target_link_libraries(export_udf_info hybridse_core hybridse_global_variables gf
 
 # simple engine demo
 add_executable(simple_engine_demo cmd/simple_engine_demo.cc)
-target_link_libraries(simple_engine_demo hybridse_core hybridse_global_variables ${ZETASQL_LIBS} ${GTEST_LIBRARIES})
+target_link_libraries(simple_engine_demo hybridse_core ${ZETASQL_LIBS} ${GTEST_LIBRARIES})
