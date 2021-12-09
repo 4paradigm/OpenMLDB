@@ -134,6 +134,8 @@ if(SQL_JAVASDK_ENABLE)
             SOURCES sql_router_sdk.i)
     target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
     target_compile_options(sql_jsdk PRIVATE -w)
+
+    add_dependencies(sql_jsdk hybridse_jsdk_core_static)
     target_link_libraries(sql_jsdk PRIVATE ${SDK_LIBS} hybridse_jsdk_core_static boost_filesystem)
 
     if(APPLE)
