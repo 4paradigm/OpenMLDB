@@ -92,7 +92,7 @@ http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
 The input data of an online request is in `json` format, and we should pack a row into the field `input`.  For example:
 
 ```bash
-> curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]}'
+curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]}'
 ```
 The expected return of the above request is shown below (the return features are packed in the field `data`):
 ```json
