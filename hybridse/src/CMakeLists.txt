@@ -59,6 +59,7 @@ if (LLVM_EXT_ENABLE)
 endif ()
 
 add_library(hybridse_global_variables STATIC ${CMAKE_CURRENT_SOURCE_DIR}/global_variables.cc)
+target_link_libraries(hybridse_global_variables gflags)
 
 # hybridse core library
 add_library(hybridse_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
