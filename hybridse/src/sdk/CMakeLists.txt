@@ -67,6 +67,16 @@ if(APPLE)
 	set_target_properties(hybridse_jsdk_core PROPERTIES
            SUFFIX ".dylib")
 endif()
+
+swig_add_library(hybridse_jsdk_core_static
+		TYPE STATIC
+		LANGUAGE java
+		OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/hybridse-native/src/main/java/com/_4paradigm/
+		SOURCES hybridse_interface_core.i)
+target_include_directories(hybridse_jsdk_core_static PRIVATE ${JNI_INCLUDE_DIRS})
+target_compile_options(hybridse_jsdk_core_static PRIVATE -w)
+target_link_libraries(hybridse_jsdk_core_static PRIVATE glog ${sdk_core_deps_libs})
+
 endif()
 
 if(PYSDK_ENABLE)
