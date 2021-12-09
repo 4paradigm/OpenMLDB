@@ -14,7 +14,15 @@
 
 MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR  := $(dir $(MAKEFILE_PATH))
-NPROC ?= $(shell (nproc))
+
+# Processor count with OS detection
+ifeq ($(shell (uname -s)), Linux)
+	NPROC ?= $(shell (nproc))
+endif
+ifeq ($(shell (uname -s)), Darwin)
+	NPROC ?= $(shell (sysctl -n hw.ncpu))
+endif
+
 
 CMAKE_PRG ?= $(shell (command -v cmake3 || echo cmake))
 CMAKE_BUILD_TYPE ?= RelWithDebInfo
