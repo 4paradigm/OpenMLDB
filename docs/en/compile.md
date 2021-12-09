@@ -62,7 +62,7 @@ make CMAKE_BUILD_TYPE=Debug
 
 - CMAKE_EXTRA_FLAGS: extra flags passed to cmake
 
-  默认: ‘’
+  Default: ‘’
 
 
 ## Optimized Spark Distribution for OpenMLDB (Optional)
