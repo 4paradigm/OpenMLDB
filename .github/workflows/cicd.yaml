@@ -19,22 +19,33 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
       OS: linux
+      SQL_PYSDK_ENABLE: OFF
+      SQL_JAVASDK_ENABLE: OFF
+      TESTING_ENABLE: ON
     steps:
       - uses: actions/checkout@v2
+
       - name: setup thirdparty
         run: |
           make thirdparty
 
-      - name: prepare release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: prepare
         run: |
+          VERSION="snapshot"
+          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
             VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
             VERSION=${VERSION#v}
             bash steps/prepare_release.sh "$VERSION"
+          fi
+          echo "OPENMLDB_PREFIX=openmldb-$VERSION" >> $GITHUB_ENV
+
+      - name: configure
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
 
       - name: build
         run: |
-          make build SQL_PYSDK_ENABLE=OFF SQL_JAVASDK_ENABLE=OFF TESTING_ENABLE=ON
+          make build
           # GitHub runner disk space is limited
           # delete thirdparty build directory($ROOT/.deps/) to save disk space
           # make thirdpartybuild-clean
@@ -51,15 +62,14 @@ jobs:
           path: |
             reports/*.xml
 
-      - name: pack OpenMLDB
+      - name: install
+        run: |
+          make install
+
+      - name: package
         if: ${{ github.event_name == 'push' }}
         run: |
-          VERSION="snapshot"
-          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=${VERSION#v}
-          fi
-          bash steps/package_openmldb.sh "$VERSION" ${{ env.OS }}
+          tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
 
       - name: upload artifacts
         if: ${{ github.event_name == 'push' }}
