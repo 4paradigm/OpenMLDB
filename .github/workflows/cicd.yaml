@@ -22,6 +22,7 @@ jobs:
       SQL_PYSDK_ENABLE: OFF
       SQL_JAVASDK_ENABLE: OFF
       TESTING_ENABLE: ON
+      NPROC: 4
     steps:
       - uses: actions/checkout@v2
 
@@ -94,6 +95,7 @@ jobs:
       TEST_TARGET: ${{ matrix.test_target }}
       TESTING_ENABLE: ON
       TEST_LEVEL: 0
+      NPROC: 4
     steps:
       - uses: actions/checkout@v2
 
