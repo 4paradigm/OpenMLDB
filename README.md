@@ -13,8 +13,7 @@
 [![maven central](https://img.shields.io/maven-central/v/com.4paradigm.openmldb/openmldb-jdbc)](https://mvnrepository.com/artifact/com.4paradigm.openmldb/openmldb-jdbc)
 [![pypi](https://img.shields.io/pypi/v/openmldb)](https://pypi.org/project/openmldb/)
 
-
-English version|[中文版](README_cn.md)
+**English version | [中文版](README_cn.md)**
 
 
 ## 1. Introduction
