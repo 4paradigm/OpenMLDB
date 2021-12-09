@@ -19,6 +19,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
       OS: linux
+      NPROC: 4
     steps:
       - uses: actions/checkout@v2
       - name: setup thirdparty
@@ -84,6 +85,7 @@ jobs:
       TEST_TARGET: ${{ matrix.test_target }}
       TESTING_ENABLE: ON
       TEST_LEVEL: 0
+      NPROC: 4
     steps:
       - uses: actions/checkout@v2
 

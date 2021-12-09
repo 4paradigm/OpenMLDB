@@ -1461,5 +1461,15 @@ std::shared_ptr<hybridse::sdk::Schema> SQLClusterRouter::GetTableSchema(const st
     return {};
 }
 
+std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) {
+    auto table_names = cluster_sdk_->GetTableNames(db);
+    return table_names;
+}
+
+::openmldb::nameserver::TableInfo SQLClusterRouter::GetTableInfo(const std::string& db, const std::string& table) {
+    auto table_infos = cluster_sdk_->GetTableInfo(db, table);
+    return *table_infos;
+}
+
 }  // namespace sdk
 }  // namespace openmldb

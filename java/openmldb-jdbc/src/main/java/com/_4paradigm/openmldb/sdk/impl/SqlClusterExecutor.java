@@ -33,6 +33,7 @@ import com._4paradigm.openmldb.VectorString;
 import com._4paradigm.openmldb.common.LibraryLoader;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
+import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Common;
 import com._4paradigm.openmldb.sdk.Schema;
@@ -42,7 +43,6 @@ import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -343,6 +343,42 @@ public class SqlClusterExecutor implements SqlExecutor {
             sqlRouter.delete();
             sqlRouter = null;
         }
+    }
+
+    public List<String> showDatabases() {
+        List<String> databases = new ArrayList<>();
+
+        Status status = new Status();
+        VectorString dbs = new VectorString();
+        boolean ok = sqlRouter.ShowDB(dbs, status);
+        if (!ok) {
+            logger.error("showDatabases fail: {}", status.getMsg());
+        } else {
+            for (int i=0; i < dbs.size(); ++i) {
+                databases.add(dbs.get(i));
+
+            }
+        }
+
+        status.delete();
+        dbs.delete();
+        return databases;
+    }
+
+    public List<String> getTableNames(String db) {
+        List<String> tableNames = new ArrayList<>();
+        VectorString names = sqlRouter.GetTableNames(db);
+        for (int i=0; i < names.size(); ++i) {
+            tableNames.add(names.get(i));
+        }
+        names.delete();
+
+        return tableNames;
+    }
+
+    public NS.TableInfo getTableInfo(String db, String table) {
+        NS.TableInfo tableInfo = sqlRouter.GetTableInfo(db, table);
+        return tableInfo;
     }
 
 }
