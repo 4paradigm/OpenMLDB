@@ -63,6 +63,7 @@ Table::Table(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, b
         ::openmldb::common::TTLSt* cur_ttl = index->mutable_ttl();
         cur_ttl->CopyFrom(ttl_st);
     }
+    AddVersionSchema(*table_meta_);
 }
 
 void Table::AddVersionSchema(const ::openmldb::api::TableMeta& table_meta) {

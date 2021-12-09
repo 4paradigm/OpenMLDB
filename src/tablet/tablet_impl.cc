@@ -609,18 +609,9 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             done->Run();
             return;
         }
-        if (request->ts_dimensions_size() > 0) {
-            DLOG(INFO) << "put data to tid " << request->tid() << " pid " << request->pid() << " with key "
-                       << request->dimensions(0).key() << " ts " << request->ts_dimensions(0).ts();
-            ok = table->Put(request->dimensions(), request->value());
-        } else {
-            DLOG(INFO) << "put data to tid " << request->tid() << " pid " << request->pid() << " with key "
-                       << request->dimensions(0).key() << " ts " << request->time();
-
-            ok = table->Put(request->time(), request->value(), request->dimensions());
-        }
-    } else {
-        ok = table->Put(request->pk(), request->time(), request->value().c_str(), request->value().size());
+        DLOG(INFO) << "put data to tid " << request->tid() << " pid " << request->pid() << " with key "
+                   << request->dimensions(0).key() << " ts " << request->ts_dimensions(0).ts();
+        ok = table->Put(request->time(), request->value(), request->dimensions());
     }
     if (!ok) {
         response->set_code(::openmldb::base::ReturnCode::kPutFailed);

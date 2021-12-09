@@ -230,16 +230,9 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         return;
     }
     if (ts_cnt_ == 1) {
-        if (ts_size == 1) {
-            Put(key, ts_map.begin()->second, row);
-        } else if (!ts_idx_map_.empty()) {
-            for (const auto& kv : ts_map) {
-                auto pos = ts_idx_map_.find(kv.first);
-                if (pos != ts_idx_map_.end()) {
-                    Put(key, kv.second, row);
-                    break;
-                }
-            }
+        auto pos = ts_map.find(ts_idx_map_.begin()->first);
+        if (pos != ts_map.end()) {
+            Put(key, pos->second, row);
         }
         return;
     }

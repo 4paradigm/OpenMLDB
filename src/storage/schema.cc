@@ -162,18 +162,12 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
     ReSet();
     uint32_t tid = table_meta.tid();
     uint32_t pid = table_meta.pid();
-    int ts_cnt = 0;
     if (table_meta.column_desc_size() > 0) {
         std::set<std::string> ts_col_set;
         for (const auto& column_key : table_meta.column_key()) {
             if (!column_key.ts_name().empty()) {
-                ts_cnt++;
                 ts_col_set.insert(column_key.ts_name());
             }
-        }
-        if (ts_cnt > 0 && ts_cnt != table_meta.column_key_size()) {
-            LOG(WARNING) << "must set ts col in all column key, tid " << tid;
-            return -1;
         }
         std::map<std::string, std::shared_ptr<ColumnDef>> col_map;
         for (int idx = 0; idx < table_meta.column_desc_size(); idx++) {
@@ -209,6 +203,10 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
             if (!column_key.ts_name().empty()) {
                 const std::string& ts_name = column_key.ts_name();
                 index->SetTsColumn(col_map[ts_name]);
+            } else {
+                // set default ts col
+                index->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+                            ::openmldb::type::kTimestamp, true));
             }
             if (column_key.has_ttl()) {
                 index->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
@@ -223,6 +221,8 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
     // add default dimension
     if (indexs_->empty()) {
         auto index = std::make_shared<IndexDef>("idx0", 0);
+        index->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+                    ::openmldb::type::kTimestamp, true));
         if (AddIndex(index) < 0) {
             DLOG(WARNING) << "add index failed";
             return -1;
@@ -230,7 +230,7 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
         index->SetTTL(TTLSt());
         LOG(INFO) << "no index specified with default. tid " << tid << ", pid " << pid;
     }
-    FillIndexVal(table_meta, ts_cnt);
+    FillIndexVal(table_meta);
     if (!indexs_->empty()) {
         pk_index_ = indexs_->front();
     } else {
@@ -240,9 +240,9 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
     return 0;
 }
 
-void TableIndex::FillIndexVal(const ::openmldb::api::TableMeta& table_meta, uint32_t ts_num) {
+void TableIndex::FillIndexVal(const ::openmldb::api::TableMeta& table_meta) {
     inner_indexs_->clear();
-    if (table_meta.column_key_size() > 0 && ts_num > 1) {
+    if (table_meta.column_key_size() > 0) {
         std::map<std::string, uint32_t> name_pos_map;
         std::vector<std::vector<std::shared_ptr<IndexDef>>> pos_index_vec;
         uint32_t inner_cnt = 0;
@@ -254,12 +254,8 @@ void TableIndex::FillIndexVal(const ::openmldb::api::TableMeta& table_meta, uint
             } else if (column_key.col_name_size() < 2) {
                 combine_col_name = column_key.col_name(0);
             } else {
-                std::set<std::string> col_set;
                 for (const auto& cur_col_name : column_key.col_name()) {
-                    col_set.insert(cur_col_name);
-                }
-                for (const auto& col_name : col_set) {
-                    combine_col_name.append(col_name);
+                    combine_col_name.append(cur_col_name);
                     combine_col_name.append("|");
                 }
             }

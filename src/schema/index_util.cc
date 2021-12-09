@@ -77,7 +77,12 @@ base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::commo
     std::set<std::string> index_set;
     for (const auto& column_key : index) {
         bool has_iter = false;
+        std::set<std::string> col_set;
         for (const auto& column_name : column_key.col_name()) {
+            if (col_set.count(column_name) > 0) {
+                return {base::ReturnCode::kError, "duplicated col " + column_name};
+            }
+            col_set.insert(column_name);
             has_iter = true;
             auto iter = column_map.find(column_name);
             if ((iter != column_map.end() &&

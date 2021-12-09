@@ -31,6 +31,8 @@
 namespace openmldb::storage {
 
 static constexpr uint32_t MAX_INDEX_NUM = 200;
+static constexpr uint32_t DEFUALT_TS_COL_ID = UINT32_MAX;
+static constexpr const char* DEFUALT_TS_COL_NAME = "default_ts";
 
 enum TTLType { kAbsoluteTime = 1, kRelativeTime = 2, kLatestTime = 3, kAbsAndLat = 4, kAbsOrLat = 5 };
 
@@ -161,6 +163,8 @@ class ColumnDef {
         return false;
     }
 
+    inline bool IsAutoGenTs() const { return id_ == DEFUALT_TS_COL_ID; }
+
  private:
     std::string name_;
     uint32_t id_;
@@ -261,7 +265,7 @@ class TableIndex {
     void AddInnerIndex(const std::shared_ptr<InnerIndexSt>& inner_index);
 
  private:
-    void FillIndexVal(const ::openmldb::api::TableMeta& table_meta, uint32_t ts_num);
+    void FillIndexVal(const ::openmldb::api::TableMeta& table_meta);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;

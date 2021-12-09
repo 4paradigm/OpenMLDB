@@ -38,11 +38,9 @@ void AssertIndex(const ::openmldb::storage::IndexDef& index, const std::string& 
     auto ttl = index.GetTTL();
     ASSERT_EQ(ttl->abs_ttl / 60 / 1000, abs_ttl);
     ASSERT_EQ(ttl->ttl_type, ttl_type);
-    if (!ts_col_name.empty()) {
-        const auto& ts_col = index.GetTsColumn();
-        ASSERT_EQ(ts_col->GetName(), ts_col_name);
-        ASSERT_EQ(ts_col->GetId(), ts_index);
-    }
+    const auto& ts_col = index.GetTsColumn();
+    ASSERT_EQ(ts_col->GetName(), ts_col_name);
+    ASSERT_EQ(ts_col->GetId(), ts_index);
 }
 
 void AssertInnerIndex(const ::openmldb::storage::InnerIndexSt& inner_index, uint32_t id,
@@ -206,6 +204,50 @@ TEST_F(SchemaTest, ColumnKey) {
     std::vector<std::string> index1 = {"key3"};
     std::vector<uint32_t> ts_vec1 = {6};
     AssertInnerIndex(*(table_index.GetInnerIndex(1)), 1, index1, ts_vec1);
+}
+
+TEST_F(SchemaTest, TsAndDefaultTs) {
+    ::openmldb::api::TableMeta table_meta;
+    for (int i = 0; i < 10; i++) {
+        auto column_desc = table_meta.add_column_desc();
+        column_desc->set_name("col" + std::to_string(i));
+        column_desc->set_data_type(::openmldb::type::kString);
+        if (i == 6 || i == 7) {
+            column_desc->set_data_type(::openmldb::type::kBigInt);
+        }
+    }
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "key1", "col1", "col6", ::openmldb::type::kAbsoluteTime, 10, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "key2", "col1", "col7", ::openmldb::type::kAbsoluteTime, 10, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "key3", "col2", "col6", ::openmldb::type::kAbsoluteTime, 10, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "key4", "col2", "", ::openmldb::type::kAbsoluteTime, 10, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "key5", "col3", "", ::openmldb::type::kAbsoluteTime, 10, 0);
+    TableIndex table_index;
+    ASSERT_GE(table_index.ParseFromMeta(table_meta), 0);
+    auto indexs = table_index.GetAllIndex();
+    ASSERT_EQ(indexs.size(), 5u);
+    auto index = table_index.GetPkIndex();
+    ASSERT_STREQ(index->GetName().c_str(), "key1");
+    auto aa = table_index.GetIndex("key1");
+    AssertIndex(*(table_index.GetIndex("key1")), "key1", "col1", "col6", 6, 10, 0, ::openmldb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key1", 6)), "key1", "col1", "col6", 6, 10, 0,
+                ::openmldb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key2")), "key2", "col1", "col7", 7, 10, 0, ::openmldb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key3")), "key3", "col2", "col6", 6, 10, 0, ::openmldb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key4")), "key4", "col2", DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+            10, 0, ::openmldb::storage::kAbsoluteTime);
+    AssertIndex(*(table_index.GetIndex("key5")), "key5", "col3", DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+            10, 0, ::openmldb::storage::kAbsoluteTime);
+    auto inner_index = table_index.GetAllInnerIndex();
+    ASSERT_EQ(inner_index->size(), 3u);
+    std::vector<std::string> index0 = {"key1", "key2"};
+    std::vector<uint32_t> ts_vec0 = {6, 7};
+    AssertInnerIndex(*(table_index.GetInnerIndex(0)), 0, index0, ts_vec0);
+    std::vector<std::string> index1 = {"key3", "key4"};
+    std::vector<uint32_t> ts_vec1 = {6, DEFUALT_TS_COL_ID};
+    AssertInnerIndex(*(table_index.GetInnerIndex(1)), 1, index1, ts_vec1);
+    std::vector<std::string> index2 = {"key5"};
+    std::vector<uint32_t> ts_vec2 = {DEFUALT_TS_COL_ID};
+    AssertInnerIndex(*(table_index.GetInnerIndex(2)), 2, index2, ts_vec2);
 }
 
 TEST_F(SchemaTest, ParseMultiTTL) {
