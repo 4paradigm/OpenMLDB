@@ -67,7 +67,9 @@ if(APPLE)
 	set_target_properties(hybridse_jsdk_core PROPERTIES
            SUFFIX ".dylib")
 endif()
+endif()
 
+if(SQL_JAVASDK_ENABLE)
 swig_add_library(hybridse_jsdk_core_static
 		TYPE STATIC
 		LANGUAGE java
@@ -76,7 +78,6 @@ swig_add_library(hybridse_jsdk_core_static
 target_include_directories(hybridse_jsdk_core_static PRIVATE ${JNI_INCLUDE_DIRS})
 target_compile_options(hybridse_jsdk_core_static PRIVATE -w)
 target_link_libraries(hybridse_jsdk_core_static PRIVATE glog ${sdk_core_deps_libs})
-
 endif()
 
 if(PYSDK_ENABLE)
