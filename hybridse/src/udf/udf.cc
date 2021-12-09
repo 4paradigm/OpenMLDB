@@ -98,18 +98,18 @@ int32_t dayofyear(codec::Timestamp *ts) { return dayofyear(ts->ts_); }
 int32_t dayofyear(codec::Date *date) {
     int32_t day, month, year;
     if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
-        return 0;
+        return nullptr;
     }
     try {
         if (month <= 0 || month > 12) {
-            return 0;
+            return nullptr;
         } else if (day <= 0 || day > 31) {
-            return 0;
+            return nullptr;
         }
         boost::gregorian::date d(year, month, day);
         return d.day_of_year();
     } catch (...) {
-        return 0;
+        return nullptr;
     }
 }
 int32_t dayofmonth(codec::Timestamp *ts) { return dayofmonth(ts->ts_); }

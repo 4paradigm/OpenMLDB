@@ -134,35 +134,31 @@ TEST_F(UdfIRBuilderTest, dayofyear_date_udf_test) {
     }
     {
         Date date(2021, 13, 31);
-        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+        CheckUdf<int32_t, Date>("dayofyear", nullptr, date);
     }
     {
         Date date(2021, 0, 31);
-        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+        CheckUdf<int32_t, Date>("dayofyear", nullptr, date);
     }
     {
         Date date(2021, -1, 31);
-        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+        CheckUdf<int32_t, Date>("dayofyear", nullptr, date);
     }
     {
         Date date(2021, 12, 32);
-        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+        CheckUdf<int32_t, Date>("dayofyear", nullptr, date);
     }
     {
         Date date(2021, 12, 0);
-        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+        CheckUdf<int32_t, Date>("dayofyear", nullptr, date);
     }
     {
         Date date(2021, 12, -10);
-        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+        CheckUdf<int32_t, Date>("dayofyear", nullptr, date);
     }
     {
         Date date(2021, 2, 29);
-        CheckUdf<int32_t, Date>("dayofyear", 0, date);
-    }
-    {
-        Date date(1969, 1, 1);
-        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+        CheckUdf<int32_t, Date>("dayofyear", nullptr, date);
     }
 }
 TEST_F(UdfIRBuilderTest, weekofyear_date_udf_test) {
