@@ -1617,7 +1617,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofyear))
         .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofyear))
         .doc(R"(
-            @brief Return the day of year for a timestamp or date.
+            @brief Return the day of year for a timestamp or date. Returns 0 given invalid date.
 
             Example:
             @code{.sql}
@@ -1629,6 +1629,9 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 
                 select dayofyear(date("2020-05-22"));
                 -- output 143
+
+                select dayofyear(date("2020-05-32"));
+                -- output 0
             @endcode
             @since 0.1.0
         )");
