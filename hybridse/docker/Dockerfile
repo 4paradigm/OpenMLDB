@@ -27,7 +27,7 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     yum clean all && rm lcov-1.15-1.noarch.rpm && \
     curl -SLo apache-maven-3.6.3-bin.tar.gz https://mirrors.ocf.berkeley.edu/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz && \
     tar xzf apache-maven-3.6.3-bin.tar.gz -C /usr/local --strip-components=1 && \
-    curl -SLo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.1/thirdparty-2021-12-08-linux-gnu-x86_64-centos.tar.gz && \
+    curl -SLo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.2/thirdparty-2021-12-10-linux-gnu-x86_64-centos.tar.gz && \
     mkdir -p /deps/usr && \
     tar xzf thirdparty.tar.gz -C /deps/usr --strip-components=1 && \
     curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
