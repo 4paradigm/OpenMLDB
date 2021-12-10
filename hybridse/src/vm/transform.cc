@@ -172,6 +172,10 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
                                              &op));
             break;
         }
+        case node::kPlanTypeDelete: {
+            CHECK_STATUS(TransformDeleteOp(dynamic_cast<const ::hybridse::node::DeletePlanNode*>(node), &op));
+            break;
+        }
         default: {
             FAIL_STATUS(kPlanError,
                         "Fail to transform physical plan: "
@@ -903,19 +907,27 @@ Status BatchModeTransformer::TransformDistinctOp(
     return Status::OK();
 }
 
+
+Status BatchModeTransformer::TransformDeleteOp(const node::DeletePlanNode* node, PhysicalOpNode** output) {
+    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
+    PhysicalDeleteNode* delete_op = nullptr;
+    CHECK_STATUS(CreateOp<PhysicalDeleteNode>(&delete_op, node->GetTarget(), node->GetJobId()));
+    *output = delete_op;
+    return Status::OK();
+}
+
 Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode* node,
                                                 ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
     return TransformPlanOp(node->GetChildren()[0], output);
 }
 
-Status BatchModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node,
-                                   PhysicalOpNode** output){
-    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
-               "Input node or output node is null");
+Status BatchModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) {
+    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
     PhysicalLoadDataNode* load_data_op = nullptr;
     // db.table should be checked when you get the physical plan
-    CHECK_STATUS(CreateOp<PhysicalLoadDataNode>(&load_data_op, node->File(), node->Db(), node->Table(), node->Options()));
+    CHECK_STATUS(
+        CreateOp<PhysicalLoadDataNode>(&load_data_op, node->File(), node->Db(), node->Table(), node->Options()));
     *output = load_data_op;
     return Status::OK();
 }
@@ -1739,6 +1751,9 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
             case ::hybridse::node::kPlanTypeLoadData: {
                 return TransformPlanOp(node, output);
             }
+            case ::hybridse::node::kPlanTypeDelete: {
+                return TransformPlanOp(node, output);
+            }
             default: {
                 return Status(kPlanError, "Plan type not supported: " + node::NameOfPlanNodeType(node->GetType()));
             }
@@ -2322,7 +2337,7 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
     return;
 }
 
-Status RequestModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output){
+Status RequestModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) {
     FAIL_STATUS(common::kPlanError, "Non-support LoadData in request mode");
 }
 

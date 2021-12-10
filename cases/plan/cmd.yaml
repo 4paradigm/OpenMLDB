@@ -343,3 +343,39 @@ cases:
     sql: SET SELECT_MODE = 1 + 2;
     expect:
       success: false
+  - id: show jobs
+    sql: SHOW JOBS
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show jobs
+          +-args: []
+  - id: show job
+    sql: SHOW JOB 1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show job
+          +-args: [1]
+  - id: stop_job_1
+    sql: stop JOB 10;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: stop job
+          +-args: [10]
+  - id: stop_job_2
+    sql: stop JOB abc;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: stop job
+          +-args: [abc]
+
+  - id: delete_job
+    sql: delete job 12;
+    expect:
+      node_tree_str: |
+        +-node[kDeleteStmt]
+          +-target: JOB
+          +-job_id: 12

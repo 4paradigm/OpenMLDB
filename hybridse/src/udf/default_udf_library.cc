@@ -666,9 +666,162 @@ void DefaultUdfLibrary::InitStringUdf() {
                 select date_format(date(1590115420000),"%Y-%m-%d");
                 --output "2020-05-22"
             @endcode)");
+    RegisterExternal("like_match")
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
+                udf::v1::like)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief pattern match same as LIKE predicate
+
+                Rules:
+                1. Special characters:
+                   - underscore(_): exact one character
+                   - precent(%): zero or more characters.
+                2. Escape character:
+                   - backslash(\) is the default escape character
+                   - length of <escape character> must <= 1
+                   - if <escape character> is empty or null value, escape feautre is disabled
+                3. case sensitive
+                4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+
+                Example:
+                @code{.sql}
+                    select like_match('Mike', 'Mi_e', '\\')
+                    -- output: true
+
+                    select like_match('Mike', 'Mi\\_e', '\\')
+                    -- output: false
+
+                    select like_match('Mi_e', 'Mi\\_e', '\\')
+                    -- output: true
+
+                    select like_match('Mi\\ke', 'Mi\\_e', '')
+                    -- output: true
+                @endcode
+
+                @param target: string to match
+
+                @param pattern: the glob match pattern
+
+                @param escape: escape character
+
+                @since 0.4.0
+        )r");
+    RegisterExternal("like_match")
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*, bool*)>(udf::v1::like)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief pattern match same as LIKE predicate
+
+                Rules:
+                1. Special characters:
+                   - underscore(_): exact one character
+                   - precent(%): zero or more characters.
+                2. Escape character:
+                   - backslash(\) is the default escape character
+                   - length of <escape character> must <= 1
+                   - if <escape character> is empty or null value, escape feautre is disabled
+                3. case sensitive
+                4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+
+                Example:
+                @code{.sql}
+                    select like_match('Mike', 'Mi_k')
+                    -- output: true
+                    select like_match('Mike', 'mi_k')
+                    -- output: false
+                @endcode
+
+                @param target: string to match
+
+                @param pattern: the glob match pattern
+
+                @since 0.4.0
+        )r");
+    RegisterExternal("ilike_match")
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
+                udf::v1::ilike)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief pattern match same as ILIKE predicate
+
+                Rules:
+                1. Special characters:
+                   - underscore(_): exact one character
+                   - precent(%): zero or more characters.
+                2. Escape character:
+                   - backslash(\) is the default escape character
+                   - length of <escape character> must <= 1
+                   - if <escape character> is empty or null value, escape feautre is disabled
+                3. case insensitive
+                4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+
+                Example:
+                @code{.sql}
+                    select ilike_match('Mike', 'mi_e', '\\')
+                    -- output: true
+
+                    select ilike_match('Mike', 'mi\\_e', '\\')
+                    -- output: false
+
+                    select ilike_match('Mi_e', 'mi\\_e', '\\')
+                    -- output: true
+
+                    select ilike_match('Mi\\ke', 'mi\\_e', '')
+                    -- output: true
+                @endcode
+
+                @param target: string to match
+
+                @param pattern: the glob match pattern
+
+                @param escape: escape character
+
+                @since 0.4.0
+        )r");
+    RegisterExternal("ilike_match")
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*, bool*)>(udf::v1::ilike)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief pattern match same as ILIKE predicate
+
+                Rules:
+                1. Special characters:
+                   - underscore(_): exact one character
+                   - precent(%): zero or more characters.
+                2. Escape character:
+                   - backslash(\) is the default escape character
+                   - length of <escape character> must <= 1
+                   - if <escape character> is empty or null value, escape feautre is disabled
+                3. case insensitive
+                4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+
+                Example:
+                @code{.sql}
+                    select ilike_match('Mike', 'Mi_k')
+                    -- output: true
+
+                    select ilike_match('Mike', 'mi_k')
+                    -- output: true
+                @endcode
+
+                @param target: string to match
+
+                @param pattern: the glob match pattern
+
+                @since 0.4.0
+        )r");
     RegisterExternal("ucase")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::ucase)))
+        .args<codec::StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::ucase)))
         .return_by_arg(true)
         .returns<Nullable<codec::StringRef>>()
         .doc(R"(
