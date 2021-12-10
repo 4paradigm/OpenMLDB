@@ -136,7 +136,7 @@ if(SQL_JAVASDK_ENABLE)
     target_compile_options(sql_jsdk PRIVATE -w)
 
     add_dependencies(sql_jsdk hybridse_jsdk_core_static)
-    target_link_libraries(sql_jsdk PRIVATE ${SDK_LIBS} hybridse_jsdk_core_static boost_filesystem)
+    target_link_libraries(sql_jsdk PRIVATE "-Wl,-force_load $<TARGET_FILE:hybridse_jsdk_core_static>" ${SDK_LIBS} boost_filesystem)
 
     if(APPLE)
       set_target_properties(sql_jsdk PROPERTIES

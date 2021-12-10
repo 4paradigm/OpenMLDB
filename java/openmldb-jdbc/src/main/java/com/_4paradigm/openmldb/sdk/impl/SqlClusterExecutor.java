@@ -50,15 +50,24 @@ import java.util.List;
 import java.util.Map;
 
 public class SqlClusterExecutor implements SqlExecutor {
+    private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
+
     static {
-        String libname = "sql_jsdk";
-        LibraryLoader.loadLibrary(libname);
+        initJavaSdkLibrary();
     }
 
-    private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
+    private static boolean initialized = false;
     private SQLRouter sqlRouter;
 
+    public static void initJavaSdkLibrary() {
+        if (!initialized) {
+            LibraryLoader.loadLibrary("sql_jsdk");
+            initialized = true;
+        }
+    }
+
     public SqlClusterExecutor(SdkOption option) throws SqlException {
+
         SQLRouterOptions sqlOpt = new SQLRouterOptions();
         sqlOpt.setSession_timeout(option.getSessionTimeout());
         sqlOpt.setZk_cluster(option.getZkCluster());
