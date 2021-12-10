@@ -32,7 +32,7 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     tar xzf thirdparty.tar.gz -C /deps/usr --strip-components=1 && \
     curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
     mkdir -p /deps/src && \
-    curl -SLo zookeeper.tar.gz -C /deps/src && \
+    tar xzf zookeeper.tar.gz -C /deps/src && \
     /setup_cmake.sh "${TARGETARCH}" && \
     rm /setup_cmake.sh && \
     rm ./*.tar.gz

@@ -95,6 +95,7 @@ test:
 
 # disable building hybridse tests for faster compilation
 HYBRIDSE_CMAKE_DEPS_FLAGS := -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=OFF
+
 # trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr, will skip make thirdparty
 configure:
 	if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
