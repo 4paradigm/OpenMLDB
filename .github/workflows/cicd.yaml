@@ -90,6 +90,7 @@ jobs:
 
   sql_mode_sdk_test:
     runs-on: self-hosted
+    needs: build_and_cpp_ut
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
