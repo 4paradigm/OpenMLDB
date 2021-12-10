@@ -63,6 +63,15 @@ jobs:
           path: |
             reports/*.xml
 
+      - name: upload test binary
+        uses: actions/upload-artifact@v2
+        with:
+          path: |
+            build/bin/sql_sdk_test
+            build/bin/sql_cluster_test
+            build/bin/sql_standalone_sdk_test
+          name: test-artifacts
+
       - name: install
         run: |
           make install
@@ -83,29 +92,33 @@ jobs:
     runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
-    strategy:
-      fail-fast: true
-      matrix:
-        test_target:
-          - sql_standalone_sdk_test
-          - sql_sdk_test
-          - sql_cluster_test
     env:
-      OPENMLDB_BUILD_TARGET: ${{ matrix.test_target }}
-      TEST_TARGET: ${{ matrix.test_target }}
-      TESTING_ENABLE: ON
       TEST_LEVEL: 0
-      NPROC: 4
     steps:
       - uses: actions/checkout@v2
 
-      - name: configure and build
-        run: |
-          make build
+      - name: download test binary
+        uses: actions/download-artifact@v2
+        with:
+          name: test-artifacts
+          path: build
 
-      - name: run test ${{ matrix.test_target }}
+      - name: download thirdsrc
         run: |
-          make test
+          make thirdparty-configure
+          cmake --build .deps --target zookeeper-install-src
+
+      - name: run sql_sdk_test
+        run: |
+          bash steps/ut.sh sql_sdk_test ${TEST_LEVEL}
+
+      - name: run sql_cluster_test
+        run: |
+          bash steps/ut.sh sql_cluster_test ${TEST_LEVEL}
+
+      - name: run sql_standalone_sdk_test
+        run: |
+          bash steps/ut.sh sql_standalone_sdk_test ${TEST_LEVEL}
 
       - name: upload unit test results
         if: always()
