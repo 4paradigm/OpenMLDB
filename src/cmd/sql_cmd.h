@@ -653,7 +653,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     std::string select_sql = deploy_node->StmtStr() + ";";
     hybridse::vm::ExplainOutput explain_output;
     hybridse::base::Status sql_status;
-    if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status, false)) {
+    if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status)) {
         return {base::ReturnCode::kError, sql_status.msg};
     }
     // pack ProcedureInfo
