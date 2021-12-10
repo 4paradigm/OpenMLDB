@@ -120,7 +120,7 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.disable", doc="Disable OpenMLDB optimization or not")
   var disableOpenmldb = false
 
-  // HybridSE dynamic library path
+  // OpenMLDB Java SDK dynamic library path, notice that this should not be set hybridse jsdk so
   @ConfigOption(name="openmldb.hybridse.jsdk.path", doc="The path of HybridSE jsdk core file path")
   var hybridseJsdkLibraryPath = ""
 

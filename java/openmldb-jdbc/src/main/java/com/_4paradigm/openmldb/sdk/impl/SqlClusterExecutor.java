@@ -43,6 +43,8 @@ import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -78,6 +80,22 @@ public class SqlClusterExecutor implements SqlExecutor {
         sqlOpt.delete();
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
+        }
+    }
+
+    public static String getSqlJsdkLibraryPath() {
+        String libraryPath = "sql_jsdk";
+        String osName = System.getProperty("os.name").toLowerCase();
+        if (osName.equals("mac os x")) {
+            libraryPath = "lib" + libraryPath + ".dylib";
+        } else if (osName.contains("linux")) {
+            libraryPath = "lib" + libraryPath + ".so";
+        }
+        URL resource = LibraryLoader.class.getClassLoader().getResource(libraryPath);
+        if (resource != null) {
+            return resource.getPath();
+        } else {
+            return "";
         }
     }
 

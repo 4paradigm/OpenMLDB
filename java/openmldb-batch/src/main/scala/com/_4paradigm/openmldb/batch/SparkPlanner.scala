@@ -34,10 +34,14 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import scala.collection.JavaConversions.seqAsJavaList
 
-
 class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppName: String) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
+
+  if (this.config.hybridseJsdkLibraryPath.equals("")) {
+    // Set library path to the one in openmldb jsdk
+    config.hybridseJsdkLibraryPath = SqlClusterExecutor.getSqlJsdkLibraryPath
+  }
 
   // Ensure native initialized
   if (config.hybridseJsdkLibraryPath.equals("")) {
