@@ -163,18 +163,11 @@ add_custom_target(python_package ALL
 	)
 
 endif()
-if(JAVASDK_ENABLE)
-add_custom_command(OUTPUT
-    cp_java_native_so
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hybridse_jsdk_core>
-    	${PROJECT_SOURCE_DIR}/java/hybridse-native/src/main/resources/
-    )
 
-add_custom_target(java_package ALL
-  DEPENDS
-    cp_java_native_so
-    COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true ${MAVEN_FLAGS}
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
-)
-add_dependencies(java_package hybridse_proto_java)
+if(SQL_JAVASDK_ENABLE)
+  add_custom_command(
+    OUTPUT cp_java_native_so
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hybridse_jsdk_core>
+    ${CMAKE_SOURCE_DIR}/java/hybridse-native/src/main/resources/
+  )
 endif()
