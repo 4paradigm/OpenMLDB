@@ -1762,6 +1762,30 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 select dayofweek(timestamp(1590115420000));
                 -- output 6
             @endcode
+            @since 0.4.0
+        )");
+
+    RegisterExternal("dayofyear")
+        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofyear))
+        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofyear))
+        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofyear))
+        .doc(R"(
+            @brief Return the day of year for a timestamp or date. Returns 0 given an invalid date.
+
+            Example:
+            @code{.sql}
+                select dayofyear(timestamp(1590115420000));
+                -- output 143
+
+                select dayofyear(1590115420000);
+                -- output 143
+
+                select dayofyear(date("2020-05-22"));
+                -- output 143
+
+                select dayofyear(date("2020-05-32"));
+                -- output 0
+            @endcode
             @since 0.1.0
         )");
 
