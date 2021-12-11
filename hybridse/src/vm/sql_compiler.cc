@@ -169,11 +169,12 @@ Status SqlCompiler::BuildBatchModePhysicalPlan(SqlContext* ctx, const ::hybridse
 }
 
 Status SqlCompiler::BuildRequestModePhysicalPlan(SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+                                                 const bool enable_request_performance_sensitive,
                                                  ::llvm::Module* llvm_module, udf::UdfLibrary* library,
                                                  PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library, {},
                                            ctx->is_cluster_optimized, false, ctx->enable_expr_optimize,
-                                           ctx->enable_request_performance_sensitive);
+                                           enable_request_performance_sensitive);
     transformer.AddDefaultPasses();
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
                  "Fail to transform physical plan on request mode");
@@ -193,7 +194,7 @@ Status SqlCompiler::BuildBatchRequestModePhysicalPlan(SqlContext* ctx, const ::h
     vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library,
                                            ctx->batch_request_info.common_column_indices,
                                            ctx->is_cluster_optimized, ctx->is_batch_request_optimized,
-                                           ctx->enable_expr_optimize, ctx->enable_request_performance_sensitive);
+                                           ctx->enable_expr_optimize, true);
     transformer.AddDefaultPasses();
     PhysicalOpNode* output_plan = nullptr;
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, &output_plan),
@@ -262,8 +263,13 @@ Status SqlCompiler::BuildPhysicalPlan(
                                               library, output));
             break;
         }
+        case kMockRequestMode: {
+            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, false, llvm_module,
+                                                      library, output));
+            break;
+        }
         case kRequestMode: {
-            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, llvm_module,
+            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, true, llvm_module,
                                                 library, output));
             break;
         }

@@ -24,7 +24,7 @@
 namespace hybridse {
 namespace vm {
 
-enum EngineMode { kBatchMode, kRequestMode, kBatchRequestMode };
+enum EngineMode { kBatchMode, kRequestMode, kMockRequestMode, kBatchRequestMode };
 std::string EngineModeName(EngineMode mode);
 
 struct BatchRequestInfo {

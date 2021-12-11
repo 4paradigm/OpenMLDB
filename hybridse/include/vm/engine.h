@@ -110,16 +110,6 @@ class EngineOptions {
         return enable_window_column_pruning_;
     }
 
-    /// Set `true` to enable online serving request performance sensitive, default `false`.
-    inline EngineOptions* SetEnableRequestPerformanceSensitive(bool flag) {
-        enable_request_performance_sensitive_ = flag;
-        return this;
-    }
-    /// Return if the engine support online serving request performance sensitive
-    inline bool IsEnableRequestPerformanceSensitive() const {
-        return enable_request_performance_sensitive_;
-    }
-
     /// Set the maximum number of cache entries, default is `50`.
     inline void SetMaxSqlCacheSize(uint32_t size) {
         max_sql_cache_size_ = size;
@@ -146,7 +136,6 @@ class EngineOptions {
     bool enable_expr_optimize_;
     bool enable_batch_window_parallelization_;
     bool enable_window_column_pruning_;
-    bool enable_request_performance_sensitive_;
     uint32_t max_sql_cache_size_;
     bool enable_spark_unsaferow_format_;
     JitOptions jit_options_;
@@ -220,6 +209,28 @@ class BatchRunSession : public RunSession {
     virtual const Schema& GetParameterSchema() const { return parameter_schema_; }
  private:
     codec::Schema parameter_schema_;
+};
+
+/// \brief MockRequestRunSession is a kind of mock RuSession design for request query
+/// disable performance sensitive. Since it is a mock RunSession for SQL compiling and explain
+/// we are not going to support Run() method for it
+class MockRequestRunSession : public RunSession {
+ public:
+    MockRequestRunSession() : RunSession(kMockRequestMode) {
+    }
+    ~MockRequestRunSession() {}
+    /// \brief Return the schema of request row
+    virtual const Schema& GetRequestSchema() const {
+        return compile_info_->GetRequestSchema();
+    }
+    /// \brief Return the name of request table name
+    virtual const std::string& GetRequestName() const {
+        return compile_info_->GetRequestName();
+    }
+    /// \brief Return the name of request table db
+    virtual const std::string& GetRequestDbName() const {
+        return compile_info_->GetRequestDbName();
+    }
 };
 /// \brief RequestRunSession is a kind of RunSession designed for request mode query.
 ///

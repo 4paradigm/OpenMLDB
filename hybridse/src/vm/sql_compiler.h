@@ -44,7 +44,6 @@ struct SqlContext {
     bool enable_expr_optimize = false;
     bool enable_batch_window_parallelization = true;
     bool enable_window_column_pruning = false;
-    bool enable_request_performance_sensitive = true;
 
     // the sql content
     std::string sql;
@@ -174,6 +173,7 @@ class SqlCompiler {
         PhysicalOpNode** output);
     Status BuildRequestModePhysicalPlan(
         SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+        const bool enable_request_performance_sensitive,
         ::llvm::Module* llvm_module, udf::UdfLibrary* library, PhysicalOpNode** output);
     Status BuildBatchRequestModePhysicalPlan(
         SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,

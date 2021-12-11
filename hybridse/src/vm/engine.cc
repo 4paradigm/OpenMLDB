@@ -49,7 +49,6 @@ EngineOptions::EngineOptions()
       enable_expr_optimize_(true),
       enable_batch_window_parallelization_(false),
       enable_window_column_pruning_(false),
-      enable_request_performance_sensitive_(true),
       max_sql_cache_size_(50),
       enable_spark_unsaferow_format_(false) {
     // TODO(chendihao): Pass the parameter to avoid global gflag
@@ -231,7 +230,6 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     sql_context.enable_batch_window_parallelization = options_.IsEnableBatchWindowParallelization();
     sql_context.enable_window_column_pruning = options_.IsEnableWindowColumnPruning();
     sql_context.enable_expr_optimize = options_.IsEnableExprOptimize();
-    sql_context.enable_request_performance_sensitive = options_.IsEnableRequestPerformanceSensitive();
     sql_context.jit_options = options_.jit_options();
     if (session.engine_mode() == kBatchMode) {
         sql_context.parameter_types = dynamic_cast<BatchRunSession*>(&session)->GetParameterSchema();
@@ -271,7 +269,8 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
 
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
                      const codec::Schema& parameter_schema,
-                     const std::set<size_t>& common_column_indices, ExplainOutput* explain_output,
+                     const std::set<size_t>& common_column_indices,
+                     ExplainOutput* explain_output,
                      base::Status* status) {
     if (explain_output == NULL || status == NULL) {
         LOG(WARNING) << "input args is invalid";
