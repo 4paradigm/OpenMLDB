@@ -22,7 +22,6 @@ jobs:
       SQL_PYSDK_ENABLE: OFF
       SQL_JAVASDK_ENABLE: OFF
       TESTING_ENABLE: ON
-      TEST_LEVEL: 0
       NPROC: 4
     steps:
       - uses: actions/checkout@v2
@@ -58,15 +57,15 @@ jobs:
 
       - name: run sql_sdk_test
         run: |
-          bash steps/ut.sh sql_sdk_test ${TEST_LEVEL}
+          bash steps/ut.sh sql_sdk_test 0
 
       - name: run sql_cluster_test
         run: |
-          bash steps/ut.sh sql_cluster_test ${TEST_LEVEL}
+          bash steps/ut.sh sql_cluster_test 0
 
       - name: run sql_standalone_sdk_test
         run: |
-          bash steps/ut.sh sql_standalone_sdk_test ${TEST_LEVEL}
+          bash steps/ut.sh sql_standalone_sdk_test 0
 
       - name: upload unit test results
         if: always()
