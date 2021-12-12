@@ -99,6 +99,15 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
 endif ()
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
+if (COVERAGE_ENABLE)
+    if (CMAKE_COMPILER_IS_GNUCXX)
+        find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
+        include(CodeCoverage)
+        APPEND_COVERAGE_COMPILER_FLAGS()
+    endif ()
+endif ()
+
 if (NOT DEFINED CMAKE_PREFIX_PATH)
     set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
 endif()
@@ -190,16 +199,6 @@ include_directories(
 
 link_directories(${CMAKE_PREFIX_PATH}/lib ${CMAKE_PREFIX_PATH}/lib64)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
-
-if (COVERAGE_ENABLE)
-    if (CMAKE_COMPILER_IS_GNUCXX)
-        find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
-        include(CodeCoverage)
-        APPEND_COVERAGE_COMPILER_FLAGS()
-    endif ()
-endif ()
-
 add_subdirectory(src)
 
 if (COVERAGE_ENABLE)
@@ -209,6 +208,7 @@ if (COVERAGE_ENABLE)
                 DEPENDENCIES ${test_list})
     endif ()
 endif ()
+
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   # CMAKE_INSTALL_PREFIX default to /usr/local on unix.
