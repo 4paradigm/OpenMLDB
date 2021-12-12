@@ -99,6 +99,7 @@ jobs:
     env:
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'sql_javasdk_package openmldb'
+      MAVEN_OPTS: -Duser.home=/github/home
     steps:
       - uses: actions/checkout@v2
 
@@ -223,6 +224,8 @@ jobs:
       success() && github.event_name == 'push'
     env:
       SQL_JAVASDK_ENABLE: ON
+      # do not set user.home on macos
+      MAVEN_OPTS: -Duser.home=/github/home
     steps:
       - uses: actions/checkout@v2
 
@@ -248,8 +251,6 @@ jobs:
           VERSION=${VERSION#v}
           ./steps/package_openmldb_javasdk.sh "$VERSION"
         env:
-          # do not set user.home on macos
-          MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
