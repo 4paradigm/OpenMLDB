@@ -189,24 +189,3 @@ jobs:
           check_name: HybridSE Mac Test Report
           comment_title: HybridSE Mac Test Report
 
-  coverage:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-
-      - name: Build and Coverage
-        run: |
-          make coverage
-
-      - name: Upload Coverage Report
-        uses: codecov/codecov-action@v2
-        with:
-          files: ${{ env.HYBRIDSE_PATH }}/build/coverage.info,${{ env.HYBRIDSE_PATH }}/java/hybridse-sdk/target/site/jacoco/jacoco.xml
-          name: coverage
-          fail_ci_if_error: true
-          verbose: true

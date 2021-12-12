@@ -79,7 +79,11 @@ TEST_LEVEL ?=
 all: build
 
 # TODO(#677): add OpenMLDB coverage
-coverage: hybridse-coverage
+coverage:
+	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) -- -j$(NPROC)
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
+	cd java && mvn prepare-package
 
 OPENMLDB_BUILD_DIR ?= $(MAKEFILE_DIR)/build
 
@@ -143,7 +147,6 @@ hybridse-configure: thirdparty
 hybridse-coverage: hybridse-coverage-configure
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
-	cd hybridse/java && mvn prepare-package
 
 hybridse-coverage-configure:
 	$(MAKE) hybridse-configure CMAKE_BUILD_TYPE=Debug COVERAGE_ENABLE=ON

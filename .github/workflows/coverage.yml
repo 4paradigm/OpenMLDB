@@ -1,0 +1,35 @@
+name: coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.0
+    env:
+      SQL_PYSDK_ENABLE: OFF
+      SQL_JAVASDK_ENABLE: ON
+      TESTING_ENABLE: ON
+      NPROC: 4
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Build and Coverage
+        run: |
+          make coverage
+
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v2
+        with:
+          files: build/coverage.info,java/hybridse-sdk/target/site/jacoco/jacoco.xml
+          name: coverage
+          fail_ci_if_error: true
+          verbose: true
