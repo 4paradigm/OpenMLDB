@@ -67,6 +67,8 @@ ifdef SANITIZER_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DSANITIZER_ENABLE=$(SANITIZER_ENABLE)
 endif
 
+# append hybridse flags so it also works when compile all from OPENMLDB_BUILD_DIR
+OPENMLDB_CMAKE_FLAGS += $(HYBRIDSE_CMAKE_FLAGS)
 
 # Extra cmake flags for third-party
 THIRD_PARTY_CMAKE_FLAGS ?=
@@ -78,12 +80,12 @@ TEST_LEVEL ?=
 
 all: build
 
-# TODO(#677): add OpenMLDB coverage
-coverage:
-	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug
+coverage: zoo-up
+	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug HYBRIDSE_TESTING_ENABLE=ON EXAMPLES_ENABLE=ON SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) -- -j$(NPROC)
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 	cd java && mvn prepare-package
+	$(MAKE) zoo-down
 
 OPENMLDB_BUILD_DIR ?= $(MAKEFILE_DIR)/build
 
@@ -156,9 +158,18 @@ hybridse-clean:
 
 clean: hybridse-clean openmldb-clean
 
-.PHONY: distclean lint format javafmt shfmt cppfmt pyfmt configfmt yamlfmt jsonfmt xmlfmt cpplint shlint javalint pylint
+.PHONY: distclean lint format javafmt shfmt cppfmt pyfmt configfmt yamlfmt jsonfmt xmlfmt cpplint shlint javalint pylint zoo-up zoo-down zoo-init
 
 distclean: clean thirdparty-clean
+
+zoo-init:
+	cp steps/zoo.cfg $(THIRD_PARTY_SRC_DIR)/zookeeper-3.4.14/conf
+
+zoo-up:
+	cd $(THIRD_PARTY_SRC_DIR)/zookeeper-3.4.14 && ./bin/zkServer.sh start
+
+zoo-down:
+	cd $(THIRD_PARTY_DIR)/zookeeper-3.4.14 && ./bin/zkServer.sh stop
 
 lint: cpplint shlint javalint pylint
 
