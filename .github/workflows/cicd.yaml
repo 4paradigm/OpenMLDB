@@ -102,6 +102,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('java/**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
       - name: build jsdk and package
         run: |
           make build
