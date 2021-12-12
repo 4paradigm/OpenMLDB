@@ -22,6 +22,10 @@ jobs:
         with:
           submodules: true
 
+      - name: setup thirdparty
+        run: |
+          make thirdparty
+
       - name: start zookeeper
         run: |
           sh steps/ut_zookeeper.sh start
