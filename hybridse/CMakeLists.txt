@@ -34,7 +34,7 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 
 project(hybridse)
 
@@ -46,7 +46,6 @@ option(TESTING_ENABLE "Enable Test" ON)
 option(HYBRIDSE_TESTING_ENABLE "Enable Hybridse Test" ON)
 option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
-option(COVERAGE_ENABLE "Enable Coverage" OFF)
 option(PYSDK_ENABLE "Enable pysdk" ON)
 option(JAVASDK_ENABLE "Enable javasdk" ON)
 option(EXAMPLES_ENABLE "Enable examples" ON)
@@ -128,13 +127,6 @@ endif()
 
 if (TESTING_ENABLE)
     enable_testing()
-endif ()
-if (COVERAGE_ENABLE)
-    if (CMAKE_COMPILER_IS_GNUCXX)
-        find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
-        include(CodeCoverage)
-        APPEND_COVERAGE_COMPILER_FLAGS()
-    endif ()
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -233,11 +225,4 @@ add_subdirectory(src)
 #TODO add flag
 if (EXAMPLES_ENABLE)
     add_subdirectory(examples)
-endif ()
-if (COVERAGE_ENABLE)
-    if (CMAKE_COMPILER_IS_GNUCXX)
-        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
-                EXECUTABLE ctest -j ${n_cores}
-                DEPENDENCIES ${test_list})
-    endif ()
 endif ()

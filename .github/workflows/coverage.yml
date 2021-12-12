@@ -22,9 +22,20 @@ jobs:
         with:
           submodules: true
 
+      - name: start zookeeper
+        run: |
+          sh steps/ut_zookeeper.sh start
+          cd onebox
+          sh start_onebox.sh
+
       - name: Build and Coverage
         run: |
           make coverage
+
+      - name: stop zookeeper
+        run: |
+          ./onebox/stop_all.sh
+          sh steps/ut_zookeeper.sh stop
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v2

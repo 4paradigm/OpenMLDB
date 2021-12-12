@@ -75,6 +75,7 @@ option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 option(SQL_PYSDK_ENABLE "Enable sql pysdk" OFF)
 option(SQL_JAVASDK_ENABLE "Enable sql javasdk" OFF)
 option(MAC_TABLET_ENABLE "Enable Table on Mac OS" ON)
+option(COVERAGE_ENABLE "Enable Coverage" OFF)
 message (STATUS "MAC_TABLET_ENABLE: ${MAC_TABLET_ENABLE}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 if (MAC_TABLET_ENABLE)
@@ -189,7 +190,25 @@ include_directories(
 
 link_directories(${CMAKE_PREFIX_PATH}/lib ${CMAKE_PREFIX_PATH}/lib64)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
+
+if (COVERAGE_ENABLE)
+    if (CMAKE_COMPILER_IS_GNUCXX)
+        find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
+        include(CodeCoverage)
+        APPEND_COVERAGE_COMPILER_FLAGS()
+    endif ()
+endif ()
+
 add_subdirectory(src)
+
+if (COVERAGE_ENABLE)
+    if (CMAKE_COMPILER_IS_GNUCXX)
+        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
+                EXECUTABLE ctest -j ${n_cores}
+                DEPENDENCIES ${test_list})
+    endif ()
+endif ()
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   # CMAKE_INSTALL_PREFIX default to /usr/local on unix.
