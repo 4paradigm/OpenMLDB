@@ -28,6 +28,37 @@ Build & Install
     make install
     ```
 
+# Build
+
+[build]: build
+
+## Hardware Requirements
+
+- **Memory**: 4GB RAM minimum, 8GB+ recommended.
+- **Disk Space**: >=25GB of free disk space for full compilation.
+- **Operating System**: A 64-bit installation of Linux or macOS >= 10.14 
+
+## Prerequisites
+
+Make sure those tools are installed
+
+- gcc 8 or later
+- cmake 3.20 or later
+- jdk 8
+- python3, python setuptools, python wheel
+- apache maven 3.x
+- if you'd like compile thirdparty from source, checkout [third-party's requirement](../../third-party/README.md) for extra dependencies
+
+## Build OpenMLDB
+
+  Build commands are same as [Quick start](#quick-start)
+
+  ```bash
+  $ cd OpenMLDB
+  $ make
+  $ make install
+  ```
+
 ## Extra Options for `make`
 
 You can customize the `make` behavior by passing following arguments, e.g., changing the build mode to `Debug` instead of `Release`:
@@ -72,37 +103,6 @@ make CMAKE_BUILD_TYPE=Debug
 
   Default: OFF
 
-
-# Build
-
-[build]: build
-
-## Hardware Requirements
-
-- **Memory**: 4GB RAM minimum, 8GB+ recommended.
-- **Disk Space**: >=25GB of free disk space for full compilation.
-- **Operating System**: A 64-bit installation of Linux or macOS >= 10.14 
-
-## Prerequisites
-
-Make sure those tools are installed
-
-- gcc 8 or later
-- cmake 3.20 or later
-- jdk 8
-- python3, python setuptools, python wheel
-- apache maven 3.x
-- if you'd like compile thirdparty from source, checkout [third-party's requirement](third-party/README.md) for extra dependencies
-
-## Build OpenMLDB
-
-  Build commands are same as [Quick start](#quick-start)
-
-  ```bash
-  $ cd OpenMLDB
-  $ make
-  $ make install
-  ```
 
 ## Troubleshooting
 

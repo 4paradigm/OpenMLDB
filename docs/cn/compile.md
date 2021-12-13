@@ -28,6 +28,35 @@
     make install
     ```
 
+# 编译
+
+[build]: build
+
+## 硬件要求
+
+- **内存**: 最小 4GB, 推荐 8GB+.
+- **硬盘**: 全量编译需要至少 25GB 的空闲磁盘空间
+- **操作系统**: 64 位 Linux 或者 macOS >= 10.14 
+
+## 依赖工具
+
+- gcc 8 或更新版本
+- cmake 3.20 或更新版本
+- jdk 8
+- python3, python setuptools, python wheel
+- apache maven 3.x
+- 如果需要编译 thirdparty, 查看 [third-party's requirement](../../third-party/README.md) 里的额外要求
+
+## 编译 OpenMLDB
+
+  编译命令和 [快速开始](#quick-start) 的描述相同
+
+  ```bash
+  $ cd OpenMLDB
+  $ make
+  $ make install
+  ```
+
 ## `make` 额外参数
 
 控制 `make` 的行为. 例如，将默认编译模式改成 Debug:
@@ -71,35 +100,6 @@ make CMAKE_BUILD_TYPE=Debug
 - BUILD_BUNDLED: 从源码编译 thirdparty 依赖，而不是下载预编译包
 
   默认: OFF
-
-# 编译
-
-[build]: build
-
-## 硬件要求
-
-- **内存**: 最小 4GB, 推荐 8GB+.
-- **硬盘**: 全量编译需要至少 25GB 的空闲磁盘空间
-- **操作系统**: 64 位 Linux 或者 macOS >= 10.14 
-
-## 依赖工具
-
-- gcc 8 或更新版本
-- cmake 3.20 或更新版本
-- jdk 8
-- python3, python setuptools, python wheel
-- apache maven 3.x
-- 如果需要编译 thirdparty, 查看 [third-party's requirement](third-party/README.md) 里的额外要求
-
-## 编译 OpenMLDB
-
-  编译命令和 [快速开始](#quick-start) 的描述相同
-
-  ```bash
-  $ cd OpenMLDB
-  $ make
-  $ make install
-  ```
 
 ## 故障排除
 
