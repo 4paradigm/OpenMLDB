@@ -135,6 +135,7 @@ if(SQL_JAVASDK_ENABLE)
     target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
     target_compile_options(sql_jsdk PRIVATE -w)
 
+    add_dependencies(sql_jsdk hybridse_jsdk_core_static)
     if(APPLE)
         target_link_libraries(sql_jsdk PRIVATE "-Wl,-force_load $<TARGET_FILE:hybridse_jsdk_core_static>" ${SDK_LIBS} boost_filesystem)
     else()
