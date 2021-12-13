@@ -135,8 +135,11 @@ if(SQL_JAVASDK_ENABLE)
     target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
     target_compile_options(sql_jsdk PRIVATE -w)
 
-    add_dependencies(sql_jsdk hybridse_jsdk_core_static)
-    target_link_libraries(sql_jsdk PRIVATE "-Wl,-force_load $<TARGET_FILE:hybridse_jsdk_core_static>" ${SDK_LIBS} boost_filesystem)
+    if(APPLE)
+        target_link_libraries(sql_jsdk PRIVATE "-Wl,-force_load $<TARGET_FILE:hybridse_jsdk_core_static>" ${SDK_LIBS} boost_filesystem)
+    else()
+        target_link_libraries(sql_jsdk PRIVATE "-Wl,--whole-archive $<TARGET_FILE:hybridse_jsdk_core_static> -Wl,--no-whole-archive" ${SDK_LIBS} boost_filesystem)
+    endif()
 
     if(APPLE)
       set_target_properties(sql_jsdk PROPERTIES
