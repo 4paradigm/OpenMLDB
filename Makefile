@@ -99,10 +99,8 @@ test:
 	$(MAKE) build TESTING_ENABLE=ON OPENMLDB_BUILD_TARGE=$(TEST_TARGET)
 	bash steps/ut.sh $(TEST_TARGET) $(TEST_LEVEL)
 
-# disable building hybridse tests for faster compilation
-HYBRIDSE_CMAKE_DEPS_FLAGS := -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=OFF
 configure: thirdparty
-	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(HYBRIDSE_CMAKE_DEPS_FLAGS) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
+	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 openmldb-clean:
 	rm -rf "$(OPENMLDB_BUILD_DIR)"
@@ -113,7 +111,7 @@ THIRD_PARTY_DIR := $(THIRD_PARTY_BUILD_DIR)/usr
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
 thirdparty: thirdparty-configure
-	$(CMAKE_PRG) --build .deps
+	$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR)
 
 thirdparty-configure:
 	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) $(THIRD_PARTY_CMAKE_FLAGS)

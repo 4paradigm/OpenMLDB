@@ -34,8 +34,6 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
-
 project(hybridse)
 
 set(HYBRIDSE_VERSION_MAJOR 0)
