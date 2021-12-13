@@ -1,32 +1,43 @@
-Build & Install
-===============
+# Build & Install
 
 # Quick start
 
 [quick-start]: quick-start
 
-1. Download source code
-    ```bash
-    git clone git@github.com:4paradigm/OpenMLDB.git
-    cd OpenMLDB
-    ```
-2. Download the docker image for building, which is used to provide necessary tools and dependencies for building
-    ```bash
+This section describe the necessary steps to compile OpenMLDB inside the official docker image [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql).
+The docker image bundled required tools and dependencies so there is no need to setup them separately. For more information refer [Build](#build).
+
+1. Pull the docker image
+
+   ```bash
     docker pull 4pdosc/hybridsql:0.4.0
-    ```
-3. Start the docker with mapping the local OpenMLDB source code directory into the container
-    ```bash
-    docker run -v `pwd`:/OpenMLDB -it 4pdosc/hybridsql:0.4.0 bash
-    ```
-4. Compile OpenMLDB in the docker
-    ```bash
-    cd /OpenMLDB
-    make
-    ```
+   ```
+
+2. Create a docker container with hybridsql docker image
+
+   ```bash
+   docker run -it 4pdosc/hybridsql:0.4.0 bash
+   ```
+
+3. Download source code inside docker container
+
+   ```bash
+   cd ~
+   git clone https://github.com/4paradigm/OpenMLDB.git
+   ```
+
+4. Compile OpenMLDB
+
+   ```bash
+   cd ~/OpenMLDB
+   make
+   ```
+
 5. Install OpenMLDB, will installed into `${PROJECT_ROOT}/openmldb` by default
-    ```bash
-    make install
-    ```
+
+   ```bash
+   make install
+   ```
 
 # Build
 
@@ -34,9 +45,16 @@ Build & Install
 
 ## Hardware Requirements
 
-- **Memory**: 4GB RAM minimum, 8GB+ recommended.
+- **Memory**: 8GB+ recommended.
 - **Disk Space**: >=25GB of free disk space for full compilation.
-- **Operating System**: A 64-bit installation of Linux or macOS >= 10.14 
+- **Operating System**: CentOS7, Ubuntu 20.04 or macOS >= 10.14, other system is not well tested but issue/PR welcome
+
+By default parallel build is not enabled in order to avoid system freezing. You can enable parallel build by tweaking the `NPROC` option
+if your machine's resource is enough. E.g. following command set parallel build number to the number of process unit:
+
+```bash
+make NPROC=$(nproc)
+```
 
 ## Prerequisites
 
@@ -46,20 +64,30 @@ Make sure those tools are installed
 - cmake 3.20 or later
 - jdk 8
 - python3, python setuptools, python wheel
-- apache maven 3.x
+- apache maven 3.3.9 or later
 - if you'd like compile thirdparty from source, checkout [third-party's requirement](../../third-party/README.md) for extra dependencies
 
 ## Build OpenMLDB
 
-  Build commands are same as [Quick start](#quick-start)
+OpenMLDB require some thirdparty dependencies installed first in order to build successfully. Hence a Makefile is provided as a convenience to 
+setup thirdparty dependencies automatically and run CMake project in a single command `make`.
+There are three ways to manage thirdparty, based on different operation system and options passed to `make`:
 
-  ```bash
-  cd OpenMLDB
-  make
-  make install
-  ```
+1. using [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker image: thirdparty already bundled inside image and no extra steps may take
+2. download pre-compiled thirdparty from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases). This is the default behavior when run `make` command outside a hybridsql container, e.g a macOS machine
+3. compile thirdparty from source, by given the `BUILD_BUNDLED=ON` option to `make`:
+   ```bash
+   make BUILD_BUNDLED=ON
+   ```
+   This is the advised way if the host system is not in our supported list: CentOS 7, Ubuntu 20.04 and macOS. Be note compile thirdparty at the first time take extra time to finish, approximately 1 hour on a 2 core & 7GB machine
+
+Thirdparty is installed into `/deps/usr` in hybridsql docker, and `${PROJECT_ROOT}/.deps/usr` by default for method 2 and 3 above.
+
+Build commands are same as [Quick start](#quick-start) described.
 
 ## Extra Options for `make`
+
+[make-opts]: make-opts
 
 You can customize the `make` behavior by passing following arguments, e.g., changing the build mode to `Debug` instead of `Release`:
 
@@ -103,19 +131,6 @@ make CMAKE_BUILD_TYPE=Debug
 
   Default: OFF
 
-
-## Troubleshooting
-
-[build-troubleshooting]: build-troubleshooting
-
-- If the host machine's resource is limited, e.g a VM when 4G memory, it is advised to turn off parallel build by change the `NPROC` variable:
-  ```bash
-  make NPROC=1
-  ```
-- By default, pre-compiled thirdparty is downloaded from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases), which support CentOS 7, Ubuntu 20.04 and macoS. If your host is not in the list or come with unexpected link issues, it is advised to compile thirdparty from source as well. Note  thirdparty compilation may take extra time to finish, approximately 1 hour for 2 core & 7GB machine
-  ```bash
-  make BUILD_BUNDLED=ON
-  ```
 
 # Optimized Spark Distribution for OpenMLDB (Optional)
 

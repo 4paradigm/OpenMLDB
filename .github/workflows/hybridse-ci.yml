@@ -15,6 +15,7 @@ on:
 
 env:
   HYBRIDSE_PATH: hybridse
+  NPROC: 2 # default Parallel build number for GitHub's Linux runner
 
 jobs:
   linux-build:
@@ -124,6 +125,7 @@ jobs:
     env:
       OS: darwin
       ARCH: x86_64
+      NPROC: 3
     steps:
       - uses: actions/checkout@v2
 
