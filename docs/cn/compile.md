@@ -52,9 +52,9 @@
   编译命令和 [快速开始](#quick-start) 的描述相同
 
   ```bash
-  $ cd OpenMLDB
-  $ make
-  $ make install
+  cd OpenMLDB
+  make
+  make install
   ```
 
 ## `make` 额外参数
@@ -104,6 +104,9 @@ make CMAKE_BUILD_TYPE=Debug
 ## 故障排除
 
 - 如果编译机器的资源有限，例如 4G 内存, 推荐关闭默认的并行编译功能：
+  ```bash
+  make NPROC=1
+  ```
 - 第三方依赖 thirdparty 默认会下载在 [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases) 下的预编译包，支持 CentOS 7, Ubuntu 20.04 和 macOS. 如果不在改列表中或者遇到了不在预期的链接错误，推荐从源码编译第三方库。 注意 thirdparty 编译会消耗更长的编译时间, 在2核7G内存的机器上大约需要1个小时：
   ```bash
   make BUILD_BUNDLED=ON

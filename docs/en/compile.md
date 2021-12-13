@@ -54,9 +54,9 @@ Make sure those tools are installed
   Build commands are same as [Quick start](#quick-start)
 
   ```bash
-  $ cd OpenMLDB
-  $ make
-  $ make install
+  cd OpenMLDB
+  make
+  make install
   ```
 
 ## Extra Options for `make`
@@ -109,9 +109,9 @@ make CMAKE_BUILD_TYPE=Debug
 [build-troubleshooting]: build-troubleshooting
 
 - If the host machine's resource is limited, e.g a VM when 4G memory, it is advised to turn off parallel build by change the `NPROC` variable:
-    ```bash
-    make NPROC=1
-    ```
+  ```bash
+  make NPROC=1
+  ```
 - By default, pre-compiled thirdparty is downloaded from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases), which support CentOS 7, Ubuntu 20.04 and macoS. If your host is not in the list or come with unexpected link issues, it is advised to compile thirdparty from source as well. Note  thirdparty compilation may take extra time to finish, approximately 1 hour for 2 core & 7GB machine
   ```bash
   make BUILD_BUNDLED=ON
