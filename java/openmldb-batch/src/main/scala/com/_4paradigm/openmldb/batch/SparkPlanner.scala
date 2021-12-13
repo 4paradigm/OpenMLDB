@@ -40,7 +40,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
 
   if (this.config.hybridseJsdkLibraryPath.equals("")) {
     // Set library path to the one in openmldb jsdk
-    config.hybridseJsdkLibraryPath = SqlClusterExecutor.getSqlJsdkLibraryPath
+    config.hybridseJsdkLibraryPath = SqlClusterExecutor.findSdkLibraryPath()
   }
 
   // Ensure native initialized

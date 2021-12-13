@@ -83,7 +83,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
     }
 
-    public static String getSqlJsdkLibraryPath() {
+    public static String findSdkLibraryPath() throws UnsatisfiedLinkError {
         String libraryPath = "sql_jsdk";
         String osName = System.getProperty("os.name").toLowerCase();
         if (osName.equals("mac os x")) {
@@ -92,11 +92,10 @@ public class SqlClusterExecutor implements SqlExecutor {
             libraryPath = "lib" + libraryPath + ".so";
         }
         URL resource = LibraryLoader.class.getClassLoader().getResource(libraryPath);
-        if (resource != null) {
-            return resource.getPath();
-        } else {
-            return "";
+        if (resource == null) {
+            throw new UnsatisfiedLinkError(String.format("Fail to load library %s", libraryPath));
         }
+        return resource.getPath();
     }
 
     @Override
