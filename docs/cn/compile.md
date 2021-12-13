@@ -1,6 +1,10 @@
-# 编译OpenMLDB
+编译OpenMLDB
+=============
 
-## Linux环境编译
+# 快速开始
+
+[quick-start]: quick-start
+
 1. 下载代码
     ```bash
     git clone git@github.com:4paradigm/OpenMLDB.git
@@ -64,6 +68,46 @@ make CMAKE_BUILD_TYPE=Debug
 
   默认: ‘’
 
+- BUILD_BUNDLED: 从源码编译 thirdparty 依赖，而不是下载预编译包
+
+  默认: OFF
+
+# 编译
+
+[build]: build
+
+## 硬件要求
+
+- **内存**: 最小 4GB, 推荐 8GB+.
+- **硬盘**: 全量编译需要至少 25GB 的空闲磁盘空间
+- **操作系统**: 64 位 Linux 或者 macOS >= 10.14 
+
+## 依赖工具
+
+- gcc 8 或更新版本
+- cmake 3.20 或更新版本
+- jdk 8
+- python3, python setuptools, python wheel
+- apache maven 3.x
+- 如果需要编译 thirdparty, 查看 [third-party's requirement](third-party/README.md) 里的额外要求
+
+## 编译 OpenMLDB
+
+  编译命令和 [快速开始](#quick-start) 的描述相同
+
+  ```bash
+  $ cd OpenMLDB
+  $ make
+  $ make install
+  ```
+
+## 故障排除
+
+- 如果编译机器的资源有限，例如 4G 内存, 推荐关闭默认的并行编译功能：
+- 第三方依赖 thirdparty 默认会下载在 [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases) 下的预编译包，支持 CentOS 7, Ubuntu 20.04 和 macOS. 如果不在改列表中或者遇到了不在预期的链接错误，推荐从源码编译第三方库。 注意 thirdparty 编译会消耗更长的编译时间, 在2核7G内存的机器上大约需要1个小时：
+  ```bash
+  make BUILD_BUNDLED=ON
+  ```
 
 ## 针对OpenMLDB优化的Spark发行版（可选）
 

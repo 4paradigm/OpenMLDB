@@ -1,9 +1,9 @@
 Build & Install
 ===============
 
-# Build on official compile image
+# Quick start
 
-[build-on-docker]: build-on-docker
+[quick-start]: quick-start
 
 1. Download source code
     ```bash
@@ -73,7 +73,9 @@ make CMAKE_BUILD_TYPE=Debug
   Default: OFF
 
 
-# Build on your own system
+# Build
+
+[build]: build
 
 ## Hardware Requirements
 
@@ -88,13 +90,13 @@ Make sure those tools are installed
 - gcc 8 or later
 - cmake 3.20 or later
 - jdk 8
-- python3 development with python setuptools and wheel installed
+- python3, python setuptools, python wheel
 - apache maven 3.x
-- if you'd like compile thirdparty from source, checkout [third-party's requirement](third-party/README.md)
+- if you'd like compile thirdparty from source, checkout [third-party's requirement](third-party/README.md) for extra dependencies
 
-## Build
+## Build OpenMLDB
 
-  Build commands are same as [build on official compile image](#build-on-docker)
+  Build commands are same as [Quick start](#quick-start)
 
   ```bash
   $ cd OpenMLDB
@@ -106,16 +108,14 @@ Make sure those tools are installed
 
 [build-troubleshooting]: build-troubleshooting
 
-- if the host machine's resource is limited, e.g a VM when 4G memory, it is advised to turn off parallel build by change the `NPROC` variable:
+- If the host machine's resource is limited, e.g a VM when 4G memory, it is advised to turn off parallel build by change the `NPROC` variable:
     ```bash
     make NPROC=1
     ```
-- by default, pre-compiled thirdparty is downloaded from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases), which support CentOS 7, ubuntu 20.04 and macoS. If your host is not in the list or come with unexpected link issues, it is advised to compile thirdparty from source as well:
-   ```bash
-   make BUILD_BUNDLED=ON
-   ```
-   ***Note: thirdparty compilation may extra time to finish, approximately 1 hour for 2 core & 7GB machine***
-
+- By default, pre-compiled thirdparty is downloaded from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases), which support CentOS 7, Ubuntu 20.04 and macoS. If your host is not in the list or come with unexpected link issues, it is advised to compile thirdparty from source as well. Note  thirdparty compilation may take extra time to finish, approximately 1 hour for 2 core & 7GB machine
+  ```bash
+  make BUILD_BUNDLED=ON
+  ```
 
 # Optimized Spark Distribution for OpenMLDB (Optional)
 
