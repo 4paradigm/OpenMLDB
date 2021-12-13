@@ -328,16 +328,6 @@ cases:
               +-expr[primary]
                 +-value: ,
                 +-type: string
-  - id: set_select_mode
-    sql: SET SELECT_MODE = 'TRINO';
-    expect:
-      node_tree_str: |
-        +-node[kSetStmt]
-          +-key: SELECT_MODE
-          +-value:
-            +-expr[primary]
-              +-value: TRINO
-              +-type: string
   - id: set_select_mode_2
     desc: unsupport syntax
     sql: SET SELECT_MODE = 1 + 2;
@@ -379,3 +369,49 @@ cases:
         +-node[kDeleteStmt]
           +-target: JOB
           +-job_id: 12
+  - id: set global system variable
+    sql: SET @@global.sys_var1 = 'xxxx';
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-scope: GlobalSystemVariable
+          +-key: sys_var1
+          +-value:
+            +-expr[primary]
+              +-value: xxxx
+              +-type: string
+
+  - id: set session system variable
+    sql: SET @@session.sess_var1 = 'yyyy';
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-scope: SessionSystemVariable
+          +-key: sess_var1
+          +-value:
+            +-expr[primary]
+              +-value: yyyy
+              +-type: string
+
+
+  - id: set session system variable 2
+    sql: SET @@sess_var1 = 'yyyy';
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-scope: SessionSystemVariable
+          +-key: sess_var1
+          +-value:
+            +-expr[primary]
+              +-value: yyyy
+              +-type: string
+  - id: show_variables
+    sql: SHOW VARIABLES;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show session variables
+          +-args: []
+
+
+

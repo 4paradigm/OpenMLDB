@@ -577,6 +577,13 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowDeployments));
             } else if (absl::EqualsIgnoreCase(show_id, "JOBS")) {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowJobs));
+            } else if (absl::EqualsIgnoreCase(show_id, "VARIABLES") ||
+                       absl::EqualsIgnoreCase(show_id, "SESSION VARIABLES")) {
+                *output =
+                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowSessionVariables));
+            } else if (absl::EqualsIgnoreCase(show_id, "GLOBAL VARIABLES")) {
+                *output =
+                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowGlobalVariables));
             } else if (show_statement->optional_target_name() != nullptr) {
                 node::CmdType cmd_type = node::CmdType::kCmdUnknown;
                 if (absl::EqualsIgnoreCase(show_id, "CREATE PROCEDURE")) {
@@ -664,15 +671,42 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node_manager->MakeCmdNode(node::CmdType::kCmdUseDatabase, db_name);
             break;
         }
-        case zetasql::AST_SINGLE_ASSIGNMENT: {
-            const auto ast_assign_stmt = statement->GetAsOrNull<zetasql::ASTSingleAssignment>();
-            CHECK_TRUE(nullptr != ast_assign_stmt, common::kSqlAstError, "not an ASTSingleAssignment");
-            const auto key = ast_assign_stmt->variable()->GetAsString();
+        case zetasql::AST_SYSTEM_VARIABLE_ASSIGNMENT: {
+            /// support system variable setting and showing in OpenMLDB since v0.4.0
+            /// non-support local variable setting in v0.4.0
+            const auto ast_system_variable_assign = statement->GetAsOrNull<zetasql::ASTSystemVariableAssignment>();
+            CHECK_TRUE(nullptr != ast_system_variable_assign, common::kSqlAstError, "not an "
+                       "ASTSystemVariableAssignment");
+            std::vector<std::string> path;
+            CHECK_STATUS(AstPathExpressionToStringList(ast_system_variable_assign->system_variable()->path(), path));
+            CHECK_TRUE(!path.empty(), common::kSqlAstError, "Non-support empty variable");
+
             node::ExprNode* value = nullptr;
-            CHECK_STATUS(ConvertExprNode(ast_assign_stmt->expression(), node_manager, &value));
+            CHECK_STATUS(ConvertExprNode(ast_system_variable_assign->expression(), node_manager, &value));
             CHECK_TRUE(value->GetExprType() == node::kExprPrimary, common::kSqlAstError,
                        "Unsupported Set value other than const type");
-            *output = node_manager->MakeSetNode(key, dynamic_cast<node::ConstNode*>(value));
+            // System variable is session variable by default
+            if (path.size() == 1) {
+                *output = node_manager->MakeSetNode(node::VariableScope::kSessionSystemVariable,
+                                                    path[0], dynamic_cast<node::ConstNode*>(value));
+            } else if (path.size() == 2) {
+                boost::to_lower(path[0]);
+                if (path[0] == "global") {
+                    *output = node_manager->MakeSetNode(node::VariableScope::kGlobalSystemVariable, path[1],
+                                                        dynamic_cast<node::ConstNode*>(value));
+                } else if (path[0] == "session") {
+                    *output = node_manager->MakeSetNode(node::VariableScope::kSessionSystemVariable, path[1],
+                                                        dynamic_cast<node::ConstNode*>(value));
+                } else {
+                    FAIL_STATUS(common::kSqlAstError, "Non-support system variable under ", path[0],
+                                " scope, try "
+                                "@@global or @@session scope");
+                }
+            } else {
+                FAIL_STATUS(common::kSqlAstError,
+                            "Non-support system variable with more than 2 path "
+                            "levels. Try @@global.var_name or @@session.var_name or @@var_name");
+            }
             break;
         }
         case zetasql::AST_LOAD_DATA_STATEMENT: {

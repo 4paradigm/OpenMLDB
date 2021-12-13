@@ -39,6 +39,7 @@ class PlannerV2Test : public ::testing::TestWithParam<SqlCase> {
  protected:
     NodeManager *manager_;
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PlannerV2Test);
 
 INSTANTIATE_TEST_SUITE_P(SqlSimpleQueryParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
@@ -1722,6 +1723,7 @@ class PlannerV2ErrorTest : public ::testing::TestWithParam<SqlCase> {
  protected:
     NodeManager *manager_;
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PlannerV2ErrorTest);
 INSTANTIATE_TEST_SUITE_P(SqlErrorQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(SqlUnsupporQuery, PlannerV2ErrorTest,
@@ -1829,6 +1831,7 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
 
     expect_converted(R"sql(select 'mike' like 'm%' escape '2c';)sql",
         common::kUnsupportSql, "escape value is not string or string size >= 2");
+
 }
 }  // namespace plan
 }  // namespace hybridse
