@@ -134,7 +134,13 @@ if(SQL_JAVASDK_ENABLE)
             SOURCES sql_router_sdk.i)
     target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
     target_compile_options(sql_jsdk PRIVATE -w)
-    target_link_libraries(sql_jsdk PRIVATE ${SDK_LIBS} boost_filesystem)
+
+    add_dependencies(sql_jsdk hybridse_jsdk_core_static)
+    if(APPLE)
+        target_link_libraries(sql_jsdk PRIVATE "-Wl,-force_load $<TARGET_FILE:hybridse_jsdk_core_static>" ${SDK_LIBS} boost_filesystem)
+    else()
+        target_link_libraries(sql_jsdk PRIVATE "-Wl,--whole-archive $<TARGET_FILE:hybridse_jsdk_core_static> -Wl,--no-whole-archive" ${SDK_LIBS} boost_filesystem)
+    endif()
 
     if(APPLE)
       set_target_properties(sql_jsdk PROPERTIES
@@ -151,7 +157,7 @@ if(SQL_JAVASDK_ENABLE)
       DEPENDS
         sql_jsdk
         cp_sql_resource
-        COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true ${MAVEN_FLAGS}
+        COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
     )
 endif()
