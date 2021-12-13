@@ -1,6 +1,10 @@
-# Build & Install
+Build & Install
+===============
 
-## Build on Linux
+# Build on official compile image
+
+[build-on-docker]: build-on-docker
+
 1. Download source code
     ```bash
     git clone git@github.com:4paradigm/OpenMLDB.git
@@ -24,7 +28,7 @@
     make install
     ```
 
-### Extra Options for `make`
+## Extra Options for `make`
 
 You can customize the `make` behavior by passing following arguments, e.g., changing the build mode to `Debug` instead of `Release`:
 
@@ -64,8 +68,56 @@ make CMAKE_BUILD_TYPE=Debug
 
   Default: ‘’
 
+- BUILD_BUNDLED: compile thirdparty from source instead download pre-compiled
 
-## Optimized Spark Distribution for OpenMLDB (Optional)
+  Default: OFF
+
+
+# Build on your own system
+
+## Hardware Requirements
+
+- **Memory**: 4GB RAM minimum, 8GB+ recommended.
+- **Disk Space**: >=25GB of free disk space for full compilation.
+- **Operating System**: A 64-bit installation of Linux or macOS >= 10.14 
+
+## Prerequisites
+
+Make sure those tools are installed
+
+- gcc 8 or later
+- cmake 3.20 or later
+- jdk 8
+- python3 development with python setuptools and wheel installed
+- apache maven 3.x
+- if you'd like compile thirdparty from source, checkout [third-party's requirement](third-party/README.md)
+
+## Build
+
+  Build commands are same as [build on official compile image](#build-on-docker)
+
+  ```bash
+  $ cd OpenMLDB
+  $ make
+  $ make install
+  ```
+
+## Troubleshooting
+
+[build-troubleshooting]: build-troubleshooting
+
+- if the host machine's resource is limited, e.g a VM when 4G memory, it is advised to turn off parallel build by change the `NPROC` variable:
+    ```bash
+    make NPROC=1
+    ```
+- by default, pre-compiled thirdparty is downloaded from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases), which support CentOS 7, ubuntu 20.04 and macoS. If your host is not in the list or come with unexpected link issues, it is advised to compile thirdparty from source as well:
+   ```bash
+   make BUILD_BUNDLED=ON
+   ```
+   ***Note: thirdparty compilation may extra time to finish, approximately 1 hour for 2 core & 7GB machine***
+
+
+# Optimized Spark Distribution for OpenMLDB (Optional)
 
 [OpenMLDB Spark Distribution](https://github.com/4paradigm/spark) is the fork of [Apache Spark](https://github.com/apache/spark). It adopts specific optimization techniques for OpenMLDB. It provides native `LastJoin` implementation and achieves 10x~100x performance improvement compared with the original Spark distribution. The Java/Scala/Python/SQL APIs of the OpenMLDB Spark distribution are fully compatible with the standard Spark distribution.
 
