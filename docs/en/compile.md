@@ -50,8 +50,7 @@ The docker image bundled required tools and dependencies so there is no need to 
 - **Operating System**: CentOS7, Ubuntu 20.04 or macOS >= 10.14, other system is not well tested but issue/PR welcome
 
 By default parallel build is not enabled in order to avoid system freezing. You can enable parallel build by tweaking the `NPROC` option
-if your machine's resource is enough. E.g. following command set parallel build number to the number of process unit:
-
+if your machine's resource is enough. This will decrease compile time but also require more memory. E.g. following command set parallel build number to the number of process unit:
 ```bash
 make NPROC=$(nproc)
 ```
@@ -69,17 +68,16 @@ Make sure those tools are installed
 
 ## Build OpenMLDB
 
-OpenMLDB require some thirdparty dependencies installed first in order to build successfully. Hence a Makefile is provided as a convenience to 
-setup thirdparty dependencies automatically and run CMake project in a single command `make`.
-There are three ways to manage thirdparty, based on different operation system and options passed to `make`:
+OpenMLDB require some thirdparty dependencies installed first in order to build successfully. Hence a Makefile is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`.
+`make` has three ways to manage thirdparty, based on different operation system and options passed in:
 
 1. using [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker image: thirdparty already bundled inside image and no extra steps may take
-2. download pre-compiled thirdparty from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases). This is the default behavior when run `make` command outside a hybridsql container, e.g a macOS machine
+2. download pre-compiled thirdparty from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases). This is the default behavior when run `make` command outside a hybridsql container, currently support CentOS 7, Ubuntu 20.04 and macOS
 3. compile thirdparty from source, by given the `BUILD_BUNDLED=ON` option to `make`:
    ```bash
    make BUILD_BUNDLED=ON
    ```
-   This is the advised way if the host system is not in our supported list: CentOS 7, Ubuntu 20.04 and macOS. Be note compile thirdparty at the first time take extra time to finish, approximately 1 hour on a 2 core & 7GB machine
+   This is the advised way if the host system is not in our supported list: CentOS 7, Ubuntu 20.04 and macOS. Be note compile thirdparty at the first time may take extra time to finish, approximately 1 hour on a 2 core & 7GB machine
 
 Thirdparty is installed into `/deps/usr` in hybridsql docker, and `${PROJECT_ROOT}/.deps/usr` by default for method 2 and 3 above.
 
@@ -121,7 +119,7 @@ make CMAKE_BUILD_TYPE=Debug
 
 - NPROC: parallel build number
 
-  Default: $(nproc)
+  Default: 1
 
 - CMAKE_EXTRA_FLAGS: extra flags passed to cmake
 

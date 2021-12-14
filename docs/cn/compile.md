@@ -5,24 +5,30 @@
 
 [quick-start]: quick-start
 
-1. 下载代码
-    ```bash
-    git clone git@github.com:4paradigm/OpenMLDB.git
-    cd OpenMLDB
-    ```
-2. 下载编译所需依赖的 docker 镜像
+此节介绍在官方编译镜像 [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) 中编译 OpenMLDB。镜像内置了编译所需要的工具和依赖，因此不需要额外的步骤单独配置它们。详细内容参见[编译](#build)
+
+1. 下载 docker 镜像
     ```bash
     docker pull 4pdosc/hybridsql:0.4.0
     ```
-3. 启动docker，并绑定本地 OpenMLDB 目录到 docker 中
+
+2. 启动 docker 容器
     ```bash
     docker run -v `pwd`:/OpenMLDB -it 4pdosc/hybridsql:0.4.0 bash
     ```
+
+3. 在 docker 容器内, 克隆 OpenMLDB
+    ```bash
+    cd ~
+    git clone https://github.com/4paradigm/OpenMLDB.git
+    ```
+
 4. 在 docker 容器内编译 OpenMLDB
     ```bash
-    cd /OpenMLDB
+    cd OpenMLDB
     make
     ```
+
 5. 安装 OpenMLDB, 默认安装到`${PROJECT_ROOT}/openmldb`
     ```bash
     make install
@@ -34,9 +40,14 @@
 
 ## 硬件要求
 
-- **内存**: 最小 4GB, 推荐 8GB+.
+- **内存**: 推荐 8GB+.
 - **硬盘**: 全量编译需要至少 25GB 的空闲磁盘空间
-- **操作系统**: 64 位 Linux 或者 macOS >= 10.14 
+- **操作系统**: CentOS7, Ubuntu 20.04 或者 macOS >= 10.14, 其他系统未经测试，欢迎提 issue 或 PR
+
+默认关闭了并发编译。如果你认为编译机器的资源足够，可以通过调整`NPROC`来启用并发功能。这会减少编译所需要的时间但也需要更多但内存。例如下面命令将并发编译数设置成处理器数：
+```bash
+make NPROC=$(nproc)
+```
 
 ## 依赖工具
 
@@ -44,18 +55,24 @@
 - cmake 3.20 或更新版本
 - jdk 8
 - python3, python setuptools, python wheel
-- apache maven 3.x
+- apache maven 3.3.9 或者更新版本
 - 如果需要编译 thirdparty, 查看 [third-party's requirement](../../third-party/README.md) 里的额外要求
 
 ## 编译 OpenMLDB
 
-  编译命令和 [快速开始](#quick-start) 的描述相同
+成功编译 OpenMLDB 要求依赖的第三方库预先安装在系统中。因此添加了一个 `Makefile`, 将第三方依赖自动安装和随后执行 CMake 编译浓缩到一行 `make` 命令中。根据操作系统和传入参数的不同，`make` 有三种管理第三方依赖的方式：
 
-  ```bash
-  cd OpenMLDB
-  make
-  make install
-  ```
+1. 使用 [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker 镜像，第三方依赖已经包括在镜像中所以不需要额外的操作
+2. 从 [hybridsql](https://github.com/4paradigm/hybridsql-asserts/releases) 下载预编译好的三方库。这是在 hybridsql 镜像外编译的默认行为，目前提供 CentOS7, Ubuntu 20.04 和 macOS 的预编译包
+3. 从源码编译安装第三方库, 传入 `BUILD_BUNDLED=ON`:
+   ```bash
+   make BUILD_BUNDLED=ON
+   ```
+    如果编译系统不在支持的系统列表中(CentOS 7, Ubuntu 20.04, macOS),从源码编译是推荐的方式。注意首次编译三方库可能需要更多的时间，在一台2核7G内存机器大约需要一个小时
+
+第三方库在 hybridsql 镜像中安装在 `/deps/usr` 目录下，上述2、3方式默认安装到 `${PROJECT_ROOT}/.deps/usr`。
+
+编译命令和 [快速开始](#quick-start) 的描述相同
 
 ## `make` 额外参数
 
@@ -91,7 +108,7 @@ make CMAKE_BUILD_TYPE=Debug
 
 - NPROC: 并发编译数
 
-  默认: $(nproc)
+  默认: 1
 
 - CMAKE_EXTRA_FLAGS: 传递给 cmake 的额外参数
 
@@ -101,16 +118,6 @@ make CMAKE_BUILD_TYPE=Debug
 
   默认: OFF
 
-## 故障排除
-
-- 如果编译机器的资源有限，例如 4G 内存, 推荐关闭默认的并行编译功能：
-  ```bash
-  make NPROC=1
-  ```
-- 第三方依赖 thirdparty 默认会下载在 [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases) 下的预编译包，支持 CentOS 7, Ubuntu 20.04 和 macOS. 如果不在改列表中或者遇到了不在预期的链接错误，推荐从源码编译第三方库。 注意 thirdparty 编译会消耗更长的编译时间, 在2核7G内存的机器上大约需要1个小时：
-  ```bash
-  make BUILD_BUNDLED=ON
-  ```
 
 ## 针对OpenMLDB优化的Spark发行版（可选）
 
