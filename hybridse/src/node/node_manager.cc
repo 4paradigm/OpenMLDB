@@ -793,7 +793,7 @@ SetNode* NodeManager::MakeSetNode(const node::VariableScope scope, const std::st
     return RegisterNode(node);
 }
 SetPlanNode* NodeManager::MakeSetPlanNode(const SetNode *set_node) {
-    SetPlanNode* node = new SetPlanNode(set_node->Key(), set_node->Value());
+    SetPlanNode* node = new SetPlanNode(set_node->Scope(), set_node->Key(), set_node->Value());
     return RegisterNode(node);
 }
 

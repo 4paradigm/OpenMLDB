@@ -1662,17 +1662,18 @@ FROM
 }
 
 TEST_F(PlannerV2Test, SetPlanNodeTest) {
-    const auto sql = "SET select_mode = 'TRINO'";
+    const auto sql = "SET @@global.execute_mode = 'online'";
     node::PlanNodeList plan_trees;
     base::Status status;
     NodeManager nm;
     ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
     ASSERT_EQ(1, plan_trees.size());
     EXPECT_STREQ(R"sql(+-[kPlanTypeSet]
-  +-key: select_mode
+  +-scope: GlobalSystemVariable
+  +-key: execute_mode
   +-value:
     +-expr[primary]
-      +-value: TRINO
+      +-value: online
       +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
 }
 //
