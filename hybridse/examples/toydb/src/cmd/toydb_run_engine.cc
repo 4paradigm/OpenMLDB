@@ -26,7 +26,6 @@ DEFINE_bool(
     "Specify whether perform batch request optimization in batch request mode");
 DEFINE_bool(enable_expr_opt, true,
             "Specify whether do expression optimization");
-DEFINE_bool(enable_perf_sensitive, true, "enable performance sensitive mode");
 DEFINE_int32(run_iters, 0, "Measure the approximate run time if specified");
 DEFINE_int32(case_id, -1, "Specify the case id to run and skip others");
 

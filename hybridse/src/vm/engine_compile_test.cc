@@ -505,9 +505,65 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
     ASSERT_EQ(true, output_schema.Get(4).is_constant());
     ASSERT_EQ(true, output_schema.Get(5).is_constant());
 }
+TEST_F(EngineCompileTest, MockRequestExplainTest) {
+    // Build Simple Catalog
+    auto catalog = BuildSimpleCatalog();
 
+    // database simple_db
+    hybridse::type::Database db;
+    db.set_name("simple_db");
 
+    // table t1
+    hybridse::type::TableDef table_def;
+    sqlcase::CaseSchemaMock::BuildTableDef(table_def);
+    table_def.set_name("t1");
+    AddTable(db, table_def);
+    catalog->AddDatabase(db);
 
+    std::string sql =
+        "select col0, col1, col2, sum(col1) over w1, \n"
+        "sum(col2) over w1, sum(col5) over w1 from t1 \n"
+        "window w1 as (partition by col2 \n"
+        "order by col5 rows between 3 preceding and current row);";
+    EngineOptions options;
+    options.SetCompileOnly(true);
+    Engine engine(catalog, options);
+    ExplainOutput explain_output;
+    base::Status status;
+    ASSERT_TRUE(engine.Explain(sql, "simple_db", kMockRequestMode,
+                               &explain_output,
+                               &status));
+    ASSERT_TRUE(status.isOK()) << status;
+}
+
+TEST_F(EngineCompileTest, MockRequestCompileTest) {
+    // Build Simple Catalog
+    auto catalog = BuildSimpleCatalog();
+
+    // database simple_db
+    hybridse::type::Database db;
+    db.set_name("simple_db");
+
+    // table t1
+    hybridse::type::TableDef table_def;
+    sqlcase::CaseSchemaMock::BuildTableDef(table_def);
+    table_def.set_name("t1");
+    AddTable(db, table_def);
+    catalog->AddDatabase(db);
+
+    std::string sql =
+        "select col0, col1, col2, sum(col1) over w1, \n"
+        "sum(col2) over w1, sum(col5) over w1 from t1 \n"
+        "window w1 as (partition by col2 \n"
+        "order by col5 rows between 3 preceding and current row);";
+    EngineOptions options;
+    Engine engine(catalog, options);
+    base::Status status;
+    vm::MockRequestRunSession session;
+    ASSERT_TRUE(engine.Get(sql, "simple_db", session, status)) << status;
+
+    ASSERT_TRUE(status.isOK()) << status;
+}
 TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
     // Build Simple Catalog
     auto catalog = BuildSimpleCatalog();
