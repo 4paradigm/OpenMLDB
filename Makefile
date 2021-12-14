@@ -99,7 +99,7 @@ install: build
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target install -- -j$(NPROC)
 
 test:
-	$(MAKE) build TESTING_ENABLE=ON OPENMLDB_BUILD_TARGET=$(TEST_TARGET)
+	$(MAKE) build TESTING_ENABLE=ON
 	bash steps/ut.sh $(TEST_TARGET) $(TEST_LEVEL)
 
 configure: thirdparty
