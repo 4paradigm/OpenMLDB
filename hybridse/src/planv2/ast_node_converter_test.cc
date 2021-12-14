@@ -784,6 +784,11 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
     )sql",
                      common::kSqlAstError,
                      "Non-support system variable under unknow scope, try @@global or @@session scope");
+    expect_converted(R"sql(
+        SHOW GLOBAL VARIABLES LIKE 'execute%'
+    )sql",
+                     common::kSqlAstError,
+                     "Non-support LIKE in show statement");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {

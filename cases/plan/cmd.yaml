@@ -412,6 +412,17 @@ cases:
         +-node[CMD]
           +-cmd_type: show session variables
           +-args: []
-
-
-
+  - id: show_session_variables
+    sql: SHOW SESSION VARIABLES;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show session variables
+          +-args: []
+  - id: show_global_variables
+    sql: SHOW GLOBAL VARIABLES;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show global variables
+          +-args: []

@@ -565,6 +565,8 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             const zetasql::ASTShowStatement* show_statement = statement->GetAsOrNull<zetasql::ASTShowStatement>();
             CHECK_TRUE(nullptr != show_statement->identifier(), common::kSqlAstError, "not an ASTShowStatement")
             auto show_id = show_statement->identifier()->GetAsStringView();
+            CHECK_TRUE(nullptr == show_statement->optional_like_string(), common::kSqlAstError, "Non-support LIKE in "
+                       "show statement")
 
             if (absl::EqualsIgnoreCase(show_id, "DATABASES")) {
                 *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowDatabases));
