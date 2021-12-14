@@ -186,7 +186,7 @@ add_custom_command(OUTPUT
 add_custom_target(java_package ALL
   DEPENDS
     cp_java_native_so
-    COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true ${MAVEN_FLAGS}
+    COMMAND ${MAVEN_EXECUTABLE} package install -DskipTests=true -Dscalatest.skip=true ${MAVEN_FLAGS}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
 )
 add_dependencies(java_package hybridse_proto_java)
