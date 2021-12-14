@@ -224,7 +224,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
         offset++;
         ::openmldb::api::LogEntry entry;
         entry.set_log_index(offset);
-        entry.set_ts(count);
+        entry.set_ts(count + 1);
         std::string result;
         sdk_codec.EncodeRow({"card0", "merchant0", "value" + std::to_string(count)}, &result);
         entry.set_value(result);
@@ -259,16 +259,16 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     {
         Ticket ticket;
         TableIterator* it = table->NewIterator(0, "card0", ticket);
-        it->Seek(1);
+        it->Seek(2);
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(1u, it->GetKey());
+        ASSERT_EQ(2u, it->GetKey());
         std::string value2_str(it->GetValue().data(), it->GetValue().size());
         std::vector<std::string> row;
         sdk_codec.DecodeRow(value2_str, &row);
         ASSERT_EQ("value1", row[2]);
         it->Next();
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(0u, it->GetKey());
+        ASSERT_EQ(1u, it->GetKey());
         std::string value3_str(it->GetValue().data(), it->GetValue().size());
         row.clear();
         sdk_codec.DecodeRow(value3_str, &row);
@@ -280,16 +280,16 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     {
         Ticket ticket;
         TableIterator* it = table->NewIterator(1, "merchant0", ticket);
-        it->Seek(1);
+        it->Seek(2);
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(1u, it->GetKey());
+        ASSERT_EQ(2u, it->GetKey());
         std::string value2_str(it->GetValue().data(), it->GetValue().size());
         std::vector<std::string> row;
         sdk_codec.DecodeRow(value2_str, &row);
         ASSERT_EQ("value1", row[2]);
         it->Next();
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(0u, it->GetKey());
+        ASSERT_EQ(1u, it->GetKey());
         std::string value3_str(it->GetValue().data(), it->GetValue().size());
         row.clear();
         sdk_codec.DecodeRow(value3_str, &row);
@@ -310,7 +310,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     int count = 0;
     for (; count < 10; count++) {
         offset++;
-        auto entry = ::openmldb::test::PackKVEntry(offset, "key", "value" + std::to_string(count), count, 0);
+        auto entry = ::openmldb::test::PackKVEntry(offset, "key", "value" + std::to_string(count), count + 1, 0);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
@@ -333,14 +333,14 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     ASSERT_EQ(10u, latest_offset);
     Ticket ticket;
     TableIterator* it = table->NewIterator("key", ticket);
-    it->Seek(1);
+    it->Seek(2);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(1u, it->GetKey());
+    ASSERT_EQ(2u, it->GetKey());
     std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value1", ::openmldb::test::DecodeV(value2_str));
     it->Next();
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(0u, it->GetKey());
+    ASSERT_EQ(1u, it->GetKey());
     std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", ::openmldb::test::DecodeV(value3_str));
     it->Next();
@@ -1042,7 +1042,7 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
         entry.set_log_index(offset);
         ::openmldb::api::Dimension* d_ptr = entry.add_dimensions();
         d_ptr->CopyFrom(dimensions);
-        entry.set_ts(i);
+        entry.set_ts(i + 1);
         auto result = entry.mutable_value();
         sdk_codec.EncodeRow({"c0", "m0", "1111122", "2021", "value"}, result);
         std::string buffer;
@@ -1053,7 +1053,7 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
         google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> d_list;
         ::openmldb::api::Dimension* d_ptr2 = d_list.Add();
         d_ptr2->CopyFrom(dimensions);
-        ASSERT_EQ(table->Put(i, *result, d_list), true);
+        ASSERT_EQ(table->Put(i + 1, *result, d_list), true);
     }
 
     table->SchedGc();
@@ -1091,7 +1091,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     int count = 0;
     for (; count < 10; count++) {
         std::string key = "key" + std::to_string(count % 4);
-        auto entry = ::openmldb::test::PackKVEntry(offset, key, "value", count, 5);
+        auto entry = ::openmldb::test::PackKVEntry(offset, key, "value", count + 1, 5);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
@@ -1102,7 +1102,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
     for (; count < 30; count++) {
         std::string key = "key" + std::to_string(count % 4);
-        auto entry = ::openmldb::test::PackKVEntry(offset, key, "value", count, 6);
+        auto entry = ::openmldb::test::PackKVEntry(offset, key, "value", count + 1, 6);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
@@ -1210,7 +1210,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     int count = 0;
     for (; count < 10; count++) {
         offset++;
-        auto entry = ::openmldb::test::PackKVEntry(offset, "key", "value" + std::to_string(count), count, 1);
+        auto entry = ::openmldb::test::PackKVEntry(offset, "key", "value" + std::to_string(count), count + 1, 1);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
@@ -1227,7 +1227,8 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     count = 0;
     for (; count < 10; count++) {
         offset++;
-        auto entry = ::openmldb::test::PackKVEntry(offset, "key_new", "value_new" + std::to_string(count), count, 1);
+        auto entry = ::openmldb::test::PackKVEntry(offset, "key_new",
+                "value_new" + std::to_string(count), count + 1, 1);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
@@ -1240,7 +1241,8 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     count = 0;
     for (; count < 10; count++) {
         offset++;
-        auto entry = ::openmldb::test::PackKVEntry(offset, "key_xxx", "value_xxx" + std::to_string(count), count, 1);
+        auto entry = ::openmldb::test::PackKVEntry(offset, "key_xxx",
+                "value_xxx" + std::to_string(count), count + 1, 1);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
@@ -1265,23 +1267,23 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     ASSERT_EQ(30u, latest_offset);
     Ticket ticket;
     TableIterator* it = table->NewIterator("key_new", ticket);
-    it->Seek(1);
+    it->Seek(2);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(1, (int64_t)it->GetKey());
+    ASSERT_EQ(2, (int64_t)it->GetKey());
     std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_new1", ::openmldb::test::DecodeV(value2_str));
     it->Next();
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(0, (int64_t)it->GetKey());
+    ASSERT_EQ(1, (int64_t)it->GetKey());
     std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_new0", ::openmldb::test::DecodeV(value3_str));
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
     it = table->NewIterator("key_xxx", ticket);
-    it->Seek(1);
+    it->Seek(2);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(1, (int64_t)it->GetKey());
+    ASSERT_EQ(2, (int64_t)it->GetKey());
     std::string value4_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_xxx1", ::openmldb::test::DecodeV(value4_str));
 
@@ -1586,7 +1588,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot) {
     uint64_t start_time = ::baidu::common::timer::get_micros();
     for (; count < 1000000; count++) {
         offset++;
-        auto entry = ::openmldb::test::PackKVEntry(offset, "key", "value" + std::to_string(count), count, 1);
+        auto entry = ::openmldb::test::PackKVEntry(offset, "key", "value" + std::to_string(count), count + 1, 1);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
@@ -1619,7 +1621,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot) {
     uint64_t num = 1000000;
     while (it->Valid()) {
         num--;
-        ASSERT_EQ(num, it->GetKey());
+        ASSERT_EQ(num + 1, it->GetKey());
         std::string value_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value" + std::to_string(num), ::openmldb::test::DecodeV(value_str));
         it->Next();
@@ -1646,7 +1648,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     uint64_t start_time = ::baidu::common::timer::get_micros();
     for (; count < total_num; count++) {
         offset++;
-        auto entry = ::openmldb::test::PackKVEntry(offset, "key", base_str + std::to_string(count), count, 1);
+        auto entry = ::openmldb::test::PackKVEntry(offset, "key", base_str + std::to_string(count), count + 1, 1);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
@@ -1669,7 +1671,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
     for (; count < total_num * 2; count++) {
         offset++;
-        auto entry = ::openmldb::test::PackKVEntry(offset, "key", base_str + std::to_string(count), count, 1);
+        auto entry = ::openmldb::test::PackKVEntry(offset, "key", base_str + std::to_string(count), count + 1, 1);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::base::Slice slice(buffer);
@@ -1696,7 +1698,7 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
     uint64_t num = total_num * 2;
     while (it->Valid()) {
         num--;
-        ASSERT_EQ(num, it->GetKey());
+        ASSERT_EQ(num + 1, it->GetKey());
         std::string value_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ(base_str + std::to_string(num), ::openmldb::test::DecodeV(value_str));
         it->Next();
@@ -1723,5 +1725,4 @@ int main(int argc, char** argv) {
         ret += RUN_ALL_TESTS();
     }
     return ret;
-    // return RUN_ALL_TESTS();
 }
