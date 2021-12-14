@@ -76,7 +76,8 @@ INSTANTIATE_TEST_SUITE_P(
 
 void CompilerCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
                    const Schema& paramter_types, const EngineMode engine_mode,
-                   const bool enable_batch_window_paralled) {
+                   const bool enable_batch_window_paralled,
+                   const bool enable_window_column_pruning) {
     std::string sql = boost::to_lower_copy(sql_case.sql_str());
     SqlCompiler sql_compiler(catalog, false, true, false);
     SqlContext sql_context;
@@ -84,6 +85,7 @@ void CompilerCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
     sql_context.db = "db";
     sql_context.engine_mode = engine_mode;
     sql_context.enable_batch_window_parallelization = enable_batch_window_paralled;
+    sql_context.enable_window_column_pruning = enable_window_column_pruning;
     sql_context.parameter_types = paramter_types;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
@@ -103,7 +105,7 @@ void CompilerCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
 }
 void CompilerCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
                    const Schema& paramter_types, EngineMode engine_mode) {
-    CompilerCheck(catalog, sql_case, paramter_types, engine_mode, false);
+    CompilerCheck(catalog, sql_case, paramter_types, engine_mode, false, false);
 }
 void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
                         const vm::Schema& paramter_types, const type::TableDef& exp_table_def) {
@@ -340,7 +342,7 @@ TEST_P(SqlCompilerTest, CompileBatchModeTest) {
         AddTable(db2, table_def);
     }
     catalog->AddDatabase(db2);
-    CompilerCheck(catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, false);
+    CompilerCheck(catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, false, false);
     {
         // Check for work with simple catalog
         auto simple_catalog = std::make_shared<SimpleCatalog>();
@@ -399,7 +401,7 @@ TEST_P(SqlCompilerTest, CompileBatchModeTest) {
             AddTable(db2, table_def);
         }
         simple_catalog->AddDatabase(db2);
-        CompilerCheck(simple_catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, false);
+        CompilerCheck(simple_catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, false, false);
     }
 }
 TEST_F(SqlCompilerTest, TestEnableWindowParalled) {
@@ -426,7 +428,8 @@ TEST_F(SqlCompilerTest, TestEnableWindowParalled) {
                          " ) limit 10;";
     SqlCase sql_case;
     sql_case.sql_str_ = sqlstr;
-    CompilerCheck(simple_catalog, sql_case, {}, kBatchMode, true);
+    CompilerCheck(simple_catalog, sql_case, {}, kBatchMode, true, false);
+    CompilerCheck(simple_catalog, sql_case, {}, kBatchMode, true, true);
 }
 TEST_P(SqlCompilerTest, CompileBatchModeEnableWindowParalledTest) {
     if (boost::contains(GetParam().mode(), "batch-unsupport")) {
@@ -493,7 +496,8 @@ TEST_P(SqlCompilerTest, CompileBatchModeEnableWindowParalledTest) {
         AddTable(db2, table_def);
     }
     catalog->AddDatabase(db2);
-    CompilerCheck(catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, true);
+    CompilerCheck(catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, true, false);
+    CompilerCheck(catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, true, true);
 
     {
         // Check for work with simple catalog
@@ -553,7 +557,8 @@ TEST_P(SqlCompilerTest, CompileBatchModeEnableWindowParalledTest) {
             AddTable(db2, table_def);
         }
         simple_catalog->AddDatabase(db2);
-        CompilerCheck(simple_catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, true);
+        CompilerCheck(simple_catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, true, false);
+        CompilerCheck(simple_catalog, sql_case, sql_case.ExtractParameterTypes(), kBatchMode, true, true);
     }
 }
 
