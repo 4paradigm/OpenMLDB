@@ -180,10 +180,16 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
             if (ts_col) {
                 int64_t ts = 0;
                 if (ts_col->IsAutoGenTs()) {
-                    ts_map.emplace(ts_col->GetId(), time);
-                } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) == 0) {
-                    ts_map.emplace(ts_col->GetId(), ts);
+                    ts = time;
+                } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
+                    PDLOG(WARNING, "get ts failed. tid %u pid %u", id_, pid_);
+                    return false;
                 }
+                if (ts == 0) {
+                    PDLOG(WARNING, "ts is 0. tid %u pid %u", id_, pid_);
+                    return false;
+                }
+                ts_map.emplace(ts_col->GetId(), ts);
             }
             if (index_def->IsReady()) {
                 real_ref_cnt++;

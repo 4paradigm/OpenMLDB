@@ -70,7 +70,7 @@ void Table::AddVersionSchema(const ::openmldb::api::TableMeta& table_meta) {
     auto new_versions = std::make_shared<std::map<int32_t, std::shared_ptr<Schema>>>();
     new_versions->insert(std::make_pair(1, std::make_shared<Schema>(table_meta.column_desc())));
     auto version_decoder = std::make_shared<std::map<int32_t, std::shared_ptr<codec::RowView>>>();
-    version_decoder->emplace(1, std::make_shared<codec::RowView>(table_meta.column_desc()));
+    version_decoder->emplace(1, std::make_shared<codec::RowView>(*(new_versions->begin()->second)));
     for (const auto& ver : table_meta.schema_versions()) {
         int remain_size = ver.field_count() - table_meta.column_desc_size();
         if (remain_size < 0) {

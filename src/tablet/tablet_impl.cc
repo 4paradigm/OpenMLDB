@@ -572,21 +572,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         done->Run();
         return;
     }
-    DLOG(INFO) << " request format_version " << request->format_version() << " request dimension size "
-               << request->dimensions_size() << " request time " << request->time();
-    if ((!request->has_format_version() && table->GetTableMeta()->format_version() == 1) ||
-        (request->has_format_version() && request->format_version() != table->GetTableMeta()->format_version())) {
-        response->set_code(::openmldb::base::ReturnCode::kPutBadFormat);
-        response->set_msg("put bad format");
-        done->Run();
-        return;
-    }
-    if (request->time() == 0 && request->ts_dimensions_size() == 0) {
-        response->set_code(::openmldb::base::ReturnCode::kTsMustBeGreaterThanZero);
-        response->set_msg("ts must be greater than zero");
-        done->Run();
-        return;
-    }
+    DLOG(INFO) << "request dimension size " << request->dimensions_size() << " request time " << request->time();
     if (!table->IsLeader()) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsFollower);
         response->set_msg("table is follower");
@@ -610,7 +596,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             return;
         }
         DLOG(INFO) << "put data to tid " << request->tid() << " pid " << request->pid() << " with key "
-                   << request->dimensions(0).key() << " ts " << request->ts_dimensions(0).ts();
+                   << request->dimensions(0).key();
         ok = table->Put(request->time(), request->value(), request->dimensions());
     }
     if (!ok) {
@@ -1321,7 +1307,6 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         response->set_msg("ts name not found, when create iterator");
         return;
     }
-
     uint64_t last_time = 0;
     std::string last_pk;
     if (request->has_pk() && request->pk().size() > 0) {
