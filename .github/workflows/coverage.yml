@@ -13,6 +13,7 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
+      CMAKE_BUILD_TYPE: Debug
       SQL_PYSDK_ENABLE: OFF
       SQL_JAVASDK_ENABLE: ON
       TESTING_ENABLE: ON
@@ -31,10 +32,8 @@ jobs:
           make coverage-configure
 
       - name: build openmldb
-        # build openmldb which is required by 'start service'
-        # cmake configure is cached, so it will not override coverage configure
         run: |
-          make build OPENMLDB_BUILD_TARGET=openmldb
+          cmake --build build --target openmldb -- -j${{ env.NPROC }}
 
       - name: start service
         run: |

@@ -203,12 +203,9 @@ link_directories(${CMAKE_PREFIX_PATH}/lib ${CMAKE_PREFIX_PATH}/lib64)
 add_subdirectory(src)
 
 if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
-  message(STATUS "final test_list: ${test_list}")
-  list(LENGTH test_list test_list_len)
-  message(STATUS "test_list size: ${test_list_len}")
   SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
     EXECUTABLE ctest -j ${n_cores}
-    DEPENDENCIES ${test_list})
+    DEPENDENCIES openmldb_proto hybridse_proto ${test_list})
 endif ()
 
 
