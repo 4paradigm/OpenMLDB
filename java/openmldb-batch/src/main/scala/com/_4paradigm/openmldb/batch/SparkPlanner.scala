@@ -27,20 +27,26 @@ import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, Ph
 import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan,
   JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, SortByPlan, WindowAggPlan}
 import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import scala.collection.JavaConversions.seqAsJavaList
 
-
 class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppName: String) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
+  if (this.config.hybridseJsdkLibraryPath.equals("")) {
+    // Set library path to the one in openmldb jsdk
+    config.hybridseJsdkLibraryPath = SqlClusterExecutor.findSdkLibraryPath()
+  }
+
   // Ensure native initialized
   if (config.hybridseJsdkLibraryPath.equals("")) {
-    HybridSeLibrary.initCore()
+    // Should not load hybridse jsdk so and openmldb jsdk so at the same time
+    SqlClusterExecutor.initJavaSdkLibrary()
   } else {
     HybridSeLibrary.initCore(config.hybridseJsdkLibraryPath)
   }

@@ -178,6 +178,8 @@ class BatchModeTransformer {
                                      PhysicalOpNode** output);
     virtual Status TransformDistinctOp(const node::DistinctPlanNode* node,
                                        PhysicalOpNode** output);
+    virtual Status TransformDeleteOp(const node::DeletePlanNode* node, PhysicalOpNode** output);
+
     virtual Status TransformLoadDataOp(const node::LoadDataPlanNode* node,
                                        PhysicalOpNode** output);
 

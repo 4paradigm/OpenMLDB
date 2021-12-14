@@ -586,6 +586,13 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 plan_trees.push_back(set_plan_node);
                 break;
             }
+            case ::hybridse::node::kDeleteStmt: {
+                auto delete_node = dynamic_cast<const node::DeleteNode*>(parser_tree);
+                CHECK_TRUE(delete_node != nullptr, common::kPlanError, "not an DeleteNode");
+                node::PlanNode *delete_plan_node = node_manager_->MakeDeletePlanNode(delete_node);
+                plan_trees.push_back(delete_plan_node);
+                break;
+            }
             default: {
                 FAIL_STATUS(common::kPlanError, "Non-support Op ",
                             node::NameOfSqlNodeType(parser_tree->GetType()))

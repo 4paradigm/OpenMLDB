@@ -2965,215 +2965,6 @@ void HandleClientSetTTL(const std::vector<std::string>& parts, ::openmldb::clien
     }
 }
 
-void HandleClientGet(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
-    if (parts.size() < 5) {
-        std::cout << "Bad get format, eg get tid pid key time" << std::endl;
-        return;
-    }
-    try {
-        std::string value;
-        uint64_t ts = 0;
-        std::string msg;
-        bool ok = client->Get(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
-                              parts[3], boost::lexical_cast<uint64_t>(parts[4]), value, ts, msg);
-        ::openmldb::api::TableStatus table_status;
-        if (!client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
-                                    table_status)) {
-            std::cout << "Fail to get table status" << std::endl;
-            return;
-        }
-        ::openmldb::type::CompressType compress_type = ::openmldb::type::CompressType::kNoCompress;
-        if (table_status.compress_type() == ::openmldb::type::CompressType::kSnappy) {
-            compress_type = ::openmldb::type::CompressType::kSnappy;
-        }
-        if (compress_type == ::openmldb::type::CompressType::kSnappy) {
-            std::string uncompressed;
-            ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-            value = uncompressed;
-        }
-        if (ok) {
-            std::cout << "value :" << value << std::endl;
-        } else {
-            std::cout << "Get failed! error msg: " << msg << std::endl;
-        }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args tid and pid should be uint32_t, ts should "
-                     "be uint64_t"
-                  << std::endl;
-    }
-}
-
-void HandleClientBenGet(std::vector<std::string>& parts,  // NOLINT
-                        ::openmldb::client::TabletClient* client) {
-    try {
-        uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        uint64_t key_num = 1000000;
-        if (parts.size() >= 4) {
-            key_num = ::boost::lexical_cast<uint64_t>(parts[3]);
-        }
-        uint32_t times = 10000;
-        if (parts.size() >= 5) {
-            times = ::boost::lexical_cast<uint32_t>(parts[4]);
-        }
-        int num = 100;
-        if (parts.size() >= 6) {
-            num = ::boost::lexical_cast<int>(parts[5]);
-        }
-        std::string value;
-        uint64_t base = 100000000;
-        std::random_device rd;
-        std::default_random_engine engine(rd());
-        std::uniform_int_distribution<> dis(1, key_num);
-        std::string msg;
-        while (num > 0) {
-            for (uint32_t i = 0; i < times; i++) {
-                std::string key = std::to_string(base + dis(engine));
-                uint64_t ts = 0;
-                client->Get(tid, pid, key, 0, value, ts, msg);
-            }
-            client->ShowTp();
-            num--;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "put argument error!" << std::endl;
-    }
-}
-
-// the input format like put 1 1 key time value
-void HandleClientPut(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
-    if (parts.size() < 6) {
-        std::cout << "Bad put format, eg put tid pid key time value" << std::endl;
-        return;
-    }
-    try {
-        bool ok = client->Put(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
-                              parts[3], boost::lexical_cast<uint64_t>(parts[4]), parts[5]);
-        if (ok) {
-            std::cout << "Put ok" << std::endl;
-        } else {
-            std::cout << "Put failed" << std::endl;
-        }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args tid and pid should be uint32_t" << std::endl;
-    }
-}
-
-void HandleClientBenPut(std::vector<std::string>& parts,  // NOLINT
-                        ::openmldb::client::TabletClient* client) {
-    try {
-        uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        uint64_t key_num = 1000000;
-        if (parts.size() >= 4) {
-            key_num = ::boost::lexical_cast<uint64_t>(parts[3]);
-        }
-        uint32_t times = 10000;
-        if (parts.size() >= 5) {
-            times = ::boost::lexical_cast<uint32_t>(parts[4]);
-        }
-        int num = 100;
-        if (parts.size() >= 6) {
-            num = ::boost::lexical_cast<int>(parts[5]);
-        }
-        std::string value(128, 'a');
-        uint64_t base = 100000000;
-        std::random_device rd;
-        std::default_random_engine engine(rd());
-        std::uniform_int_distribution<> dis(1, key_num);
-        while (num > 0) {
-            for (uint32_t i = 0; i < times; i++) {
-                std::string key = std::to_string(base + dis(engine));
-                uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
-                client->Put(tid, pid, key, ts, value);
-            }
-            client->ShowTp();
-            num--;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "put argument error!" << std::endl;
-    }
-}
-
-// the input format like create name tid pid ttl leader endpoints
-void HandleClientCreateTable(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
-    if (parts.size() < 6) {
-        std::cout << "Bad create format, input like create <name> <tid> <pid> "
-                     "<ttl> <seg_cnt>"
-                  << std::endl;
-        return;
-    }
-
-    try {
-        int64_t abs_ttl = 0;
-        int64_t lat_ttl = 0;
-        ::openmldb::type::TTLType type = ::openmldb::type::TTLType::kAbsoluteTime;
-        if (parts.size() > 4) {
-            std::vector<std::string> vec;
-            ::openmldb::base::SplitString(parts[4], ":", vec);
-            abs_ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
-            if (vec.size() > 1) {
-                if (vec[0] == "latest") {
-                    type = ::openmldb::type::TTLType::kLatestTime;
-                    lat_ttl = abs_ttl;
-                    abs_ttl = 0;
-                    if (lat_ttl > FLAGS_latest_ttl_max) {
-                        std::cout << "Create failed. The max num of latest "
-                                     "LatestTime is "
-                                  << FLAGS_latest_ttl_max << std::endl;
-                        return;
-                    }
-                } else {
-                    std::cout << "invalid ttl type" << std::endl;
-                    return;
-                }
-            } else {
-                if (abs_ttl > FLAGS_absolute_ttl_max) {
-                    std::cout << "Create failed. The max num of AbsoluteTime ttl is " << FLAGS_absolute_ttl_max
-                              << std::endl;
-                    return;
-                }
-            }
-        }
-        if (abs_ttl < 0 || lat_ttl < 0) {
-            std::cout << "ttl should be equal or greater than 0" << std::endl;
-            return;
-        }
-        uint32_t seg_cnt = 16;
-        if (parts.size() > 5) {
-            seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
-        }
-        bool is_leader = true;
-        if (parts.size() > 6 && parts[6] == "false") {
-            is_leader = false;
-        }
-        std::vector<std::string> endpoints;
-        ::openmldb::type::CompressType compress_type = ::openmldb::type::CompressType::kNoCompress;
-        if (parts.size() > 7) {
-            std::string raw_compress_type = parts[7];
-            std::transform(raw_compress_type.begin(), raw_compress_type.end(), raw_compress_type.begin(), ::tolower);
-            if (raw_compress_type == "knocompress" || raw_compress_type == "nocompress") {
-                compress_type = ::openmldb::type::CompressType::kNoCompress;
-            } else if (raw_compress_type == "ksnappy" || raw_compress_type == "snappy") {
-                compress_type = ::openmldb::type::CompressType::kSnappy;
-            } else {
-                printf("compress type %s is invalid\n", parts[7].c_str());
-                return;
-            }
-        }
-        bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-                                      boost::lexical_cast<uint32_t>(parts[3]), abs_ttl, lat_ttl, is_leader, endpoints,
-                                      type, seg_cnt, 0, compress_type);
-        if (!ok) {
-            std::cout << "Fail to create table" << std::endl;
-        } else {
-            std::cout << "Create table ok" << std::endl;
-        }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args, tid , pid or ttl should be uint32_t" << std::endl;
-    }
-}
-
 void HandleClientDropTable(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad drop command, you should input like 'drop tid pid' " << std::endl;
@@ -3268,13 +3059,11 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
         printf("addreplica - add replica to leader\n");
         printf("changerole - change role\n");
         printf("count - count the num of data in specified key\n");
-        printf("create - create table\n");
         printf("delreplica - delete replica from leader\n");
         printf("delete - delete pk\n");
         printf("deleteindex - delete index\n");
         printf("drop - drop table\n");
         printf("exit - exit client\n");
-        printf("get - get only one record\n");
         printf("gettablestatus - get table status\n");
         printf("getfollower - get follower\n");
         printf("help - get cmd info\n");
@@ -3283,12 +3072,9 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
         printf("makesnapshot - make snapshot\n");
         printf("pausesnapshot - pause snapshot\n");
         printf("preview - preview data\n");
-        printf("put - insert data into table\n");
         printf("quit - exit client\n");
         printf("recoversnapshot - recover snapshot\n");
-        printf("sput - insert data into table of multi dimension\n");
         printf("screate - create multi dimension table\n");
-        printf("scan - get records for a period of time\n");
         printf(
             "sscan - get records for a period of time from multi dimension "
             "table\n");
@@ -3298,15 +3084,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
         printf("showschema - show schema\n");
         printf("setttl - set ttl for partition\n");
     } else if (parts.size() == 2) {
-        if (parts[1] == "create") {
-            printf("desc: create table\n");
-            printf(
-                "usage: create name tid pid ttl segment_cnt [is_leader "
-                "compress_type]\n");
-            printf("ex: create table1 1 0 144000 8\n");
-            printf("ex: create table1 1 0 144000 8 true snappy\n");
-            printf("ex: create table1 1 0 144000 8 false\n");
-        } else if (parts[1] == "screate") {
+        if (parts[1] == "screate") {
             printf("desc: create multi dimension table\n");
             printf(
                 "usage: screate table_name tid pid ttl segment_cnt is_leader "
@@ -3318,20 +3096,6 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
             printf("desc: drop table\n");
             printf("usage: drop tid pid\n");
             printf("ex: drop 1 0\n");
-        } else if (parts[1] == "put") {
-            printf("desc: insert data into table\n");
-            printf("usage: put tid pid pk ts value\n");
-            printf("ex: put 1 0 key1 1528858466000 value1\n");
-        } else if (parts[1] == "sput") {
-            printf("desc: insert data into table of multi dimension\n");
-            printf("usage: sput tid pid ts key1 key2 ... value\n");
-            printf("ex: sput 1 0 1528858466000 card0 merchant0 1.1\n");
-        } else if (parts[1] == "scan") {
-            printf("desc: get records for a period of time\n");
-            printf("usage: scan tid pid pk starttime endtime [limit]\n");
-            printf("ex: scan 1 0 key1 1528858466000 1528858300000\n");
-            printf("ex: scan 1 0 key1 1528858466000 1528858300000 10\n");
-            printf("ex: scan 1 0 key1 0 0 10\n");
         } else if (parts[1] == "sscan") {
             printf(
                 "desc: get records for a period of time from multi dimension "
@@ -3342,11 +3106,6 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
             printf("ex: sscan 1 0 card0 card 1528858466000 1528858300000\n");
             printf("ex: sscan 1 0 card0 card 1528858466000 1528858300000 10\n");
             printf("ex: sscan 1 0 card0 card 0 0 10\n");
-        } else if (parts[1] == "get") {
-            printf("desc: get only one record\n");
-            printf("usage: get tid pid key ts\n");
-            printf("ex: get 1 0 key1 1528858466000\n");
-            printf("ex: get 1 0 key1 0\n");
         } else if (parts[1] == "sget") {
             printf("desc: get only one record from multi dimension table\n");
             printf("usage: sget tid pid key key_name ts\n");
@@ -3733,112 +3492,6 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::openmldb::clie
     }
     delete it;
     tp.Print(true);*/
-}
-
-// the input format like scan tid pid pk st et
-void HandleClientScan(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
-    if (parts.size() < 6) {
-        std::cout << "Bad scan format! eg. scan tid pid pk start_time end_time "
-                     "[limit]"
-                  << std::endl;
-        return;
-    }
-    try {
-        uint32_t limit = 0;
-        if (parts.size() > 6) {
-            limit = boost::lexical_cast<uint32_t>(parts[6]);
-        }
-        std::string msg;
-        ::openmldb::base::KvIterator* it = client->Scan(
-            boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3],
-            boost::lexical_cast<uint64_t>(parts[4]), boost::lexical_cast<uint64_t>(parts[5]), limit, 0, msg);
-        if (it == NULL) {
-            std::cout << "Fail to scan table. error msg: " << msg << std::endl;
-        } else {
-            bool print = true;
-            if (parts.size() >= 7) {
-                if (parts[6] == "false") {
-                    print = false;
-                }
-            }
-            std::cout << "#\tTime\tData" << std::endl;
-            uint32_t index = 1;
-            while (it->Valid()) {
-                if (print) {
-                    std::cout << index << "\t" << it->GetKey() << "\t" << it->GetValue().ToString() << std::endl;
-                }
-                index++;
-                it->Next();
-            }
-            delete it;
-        }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args, tid pid should be uint32_t, st and et "
-                     "should be uint64_t"
-                  << std::endl;
-    }
-}
-
-void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid, uint32_t val_size, uint32_t run_times, uint32_t ns,
-                              ::openmldb::client::TabletClient* client) {
-    char val[val_size];  // NOLINT
-    for (uint32_t i = 0; i < val_size; i++) {
-        val[i] = '0';
-    }
-    std::string sval(val);
-    for (uint32_t i = 0; i < run_times; i++) {
-        std::string key = boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
-        for (uint32_t j = 0; j < 4000; j++) {
-            client->Put(tid, pid, key, j, sval);
-        }
-        client->ShowTp();
-    }
-}
-
-void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid, uint32_t run_times, uint32_t ns,
-                               ::openmldb::client::TabletClient* client) {
-    uint64_t st = 999;
-    uint64_t et = 0;
-    std::string msg;
-    for (uint32_t j = 0; j < run_times; j++) {
-        for (uint32_t i = 0; i < 500 * 4; i++) {
-            std::string key = boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
-            ::openmldb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0, 0, msg);
-            delete it;
-        }
-        client->ShowTp();
-    }
-}
-
-void HandleClientBenchmark(::openmldb::client::TabletClient* client) {
-    uint32_t size = 40;
-    uint32_t times = 10;
-    std::cout << "Percentile:Start benchmark put size:40" << std::endl;
-    HandleClientBenchmarkPut(1, 1, size, times, 1, client);
-    std::cout << "Percentile:Start benchmark put size:80" << std::endl;
-    HandleClientBenchmarkPut(1, 1, 80, times, 2, client);
-    std::cout << "Percentile:Start benchmark put size:200" << std::endl;
-    HandleClientBenchmarkPut(1, 1, 200, times, 3, client);
-    std::cout << "Percentile:Start benchmark put ha size:400" << std::endl;
-    HandleClientBenchmarkPut(1, 1, 400, times, 4, client);
-
-    std::cout << "Percentile:Start benchmark put with one replica size:40" << std::endl;
-    HandleClientBenchmarkPut(2, 1, size, times, 1, client);
-    std::cout << "Percentile:Start benchmark put with one replica size:80" << std::endl;
-    HandleClientBenchmarkPut(2, 1, 80, times, 2, client);
-    std::cout << "Percentile:Start benchmark put with one replica  size:200" << std::endl;
-    HandleClientBenchmarkPut(2, 1, 200, times, 3, client);
-    std::cout << "Percentile:Start benchmark put with one replica size:400" << std::endl;
-    HandleClientBenchmarkPut(2, 1, 400, times, 4, client);
-
-    std::cout << "Percentile:Start benchmark Scan 1000 records key size:40" << std::endl;
-    HandleClientBenchmarkScan(1, 1, times, 1, client);
-    std::cout << "Percentile:Start benchmark Scan 1000 records key size:80" << std::endl;
-    HandleClientBenchmarkScan(1, 1, times, 2, client);
-    std::cout << "Percentile:Start benchmark Scan 1000 records key size:200" << std::endl;
-    HandleClientBenchmarkScan(1, 1, times, 3, client);
-    std::cout << "Percentile:Start benchmark Scan 1000 records key size:400" << std::endl;
-    HandleClientBenchmarkScan(1, 1, times, 4, client);
 }
 
 void HandleClientGetFollower(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
@@ -4259,50 +3912,6 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::openmldb::client
     ::openmldb::cmd::ShowTableRows(table_meta, &sdk_it);
 }
 
-void HandleClientSPut(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
-    if (parts.size() < 5) {
-        std::cout << "Bad put format, eg put tid pid time value" << std::endl;
-        return;
-    }
-    try {
-        uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        ::openmldb::api::TableMeta table_meta;
-        bool ok = client->GetTableSchema(tid, pid, table_meta);
-        if (!ok) {
-            std::cout << "Fail to get table schema" << std::endl;
-            return;
-        }
-        ::openmldb::codec::SDKCodec codec(table_meta);
-        std::vector<std::string> input_value(parts.begin() + 4, parts.end());
-        std::map<uint32_t, ::openmldb::codec::Dimension> dimensions;
-        if (codec.EncodeDimension(input_value, 0, &dimensions) < 0) {
-            std::cout << "Encode dimension error" << std::endl;
-            return;
-        }
-        std::string value;
-        if (codec.EncodeRow(input_value, &value) < 0) {
-            std::cout << "Encode data error" << std::endl;
-            return;
-        }
-
-        if (table_meta.compress_type() == ::openmldb::type::CompressType::kSnappy) {
-            std::string compressed;
-            ::snappy::Compress(value.c_str(), value.length(), &compressed);
-            value.swap(compressed);
-        }
-        ok = client->Put(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
-                         boost::lexical_cast<uint64_t>(parts[3]), value, dimensions[0]);
-        if (ok) {
-            std::cout << "Put ok" << std::endl;
-        } else {
-            std::cout << "Put failed" << std::endl;
-        }
-    } catch (std::exception const& e) {
-        std::cout << e.what() << std::endl;
-    }
-}
-
 void HandleClientDelete(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad delete format" << std::endl;
@@ -4323,55 +3932,6 @@ void HandleClientDelete(const std::vector<std::string>& parts, ::openmldb::clien
         }
     } catch (std::exception const& e) {
         std::cout << "Invalid args, tid pid should be uint32_t" << std::endl;
-    }
-}
-
-void HandleClientBenScan(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
-    uint64_t et = 0;
-    uint32_t tid = 1;
-    uint32_t pid = 1;
-    uint64_t key_num = 1000000;
-    uint32_t times = 10000;
-    int num = 100;
-    uint32_t limit = 0;
-    if (parts.size() >= 3) {
-        try {
-            tid = ::boost::lexical_cast<uint32_t>(parts[1]);
-            pid = ::boost::lexical_cast<uint32_t>(parts[2]);
-            if (parts.size() >= 4) {
-                key_num = ::boost::lexical_cast<uint64_t>(parts[3]);
-            }
-            if (parts.size() >= 5) {
-                times = ::boost::lexical_cast<uint32_t>(parts[4]);
-            }
-            if (parts.size() >= 6) {
-                num = ::boost::lexical_cast<int>(parts[5]);
-            }
-            if (parts.size() >= 7) {
-                limit = ::boost::lexical_cast<uint32_t>(parts[6]);
-            }
-        } catch (boost::bad_lexical_cast& e) {
-            std::cout << "Bad scan format" << std::endl;
-            return;
-        }
-    }
-    uint64_t base = 100000000;
-    std::random_device rd;
-    std::default_random_engine engine(rd());
-    std::uniform_int_distribution<> dis(1, key_num);
-    std::string msg;
-    while (num > 0) {
-        for (uint32_t i = 0; i < times; i++) {
-            std::string key = std::to_string(base + dis(engine));
-            uint64_t st = ::baidu::common::timer::get_micros() / 1000;
-            msg.clear();
-            // ::openmldb::base::KvIterator* it = client->Scan(tid, pid,
-            // key.c_str(), st, et, msg, false);
-            ::openmldb::base::KvIterator* it = client->Scan(tid, pid, key.c_str(), st, et, limit, 0, msg);
-            delete it;
-        }
-        client->ShowTp();
-        num--;
     }
 }
 
@@ -4411,18 +3971,8 @@ void StartClient() {
         ::openmldb::base::SplitString(buffer, " ", parts);
         if (parts.empty()) {
             continue;
-        } else if (parts[0] == "put") {
-            HandleClientPut(parts, &client);
-        } else if (parts[0] == "sput") {
-            HandleClientSPut(parts, &client);
-        } else if (parts[0] == "create") {
-            HandleClientCreateTable(parts, &client);
-        } else if (parts[0] == "get") {
-            HandleClientGet(parts, &client);
         } else if (parts[0] == "sget") {
             HandleClientSGet(parts, &client);
-        } else if (parts[0] == "scan") {
-            HandleClientScan(parts, &client);
         } else if (parts[0] == "sscan") {
             HandleClientSScan(parts, &client);
         } else if (parts[0] == "delete") {
@@ -4435,14 +3985,6 @@ void StartClient() {
             HandleClientShowSchema(parts, &client);
         } else if (parts[0] == "getfollower") {
             HandleClientGetFollower(parts, &client);
-        } else if (parts[0] == "benput") {
-            HandleClientBenPut(parts, &client);
-        } else if (parts[0] == "benscan") {
-            HandleClientBenScan(parts, &client);
-        } else if (parts[0] == "benget") {
-            HandleClientBenGet(parts, &client);
-        } else if (parts[0] == "benchmark") {
-            HandleClientBenchmark(&client);
         } else if (parts[0] == "drop") {
             HandleClientDropTable(parts, &client);
         } else if (parts[0] == "addreplica") {

@@ -158,6 +158,10 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
                                              &op));
             break;
         }
+        case node::kPlanTypeDelete: {
+            CHECK_STATUS(TransformDeleteOp(dynamic_cast<const ::hybridse::node::DeletePlanNode*>(node), &op));
+            break;
+        }
         default: {
             FAIL_STATUS(kPlanError,
                         "Fail to transform physical plan: "
@@ -889,6 +893,15 @@ Status BatchModeTransformer::TransformDistinctOp(
     return Status::OK();
 }
 
+
+Status BatchModeTransformer::TransformDeleteOp(const node::DeletePlanNode* node, PhysicalOpNode** output) {
+    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
+    PhysicalDeleteNode* delete_op = nullptr;
+    CHECK_STATUS(CreateOp<PhysicalDeleteNode>(&delete_op, node->GetTarget(), node->GetJobId()));
+    *output = delete_op;
+    return Status::OK();
+}
+
 Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode* node,
                                                 ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
@@ -896,8 +909,7 @@ Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode
 }
 
 Status BatchModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) {
-    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
-               "Input node or output node is null");
+    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
     PhysicalLoadDataNode* load_data_op = nullptr;
     // db.table should be checked when you get the physical plan
     CHECK_STATUS(
@@ -1706,6 +1718,9 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
                 return TransformPhysicalPlan(sp_plan->GetInnerPlanNodeList(), output);
             }
             case ::hybridse::node::kPlanTypeLoadData: {
+                return TransformPlanOp(node, output);
+            }
+            case ::hybridse::node::kPlanTypeDelete: {
                 return TransformPlanOp(node, output);
             }
             default: {

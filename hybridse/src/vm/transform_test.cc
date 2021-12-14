@@ -1446,6 +1446,56 @@ TEST_P(SimpleCataLogTransformPassOptimizedTest, PassOptimizedTest) {
     PhysicalPlanCheck(simple_catalog, in_out.first, in_out.second);
 }
 
+TEST_F(TransformTest, DeleteStmt) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    PhysicalPlanCheck(catalog, "delete job 12", R"r(DELETE(target=JOB, job_id=12))r");
+}
+
+TEST_F(TransformTest, GetDatabaseName) {
+    hybridse::type::Database db;
+    db.set_name("db1");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_catalog("db1");
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    auto sql = "select col0 from t1;";
+
+    ::hybridse::node::NodeManager manager;
+    ::hybridse::node::PlanNodeList plan_trees;
+    ::hybridse::base::Status status;
+    plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &manager, status);
+    ASSERT_EQ(common::kOk, status.code);
+
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_op_generator", *ctx);
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
+    BatchModeTransformer transform(&manager, "db1", catalog, nullptr, m.get(), lib);
+
+    transform.AddDefaultPasses();
+    PhysicalOpNode* physical_plan = nullptr;
+
+    status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
+    ASSERT_TRUE(status.isOK()) << status;
+
+    ASSERT_EQ(1, physical_plan->GetProducerCnt());
+    ASSERT_TRUE(physical_plan->GetProducer(0)->GetOpType() == kPhysicalOpDataProvider);
+    auto provider = dynamic_cast<const PhysicalTableProviderNode*>(physical_plan->GetProducer(0));
+    ASSERT_TRUE(provider != nullptr);
+    ASSERT_STREQ("db1", provider->GetDb().c_str());
+}
+
 }  // namespace vm
 }  // namespace hybridse
 int main(int argc, char** argv) {

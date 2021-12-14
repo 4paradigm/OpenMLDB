@@ -19,6 +19,10 @@
     cd /OpenMLDB
     make
     ```
+5. Install OpenMLDB, will installed into `${PROJECT_ROOT}/openmldb` by default
+    ```bash
+    make install
+    ```
 
 ### Extra Options for `make`
 
@@ -35,6 +39,10 @@ make CMAKE_BUILD_TYPE=Debug
 - CMAKE_BUILD_TYPE
 
   Default: RelWithDebInfo
+
+- CMAKE_INSTALL_PREFIX
+
+  Default: ${PROJECT_ROOT}/openmldb
 
 - SQL_PYSDK_ENABLE: enabling building the Python SDK
 
@@ -54,7 +62,7 @@ make CMAKE_BUILD_TYPE=Debug
 
 - CMAKE_EXTRA_FLAGS: extra flags passed to cmake
 
-  默认: ‘’
+  Default: ‘’
 
 
 ## Optimized Spark Distribution for OpenMLDB (Optional)

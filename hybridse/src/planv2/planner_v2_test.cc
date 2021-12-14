@@ -1778,9 +1778,8 @@ TEST_F(PlannerV2ErrorTest, SqlSyntaxErrorTest) {
         base::Status status;
         node::PlanNodeList plan_trees;
         ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true));
-        ASSERT_EQ(code, status.code) << status;
-        ASSERT_EQ(msg, status.msg) << status;
-        std::cout << msg << std::endl;
+        EXPECT_EQ(code, status.code) << status;
+        EXPECT_EQ(msg, status.msg) << status;
     };
 
     expect_converted("SELECT FROM t1;", common::kSyntaxError,
@@ -1796,13 +1795,13 @@ TEST_F(PlannerV2ErrorTest, SqlSyntaxErrorTest) {
 
 TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
     node::NodeManager node_manager;
+
     auto expect_converted = [&](const std::string &sql, const int code, const std::string &msg) {
       base::Status status;
       node::PlanNodeList plan_trees;
       ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true)) << status;
-      ASSERT_EQ(code, status.code) << status;
-      ASSERT_EQ(msg, status.msg) << status;
-      std::cout << msg << std::endl;
+      EXPECT_EQ(code, status.code) << status;
+      EXPECT_EQ(msg, status.msg) << status;
     };
 
 
@@ -1827,6 +1826,9 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
         WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
         )",
         common::kPlanError, "Can't support table aggregation and window aggregation simultaneously");
+
+    expect_converted(R"sql(select 'mike' like 'm%' escape '2c';)sql",
+        common::kUnsupportSql, "escape value is not string or string size >= 2");
 }
 
 TEST_F(PlannerV2ErrorTest, NonSupportOnlineServingSQL) {

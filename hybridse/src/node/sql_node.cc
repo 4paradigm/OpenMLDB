@@ -1064,6 +1064,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kSetStmt:
             output = "kSetStmt";
             break;
+        case kDeleteStmt:
+            output = "kDeleteStmt";
+            break;
         case kUnknow:
             output = "kUnknow";
             break;
@@ -1866,6 +1869,23 @@ bool InExpr::Equals(const ExprNode *node) const {
     return in_expr != nullptr && IsNot() == in_expr->IsNot();
 }
 
+void EscapedExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSqlNode(output, tab, GetPattern(), "pattern", false);
+    output << "\n";
+    PrintSqlNode(output, tab, GetEscape(), "escape", true);
+}
+
+const std::string EscapedExpr::GetExprString() const {
+    std::string str = "";
+    absl::StrAppend(&str, ExprString(GetPattern()));
+    absl::StrAppend(&str, " ESCAPE ");
+    absl::StrAppend(&str, ExprString(GetEscape()));
+    return str;
+}
+
 std::string FnDefNode::GetFlatString() const {
     std::stringstream ss;
     ss << GetName() << "(";
@@ -2250,6 +2270,28 @@ void InputParameterNode::Print(std::ostream &output, const std::string &org_tab)
     PrintValue(output, tab, DataTypeName(column_type_), "column_type", false);
     output << "\n";
     PrintValue(output, tab, std::to_string(is_constant_), "is_constant", true);
+}
+
+void DeleteNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, GetTargetString(), "target", false);
+    output << "\n";
+    PrintValue(output, tab, GetJobId(), "job_id", true);
+}
+
+std::string DeleteTargetString(DeleteTarget target) {
+    switch (target) {
+        case DeleteTarget::JOB: {
+            return "JOB";
+        }
+    }
+    return "unknown";
+}
+
+std::string DeleteNode::GetTargetString() const {
+    return DeleteTargetString(target_);
 }
 
 Status StringToDataType(const std::string identifier, DataType *type) {

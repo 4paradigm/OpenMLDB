@@ -83,6 +83,12 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "show deployments";
         case kCmdDropDeployment:
             return "drop deployment";
+        case kCmdShowJob:
+            return "show job";
+        case kCmdShowJobs:
+            return "show jobs";
+        case kCmdStopJob:
+            return "stop job";
         case kCmdUnknown:
             return "unknown cmd type";
     }
@@ -160,6 +166,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return ".";
         case kFnOpLike:
             return "LIKE";
+        case kFnOpILike:
+            return "ILIKE";
         case kFnOpIn:
             return "IN";
         case kFnOpBracket:
@@ -258,9 +266,10 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "range";
         case kExprOrderExpression:
             return "order";
-        default:
-            return "unknown expr type";
+        case kExprEscaped:
+            return "escape";
     }
+    return "unknown expr type";
 }
 
 inline const std::string FrameTypeName(const FrameType &type) {
@@ -556,6 +565,9 @@ class ExprNode : public SqlNode {
 
     static Status BetweenTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* low,
                                     const TypeNode* high, const TypeNode** output_type);
+
+    static Status LikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
+                                 const TypeNode** output);
 
  private:
     const TypeNode *output_type_ = nullptr;
@@ -1507,6 +1519,7 @@ class BinaryExpr : public ExprNode {
     BinaryExpr() : ExprNode(kExprBinary) {}
     explicit BinaryExpr(FnOperator op) : ExprNode(kExprBinary), op_(op) {}
     FnOperator GetOp() const { return op_; }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
@@ -1702,16 +1715,39 @@ class InExpr : public ExprNode {
     ExprNode* GetLhs() const { return GetChildOrNull(0); }
     ExprNode* GetInList() const { return GetChildOrNull(1); }
 
-    void Print(std::ostream &output, const std::string &org_tab) const final;
-    const std::string GetExprString() const final;
-    bool Equals(const ExprNode *node) const final;
-    InExpr *ShadowCopy(NodeManager *) const final;
-    Status InferAttr(ExprAnalysisContext *ctx) final;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    bool Equals(const ExprNode *node) const override;
+    InExpr *ShadowCopy(NodeManager *) const override;
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 
     std::string GetInTypeString() const;
 
  private:
     const bool is_not_ = false;
+};
+
+class EscapedExpr : public ExprNode {
+ public:
+    EscapedExpr(ExprNode* pattern, ExprNode* escape)
+        : ExprNode(kExprEscaped) {
+        AddChild(pattern);
+        AddChild(escape);
+    }
+    ~EscapedExpr() {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    EscapedExpr *ShadowCopy(NodeManager *) const override;
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
+    ExprNode* GetPattern() const {
+        return GetChildOrNull(0);
+    }
+
+    ExprNode* GetEscape() const {
+        return GetChildOrNull(1);
+    }
 };
 
 class ResTarget : public SqlNode {
@@ -2014,6 +2050,28 @@ class CmdNode : public SqlNode {
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
+};
+
+enum class DeleteTarget {
+    JOB
+};
+std::string DeleteTargetString(DeleteTarget target);
+
+class DeleteNode : public SqlNode {
+ public:
+    explicit DeleteNode(DeleteTarget t, std::string job_id)
+    : SqlNode(kDeleteStmt, 0, 0), target_(t), job_id_(job_id) {}
+    ~DeleteNode() {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    std::string GetTargetString() const;
+
+    const DeleteTarget GetTarget() const { return target_; }
+    const std::string& GetJobId() const { return job_id_; }
+
+ private:
+    const DeleteTarget target_;
+    const std::string job_id_;
 };
 
 class SelectIntoNode : public SqlNode {

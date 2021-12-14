@@ -219,7 +219,7 @@ if (PYSDK_ENABLE)
 endif ()
 # Find java
 
-if (JAVASDK_ENABLE)
+if (JAVASDK_ENABLE OR SQL_JAVASDK_ENABLE)
     find_package(Java COMPONENTS Development REQUIRED)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
 
@@ -240,19 +240,3 @@ if (COVERAGE_ENABLE)
                 DEPENDENCIES ${test_list})
     endif ()
 endif ()
-
-if (CMAKE_INSTALL_PREFIX STREQUAL "")
-    set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
-endif ()
-message(STATUS "Hybridse will install to ${CMAKE_INSTALL_PREFIX}")
-install(TARGETS hybridse_core hybridse_sdk hybridse_flags
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-FILE(GLOB header_files "${CMAKE_CURRENT_SOURCE_DIR}/include/*")
-INSTALL(DIRECTORY ${header_files} DESTINATION include)
-INSTALL(DIRECTORY "${CMAKE_BINARY_DIR}/src/proto" DESTINATION include
-    FILES_MATCHING PATTERN "*.h"
-    PATTERN "CMakeFiles" EXCLUDE
-)
