@@ -2,7 +2,7 @@
 
 To deploy `APIServer` click this: [Deploy OpenMLDB](deploy.md).
 
-Comparison table about JSON datatype and OpenMLDB datatype, and instructions of every function,[RFC](https://github.com/4paradigm/rfcs/blob/main/fedb/api-server.md).
+Please refer to this [RFC](https://github.com/4paradigm/rfcs/blob/main/fedb/api-server.md) for the comparison of JSON and OpenMLDB data types.
 
 ## Instructions
 
@@ -21,7 +21,7 @@ create table trans(c1 string,
 
 then start APIServer at localhost, port is 8080.
 
-Considering the transmission efficiency，response use Compact JSON format. But for the convenience of display,repsonse below are formatted(Line breaks and indents).
+Considering the transmission efficiency，the response use Compact JSON format. But for the convenience of display, the repsonse below are formatted(Line breaks and indents).
 
 ### Put
 
@@ -38,7 +38,7 @@ request body:
 }
 ```
 
-Currently only support insert one record, data arranged in strict accordance with the schema in table.
+Currently only support inserting one record, data arranged in strict accordance with the schema in table.
 
 #### example
 
@@ -165,7 +165,7 @@ request body:
 ```
 
 + common_cols could be empty if there is no data.
-+ need_schema could be `false` or just empty, then there will have not schema field in response.
++ need_schema could be `false` or just empty, then there will be no schema field in response.
 
 #### example
 
