@@ -5,6 +5,12 @@ on:
     branches:
       - main
   pull_request:
+    paths-ignore:
+      - docs/
+      - demo/
+      - release/
+      - image/
+      - tools/
   workflow_dispatch:
 
 jobs:
