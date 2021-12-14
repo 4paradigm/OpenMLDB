@@ -73,6 +73,7 @@ function(get_linux_lsb_release_information)
     if(NOT LSB_RELEASE_EXEC)
       message(WARNING "Could not detect lsb_release executable, default to redhat centos")
       set(LSB_RELEASE_ID_SHORT "CentOS" PARENT_SCOPE)
+      return()
     endif()
 
     execute_process(COMMAND "${LSB_RELEASE_EXEC}" --short --id OUTPUT_VARIABLE LSB_RELEASE_ID_SHORT OUTPUT_STRIP_TRAILING_WHITESPACE)
