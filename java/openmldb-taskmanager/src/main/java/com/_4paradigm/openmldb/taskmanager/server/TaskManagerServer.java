@@ -16,34 +16,66 @@
 
 package com._4paradigm.openmldb.taskmanager.server;
 
-import com._4paradigm.openmldb.proto.TaskManager;
-import com.baidu.brpc.protocol.BrpcMeta;
+import com._4paradigm.openmldb.taskmanager.zk.FailoverWatcher;
+import lombok.extern.slf4j.Slf4j;
+import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
+import com._4paradigm.openmldb.taskmanager.server.impl.TaskManagerImpl;
+import com.baidu.brpc.server.RpcServer;
+import com.baidu.brpc.server.RpcServerOptions;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-public interface TaskManagerServer {
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ShowJobs")
-    TaskManager.ShowJobsResponse ShowJobs(TaskManager.ShowJobsRequest request);
+import java.io.IOException;
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ShowJob")
-    TaskManager.ShowJobResponse ShowJob(TaskManager.ShowJobRequest request);
+@Slf4j
+public class TaskManagerServer {
+    private static final Log logger = LogFactory.getLog(TaskManagerServer.class);
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "StopJob")
-    TaskManager.StopJobResponse StopJob(TaskManager.StopJobRequest request);
+    public void start() {
+        try {
+            FailoverWatcher failoverWatcher = new FailoverWatcher();
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "DeleteJob")
-    TaskManager.DeleteJobResponse DeleteJob(TaskManager.DeleteJobRequest request);
+            logger.info("The server runs and prepares for leader election");
+            if (failoverWatcher.blockUntilActive()) {
+                logger.info("The server becomes active master and prepare to do business logic");
+                startBrpcServer();
+            }
+            failoverWatcher.close();
+            logger.info("The server exits after running business logic");
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ShowBatchVersion")
-    TaskManager.ShowJobResponse ShowBatchVersion(TaskManager.ShowBatchVersionRequest request);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "RunBatchSql")
-    TaskManager.ShowJobResponse RunBatchSql(TaskManager.RunBatchSqlRequest request);
+    public void startBrpcServer() {
+        try {
+            RpcServerOptions options = new RpcServerOptions();
+            options.setReceiveBufferSize(64 * 1024 * 1024);
+            options.setSendBufferSize(64 * 1024 * 1024);
+            options.setIoThreadNum(TaskManagerConfig.WORKER_THREAD);
+            options.setWorkThreadNum(TaskManagerConfig.IO_THREAD);
+            final RpcServer rpcServer = new RpcServer(TaskManagerConfig.PORT, options);
+            rpcServer.registerService(new TaskManagerImpl());
+            rpcServer.start();
+            log.info("Start TaskManager on {} with worker thread number {}", TaskManagerConfig.PORT, TaskManagerConfig.WORKER_THREAD);
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "RunBatchAndShow")
-    TaskManager.ShowJobResponse RunBatchAndShow(TaskManager.RunBatchAndShowRequest request);
+            // make server keep running
+            synchronized (TaskManagerServer.class) {
+                try {
+                    TaskManagerServer.class.wait();
+                } catch (Throwable e) {
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.error("Fail to start TaskManager, " + e.getMessage());
+        }
+    }
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ImportOnlineData")
-    TaskManager.ShowJobResponse ImportOnlineData(TaskManager.ImportOnlineDataRequest request);
+    public static void main(String[] args) {
+        TaskManagerServer server = new TaskManagerServer();
+        server.start();
+    }
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ImportOfflineData")
-    TaskManager.ShowJobResponse ImportOfflineData(TaskManager.ImportOfflineDataRequest request);
 }

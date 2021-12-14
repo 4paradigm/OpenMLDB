@@ -1271,7 +1271,14 @@ void PhysicalLoadDataNode::Print(std::ostream& output, const std::string& tab) c
     PrintChildren(output, tab);
 }
 
-PhysicalLoadDataNode* PhysicalLoadDataNode::CastFrom(PhysicalOpNode* node) { return dynamic_cast<PhysicalLoadDataNode*>(node); }
+void PhysicalDeleteNode::Print(std::ostream &output, const std::string &tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(target=" << node::DeleteTargetString(GetTarget()) << ", job_id=" << GetJobId() << ")";
+}
+
+PhysicalLoadDataNode* PhysicalLoadDataNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalLoadDataNode*>(node);
+}
 
 Status BuildColumnReplacement(const node::ExprNode* expr, const SchemasContext* origin_schema,
                               const SchemasContext* rebase_schema, node::NodeManager* nm,

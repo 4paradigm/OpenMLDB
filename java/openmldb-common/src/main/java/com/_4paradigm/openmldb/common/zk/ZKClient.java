@@ -34,6 +34,14 @@ public class ZKClient {
         this.config = config;
     }
 
+    public ZKConfig getConfig() {
+        return config;
+    }
+
+    public CuratorFramework getClient() {
+        return client;
+    }
+
     public boolean connect() throws Exception {
         log.info("ZKClient connect with config: {}", config);
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(config.getBaseSleepTime(), config.getMaxRetries());
@@ -62,17 +70,29 @@ public class ZKClient {
         }
     }
 
-    public void createNode(String path, byte[] data) throws Exception{
+    public boolean checkExists(String path) throws Exception  {
+        return client.checkExists().forPath(path) != null;
+    }
+
+    public void createNode(String path, byte[] data) throws Exception {
         if (client.checkExists().forPath(path) == null) {
             client.create().forPath(path, data);
         }
     }
 
-    public void setNodeValue(String path, byte[] data) throws Exception{
+    public void setNodeValue(String path, byte[] data) throws Exception {
         if (client.checkExists().forPath(path) == null) {
             client.create().forPath(path, data);
         } else {
             client.setData().forPath(path, data);
+        }
+    }
+
+    public String getNodeValue(String path) throws Exception {
+        if (client.checkExists().forPath(path) == null) {
+            throw new RuntimeException("Zookeeper node is null!");
+        } else {
+            return new String(client.getData().forPath(path));
         }
     }
 }

@@ -13,16 +13,16 @@
 [![maven central](https://img.shields.io/maven-central/v/com.4paradigm.openmldb/openmldb-jdbc)](https://mvnrepository.com/artifact/com.4paradigm.openmldb/openmldb-jdbc)
 [![pypi](https://img.shields.io/pypi/v/openmldb)](https://pypi.org/project/openmldb/)
 
-
-English version|[中文版](README_cn.md)
+**English version | [中文版](README_cn.md)**
 
 
 ## 1. Introduction
 
 OpenMLDB is an open-source database particularly designed to efficiently provide consistent data for machine learning.  A database for machine learning consists of two major tasks: feature extraction and feature access, which are served as data provisioning for offline training and online inference. Without OpenMLDB, there are two separate systems for online and offline data provisioning, which cost significant effort to verify the online-offline consistency. On the contrary, OpenMLDB supports the unified SQL programming and its execution engine for both online and offline data provisioning. As a result, the online-offline consistency is inherently guaranteed. Moreover, the system is carefully designed and optimized to ensure the efficiency. By taking advantages of OpenMLDB, database engineers are now able to write SQL scripts only to efficiently provide consistent data to machine learning, and an offline model can be immediately deployed for online serving with little cost involved.
 <p align="center">
- <img src="images/workflow.png" alt="image-20211103103052252" width=700 />
+ <img src="images/workflow.png" alt="image-20211103103052252" width=800 />
  </p>
+
 The above figure illustrates the OpenMLDB workflow. SQL engineers first write SQL scripts for offline feature extraction, which provides data for offline model training. When the model quality is satisfied, the online feature extraction and access can be enabled immediately for online serving without additional efforts involved. Thanks to the unified SQL programming and execution engine, the online-offline consistency verification is eliminated, which is inherently guaranteed by OpenMLDB. Furthermore, certain optimization techniques (e.g., data skew optimization and in-memory indexing for offline and online feature extraction, respectively) are adopted to ensure that the performance requirement can be met for both offline training and online inference. In summary, OpenMLDB enables SQL as the only programming interface for consistent and efficient data provisioning for both offline model training and online inference serving.
 
 ## 2. Highlight Features

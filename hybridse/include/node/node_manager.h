@@ -196,6 +196,7 @@ class NodeManager {
     BetweenExpr *MakeBetweenExpr(ExprNode *expr, ExprNode *left,
                                  ExprNode *right, const bool is_not_between);
     InExpr *MakeInExpr(ExprNode* lhs, ExprNode* in_list, bool is_not);
+    EscapedExpr *MakeEscapeExpr(ExprNode* pattern, ExprNode* escape);
     BinaryExpr *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
                                    FnOperator op);
     UnaryExpr *MakeUnaryExprNode(ExprNode *left, FnOperator op);
@@ -258,6 +259,10 @@ class NodeManager {
                             bool if_not_exist);
     DeployPlanNode *MakeDeployPlanNode(const std::string& name, const SqlNode* stmt,
                                        const std::string& stmt_str, bool if_not_exist);
+
+    // create a delete job node
+    DeleteNode* MakeDeleteNode(DeleteTarget target, std::string_view job_id);
+    DeletePlanNode* MakeDeletePlanNode(const DeleteNode* node);
 
     LoadDataNode *MakeLoadDataNode(const std::string &file_name, const std::string& db, const std::string &table,
                                    const std::shared_ptr<OptionsMap> options);

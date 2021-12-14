@@ -198,6 +198,10 @@ class SQLClusterRouter : public SQLRouter {
     base::Status HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
                               std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
 
+    std::vector<std::string> GetTableNames(const std::string& db) override;
+
+    ::openmldb::nameserver::TableInfo GetTableInfo(const std::string& db, const std::string& table) override;
+
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 

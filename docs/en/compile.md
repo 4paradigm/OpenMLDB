@@ -19,6 +19,10 @@
     cd /OpenMLDB
     make
     ```
+5. Install OpenMLDB, will installed into `${PROJECT_ROOT}/openmldb` by default
+    ```bash
+    make install
+    ```
 
 ### Extra Options for `make`
 
@@ -28,9 +32,17 @@ You can customize the `make` behavior by passing following arguments, e.g., chan
 make CMAKE_BUILD_TYPE=Debug
 ```
 
+- OPENMLDB_BUILD_DIR: Binary build directory
+
+  Default: ${PROJECT_ROOT}/build
+
 - CMAKE_BUILD_TYPE
 
   Default: RelWithDebInfo
+
+- CMAKE_INSTALL_PREFIX
+
+  Default: ${PROJECT_ROOT}/openmldb
 
 - SQL_PYSDK_ENABLE: enabling building the Python SDK
 
@@ -43,6 +55,14 @@ make CMAKE_BUILD_TYPE=Debug
 - TESTING_ENABLE: enabling building the test targets
 
   Default: OFF
+
+- NPROC: parallel build number
+
+  Default: $(nproc)
+
+- CMAKE_EXTRA_FLAGS: extra flags passed to cmake
+
+  Default: ‘’
 
 
 ## Optimized Spark Distribution for OpenMLDB (Optional)

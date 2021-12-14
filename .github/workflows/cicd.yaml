@@ -14,47 +14,42 @@ env:
 
 jobs:
   build_and_cpp_ut:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     env:
       OS: linux
+      SQL_PYSDK_ENABLE: OFF
+      SQL_JAVASDK_ENABLE: OFF
+      TESTING_ENABLE: ON
+      NPROC: 4
     steps:
       - uses: actions/checkout@v2
+
       - name: setup thirdparty
         run: |
           make thirdparty
 
-      - name: prepare release
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=${VERSION#v}
-            bash steps/prepare_release.sh "$VERSION"
-
-      - name: build
-        run: |
-          make build SQL_PYSDK_ENABLE=OFF SQL_JAVASDK_ENABLE=OFF TESTING_ENABLE=ON
-          # GitHub runner disk space is limited
-          # delete thirdparty build directory($ROOT/.deps/) to save disk space
-          make thirdpartybuild-clean
-
-      - name: pack OpenMLDB
-        if: ${{ github.event_name == 'push' }}
+      - name: prepare
         run: |
           VERSION="snapshot"
           if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
             VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
             VERSION=${VERSION#v}
+            bash steps/prepare_release.sh "$VERSION"
           fi
-          bash steps/package_openmldb.sh "$VERSION" ${{ env.OS }}
+          echo "OPENMLDB_PREFIX=openmldb-$VERSION" >> $GITHUB_ENV
 
-      - name: upload artifacts
-        if: ${{ github.event_name == 'push' }}
-        uses: actions/upload-artifact@v2
-        with:
-          path: openmldb-*.tar.gz
-          name: release-artifacts
+      - name: configure
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
+
+      - name: build
+        run: |
+          make build
+          # GitHub runner disk space is limited
+          # delete thirdparty build directory($ROOT/.deps/) to save disk space
+          # make thirdpartybuild-clean
 
       - name: run cpp
         run: |
@@ -68,8 +63,24 @@ jobs:
           path: |
             reports/*.xml
 
+      - name: install
+        run: |
+          make install
+
+      - name: package
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
+
+      - name: upload artifacts
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/upload-artifact@v2
+        with:
+          path: openmldb-*.tar.gz
+          name: release-artifacts
+
   sql_mode_sdk_test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.0
     strategy:
@@ -80,10 +91,11 @@ jobs:
           - sql_sdk_test
           - sql_cluster_test
     env:
-      OPENMLDB_BUILD_TARGE: ${{ matrix.test_target }}
+      OPENMLDB_BUILD_TARGET: ${{ matrix.test_target }}
       TEST_TARGET: ${{ matrix.test_target }}
       TESTING_ENABLE: ON
       TEST_LEVEL: 0
+      NPROC: 4
     steps:
       - uses: actions/checkout@v2
 

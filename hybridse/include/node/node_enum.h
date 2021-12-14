@@ -89,6 +89,7 @@ enum SqlNodeType {
     kLoadDataStmt,
     kDeployStmt,
     kSetStmt,
+    kDeleteStmt,
     kUnknow = -1
 };
 
@@ -127,6 +128,7 @@ enum ExprType {
     kExprGetField,
     kExprCond,
     kExprIn,
+    kExprEscaped,
     kExprUnknow = -1
 };
 // typedef hybridse::type::Type DataType;
@@ -187,6 +189,7 @@ enum FnOperator {
     kFnOpDot,         // "."
     kFnOpAt,          // "[]"
     kFnOpLike,        // "LIKE"
+    kFnOpILike,        // "ILIKE"
     kFnOpIn,          // "IN"
     kFnOpBracket,     // "()"
     kFnOpIsNull,      // "is_null"
@@ -246,6 +249,9 @@ enum CmdType {
     kCmdShowDeployment,
     kCmdShowDeployments,
     kCmdDropDeployment,
+    kCmdShowJobs,
+    kCmdShowJob,
+    kCmdStopJob,
     kCmdUnknown = -1
 };
 enum ExplainType {
@@ -279,6 +285,7 @@ enum PlanType {
     kPlanTypeLoadData,
     kPlanTypeDeploy,
     kPlanTypeSet,
+    kPlanTypeDelete,
     kUnknowPlan = -1,
 };
 

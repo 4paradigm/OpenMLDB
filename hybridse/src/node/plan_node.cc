@@ -225,6 +225,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeCreateSp";
         case kPlanTypeSet:
             return "kPlanTypeSet";
+        case kPlanTypeDelete:
+            return "kPlanTypeDelete";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -738,5 +740,20 @@ void SetPlanNode::Print(std::ostream &output, const std::string &org_tab) const 
     output << "\n";
     PrintSqlNode(output, tab, Value(), "value", true);
 }
+
+bool DeletePlanNode::Equals(const PlanNode *that) const {
+    return LeafPlanNode::Equals(that) && type_ == that->type_ &&
+           GetTarget() == dynamic_cast<const DeletePlanNode *>(that)->GetTarget() &&
+           GetJobId() == dynamic_cast<const DeletePlanNode *>(that)->GetJobId();
+}
+void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
+    PlanNode::Print(output, tab);
+    const std::string next_tab = tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, next_tab, DeleteTargetString(target_), "target", false);
+    output << "\n";
+    PrintValue(output, next_tab, GetJobId(), "job_id", true);
+}
+
 }  // namespace node
 }  // namespace hybridse
