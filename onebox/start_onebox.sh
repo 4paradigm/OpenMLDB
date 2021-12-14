@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright 2021 4Paradigm
 #
@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#
+set -e
+
 ulimit -c unlimited
 # start_onebox.sh
 

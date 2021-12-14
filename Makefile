@@ -81,11 +81,13 @@ TEST_LEVEL ?=
 all: build
 
 # TODO: better note about start zookeeper and onebox
-coverage:
-	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug HYBRIDSE_TESTING_ENABLE=ON EXAMPLES_ENABLE=ON SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) -- -j$(NPROC)
+# some of the tests require zookeeper and openmldb server started before: checkout .github/workflows/coverage.yml
+coverage: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 	cd java && mvn prepare-package
+
+coverage-configure:
+	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
 
 OPENMLDB_BUILD_DIR ?= $(MAKEFILE_DIR)/build
 
@@ -96,7 +98,7 @@ install: build
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target install -- -j$(NPROC)
 
 test:
-	$(MAKE) build TESTING_ENABLE=ON OPENMLDB_BUILD_TARGE=$(TEST_TARGET)
+	$(MAKE) build TESTING_ENABLE=ON OPENMLDB_BUILD_TARGET=$(TEST_TARGET)
 	bash steps/ut.sh $(TEST_TARGET) $(TEST_LEVEL)
 
 configure: thirdparty

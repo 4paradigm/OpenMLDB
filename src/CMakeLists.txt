@@ -63,6 +63,7 @@ function(compile_test DIR)
             endif()
         endif()
     endforeach()
+    set(test_list ${test_list} PARENT_SCOPE)
 endfunction(compile_test)
 
 compile_proto(type ${PROJECT_SOURCE_DIR})
@@ -129,3 +130,5 @@ install(
 )
 
 add_subdirectory(sdk)
+
+set(test_list ${test_list} PARENT_SCOPE)

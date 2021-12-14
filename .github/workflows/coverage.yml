@@ -26,17 +26,27 @@ jobs:
         run: |
           make thirdparty
 
-      - name: start zookeeper
+      - name: coverage configure
+        run: |
+          make coverage-configure
+
+      - name: build openmldb
+        # build openmldb which is required by 'start service'
+        # cmake configure is cached, so it will not override coverage configure
+        run: |
+          make build OPENMLDB_BUILD_TARGET=openmldb
+
+      - name: start service
         run: |
           sh steps/ut_zookeeper.sh start
           cd onebox
-          sh start_onebox.sh
+          bash start_onebox.sh
 
       - name: Build and Coverage
         run: |
           make coverage
 
-      - name: stop zookeeper
+      - name: stop service
         run: |
           ./onebox/stop_all.sh
           sh steps/ut_zookeeper.sh stop
@@ -44,7 +54,7 @@ jobs:
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v2
         with:
-          files: build/coverage.info,java/hybridse-sdk/target/site/jacoco/jacoco.xml
+          files: build/coverage.info,java/**/target/site/jacoco/jacoco.xml
           name: coverage
           fail_ci_if_error: true
           verbose: true

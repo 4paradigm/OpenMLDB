@@ -19,6 +19,8 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
+
 project(openmldb)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
@@ -99,13 +101,16 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
-if (COVERAGE_ENABLE)
-    if (CMAKE_COMPILER_IS_GNUCXX)
-        find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
-        include(CodeCoverage)
-        APPEND_COVERAGE_COMPILER_FLAGS()
-    endif ()
+
+if (TESTING_ENABLE)
+    enable_testing()
+endif ()
+
+set(test_list "")
+if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
+  find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
+  include(CodeCoverage)
+  APPEND_COVERAGE_COMPILER_FLAGS()
 endif ()
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
@@ -184,10 +189,6 @@ if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 
-if(POLICY CMP0086)
-  cmake_policy(SET CMP0086 NEW)
-endif()
-
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")
@@ -201,12 +202,13 @@ link_directories(${CMAKE_PREFIX_PATH}/lib ${CMAKE_PREFIX_PATH}/lib64)
 
 add_subdirectory(src)
 
-if (COVERAGE_ENABLE)
-    if (CMAKE_COMPILER_IS_GNUCXX)
-        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
-                EXECUTABLE ctest -j ${n_cores}
-                DEPENDENCIES ${test_list})
-    endif ()
+if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
+  message(STATUS "final test_list: ${test_list}")
+  list(LENGTH test_list test_list_len)
+  message(STATUS "test_list size: ${test_list_len}")
+  SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
+    EXECUTABLE ctest -j ${n_cores}
+    DEPENDENCIES ${test_list})
 endif ()
 
 

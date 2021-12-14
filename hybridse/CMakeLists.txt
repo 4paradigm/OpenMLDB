@@ -219,8 +219,14 @@ if (JAVASDK_ENABLE)
     # Find maven
     find_program(MAVEN_EXECUTABLE mvn)
 endif ()
+
 add_subdirectory(src)
 #TODO add flag
 if (EXAMPLES_ENABLE)
     add_subdirectory(examples)
 endif ()
+
+if (CMAKE_PROJECT_NAME STREQUAL "openmldb")
+  # propagate test_list to upper scope
+  set(test_list ${test_list} PARENT_SCOPE)
+endif()
