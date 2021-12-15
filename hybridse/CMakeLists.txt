@@ -219,7 +219,7 @@ if (PYSDK_ENABLE)
 endif ()
 # Find java
 
-if (JAVASDK_ENABLE)
+if (JAVASDK_ENABLE OR SQL_JAVASDK_ENABLE)
     find_package(Java COMPONENTS Development REQUIRED)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
 

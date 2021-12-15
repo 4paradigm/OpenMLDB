@@ -52,6 +52,12 @@ const time_t TZ_OFFSET = TZ * 3600000;
 const int MAX_ALLOC_SIZE = 2048;
 bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
+int32_t dayofyear(int64_t ts) {
+    time_t time = (ts + TZ_OFFSET) / 1000;
+    struct tm t;
+    gmtime_r(&time, &t);
+    return t.tm_yday + 1;
+}
 int32_t dayofmonth(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
@@ -88,6 +94,24 @@ int32_t year(int64_t ts) {
     return t.tm_year + 1900;
 }
 
+int32_t dayofyear(codec::Timestamp *ts) { return dayofyear(ts->ts_); }
+int32_t dayofyear(codec::Date *date) {
+    int32_t day, month, year;
+    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+        return 0;
+    }
+    try {
+        if (month <= 0 || month > 12) {
+            return 0;
+        } else if (day <= 0 || day > 31) {
+            return 0;
+        }
+        boost::gregorian::date d(year, month, day);
+        return d.day_of_year();
+    } catch (...) {
+        return 0;
+    }
+}
 int32_t dayofmonth(codec::Timestamp *ts) { return dayofmonth(ts->ts_); }
 int32_t weekofyear(codec::Timestamp *ts) { return weekofyear(ts->ts_); }
 int32_t month(codec::Timestamp *ts) { return month(ts->ts_); }

@@ -89,6 +89,10 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "show jobs";
         case kCmdStopJob:
             return "stop job";
+        case kCmdShowGlobalVariables:
+            return "show global variables";
+        case kCmdShowSessionVariables:
+            return "show session variables";
         case kCmdUnknown:
             return "unknown cmd type";
     }
@@ -389,6 +393,17 @@ inline const std::string TypeName(type::Type type) {
     return "unknown";
 }
 
+inline const std::string VariableScopeName(const node::VariableScope scope) {
+    switch (scope) {
+        case kGlobalSystemVariable: {
+            return "GlobalSystemVariable";
+        }
+        case kSessionSystemVariable: {
+            return "SessionSystemVariable";
+        }
+    }
+    return "unknow";
+}
 /**
  * Convert string to corresponding DataType. e.g. "i32" => kInt32
  *
@@ -2120,16 +2135,18 @@ class LoadDataNode : public SqlNode {
 
 class SetNode : public SqlNode {
  public:
-    explicit SetNode(const std::string& key, const ConstNode* value)
-        : SqlNode(kSetStmt, 0, 0), key_(key), value_(value) {}
+    explicit SetNode(const node::VariableScope scope, const std::string& key, const ConstNode* value)
+        : SqlNode(kSetStmt, 0, 0), scope_(scope), key_(key), value_(value) {}
     ~SetNode() {}
 
+    const node::VariableScope Scope() const { return scope_; }
     const std::string& Key() const { return key_; }
     const ConstNode* Value() const { return value_; }
 
     void Print(std::ostream& output, const std::string& org_tab) const override;
 
  private:
+    const node::VariableScope scope_;
     const std::string key_;
     const ConstNode* value_;
 };

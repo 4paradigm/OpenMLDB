@@ -50,8 +50,11 @@ target_link_libraries(hybridse_pysdk ${SDK_DEPS_LIBS})
 set_property(SOURCE hybridse_interface_core.i PROPERTY SWIG_FLAGS ${CUR_SWIG_FLAGS})
 endif()
 
-if(JAVASDK_ENABLE)
+set(sdk_core_deps_libs
+		hybridse_core hybridse_flags ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${COMMON_LIBS} )
 set_property(SOURCE hybridse_interface_core.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
+
+if(JAVASDK_ENABLE)
 swig_add_library(hybridse_jsdk_core
         TYPE SHARED
         LANGUAGE java
@@ -59,14 +62,24 @@ swig_add_library(hybridse_jsdk_core
         SOURCES hybridse_interface_core.i)
 target_include_directories(hybridse_jsdk_core PRIVATE ${JNI_INCLUDE_DIRS})
 target_compile_options(hybridse_jsdk_core PRIVATE -w)
-set(sdk_core_deps_libs
-	hybridse_core hybridse_flags ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${COMMON_LIBS} )
 target_link_libraries(hybridse_jsdk_core PRIVATE glog ${sdk_core_deps_libs})
 
 if(APPLE)
 	set_target_properties(hybridse_jsdk_core PROPERTIES
            SUFFIX ".dylib")
 endif()
+endif()
+
+if(SQL_JAVASDK_ENABLE)
+swig_add_library(hybridse_jsdk_core_static
+		TYPE STATIC
+		LANGUAGE java
+		OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/hybridse-native/src/main/java/com/_4paradigm/
+		SOURCES hybridse_interface_core.i)
+target_include_directories(hybridse_jsdk_core_static PRIVATE ${JNI_INCLUDE_DIRS})
+target_compile_options(hybridse_jsdk_core_static PRIVATE -w)
+target_link_libraries(hybridse_jsdk_core_static PRIVATE glog ${sdk_core_deps_libs})
+
 endif()
 
 if(PYSDK_ENABLE)
