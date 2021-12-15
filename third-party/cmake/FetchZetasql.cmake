@@ -13,15 +13,15 @@
 # limitations under the License.
 
 set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
-set(ZETASQL_VERSION 0.2.4)
-set(ZETASQL_TAG b28a6ef150e081407c992812b3d6b839b9005ccd)
+set(ZETASQL_VERSION 0.2.5)
+set(ZETASQL_TAG 8dde6d0b1e80b9c5121e9041365abb873adf77d8)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64.tar.gz")
-  set(ZETASQL_HASH 2d9458cb5051b0f63dc032a2e8a87390eae80dbcab54b8897ce15b25d1c7b913)
+  set(ZETASQL_HASH 7f5f0894436d4746aae9a59e6b248eb69d1d86387f06bec248dd52b7f76c84ad)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz")
-  set(ZETASQL_HASH cc7cd49aecf731b5e56916ef2926b54505bfdec0641f36d5ad849d80d5b9a31e)
+  set(ZETASQL_HASH 194f9c04a4c4074d16a5eda1c1276a203e798d40cfc5824cbb7cd9f0033dccb1)
 endif()
 
 
