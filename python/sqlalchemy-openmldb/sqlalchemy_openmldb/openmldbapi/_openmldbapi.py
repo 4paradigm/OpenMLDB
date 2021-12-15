@@ -17,10 +17,13 @@
 import logging
 from . import driver
 import re
+import exceptions
 
-apilevel = '2.0'
-paramstyle = 'qmark'
-threadsafety = 3
+# Globals
+apilevel = '2.0'  # String constant stating the supported DB API level.
+paramstyle = 'qmark'  # String constant stating the type of parameter marker formatting expected by the interface.
+threadsafety = 3  # Threads may share the module, connections and cursors.
+
 
 class Type(object):
     Bool = driver.sql_router_sdk.kTypeBool
@@ -32,6 +35,7 @@ class Type(object):
     Date = driver.sql_router_sdk.kTypeDate
     String = driver.sql_router_sdk.kTypeString
     Timestamp = driver.sql_router_sdk.kTypeTimestamp
+
 
 fetype_to_py = {
     driver.sql_router_sdk.kTypeBool: Type.Bool,
@@ -54,8 +58,7 @@ dropTable = re.compile("^drop\s+table", re.I)
 dropProduce = re.compile("^drop\s+procedure", re.I)
 
 
-
-class Error(Exception):
+class Error(exceptions.StandardError):
 
     def __init__(self, message):
         self.message = message
@@ -66,50 +69,65 @@ class Error(Exception):
     def msg(self):
         return self.message
 
-class Warning(Exception):
+
+class Warning(exceptions.StandardError):
 
     def __init__(self, message):
         self.message = message
+
 
 class InterfaceError(Error):
 
     def __init__(self, message):
         self.message = message
 
+
 class DatabaseError(Error):
 
     def __init__(self, message):
         self.message = message
+
 
 class DataError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
 
+
 class OperationalError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
+
 
 class IntegrityError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
 
+
 class InternalError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
+
 
 class ProgrammingError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
 
+
 class NotSupportedError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
+
+
+"""
+Two extensions: CursorClosedException & ConnectionClosedException
+"""
+
 
 class CursorClosedException(Error):
 
@@ -118,6 +136,8 @@ class CursorClosedException(Error):
 
     def __str__(self):
         return repr(self.message)
+
+
 class ConnectionClosedException(Error):
 
     def __init__(self, message):
@@ -125,12 +145,18 @@ class ConnectionClosedException(Error):
 
     def __str__(self):
         return repr(self.message)
+
+
 class Cursor(object):
 
     def __init__(self, db, zk, zkPath, conn):
 
-        self.arraysize = 1
+        # standard Cursor attributes
         self.description = None
+        self.rowcount = -1
+
+        # extensions
+        self.arraysize = 1
         self.connection = conn
         self.db = db
         self.zk = zk
@@ -139,7 +165,7 @@ class Cursor(object):
         self._resultSet = None
         self._resultSetMetadata = None
         self._resultSetStatus = None
-        self.rowcount = -1
+
         self._resultSet = None
 
     def connected(func):
@@ -150,6 +176,7 @@ class Cursor(object):
                 raise ConnectionClosedException("Connection object is closed")
             else:
                 return func(self, *args, **kwargs)
+
         return func_wrapper
 
     @connected
@@ -164,15 +191,15 @@ class Cursor(object):
         self._resultSet = rs
         self.__schema = rs.GetSchema()
         self.__getMap = {
-          driver.sql_router_sdk.kTypeBool: self._resultSet.GetBoolUnsafe,
-          driver.sql_router_sdk.kTypeInt16: self._resultSet.GetInt16Unsafe,
-          driver.sql_router_sdk.kTypeInt32: self._resultSet.GetInt32Unsafe,
-          driver.sql_router_sdk.kTypeInt64: self._resultSet.GetInt64Unsafe,
-          driver.sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
-          driver.sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
-          driver.sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
-          driver.sql_router_sdk.kTypeDate: self._resultSet.GetAsStringUnsafe,
-          driver.sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
+            driver.sql_router_sdk.kTypeBool: self._resultSet.GetBoolUnsafe,
+            driver.sql_router_sdk.kTypeInt16: self._resultSet.GetInt16Unsafe,
+            driver.sql_router_sdk.kTypeInt32: self._resultSet.GetInt32Unsafe,
+            driver.sql_router_sdk.kTypeInt64: self._resultSet.GetInt64Unsafe,
+            driver.sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
+            driver.sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
+            driver.sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
+            driver.sql_router_sdk.kTypeDate: self._resultSet.GetAsStringUnsafe,
+            driver.sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
         }
         self.description = [
             (
@@ -195,16 +222,6 @@ class Cursor(object):
             raise DatabaseError("execute select fail")
         self._pre_process_result(rs)
         return self
-
-
-    @connected
-    def getdesc(self):
-        return "openmldb cursor"
-
-    def checkCmd(cmd: str) -> bool:
-        if cmd.find("select cast") == 0:
-            return False
-        return True
 
     def execute(self, operation, parameters=()):
         command = operation.strip(' \t\n\r') if operation else None
@@ -261,9 +278,10 @@ class Cursor(object):
                     driver.sql_router_sdk.kTypeDouble: builder.AppendDouble,
                     driver.sql_router_sdk.kTypeString: builder.AppendString,
                     # TODO: align python and java date process, 1900 problem
-                    driver.sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and builder.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+                    driver.sql_router_sdk.kTypeDate: lambda x: len(x.split("-")) == 3 and builder.AppendDate(
+                        int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
                     driver.sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
-                    }
+                }
                 for i in range(len(holdIdxs)):
                     idx = holdIdxs[i]
                     name = schema.GetColumnName(idx)
@@ -310,19 +328,6 @@ class Cursor(object):
     def executemany(self, operation, parameters=()):
         pass
 
-    @staticmethod
-    def substitute_in_query(string_query, parameters):
-        query = string_query
-        return query
-
-    @staticmethod
-    def parse_column_types(metadata):
-        names = []
-        types = []
-        for row in metadata:
-            names.append(row["column"])
-            types.append(row["row"].lower())
-
     def fetchone(self):
         if self._resultSet is None: return "call fetchone"
         ok = self._resultSet.Next()
@@ -352,10 +357,32 @@ class Cursor(object):
 
     def setoutputsize(self, size, columns=()):
         pass
-        
+
     @connected
     def fetchall(self):
         pass
+
+    @staticmethod
+    def substitute_in_query(string_query, parameters):
+        query = string_query
+        return query
+
+    @staticmethod
+    def parse_column_types(metadata):
+        names = []
+        types = []
+        for row in metadata:
+            names.append(row["column"])
+            types.append(row["row"].lower())
+
+    @connected
+    def getdesc(self):
+        return "openmldb cursor"
+
+    def checkCmd(cmd: str) -> bool:
+        if cmd.find("select cast") == 0:
+            return False
+        return True
 
     @connected
     def get_query_metadata(self):
@@ -374,8 +401,8 @@ class Cursor(object):
         self._pre_process_result(rs)
         return self
 
-    def executeRequest(self, sql, parameter): 
-        command = sql.strip(' \t\n\r') 
+    def executeRequest(self, sql, parameter):
+        command = sql.strip(' \t\n\r')
         if selectRE.match(command) == False:
             raise Exception("Invalid opertion for request")
 
@@ -385,7 +412,11 @@ class Cursor(object):
         self._pre_process_result(rs)
         return self
 
+
 class Connection(object):
+    """
+    Extensions
+    """
 
     def __init__(self, db, zk, zkPath):
         self._connected = True
@@ -408,15 +439,8 @@ class Connection(object):
 
         return func_wrapper
 
-
     def execute(self):
         pass
-
-    def close(self):
-        pass
-
-    def cursor(self):
-        return Cursor(self._db, self._zk, self._zkPath, self)
 
     @connected
     def _cursor_execute(self, cursor, statement, parameters):
@@ -426,6 +450,10 @@ class Connection(object):
     def do_rollback(self, dbapi_connection):
         pass
 
+    """
+    Standard
+    """
+
     @connected
     def rollback(self):
         pass
@@ -433,10 +461,23 @@ class Connection(object):
     def commit(self):
         """
         openmldb doesn't suppport transactions
-        
+
         So just do nothing to support this method
         """
         pass
+
+    def close(self):
+        pass
+
+    def cursor(self):
+        return Cursor(self._db, self._zk, self._zkPath, self)
+
+
+# Constructors
+"""
+Access to the database is made available through connection objects.
+"""
+
 
 def connect(db, zk, zkPath):
     return Connection(db, zk, zkPath)
