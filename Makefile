@@ -83,7 +83,6 @@ all: build
 # TODO: better note about start zookeeper and onebox
 # some of the tests require zookeeper and openmldb server started before: checkout .github/workflows/coverage.yml
 coverage: coverage-configure
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) -- -j$(NPROC)
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 	cd java && mvn --batch-mode prepare-package
 
