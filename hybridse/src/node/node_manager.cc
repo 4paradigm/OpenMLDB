@@ -787,13 +787,13 @@ SelectIntoPlanNode* NodeManager::MakeSelectIntoPlanNode(const QueryNode* query, 
     return RegisterNode(node);
 }
 
-SetNode* NodeManager::MakeSetNode(const std::string &key, const ConstNode *value) {
-    SetNode* node = new SetNode(key, value);
+SetNode* NodeManager::MakeSetNode(const node::VariableScope scope, const std::string &key, const
+                                                      ConstNode *value) {
+    SetNode* node = new SetNode(scope, key, value);
     return RegisterNode(node);
 }
-
 SetPlanNode* NodeManager::MakeSetPlanNode(const SetNode *set_node) {
-    SetPlanNode* node = new SetPlanNode(set_node->Key(), set_node->Value());
+    SetPlanNode* node = new SetPlanNode(set_node->Scope(), set_node->Key(), set_node->Value());
     return RegisterNode(node);
 }
 
