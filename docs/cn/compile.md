@@ -59,19 +59,19 @@ make NPROC=4
 - apache maven 3.3.9 或者更新版本
 - 如果需要从源码编译 thirdparty, 查看 [third-party's requirement](../../third-party/README.md) 里的额外要求
 
-## 编译 OpenMLDB
+## 编译和安装 OpenMLDB
 
 成功编译 OpenMLDB 要求依赖的第三方库预先安装在系统中。因此添加了一个 `Makefile`, 将第三方依赖自动安装和随后执行 CMake 编译浓缩到一行 `make` 命令中。`make` 提供了三种编译方式，对第三方依赖进行不同的管理方式：
 
-- **方式一：docker 容器内编译和使用：** 使用 [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker 镜像进行编译和使用，第三方依赖已经包括在镜像中所以不需要额外的操作，操作步骤参照上面的 [快速开始](#快速开始) 章节。第三方库在 hybridsql 镜像中安装在 `/deps/usr` 目录下。
-- **方式二：自动下载预编译库：** 编译脚本自动从 [hybridsql](https://github.com/4paradigm/hybridsql-asserts/releases) 下载必须的预编译好的三方库。这是编译的默认行为，目前提供 CentOS7, Ubuntu 20.04 和 macOS 的预编译包，编译安装命令为：`make && make install` 。第三方库安装在 `${PROJECT_ROOT}/.deps/usr` 。
+- **方式一：docker 容器内编译和使用：** 使用 [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker 镜像进行编译和使用，第三方依赖已经包括在镜像中所以不需要额外的操作，操作步骤参照上面的 [快速开始](#快速开始) 章节。
+- **方式二：自动下载预编译库：** 编译脚本自动从 [hybridsql](https://github.com/4paradigm/hybridsql-asserts/releases) 下载必须的预编译好的三方库。这是编译的默认行为，目前提供 CentOS 7, Ubuntu 20.04 和 macOS 的预编译包，编译安装命令为：`make && make install` 。
 - **方式三：完整源代码编译：** 如果操作系统不在支持的系统列表中(CentOS 7, Ubuntu 20.04, macOS)，从源码编译是推荐的方式。注意首次编译三方库可能需要更多的时间，在一台2核7G内存机器大约需要一个小时。从源码编译安装第三方库, 传入 `BUILD_BUNDLED=ON`:
    ```bash
    make BUILD_BUNDLED=ON
    make install
    ```
-   编译成功后，第三方库安装在 `${PROJECT_ROOT}/.deps/usr` 。
 
+以上 OpenMLDB 安装成功的默认目录放在 `${PROJECT_ROOT}/openmldb`，可以通过修改参数 `CMAKE_INSTALL_PREFIX` 更改安装目录（详见下面章节 “`make` 额外参数”）。
 
 ## `make` 额外参数
 
