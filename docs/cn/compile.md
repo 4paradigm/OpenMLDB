@@ -5,7 +5,7 @@
 
 [quick-start]: quick-start
 
-此节介绍在官方编译镜像 [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) 中编译 OpenMLDB。镜像内置了编译所需要的工具和依赖，因此不需要额外的步骤单独配置它们。详细内容参见[编译](#build)
+此节介绍在官方编译镜像 [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) 中编译 OpenMLDB。镜像内置了编译所需要的工具和依赖，因此不需要额外的步骤单独配置它们。关于基于非 docker 的编译使用方式，请参照下面的 [编译详细说明](#编译详细说明) 章节。
 
 1. 下载 docker 镜像
     ```bash
@@ -33,8 +33,9 @@
     ```bash
     make install
     ```
+至此， 你已经完成了在 docker 容器内的编译工作，你现在可以在容器内开始使用 OpenMLDB 了。
 
-# 编译
+# 编译详细说明
 
 [build]: build
 
@@ -42,11 +43,11 @@
 
 - **内存**: 推荐 8GB+.
 - **硬盘**: 全量编译需要至少 25GB 的空闲磁盘空间
-- **操作系统**: CentOS7, Ubuntu 20.04 或者 macOS >= 10.14, 其他系统未经测试，欢迎提 issue 或 PR
+- **操作系统**: CentOS 7, Ubuntu 20.04 或者 macOS >= 10.14, 其他系统未经测试，欢迎提 issue 或 PR
 
-默认关闭了并发编译。如果你认为编译机器的资源足够，可以通过调整`NPROC`来启用并发功能。这会减少编译所需要的时间但也需要更多但内存。例如下面命令将并发编译数设置成处理器数：
+💡 注意：默认关闭了并发编译，其典型的编译时间大约在一小时左右。如果你认为编译机器的资源足够，可以通过调整编译参数 `NPROC` 来启用并发编译功能。这会减少编译所需要的时间但也需要更多但内存。例如下面命令将并发编译数设置成使用四个核进行并发编译：
 ```bash
-make NPROC=$(nproc)
+make NPROC=4
 ```
 
 ## 依赖工具
@@ -56,23 +57,21 @@ make NPROC=$(nproc)
 - jdk 8
 - python3, python setuptools, python wheel
 - apache maven 3.3.9 或者更新版本
-- 如果需要编译 thirdparty, 查看 [third-party's requirement](../../third-party/README.md) 里的额外要求
+- 如果需要从源码编译 thirdparty, 查看 [third-party's requirement](../../third-party/README.md) 里的额外要求
 
 ## 编译 OpenMLDB
 
-成功编译 OpenMLDB 要求依赖的第三方库预先安装在系统中。因此添加了一个 `Makefile`, 将第三方依赖自动安装和随后执行 CMake 编译浓缩到一行 `make` 命令中。根据操作系统和传入参数的不同，`make` 有三种管理第三方依赖的方式：
+成功编译 OpenMLDB 要求依赖的第三方库预先安装在系统中。因此添加了一个 `Makefile`, 将第三方依赖自动安装和随后执行 CMake 编译浓缩到一行 `make` 命令中。`make` 提供了三种编译方式，对第三方依赖进行不同的管理方式：
 
-1. 使用 [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker 镜像，第三方依赖已经包括在镜像中所以不需要额外的操作
-2. 从 [hybridsql](https://github.com/4paradigm/hybridsql-asserts/releases) 下载预编译好的三方库。这是在 hybridsql 镜像外编译的默认行为，目前提供 CentOS7, Ubuntu 20.04 和 macOS 的预编译包
-3. 从源码编译安装第三方库, 传入 `BUILD_BUNDLED=ON`:
+- **方式一：docker 容器内编译和使用：** 使用 [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker 镜像进行编译和使用，第三方依赖已经包括在镜像中所以不需要额外的操作，操作步骤参照上面的 [快速开始](#快速开始) 章节。第三方库在 hybridsql 镜像中安装在 `/deps/usr` 目录下。
+- **方式二：自动下载预编译库：** 编译脚本自动从 [hybridsql](https://github.com/4paradigm/hybridsql-asserts/releases) 下载必须的预编译好的三方库。这是编译的默认行为，目前提供 CentOS7, Ubuntu 20.04 和 macOS 的预编译包，编译安装命令为：`make && make install` 。第三方库安装在 `${PROJECT_ROOT}/.deps/usr` 。
+- **方式三：完整源代码编译：** 如果操作系统不在支持的系统列表中(CentOS 7, Ubuntu 20.04, macOS)，从源码编译是推荐的方式。注意首次编译三方库可能需要更多的时间，在一台2核7G内存机器大约需要一个小时。从源码编译安装第三方库, 传入 `BUILD_BUNDLED=ON`:
    ```bash
    make BUILD_BUNDLED=ON
+   make install
    ```
-    如果编译系统不在支持的系统列表中(CentOS 7, Ubuntu 20.04, macOS),从源码编译是推荐的方式。注意首次编译三方库可能需要更多的时间，在一台2核7G内存机器大约需要一个小时
+   编译成功后，第三方库安装在 `${PROJECT_ROOT}/.deps/usr` 。
 
-第三方库在 hybridsql 镜像中安装在 `/deps/usr` 目录下，上述2、3方式默认安装到 `${PROJECT_ROOT}/.deps/usr`。
-
-编译命令和 [快速开始](#quick-start) 的描述相同
 
 ## `make` 额外参数
 
