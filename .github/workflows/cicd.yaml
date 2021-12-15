@@ -22,7 +22,7 @@ jobs:
       SQL_PYSDK_ENABLE: OFF
       SQL_JAVASDK_ENABLE: OFF
       TESTING_ENABLE: ON
-      NPROC: 4
+      NPROC: 8
     steps:
       - uses: actions/checkout@v2
 
