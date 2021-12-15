@@ -71,9 +71,11 @@ make NPROC=4
    make install
    ```
 
-以上 OpenMLDB 安装成功的默认目录放在 `${PROJECT_ROOT}/openmldb`，可以通过修改参数 `CMAKE_INSTALL_PREFIX` 更改安装目录（详见下面章节 “`make` 额外参数”）。
+以上 OpenMLDB 安装成功的默认目录放在 `${PROJECT_ROOT}/openmldb`，可以通过修改参数 `CMAKE_INSTALL_PREFIX` 更改安装目录（详见下面章节 [`make` 额外参数](#make-opts)）。
 
 ## `make` 额外参数
+
+[make-opts]: make-opts
 
 控制 `make` 的行为. 例如，将默认编译模式改成 Debug:
 

@@ -1,11 +1,12 @@
-# Build & Install
+Build OpenMLDB
+================
 
 # Quick start
 
 [quick-start]: quick-start
 
 This section describe the necessary steps to compile OpenMLDB inside the official docker image [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql).
-The docker image bundled required tools and dependencies so there is no need to setup them separately. For more information refer [Build](#build).
+The docker image bundled required tools and dependencies so there is no need to setup them separately. To compile without the official docker image, refer the [Detailed instructions for build](#build) section bellow.
 
 1. Pull the docker image
 
@@ -39,7 +40,9 @@ The docker image bundled required tools and dependencies so there is no need to 
    make install
    ```
 
-# Build
+Now you've accomplished the compilation job, and you may try run OpenMLDB inside the docker container.
+
+# Detailed instructions for build
 
 [build]: build
 
@@ -47,12 +50,12 @@ The docker image bundled required tools and dependencies so there is no need to 
 
 - **Memory**: 8GB+ recommended.
 - **Disk Space**: >=25GB of free disk space for full compilation.
-- **Operating System**: CentOS7, Ubuntu 20.04 or macOS >= 10.14, other system is not well tested but issue/PR welcome
+- **Operating System**: CentOS 7, Ubuntu 20.04 or macOS >= 10.14, other system is not well tested but issue/PR welcome
 
-By default parallel build is not enabled in order to avoid system freezing. You can enable parallel build by tweaking the `NPROC` option
-if your machine's resource is enough. This will decrease compile time but also require more memory. E.g. following command set parallel build number to the number of process unit:
+💡 Note: by default parallel build is not enabled, and it usually takes an hour to finish the compile job. You can enable parallel build by tweaking the `NPROC` option
+if you think your machine's resource is enough. This will decrease compile time but also require more memory. E.g. following command set parallel build number to 4, which will run parallelly with four cores:
 ```bash
-make NPROC=$(nproc)
+make NPROC=4
 ```
 
 ## Prerequisites
@@ -66,22 +69,20 @@ Make sure those tools are installed
 - apache maven 3.3.9 or later
 - if you'd like compile thirdparty from source, checkout [third-party's requirement](../../third-party/README.md) for extra dependencies
 
-## Build OpenMLDB
+## Build and install OpenMLDB
 
 OpenMLDB require some thirdparty dependencies installed first in order to build successfully. Hence a Makefile is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`.
-`make` has three ways to manage thirdparty, based on different operation system and options passed in:
+`make` offers three methods to compile, each manage thirdparty differently:
 
-1. using [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker image: thirdparty already bundled inside image and no extra steps may take
-2. download pre-compiled thirdparty from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases). This is the default behavior when run `make` command outside a hybridsql container, currently support CentOS 7, Ubuntu 20.04 and macOS
-3. compile thirdparty from source, by given the `BUILD_BUNDLED=ON` option to `make`:
+- **Method one: build and run inside docker:** using [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker image, thirdparty already bundled inside image and no extra steps may take, refer above section [Quick Start](#quick-start)
+- **Method two: download pre-compiled thirdparty:** it download necessary archive from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases). This is the default behavior when build outside a hybridsql container, currently support CentOS 7, Ubuntu 20.04 and macOS. The commands to build and install is `make && make install`
+- **Method three: compile thirdparty from source:** this is the advised way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note compile thirdparty at the first time may take extra time to finish, approximately 1 hour on a 2 core & 7GB machine. To compile thirdparty from source, pass `BUILD_BUNDLED=ON` to `make`:
    ```bash
    make BUILD_BUNDLED=ON
+   make install
    ```
-   This is the advised way if the host system is not in our supported list: CentOS 7, Ubuntu 20.04 and macOS. Be note compile thirdparty at the first time may take extra time to finish, approximately 1 hour on a 2 core & 7GB machine
 
-Thirdparty is installed into `/deps/usr` in hybridsql docker, and `${PROJECT_ROOT}/.deps/usr` by default for method 2 and 3 above.
-
-Build commands are same as [Quick start](#quick-start) described.
+All of the three methods above will install into `${PROJECT_ROOT}/openmldb` by default, you may tweak the installation directory with the option `CMAKE_INSTALL_PREFIX` (refer the following section [Extra options for `make`](#make-opts)).
 
 ## Extra Options for `make`
 
