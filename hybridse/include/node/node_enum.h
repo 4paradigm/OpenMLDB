@@ -252,6 +252,8 @@ enum CmdType {
     kCmdShowJobs,
     kCmdShowJob,
     kCmdStopJob,
+    kCmdShowGlobalVariables,
+    kCmdShowSessionVariables,
     kCmdUnknown = -1
 };
 enum ExplainType {
@@ -291,6 +293,11 @@ enum PlanType {
 enum TTLType {
     kAbsolute,
     kLatest,
+};
+
+enum VariableScope {
+    kGlobalSystemVariable,
+    kSessionSystemVariable,
 };
 
 // batch plan node type

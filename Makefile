@@ -14,7 +14,8 @@
 
 MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR  := $(dir $(MAKEFILE_PATH))
-NPROC ?= $(shell (nproc))
+# Disable parallel build, or system freezing may happen: #882
+NPROC ?= 1
 
 CMAKE_PRG ?= $(shell (command -v cmake3 || echo cmake))
 CMAKE_BUILD_TYPE ?= RelWithDebInfo
@@ -71,6 +72,13 @@ endif
 # Extra cmake flags for third-party
 THIRD_PARTY_CMAKE_FLAGS ?=
 
+ifdef BUILD_BUNDLED
+    THIRD_PARTY_CMAKE_FLAGS += -DBUILD_BUNDLED=$(BUILD_BUNDLED)
+endif
+ifdef BUILD_ZOOKEEPER_PATCH
+    THIRD_PARTY_CMAKE_FLAGS += -DBUILD_ZOOKEEPER_PATCH=$(BUILD_ZOOKEEPER_PATCH)
+endif
+
 TEST_TARGET ?=
 TEST_LEVEL ?=
 
@@ -95,7 +103,12 @@ test:
 
 # disable building hybridse tests for faster compilation
 HYBRIDSE_CMAKE_DEPS_FLAGS := -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=OFF
-configure: thirdparty
+
+# trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr, will skip make thirdparty
+configure:
+	if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
+	    $(MAKE) thirdparty; \
+	fi
 	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(HYBRIDSE_CMAKE_DEPS_FLAGS) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 openmldb-clean:
@@ -103,7 +116,7 @@ openmldb-clean:
 
 THIRD_PARTY_BUILD_DIR ?= $(MAKEFILE_DIR)/.deps
 THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
-THIRD_PARTY_DIR := $(THIRD_PARTY_BUILD_DIR)/usr
+THIRD_PARTY_DIR ?= $(THIRD_PARTY_BUILD_DIR)/usr
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
 thirdparty: thirdparty-configure

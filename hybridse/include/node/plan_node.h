@@ -535,16 +535,18 @@ class LoadDataPlanNode : public LeafPlanNode {
 
 class SetPlanNode : public LeafPlanNode {
  public:
-    explicit SetPlanNode(const std::string& key, const ConstNode* value)
-        : LeafPlanNode(kPlanTypeSet), key_(key), value_(value) {}
+    explicit SetPlanNode(const node::VariableScope scope, const std::string& key, const ConstNode* value)
+        : LeafPlanNode(kPlanTypeSet), scope_(scope), key_(key), value_(value) {}
     ~SetPlanNode() {}
 
+    const node::VariableScope Scope() const { return scope_; }
     const std::string& Key() const { return key_; }
     const ConstNode* Value() const { return value_; }
 
     void Print(std::ostream& output, const std::string& org_tab) const override;
 
  private:
+    const node::VariableScope scope_;
     const std::string key_;
     const ConstNode* value_;
 };

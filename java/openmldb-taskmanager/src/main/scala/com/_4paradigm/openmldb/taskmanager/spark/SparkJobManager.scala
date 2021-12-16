@@ -70,6 +70,12 @@ object SparkJobManager {
       launcher.addAppArgs(args:_*)
     }
 
+    // Set ZooKeeper config for openmldb-batch jobs
+    if (TaskManagerConfig.ZK_CLUSTER.nonEmpty && TaskManagerConfig.ZK_ROOT_PATH.nonEmpty) {
+      launcher.setConf("spark.openmldb.zk.cluster", TaskManagerConfig.ZK_CLUSTER)
+      launcher.setConf("spark.openmldb.zk.root.path", TaskManagerConfig.ZK_ROOT_PATH)
+    }
+
     // Set ad-hoc Spark configuration
     for ((k, v) <- sparkConf) {
       launcher.setConf(k, v)

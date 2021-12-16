@@ -734,6 +734,8 @@ void SetPlanNode::Print(std::ostream &output, const std::string &org_tab) const 
     PlanNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
+    PrintValue(output, tab, node::VariableScopeName(Scope()), "scope", false);
+    output << "\n";
     PrintValue(output, tab, Key(), "key", false);
     output << "\n";
     PrintSqlNode(output, tab, Value(), "value", true);
