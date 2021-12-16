@@ -81,7 +81,8 @@ message UpdateTTLResponse {
 message OfflineTableInfo {
     required string path = 1;
     required string format = 2;
-    map<string, string> options = 3;
+    optional bool deep_copy = 3 [default = true];
+    map<string, string> options = 4;
 }
 
 message TableInfo {
