@@ -576,7 +576,6 @@ message AddIndexRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional openmldb.common.ColumnKey column_key = 3;
-    repeated openmldb.common.ColumnKey indexs = 4;
 }
 
 message SetModeRequest {
