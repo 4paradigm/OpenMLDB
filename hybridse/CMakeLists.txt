@@ -45,7 +45,6 @@ option(HYBRIDSE_TESTING_ENABLE "Enable Hybridse Test" ON)
 option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
 option(PYSDK_ENABLE "Enable pysdk" ON)
-option(JAVASDK_ENABLE "Enable javasdk" ON)
 option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
@@ -210,7 +209,7 @@ if (PYSDK_ENABLE)
 endif ()
 # Find java
 
-if (JAVASDK_ENABLE OR SQL_JAVASDK_ENABLE)
+if (SQL_JAVASDK_ENABLE)
     find_package(Java COMPONENTS Development REQUIRED)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
 
