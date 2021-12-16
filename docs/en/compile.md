@@ -1,12 +1,12 @@
 Build OpenMLDB
 ================
 
-# Quick start
+# Quick Start
 
 [quick-start]: quick-start
 
-This section describe the necessary steps to compile OpenMLDB inside the official docker image [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql).
-The docker image bundled required tools and dependencies so there is no need to setup them separately. To compile without the official docker image, refer the [Detailed instructions for build](#build) section bellow.
+This section describes the steps to compile and use OpenMLDB inside its official docker image [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql).
+The docker image has packed required tools and dependencies, so there is no need to setup them separately. To compile without the official docker image, refer to the section [Detailed Instructions for Build](#detailed-instructions-for-build) bellow.
 
 1. Pull the docker image
 
@@ -14,13 +14,13 @@ The docker image bundled required tools and dependencies so there is no need to 
     docker pull 4pdosc/hybridsql:0.4.0
    ```
 
-2. Create a docker container with hybridsql docker image
+2. Create a docker container with the hybridsql docker image
 
    ```bash
    docker run -it 4pdosc/hybridsql:0.4.0 bash
    ```
 
-3. Download source code inside docker container
+3. Download the OpenMLDB source code inside docker container
 
    ```bash
    cd ~
@@ -34,15 +34,15 @@ The docker image bundled required tools and dependencies so there is no need to 
    make
    ```
 
-5. Install OpenMLDB, will installed into `${PROJECT_ROOT}/openmldb` by default
+5. Install OpenMLDB that will be installed into `${PROJECT_ROOT}/openmldb` by default
 
    ```bash
    make install
    ```
 
-Now you've accomplished the compilation job, and you may try run OpenMLDB inside the docker container.
+Now you've finished the compilation job, and you may try run OpenMLDB inside the docker container.
 
-# Detailed instructions for build
+# Detailed Instructions for Build
 
 [build]: build
 
@@ -50,10 +50,10 @@ Now you've accomplished the compilation job, and you may try run OpenMLDB inside
 
 - **Memory**: 8GB+ recommended.
 - **Disk Space**: >=25GB of free disk space for full compilation.
-- **Operating System**: CentOS 7, Ubuntu 20.04 or macOS >= 10.14, other system is not well tested but issue/PR welcome
+- **Operating System**: CentOS 7, Ubuntu 20.04 or macOS >= 10.14, other systems are not carefully tested but issue/PR welcome
 
-💡 Note: by default parallel build is not enabled, and it usually takes an hour to finish the compile job. You can enable parallel build by tweaking the `NPROC` option
-if you think your machine's resource is enough. This will decrease compile time but also require more memory. E.g. following command set parallel build number to 4, which will run parallelly with four cores:
+💡 Note: by default parallel build is disabled, and it usually takes an hour to finish all the compile jobs. You can enable the parallel build by tweaking the `NPROC` option
+if your machine's resource is enough. This will reduce the compile time but also consume more memory, e.g., following command set the number of concurrent build jobs to 4:
 ```bash
 make NPROC=4
 ```
@@ -69,20 +69,19 @@ Make sure those tools are installed
 - apache maven 3.3.9 or later
 - if you'd like compile thirdparty from source, checkout [third-party's requirement](../../third-party/README.md) for extra dependencies
 
-## Build and install OpenMLDB
+## Build and Install OpenMLDB
 
-OpenMLDB require some thirdparty dependencies installed first in order to build successfully. Hence a Makefile is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`.
-`make` offers three methods to compile, each manage thirdparty differently:
+Building OpenMLDB requires certain thirdparty dependencies. Hence a Makefile is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`. The `make` command offers three methods to compile, each manages thirdparty differently:
 
-- **Method one: build and run inside docker:** using [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker image, thirdparty already bundled inside image and no extra steps may take, refer above section [Quick Start](#quick-start)
-- **Method two: download pre-compiled thirdparty:** it download necessary archive from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases). This is the default behavior when build outside a hybridsql container, currently support CentOS 7, Ubuntu 20.04 and macOS. The commands to build and install is `make && make install`
-- **Method three: compile thirdparty from source:** this is the advised way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note compile thirdparty at the first time may take extra time to finish, approximately 1 hour on a 2 core & 7GB machine. To compile thirdparty from source, pass `BUILD_BUNDLED=ON` to `make`:
+- **Method one: build and run inside docker:** Using [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker image, thirdparty already bundled inside image and no extra steps may take, refer to above section [Quick Start](#quick-start)
+- **Method two: download pre-compiled thirdparty:** It downloads necessary prebuild libraries from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases). This is the default behavior when building outside a hybridsql container. Currently it supports CentOS 7, Ubuntu 20.04 and macOS. The default command to build and install is `make && make install`
+- **Method three: compile thirdparty from source:** This is the suggested way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note compiling thirdparty at the first time takes extra time to finish, approximately 1 hour on a 2 core & 7 GB machine. To compile thirdparty from source, please pass `BUILD_BUNDLED=ON` to `make`:
    ```bash
    make BUILD_BUNDLED=ON
    make install
    ```
 
-All of the three methods above will install into `${PROJECT_ROOT}/openmldb` by default, you may tweak the installation directory with the option `CMAKE_INSTALL_PREFIX` (refer the following section [Extra options for `make`](#make-opts)).
+All of the three methods above will install OpenMLDB binaries into `${PROJECT_ROOT}/openmldb` by default, you may tweak the installation directory with the option `CMAKE_INSTALL_PREFIX` (refer the following section [Extra options for `make`](#make-opts)).
 
 ## Extra Options for `make`
 
@@ -118,7 +117,7 @@ make CMAKE_BUILD_TYPE=Debug
 
   Default: OFF
 
-- NPROC: parallel build number
+- NPROC: the number of parallel build jobs
 
   Default: 1
 
