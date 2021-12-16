@@ -124,11 +124,11 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name="openmldb.hybridse.jsdk.path", doc="The path of HybridSE jsdk core file path")
   var hybridseJsdkLibraryPath = ""
 
-  @ConfigOption(name="openmldb.zookeeper.cluster", doc="The cluster of ZooKeeper for NameServer")
+  @ConfigOption(name="openmldb.zk.cluster", doc="The cluster of ZooKeeper for NameServer")
   var openmldbZkCluster = ""
 
-  @ConfigOption(name="openmldb.zookeeper.path", doc="The path of ZooKeeper for NameServer")
-  var openmldbZkPath = ""
+  @ConfigOption(name="openmldb.zk.root.path", doc="The root path of ZooKeeper for NameServer")
+  var openmldbZkRootPath = ""
 
   @ConfigOption(name="openmldb.default.db", doc="The default database for OpenMLDB SQL")
   var defaultDb = "default_db"

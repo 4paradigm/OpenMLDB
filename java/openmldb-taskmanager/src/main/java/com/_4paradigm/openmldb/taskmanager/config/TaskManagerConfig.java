@@ -48,8 +48,8 @@ public class TaskManagerConfig {
             WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "4"));
             IO_THREAD = Integer.parseInt(prop.getProperty("server.io_threads", "4"));
             ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
-            ZK_CLUSTER = prop.getProperty("zookeeper.cluster");
-            ZK_ROOT_PATH = prop.getProperty("zookeeper.root_path");
+            ZK_CLUSTER = prop.getProperty("zookeeper.cluster", "");
+            ZK_ROOT_PATH = prop.getProperty("zookeeper.root_path", "");
             ZK_TASKMANAGER_PATH = ZK_ROOT_PATH + "/taskmanager";
             ZK_MAX_JOB_ID_PATH = ZK_TASKMANAGER_PATH + "/max_job_id";
             ZK_CONNECTION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.connection_timeout", "5000"));

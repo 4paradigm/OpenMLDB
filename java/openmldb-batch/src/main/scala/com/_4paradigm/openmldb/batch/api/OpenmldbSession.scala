@@ -61,8 +61,8 @@ class OpenmldbSession {
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
     this.setDefaultSparkConfig()
 
-    if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkPath.nonEmpty) {
-      openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkPath)
+    if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkRootPath.nonEmpty) {
+      openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkRootPath)
       registerOpenmldbOfflineTable(openmldbCatalogService)
     }
   }
