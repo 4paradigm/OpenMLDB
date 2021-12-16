@@ -21,7 +21,7 @@ create table trans(c1 string,
 
 then start APIServer at localhost, port is 8080.
 
-Considering the transmission efficiency，the response use Compact JSON format. But for the convenience of display, the repsonse below are formatted(Line breaks and indents).
+Considering the transmission efficiency，the response uses Compact JSON format. But for the convenience of display, the repsonse below is formatted(Line breaks and indents).
 
 ### Put
 
