@@ -108,10 +108,6 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
                 dynamic_cast<const ::hybridse::node::JoinPlanNode*>(node), &op));
             break;
         }
-        case node::kPlanTypeUnion: {
-            CHECK_STATUS(TransformUnionOp(dynamic_cast<const ::hybridse::node::UnionPlanNode*>(node), &op));
-            break;
-        }
         case node::kPlanTypeGroup: {
             CHECK_STATUS(TransformGroupOp(
                 dynamic_cast<const ::hybridse::node::GroupPlanNode*>(node),
@@ -766,58 +762,21 @@ Status BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     return Status::OK();
 }
 
-Status BatchModeTransformer::TransformUnionOp(const node::UnionPlanNode* node,
-                                              PhysicalOpNode** output) {
-    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
-               "Input node or output node is null");
-
-    PhysicalOpNode* left = nullptr;
-    CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &left));
-    PhysicalOpNode* right = nullptr;
-    CHECK_STATUS(TransformPlanOp(node->GetChildren()[1], &right));
-
-    CHECK_TRUE(CheckUnionAvailable(left, right), kPlanError,
-               "Union inputs can not take inconsistent schema");
-    PhysicalUnionNode* union_op = nullptr;
-    CHECK_STATUS(
-        CreateOp<PhysicalUnionNode>(&union_op, left, right, node->is_all));
-    *output = union_op;
-    return Status::OK();
-}
-
 Status BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
                                               PhysicalOpNode** output) {
     PhysicalOpNode* left = nullptr;
     CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &left));
 
-    if (kPhysicalOpDataProvider == left->GetOpType()) {
-        auto data_op = dynamic_cast<PhysicalDataProviderNode*>(left);
-        if (kProviderTypeRequest == data_op->provider_type_) {
-            auto name = data_op->table_handler_->GetName();
-            auto db_name = data_op->table_handler_->GetDatabase();
-            db_name = db_name.empty() ? db_ : db_name;
-            auto table = catalog_->GetTable(db_name, name);
-            CHECK_TRUE(table != nullptr, kPlanError,
-                       "Fail to transform data provider op: table " + name +
-                           "not exists");
-
-            PhysicalTableProviderNode* right = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalTableProviderNode>(&right, table));
-
-            PhysicalRequestUnionNode* request_union_op = nullptr;
-            CHECK_STATUS(CreateRequestUnionNode(
-                data_op, right, table->GetDatabase(), table->GetName(), table->GetSchema(),
-                node->by_list_, nullptr, &request_union_op));
-            *output = request_union_op;
-            return Status::OK();
-        }
-    }
     PhysicalGroupNode* group_op = nullptr;
     CHECK_STATUS(CreateOp<PhysicalGroupNode>(&group_op, left, node->by_list_));
     *output = group_op;
     return Status::OK();
 }
-
+Status RequestModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
+                                              PhysicalOpNode** output) {
+    FAIL_STATUS(kPlanError, "Non-support GROUP BY OP in Online serving");
+    return Status::OK();
+}
 Status BatchModeTransformer::TransformSortOp(const node::SortPlanNode* node,
                                              PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
@@ -1694,7 +1653,10 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
                 *output = nullptr;
                 break;
             }
-            case ::hybridse::node::kPlanTypeUnion:
+            case ::hybridse::node::kPlanTypeUnion: {
+                FAIL_STATUS(kPlanError, "Non-support UNION OP");
+                break;
+            }
             case ::hybridse::node::kPlanTypeQuery: {
                 PhysicalOpNode* physical_plan = nullptr;
                 CHECK_STATUS(TransformQueryPlan(node, &physical_plan), "Fail to transform query statement");

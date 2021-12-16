@@ -164,8 +164,6 @@ class BatchModeTransformer {
                                      PhysicalOpNode** output);
     virtual Status TransformJoinOp(const node::JoinPlanNode* node,
                                    PhysicalOpNode** output);
-    virtual Status TransformUnionOp(const node::UnionPlanNode* node,
-                                    PhysicalOpNode** output);
     virtual Status TransformGroupOp(const node::GroupPlanNode* node,
                                     PhysicalOpNode** output);
     virtual Status TransformSortOp(const node::SortPlanNode* node,
@@ -287,6 +285,7 @@ class RequestModeTransformer : public BatchModeTransformer {
     Status TransformJoinOp(const node::JoinPlanNode* node,
                                    PhysicalOpNode** output) override;
     Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output) override;
+    Status TransformGroupOp(const node::GroupPlanNode* node, PhysicalOpNode** output) override;
 
     Status TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) override;
 
