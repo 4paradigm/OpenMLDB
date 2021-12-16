@@ -17,8 +17,6 @@
 import logging
 from . import driver
 import re
-import exceptions
-
 
 # Globals
 apilevel = '2.0'
@@ -59,7 +57,7 @@ dropProduce = re.compile("^drop\s+procedure", re.I)
 
 
 # Exceptions module
-class Error(exceptions.StandardError):
+class Error(Exception):
 
     def __init__(self, message):
         self.message = message
@@ -70,7 +68,7 @@ class Error(exceptions.StandardError):
     def msg(self):
         return self.message
 
-class Warning(exceptions.StandardError):
+class Warning(Exception):
 
     def __init__(self, message):
         self.message = message
