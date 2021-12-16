@@ -76,14 +76,19 @@ THIRD_PARTY_CMAKE_FLAGS ?=
 TEST_TARGET ?=
 TEST_LEVEL ?=
 
-.PHONY: all coverage build test configure clean thirdparty openmldb-clean thirdparty-configure thirdparty-clean thirdpartybuild-clean thirdpartysrc-clean
+.PHONY: all coverage coverage-cpp coverage-java build test configure clean thirdparty openmldb-clean thirdparty-configure thirdparty-clean thirdpartybuild-clean thirdpartysrc-clean
 
 all: build
 
 # TODO: better note about start zookeeper and onebox
 # some of the tests require zookeeper and openmldb server started before: checkout .github/workflows/coverage.yml
-coverage: coverage-configure
+coverage: coverage-cpp coverage-java
+
+coverage-cpp: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
+
+coverage-java: coverage-configure
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target cp_native_so -- -j$(NPROC)
 	cd java && mvn --batch-mode prepare-package
 
 coverage-configure:

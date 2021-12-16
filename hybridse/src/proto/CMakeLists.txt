@@ -80,7 +80,7 @@ ADD_CUSTOM_TARGET(run_gen_proto DEPENDS ${HYBRIDSE_PROTO_SRC_FILES})
 add_library(hybridse_proto OBJECT ${HYBRIDSE_PROTO_SRC_FILES})
 add_dependencies(hybridse_proto run_gen_proto)
 
-add_custom_target(hybridse_proto_java
+add_custom_target(hybridse_proto_java ALL
     COMMAND ${Protobuf_PROTOC_EXECUTABLE}
         -I ${PROJECT_SOURCE_DIR}/src/proto
         --java_out=${CMAKE_SOURCE_DIR}/java/hybridse-proto/src/main/java
