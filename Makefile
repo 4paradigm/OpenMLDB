@@ -14,7 +14,8 @@
 
 MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR  := $(dir $(MAKEFILE_PATH))
-NPROC ?= $(shell (nproc))
+# Disable parallel build, or system freezing may happen: #882
+NPROC ?= 1
 
 CMAKE_PRG ?= $(shell (command -v cmake3 || echo cmake))
 CMAKE_BUILD_TYPE ?= RelWithDebInfo
@@ -70,6 +71,13 @@ endif
 
 # Extra cmake flags for third-party
 THIRD_PARTY_CMAKE_FLAGS ?=
+
+ifdef BUILD_BUNDLED
+    THIRD_PARTY_CMAKE_FLAGS += -DBUILD_BUNDLED=$(BUILD_BUNDLED)
+endif
+ifdef BUILD_ZOOKEEPER_PATCH
+    THIRD_PARTY_CMAKE_FLAGS += -DBUILD_ZOOKEEPER_PATCH=$(BUILD_ZOOKEEPER_PATCH)
+endif
 
 TEST_TARGET ?=
 TEST_LEVEL ?=

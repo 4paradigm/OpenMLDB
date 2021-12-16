@@ -11,6 +11,7 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
+  NPROC: 2 # default Parallel build number for GitHub's Linux runner
 
 jobs:
   build_and_cpp_ut:
