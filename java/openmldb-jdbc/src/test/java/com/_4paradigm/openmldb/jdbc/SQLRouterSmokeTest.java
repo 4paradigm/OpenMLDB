@@ -55,11 +55,11 @@ public class SQLRouterSmokeTest {
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
-            String ddl = "create table tsql1010 ( col1 bigint, col2 string, index(key=col2, ts=col1));";
+            String ddl = "create table tsql1010(col1 bigint, col2 string, index(key=col2, ts=col1));";
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
-            NS.TableInfo info = router.getTableInfo("db", "tsql1010");
+            NS.TableInfo info = router.getTableInfo(dbname, "tsql1010");
             Assert.assertEquals(info.getName(), "tsql1010");
 
             // insert normal (1000, 'hello')

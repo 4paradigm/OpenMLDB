@@ -62,7 +62,6 @@ class TestLoadDataPlan extends SparkTestSuite {
       fail("unreachable")
     } catch {
       case e: IllegalArgumentException => println("It should catch this: " + e.toString)
-
     }
   }
 

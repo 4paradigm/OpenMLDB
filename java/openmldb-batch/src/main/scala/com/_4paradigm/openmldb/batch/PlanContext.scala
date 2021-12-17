@@ -115,7 +115,7 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
   /**
    * Run sql with Spark SQL API.
    *
-   * @param sqlText sql
+   * @param sqlText the SQL script
    * @return
    */
   def sparksql(sqlText: String): DataFrame = {
