@@ -18,13 +18,12 @@ on:
 env:
   GIT_SUBMODULE_STRATEGY: recursive
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
-  container: ghcr.io/4paradigm/hybridsql:0.4.1
 
 jobs:
   build_and_cpp_ut:
     runs-on: self-hosted
     container:
-      image: ${{ env.container }}
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
       SQL_PYSDK_ENABLE: OFF
@@ -99,10 +98,10 @@ jobs:
   java-sdk:
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.container }}
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       SQL_JAVASDK_ENABLE: ON
-      OPENMLDB_BUILD_TARGET: 'sql_javasdk_package openmldb'
+      OPENMLDB_BUILD_TARGET: 'cp_native_so openmldb'
       MAVEN_OPTS: -Duser.home=/github/home
     steps:
       - uses: actions/checkout@v2
@@ -140,7 +139,7 @@ jobs:
   python-sdk:
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.container }}
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'sqlalchemy_openmldb openmldb'
@@ -219,7 +218,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ "build_and_cpp_ut", "java-sdk", "python-sdk" ]
     container:
-      image: ${{ env.container }}
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     # java deploy is triggered with a push to main or a tag push
     # a 'vX.Y.Z' tag push will deploy a release version to maven central,
     # any other push will deploy a SNAPSHOT version.
