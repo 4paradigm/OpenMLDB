@@ -111,10 +111,17 @@ test:
 	$(MAKE) build TESTING_ENABLE=ON
 	bash steps/ut.sh $(TEST_TARGET) $(TEST_LEVEL)
 
-# trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr, will skip make thirdparty
-configure: thirdparty
+# trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr.
+#  we check this by asserting if the environment variable 'THIRD_PARTY_DIR' is defined to '/deps/usr', if true, thirdparty download is skipped
+#  since zetasql update more frequently than others, download zetasql won't skipped
+configure:
 	if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
+	    echo "fullly setup thirdparty"; \
 	    $(MAKE) thirdparty; \
+	else \
+	    echo "setup thirdparty/zetasql only"; \
+	    $(MAKE) thirdparty-configure; \
+	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
 	fi
 	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
@@ -130,7 +137,7 @@ thirdparty: thirdparty-configure
 	$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR)
 
 thirdparty-configure:
-	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
+	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) -DDEPS_INSTALL_DIR=$(THIRD_PARTY_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
 
 thirdparty-clean: thirdpartybuild-clean thirdpartysrc-clean
 
