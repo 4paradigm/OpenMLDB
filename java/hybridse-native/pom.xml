@@ -43,7 +43,7 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>com.4paradigm.hybridse</groupId>
+			<groupId>com.4paradigm.openmldb</groupId>
 			<artifactId>hybridse-proto</artifactId>
 			<version>${project.parent.version}</version>
 		</dependency>
