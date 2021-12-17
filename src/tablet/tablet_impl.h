@@ -30,7 +30,6 @@
 
 #include "base/set.h"
 #include "base/spinlock.h"
-#include "catalog/schema_adapter.h"
 #include "catalog/tablet_catalog.h"
 #include "common/thread_pool.h"
 #include "proto/tablet.pb.h"

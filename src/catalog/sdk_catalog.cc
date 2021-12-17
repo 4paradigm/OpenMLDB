@@ -17,8 +17,9 @@
 #include "catalog/sdk_catalog.h"
 
 #include "base/hash.h"
-#include "catalog/schema_adapter.h"
 #include "glog/logging.h"
+#include "schema/index_util.h"
+#include "schema/schema_adapter.h"
 
 namespace openmldb {
 namespace catalog {
@@ -35,13 +36,13 @@ bool SDKTableHandler::Init() {
         LOG(WARNING) << "bad format version " << meta_.format_version();
         return false;
     }
-    bool ok = SchemaAdapter::ConvertSchema(meta_.column_desc(), &schema_);
+    bool ok = schema::SchemaAdapter::ConvertSchema(meta_.column_desc(), &schema_);
     if (!ok) {
         LOG(WARNING) << "fail to covert schema to sql schema";
         return false;
     }
 
-    ok = SchemaAdapter::ConvertIndex(meta_.column_key(), &index_list_);
+    ok = schema::IndexUtil::ConvertIndex(meta_.column_key(), &index_list_);
     if (!ok) {
         LOG(WARNING) << "fail to conver index to sql index";
         return false;
