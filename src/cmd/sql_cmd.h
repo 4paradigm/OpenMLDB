@@ -74,6 +74,8 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
 std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK* cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
+using VariableMap = std::map<std::string, std::string>;
+VariableMap session_variables = {VariableMap::value_type("execute_mode", "online")};
 
 void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& file_path,
                    const std::shared_ptr<hybridse::node::OptionsMap>& options_map, ::openmldb::base::Status* status) {
@@ -607,6 +609,16 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             }
             break;
         }
+        case hybridse::node::kCmdShowSessionVariables: {
+            for (auto& pair : session_variables) {
+                std::cout << pair.first << "=" << pair.second << std::endl;
+            }
+            break;
+        }
+        case hybridse::node::kCmdShowGlobalVariables: {
+            std::cout << "ERROR: global variable is unsupported now" << std::endl;
+            break;
+        }
         case hybridse::node::kCmdExit: {
             exit(0);
         }
@@ -829,9 +841,18 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     return ns->CreateProcedure(sp_info, FLAGS_request_timeout_ms);
 }
 
-void SetVariable(const std::string& key, const hybridse::node::ConstNode* value) {
-    auto lower_key = boost::to_lower_copy(key);
-    printf("ERROR: The variable key %s is not supported\n", key.c_str());
+void HandleSet(hybridse::node::SetPlanNode* node) {
+    if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
+        printf("ERROR: global system variable is unsupported\n");
+        return;
+    }
+    auto it = session_variables.find(node->Key());
+    if (it == session_variables.end()) {
+        printf("ERROR: no session variable %s\n", node->Key().c_str());
+        return;
+    }
+    session_variables[node->Key()] = node->Value()->GetExprString();
+    printf("SUCCEED: OK\n");
 }
 
 template <typename T>
@@ -1150,8 +1171,7 @@ void HandleSQL(const std::string& sql) {
             return;
         }
         case hybridse::node::kPlanTypeSet: {
-            auto* set_node = dynamic_cast<hybridse::node::SetPlanNode*>(node);
-            SetVariable(set_node->Key(), set_node->Value());
+            HandleSet(dynamic_cast<hybridse::node::SetPlanNode*>(node));
             return;
         }
         case hybridse::node::kPlanTypeLoadData: {

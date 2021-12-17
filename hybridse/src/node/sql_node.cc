@@ -15,6 +15,7 @@
  */
 
 #include "node/sql_node.h"
+
 #include <absl/strings/str_cat.h>
 
 #include <numeric>
@@ -37,7 +38,7 @@ using common::kTypeError;
 static const std::unordered_map<std::string, DataType const> type_map = {
     {"bool", kBool},   {"in1", kBool},      {"i16", kInt16},      {"int16", kInt16},         {"smallint", kInt16},
     {"i32", kInt32},   {"int32", kInt32},   {"int", kInt32},      {"integer", kInt32},       {"i64", kInt64},
-    {"int64", kInt64}, {"bigint", kInt64},  {"string", kVarchar}, {"varchar", kVarchar},   {"float32", kFloat},
+    {"int64", kInt64}, {"bigint", kInt64},  {"string", kVarchar}, {"varchar", kVarchar},     {"float32", kFloat},
     {"float", kFloat}, {"double", kDouble}, {"float64", kDouble}, {"timestamp", kTimestamp}, {"date", kDate},
 };
 
@@ -170,8 +171,8 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const std::vec
     output << org_tab << SPACE_ST << item_name << ": " << ss.str();
 }
 
-void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap &value,
-                const std::string &item_name, bool last_child) {
+void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap &value, const std::string &item_name,
+                bool last_child) {
     output << org_tab << SPACE_ST << item_name << ":";
     if (value.empty()) {
         output << " <nil>";
@@ -264,12 +265,10 @@ bool ParameterExpr::Equals(const ExprNode *node) const {
     if (nullptr == node || expr_type_ != node->expr_type_) {
         return false;
     }
-    const ParameterExpr *that = dynamic_cast<const ParameterExpr *>(node);
+    const auto *that = dynamic_cast<const ParameterExpr *>(node);
     return this->position_ == that->position_;
 }
-const std::string ParameterExpr::GetExprString() const {
-    return "?" + std::to_string(position_);
-}
+const std::string ParameterExpr::GetExprString() const { return "?" + std::to_string(position_); }
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     output << "\n";
@@ -281,39 +280,40 @@ void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
 
 const std::string ConstNode::GetExprString() const {
     switch (data_type_) {
+        case hybridse::node::kBool:
+            return GetBool() ? "true" : "false";
         case hybridse::node::kInt16:
             return std::to_string(val_.vsmallint);
         case hybridse::node::kInt32:
             return std::to_string(val_.vint);
         case hybridse::node::kInt64:
-            return std::to_string(val_.vlong);
-        case hybridse::node::kVarchar:
-            return val_.vstr;
         case hybridse::node::kFloat:
             return std::to_string(val_.vfloat);
         case hybridse::node::kDouble:
             return std::to_string(val_.vdouble);
-        case hybridse::node::kDay:
-            return std::to_string(val_.vlong).append("d");
+            return std::to_string(val_.vlong);
+        case hybridse::node::kVarchar:
+            return val_.vstr;
+        case hybridse::node::kDate:
+            return "Date(" + std::to_string(val_.vlong) + ")";
+        case hybridse::node::kTimestamp:
+            return "Timestamp(" + std::to_string(val_.vlong) + ")";
         case hybridse::node::kHour:
             return std::to_string(val_.vlong).append("h");
         case hybridse::node::kMinute:
             return std::to_string(val_.vlong).append("m");
         case hybridse::node::kSecond:
             return std::to_string(val_.vlong).append("s");
-        case hybridse::node::kDate:
-            return "Date(" + std::to_string(val_.vlong) + ")";
-        case hybridse::node::kTimestamp:
-            return "Timestamp(" + std::to_string(val_.vlong) + ")";
-        case hybridse::node::kNull:
-            return "null";
-            break;
+        case hybridse::node::kDay:
+            return std::to_string(val_.vlong).append("d");
         case hybridse::node::kVoid:
             return "void";
+        case hybridse::node::kNull:
+            return "null";
         case hybridse::node::kPlaceholder:
             return "?";
         default:
-            return "unknow";
+            return "unknown";
     }
 }
 bool ConstNode::Equals(const ExprNode *node) const {
@@ -323,7 +323,7 @@ bool ConstNode::Equals(const ExprNode *node) const {
     if (nullptr == node || expr_type_ != node->expr_type_) {
         return false;
     }
-    const ConstNode *that = dynamic_cast<const ConstNode *>(node);
+    const auto *that = dynamic_cast<const ConstNode *>(node);
     return this->data_type_ == that->data_type_ && GetExprString() == that->GetExprString() && ExprNode::Equals(node);
 }
 
@@ -1120,7 +1120,7 @@ void ColumnOfExpression(const ExprNode *node_ptr, std::vector<const node::ExprNo
     }
 }
 // Check if given expression is or based on an aggregation expression.
-bool IsAggregationExpression(const udf::UdfLibrary* lib, const ExprNode* node_ptr) {
+bool IsAggregationExpression(const udf::UdfLibrary *lib, const ExprNode *node_ptr) {
     if (kExprCall == node_ptr->GetExprType()) {
         const CallExprNode *func_node_ptr = dynamic_cast<const CallExprNode *>(node_ptr);
         if (lib->IsUdaf(func_node_ptr->GetFnDef()->GetName(), func_node_ptr->GetChildNum())) {
@@ -1134,7 +1134,7 @@ bool IsAggregationExpression(const udf::UdfLibrary* lib, const ExprNode* node_pt
     }
     return false;
 }
-bool WindowOfExpression(const std::map<std::string, const WindowDefNode *>& windows, ExprNode *node_ptr,
+bool WindowOfExpression(const std::map<std::string, const WindowDefNode *> &windows, ExprNode *node_ptr,
                         const WindowDefNode **output) {
     // try to resolved window ptr from expression like: call(args...) over
     // window
@@ -1330,7 +1330,7 @@ void ExplainNode::Print(std::ostream &output, const std::string &org_tab) const 
     PrintSqlNode(output, tab, query_, "query", true);
 }
 
-void DeployNode::Print(std::ostream& output, const std::string& org_tab) const {
+void DeployNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
 
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -1867,7 +1867,7 @@ bool InExpr::Equals(const ExprNode *node) const {
     if (!ExprNode::Equals(node)) {
         return false;
     }
-    const InExpr* in_expr = dynamic_cast<const InExpr*>(node);
+    const InExpr *in_expr = dynamic_cast<const InExpr *>(node);
     return in_expr != nullptr && IsNot() == in_expr->IsNot();
 }
 
@@ -2292,9 +2292,7 @@ std::string DeleteTargetString(DeleteTarget target) {
     return "unknown";
 }
 
-std::string DeleteNode::GetTargetString() const {
-    return DeleteTargetString(target_);
-}
+std::string DeleteNode::GetTargetString() const { return DeleteTargetString(target_); }
 
 Status StringToDataType(const std::string identifier, DataType *type) {
     CHECK_TRUE(nullptr != type, common::kNullPointer, "Can't convert type string, output datatype is nullptr")
