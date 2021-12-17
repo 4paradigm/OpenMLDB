@@ -14,7 +14,8 @@
 
 MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR  := $(dir $(MAKEFILE_PATH))
-NPROC ?= $(shell (nproc))
+# Disable parallel build, or system freezing may happen: #882
+NPROC ?= 1
 
 CMAKE_PRG ?= $(shell (command -v cmake3 || echo cmake))
 CMAKE_BUILD_TYPE ?= RelWithDebInfo
@@ -42,9 +43,6 @@ endif
 
 # Extra cmake flags for HybridSE
 HYBRIDSE_CMAKE_FLAGS := $(CMAKE_FLAGS)
-ifdef JAVASDK_ENABLE
-    HYBRIDSE_CMAKE_FLAGS += -DJAVASDK_ENABLE=$(JAVASDK_ENABLE)
-endif
 ifdef PYSDK_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DPYSDK_ENABLE=$(PYSDK_ENABLE)
 endif
@@ -67,19 +65,39 @@ ifdef SANITIZER_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DSANITIZER_ENABLE=$(SANITIZER_ENABLE)
 endif
 
+# append hybridse flags so it also works when compile all from OPENMLDB_BUILD_DIR
+OPENMLDB_CMAKE_FLAGS += $(HYBRIDSE_CMAKE_FLAGS)
 
 # Extra cmake flags for third-party
 THIRD_PARTY_CMAKE_FLAGS ?=
 
+ifdef BUILD_BUNDLED
+    THIRD_PARTY_CMAKE_FLAGS += -DBUILD_BUNDLED=$(BUILD_BUNDLED)
+endif
+ifdef BUILD_ZOOKEEPER_PATCH
+    THIRD_PARTY_CMAKE_FLAGS += -DBUILD_ZOOKEEPER_PATCH=$(BUILD_ZOOKEEPER_PATCH)
+endif
+
 TEST_TARGET ?=
 TEST_LEVEL ?=
 
-.PHONY: all coverage build test configure clean thirdparty openmldb-clean thirdparty-configure thirdparty-clean thirdpartybuild-clean thirdpartysrc-clean
+.PHONY: all coverage coverage-cpp coverage-java build test configure clean thirdparty openmldb-clean thirdparty-configure thirdparty-clean thirdpartybuild-clean thirdpartysrc-clean
 
 all: build
 
-# TODO(#677): add OpenMLDB coverage
-coverage: hybridse-coverage
+# TODO: better note about start zookeeper and onebox
+# some of the tests require zookeeper and openmldb server started before: checkout .github/workflows/coverage.yml
+coverage: coverage-cpp coverage-java
+
+coverage-cpp: coverage-configure
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
+
+coverage-java: coverage-configure
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target cp_native_so -- -j$(NPROC)
+	cd java && mvn --batch-mode prepare-package
+
+coverage-configure:
+	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
 
 OPENMLDB_BUILD_DIR ?= $(MAKEFILE_DIR)/build
 
@@ -90,24 +108,26 @@ install: build
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target install -- -j$(NPROC)
 
 test:
-	$(MAKE) build TESTING_ENABLE=ON OPENMLDB_BUILD_TARGE=$(TEST_TARGET)
+	$(MAKE) build TESTING_ENABLE=ON
 	bash steps/ut.sh $(TEST_TARGET) $(TEST_LEVEL)
 
-# disable building hybridse tests for faster compilation
-HYBRIDSE_CMAKE_DEPS_FLAGS := -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=OFF
+# trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr, will skip make thirdparty
 configure: thirdparty
-	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(HYBRIDSE_CMAKE_DEPS_FLAGS) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
+	if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
+	    $(MAKE) thirdparty; \
+	fi
+	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 openmldb-clean:
 	rm -rf "$(OPENMLDB_BUILD_DIR)"
 
 THIRD_PARTY_BUILD_DIR ?= $(MAKEFILE_DIR)/.deps
 THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
-THIRD_PARTY_DIR := $(THIRD_PARTY_BUILD_DIR)/usr
+THIRD_PARTY_DIR ?= $(THIRD_PARTY_BUILD_DIR)/usr
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
 thirdparty: thirdparty-configure
-	$(CMAKE_PRG) --build .deps
+	$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR)
 
 thirdparty-configure:
 	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
@@ -143,7 +163,6 @@ hybridse-configure: thirdparty
 hybridse-coverage: hybridse-coverage-configure
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
-	cd hybridse/java && mvn prepare-package
 
 hybridse-coverage-configure:
 	$(MAKE) hybridse-configure CMAKE_BUILD_TYPE=Debug COVERAGE_ENABLE=ON

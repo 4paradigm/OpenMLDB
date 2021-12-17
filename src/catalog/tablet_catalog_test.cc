@@ -19,11 +19,11 @@
 #include <vector>
 
 #include "base/fe_status.h"
-#include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 #include "proto/fe_common.pb.h"
+#include "schema/schema_adapter.h"
 #include "storage/mem_table.h"
 #include "storage/table.h"
 #include "vm/engine.h"
@@ -61,7 +61,7 @@ TestArgs *PrepareTable(const std::string &tname) {
     ::openmldb::storage::MemTable *table = new ::openmldb::storage::MemTable(meta);
     table->Init();
     ::hybridse::vm::Schema fe_schema;
-    SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
+    schema::SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
     ::hybridse::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
     args->pk = pk;
@@ -106,7 +106,7 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname, int partition_num
         args->meta.push_back(cur_meta);
     }
     ::hybridse::vm::Schema fe_schema;
-    SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
+    schema::SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
     ::hybridse::codec::RowBuilder rb(fe_schema);
     uint32_t base = 100;
     for (int i = 0; i < 100; i++) {

@@ -20,8 +20,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "catalog/schema_adapter.h"
 #include "glog/logging.h"
+#include "schema/schema_adapter.h"
 
 namespace openmldb {
 namespace sdk {
@@ -355,7 +355,7 @@ std::shared_ptr<SQLRequestRow> SQLRequestRow::CreateSQLRequestRowFromColumnTypes
     hybridse::codec::Schema schema;
     for (size_t idx = 0; idx < types->GetTypeSize(); idx++) {
         hybridse::type::Type hybridse_type;
-        if (!openmldb::catalog::SchemaAdapter::ConvertType(types->GetColumnType(idx), &hybridse_type)) {
+        if (!openmldb::schema::SchemaAdapter::ConvertType(types->GetColumnType(idx), &hybridse_type)) {
             LOG(WARNING) << "fail to create sql request row from column types: invalid type "
                          << hybridse::sdk::DataTypeName(types->GetColumnType(idx));
             return std::shared_ptr<SQLRequestRow>();
