@@ -22,8 +22,9 @@ import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.{JobIdGenerator, JobInfo}
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.slf4j.LoggerFactory
-import java.sql.{PreparedStatement, ResultSet, SQLException, Timestamp}
+import java.sql.{PreparedStatement, ResultSet, SQLException}
 import java.util.Calendar
+import scala.collection.JavaConverters.seqAsJavaListConverter
 import scala.collection.mutable
 
 object JobInfoManager {
@@ -71,6 +72,11 @@ object JobInfoManager {
     val jobInfo = new JobInfo(jobId, jobType, initialState, startTime, defaultEndTime, parameter, cluster, "", "")
     jobInfo.sync()
     jobInfo
+  }
+
+  def getJobs(onlyUnfinished: Boolean): java.util.List[JobInfo] = {
+    val jobs = if (onlyUnfinished) JobInfoManager.getUnfinishedJobs else JobInfoManager.getAllJobs
+    jobs.asJava
   }
 
   def getAllJobs(): List[JobInfo] = {
