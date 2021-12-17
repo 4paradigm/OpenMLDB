@@ -7,6 +7,12 @@ on:
     tags:
       - v*
   pull_request:
+    paths-ignore:
+      - docs/
+      - demo/
+      - image/
+      - release/
+      - tools/
   workflow_dispatch:
 
 env:

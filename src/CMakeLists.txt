@@ -55,6 +55,7 @@ function(compile_test DIR)
             get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
             get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
             add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:openmldb_proto>)
+            list(APPEND test_list ${TEST_TARGET_NAME})
             if (${TEST_TARGET_NAME} STREQUAL "tablet_impl_mem_test")
                 target_link_libraries(${TEST_TARGET_NAME} tcmalloc ${TEST_LIBS} gtest)
             else()
@@ -62,6 +63,7 @@ function(compile_test DIR)
             endif()
         endif()
     endforeach()
+    set(test_list ${test_list} PARENT_SCOPE)
 endfunction(compile_test)
 
 compile_proto(type ${PROJECT_SOURCE_DIR})
@@ -129,3 +131,5 @@ install(
 )
 
 add_subdirectory(sdk)
+
+set(test_list ${test_list} PARENT_SCOPE)

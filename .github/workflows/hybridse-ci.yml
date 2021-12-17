@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - hybridse-v*
   pull_request:
     paths:
       - .github/workflows/hybridse-ci.yml
@@ -30,22 +28,6 @@ jobs:
         with:
           submodules: true
 
-      - uses: actions/setup-java@v2
-        with:
-          distribution: 'adopt'
-          java-version: '8'
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_TOKEN
-          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
-
-      - name: Import GPG key
-        if: ${{ github.event_name == 'push' }}
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v3
-        with:
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-
       - name: Build Core
         run: |
           make hybridse-build
@@ -62,44 +44,6 @@ jobs:
           path: |
             ${{ env.HYBRIDSE_PATH }}/build/*.xml
 
-      - name: Java SDK Test
-        working-directory: ${{ env.HYBRIDSE_PATH }}/java
-        run: |
-          mvn -U clean compile test
-
-      - name: Upload Java UT Results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-ut-result-java-${{ github.sha }}
-          path: |
-            ${{ env.HYBRIDSE_PATH }}/java/hybridse-sdk/target/**/TEST-*.xml
-
-      - name: Upload jsdk
-        if: ${{ github.event_name == 'push' }}
-        uses: actions/upload-artifact@v2
-        with:
-          path: ${{ env.HYBRIDSE_PATH }}/build/src/sdk/libhybridse*.so
-          name: lib-artifacts
-
-      - name: Prepare Maven Release Deploy
-        if: startsWith(github.ref, 'refs/tags/hybridse-v')
-        run: |
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=$(echo $VERSION | sed -e 's/^hybridse-v//')
-          .${{ env.HYBRIDSE_PATH }}/java/prepare_release.sh $VERSION
-
-      - name: Publish Java Library
-        if: ${{ github.event_name == 'push' }}
-        working-directory: ${{ env.HYBRIDSE_PATH }}/java
-        run: |
-          mvn --batch-mode deploy
-        env:
-          MAVEN_OPTS: -Duser.home=/github/home
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-
   macos-build:
     name: Build in MacOS
     runs-on: macos-latest
@@ -109,22 +53,6 @@ jobs:
       NPROC: 3
     steps:
       - uses: actions/checkout@v2
-
-      - uses: actions/setup-java@v2
-        with:
-          distribution: 'adopt'
-          java-version: '8'
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_TOKEN
-          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
-
-      - name: Import GPG key
-        if: ${{ github.event_name == 'push' }}
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v3
-        with:
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Install dependencies
         run: |
@@ -145,107 +73,6 @@ jobs:
           name: macos-ut-result-cpp-${{ github.sha }}
           path: |
             ${{ env.HYBRIDSE_PATH }}/build/*.xml
-
-      - name: Java SDK Test
-        working-directory: ${{ env.HYBRIDSE_PATH }}/java
-        run: |
-          mvn -U clean compile test
-
-      - name: Upload Java UT Results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: macos-ut-result-java-${{ github.sha }}
-          path: |
-            ${{ env.HYBRIDSE_PATH }}/java/hybridse-sdk/target/**/TEST-*.xml
-
-      - name: Upload jsdk
-        if: ${{ github.event_name == 'push' }}
-        uses: actions/upload-artifact@v2
-        with:
-          path: ${{ env.HYBRIDSE_PATH }}/build/src/sdk/libhybridse*.dylib
-          name: lib-artifacts
-
-      - name: Prepare Maven Release Deploy
-        if: startsWith(github.ref, 'refs/tags/hybridse-v')
-        run: |
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=$(echo $VERSION | sed -e 's/^hybridse-v//')
-          ./${{ env.HYBRIDSE_PATH }}/java/prepare_release.sh $VERSION
-
-      - name: Publish Java Library
-        if: ${{ github.event_name == 'push' }}
-        working-directory: ${{ env.HYBRIDSE_PATH }}/java
-        run: |
-          mvn --batch-mode -P macos clean install
-          mvn --batch-mode -P macos -pl hybridse-native deploy
-          mvn --batch-mode -P macos -pl hybridse-sdk deploy
-        env:
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-
-  java-allinone-deploy:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
-    needs: ["macos-build", "linux-build"]
-    if: >
-      success() && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-
-      - name: Download Lib Artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: lib-artifacts
-          path: ${{ env.HYBRIDSE_PATH }}
-
-      - uses: actions/setup-java@v2
-        with:
-          distribution: 'adopt'
-          java-version: '8'
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_TOKEN
-          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
-
-      - name: Import GPG key
-        if: ${{ github.event_name == 'push' }}
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v3
-        with:
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-
-      - name: Build proto library
-        run: |
-          make hybridse_proto
-
-      - name: Copy Dylib
-        run: |
-          cp libhybridse_*.dylib ${{ env.HYBRIDSE_PATH }}/java/hybridse-native/src/main/resources/
-          cp libhybridse_*.so ${{ env.HYBRIDSE_PATH }}/java/hybridse-native/src/main/resources/
-
-      - name: Prepare Maven Release Deploy
-        if: startsWith(github.ref, 'refs/tags/hybridse-v')
-        run: |
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=$(echo $VERSION | sed -e 's/^hybridse-v//')
-          .${{ env.HYBRIDSE_PATH }}/java/prepare_release.sh $VERSION
-
-      - name: Publish Java Library
-        working-directory: ${{ env.HYBRIDSE_PATH }}/java
-        run: |
-          mvn --batch-mode -P allinone clean install
-          mvn --batch-mode -P allinone -pl hybridse-native deploy
-          mvn --batch-mode -P allinone -pl hybridse-sdk deploy
-        env:
-          MAVEN_OPTS: -Duser.home=/github/home
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
   publish-test-results:
     runs-on: ubuntu-latest
@@ -273,24 +100,3 @@ jobs:
           check_name: HybridSE Mac Test Report
           comment_title: HybridSE Mac Test Report
 
-  coverage:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-
-      - name: Build and Coverage
-        run: |
-          make coverage
-
-      - name: Upload Coverage Report
-        uses: codecov/codecov-action@v2
-        with:
-          files: ${{ env.HYBRIDSE_PATH }}/build/coverage.info,${{ env.HYBRIDSE_PATH }}/java/hybridse-sdk/target/site/jacoco/jacoco.xml
-          name: coverage
-          fail_ci_if_error: true
-          verbose: true
