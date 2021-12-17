@@ -563,6 +563,9 @@ TEST_F(EngineCompileTest, MockRequestCompileTest) {
     ASSERT_TRUE(engine.Get(sql, "simple_db", session, status)) << status;
 
     ASSERT_TRUE(status.isOK()) << status;
+    ASSERT_EQ(7u, session.GetRequestSchema().size());
+    ASSERT_EQ("t1", session.GetRequestName());
+    ASSERT_EQ("simple_db", session.GetRequestDbName());
 }
 TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
     // Build Simple Catalog
