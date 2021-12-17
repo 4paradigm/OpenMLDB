@@ -28,7 +28,7 @@ public class CommandResultUtil {
                 tmp.contains("not an astint")||tmp.contains("already exists")||tmp.contains("not supported")
                 ||tmp.contains("not found")||tmp.contains("un-support")||tmp.contains("invalid")
                 ||tmp.contains("distribution element is not")||tmp.contains("is not currently supported")
-                ||tmp.contains("wrong type")||tmp.contains("not a supported object type");
+                ||tmp.contains("wrong type")||tmp.contains("not a supported object type")||tmp.contains("is not");
     }
     public static OpenMLDBSchema parseSchema(List<String> lines){
         OpenMLDBSchema schema = new OpenMLDBSchema();

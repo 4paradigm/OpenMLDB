@@ -85,17 +85,6 @@ public class FEDBDeploy {
         builder.apiServerEndpoints(Lists.newArrayList()).apiServerNames(Lists.newArrayList());
         builder.fedbPath(testPath+"/openmldb-ns-1/bin/openmldb");
         FEDBInfo fedbInfo = builder.build();
-        for(int i=1;i<=ns;i++){
-            int ns_port;
-            if(useName){
-                String nsName = clusterName+"-ns-"+i;
-                ns_port = deployNS(testPath,null, i, zk_point,nsName);
-                fedbInfo.getNsNames().add(nsName);
-            }else {
-                ns_port = deployNS(testPath, ip, i, zk_point,null);
-            }
-            fedbInfo.getNsEndpoints().add(ip+":"+ns_port);
-        }
         for(int i=1;i<=tablet;i++) {
             int tablet_port ;
             if(useName){
@@ -107,6 +96,18 @@ public class FEDBDeploy {
             }
             fedbInfo.getTabletEndpoints().add(ip+":"+tablet_port);
         }
+        for(int i=1;i<=ns;i++){
+            int ns_port;
+            if(useName){
+                String nsName = clusterName+"-ns-"+i;
+                ns_port = deployNS(testPath,null, i, zk_point,nsName);
+                fedbInfo.getNsNames().add(nsName);
+            }else {
+                ns_port = deployNS(testPath, ip, i, zk_point,null);
+            }
+            fedbInfo.getNsEndpoints().add(ip+":"+ns_port);
+        }
+
         for(int i=1;i<=1;i++) {
             int apiserver_port ;
             if(useName){

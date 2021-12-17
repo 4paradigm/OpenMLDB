@@ -196,7 +196,7 @@ public class CommandExecutor extends BaseExecutor{
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
                 String db = table.getDb().isEmpty() ? dbName : table.getDb();
-                // OpenmlDBCommandFactory.runNoInteractive(fedbInfo,db,drop);
+                OpenmlDBCommandFactory.runNoInteractive(fedbInfo,db,drop);
             }
         }
     }
