@@ -27,7 +27,6 @@
 #include <vector>
 
 #include "base/status.h"
-#include "catalog/schema_adapter.h"
 #include "client/client.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
