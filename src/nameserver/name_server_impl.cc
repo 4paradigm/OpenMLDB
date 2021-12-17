@@ -8864,6 +8864,30 @@ bool NameServerImpl::UpdateZkTableNodeWithoutNotify(const TableInfo* table_info)
     return true;
 }
 
+base::Status NameServerImpl::AddMultiIndexs(const std::string& db, const std::string& name,
+        const ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnKey>& column_keys) {
+    /*uint32_t tid = table_info->tid();
+    for (const auto& part : table_info->table_partition()) {
+        for (const auto& meta : part.partition_meta()) {
+            std::shared_ptr<TabletInfo> tablet = GetTabletInfo(meta.endpoint());
+            if (!tablet) {
+                continue;
+            }
+            if (!tablet->Health()) {
+                LOG(WARNING) << "endpoint[" << meta.endpoint() << "] is offline";
+                return {base::ReturnCode::kError, "endpoint" + meta.endpoint() + ""};
+            }
+            auto status = tablet->client_->AddMultiIndex(tid, part.pid(), column_keys, nullptr);
+            if (!status.OK()) {
+                LOG(WARNING) << "add index failed. tid " << tid << " pid " << part.pid() <<
+                    " endpoint " << meta.endpoint();
+                return status;
+            }
+        }
+    }*/
+    return {};
+}
+
 void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* request, GeneralResponse* response,
                               Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -8872,9 +8896,18 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         LOG(WARNING) << "cur nameserver is not leader";
         return;
     }
-    std::shared_ptr<TableInfo> table_info;
     const std::string& name = request->name();
     const std::string& db = request->db();
+    if (request->column_keys_size() > 0) {
+        auto status = AddMultiIndexs(db, name, request->column_keys());
+        if (status.OK()) {
+            base::SetResponseOK(response);
+        } else {
+            base::SetResponseStatus(status, response);
+        }
+        return;
+    }
+    std::shared_ptr<TableInfo> table_info;
     const std::string& index_name = request->column_key().index_name();
     std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> tablet_client_map;
     if (!GetTableInfo(name, db, &table_info)) {

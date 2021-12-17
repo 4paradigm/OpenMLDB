@@ -740,6 +740,9 @@ class NameServerImpl : public NameServer {
     bool AddFieldToTablet(const std::vector<openmldb::common::ColumnDesc>& cols, std::shared_ptr<TableInfo> table_info,
                           openmldb::common::VersionPair* new_pair);
 
+    base::Status AddMultiIndexs(const std::string& db, const std::string& name,
+            const ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnKey>& column_keys);
+
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 
     std::shared_ptr<TabletInfo> GetTablet(const std::string& endpoint);

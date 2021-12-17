@@ -210,6 +210,10 @@ class NsClient : public Client {
                   std::vector<openmldb::common::ColumnDesc>* cols,
                   std::string& msg);  // NOLINT
 
+    bool AddIndex(const std::string& table_name, const std::vector<::openmldb::common::ColumnKey>& column_keys,
+                  std::vector<openmldb::common::ColumnDesc>* cols,
+                  std::string& msg);  // NOLINT
+
     bool DeleteIndex(const std::string& table_name, const std::string& idx_name,
                      std::string& msg);  // NOLINT
 

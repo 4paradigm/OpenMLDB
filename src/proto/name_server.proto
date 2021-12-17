@@ -427,6 +427,7 @@ message AddIndexRequest {
     optional openmldb.common.ColumnKey column_key = 2;
     optional string db = 3 [default = ""];
     repeated openmldb.common.ColumnDesc cols = 4;
+    repeated openmldb.common.ColumnKey column_keys = 5;
 }
 
 message DeleteIndexRequest {

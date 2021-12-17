@@ -846,11 +846,25 @@ bool NsClient::SwitchMode(const ::openmldb::nameserver::ServerMode& mode, std::s
 
 bool NsClient::AddIndex(const std::string& table_name, const ::openmldb::common::ColumnKey& column_key,
                         std::vector<openmldb::common::ColumnDesc>* cols, std::string& msg) {
+    return AddIndex(table_name, {column_key}, cols, msg);
+}
+
+bool NsClient::AddIndex(const std::string& table_name, const std::vector<::openmldb::common::ColumnKey>& column_keys,
+                        std::vector<openmldb::common::ColumnDesc>* cols, std::string& msg) {
     ::openmldb::nameserver::AddIndexRequest request;
     ::openmldb::nameserver::GeneralResponse response;
-    ::openmldb::common::ColumnKey* cur_column_key = request.mutable_column_key();
+    if (column_keys.empty()) {
+        msg = "no column key";
+        return false;
+    } else if (column_keys.size() == 1) {
+        auto cur_column_key = request.mutable_column_key();
+        cur_column_key->CopyFrom(column_keys[0]);
+    } else {
+        for (const auto& column_key : column_keys) {
+            request.add_column_keys()->CopyFrom(column_key);
+        }
+    }
     request.set_name(table_name);
-    cur_column_key->CopyFrom(column_key);
     request.set_db(GetDb());
     if (cols != nullptr) {
         for (const auto& col : *cols) {
