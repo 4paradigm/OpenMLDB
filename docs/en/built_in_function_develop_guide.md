@@ -20,7 +20,7 @@ This article is a hands-on guide for built-in scalar function development in Ope
 
 ## 2. Develop a Built-In SQL Function
 
-In this section, we are going to introduce the basic steps to implement and register an SQL built-in function. Basically, built-in SQL function developement involves the following steps:
+In this section, we are going to introduce the basic steps to implement and register an SQL built-in function. Built-in SQL function development involves the following steps:
 
 - Develop a built-in C++ function
 - Register and configure the function
@@ -43,7 +43,7 @@ Developers can declare function in [hybridse/src/udf/udf.h](https://github.com/4
 
 #### 2.1.3 C++ and SQL Data Type
 
-C++ built-in functions can use limited data types, including BOOL, Numeric, String, Timestamp and Date.The correspondence between the SQL data type and the C++ data type is shown as follows:
+C++ built-in functions can use limited data types, including BOOL, Numeric, String, Timestamp and Date. The correspondence between the SQL data type and the C++ data type is shown as follows:
 
 - | SQL Type  | C++ Type           |
   | :-------- | :----------------- |
@@ -434,7 +434,56 @@ RegisterExternal("my_func")
         )");
 ```
 
-## 4. SQL Functions Developement Examples
+### 3.4 SQL functions handle Nullable argument
+
+Generally, OpenMLDB will return a ***NULL*** for a function when any one of its argurements  is ***NULL***. 
+
+If we wants to handler the null argurement with specific strategy, we have to configure this argurment as an ***Nullable*** argurement and pass another **bool** flag to specify if this argurement is null or not.
+
+The C++ function can be declared and implemented as follows:
+
+```c++
+# hybridse/src/udf/udf.h
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      // we are going to handle null arg2 in the function
+      Ret func(Arg1 arg1 Arg2 arg2, bool is_arg2_null, ...);
+    }
+  }
+}
+
+```
+
+```c++
+# hybridse/src/udf/udf.cc
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      Ret func(Arg1 arg1, Arg2 arg2, bool is_arg2_null, ...) {
+        // ...
+        // if is_arg1_null
+        // 	return Ret(0)
+        // else 
+        // 	compute and return result
+      }
+    } 
+  } 
+} 
+```
+
+Configure and register the function into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
+
+```c++
+# hybridse/src/udf/default_udf_library.cc
+RegisterExternal("my_func")
+        .args<Arg1, Nulable<Arg2>, ...>(static_cast<R (*)(Arg1, Arg2, bool, ...)>(v1::func))()
+        .doc(R"(
+            documenting my_func
+        )");
+```
+
+## 4. SQL Functions Development Examples
 
 ### 4.1 SQL functions return **BOOL** or Numeric types: `INT Month(TIMESTAMP)` function
 
@@ -732,5 +781,144 @@ select date(timestamp(1590115420000)) as dt;
  ------------
   2020-05-22 
  ------------
+```
+
+### 4.4 SQL functions handle Nullable argument - `BOOL like_match(STRING, STRING, STRING)`
+
+`bool like_match(target, patten, escape)` match target string with given pattern and escape
+
+- Return ***Null*** when target string is ***NULL***
+- Return ***Null*** when pattern string is ***NULL***
+- When escape string is ***Null***, disbale escape. Regarding escape as an empty string.
+
+参考[3.4 SQL function handler Nullable argurement](#3.4-sql-functions-handle-nullable-argurement)
+
+Declare the `like()` function in [hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)：
+
+```c++
+# hybridse/src/udf/udf.h
+namespace hybridse {
+  namespace udf{
+    namespace v1 {
+      void like(codec::StringRef* name, codec::StringRef* pattern, 
+                 codec::StringRef* escape, bool escape_null, bool* out, bool* is_null);
+    } // namespace v1
+  } // namespace udf
+} // namespace hybridse
+```
+
+Implement the `like()` function in [hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)：
+
+```c++
+# hybridse/src/udf/udf.cc
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+        void like(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool escape_null,
+          bool *out, bool *is_null) {
+              if (escape_null) {
+                  // if <escape character> is empty or null value, escape feature is disabled
+                  codec::StringRef empty_escape("");
+                  like_internal(name, pattern, &empty_escape, 
+                                [](char lhs, char rhs) { return lhs == rhs; }, out, is_null);
+              } else {
+                  like_internal(
+                      name, pattern, escape, 
+                    [](char lhs, char rhs) { return lhs == rhs; }, out, is_null);
+              }
+          }
+    } // namespace v1
+  } // namespace udf
+} // namespace hybridse
+```
+
+#### Step 2: register built-in function into default library
+
+The following example registers the built-in function ` v1::like` into the default library with the name `"like_match"`. 
+
+Given the result is a nullable bool type, we configure  **return_by_arg** as ***true*** and return type as `Nullable<bool>`.
+
+`BOOL LIKE_MATCH(STRING, STRING, STRING)` is String function, developer should configure and register within `DefaultUdfLibrary::InitStringUdf()` in [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc).
+
+```c++
+namespace hybridse {
+  namespace udf {
+    void DefaultUdfLibrary::InitStringUdf() {
+      // ...    
+        RegisterExternal("like_match")
+        .args<StringRef, StringRef, Nullable<StringRef>>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool, bool*, bool*)>(
+                udf::v1::like)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief pattern match same as LIKE predicate
+
+              	// ...
+                @endcode
+
+                @param target: string to match
+
+                @param pattern: the glob match pattern
+
+                @param escape: escape character
+
+                @since 0.4.0
+        )r");
+    }
+  } // namespace udf
+} // namespace hybridse
+```
+
+#### Step3: Function Unit Test
+
+[Add unit tests](Add Unit Tests) in [src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc). Then [compile and test it](2.3.2 Compile and test).
+
+```c++
+TEST_F(UdfIRBuilderTest, like_match) {
+    // target is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", nullptr, nullptr, codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    // pattern is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", nullptr, codec::StringRef("Mike"), nullptr, codec::StringRef("\\"));
+    // escape is null, disable escape
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), nullptr);
+
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", false, codec::StringRef("Mike"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mi_e"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mi\\ke"), codec::StringRef("Mi\\_e"), nullptr);
+}
+
+
+```
+
+Now, the `udf::v1:like` has been registered into the default library with the name `like_match`. As a result, we can call `like_match()` in an SQL query.
+
+```SQL
+select 
+      like_match('Mike', 'M_\\ke')  as col1,
+      like_match('Mike', 'M_\\ke', "\\")  as col2,
+      like_match('Mike', 'M_\\ke', "")  as col3,
+      like_match('Mike', 'M_\\ke', string(null)) as col4,
+      like_match('Mike', string(null), '%') as col5,
+      like_match(string(null), 'M_k', '%')  as col6 from t1;
+
+-- output
+ ------ ------ ------ ------ ------ ------
+  col1   col2   col3   col4   col5   col6
+ ------ ------ ------ ------ ------ ------
+  true   true  false   false  null   null
+ ------ ------ ------ ------ ------ ------
 ```
 

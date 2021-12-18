@@ -366,7 +366,6 @@ void like_internal(codec::StringRef *name, codec::StringRef *pattern, codec::Str
         *is_null = true;
         return;
     }
-
     std::string_view name_view(name->data_, name->size_);
     std::string_view pattern_view(pattern->data_, pattern->size_);
 
@@ -383,28 +382,46 @@ void like_internal(codec::StringRef *name, codec::StringRef *pattern, codec::Str
     *out = like_internal(name_view, pattern_view, esc, std::forward<EQUAL>(equal));
 }
 
-void like(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out, bool *is_null) {
-    like_internal(
-        name, pattern, escape, [](char lhs, char rhs) { return lhs == rhs; }, out, is_null);
+void like(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool escape_null,
+          bool *out, bool *is_null) {
+    if (escape_null) {
+        // if <escape character> is empty or null value, escape feature is disabled
+        codec::StringRef empty_escape("");
+        like_internal(name, pattern, &empty_escape, [](char lhs, char rhs) { return lhs == rhs; }, out, is_null);
+    } else {
+        like_internal(
+            name, pattern, escape, [](char lhs, char rhs) { return lhs == rhs; }, out, is_null);
+    }
 }
 
 void like(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
     static codec::StringRef default_esc(1, "\\");
-    like(name, pattern, &default_esc, out, is_null);
+    like(name, pattern, &default_esc, false, out, is_null);
 }
 
-void ilike(codec::StringRef* name, codec::StringRef* pattern, codec::StringRef* escape, bool* out, bool* is_null) {
-    like_internal(
-        name, pattern, escape,
-        [](char lhs, char rhs) {
-            return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
-        },
-        out, is_null);
+void ilike(codec::StringRef* name, codec::StringRef* pattern, codec::StringRef* escape,
+           bool escape_null, bool* out, bool* is_null) {
+    if (escape_null) {
+        codec::StringRef empty_escape("");
+        like_internal(
+            name, pattern, &empty_escape,
+            [](char lhs, char rhs) {
+                return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+            },
+            out, is_null);
+    } else {
+        like_internal(
+            name, pattern, escape,
+            [](char lhs, char rhs) {
+                return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+            },
+            out, is_null);
+    }
 }
 
 void ilike(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
     static codec::StringRef default_esc(1, "\\");
-    ilike(name, pattern, &default_esc, out, is_null);
+    ilike(name, pattern, &default_esc, false, out, is_null);
 }
 
 void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {

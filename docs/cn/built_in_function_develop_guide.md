@@ -104,6 +104,11 @@
       ```
     
   - 注意， SQL 函数返回值将对内置函数的实现和注册方式产生较大的影响，我们将在后续分别讨论，详情参见[3. SQL函数开发模版](#3.-SQL函数开发模版)。
+  
+- 参数Nullable的处理方式：
+
+  - 一般地，OpenMLDB对所有built-in function采取统一的NULL参数处理方式。即任意一个参数为NULL时，返回直接返回NULL。
+  - 但需要对NULL参数做特殊处理，那么可以将参数配置为`Nullable<ArgType>`，然后在C++ built-in function中将使用ArgType对应的C++类型和`bool*`来表达这个参数。详情参见[3. SQL函数开发模版](#3.-SQL函数开发模版)。
 
 #### 2.1.5 内存管理
 
@@ -442,6 +447,55 @@ RegisterExternal("my_func")
         )");
 ```
 
+### 3.4 SQL函数参数是Nullable
+
+OpenMLDB对函数的NULL参数有默认的处理机制。即，任意一个参数为NULL时，函数返回NULL。但如果开发者想要在函数中获得参数是否为NULL并特别处理NULL参数时，我们需要把参数NULL的信息传递到函数中去。
+
+一般地做法是将这个参数配置为`Nullable`，并且在C++函数的对应参数后面加一个`bool`参数才存放参数值是否为空的信息。
+
+具体地，我们可以将函数设计为如下的样子：
+
+```c++
+# hybridse/src/udf/udf.h
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      // we are going to handle null arg2 in the function
+      Ret func(Arg1 arg1 Arg2 arg2, bool is_arg2_null, ...);
+    }
+  }
+}
+
+```
+
+```c++
+# hybridse/src/udf/udf.cc
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      Ret func(Arg1 arg1, Arg2 arg2, bool is_arg2_null, ...) {
+        // ...
+        // if is_arg1_null
+        // 	return Ret(0)
+        // else 
+        // 	compute and return result
+      }
+    } 
+  } 
+} 
+```
+
+同时，在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)中注册和配置函数：
+
+```c++
+# hybridse/src/udf/default_udf_library.cc
+RegisterExternal("my_func")
+        .args<Arg1, Nulable<Arg2>, ...>(static_cast<R (*)(Arg1, Arg2, bool, ...)>(v1::func))()
+        .doc(R"(
+            documenting my_func
+        )");
+```
+
 ## 4. SQL函数开发实例
 
 ### 4.1 SQL函数返回值为布尔或数值类型 - `INT Month(TIMESTAMP)`函数
@@ -739,5 +793,152 @@ select date(timestamp(1590115420000)) as dt;
  ------------
   2020-05-22 
  ------------
+```
+
+### 4.4 SQL函数的参数类型是Nullable - `like_match(target, pattern, escape)`函数
+
+`bool like_match(target, patten, escape)`函数接受一个三个字符串参数。第一个参数为target字符串，第二个参数为pattern，最后一个参数为escape字符串。函数对target和pattern进行模糊匹配。
+
+- target字符串为***NULL***时，返回***NULL***。
+- pattern字符串为***NULL***时，返回***NULL***。
+- escape字符串为NULL是，会当作""的escape处理。
+
+参考[3.4 SQL函数参数是Nullable](#3.4-sql函数参数是nullable)
+
+#### **step 1: 实现待注册的内置函数**
+
+在[hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)声明`timestamp_to_date()`函数：
+
+```c++
+# hybridse/src/udf/udf.h
+namespace hybridse {
+  namespace udf{
+    namespace v1 {
+      void ilike(codec::StringRef* name, codec::StringRef* pattern, 
+                 codec::StringRef* escape, bool escape_null, bool* out, bool* is_null);
+    } // namespace v1
+  } // namespace udf
+} // namespace hybridse
+```
+
+在[hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)中实现`timestamp_to_date()`函数:
+
+```c++
+# hybridse/src/udf/udf.cc
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+        void ilike(codec::StringRef* name, codec::StringRef* pattern, codec::StringRef* escape,
+           bool escape_null, bool* out, bool* is_null) {
+            if (escape_null) {
+                codec::StringRef empty_escape("");
+                like_internal(
+                    name, pattern, &empty_escape,
+                    [](char lhs, char rhs) {
+                        return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+                    },
+                    out, is_null);
+            } else {
+                like_internal(
+                    name, pattern, escape,
+                    [](char lhs, char rhs) {
+                        return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+                    },
+                    out, is_null);
+            }
+        }
+    } // namespace v1
+  } // namespace udf
+} // namespace hybridse
+```
+
+#### **step 2: 配置参数，返回值并注册函数**
+
+函数名和函数参数的配置和普通函数配置一样。但需要额外注意返回值类型的配置：
+
+- 因为函数结果存放在参数中返回，所以配置`return_by_arg(true)`
+- 因为函数结果可能为null所以配置`.returns<Nullable<bool>>`
+
+因为`like_match`函数是字符串比较函数，所以建议在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)的`DefaultUdfLibrary::InitStringUdf()`方法中注册和配置函数：
+
+```c++
+namespace hybridse {
+  namespace udf {
+    void DefaultUdfLibrary::InitTimeAndDateUdf() {
+      // ...    
+        RegisterExternal("like_match")
+        .args<StringRef, StringRef, Nullable<StringRef>>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool, bool*, bool*)>(
+                udf::v1::like)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief pattern match same as LIKE predicate
+
+              	// ...
+                @endcode
+
+                @param target: string to match
+
+                @param pattern: the glob match pattern
+
+                @param escape: escape character
+
+                @since 0.4.0
+        )r");
+    }
+  } // namespace udf
+} // namespace hybridse
+```
+
+#### step 3: 函数单元测试
+
+在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc)中添加`TEST_F`单测，并[编译和运行单元测试](#2.3.2-编译和执行单测)。
+
+```c++
+TEST_F(UdfIRBuilderTest, like_match) {
+    // target is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", nullptr, nullptr, codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    // pattern is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", nullptr, codec::StringRef("Mike"), nullptr, codec::StringRef("\\"));
+    // escape is null, disable escape
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), nullptr);
+
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", false, codec::StringRef("Mike"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mi_e"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mi\\ke"), codec::StringRef("Mi\\_e"), nullptr);
+}
+
+```
+
+SQL函数开发完成后，可通过SQL调用like_match函数。(注：函数名大小写不敏感）：
+
+```sql
+select 
+      like_match('Mike', 'M_\\ke')  as col1,
+      like_match('Mike', 'M_\\ke', "\\")  as col2,
+      like_match('Mike', 'M_\\ke', "")  as col3,
+      like_match('Mike', 'M_\\ke', string(null)) as col4,
+      like_match('Mike', string(null), '%') as col5,
+      like_match(string(null), 'M_k', '%')  as col6 from t1;
+
+-- output
+ ------ ------ ------ ------ ------ ------
+  col1   col2   col3   col4   col5   col6
+ ------ ------ ------ ------ ------ ------
+  true   true  false   false  null   null
+ ------ ------ ------ ------ ------ ------
 ```
 

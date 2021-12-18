@@ -666,9 +666,11 @@ void DefaultUdfLibrary::InitStringUdf() {
                 select date_format(date(1590115420000),"%Y-%m-%d");
                 --output "2020-05-22"
             @endcode)");
+    /// Escape is Nullable
+    /// if escape is null, we will deal with it. Regarding it as an empty string. See more details in udf::v1::ilike
     RegisterExternal("like_match")
-        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
+        .args<StringRef, StringRef, Nullable<StringRef>>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool, bool*, bool*)>(
                 udf::v1::like)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
@@ -685,6 +687,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                    - if <escape character> is empty or null value, escape feautre is disabled
                 3. case sensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+                5. return NULL if target or pattern is NULL
 
                 Example:
                 @code{.sql}
@@ -698,6 +701,9 @@ void DefaultUdfLibrary::InitStringUdf() {
                     -- output: true
 
                     select like_match('Mi\\ke', 'Mi\\_e', '')
+                    -- output: true
+
+                    select like_match('Mi\\ke', 'Mi\\_e', string(null))
                     -- output: true
                 @endcode
 
@@ -727,6 +733,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                    - if <escape character> is empty or null value, escape feautre is disabled
                 3. case sensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+                5. return NULL if target or pattern is NULL
 
                 Example:
                 @code{.sql}
@@ -742,9 +749,11 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 @since 0.4.0
         )r");
+    /// Escape is Nullable
+    /// if escape is null, we will deal with it. Regarding it as an empty string. See more details in udf::v1::ilike
     RegisterExternal("ilike_match")
-        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
+        .args<StringRef, StringRef, Nullable<StringRef>>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool, bool*, bool*)>(
                 udf::v1::ilike)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
@@ -761,6 +770,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                    - if <escape character> is empty or null value, escape feautre is disabled
                 3. case insensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+                5. Return NULL if target or pattern is NULL
 
                 Example:
                 @code{.sql}
@@ -803,6 +813,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                    - if <escape character> is empty or null value, escape feautre is disabled
                 3. case insensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+                5. Return NULL if target or pattern is NULL
 
                 Example:
                 @code{.sql}
