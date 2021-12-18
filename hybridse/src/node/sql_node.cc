@@ -170,17 +170,22 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const std::vec
     output << org_tab << SPACE_ST << item_name << ": " << ss.str();
 }
 
-void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap &value,
+void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap* value,
                 const std::string &item_name, bool last_child) {
     output << org_tab << SPACE_ST << item_name << ":";
-    if (value.empty()) {
+    if (value == nullptr || value->empty()) {
         output << " <nil>";
         return;
     }
-    auto new_tab = org_tab + INDENT + SPACE_ED;
-    for (auto it = value.begin(); it != value.end(); ++it) {
+    auto new_tab = org_tab;
+    if (last_child) {
+        absl::StrAppend(&new_tab, INDENT);
+    } else {
+        absl::StrAppend(&new_tab, OR_INDENT);
+    }
+    for (auto it = value->begin(); it != value->end(); ++it) {
         output << "\n";
-        PrintSqlNode(output, new_tab, it->second, it->first, std::next(it) == value.end());
+        PrintSqlNode(output, new_tab, it->second, it->first, std::next(it) == value->end());
     }
 }
 
@@ -220,6 +225,10 @@ bool SqlNodeList::Equals(const SqlNodeList *that) const {
 void QueryNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     output << ": " << QueryTypeName(query_type_);
+    if (config_options_.get() != nullptr) {
+        output << "\n";
+        PrintValue(output, org_tab + INDENT + SPACE_ED, config_options_.get(), "config_options", false);
+    }
 }
 bool QueryNode::Equals(const SqlNode *node) const {
     if (!SqlNode::Equals(node)) {
@@ -1350,7 +1359,9 @@ void SelectIntoNode::Print(std::ostream &output, const std::string &tab) const {
     output << "\n";
     PrintSqlNode(output, new_tab, Query(), "query", false);
     output << "\n";
-    PrintValue(output, new_tab, *Options().get(), "options", true);
+    PrintValue(output, new_tab, Options().get(), "options", false);
+    output << "\n";
+    PrintValue(output, new_tab, ConfigOptions().get(), "config_options", true);
 }
 
 void LoadDataNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1364,7 +1375,9 @@ void LoadDataNode::Print(std::ostream &output, const std::string &org_tab) const
     output << "\n";
     PrintValue(output, tab, Table(), "table", false);
     output << "\n";
-    PrintValue(output, tab, *Options().get(), "options", true);
+    PrintValue(output, tab, Options().get(), "options", false);
+    output << "\n";
+    PrintValue(output, tab, ConfigOptions().get(), "config_options", true);
 }
 
 void SetNode::Print(std::ostream &output, const std::string &org_tab) const {

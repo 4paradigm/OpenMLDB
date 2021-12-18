@@ -673,6 +673,8 @@ void QueryPlanNode::Print(std::ostream &output,
     PlanNode::Print(output, org_tab);
     output << "\n";
     PrintPlanNode(output, org_tab + INDENT, children_[0], "", true);
+    output << "\n";
+    PrintValue(output, org_tab, config_options_.get(), "config_options", true);
 }
 bool QueryPlanNode::Equals(const PlanNode *node) const {
     return UnaryPlanNode::Equals(node);
@@ -718,7 +720,9 @@ void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) c
     output << "\n";
     PrintValue(output, tab, Table(), "table", false);
     output << "\n";
-    PrintValue(output, tab, *Options().get(), "options", true);
+    PrintValue(output, tab, Options().get(), "options", true);
+    output << "\n";
+    PrintValue(output, tab, ConfigOptions().get(), "config_options", true);
 }
 
 void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) const {
@@ -729,7 +733,9 @@ void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) con
     output << "\n";
     PrintSqlNode(output, new_tab, Query(), "query", false);
     output << "\n";
-    PrintValue(output, new_tab, *Options().get(), "options", true);
+    PrintValue(output, new_tab, Options().get(), "options", true);
+    output << "\n";
+    PrintValue(output, tab, ConfigOptions().get(), "config_options", true);
 }
 
 void SetPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
