@@ -2093,7 +2093,7 @@ class DeleteNode : public SqlNode {
 class SelectIntoNode : public SqlNode {
  public:
     explicit SelectIntoNode(const QueryNode *query, const std::string &query_str, const std::string &out,
-                            const std::shared_ptr<OptionsMap> options, const std::shared_ptr<OptionsMap> op2)
+                            const std::shared_ptr<OptionsMap>&& options, const std::shared_ptr<OptionsMap>&& op2)
         : SqlNode(kSelectIntoStmt, 0, 0),
           query_(query),
           query_str_(query_str),
@@ -2123,7 +2123,7 @@ class SelectIntoNode : public SqlNode {
 class LoadDataNode : public SqlNode {
  public:
     explicit LoadDataNode(const std::string &f, const std::string &db, const std::string &table,
-                          const std::shared_ptr<OptionsMap> op, const std::shared_ptr<OptionsMap> op2)
+                          const std::shared_ptr<OptionsMap>&& op, const std::shared_ptr<OptionsMap>&& op2)
         : SqlNode(kLoadDataStmt, 0, 0), file_(f), db_(db), table_(table), options_(op), config_options_(op2) {}
     ~LoadDataNode() {}
 

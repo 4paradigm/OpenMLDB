@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "absl/strings/match.h"
 #include "base/fe_status.h"
@@ -520,7 +521,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                 auto options = std::make_shared<node::OptionsMap>();
                 CHECK_STATUS(
                     ConvertAstOptionsListToMap(query_stmt->config_clause()->options_list(), node_manager, options));
-                query_node->config_options_ = options;
+                query_node->config_options_ = std::move(options);
             }
             *output = query_node;
             break;
@@ -741,7 +742,8 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                 CHECK_STATUS(ConvertAstOptionsListToMap(load_data_stmt->opt_config()->options_list(), node_manager,
                                                         config_options));
             }
-            *output = node_manager->MakeLoadDataNode(file_name, db, table, options, config_options);
+            *output =
+                node_manager->MakeLoadDataNode(file_name, db, table, options, config_options);
             break;
         }
         case zetasql::AST_DEPLOY_STATEMENT: {

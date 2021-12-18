@@ -764,9 +764,10 @@ DeletePlanNode* NodeManager::MakeDeletePlanNode(const DeleteNode* n) {
     return RegisterNode(node);
 }
 LoadDataNode *NodeManager::MakeLoadDataNode(const std::string &file_name, const std::string &db,
-                                            const std::string &table, const std::shared_ptr<OptionsMap> options,
+                                            const std::string &table,
+                                            const std::shared_ptr<OptionsMap> options,
                                             const std::shared_ptr<OptionsMap> config_option) {
-    LoadDataNode *node = new LoadDataNode(file_name, db, table, options, config_option);
+    LoadDataNode *node = new LoadDataNode(file_name, db, table, std::move(options), std::move(config_option));
     return RegisterNode(node);
 }
 LoadDataPlanNode *NodeManager::MakeLoadDataPlanNode(const std::string &file_name, const std::string &db,
@@ -779,7 +780,7 @@ LoadDataPlanNode *NodeManager::MakeLoadDataPlanNode(const std::string &file_name
 SelectIntoNode *NodeManager::MakeSelectIntoNode(const QueryNode *query, const std::string &query_str,
                                                 const std::string &out_file, const std::shared_ptr<OptionsMap> options,
                                                 const std::shared_ptr<OptionsMap> config_option) {
-    SelectIntoNode* node = new SelectIntoNode(query, query_str, out_file, options, config_option);
+    SelectIntoNode* node = new SelectIntoNode(query, query_str, out_file, std::move(options), std::move(config_option));
     return RegisterNode(node);
 }
 

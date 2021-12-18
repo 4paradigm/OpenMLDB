@@ -1386,6 +1386,7 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
 
     const bool is_all_;
     static PhysicalUnionNode *CastFrom(PhysicalOpNode *node);
+    std::shared_ptr<node::OptionsMap> config_options_;
 };
 
 class PhysicalPostRequestUnionNode : public PhysicalBinaryNode {
@@ -1647,6 +1648,7 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
     std::string db_;
     std::string table_;
     std::shared_ptr<node::OptionsMap> options_;
+    std::shared_ptr<node::OptionsMap> config_options_;
 };
 
 // there may more delete variants, don't mark it final
