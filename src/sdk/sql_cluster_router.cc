@@ -27,6 +27,7 @@
 #include "plan/plan_api.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
+#include "schema/schema_adapter.h"
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 #include "sdk/batch_request_result_set_sql.h"
@@ -676,7 +677,7 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
         for (int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
             auto column = parameter_schema_raw.Add();
             hybridse::type::Type hybridse_type;
-            if (!openmldb::catalog::SchemaAdapter::ConvertType(parameter->GetSchema()->GetColumnType(i),
+            if (!openmldb::schema::SchemaAdapter::ConvertType(parameter->GetSchema()->GetColumnType(i),
                                                                &hybridse_type)) {
                 LOG(WARNING) << "Invalid parameter type ";
                 return {};
@@ -703,7 +704,7 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
                 auto table_info = cluster_sdk_->GetTableInfo(main_db, main_table);
                 ::hybridse::codec::Schema raw_schema;
                 if (table_info &&
-                    ::openmldb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc(), &raw_schema)) {
+                    ::openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc(), &raw_schema)) {
                     schema = std::make_shared<::hybridse::sdk::SchemaImpl>(raw_schema);
                 }
             }
@@ -1252,7 +1253,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
             openmldb::common::ColumnDesc* col_desc = schema->Add();
             col_desc->set_name(input_ptr->GetColumnName());
             openmldb::type::DataType rtidb_type;
-            bool ok = ::openmldb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(), &rtidb_type);
+            bool ok = ::openmldb::schema::SchemaAdapter::ConvertType(input_ptr->GetColumnType(), &rtidb_type);
             if (!ok) {
                 return base::Status(base::ReturnCode::kSQLCmdRunError, "convert type failed");
             }
@@ -1283,7 +1284,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to explain sql" + sql_status.msg);
     }
     RtidbSchema rtidb_input_schema;
-    if (!openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
+    if (!openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "convert input schema failed");
     }
     if (!CheckParameter(*schema, rtidb_input_schema)) {
@@ -1292,7 +1293,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     sp_info.mutable_input_schema()->CopyFrom(*schema);
     // get output schema, and fill sp_info
     RtidbSchema rtidb_output_schema;
-    if (!openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
+    if (!openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "convert output schema failed");
     }
     sp_info.mutable_output_schema()->CopyFrom(rtidb_output_schema);
@@ -1349,7 +1350,7 @@ bool SQLClusterRouter::ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schem
     if (schema) {
         for (int i = 0; i < schema->GetColumnCnt(); i++) {
             openmldb::type::DataType casted_type;
-            if (!openmldb::catalog::SchemaAdapter::ConvertType(schema->GetColumnType(i), &casted_type)) {
+            if (!openmldb::schema::SchemaAdapter::ConvertType(schema->GetColumnType(i), &casted_type)) {
                 LOG(WARNING) << "Invalid parameter type " << schema->GetColumnType(i);
                 return false;
             }
@@ -1449,7 +1450,7 @@ std::shared_ptr<hybridse::sdk::Schema> SQLClusterRouter::GetTableSchema(const st
     }
 
     ::hybridse::vm::Schema output_schema;
-    if (::openmldb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc(), &output_schema)) {
+    if (::openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc(), &output_schema)) {
         return std::make_shared<::hybridse::sdk::SchemaImpl>(output_schema);
     } else {
         LOG(ERROR) << "Failed to convert schema for " + table_name + "in db " + db;

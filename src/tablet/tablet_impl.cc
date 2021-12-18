@@ -45,12 +45,12 @@
 #include "base/strings.h"
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
-#include "catalog/schema_adapter.h"
 #include "codec/codec.h"
 #include "codec/row_codec.h"
 #include "codec/sql_rpc_row_codec.h"
 #include "common/timer.h"
 #include "glog/logging.h"
+#include "schema/schema_adapter.h"
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
@@ -572,21 +572,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         done->Run();
         return;
     }
-    DLOG(INFO) << " request format_version " << request->format_version() << " request dimension size "
-               << request->dimensions_size() << " request time " << request->time();
-    if ((!request->has_format_version() && table->GetTableMeta()->format_version() == 1) ||
-        (request->has_format_version() && request->format_version() != table->GetTableMeta()->format_version())) {
-        response->set_code(::openmldb::base::ReturnCode::kPutBadFormat);
-        response->set_msg("put bad format");
-        done->Run();
-        return;
-    }
-    if (request->time() == 0 && request->ts_dimensions_size() == 0) {
-        response->set_code(::openmldb::base::ReturnCode::kTsMustBeGreaterThanZero);
-        response->set_msg("ts must be greater than zero");
-        done->Run();
-        return;
-    }
+    DLOG(INFO) << "request dimension size " << request->dimensions_size() << " request time " << request->time();
     if (!table->IsLeader()) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsFollower);
         response->set_msg("table is follower");
@@ -609,18 +595,9 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             done->Run();
             return;
         }
-        if (request->ts_dimensions_size() > 0) {
-            DLOG(INFO) << "put data to tid " << request->tid() << " pid " << request->pid() << " with key "
-                       << request->dimensions(0).key() << " ts " << request->ts_dimensions(0).ts();
-            ok = table->Put(request->dimensions(), request->ts_dimensions(), request->value());
-        } else {
-            DLOG(INFO) << "put data to tid " << request->tid() << " pid " << request->pid() << " with key "
-                       << request->dimensions(0).key() << " ts " << request->time();
-
-            ok = table->Put(request->time(), request->value(), request->dimensions());
-        }
-    } else {
-        ok = table->Put(request->pk(), request->time(), request->value().c_str(), request->value().size());
+        DLOG(INFO) << "put data to tid " << request->tid() << " pid " << request->pid() << " with key "
+                   << request->dimensions(0).key();
+        ok = table->Put(request->time(), request->value(), request->dimensions());
     }
     if (!ok) {
         response->set_code(::openmldb::base::ReturnCode::kPutFailed);
@@ -1330,7 +1307,6 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         response->set_msg("ts name not found, when create iterator");
         return;
     }
-
     uint64_t last_time = 0;
     std::string last_pk;
     if (request->has_pk() && request->pk().size() > 0) {
@@ -1503,7 +1479,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
             auto column = parameter_schema.Add();
             hybridse::type::Type hybridse_type;
 
-            if (!openmldb::catalog::SchemaAdapter::ConvertType(request->parameter_types(i), &hybridse_type)) {
+            if (!openmldb::schema::SchemaAdapter::ConvertType(request->parameter_types(i), &hybridse_type)) {
                 response->set_msg("Invalid parameter type: " +
                                   openmldb::type::DataType_Name(request->parameter_types(i)));
                 response->set_code(::openmldb::base::kSQLCompileError);

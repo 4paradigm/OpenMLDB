@@ -49,7 +49,7 @@ if(TESTING_ENABLE)
     target_link_libraries(mini_cluster_request_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 endif()
 
-set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${ZETASQL_LIBS})
+set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${ZETASQL_LIBS})
 
 if(SQL_PYSDK_ENABLE)
     find_package(Python3 COMPONENTS Interpreter Development)
@@ -170,15 +170,17 @@ if(SQL_JAVASDK_ENABLE)
         LINK_FLAGS "-flat_namespace -undefined suppress")
     endif()
 
-    add_custom_command(OUTPUT
-          cp_sql_resource
-          COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_SOURCE_DIR}/java/openmldb-native/src/main/resources
-          COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_jsdk> ${PROJECT_SOURCE_DIR}/java/openmldb-native/src/main/resources/)
+    # this target ensure cpp compiled libraries were copied into java project:
+    # 1. cp sql_jsdk into openmldb-native
+    # 2. cp hybridse jsdk into hybridse-native (inside dependency cp_hybridse_native_so)
+    add_custom_target(cp_native_so ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_SOURCE_DIR}/java/openmldb-native/src/main/resources
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_jsdk> ${PROJECT_SOURCE_DIR}/java/openmldb-native/src/main/resources/
+        COMMENT "copy generated native library to java project")
+    add_dependencies(cp_native_so cp_hybridse_native_so)
+
     add_custom_target(sql_javasdk_package ALL
-      DEPENDS
-        sql_jsdk
-        cp_sql_resource
         COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
-    )
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java)
+    add_dependencies(sql_javasdk_package cp_native_so)
 endif()

@@ -297,13 +297,15 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::vector<std::pair<s
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::vector<std::pair<std::string, uint32_t>>& dimensions,
                        const std::vector<uint64_t>& ts_dimensions, const std::string& value) {
-    return Put(tid, pid, dimensions, ts_dimensions, value, 0);
+    return Put(tid, pid, dimensions, ts_dimensions, value, 1);
 }
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, const char* pk, uint64_t time, const char* value, uint32_t size,
                        uint32_t format_version) {
     ::openmldb::api::PutRequest request;
-    request.set_pk(pk);
+    auto dim = request.add_dimensions();
+    dim->set_key(pk);
+    dim->set_idx(0);
     request.set_time(time);
     request.set_value(value, size);
     request.set_tid(tid);

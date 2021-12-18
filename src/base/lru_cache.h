@@ -14,6 +14,8 @@
 #include <list>
 #include <map>
 #include <utility>
+#include <boost/optional.hpp>
+#include <boost/optional/optional_io.hpp>
 
 #include "boost/optional.hpp"
 #include "boost/optional/optional_io.hpp"

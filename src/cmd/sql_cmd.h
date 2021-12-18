@@ -30,7 +30,6 @@
 #include "base/file_util.h"
 #include "base/linenoise.h"
 #include "base/texttable.h"
-#include "catalog/schema_adapter.h"
 #include "cmd/display.h"
 #include "cmd/file_option_parser.h"
 #include "cmd/split.h"
@@ -39,6 +38,7 @@
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
 #include "proto/fe_type.pb.h"
+#include "schema/schema_adapter.h"
 #include "sdk/db_sdk.h"
 #include "sdk/node_adapter.h"
 #include "sdk/sql_cluster_router.h"
@@ -57,7 +57,6 @@ DECLARE_int32(request_timeout_ms);
 // TODO(zekai): add sql_cmd.cc
 namespace openmldb::cmd {
 using hybridse::plan::PlanAPI;
-using ::openmldb::catalog::TTL_TYPE_MAP;
 const std::string LOGO =  // NOLINT
 
     "  _____                    ______  _       _____   ______   \n"
@@ -668,8 +667,8 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     sp_info.set_main_table(explain_output.request_name);
     auto input_schema = sp_info.mutable_input_schema();
     auto output_schema = sp_info.mutable_output_schema();
-    if (!openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, input_schema) ||
-        !openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, output_schema)) {
+    if (!openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.input_schema, input_schema) ||
+        !openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.output_schema, output_schema)) {
         return {base::ReturnCode::kError, "convert schema failed"};
     }
 

@@ -379,12 +379,6 @@ class NameServerImpl : public NameServer {
 
     void AddDataType(std::shared_ptr<TableInfo> table_info);
 
-    static int CheckTableMeta(const TableInfo& table_info);
-
-    int FillColumnKey(TableInfo* table_info);
-
-    int AddDefaultIndex(TableInfo* table_info);
-
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateAddReplicaSimplyRemoteOPTask(std::shared_ptr<OPData> op_data);
