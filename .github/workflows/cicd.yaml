@@ -239,7 +239,7 @@ jobs:
         working-directory: java
         if: github.event_name == 'push'
         run: |
-          mvn --batch-mode install
+          mvn --batch-mode -pl hybridse-proto install
           mvn --batch-mode -pl hybridse-native deploy
           mvn --batch-mode -pl openmldb-native deploy
         env:

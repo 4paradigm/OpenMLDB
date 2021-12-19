@@ -100,8 +100,8 @@ fi
 
 echo -e "${GREEN}setting project version to: $JAVA_VERSION, setting hybridse-native & openmldb-native to $VARIANT_VERSION${NC}"
 
-mvn versions:set -DnewVersion="$JAVA_VERSION"
+mvn --batch-mode versions:set -DnewVersion="$JAVA_VERSION"
 
 # those module has macOS variant so do not inherit number from openmldb-parent
-mvn versions:set -pl hybridse-native -DnewVersion="$VARIANT_VERSION"
-mvn versions:set -pl openmldb-native -DnewVersion="$VARIANT_VERSION"
+mvn --batch-mode versions:set -pl hybridse-native -DnewVersion="$VARIANT_VERSION"
+mvn --batch-mode versions:set -pl openmldb-native -DnewVersion="$VARIANT_VERSION"
