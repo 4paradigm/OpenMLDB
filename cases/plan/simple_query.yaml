@@ -393,6 +393,7 @@ cases:
           +-window_list: []
   - id: union_with_config
     desc: union query with config option
+    mode: physical-plan-unsupport
     sql: |
       SELECT * FROM t1 UNION ALL SELECT * FROM t3 CONFIG ( zone = 'middle' );
     expect:
