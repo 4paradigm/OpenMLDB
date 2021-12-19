@@ -166,6 +166,11 @@ jobs:
         working-directory: java
         run: |
           mvn deploy -Dmaven.test.skip=true
+        env:
+          MAVEN_OPTS: -Duser.home=/github/home
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
 
   java-sdk-mac:
