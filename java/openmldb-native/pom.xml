@@ -12,6 +12,9 @@
     <artifactId>openmldb-native</artifactId>
     <packaging>jar</packaging>
     <name>openmldb-native</name>
+    <!-- do not delete the version, a macos variant will also release for openmldb-native,
+    	 so it's version is not only inherited from parent -->
+    <version>0.4.0-SNAPSHOT</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

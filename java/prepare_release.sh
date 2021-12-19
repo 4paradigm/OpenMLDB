@@ -14,12 +14,22 @@
 # limitations under the License.
 
 # prepare for maven release, it tweak pom.xml based on a given version number
+#  use this script to:
+#  1. tweak version number before publish to maven central
+#  2. write a bump version number commit quickly
+#
+# Usage:
+#  ./prepare_release.sh $VERSION_NUMBER
+#
 #  acceptable version style
 #  - release version: '0.1.4'
 #  - snapshot version: '0.1.4-SNAPSHOT'
 #  - beta/alpha: '0.12.2.beta1', '0.12.2.alpha2', will convert released as '0.12.2-SNAPSHOT'
 #  - a optional debug number come after base version, 0.12.2.33.alpha -> 0.12.2.33-SNAPSHOT
-#  - string literal 'main': it is treated as a push to main, no version number will tweaked
+#  - string literal 'main': it is treated as a push to main, take version number from openmldb-parent
+#
+# Environment variables:
+# - IS_MAC_VARIANT: if setted, hybridse-native & openmldb-native will set to macos variant
 #
 # in case the version number passed in (extracted from tag) is in wrong style, the script will
 # replace any string after 'x.x.x' with '-SNAPSHOT', to avoid publish directly into maven central
@@ -37,11 +47,14 @@ fi
 
 cd "$(dirname "$0")"
 
+IS_MAC_VARIANT=${IS_MAC_VARIANT:-}
+
 VERSION=$1
 
 if [[ $VERSION = 'main' ]]; then
-  echo -e "${GREEN}quiting... not release from a tag push, $0 will not tweak the java versions but instead respect versions already set in code${NC}"
-  exit 0;
+  echo -e "${GREEN}not release from a tag push, $0 will get versions from code${NC}"
+  # get version number from code
+  VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
 fi
 # rm semVer number from VERSION of 3 numbers MAJOR.MINOR.PATCH
 #  0.1.2 -> ''
@@ -76,7 +89,19 @@ fi
 # 0.1.2.ABC           -> 0.2.1                       SNAPSHOT
 # 0.1.2-0928          -> 0.2.1                       SNAPSHOT
 echo "BASE_VERSION: ${BASE_VERSION}, DEBUG_NO: ${DEBUG_NO}, SUFFIX_VERSION: ${SUFFIX_VERSION}"
+
 JAVA_VERSION="$BASE_VERSION${DEBUG_NO}$SUFFIX_VERSION"
-echo -e "${GREEN}setting release version to: $JAVA_VERSION${NC}"
+
+if [[ -z $IS_MAC_VARIANT ]]; then
+  VARIANT_VERSION="$BASE_VERSION${DEBUG_NO}$SUFFIX_VERSION"
+else
+  VARIANT_VERSION="$BASE_VERSION${DEBUG_NO}-macos$SUFFIX_VERSION"
+fi
+
+echo -e "${GREEN}setting project version to: $JAVA_VERSION, setting hybridse-native & openmldb-native to $VARIANT_VERSION${NC}"
 
 mvn versions:set -DnewVersion="$JAVA_VERSION"
+
+# those module has macOS variant so do not inherit number from openmldb-parent
+mvn versions:set -pl hybridse-native -DnewVersion="$VARIANT_VERSION"
+mvn versions:set -pl openmldb-native -DnewVersion="$VARIANT_VERSION"

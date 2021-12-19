@@ -163,6 +163,7 @@ jobs:
 
       - name: deploy
         if: github.event_name == 'push'
+        working-directory: java
         run: |
           mvn deploy -Dmaven.test.skip=true
 
@@ -232,12 +233,19 @@ jobs:
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=${VERSION#v}
-          ./java/prepare_release.sh "$VERSION"
+          IS_MAC_VARIANT=ON ./java/prepare_release.sh "$VERSION"
 
-      - name: deploy
+      - name: mvn deploy
+        working-directory: java
         if: github.event_name == 'push'
         run: |
-          echo "TODO"
+          mvn --batch-mode install
+          mvn --batch-mode -pl hybridse-native deploy
+          mvn --batch-mode -pl openmldb-native deploy
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
   python-sdk:
     runs-on: ubuntu-latest
@@ -272,6 +280,7 @@ jobs:
             python/test/nosetests.xml
 
       - name: upload to pypi
+        if: github.event_name == 'push'
         run: |
           cp build/python/dist/openmldb*.whl .
           ls
