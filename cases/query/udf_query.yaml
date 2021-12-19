@@ -440,7 +440,7 @@ cases:
                  "null_pattern:bool", "null_target:bool" ]
       order: col1
       rows:
-        - [1, true, true, false, false, null, null]
+        - [1, true, true, false, null, null, null]
   - id: ilike_udf_const_null_string
     desc: ilike match null(string)
     inputs:
@@ -462,4 +462,4 @@ cases:
                  "null_pattern:bool", "null_target:bool" ]
       order: col1
       rows:
-        - [1, true, true, false, false, null, null]
+        - [1, true, true, false, null, null, null]

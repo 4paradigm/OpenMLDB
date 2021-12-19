@@ -669,8 +669,8 @@ void DefaultUdfLibrary::InitStringUdf() {
     /// Escape is Nullable
     /// if escape is null, we will deal with it. Regarding it as an empty string. See more details in udf::v1::ilike
     RegisterExternal("like_match")
-        .args<StringRef, StringRef, Nullable<StringRef>>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool, bool*, bool*)>(
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
                 udf::v1::like)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
@@ -687,7 +687,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                    - if <escape character> is empty or null value, escape feautre is disabled
                 3. case sensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
-                5. return NULL if target or pattern is NULL
+                5. if one or more of target, pattern and escape are null values, then the result is null
 
                 Example:
                 @code{.sql}
@@ -704,7 +704,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                     -- output: true
 
                     select like_match('Mi\\ke', 'Mi\\_e', string(null))
-                    -- output: true
+                    -- output: null
                 @endcode
 
                 @param target: string to match
@@ -733,7 +733,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                    - if <escape character> is empty or null value, escape feautre is disabled
                 3. case sensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
-                5. return NULL if target or pattern is NULL
+                5. if one or more of target, pattern then the result is null
 
                 Example:
                 @code{.sql}
@@ -752,8 +752,8 @@ void DefaultUdfLibrary::InitStringUdf() {
     /// Escape is Nullable
     /// if escape is null, we will deal with it. Regarding it as an empty string. See more details in udf::v1::ilike
     RegisterExternal("ilike_match")
-        .args<StringRef, StringRef, Nullable<StringRef>>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool, bool*, bool*)>(
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
                 udf::v1::ilike)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
@@ -770,7 +770,8 @@ void DefaultUdfLibrary::InitStringUdf() {
                    - if <escape character> is empty or null value, escape feautre is disabled
                 3. case insensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
-                5. Return NULL if target or pattern is NULL
+                5. if one or more of target, pattern and escape are null values, then the result is null
+
 
                 Example:
                 @code{.sql}
@@ -785,6 +786,9 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                     select ilike_match('Mi\\ke', 'mi\\_e', '')
                     -- output: true
+
+                    select ilike_match('Mi\\ke', 'mi\\_e', string(null))
+                    -- output: null
                 @endcode
 
                 @param target: string to match

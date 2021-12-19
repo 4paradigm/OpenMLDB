@@ -918,7 +918,7 @@ TEST_F(UdfIRBuilderTest, like_match) {
         "like_match", nullptr, codec::StringRef("Mike"), nullptr, codec::StringRef("\\"));
     // escape is null, disable escape
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        "like_match", true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), nullptr);
+        "like_match", nullptr, codec::StringRef("Mike"), codec::StringRef("Mi_e"), nullptr);
 
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
         "like_match", true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
@@ -930,8 +930,6 @@ TEST_F(UdfIRBuilderTest, like_match) {
         "like_match", true, codec::StringRef("Mi_e"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
         "like_match", true, codec::StringRef("Mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
-    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        "like_match", true, codec::StringRef("Mi\\ke"), codec::StringRef("Mi\\_e"), nullptr);
 }
 TEST_F(UdfIRBuilderTest, ilike_match) {
     // target is null, return null
@@ -942,7 +940,7 @@ TEST_F(UdfIRBuilderTest, ilike_match) {
         "ilike_match", nullptr, codec::StringRef("mike"), nullptr, codec::StringRef("\\"));
     // escape is null, disable escape
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        "ilike_match", true, codec::StringRef("mike"), codec::StringRef("Mi_e"), nullptr);
+        "ilike_match", nullptr, codec::StringRef("mike"), codec::StringRef("Mi_e"), nullptr);
 
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
         "ilike_match", true, codec::StringRef("mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
@@ -952,8 +950,6 @@ TEST_F(UdfIRBuilderTest, ilike_match) {
         "ilike_match", true, codec::StringRef("mi_e"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
         "ilike_match", true, codec::StringRef("mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
-    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        "ilike_match", true, codec::StringRef("mi\\ke"), codec::StringRef("Mi\\_e"), nullptr);
 }
 }  // namespace codegen
 }  // namespace hybridse
