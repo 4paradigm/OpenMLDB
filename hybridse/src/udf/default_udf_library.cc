@@ -684,7 +684,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 2. Escape character:
                    - backslash(\) is the default escape character
                    - length of <escape character> must <= 1
-                   - if <escape character> is empty or null value, escape feautre is disabled
+                   - if <escape character> is empty, escape feature is disabled
                 3. case sensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
                 5. if one or more of target, pattern and escape are null values, then the result is null
@@ -727,10 +727,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 1. Special characters:
                    - underscore(_): exact one character
                    - precent(%): zero or more characters.
-                2. Escape character:
-                   - backslash(\) is the default escape character
-                   - length of <escape character> must <= 1
-                   - if <escape character> is empty or null value, escape feautre is disabled
+                2. Escape character is backslash(\) by default
                 3. case sensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
                 5. if one or more of target, pattern then the result is null
@@ -767,7 +764,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 2. Escape character:
                    - backslash(\) is the default escape character
                    - length of <escape character> must <= 1
-                   - if <escape character> is empty or null value, escape feautre is disabled
+                   - if <escape character> is empty, escape feautre is disabled
                 3. case insensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
                 5. if one or more of target, pattern and escape are null values, then the result is null
@@ -811,10 +808,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 1. Special characters:
                    - underscore(_): exact one character
                    - precent(%): zero or more characters.
-                2. Escape character:
-                   - backslash(\) is the default escape character
-                   - length of <escape character> must <= 1
-                   - if <escape character> is empty or null value, escape feautre is disabled
+                2. Escape character: backslash(\) is the default escape character
                 3. case insensitive
                 4. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
                 5. Return NULL if target or pattern is NULL
