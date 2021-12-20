@@ -24,6 +24,7 @@ env:
 jobs:
   build_and_cpp_ut:
     runs-on: self-hosted
+    if: github.repository == '4paradigm/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
@@ -141,7 +142,7 @@ jobs:
           sh steps/ut_zookeeper.sh start
           cd onebox && sh start_onebox.sh && cd - || exit
           cd java
-          mvn test
+          mvn --batch-mode test
           cd -
           cd onebox && sh stop_all.sh && cd - || exit
           sh steps/ut_zookeeper.sh stop
@@ -165,7 +166,7 @@ jobs:
         if: github.event_name == 'push'
         working-directory: java
         run: |
-          mvn deploy -Dmaven.test.skip=true
+          mvn --batch-mode deploy -Dmaven.test.skip=true
         env:
           MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
