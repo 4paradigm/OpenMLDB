@@ -121,9 +121,9 @@ jobs:
       - name: Import GPG key
         id: import_gpg
         if: github.event_name == 'push'
-        uses: crazy-max/ghaction-import-gpg@v3
+        uses: crazy-max/ghaction-import-gpg@v4
         with:
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Cache local Maven repository
         uses: actions/cache@v2
@@ -212,9 +212,9 @@ jobs:
       - name: Import GPG key
         id: import_gpg
         if: github.event_name == 'push'
-        uses: crazy-max/ghaction-import-gpg@v3
+        uses: crazy-max/ghaction-import-gpg@v4
         with:
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: build jsdk
         run: |
@@ -254,7 +254,7 @@ jobs:
           # so it is a bit tricky to compile and deploy that
           # firstly run `maven install` install things locally
           # then selectly `mvn deploy` for hybridse-native & openmldb-native
-          mvn --batch-mode -pl openmldb-parent,hybridse-proto,hybridse-native,openmldb-native install
+          mvn --batch-mode install
           mvn --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
@@ -294,7 +294,8 @@ jobs:
             python/test/nosetests.xml
 
       - name: upload to pypi
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: >
+          github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
         run: |
           cp build/python/dist/openmldb*.whl .
           twine upload openmldb-*.whl
