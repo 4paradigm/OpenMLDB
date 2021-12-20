@@ -1220,8 +1220,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db);
     hybridse::base::Status sql_status;
-    bool allow_empty_col_index = cluster_sdk_->IsClusterMode() ? false : true;
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, allow_empty_col_index, &table_info, &sql_status);
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
     if (sql_status.code != 0) {
         return base::Status(sql_status.code, sql_status.msg);
     }
