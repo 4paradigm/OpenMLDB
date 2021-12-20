@@ -713,6 +713,73 @@ void BuildTableMeta(::openmldb::api::TableMeta* table_meta) {
     table_meta->set_format_version(1);
 }
 
+TEST_F(TableTest, LatestIsExpire) {
+    ::openmldb::api::TableMeta table_meta;
+    BuildTableMeta(&table_meta);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "price", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::openmldb::type::kLatestTime, 10, 5);
+    MemTable table(table_meta);
+    table.Init();
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = 10;
+    for (int i = 0; i < 3; i++) {
+        std::vector<std::string> row = {"card", "mcc",
+            "13", std::to_string(now - i), std::to_string(now - i)};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card");
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table.Put(0, value, request.dimensions());
+    }
+    {
+        ::openmldb::api::LogEntry entry;
+        entry.set_log_index(0);
+        ::openmldb::api::Dimension* dim = entry.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card");
+        auto value = entry.mutable_value();
+        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 6),
+                    std::to_string(now - 1)}, value));
+        ASSERT_FALSE(table.IsExpire(entry));
+        value = entry.mutable_value();
+        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 2),
+                    std::to_string(now - 1)}, value));
+        ASSERT_FALSE(table.IsExpire(entry));
+    }
+    for (int i = 3; i < 8; i++) {
+        std::vector<std::string> row = {"card", "mcc",
+            "13", std::to_string(now - i), std::to_string(now - i)};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card");
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table.Put(0, value, request.dimensions());
+    }
+    {
+        ::openmldb::api::LogEntry entry;
+        entry.set_log_index(0);
+        ::openmldb::api::Dimension* dim = entry.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card");
+        auto value = entry.mutable_value();
+        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 6),
+                    std::to_string(now - 1)}, value));
+        ASSERT_TRUE(table.IsExpire(entry));
+        value = entry.mutable_value();
+        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 2),
+                    std::to_string(now - 1)}, value));
+        ASSERT_FALSE(table.IsExpire(entry));
+    }
+}
+
 TEST_F(TableTest, AbsAndLatSetGet) {
     ::openmldb::api::TableMeta table_meta;
     BuildTableMeta(&table_meta);
@@ -722,7 +789,7 @@ TEST_F(TableTest, AbsAndLatSetGet) {
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::openmldb::type::kAbsAndLat, 10, 12);
-    SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts1", ::openmldb::type::kAbsAndLat, 10, 12);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts1", ::openmldb::type::kAbsAndLat, 10, 8);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc1", "mcc", "ts2", ::openmldb::type::kAbsAndLat, 2, 10);
     MemTable table(table_meta);
     table.Init();
@@ -730,7 +797,7 @@ TEST_F(TableTest, AbsAndLatSetGet) {
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (int i = 0; i < 10; i++) {
         std::vector<std::string> row = {"card", "mcc",
-            "13", std::to_string(now - i * (60 * 1000)), std::to_string(now - i * (60 * 1000))};
+            "13", std::to_string(now - i * 1000), std::to_string(now - i * 1000)};
         ::openmldb::api::PutRequest request;
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
@@ -751,10 +818,12 @@ TEST_F(TableTest, AbsAndLatSetGet) {
     ASSERT_EQ(10, (int64_t)table.GetIndex(0)->GetTTL()->abs_ttl / (10 * 6000));
     ASSERT_EQ(12, (int64_t)table.GetIndex(0)->GetTTL()->lat_ttl);
     ASSERT_EQ(10, (int64_t)table.GetIndex(1)->GetTTL()->abs_ttl / (10 * 6000));
-    ASSERT_EQ(12, (int64_t)table.GetIndex(1)->GetTTL()->lat_ttl);
+    ASSERT_EQ(8, (int64_t)table.GetIndex(1)->GetTTL()->lat_ttl);
     ASSERT_EQ(2, (int64_t)table.GetIndex(2)->GetTTL()->abs_ttl / (10 * 6000));
     ASSERT_EQ(10, (int64_t)table.GetIndex(2)->GetTTL()->lat_ttl);
     table.SchedGc();
+    ASSERT_EQ(1, (int64_t)table.GetIndex(0)->GetTTL()->abs_ttl / (10 * 6000));
+    ASSERT_EQ(3, (int64_t)table.GetIndex(0)->GetTTL()->lat_ttl);
     {
         ::openmldb::api::LogEntry entry;
         entry.set_log_index(0);
@@ -765,8 +834,8 @@ TEST_F(TableTest, AbsAndLatSetGet) {
         dim->set_idx(1);
         dim->set_key("mcc");
         auto value = entry.mutable_value();
-        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 10 * (60 * 1000)),
-                    std::to_string(now - 2 * (60 * 1000))}, value));
+        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 9 * (60 * 1000)),
+                    std::to_string(now - 1 * (60 * 1000))}, value));
         ASSERT_FALSE(table.IsExpire(entry));
     }
     {
@@ -780,13 +849,13 @@ TEST_F(TableTest, AbsAndLatSetGet) {
         dim->set_key("mcc");
         auto value = entry.mutable_value();
         ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 12 * (60 * 1000)),
-                    std::to_string(now - 10 * (60 * 1000))}, value));
+                    std::to_string(now - 11 * (60 * 1000))}, value));
         ASSERT_TRUE(table.IsExpire(entry));
     }
     ASSERT_EQ(1, (int64_t)table.GetIndex(0)->GetTTL()->abs_ttl / (10 * 6000));
     ASSERT_EQ(3, (int64_t)table.GetIndex(0)->GetTTL()->lat_ttl);
     ASSERT_EQ(10, (int64_t)table.GetIndex(1)->GetTTL()->abs_ttl / (10 * 6000));
-    ASSERT_EQ(12, (int64_t)table.GetIndex(1)->GetTTL()->lat_ttl);
+    ASSERT_EQ(8, (int64_t)table.GetIndex(1)->GetTTL()->lat_ttl);
     ASSERT_EQ(2, (int64_t)table.GetIndex(2)->GetTTL()->abs_ttl / (10 * 6000));
     ASSERT_EQ(10, (int64_t)table.GetIndex(2)->GetTTL()->lat_ttl);
 }
@@ -809,7 +878,7 @@ TEST_F(TableTest, AbsOrLatSetGet) {
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (int i = 0; i < 10; i++) {
         std::vector<std::string> row = {"card", "mcc",
-            "13", std::to_string(now - i * (60 * 1000)), std::to_string(now - i * (60 * 1000))};
+            "13", std::to_string(now - i * 1000), std::to_string(now - i * 1000)};
         ::openmldb::api::PutRequest request;
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
@@ -836,14 +905,16 @@ TEST_F(TableTest, AbsOrLatSetGet) {
     table.SchedGc();
     ASSERT_EQ(1, (int64_t)table.GetIndex(0)->GetTTL()->abs_ttl / (10 * 6000));
     ASSERT_EQ(3, (int64_t)table.GetIndex(0)->GetTTL()->lat_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetIndex(1)->GetTTL()->abs_ttl / (10 * 6000));
+    ASSERT_EQ(12, (int64_t)table.GetIndex(1)->GetTTL()->lat_ttl);
     {
         ::openmldb::api::LogEntry entry;
         entry.set_log_index(0);
         ::openmldb::test::AddDimension(0, "card", &entry);
         ::openmldb::test::AddDimension(1, "mcc", &entry);
         auto value = entry.mutable_value();
-        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 10 * (60 * 1000)),
-                    std::to_string(now - 2 * (60 * 1000))}, value));
+        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 9 * (60 * 1000)),
+                    std::to_string(now - 1 * (60 * 1000))}, value));
         ASSERT_FALSE(table.IsExpire(entry));
     }
     {

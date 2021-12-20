@@ -335,17 +335,29 @@ uint64_t MemTable::GetExpireTime(const TTLSt& ttl_st) {
     return cur_time - ttl_st.abs_ttl;
 }
 
-bool MemTable::CheckLatest(uint32_t index_id, const std::string& key, uint64_t ts) {
+bool MemTable::CheckLatest(const TTLSt& ttl_st, uint32_t index_id, const std::string& key, uint64_t ts) {
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_st.lat_ttl == 0) {
+        return false;
+    }
     ::openmldb::storage::Ticket ticket;
     ::openmldb::storage::TableIterator* it = NewIterator(index_id, key, ticket);
-    it->SeekToLast();
-    if (it->Valid()) {
+    it->SeekToFirst();
+    uint32_t cnt = 0;
+    while (it->Valid()) {
         if (ts >= it->GetKey()) {
             delete it;
             return false;
         }
+        cnt++;
+        if (cnt >= ttl_st.lat_ttl) {
+            break;
+        }
+        it->Next();
     }
     delete it;
+    if (cnt < ttl_st.lat_ttl) {
+        return false;
+    }
     return true;
 }
 
@@ -402,16 +414,16 @@ bool MemTable::IsExpire(const LogEntry& entry) {
             uint32_t index_id = index_def->GetId();
             switch (ttl_type) {
                 case ::openmldb::storage::TTLType::kLatestTime:
-                    is_expire = CheckLatest(index_id, kv.second, ts);
+                    is_expire = CheckLatest(*ttl, index_id, kv.second, ts);
                     break;
                 case ::openmldb::storage::TTLType::kAbsoluteTime:
                     is_expire = CheckAbsolute(*ttl, ts);
                     break;
                 case ::openmldb::storage::TTLType::kAbsOrLat:
-                    is_expire = CheckAbsolute(*ttl, ts) || CheckLatest(index_id, kv.second, ts);
+                    is_expire = CheckAbsolute(*ttl, ts) || CheckLatest(*ttl, index_id, kv.second, ts);
                     break;
                 case ::openmldb::storage::TTLType::kAbsAndLat:
-                    is_expire = CheckAbsolute(*ttl, ts) && CheckLatest(index_id, kv.second, ts);
+                    is_expire = CheckAbsolute(*ttl, ts) && CheckLatest(*ttl, index_id, kv.second, ts);
                     break;
                 default:
                     return true;
