@@ -43,5 +43,24 @@ namespace client {
     }
 }
 
+::openmldb::base::Status TaskManagerClient::ShowJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) {
+    ::openmldb::taskmanager::ShowJobRequest request;
+    ::openmldb::taskmanager::ShowJobResponse response;
+
+    request.set_id(id);
+
+    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJob, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+
+    if (ok && response.code() == 0) {
+        if (response.has_job()) {
+            job_info.CopyFrom(response.job());
+        }
+        return ::openmldb::base::Status(response.code(), response.msg());
+    } else {
+        return ::openmldb::base::Status(-1, "Fail to request TaskManager server");
+    }
+}
+
 }  // namespace client
 }  // namespace openmldb

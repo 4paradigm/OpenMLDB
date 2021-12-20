@@ -205,6 +205,8 @@ class SQLClusterRouter : public SQLRouter {
     ::openmldb::base::Status ShowJobs(const bool only_unfinished,
                                       std::vector<::openmldb::taskmanager::JobInfo>& job_infos) override;
 
+    ::openmldb::base::Status ShowJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) override;
+
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 

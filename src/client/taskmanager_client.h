@@ -45,6 +45,8 @@ class TaskManagerClient : public Client {
     ::openmldb::base::Status ShowJobs(const bool only_unfinished,
                                       std::vector<::openmldb::taskmanager::JobInfo>& job_infos);
 
+    ::openmldb::base::Status ShowJob(const int id, ::openmldb::taskmanager::JobInfo& job_info);
+
  private:
     ::openmldb::RpcClient<::openmldb::taskmanager::TaskManagerServer_Stub> client_;
 };

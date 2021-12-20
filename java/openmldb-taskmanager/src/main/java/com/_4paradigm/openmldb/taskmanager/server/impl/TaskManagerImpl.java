@@ -23,6 +23,7 @@ import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import lombok.extern.slf4j.Slf4j;
+import scala.Option;
 
 import java.util.List;
 
@@ -65,9 +66,15 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobResponse ShowJob(TaskManager.ShowJobRequest request) {
         try {
-            JobInfo jobInfo = JobInfoManager.getJob(request.getId());
-            return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
-                    .build();
+            Option<JobInfo> jobInfo = JobInfoManager.getJob(request.getId());
+
+            TaskManager.ShowJobResponse.Builder responseBuilder = TaskManager.ShowJobResponse.newBuilder()
+                    .setCode(StatusCode.SUCCESS);
+            if (jobInfo.nonEmpty()) {
+                responseBuilder.setJob(jobInfoToProto(jobInfo.get()));
+            }
+
+            return responseBuilder.build();
         } catch (Exception e) {
             e.printStackTrace();
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();

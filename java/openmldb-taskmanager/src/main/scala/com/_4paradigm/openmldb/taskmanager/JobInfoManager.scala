@@ -121,11 +121,18 @@ object JobInfoManager {
     // TODO: Can not support deleting single row row
   }
 
-  def getJob(jobId: Int): JobInfo = {
+  def getJob(jobId: Int): Option[JobInfo] = {
     // TODO: Require to get only one row, https://github.com/4paradigm/OpenMLDB/issues/704
     val sql = s"SELECT * FROM $tableName WHERE id = $jobId"
     val rs = sqlExecutor.executeSQL(dbName, sql)
-    resultSetToJob(rs)
+
+    if (rs.getFetchSize == 0) {
+      None
+    } else if (rs.getFetchSize == 1) {
+      Some(resultSetToJob(rs))
+    } else {
+      throw new Exception("Job num is more than 1, get " + rs.getFetchSize)
+    }
   }
 
   def syncJob(job: JobInfo): Unit = {
