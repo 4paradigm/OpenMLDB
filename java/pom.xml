@@ -60,6 +60,9 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
+        <!-- the version for hybridse-native & openmldb-native
+             override this to publish a variant release e.g macos variant
+             checkout java/prepare_release.sh how to prepare a variant release -->
         <variant.native.version>0.4.0-SNAPSHOT</variant.native.version>
 
         <plugin.violationSeverity>error</plugin.violationSeverity>

@@ -145,10 +145,7 @@ jobs:
       - name: run java modules smoke test
         working-directory: java
         run: |
-          mvn --batch-mode test install
-        env:
-          MAVEN_OPTS: -Duser.home=/github/home
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          mvn --batch-mode test
 
       - name: upload java ut results
         if: always()
@@ -169,7 +166,7 @@ jobs:
         if: github.event_name == 'push'
         working-directory: java
         run: |
-          mvn --batch-mode deploy
+          mvn --batch-mode deploy -DskipTests=true -Dscalatest.skip=true
         env:
           MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
@@ -253,7 +250,11 @@ jobs:
         working-directory: java
         if: github.event_name == 'push'
         run: |
-          mvn --batch-mode -pl hybridse-proto,hybridse-native,openmldb-native install
+          # by convention only native submodule has variant release
+          # so it is a bit tricky to compile and deploy that
+          # firstly run `maven install` install things locally
+          # then selectly `mvn deploy` for hybridse-native & openmldb-native
+          mvn --batch-mode -pl openmldb-parent,hybridse-proto,hybridse-native,openmldb-native install
           mvn --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
@@ -293,10 +294,9 @@ jobs:
             python/test/nosetests.xml
 
       - name: upload to pypi
-        if: github.event_name == 'push'
+        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           cp build/python/dist/openmldb*.whl .
-          ls
           twine upload openmldb-*.whl
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
