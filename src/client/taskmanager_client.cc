@@ -21,7 +21,8 @@ DECLARE_int32(request_timeout_ms);
 namespace openmldb {
 namespace client {
 
-::openmldb::base::Status TaskManagerClient::ShowJobs(const bool onlyUnfinished) {
+::openmldb::base::Status TaskManagerClient::ShowJobs(const bool onlyUnfinished,
+                                                     std::vector<::openmldb::taskmanager::JobInfo>& jobInfos) {
     ::openmldb::taskmanager::ShowJobsRequest request;
     ::openmldb::taskmanager::ShowJobsResponse response;
 
@@ -29,10 +30,17 @@ namespace client {
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJobs, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
-    if (!ok) {
+
+    if (ok && response.code() == 0) {
+        for (int32_t i = 0; i < response.jobs_size(); i++) {
+            ::openmldb::taskmanager::JobInfo job_info;
+            job_info.CopyFrom(response.jobs(i));
+            jobInfos.push_back(job_info);
+        }
+        return ::openmldb::base::Status(response.code(), response.msg());
+    } else {
         return ::openmldb::base::Status(-1, "Fail to request TaskManager server");
     }
-    return ::openmldb::base::Status(response.code(), response.msg());
 }
 
 }  // namespace client
