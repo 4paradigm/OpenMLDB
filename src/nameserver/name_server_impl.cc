@@ -8865,7 +8865,7 @@ bool NameServerImpl::UpdateZkTableNodeWithoutNotify(const TableInfo* table_info)
 }
 
 base::Status NameServerImpl::AddMultiIndexs(const std::string& db, const std::string& name,
-        const std::shared_ptr<TableInfo>& table_info,
+        std::shared_ptr<TableInfo> table_info,
         const ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnKey>& column_keys) {
     auto status = schema::IndexUtil::CheckUnique(column_keys);
     if (!status.OK()) {
@@ -8907,6 +8907,16 @@ base::Status NameServerImpl::AddMultiIndexs(const std::string& db, const std::st
             }
         }
     }
+    std::lock_guard<std::mutex> lock(mu_);
+    table_info.reset();
+    if (!GetTableInfoUnlock(name, db, &table_info)) {
+        return {ReturnCode::kTableIsNotExist, "table is not exist!"};
+    }
+    for (int idx = 0; idx < column_keys.size(); idx++) {
+        table_info->add_column_key()->CopyFrom(column_keys.Get(idx));
+    }
+    UpdateZkTableNode(table_info);
+    PDLOG(INFO, "add index ok. table[%s] index num[%d]", name.c_str(), column_keys.size());
     return {};
 }
 

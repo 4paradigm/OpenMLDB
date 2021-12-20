@@ -57,7 +57,6 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     }
     table->set_partition_num(create_node->GetPartitionNum());
     table->set_format_version(1);
-    int no_ts_cnt = 0;
     bool has_generate_index = false;
     for (auto column_desc : column_desc_list) {
         switch (column_desc->GetType()) {
@@ -141,10 +140,10 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 if (column_index->GetKey().empty()) {
                     if (allow_empty_col_index && !has_generate_index && !column_index->GetTs().empty()) {
                         const auto& ts_name = column_index->GetTs();
-                        for (const auto& kv : column_names) {
-                            if (kv.first != ts_name && kv.second->data_type() != openmldb::type::DataType::kFloat &&
-                                kv.second->data_type() != openmldb::type::DataType::kDouble) {
-                                index->add_col_name(kv.first);
+                        for (const auto& col : table->column_desc()) {
+                            if (col.name() != ts_name && col.data_type() != openmldb::type::DataType::kFloat &&
+                                col.data_type() != openmldb::type::DataType::kDouble) {
+                                index->add_col_name(col.name());
                                 has_generate_index = true;
                                 break;
                             }
@@ -165,9 +164,6 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 if (!TransformToColumnKey(column_index, column_names, index, status)) {
                     return false;
                 }
-                if (column_index->GetTs().empty()) {
-                    no_ts_cnt++;
-                }
                 break;
             }
 
@@ -178,11 +174,6 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 return false;
             }
         }
-    }
-    if (no_ts_cnt > 0 && no_ts_cnt != table->column_key_size()) {
-        status->msg = "CREATE common: need to set ts col";
-        status->code = hybridse::common::kUnsupportSql;
-        return false;
     }
     if (!distribution_list.empty()) {
         if (replica_num != static_cast<int32_t>(distribution_list.size())) {
