@@ -1100,8 +1100,9 @@ bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common
     return AddMultiIndex(tid, pid, {column_key}, task_info).OK();
 }
 
-base::Status TabletClient::AddMultiIndex(uint32_t tid, uint32_t pid, const std::vector<::openmldb::common::ColumnKey>& column_keys,
-                            std::shared_ptr<TaskInfo> task_info) {
+base::Status TabletClient::AddMultiIndex(uint32_t tid, uint32_t pid,
+        const std::vector<::openmldb::common::ColumnKey>& column_keys,
+        std::shared_ptr<TaskInfo> task_info) {
     ::openmldb::api::AddIndexRequest request;
     ::openmldb::api::GeneralResponse response;
     request.set_tid(tid);

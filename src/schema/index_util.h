@@ -43,6 +43,8 @@ class IndexUtil {
     static bool CheckExist(const ::openmldb::common::ColumnKey& column_key,
             const PBIndex& index, int32_t* pos);
 
+    static base::Status CheckUnique(const PBIndex& index);
+
     static bool CheckTTL(const ::openmldb::common::TTLSt& ttl);
 
     static bool AddDefaultIndex(openmldb::nameserver::TableInfo* table_info);

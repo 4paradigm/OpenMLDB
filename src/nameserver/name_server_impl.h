@@ -741,6 +741,7 @@ class NameServerImpl : public NameServer {
                           openmldb::common::VersionPair* new_pair);
 
     base::Status AddMultiIndexs(const std::string& db, const std::string& name,
+            const std::shared_ptr<TableInfo>& table_info,
             const ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnKey>& column_keys);
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);

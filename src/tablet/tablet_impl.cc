@@ -4625,7 +4625,7 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
     }
     if (request->column_keys_size() > 0) {
         for (const auto& column_key : request->column_keys()) {
-            // TODO (denglong): support add multi indexs in memory table
+            // TODO(denglong): support add multi indexs in memory table
             if (!mem_table->AddIndex(column_key)) {
                 PDLOG(WARNING, "add index %s failed. tid %u, pid %u", column_key.index_name().c_str(), tid, pid);
                 base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);

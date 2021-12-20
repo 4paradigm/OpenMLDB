@@ -155,6 +155,23 @@ bool IndexUtil::FillColumnKey(openmldb::nameserver::TableInfo* table_info) {
     return true;
 }
 
+base::Status IndexUtil::CheckUnique(const PBIndex& index) {
+    std::set<std::string> id_set;
+    std::set<std::string> name_set;
+    for (int32_t index_pos = 0; index_pos < index.size(); index_pos++) {
+        if (name_set.count(index.Get(index_pos).index_name()) > 0) {
+            return {base::ReturnCode::kError, "duplicate index " + index.Get(index_pos).index_name()};
+        }
+        name_set.insert(index.Get(index_pos).index_name());
+        auto id_str = GetIDStr(index.Get(index_pos));
+        if (id_set.count(id_str) > 0) {
+            return {base::ReturnCode::kError, "duplicate index " + index.Get(index_pos).index_name()};
+        }
+        id_set.insert(id_str);
+    }
+    return {};
+}
+
 bool IndexUtil::CheckExist(const ::openmldb::common::ColumnKey& column_key,
         const PBIndex& index, int32_t* pos) {
     int32_t index_pos = 0;

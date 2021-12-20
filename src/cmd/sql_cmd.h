@@ -796,21 +796,10 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     }
     if (cs->IsClusterMode()) {
         for (auto& kv : new_index_map) {
-            auto it = table_map.find(kv.first);
-            std::vector<openmldb::common::ColumnDesc> cols;
-            for (auto& column_key : kv.second) {
-                for (const auto& col_name : column_key.col_name()) {
-                    for (const auto& col : it->second.column_desc()) {
-                        if (col.name() == col_name) {
-                            cols.push_back(col);
-                            break;
-                        }
-                    }
-                }
-            }
-            std::string msg;
-            if (!ns->AddIndex(kv.first, kv.second, &cols, msg)) {
-                return {base::ReturnCode::kError, "table " + kv.first + " add index failed"};
+            auto status = ns->AddMultiIndex(kv.first, kv.second);
+            if (!status.OK()) {
+                status.msg = "table " + kv.first + " add index failed. " + status.msg;
+                return status;
             }
         }
     } else {

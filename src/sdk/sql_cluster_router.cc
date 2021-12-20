@@ -1469,7 +1469,7 @@ std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) 
 
 ::openmldb::nameserver::TableInfo SQLClusterRouter::GetTableInfo(const std::string& db, const std::string& table) {
     auto table_infos = cluster_sdk_->GetTableInfo(db, table);
-    if(!table_infos){
+    if (!table_infos) {
         return {};
     }
     return *table_infos;

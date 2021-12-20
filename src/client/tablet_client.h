@@ -230,8 +230,9 @@ class TabletClient : public Client {
     bool AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common::ColumnKey& column_key,
                   std::shared_ptr<TaskInfo> task_info);
 
-    base::Status AddMultiIndex(uint32_t tid, uint32_t pid, const std::vector<::openmldb::common::ColumnKey>& column_keys,
-                  std::shared_ptr<TaskInfo> task_info);
+    base::Status AddMultiIndex(uint32_t tid, uint32_t pid,
+            const std::vector<::openmldb::common::ColumnKey>& column_keys,
+            std::shared_ptr<TaskInfo> task_info);
 
     bool DumpIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
                        const ::openmldb::common::ColumnKey& column_key, uint32_t idx,
