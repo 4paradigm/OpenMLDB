@@ -58,18 +58,22 @@ jobs:
           # make thirdpartybuild-clean
 
       - name: run cpp
+        id: unittest
         run: |
           make test
 
       - name: run sql_sdk_test
+        id: sql_sdk_test
         run: |
           bash steps/ut.sh sql_sdk_test 0
 
       - name: run sql_cluster_test
+        id: sql_cluster_test
         run: |
           bash steps/ut.sh sql_cluster_test 0
 
       - name: run sql_standalone_sdk_test
+        id: sql_standalone_sdk_test
         run: |
           bash steps/ut.sh sql_standalone_sdk_test 0
 
@@ -80,6 +84,16 @@ jobs:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
             reports/*.xml
+
+      - name: upload missing logs
+        if: >
+          steps.unittest.outcome != 'success' || steps.sql_sdk_test.outcome != 'success' ||
+          steps.sql_cluster_test.outcome != 'success' || steps.sql_standalone_sdk_test.outcome != 'success'
+        uses: actions/upload-artifact@v2
+        with:
+          path: |
+            /deps/src/zookeeper-3.4.14/zookeeper.out
+          name: failed-test-log
 
       - name: install
         if: ${{ github.event_name == 'push' }}
@@ -254,7 +268,7 @@ jobs:
           # so it is a bit tricky to compile and deploy that
           # firstly run `maven install` install things locally
           # then selectly `mvn deploy` for hybridse-native & openmldb-native
-          mvn --batch-mode install
+          mvn --batch-mode install -DskipTests=true -Dscalatest.skip=true
           mvn --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
