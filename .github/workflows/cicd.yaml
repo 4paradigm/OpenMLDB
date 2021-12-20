@@ -137,15 +137,18 @@ jobs:
         run: |
           make build
 
-      - name: run java modules smoke test
+      - name: start services
         run: |
           sh steps/ut_zookeeper.sh start
           cd onebox && sh start_onebox.sh && cd - || exit
-          cd java
-          mvn --batch-mode test
-          cd -
-          cd onebox && sh stop_all.sh && cd - || exit
-          sh steps/ut_zookeeper.sh stop
+
+      - name: run java modules smoke test
+        working-directory: java
+        run: |
+          mvn --batch-mode test install
+        env:
+          MAVEN_OPTS: -Duser.home=/github/home
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: upload java ut results
         if: always()
@@ -153,7 +156,7 @@ jobs:
         with:
           name: linux-ut-result-java-${{ github.sha }}
           path: |
-            java/openmldb-jdbc/target/**/TEST-*.xml
+            java/*/target/**/TEST-*.xml
 
       - name: prepare deploy version
         if: github.event_name == 'push'
@@ -166,12 +169,17 @@ jobs:
         if: github.event_name == 'push'
         working-directory: java
         run: |
-          mvn --batch-mode deploy -Dmaven.test.skip=true
+          mvn --batch-mode deploy
         env:
           MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: stop services
+        run: |
+          cd onebox && sh stop_all.sh && cd - || exit
+          sh steps/ut_zookeeper.sh stop
 
 
   java-sdk-mac:
@@ -245,9 +253,8 @@ jobs:
         working-directory: java
         if: github.event_name == 'push'
         run: |
-          mvn --batch-mode -pl hybridse-proto install
-          mvn --batch-mode -pl hybridse-native deploy
-          mvn --batch-mode -pl openmldb-native deploy
+          mvn --batch-mode -pl hybridse-proto,hybridse-native,openmldb-native install
+          mvn --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
