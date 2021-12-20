@@ -1475,5 +1475,11 @@ std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) 
     return *table_infos;
 }
 
+::openmldb::base::Status SQLClusterRouter::ShowJobs(const bool only_unfinished,
+                                                    std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    return taskmanager_client_ptr->ShowJobs(only_unfinished, job_infos);
+}
+
 }  // namespace sdk
 }  // namespace openmldb

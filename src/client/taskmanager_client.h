@@ -32,14 +32,18 @@ class TaskManagerClient : public Client {
         : Client(endpoint, real_endpoint),
         client_(real_endpoint.empty() ? endpoint : real_endpoint, use_sleep_policy) {}
 
+    TaskManagerClient(const std::string& endpoint, const std::string& real_endpoint)
+        : Client(endpoint, real_endpoint),
+          client_(real_endpoint.empty() ? endpoint : real_endpoint, true) {}
+
     ~TaskManagerClient() {}
 
     int Init() override {
         return client_.Init();
     }
 
-    ::openmldb::base::Status ShowJobs(const bool onlyUnfinished,
-                                      std::vector<::openmldb::taskmanager::JobInfo>& jobInfos);
+    ::openmldb::base::Status ShowJobs(const bool only_unfinished,
+                                      std::vector<::openmldb::taskmanager::JobInfo>& job_infos);
 
  private:
     ::openmldb::RpcClient<::openmldb::taskmanager::TaskManagerServer_Stub> client_;

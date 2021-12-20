@@ -21,12 +21,12 @@ DECLARE_int32(request_timeout_ms);
 namespace openmldb {
 namespace client {
 
-::openmldb::base::Status TaskManagerClient::ShowJobs(const bool onlyUnfinished,
-                                                     std::vector<::openmldb::taskmanager::JobInfo>& jobInfos) {
+::openmldb::base::Status TaskManagerClient::ShowJobs(const bool only_unfinished,
+                                                     std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
     ::openmldb::taskmanager::ShowJobsRequest request;
     ::openmldb::taskmanager::ShowJobsResponse response;
 
-    request.set_unfinished(onlyUnfinished);
+    request.set_unfinished(only_unfinished);
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJobs, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
@@ -35,7 +35,7 @@ namespace client {
         for (int32_t i = 0; i < response.jobs_size(); i++) {
             ::openmldb::taskmanager::JobInfo job_info;
             job_info.CopyFrom(response.jobs(i));
-            jobInfos.push_back(job_info);
+            job_infos.push_back(job_info);
         }
         return ::openmldb::base::Status(response.code(), response.msg());
     } else {

@@ -646,28 +646,10 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             exit(0);
         }
         case hybridse::node::kCmdShowJobs: {
-
-            std::shared_ptr<::openmldb::client::TaskManagerClient> taskmanager_client_;
-
-            std::string endpoint = "127.0.0.1:9902";
-            std::string real_endpoint = "";
-
-            taskmanager_client_ = std::make_shared<::openmldb::client::TaskManagerClient>(endpoint, real_endpoint, true);
-
-            int ret = taskmanager_client_->Init();
-
-            if (ret != 0) {
-                std::cout << "fail to init ns client with endpoint " << endpoint << std::endl;
-            } else {
-                std::cout << "Success to init ns client with endpoint " << endpoint << std::endl;
-            }
-
             std::vector<::openmldb::taskmanager::JobInfo> job_infos;
-            auto status = taskmanager_client_->ShowJobs(false, job_infos);
+            sr->ShowJobs(false, job_infos);
 
             PrintJobInfos(std::cout, job_infos);
-
-            exit(0);
         }
         case hybridse::node::kCmdShowJob: {
             exit(0);
