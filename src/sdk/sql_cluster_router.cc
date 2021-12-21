@@ -1478,16 +1478,25 @@ std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) 
 ::openmldb::base::Status SQLClusterRouter::ShowJobs(const bool only_unfinished,
                                                     std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
     return taskmanager_client_ptr->ShowJobs(only_unfinished, job_infos);
 }
 
 ::openmldb::base::Status SQLClusterRouter::ShowJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
     return taskmanager_client_ptr->ShowJob(id, job_info);
 }
 
 ::openmldb::base::Status SQLClusterRouter::StopJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
     return taskmanager_client_ptr->StopJob(id, job_info);
 }
 

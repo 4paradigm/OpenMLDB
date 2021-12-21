@@ -17,8 +17,6 @@
 #ifndef SRC_SDK_DB_SDK_H_
 #define SRC_SDK_DB_SDK_H_
 
-#include <client/taskmanager_client.h>
-
 #include <map>
 #include <memory>
 #include <string>
@@ -29,6 +27,7 @@
 #include "catalog/sdk_catalog.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "client/taskmanager_client.h"
 #include "common/thread_pool.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
