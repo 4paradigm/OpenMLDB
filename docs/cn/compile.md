@@ -9,12 +9,12 @@
 
 1. 下载 docker 镜像
     ```bash
-    docker pull 4pdosc/hybridsql:0.4.0
+    docker pull 4pdosc/hybridsql:0.4.1
     ```
 
 2. 启动 docker 容器
     ```bash
-    docker run -it 4pdosc/hybridsql:0.4.0 bash
+    docker run -it 4pdosc/hybridsql:0.4.1 bash
     ```
 
 3. 在 docker 容器内, 克隆 OpenMLDB

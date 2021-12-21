@@ -237,6 +237,9 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         current_node = node_manager_->MakeLimitPlanNode(current_node, limit_ptr->GetLimitCount());
     }
     current_node = node_manager_->MakeSelectPlanNode(current_node);
+    if (root->config_options_ != nullptr) {
+        dynamic_cast<node::QueryPlanNode*>(current_node)->config_options_ = root->config_options_;
+    }
     *plan_tree = current_node;
     return base::Status::OK();
 }
@@ -250,7 +253,11 @@ base::Status Planner::CreateUnionQueryPlan(const node::UnionQueryNode *root, Pla
                  "can not create union query plan left query")
     CHECK_STATUS(CreateQueryPlan(root->right_, &right_plan), common::kPlanError,
                  "can not create union query plan right query")
-    *plan_tree = node_manager_->MakeUnionPlanNode(left_plan, right_plan, root->is_all_);
+    auto res = node_manager_->MakeUnionPlanNode(left_plan, right_plan, root->is_all_);
+    if (root->config_options_ != nullptr) {
+        dynamic_cast<node::UnionPlanNode*>(res)->config_options_ = root->config_options_;
+    }
+    *plan_tree = res;
     return base::Status::OK();
 }
 base::Status Planner::CheckWindowFrame(const node::WindowDefNode *w_ptr) {
@@ -314,13 +321,15 @@ base::Status Planner::CreateDeployPlanNode(const node::DeployNode *root, node::P
 
 base::Status Planner::CreateLoadDataPlanNode(const node::LoadDataNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create load data plan with null node");
-    *output = node_manager_->MakeLoadDataPlanNode(root->File(), root->Db(), root->Table(), root->Options());
+    *output = node_manager_->MakeLoadDataPlanNode(root->File(), root->Db(), root->Table(), root->Options(),
+                                                  root->ConfigOptions());
     return base::Status::OK();
 }
 
 base::Status Planner::CreateSelectIntoPlanNode(const node::SelectIntoNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create select into plan with null node");
-    *output = node_manager_->MakeSelectIntoPlanNode(root->Query(), root->QueryStr(), root->OutFile(), root->Options());
+    *output = node_manager_->MakeSelectIntoPlanNode(root->Query(), root->QueryStr(), root->OutFile(), root->Options(),
+                                                    root->ConfigOptions());
     return base::Status::OK();
 }
 

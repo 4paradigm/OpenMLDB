@@ -158,6 +158,7 @@ class UnionPlanNode : public BinaryPlanNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const PlanNode *that) const;
     const bool is_all;
+    std::shared_ptr<OptionsMap> config_options_;
 };
 
 class CrossProductPlanNode : public BinaryPlanNode {
@@ -189,6 +190,7 @@ class QueryPlanNode : public UnaryPlanNode {
     ~QueryPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const PlanNode *node) const;
+    std::shared_ptr<OptionsMap> config_options_;
 };
 
 class FilterPlanNode : public UnaryPlanNode {
@@ -493,15 +495,23 @@ class DeployPlanNode : public LeafPlanNode {
 
 class SelectIntoPlanNode : public LeafPlanNode {
  public:
-    explicit SelectIntoPlanNode(const QueryNode* query, const std::string& query_str, const std::string& out,
-                                const std::shared_ptr<OptionsMap> options)
-        : LeafPlanNode(kPlanTypeSelectInto), query_(query), query_str_(query_str), out_file_(out), options_(options) {}
+    explicit SelectIntoPlanNode(const QueryNode *query, const std::string &query_str, const std::string &out,
+                                const std::shared_ptr<OptionsMap> options,
+                                const std::shared_ptr<OptionsMap> config_options)
+        : LeafPlanNode(kPlanTypeSelectInto),
+          query_(query),
+          query_str_(query_str),
+          out_file_(out),
+          options_(options),
+          config_options_(config_options) {}
+
     ~SelectIntoPlanNode() {}
 
     const QueryNode* Query() const { return query_; }
     const std::string& QueryStr() const { return query_str_; }
     const std::string& OutFile() const { return out_file_; }
     const std::shared_ptr<OptionsMap> Options() const { return options_; }
+    const std::shared_ptr<OptionsMap> ConfigOptions() const { return config_options_; }
 
     void Print(std::ostream& output, const std::string& tab) const override;
 
@@ -509,20 +519,29 @@ class SelectIntoPlanNode : public LeafPlanNode {
     const QueryNode* query_;
     const std::string query_str_;
     const std::string out_file_;
+    // optional options for load data, e.g csv related options
     const std::shared_ptr<OptionsMap> options_;
+    // optinal config option for load data, to config offline job parameters
+    const std::shared_ptr<OptionsMap> config_options_ = nullptr;
 };
 
 class LoadDataPlanNode : public LeafPlanNode {
  public:
-    explicit LoadDataPlanNode(const std::string& f, const std::string& db, const std::string& table,
-                          const std::shared_ptr<OptionsMap> op)
-        : LeafPlanNode(kPlanTypeLoadData), file_(f), db_(db), table_(table), options_(op) {}
+    explicit LoadDataPlanNode(const std::string &f, const std::string &db, const std::string &table,
+                              const std::shared_ptr<OptionsMap> op, const std::shared_ptr<OptionsMap> config_options)
+        : LeafPlanNode(kPlanTypeLoadData),
+          file_(f),
+          db_(db),
+          table_(table),
+          options_(op),
+          config_options_(config_options) {}
     ~LoadDataPlanNode() {}
 
     const std::string& File() const { return file_; }
     const std::string& Db() const { return db_; }
     const std::string& Table() const { return table_; }
     const std::shared_ptr<OptionsMap> Options() const { return options_; }
+    const std::shared_ptr<OptionsMap> ConfigOptions() const { return config_options_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const override;
 
@@ -530,7 +549,10 @@ class LoadDataPlanNode : public LeafPlanNode {
     const std::string file_;
     const std::string db_;
     const std::string table_;
+    // optional options for load data, e.g csv related options
     const std::shared_ptr<OptionsMap> options_ = nullptr;
+    // optinal config option for load data, to config offline job parameters
+    const std::shared_ptr<OptionsMap> config_options_ = nullptr;
 };
 
 class SetPlanNode : public LeafPlanNode {

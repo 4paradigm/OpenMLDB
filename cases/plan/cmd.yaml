@@ -233,8 +233,9 @@ cases:
           +-db: <nil>
           +-table: t1
           +-options: <nil>
+          +-config_options: <nil>
   - id: load_data_infile_2
-    sql: LOAD DATA INFILE 'data.csv' INTO TABLE db0.t1 OPTIONS (charset = 'utf-8');
+    sql: LOAD DATA INFILE 'data.csv' INTO TABLE db0.t1 OPTIONS (charset = 'utf-8') CONFIG ( job = 'online' );
     expect:
       node_tree_str: |
         +-node[kLoadDataStmt]
@@ -242,9 +243,14 @@ cases:
           +-db: db0
           +-table: t1
           +-options:
-            +-charset:
+          |  +-charset:
+          |    +-expr[primary]
+          |      +-value: utf-8
+          |      +-type: string
+          +-config_options:
+            +-job:
               +-expr[primary]
-                +-value: utf-8
+                +-value: online
                 +-type: string
   - id: select_into_outfile_1
     sql: SELECT col1 FROM t1 WHERE col1 > 10 INTO OUTFILE 'data.csv';
@@ -285,8 +291,9 @@ cases:
           |    |      +-alias: <nil>
           |    +-window_list: []
           +-options: <nil>
+          +-config_options: <nil>
   - id: select_into_outfile_2
-    sql: SELECT col1 FROM t1 WHERE col1 <= 10 INTO OUTFILE 'data.csv' OPTIONS ( delimit = ',' );
+    sql: SELECT col1 FROM t1 WHERE col1 <= 10 INTO OUTFILE 'data.csv' OPTIONS ( delimit = ',' ) CONFIG ( job = 'spark' );
     expect:
       node_tree_str: |
         +-node[kSelectIntoStmt]
@@ -324,9 +331,14 @@ cases:
           |    |      +-alias: <nil>
           |    +-window_list: []
           +-options:
-            +-delimit:
+          |  +-delimit:
+          |    +-expr[primary]
+          |      +-value: ,
+          |      +-type: string
+          +-config_options:
+            +-job:
               +-expr[primary]
-                +-value: ,
+                +-value: spark
                 +-type: string
   - id: set_select_mode_2
     desc: unsupport syntax

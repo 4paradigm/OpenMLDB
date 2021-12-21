@@ -264,14 +264,18 @@ class NodeManager {
     DeleteNode* MakeDeleteNode(DeleteTarget target, std::string_view job_id);
     DeletePlanNode* MakeDeletePlanNode(const DeleteNode* node);
 
-    LoadDataNode *MakeLoadDataNode(const std::string &file_name, const std::string& db, const std::string &table,
-                                   const std::shared_ptr<OptionsMap> options);
-    LoadDataPlanNode* MakeLoadDataPlanNode(const std::string& file_name, const std::string &db,
-                                           const std::string& table, const std::shared_ptr<OptionsMap> options);
-    SelectIntoNode* MakeSelectIntoNode(const QueryNode* query, const std::string& query_str,
-                                       const std::string& out_file, const std::shared_ptr<OptionsMap> options);
-    SelectIntoPlanNode* MakeSelectIntoPlanNode(const QueryNode* query, const std::string& query_str,
-                                               const std::string& out_file, const std::shared_ptr<OptionsMap> options);
+    LoadDataNode *MakeLoadDataNode(const std::string &file_name, const std::string &db, const std::string &table,
+                                   const std::shared_ptr<OptionsMap> options,
+                                   const std::shared_ptr<OptionsMap> config_option);
+    LoadDataPlanNode *MakeLoadDataPlanNode(const std::string &file_name, const std::string &db,
+                                           const std::string &table, const std::shared_ptr<OptionsMap> options,
+                                           const std::shared_ptr<OptionsMap> config_option);
+    SelectIntoNode *MakeSelectIntoNode(const QueryNode *query, const std::string &query_str,
+                                       const std::string &out_file, const std::shared_ptr<OptionsMap> options,
+                                       const std::shared_ptr<OptionsMap> config_option);
+    SelectIntoPlanNode *MakeSelectIntoPlanNode(const QueryNode *query, const std::string &query_str,
+                                               const std::string &out_file, const std::shared_ptr<OptionsMap> options,
+                                               const std::shared_ptr<OptionsMap> config_option);
     SetNode* MakeSetNode(const node::VariableScope scope, const std::string& key, const ConstNode* value);
     SetPlanNode* MakeSetPlanNode(const SetNode* set_node);
     // Make NodeList
