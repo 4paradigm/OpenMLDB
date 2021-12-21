@@ -90,8 +90,8 @@ cases:
         1, 3, 55, 3.3, 33.3, 1, 333
   - id: 2-1
     desc: Where条件未命中索引
-    mode: request-unsupport, offline-unsupport
-    tags: ["在线不支持，离线可以支持，暂时不跑离线测试"]
+    mode: request-unsupport
+    tags: ["OnlineServing不支持，Training可以支持"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=55 and col1 > 1;
@@ -105,7 +105,14 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
-      success: false
+      success: true
+      columns: [ "col0 string", "col1 int", "col2 smallint", "col3 float", "col4 double", "col5 bigint", "col6 string" ]
+      order: col1
+      rows:
+        - [ 1, 3, 55, 3.300000, 33.300000, 1, 333 ]
+        - [ 1, 4, 55, 4.400000, 44.400000, 2, 4444 ]
+        - [ 2, 5, 55, 5.500000, 55.500000, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ]
+
   - id: 2-2
     desc: Where条件未命中索引-离线支持
     mode: rtidb-unsupport,cli-unsupport
@@ -128,7 +135,7 @@ cases:
         0, 1, 5, 1.1, 11.1, 1, 1
   - id: 3-1
     desc: Where条件未命中索引示例2
-    mode: request-unsupport, offline-unsupport
+    mode: request-unsupport
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=col3 and col1 < 2;
@@ -142,7 +149,10 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
-      success: false
+      success: true
+      columns: [ "col0 string", "col1 int", "col2 smallint", "col3 float", "col4 double", "col5 bigint", "col6 string" ]
+      rows:
+
   - id: 3-2
     desc: Where条件未命中索引示例2
     mode: rtidb-unsupport,cli-unsupport

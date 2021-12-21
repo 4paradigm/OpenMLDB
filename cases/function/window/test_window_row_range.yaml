@@ -402,7 +402,6 @@ cases:
         - [ 5,"ee",21,34,1 ]
   - id: 15
     desc: 多个window指定相不同的pk
-    mode: rtidb-batch-unsupport
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7", "index2:c3:c7" ]
@@ -427,7 +426,7 @@ cases:
         - [ 5,"ee",21,34,1 ]
   - id: 16-1
     desc: 多个window指定不同的ts, 数据时间乱序插入，batch模式预期
-    mode: request-unsupport, rtidb-batch-unsupport
+    mode: request-unsupport
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c3:c7", "index2:c3:c4" ]
@@ -478,7 +477,6 @@ cases:
         - [ 5,"ee",21,34,1 ]
   - id: 16-3
     desc: 多个window指定不同的ts, 数据时间按序插入
-    mode: rtidb-batch-unsupport
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c3:c7", "index2:c3:c4" ]
@@ -503,7 +501,6 @@ cases:
         - [ 5,"ee",21,34,1 ]
   - id: 17
     desc: 两个window其中两个pk为索引列
-    mode: rtidb-batch-unsupport
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7","index2:c3:c7" ]
@@ -528,7 +525,6 @@ cases:
         - [ 5,"ee",21,34,1 ]
   - id: 18
     desc: 两个window其中一个pk和两个pk
-    mode: rtidb-batch-unsupport
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7","index2:c3:c7" ]
@@ -805,7 +801,6 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0, 2.0 ]
   - id: 26
     desc: ROWS_RANGE Window with MaxSize Not Merge
-    mode: rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -898,7 +893,6 @@ cases:
         - [ "aa", 9, 1590739002000, 4.0, 3.0 ]
   - id: 27-2
     desc: ROWS and ROWS_RANGE Current History Window with MaxSize, MaxSize < ROWS Preceding, Can't Merge Frame
-    mode: rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -946,7 +940,6 @@ cases:
 
   - id: 27-3
     desc: ROWS and ROWS_RANGE Pure History Window Cant' Be Merge
-    mode: rtidb-batch-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]

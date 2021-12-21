@@ -265,7 +265,6 @@ cases:
   -
     id: 11
     desc: 两个窗口的maxsize不一致
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -297,7 +296,6 @@ cases:
   -
     id: 12
     desc: 两个窗口不同的key的maxsize一致
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -329,7 +327,6 @@ cases:
   -
     id: 13
     desc: 两个窗口不同的ts的maxsize一致
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -361,7 +358,6 @@ cases:
   -
     id: 14
     desc: 两个窗口一个带有maxsize，一个没有
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -393,7 +389,6 @@ cases:
   -
     id: 15
     desc: 两个窗口不同的key的maxsize不一致
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -425,7 +420,6 @@ cases:
   -
     id: 16
     desc: 两个窗口的不同的ts的maxsize不一致
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -457,7 +451,6 @@ cases:
   -
     id: 17
     desc: 两个窗口相同的key的一个maxsize大于窗口一个小于窗口
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -489,7 +482,6 @@ cases:
   -
     id: 18
     desc: 两个窗口不同的key的一个maxsize大于窗口一个小于窗口
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -550,7 +542,7 @@ cases:
   -
     id: 20
     desc: union结合maxsize-两个窗口
-    mode: rtidb-batch-unsupport,cluster-unsupport
+    mode: cluster-unsupport
     tags: ["cluster-执行失败"]
     inputs:
       -
@@ -761,8 +753,8 @@ cases:
   -
     id: 26
     desc: 两个union,不同的maxsize
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败"]
+    mode: cluster-unsupport
+    tags: ["TODO", "@chenjing support online batch", "@chendihao support offline batch", "cluster-执行失败"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

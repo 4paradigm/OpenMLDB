@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 db: test_zw
 debugs: []
 cases:
@@ -107,7 +106,6 @@ cases:
   -
     id: 2
     desc: 2 window,pk不同
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c7 timestamp"]
@@ -138,7 +136,6 @@ cases:
   -
     id: 3
     desc: 3 window,pk不同
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string", "c2 string", "c3 int","c4 bigint","c7 timestamp"]
@@ -182,7 +179,7 @@ cases:
           - [ 2, "aa", 4.0, 1590738993000 ]
       - columns: [ "x1 string","x6 double","x7 timestamp" ]
         indexs: [ "index1:x1:x7" ]
-        repeat: 400000
+        repeat: 400
         rows:
           - [ "aa", 2.0, 1590738991000 ]
 
@@ -195,8 +192,8 @@ cases:
       rows:
         - [ 2, "aa", 4.0, 1590738993000, 400001, 2 ]
   - id: 5
-    desc: 简单rows window, union副表, 主表不进入窗口3 40w
-    mode: batch-request-unsupport, rtidb-batch-unsupport,cli-unsupport
+    desc: 简单rows window, union副表, 主表不进入窗口3 4w
+    mode: batch-request-unsupport, cli-unsupport
     inputs:
       - columns: [ "id int", "c1 string","c6 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -204,7 +201,7 @@ cases:
           - [ 2, "aa", 4.0, 1590738993000 ]
       - columns: [ "x1 string","x6 double","x7 timestamp" ]
         indexs: [ "index1:x1:x7" ]
-        repeat: 400000
+        repeat: 400
         rows:
           - [ "aa", 2.0, 1590738991000 ]
 
@@ -215,4 +212,4 @@ cases:
       order: id
       columns: [ "id int", "c1 string", "c6 double", "c7 timestamp", "w1_min_c6 double", "w1_cnt bigint" ]
       rows:
-        - [ 2, "aa", 4.0, 1590738993000, 2.0, 400001 ]
+        - [ 2, "aa", 4.0, 1590738993000, 2.0, 401 ]

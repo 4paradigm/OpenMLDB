@@ -765,8 +765,8 @@ TEST_F(TableTest, AbsAndLatSetGet) {
         dim->set_idx(1);
         dim->set_key("mcc");
         auto value = entry.mutable_value();
-        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 10 * (60 * 1000)),
-                    std::to_string(now - 2 * (60 * 1000))}, value));
+        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 9 * (60 * 1000) - 10),
+                    std::to_string(now - 1 * (60 * 1000))}, value));
         ASSERT_FALSE(table.IsExpire(entry));
     }
     {
@@ -842,8 +842,8 @@ TEST_F(TableTest, AbsOrLatSetGet) {
         ::openmldb::test::AddDimension(0, "card", &entry);
         ::openmldb::test::AddDimension(1, "mcc", &entry);
         auto value = entry.mutable_value();
-        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 10 * (60 * 1000)),
-                    std::to_string(now - 2 * (60 * 1000))}, value));
+        ASSERT_EQ(0, codec.EncodeRow({"card", "mcc", "12", std::to_string(now - 9 * (60 * 1000) - 10),
+                    std::to_string(now - 1 * (60 * 1000))}, value));
         ASSERT_FALSE(table.IsExpire(entry));
     }
     {

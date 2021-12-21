@@ -652,7 +652,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     std::string select_sql = deploy_node->StmtStr() + ";";
     hybridse::vm::ExplainOutput explain_output;
     hybridse::base::Status sql_status;
-    if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status, false)) {
+    if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kMockRequestMode, &explain_output, &sql_status)) {
         return {base::ReturnCode::kError, sql_status.msg};
     }
     // pack ProcedureInfo
@@ -831,17 +831,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
 
 void SetVariable(const std::string& key, const hybridse::node::ConstNode* value) {
     auto lower_key = boost::to_lower_copy(key);
-    if (lower_key == "performance_sensitive") {
-        if (value->GetDataType() == hybridse::node::kBool) {
-            bool performance_sensitive = value->GetBool();
-            sr->SetPerformanceSensitive(performance_sensitive);
-            printf("SUCCEED: Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true" : "false");
-        } else {
-            printf("ERROR: The type of %s should be bool\n", key.c_str());
-        }
-    } else {
-        printf("ERROR: The variable key %s is not supported\n", key.c_str());
-    }
+    printf("ERROR: The variable key %s is not supported\n", key.c_str());
 }
 
 template <typename T>

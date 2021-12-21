@@ -74,17 +74,6 @@ static bool IsBatchSupportMode(const std::string& mode) {
     }
     return true;
 }
-/// TODO(cj): replace offline-unsupport with non-performance-sensitive-unsupport
-static bool IsBatchNonPerformanceSensitiveSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos ||
-        mode.find("batch-unsupport") != std::string::npos ||
-        mode.find("non-performance-sensitive-unsupport") != std::string::npos ||
-        mode.find("offline-unsupport") != std::string::npos ||
-        mode.find("standalone-unsupport") != std::string::npos) {
-        return false;
-    }
-    return true;
-}
 TEST_P(SQLSDKTest, SqlSdkBatchTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
@@ -133,22 +122,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkBatchTest) {
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
     RunBatchModeSDK(sql_case, router_, {});
 }
-TEST_P(SQLSDKQueryTest, SqlSdkBatchNonPerformanceSensitiveTest) {
-    auto sql_case = GetParam();
-    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsBatchNonPerformanceSensitiveSupportMode(sql_case.mode())) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
-        return;
-    }
-    auto router = router_;
-    if (!router) {
-        FAIL() << "Fail new cluster sql router";
-        return;
-    }
-    router->SetPerformanceSensitive(false);
-    SQLSDKTest::RunBatchModeSDK(sql_case, router, {});
-    router_->SetPerformanceSensitive(true);
-}
+
 TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();

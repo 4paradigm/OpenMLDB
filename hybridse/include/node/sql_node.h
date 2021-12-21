@@ -683,6 +683,7 @@ class QueryNode : public SqlNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SqlNode *node) const;
     const QueryType query_type_;
+    std::shared_ptr<OptionsMap> config_options_;
 };
 
 class TableNode : public TableRefNode {
@@ -2091,15 +2092,21 @@ class DeleteNode : public SqlNode {
 
 class SelectIntoNode : public SqlNode {
  public:
-    explicit SelectIntoNode(const QueryNode* query, const std::string& query_str, const std::string& out,
-                            const std::shared_ptr<OptionsMap> options)
-        : SqlNode(kSelectIntoStmt, 0, 0), query_(query), query_str_(query_str), out_file_(out), options_(options) {}
+    explicit SelectIntoNode(const QueryNode *query, const std::string &query_str, const std::string &out,
+                            const std::shared_ptr<OptionsMap>&& options, const std::shared_ptr<OptionsMap>&& op2)
+        : SqlNode(kSelectIntoStmt, 0, 0),
+          query_(query),
+          query_str_(query_str),
+          out_file_(out),
+          options_(options),
+          config_options_(op2) {}
     ~SelectIntoNode() {}
 
     const QueryNode* Query() const { return query_; }
     const std::string& QueryStr() const { return query_str_; }
     const std::string& OutFile() const { return out_file_; }
     const std::shared_ptr<OptionsMap> Options() const { return options_; }
+    const std::shared_ptr<OptionsMap> ConfigOptions() const { return config_options_; }
 
     void Print(std::ostream& output, const std::string& org_tab) const override;
 
@@ -2107,20 +2114,24 @@ class SelectIntoNode : public SqlNode {
     const QueryNode* query_;
     const std::string query_str_;
     const std::string out_file_;
+    // optional options for load data, e.g csv related options
     const std::shared_ptr<OptionsMap> options_;
+    // optinal config option for load data, to config offline job parameters
+    const std::shared_ptr<OptionsMap> config_options_ = nullptr;
 };
 
 class LoadDataNode : public SqlNode {
  public:
-    explicit LoadDataNode(const std::string& f, const std::string& db, const std::string& table,
-                          const std::shared_ptr<OptionsMap> op)
-        : SqlNode(kLoadDataStmt, 0, 0), file_(f), db_(db), table_(table), options_(op) {}
+    explicit LoadDataNode(const std::string &f, const std::string &db, const std::string &table,
+                          const std::shared_ptr<OptionsMap>&& op, const std::shared_ptr<OptionsMap>&& op2)
+        : SqlNode(kLoadDataStmt, 0, 0), file_(f), db_(db), table_(table), options_(op), config_options_(op2) {}
     ~LoadDataNode() {}
 
     const std::string& File() const { return file_; }
     const std::string& Db() const { return db_; }
     const std::string& Table() const { return table_; }
     const std::shared_ptr<OptionsMap> Options() const { return options_; }
+    const std::shared_ptr<OptionsMap> ConfigOptions() const { return config_options_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const override;
 
@@ -2128,9 +2139,12 @@ class LoadDataNode : public SqlNode {
     const std::string file_;
     const std::string db_;
     const std::string table_;
-    // TODO(aceforeverd): extend value to other type like number, list
+    // TODO(aceforeverd): extend value to other type like list
     //    replace map with optimized class
+    // optional options for load data, e.g csv related options
     const std::shared_ptr<OptionsMap> options_ = nullptr;
+    // optinal config option for load data, to config offline job parameters
+    const std::shared_ptr<OptionsMap> config_options_ = nullptr;
 };
 
 class SetNode : public SqlNode {
@@ -2713,7 +2727,7 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const std::str
 void PrintValue(std::ostream &output, const std::string &org_tab, const std::vector<std::string> &vec,
                 const std::string &item_name, bool last_child);
 
-void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap &value,
+void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsMap* value,
                 const std::string &item_name, bool last_child);
 }  // namespace node
 }  // namespace hybridse
