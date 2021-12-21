@@ -81,5 +81,27 @@ namespace client {
     }
 }
 
+::openmldb::base::Status TaskManagerClient::RunBatchAndShow(const std::string sql,
+                                                            const std::map<std::string, std::string> config,
+                                                            const std::string default_db,
+                                                            ::openmldb::taskmanager::JobInfo& job_info) {
+    ::openmldb::taskmanager::RunBatchAndShowRequest request;
+    ::openmldb::taskmanager::ShowJobResponse response;
+
+    request.set_sql(sql);
+
+    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchAndShow, &request,
+                                  &response, FLAGS_request_timeout_ms, 1);
+
+    if (ok && response.code() == 0) {
+        if (response.has_job()) {
+            job_info.CopyFrom(response.job());
+        }
+        return ::openmldb::base::Status(response.code(), response.msg());
+    } else {
+        return ::openmldb::base::Status(-1, "Fail to request TaskManager server");
+    }
+}
+
 }  // namespace client
 }  // namespace openmldb
