@@ -81,7 +81,7 @@ endif
 TEST_TARGET ?=
 TEST_LEVEL ?=
 
-.PHONY: all coverage coverage-cpp coverage-java build test configure clean thirdparty openmldb-clean thirdparty-configure thirdparty-clean thirdpartybuild-clean thirdpartysrc-clean
+.PHONY: all coverage coverage-cpp coverage-java build test configure clean thirdparty-fast thirdparty openmldb-clean thirdparty-configure thirdparty-clean thirdpartybuild-clean thirdpartysrc-clean
 
 all: build
 
@@ -111,11 +111,7 @@ test:
 	$(MAKE) build TESTING_ENABLE=ON
 	bash steps/ut.sh $(TEST_TARGET) $(TEST_LEVEL)
 
-# trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr, will skip make thirdparty
-configure: thirdparty
-	if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
-	    $(MAKE) thirdparty; \
-	fi
+configure: thirdparty-fast
 	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 openmldb-clean:
@@ -125,12 +121,25 @@ THIRD_PARTY_BUILD_DIR ?= $(MAKEFILE_DIR)/.deps
 THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
 THIRD_PARTY_DIR ?= $(THIRD_PARTY_BUILD_DIR)/usr
 
+# trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr.
+#  we check this by asserting if the environment variable 'THIRD_PARTY_DIR' is defined to '/deps/usr', if true, thirdparty download is skipped
+#  since zetasql update more frequently than others, download zetasql won't skipped
+thirdparty-fast:
+	if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
+	    echo "fullly setup thirdparty"; \
+	    $(MAKE) thirdparty; \
+	else \
+	    echo "setup thirdparty/zetasql only"; \
+	    $(MAKE) thirdparty-configure; \
+	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+	fi
+
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
 thirdparty: thirdparty-configure
 	$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR)
 
 thirdparty-configure:
-	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
+	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) -DDEPS_INSTALL_DIR=$(THIRD_PARTY_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
 
 thirdparty-clean: thirdpartybuild-clean thirdpartysrc-clean
 
@@ -157,7 +166,7 @@ hybridse-test: hybridse-build
 hybridse-build: hybridse-configure
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 
-hybridse-configure: thirdparty
+hybridse-configure: thirdparty-fast
 	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_INSTALL_PREFIX=$(HYBRIDSE_INSTALL_DIR) $(HYBRIDSE_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 hybridse-coverage: hybridse-coverage-configure

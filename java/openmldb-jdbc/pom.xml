@@ -37,7 +37,7 @@
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-native</artifactId>
-            <version>0.4.0-SNAPSHOT</version>
+            <version>${variant.native.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
@@ -78,9 +78,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <forkMode>always</forkMode>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>

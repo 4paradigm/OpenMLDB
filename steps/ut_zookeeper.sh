@@ -22,18 +22,20 @@ if [ $# -ne 1 ]; then
 fi
 
 OP=$1
+# on hybridsql 0.4.1 or later, 'THIRD_PARTY_SRC_DIR' is defined and is '/deps/src'
+THIRDSRC=${THIRD_PARTY_SRC_DIR:-thirdsrc}
 
 case $OP in
     start)
         echo "Starting zk ... "
-        cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
-        cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh start && cd "$WORK_DIR" || exit
+        cp steps/zoo.cfg "$THIRDSRC/zookeeper-3.4.14/conf/"
+        cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh start && cd "$WORK_DIR" || exit
         sleep 5
         echo "start zk succeed"
         ;;
     stop)
         echo "Stopping zk ... "
-        cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh stop
+        cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop
         ;;
     *)
         echo "Only support {start|stop}" >&2

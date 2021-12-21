@@ -18,12 +18,15 @@ on:
 env:
   GIT_SUBMODULE_STRATEGY: recursive
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
+  EXAMPLES_ENABLE: OFF # turn off hybridse's example code
+  HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
 
 jobs:
   build_and_cpp_ut:
     runs-on: self-hosted
+    if: github.repository == '4paradigm/OpenMLDB'
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
       SQL_PYSDK_ENABLE: OFF
@@ -32,10 +35,6 @@ jobs:
       NPROC: 8
     steps:
       - uses: actions/checkout@v2
-
-      - name: setup thirdparty
-        run: |
-          make thirdparty
 
       - name: prepare
         run: |
@@ -59,18 +58,22 @@ jobs:
           # make thirdpartybuild-clean
 
       - name: run cpp
+        id: unittest
         run: |
           make test
 
       - name: run sql_sdk_test
+        id: sql_sdk_test
         run: |
           bash steps/ut.sh sql_sdk_test 0
 
       - name: run sql_cluster_test
+        id: sql_cluster_test
         run: |
           bash steps/ut.sh sql_cluster_test 0
 
       - name: run sql_standalone_sdk_test
+        id: sql_standalone_sdk_test
         run: |
           bash steps/ut.sh sql_standalone_sdk_test 0
 
@@ -102,11 +105,94 @@ jobs:
   java-sdk:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       SQL_JAVASDK_ENABLE: ON
-      OPENMLDB_BUILD_TARGET: 'sql_javasdk_package openmldb'
+      OPENMLDB_BUILD_TARGET: 'cp_native_so openmldb'
       MAVEN_OPTS: -Duser.home=/github/home
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '8'
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_TOKEN
+          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
+
+      - name: Import GPG key
+        id: import_gpg
+        if: github.event_name == 'push'
+        uses: crazy-max/ghaction-import-gpg@v4
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('java/**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: build jsdk
+        run: |
+          make build
+
+      - name: start services
+        run: |
+          sh steps/ut_zookeeper.sh start
+          cd onebox && sh start_onebox.sh && cd - || exit
+
+      - name: run java modules smoke test
+        working-directory: java
+        run: |
+          mvn --batch-mode test
+
+      - name: upload java ut results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-ut-result-java-${{ github.sha }}
+          path: |
+            java/*/target/**/TEST-*.xml
+
+      - name: prepare deploy version
+        if: github.event_name == 'push'
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=${VERSION#v}
+          ./java/prepare_release.sh "$VERSION"
+
+      - name: deploy
+        if: github.event_name == 'push'
+        working-directory: java
+        run: |
+          mvn --batch-mode deploy -DskipTests=true -Dscalatest.skip=true
+        env:
+          MAVEN_OPTS: -Duser.home=/github/home
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: stop services
+        run: |
+          cd onebox && sh stop_all.sh && cd - || exit
+          sh steps/ut_zookeeper.sh stop
+
+
+  java-sdk-mac:
+    # mac job for java sdk. steps are almost same with job 'java-sdk'
+    # except mvn deploy won't target all modules, just hybridse-native & openmldb-native
+    # the job only run on tag push or manual workflow dispatch due to no test runs
+    runs-on: macos-latest
+    if: github.event_name == 'push'
+    env:
+      SQL_JAVASDK_ENABLE: ON
+      OPENMLDB_BUILD_TARGET: 'cp_native_so openmldb'
+      NPROC: 3
     steps:
       - uses: actions/checkout@v2
 
@@ -118,32 +204,71 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: build jsdk and package
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '8'
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_TOKEN
+          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
+
+      - name: Import GPG key
+        id: import_gpg
+        if: github.event_name == 'push'
+        uses: crazy-max/ghaction-import-gpg@v4
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: build jsdk
         run: |
           make build
 
-      - name: run java modules smoke test
-        run: |
-          sh steps/ut_zookeeper.sh start
-          cd onebox && sh start_onebox.sh && cd - || exit
-          cd java
-          mvn test
-          cd -
-          cd onebox && sh stop_all.sh && cd - || exit
-          sh steps/ut_zookeeper.sh stop
+      # Need: ut_zookeeper & start_onebox adopted for macOS
+      # - name: run java modules smoke test
+      #   run: |
+      #     sh steps/ut_zookeeper.sh start
+      #     cd onebox && sh start_onebox.sh && cd - || exit
+      #     cd java
+      #     mvn test
+      #     cd -
+      #     cd onebox && sh stop_all.sh && cd - || exit
+      #     sh steps/ut_zookeeper.sh stop
 
-      - name: upload java ut results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-ut-result-java-${{ github.sha }}
-          path: |
-            java/openmldb-jdbc/target/**/TEST-*.xml
+      # - name: upload java ut results
+      #   if: always()
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: linux-ut-result-java-${{ github.sha }}
+      #     path: |
+      #       java/openmldb-jdbc/target/**/TEST-*.xml
+
+      - name: prepare deploy version
+        if: github.event_name == 'push'
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=${VERSION#v}
+          IS_MAC_VARIANT=ON ./java/prepare_release.sh "$VERSION"
+
+      - name: mvn deploy
+        working-directory: java
+        if: github.event_name == 'push'
+        run: |
+          # by convention only native submodule has variant release
+          # so it is a bit tricky to compile and deploy that
+          # firstly run `maven install` install things locally
+          # then selectly `mvn deploy` for hybridse-native & openmldb-native
+          mvn --batch-mode install -DskipTests=true -Dscalatest.skip=true
+          mvn --batch-mode -pl hybridse-native,openmldb-native deploy
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
   python-sdk:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'sqlalchemy_openmldb openmldb'
@@ -151,14 +276,17 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: build pysdk and sqlalchemy
-
         run: |
           make build
 
-      - name: test sqlalchemy
+      - name: prepare python deps
         run: |
           python3 -m easy_install nose pip
+          pip install setuptools wheel twine
           yum install -y net-tools
+
+      - name: test sqlalchemy
+        run: |
           bash steps/test_python.sh
 
       - name: upload python ut results
@@ -169,13 +297,15 @@ jobs:
           path: |
             python/test/nosetests.xml
 
-      - name: upload pysdk and whl
-        if: ${{ github.event_name == 'push' }}
-        uses: actions/upload-artifact@v2
-        with:
-          path: |
-            build/python/dist/openmldb*.whl
-          name: python-artifacts
+      - name: upload to pypi
+        if: >
+          github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cp build/python/dist/openmldb*.whl .
+          twine upload openmldb-*.whl
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
   publish-test-results:
     runs-on: ubuntu-latest
@@ -216,117 +346,3 @@ jobs:
             openmldb-*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # only tag deploy, only run on 4paradigm/OpenMLDB's context?
-  java-sdk-deploy:
-    runs-on: ubuntu-latest
-    needs: [ "build_and_cpp_ut", "java-sdk", "python-sdk" ]
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
-    # java deploy is triggered with a push to main or a tag push
-    # a 'vX.Y.Z' tag push will deploy a release version to maven central,
-    # any other push will deploy a SNAPSHOT version.
-    # see more in 'steps/package_openmldb_javasdk.sh'
-    if: >
-      success() && github.event_name == 'push'
-    env:
-      SQL_JAVASDK_ENABLE: ON
-      # do not set user.home on macos
-      MAVEN_OPTS: -Duser.home=/github/home
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions/setup-java@v2
-        with:
-          distribution: 'adopt'
-          java-version: '8'
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_TOKEN
-          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
-
-      - name: Import GPG key
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v3
-        with:
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-
-      - name: upload to maven
-        run: |
-          make thirdparty
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=${VERSION#v}
-          ./steps/package_openmldb_javasdk.sh "$VERSION"
-        env:
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-
-  java-sdk-deploy-mac:
-    runs-on: macos-latest
-    # TODO(hw): needs ut on mac
-    needs: [ "build_and_cpp_ut", "java-sdk", "python-sdk" ]
-    # java deploy is triggered with a push to main or a tag push
-    # a 'vX.Y.Z' tag push will deploy a release version to maven central,
-    # any other push will deploy a SNAPSHOT version.
-    # see more in 'steps/package_openmldb_javasdk.sh'
-    if: >
-      success() && github.event_name == 'push'
-    env:
-      SQL_JAVASDK_ENABLE: ON
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions/setup-java@v2
-        with:
-          distribution: 'adopt'
-          java-version: '8'
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_TOKEN
-          gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
-
-      - name: Import GPG key
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v3
-        with:
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-
-      - name: upload to maven
-        run: |
-          make thirdparty
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=${VERSION#v}
-          ./steps/package_openmldb_javasdk.sh "$VERSION"
-        env:
-          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-
-  python-sdk-deploy:
-    runs-on: ubuntu-latest
-    needs: [ "build_and_cpp_ut", "java-sdk", "python-sdk" ]
-    if: >
-      success() && startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
-      - name: Download Release Artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: python-artifacts
-      # download only one file, so no dir, just openmldb-*.whl
-      - name: upload to pypi
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          ls
-          twine upload openmldb-*.whl
