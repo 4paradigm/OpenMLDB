@@ -49,7 +49,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobsResponse ShowJobs(TaskManager.ShowJobsRequest request) {
         try {
-            List<JobInfo> jobInfos = JobInfoManager.getJobs(request.hasUnfinished());
+            List<JobInfo> jobInfos = JobInfoManager.getJobs(request.getUnfinished());
 
             TaskManager.ShowJobsResponse.Builder builder = TaskManager.ShowJobsResponse.newBuilder();
             builder.setCode(StatusCode.SUCCESS);
