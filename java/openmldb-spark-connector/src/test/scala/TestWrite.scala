@@ -39,7 +39,6 @@ class TestWrite extends FunSuite {
       assert(nullRow.isNullAt(i))
     }
 
-
     val zkCluster = "127.0.0.1:6181"
     val zkPath = "/onebox"
     val db = "db"

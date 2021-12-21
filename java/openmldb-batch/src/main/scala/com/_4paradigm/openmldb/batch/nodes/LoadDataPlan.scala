@@ -18,12 +18,11 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.PhysicalLoadDataNode
+import com._4paradigm.openmldb.batch.utils.SparkRowUtil
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.proto.NS.OfflineTableInfo
 import com._4paradigm.openmldb.proto.Type.DataType
-import org.apache.spark.sql.types
-import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType,
-  StringType, StructType}
+import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters.{mapAsJavaMapConverter, mapAsScalaMapConverter}
@@ -95,25 +94,10 @@ object LoadDataPlan {
       case others: Any => throw new UnsupportedHybridSeException(s"unsupported write mode $others")
     }
 
-    // if symbolic link(aka slk)
-    val slk = parseOption(node.GetOption("slk"), "false", getBoolOrDefault).toBoolean
+    // if symbolic link(aka deep_copy)
+    val deepCopy = parseOption(node.GetOption("deep_copy"), "true", getBoolOrDefault).toBoolean
 
-    (format, options.toMap, mode, slk)
-  }
-
-  def protoTypeToScalaType(dataType: DataType): types.DataType = {
-    dataType match {
-      case DataType.kBool => BooleanType
-      case DataType.kSmallInt => ShortType
-      case DataType.kBigInt => LongType
-      case DataType.kInt => IntegerType
-      case DataType.kFloat => FloatType
-      case DataType.kDouble => DoubleType
-      case DataType.kDate => DateType
-      case DataType.kTimestamp => LongType // in openmldb, timestamp format is int64
-      case DataType.kVarchar | DataType.kString => StringType
-      case e: Any => throw new UnsupportedHybridSeException(s"unsupported proto DataType $e")
-    }
+    (format, options.toMap, mode, deepCopy)
   }
 
   def gen(ctx: PlanContext, node: PhysicalLoadDataNode): SparkInstance = {
@@ -125,15 +109,14 @@ object LoadDataPlan {
     val table = node.Table()
     val spark = ctx.getSparkSession
 
-    // get storage online/offline
-    // NOTICE: do not add "openmldb.execute.mode" in OpenmldbBatchConfig
-    val storage = spark.conf.get("openmldb.execute.mode", "offline")
+    // get target storage
+    val storage = ctx.getConf.loadDataMode
     require(storage == "offline" || storage == "online")
 
     // read settings
-    val (format, options, mode, slk) = parseOptions(node)
+    val (format, options, mode, deepCopy) = parseOptions(node)
     logger.info("load data to storage {}, read[format {}, options {}], write[mode {}], is soft? {}", storage, format,
-      options, mode, slk.toString)
+      options, mode, deepCopy.toString)
 
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")
     val info = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
@@ -142,7 +125,7 @@ object LoadDataPlan {
 
     // write
     if (storage == "online") {
-      require(!slk && mode == "append", "import to online storage, can't do symbolic link, and mode must be append")
+      require(deepCopy && mode == "append", "import to online storage, can't do deep copy, and mode must be append")
 
       val writeOptions = Map("db" -> db, "table" -> table,
         "zkCluster" -> ctx.getConf.openmldbZkCluster,
@@ -151,13 +134,12 @@ object LoadDataPlan {
       var struct = new StructType
       DataType.getDescriptor
       info.getColumnDescList.forEach(
-        col => struct = struct.add(col.getName, protoTypeToScalaType(col.getDataType), !col.getNotNull)
+        col => struct = struct.add(col.getName, SparkRowUtil.protoTypeToScalaType(col.getDataType), !col.getNotNull)
       )
       logger.info("read schema: {}", struct)
       val df = spark.read.options(options).format(format).schema(struct).load(inputFile)
-      if (ctx.getConf.print) {
-        println("read dataframe: ")
-        df.show()
+      if (logger.isInfoEnabled()) {
+        logger.debug("read dataframe: {}", df)
       }
       df.write.options(writeOptions).format("openmldb").mode(mode).save()
     } else {
@@ -166,8 +148,8 @@ object LoadDataPlan {
       val newInfoBuilder = info.toBuilder
 
       val infoExists = info.hasOfflineTableInfo
-      if (slk) {
-        // symbolic link, no need to read files
+      if (!deepCopy) {
+        // soft deep, no need to read files
         if (infoExists) {
           require(mode == "overwrite", "offline info has already existed, only overwrite mode works")
         }

@@ -111,7 +111,7 @@ class TestLoadDataPlan extends SparkTestSuite {
     // the offline info is exist, we can't use append mode to do soft copy
     try {
       openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
-        "options(format='csv', mode='append', slk=true);")
+        "options(format='csv', mode='append', deep_copy=false);")
       fail("unreachable")
     } catch {
       case e: IllegalArgumentException => println("It should catch this: " + e.toString)
@@ -119,7 +119,7 @@ class TestLoadDataPlan extends SparkTestSuite {
 
     // we can use overwrite to do soft copy
     openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
-      "options(format='csv', mode='overwrite', slk=true, null_value='123');")
+      "options(format='csv', mode='overwrite', deep_copy=false, null_value='123');")
     val softInfo = getLatestTableInfo(db, table)
     assert(softInfo.hasOfflineTableInfo, s"no offline info $softInfo")
     // the offline info won't change
@@ -130,7 +130,7 @@ class TestLoadDataPlan extends SparkTestSuite {
   }
 
   test("Test LoadData to Openmldb Online Storage") {
-    openmldbSession.getSparkSession.conf.set("openmldb.execute.mode", "online")
+    openmldbSession.getOpenmldbBatchConfig.loadDataMode = "online"
     val testFile = getClass.getResource("/test.csv").getPath
     openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
       "options(mode='append', header=false);")
@@ -138,7 +138,7 @@ class TestLoadDataPlan extends SparkTestSuite {
     // online storage doesn't support soft copy
     try {
       openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
-        "options(mode='append', header=false, slk=true);")
+        "options(mode='append', header=false, deep_copy=false);")
       fail("unreachable")
     } catch {
       case e: IllegalArgumentException => println("It should catch this: " + e.toString)
