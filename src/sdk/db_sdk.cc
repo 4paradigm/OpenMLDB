@@ -114,7 +114,6 @@ bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint)
 }
 
 bool ClusterSDK::GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) {
-    // tobe
     std::string real_path = options_.zk_path + "/taskmanager/leader";
 
     if (!zk_client_->GetNodeValue(real_path, *endpoint)) {
