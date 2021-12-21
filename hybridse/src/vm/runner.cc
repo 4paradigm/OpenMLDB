@@ -522,9 +522,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
         default: {
             status.code = common::kExecutionPlanError;
-            status.msg = "can't handle node " +
-                         std::to_string(node->GetOpType()) + " " +
-                         PhysicalOpTypeName(node->GetOpType());
+            status.msg = "Non-support node " +
+                         PhysicalOpTypeName(node->GetOpType()) + " for OpenMLDB Online execute mode";
             LOG(WARNING) << status;
             return RegisterTask(node, fail);
         }

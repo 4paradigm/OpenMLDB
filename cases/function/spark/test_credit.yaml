@@ -16,7 +16,6 @@ db: test_db
 cases:
 - id: 1
   desc: 多表-信用卡用户转借记卡预测场景
-  mode: rtidb-batch-unsupport
   inputs:
   - columns:
     - "id int32"

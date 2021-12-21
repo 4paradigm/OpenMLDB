@@ -196,7 +196,6 @@ cases:
       success: false
   - id: 4-5
     desc: Last Join 无order by, 拼表条件命中索引, 副表多条命中
-    mode: rtidb-batch-unsupport
     tags: [ "注意offline随机拼接最后一条，改变结果顺序可能导致Spark结果不符合预期" ]
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
@@ -292,8 +291,8 @@ cases:
         - [ "aa",2,13,1590738989000 ]
         - [ "bb",21,121,1590738992000 ]
   - id: 6
-    desc: orderby-int-rtidb环境不支持
-    mode: offline-unsupport
+    desc: orderby-int without index optimized, request-unsupport
+    mode: request-unsupport
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
         indexs: [ "index1:c1:c4" ]
@@ -309,7 +308,12 @@ cases:
           - [ "bb",31,141,1590738992000 ]
     sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c2 on {0}.c1={1}.c1;
     expect:
-      success: false
+      success: true
+      columns: [ "c1 string", "c2 int", "c3 bigint", "c4 timestamp" ]
+      rows:
+        - [ aa, 2, 13, 1590738989000 ]
+        - [ bb, 21, 121, 1590738991000 ]
+
   - id: 6
     desc: orderby-int-离线支持
     mode: rtidb-unsupport,cli-unsupport
