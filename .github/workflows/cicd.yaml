@@ -85,16 +85,6 @@ jobs:
           path: |
             reports/*.xml
 
-      - name: upload missing logs
-        if: >
-          steps.unittest.outcome != 'success' || steps.sql_sdk_test.outcome != 'success' ||
-          steps.sql_cluster_test.outcome != 'success' || steps.sql_standalone_sdk_test.outcome != 'success'
-        uses: actions/upload-artifact@v2
-        with:
-          path: |
-            /deps/src/zookeeper-3.4.14/zookeeper.out
-          name: failed-test-log
-
       - name: install
         if: ${{ github.event_name == 'push' }}
         run: |
