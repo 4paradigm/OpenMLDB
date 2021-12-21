@@ -1473,6 +1473,7 @@ std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) 
 
 bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) {
     return cluster_sdk_->GetNsClient()->UpdateOfflineTableInfo(info);
+}
 
 ::openmldb::base::Status SQLClusterRouter::ShowJobs(const bool only_unfinished,
                                                     std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
