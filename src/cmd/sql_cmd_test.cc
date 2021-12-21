@@ -235,35 +235,32 @@ TEST_P(DBSDKTest, deploy) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "auto_uxJFNZMi", msg));
 }
 
-TEST_F(SqlCmdTest, create_without_index_col) {
-    for (int i = 0; i < 2; i++) {
-        if (i == 0) {
-            cs = standalone_cli.cs;
-            sr = standalone_cli.sr;
-        } else {
-            cs = cluster_cli.cs;
-            sr = cluster_cli.sr;
-        }
-        HandleSQL("create database test2;");
-        HandleSQL("use test2;");
-        std::string create_sql =
-            "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-            "c8 date, index(ts=c7));";
-        hybridse::node::NodeManager node_manager;
-        hybridse::base::Status sql_status;
-        hybridse::node::PlanNodeList plan_trees;
-        hybridse::plan::PlanAPI::CreatePlanTreeFromScript(create_sql, plan_trees, &node_manager, sql_status);
-        ASSERT_EQ(0, sql_status.code);
-        hybridse::node::PlanNode* node = plan_trees[0];
-        auto status =
-            sr->HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), "test2", cs->GetNsClient());
-        ASSERT_TRUE(status.OK());
-        std::string msg;
-        ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    }
+TEST_P(DBSDKTest, create_without_index_col) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("create database test2;");
+    HandleSQL("use test2;");
+    std::string create_sql =
+        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date, index(ts=c7));";
+    hybridse::node::NodeManager node_manager;
+    hybridse::base::Status sql_status;
+    hybridse::node::PlanNodeList plan_trees;
+    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(create_sql, plan_trees, &node_manager, sql_status);
+    ASSERT_EQ(0, sql_status.code);
+    hybridse::node::PlanNode* node = plan_trees[0];
+    auto status =
+        sr->HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), "test2", cs->GetNsClient());
+    ASSERT_TRUE(status.OK());
+    std::string msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
-TEST_F(SqlCmdTest, load_data) {
+TEST_P(DBSDKTest, load_data) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
     std::string read_file_path = "/tmp/data" + GenRand() + ".csv";
     std::string write_file_path = "/tmp/data" + GenRand() + ".csv";
     std::ofstream ofile;
@@ -301,7 +298,7 @@ TEST_F(SqlCmdTest, load_data) {
     ofile.close();
 }
 
-INSTANTIATE_TEST_SUITE_P(DBSDK, DBSDKTest, testing::Values(&cluster_cli, &standalone_cli));
+INSTANTIATE_TEST_SUITE_P(DBSDK, DBSDKTest, testing::Values(&standalone_cli, &cluster_cli));
 
 }  // namespace cmd
 }  // namespace openmldb
