@@ -610,9 +610,11 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             break;
         }
         case hybridse::node::kCmdShowSessionVariables: {
+            std::vector<std::vector<std::string>> items;
             for (auto& pair : session_variables) {
-                std::cout << pair.first << "=" << pair.second << std::endl;
+                items.push_back({pair.first, pair.second});
             }
+            PrintItemTable(std::cout, {"Variable_name", "Value"}, items);
             break;
         }
         case hybridse::node::kCmdShowGlobalVariables: {
