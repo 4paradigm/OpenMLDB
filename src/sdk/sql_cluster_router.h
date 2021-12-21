@@ -111,8 +111,6 @@ class SQLClusterRouter : public SQLRouter {
 
     bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
 
-    void SetPerformanceSensitive(bool performance_sensitive) override;
-
     bool ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status) override;

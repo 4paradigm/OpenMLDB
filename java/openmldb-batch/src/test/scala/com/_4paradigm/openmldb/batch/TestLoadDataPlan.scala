@@ -30,7 +30,7 @@ class TestLoadDataPlan extends SparkTestSuite {
     getSparkSession.conf.set("openmldb.test.print", "true")
     getSparkSession.conf.set("openmldb.zk.cluster", "127.0.0.1:6181")
     getSparkSession.conf.set("openmldb.zk.root.path", "/onebox")
-    //      set("openmldb.execute.mode", "offline") // default is offline
+    //      set("openmldb.loaddata.mode", "offline") // default is offline
     openmldbSession = new OpenmldbSession(getSparkSession)
     openmldbConnector = openmldbSession.openmldbCatalogService.sqlExecutor
 
@@ -66,7 +66,6 @@ class TestLoadDataPlan extends SparkTestSuite {
   }
 
   test("Test Load to Openmldb Offline Storage") {
-    openmldbSession.getSparkSession.conf.set("openmldb.execute.mode", "offline")
     val testFile = getClass.getResource("/test.csv").getPath
     // TODO(hw): offline address is uncompleted, it's invariant now, so here use 'overwrite' mode to avoid save errors
     var res = openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
