@@ -668,11 +668,26 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             if (job_info.id() > 0) {
                 job_infos.push_back(job_info);
             }
-
             PrintJobInfos(std::cout, job_infos);
             break;
         }
         case hybridse::node::kCmdStopJob: {
+            int job_id;
+            try {
+                job_id = std::stoi(cmd_node->GetArgs()[0]);
+            } catch (...) {
+                std::cout << "ERROR: Failed to parse job id: " << cmd_node->GetArgs()[0] << std::endl;
+                return;
+            }
+
+            ::openmldb::taskmanager::JobInfo job_info;
+            sr->StopJob(job_id, job_info);
+
+            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+            if (job_info.id() > 0) {
+                job_infos.push_back(job_info);
+            }
+            PrintJobInfos(std::cout, job_infos);
             break;
         }
         default: {

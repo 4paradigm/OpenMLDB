@@ -107,13 +107,26 @@ object JobInfoManager {
   def stopJob(jobId: Int): JobInfo = {
     val sql = s"SELECT * FROM $tableName WHERE id = $jobId"
     val rs = sqlExecutor.executeSQL(dbName, sql)
-    val jobInfo = resultSetToJob(rs)
+
+    val jobInfo = if (rs.getFetchSize == 0) {
+      throw new Exception("Job does not exist for id: " + jobId)
+    } else if (rs.getFetchSize == 1) {
+      resultSetToJob(rs)
+    } else {
+      throw new Exception("Job num is more than 1, get " + rs.getFetchSize)
+    }
+
     if (jobInfo.isYarnJob && jobInfo.getApplicationId != null) {
       YarnClientUtil.killYarnJob(jobInfo.getApplicationId)
       // TODO: Maybe start new thread to track the state
       jobInfo.setState(YarnClientUtil.getYarnJobState(jobInfo.getApplicationId).toString)
       jobInfo.sync()
+    } else {
+      // TODO: Set stopped state for other jobs
+      jobInfo.setState("STOPPED")
+      jobInfo.sync()
     }
+
     jobInfo
   }
 
