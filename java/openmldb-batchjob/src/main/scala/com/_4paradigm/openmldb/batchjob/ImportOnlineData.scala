@@ -26,11 +26,11 @@ object ImportOnlineData {
       throw new Exception(s"Require args: sql but get args: ${args.mkString(",")}")
     }
 
-    importOfflineData(args(0))
+    importOnlineData(args(0))
   }
 
-  def importOfflineData(sql: String): Unit = {
-    val spark = new OpenmldbSession(SparkSession.builder().getOrCreate())
+  def importOnlineData(sql: String): Unit = {
+    val spark = new OpenmldbSession(SparkSession.builder().config("openmldb.loaddata.mode", "online").getOrCreate())
     spark.sql(sql)
   }
 

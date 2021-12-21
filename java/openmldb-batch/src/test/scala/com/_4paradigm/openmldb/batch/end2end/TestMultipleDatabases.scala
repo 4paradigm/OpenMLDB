@@ -21,6 +21,7 @@ import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 
+
 class TestMultipleDatabases extends SparkTestSuite {
 
   test("Test SQL with default database") {
