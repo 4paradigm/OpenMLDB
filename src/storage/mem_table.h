@@ -219,7 +219,7 @@ class MemTable : public Table {
  private:
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
 
-    bool CheckLatest(const TTLSt& ttl, uint32_t index_id, const std::string& key, uint64_t ts);
+    bool CheckLatest(uint32_t index_id, const std::string& key, uint64_t ts);
 
  private:
     uint32_t seg_cnt_;
