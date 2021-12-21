@@ -20,7 +20,7 @@ This article is a hands-on guide for built-in scalar function development in Ope
 
 ## 2. Develop a Built-In SQL Function
 
-In this section, we are going to introduce the basic steps to implement and register an SQL built-in function. Basically, built-in SQL function developement involves the following steps:
+In this section, we are going to introduce the basic steps to implement and register an SQL built-in function. Built-in SQL function development involves the following steps:
 
 - Develop a built-in C++ function
 - Register and configure the function
@@ -43,7 +43,7 @@ Developers can declare function in [hybridse/src/udf/udf.h](https://github.com/4
 
 #### 2.1.3 C++ and SQL Data Type
 
-C++ built-in functions can use limited data types, including BOOL, Numeric, String, Timestamp and Date.The correspondence between the SQL data type and the C++ data type is shown as follows:
+C++ built-in functions can use limited data types, including BOOL, Numeric, String, Timestamp and Date. The correspondence between the SQL data type and the C++ data type is shown as follows:
 
 - | SQL Type  | C++ Type           |
   | :-------- | :----------------- |
@@ -434,7 +434,56 @@ RegisterExternal("my_func")
         )");
 ```
 
-## 4. SQL Functions Developement Examples
+### 3.4 SQL functions handle Nullable argument
+
+Generally, OpenMLDB will return a ***NULL*** for a function when any one of its argurements  is ***NULL***. 
+
+If we wants to handler the null argurement with specific strategy, we have to configure this argurment as an ***Nullable*** argurement and pass another **bool** flag to specify if this argurement is null or not.
+
+The C++ function can be declared and implemented as follows:
+
+```c++
+# hybridse/src/udf/udf.h
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      // we are going to handle null arg2 in the function
+      Ret func(Arg1 arg1 Arg2 arg2, bool is_arg2_null, ...);
+    }
+  }
+}
+
+```
+
+```c++
+# hybridse/src/udf/udf.cc
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      Ret func(Arg1 arg1, Arg2 arg2, bool is_arg2_null, ...) {
+        // ...
+        // if is_arg1_null
+        // 	return Ret(0)
+        // else 
+        // 	compute and return result
+      }
+    } 
+  } 
+} 
+```
+
+Configure and register the function into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
+
+```c++
+# hybridse/src/udf/default_udf_library.cc
+RegisterExternal("my_func")
+        .args<Arg1, Nulable<Arg2>, ...>(static_cast<R (*)(Arg1, Arg2, bool, ...)>(v1::func))()
+        .doc(R"(
+            documenting my_func
+        )");
+```
+
+## 4. SQL Functions Development Examples
 
 ### 4.1 SQL functions return **BOOL** or Numeric types: `INT Month(TIMESTAMP)` function
 
