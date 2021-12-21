@@ -67,21 +67,25 @@ message RunBatchSqlRequest {
     required string sql = 1;
     required string output_path = 2;
     map<string, string> conf = 3;
+    optional string default_db = 4 [default = ""];
 };
 
 message RunBatchAndShowRequest {
     required string sql = 1;
     map<string, string> conf = 2;
+    optional string default_db = 3 [default = ""];
 };
 
 message ImportOnlineDataRequest {
     required string sql = 1;
     map<string, string> conf = 2;
+    optional string default_db = 3 [default = ""];
 };
 
 message ImportOfflineDataRequest {
     required string sql = 1;
     map<string, string> conf = 2;
+    optional string default_db = 3 [default = ""];
 };
 
 service TaskManagerServer {

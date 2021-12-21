@@ -27,6 +27,7 @@
 #include "catalog/sdk_catalog.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
+#include "client/taskmanager_client.h"
 #include "common/thread_pool.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
@@ -81,6 +82,26 @@ class DBSDK {
         return ns_client;
     }
 
+    std::shared_ptr<::openmldb::client::TaskManagerClient> GetTaskManagerClient() {
+        auto taskmanager_client = std::atomic_load_explicit(&taskmanager_client_, std::memory_order_relaxed);
+        if (taskmanager_client) return taskmanager_client;
+
+        std::string endpoint, real_endpoint;
+        if (!GetTaskManagerAddress(&endpoint, &real_endpoint)) {
+            LOG(DFATAL) << "fail to get TaskManager address";
+            return {};
+        }
+        taskmanager_client = std::make_shared<::openmldb::client::TaskManagerClient>(endpoint, real_endpoint);
+        int ret = taskmanager_client->Init();
+        if (ret != 0) {
+            LOG(DFATAL) << "fail to init TaskManager client with endpoint " << endpoint;
+            return {};
+        }
+        LOG(INFO) << "init TaskManager client with endpoint " << endpoint << " done";
+        std::atomic_store_explicit(&taskmanager_client_, taskmanager_client, std::memory_order_relaxed);
+        return taskmanager_client;
+    }
+
     uint32_t GetTableId(const std::string& db, const std::string& tname);
     std::shared_ptr<::openmldb::nameserver::TableInfo> GetTableInfo(const std::string& db, const std::string& tname);
     std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> GetTables(const std::string& db);
@@ -100,6 +121,7 @@ class DBSDK {
 
  protected:
     virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
+    virtual bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) = 0;
     // build client_manager, then create a new catalog, replace the catalog in engine
     virtual bool BuildCatalog() = 0;
 
@@ -119,6 +141,7 @@ class DBSDK {
  private:
     // get/set op should be atomic(actually no reset now)
     std::shared_ptr<::openmldb::client::NsClient> ns_client_;
+    std::shared_ptr<::openmldb::client::TaskManagerClient> taskmanager_client_;
 };
 
 class ClusterSDK : public DBSDK {
@@ -132,6 +155,7 @@ class ClusterSDK : public DBSDK {
  protected:
     bool BuildCatalog() override;
     bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override;
+    bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) override;
 
  private:
     bool GetRealEndpointFromZk(const std::string& endpoint, std::string* real_endpoint);
@@ -168,6 +192,11 @@ class StandAloneSDK : public DBSDK {
         *endpoint = ss.str();
         *real_endpoint = ss.str();
         return true;
+    }
+
+    bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) override {
+        // Standalone mode does not provide TaskManager service
+        return false;
     }
 
     bool BuildCatalog() override;

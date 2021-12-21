@@ -26,10 +26,12 @@
 #include <utility>
 #include <vector>
 
+#include "../../hybridse/include/node/node_enum.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "base/linenoise.h"
 #include "base/texttable.h"
+#include "client/taskmanager_client.h"
 #include "cmd/display.h"
 #include "cmd/file_option_parser.h"
 #include "cmd/split.h"
@@ -382,6 +384,39 @@ bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& n
     return true;
 }
 
+void PrintJobInfos(std::ostream& stream, std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
+    ::hybridse::base::TextTable t('-', ' ', ' ');
+
+    t.add("id");
+    t.add("job_type");
+    t.add("state");
+    t.add("start_time");
+    t.add("end_time");
+    t.add("parameter");
+    t.add("cluster");
+    t.add("application_id");
+    t.add("error");
+
+    t.end_of_row();
+
+    for (auto& job_info : job_infos) {
+        //request.add_endpoint_group(endpoint);
+        t.add(std::to_string(job_info.id()));
+        t.add(job_info.job_type());
+        t.add(job_info.state());
+        t.add(std::to_string(job_info.start_time()));
+        t.add(std::to_string(job_info.end_time()));
+        t.add(job_info.parameter());
+        t.add(job_info.cluster());
+        t.add(job_info.application_id());
+        t.add(job_info.error());
+        t.end_of_row();
+    }
+
+    stream << t << std::endl;
+    stream << job_infos.size() << " jobs in set" << std::endl;
+}
+
 void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
     std::shared_ptr<client::NsClient> ns;
     switch (cmd_node->GetCmdType()) {
@@ -609,6 +644,51 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
         }
         case hybridse::node::kCmdExit: {
             exit(0);
+        }
+        case hybridse::node::kCmdShowJobs: {
+            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+            sr->ShowJobs(false, job_infos);
+            PrintJobInfos(std::cout, job_infos);
+            break;
+        }
+        case hybridse::node::kCmdShowJob: {
+            int job_id;
+            try {
+                // Check argument type
+                job_id = std::stoi(cmd_node->GetArgs()[0]);
+            } catch (...) {
+                std::cout << "ERROR: Failed to parse job id: " << cmd_node->GetArgs()[0] << std::endl;
+                return;
+            }
+
+            ::openmldb::taskmanager::JobInfo job_info;
+            sr->ShowJob(job_id, job_info);
+            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+
+            if (job_info.id() > 0) {
+                job_infos.push_back(job_info);
+            }
+            PrintJobInfos(std::cout, job_infos);
+            break;
+        }
+        case hybridse::node::kCmdStopJob: {
+            int job_id;
+            try {
+                job_id = std::stoi(cmd_node->GetArgs()[0]);
+            } catch (...) {
+                std::cout << "ERROR: Failed to parse job id: " << cmd_node->GetArgs()[0] << std::endl;
+                return;
+            }
+
+            ::openmldb::taskmanager::JobInfo job_info;
+            sr->StopJob(job_id, job_info);
+
+            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+            if (job_info.id() > 0) {
+                job_infos.push_back(job_info);
+            }
+            PrintJobInfos(std::cout, job_infos);
+            break;
         }
         default: {
             return;
