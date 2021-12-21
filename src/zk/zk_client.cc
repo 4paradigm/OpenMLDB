@@ -442,10 +442,10 @@ void ZkClient::HandleItemChanged(const std::string& path, int type, int state) {
         }
         callback = it->second;
     }
+    WatchItem(path, callback);
     if (type == ZOO_CHANGED_EVENT) {
         callback();
     }
-    WatchItem(path, callback);
 }
 
 void ZkClient::CancelWatchItem(const std::string& path) {

@@ -119,7 +119,6 @@ public class SqlEngine implements AutoCloseable {
         options = engineOptions;
         catalog = new SimpleCatalog();
         session = new BatchRunSession();
-        session.SetPerformanceSensitive(false);
         for (TypeOuterClass.Database database: databases) {
             catalog.AddDatabase(database);
         }

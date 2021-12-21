@@ -181,8 +181,6 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kCreatePlan";
         case kPlanTypeInsert:
             return "kInsertPlan";
-        case kPlanTypeScan:
-            return std::string("kScanPlan");
         case kPlanTypeLimit:
             return std::string("kLimitPlan");
         case kPlanTypeFilter:

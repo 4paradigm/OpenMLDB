@@ -150,6 +150,7 @@ public class SqlEngineTest {
         try {
             EngineOptions options = createDefaultEngineOptions();
             options.SetEnableBatchWindowParallelization(true);
+            options.SetEnableWindowColumnPruning(true);
             SqlEngine engine = new SqlEngine(sql, db.build(), options);
             Assert.assertNotNull(engine.getPlan());
         } catch (UnsupportedHybridSeException e) {
@@ -232,6 +233,7 @@ public class SqlEngineTest {
         try {
             EngineOptions options = createDefaultEngineOptions();
             options.SetEnableBatchWindowParallelization(true);
+            options.SetEnableWindowColumnPruning(true);
             SqlEngine engine = new SqlEngine(sql, Lists.newArrayList(db.build(), db2.build()),
                     options, defaultDbName);
             Assert.assertNotNull(engine.getPlan());
@@ -325,6 +327,7 @@ public class SqlEngineTest {
         try {
             EngineOptions options = createDefaultEngineOptions();
             options.SetEnableBatchWindowParallelization(true);
+            options.SetEnableWindowColumnPruning(true);
             SqlEngine engine = new SqlEngine(sql,
                     Lists.newArrayList(db.build(), db2.build()), options, defaultDbName);
             Assert.assertNull(engine.getPlan());

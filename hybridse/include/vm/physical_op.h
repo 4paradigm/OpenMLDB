@@ -1386,7 +1386,6 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
 
     const bool is_all_;
     static PhysicalUnionNode *CastFrom(PhysicalOpNode *node);
-    std::shared_ptr<node::OptionsMap> config_options_;
 };
 
 class PhysicalPostRequestUnionNode : public PhysicalBinaryNode {
