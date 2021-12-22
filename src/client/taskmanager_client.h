@@ -52,6 +52,13 @@ class TaskManagerClient : public Client {
     ::openmldb::base::Status RunBatchAndShow(const std::string sql, const std::map<std::string, std::string> config,
                                              const std::string default_db, ::openmldb::taskmanager::JobInfo& job_info);
 
+    ::openmldb::base::Status ImportOnlineData(const std::string sql, const std::map<std::string, std::string> config,
+                                              const std::string default_db, ::openmldb::taskmanager::JobInfo& job_info);
+
+    ::openmldb::base::Status ImportOfflineData(const std::string sql, const std::map<std::string, std::string> config,
+                                               const std::string default_db,
+                                               ::openmldb::taskmanager::JobInfo& job_info);
+
  private:
     ::openmldb::RpcClient<::openmldb::taskmanager::TaskManagerServer_Stub> client_;
 };

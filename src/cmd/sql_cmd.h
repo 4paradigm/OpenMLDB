@@ -1341,10 +1341,33 @@ void HandleSQL(const std::string& sql) {
         }
         case hybridse::node::kPlanTypeLoadData: {
             auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
-            std::string error;
-            if (!HandleLoadDataInfile(plan->Db(), plan->Table(), plan->File(), plan->Options(), &error)) {
-                std::cout << "ERROR: Load data failed. " << error << std::endl;
-                return;
+
+            if (FLAGS_host.empty() || FLAGS_port == 0) {
+                // Handle in cluster mode
+                ::openmldb::taskmanager::JobInfo job_info;
+                std::map<std::string, std::string> config;
+
+                ::openmldb::base::Status status;
+                if (isOnlineMode()) {
+                    // Handle in online mode
+                    status = sr->ImportOnlineData(sql, config, db, job_info);
+                } else {
+                    // Handle in offline mode
+                    status = sr->ImportOfflineData(sql, config, db, job_info);
+                }
+
+                std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+                if (status.OK() && job_info.id() > 0) {
+                    job_infos.push_back(job_info);
+                }
+                PrintJobInfos(std::cout, job_infos);
+            } else {
+                // Handle in standalone mode
+                std::string error;
+                if (!HandleLoadDataInfile(plan->Db(), plan->Table(), plan->File(), plan->Options(), &error)) {
+                    std::cout << "ERROR: Load data failed. " << error << std::endl;
+                    return;
+                }
             }
             return;
         }

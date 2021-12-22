@@ -1510,5 +1510,27 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     return taskmanager_client_ptr->RunBatchAndShow(sql, config, default_db, job_info);
 }
 
+::openmldb::base::Status SQLClusterRouter::ImportOnlineData(const std::string sql,
+                                                            const std::map<std::string, std::string> config,
+                                                            const std::string default_db,
+                                                            ::openmldb::taskmanager::JobInfo& job_info) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
+    return taskmanager_client_ptr->ImportOnlineData(sql, config, default_db, job_info);
+}
+
+::openmldb::base::Status SQLClusterRouter::ImportOfflineData(const std::string sql,
+                                                             const std::map<std::string, std::string> config,
+                                                             const std::string default_db,
+                                                             ::openmldb::taskmanager::JobInfo& job_info) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
+    return taskmanager_client_ptr->ImportOfflineData(sql, config, default_db, job_info);
+}
+
 }  // namespace sdk
 }  // namespace openmldb
