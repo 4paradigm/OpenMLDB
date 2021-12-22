@@ -1255,6 +1255,31 @@ Status PhysicalRequestJoinNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
+Status PhysicalSelectIntoNode::InitSchema(PhysicalPlanContext* ctx) { return Status::OK(); }
+Status PhysicalSelectIntoNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                               PhysicalOpNode** out) {
+    return {common::kPlanError, "no children"};
+}
+
+void PhysicalSelectIntoNode::Print(std::ostream& output, const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(" << "out_file=" << OutFile();
+
+    if (options_) {
+        printOptionsMap(output, options_.get(), "options");
+    }
+    if (config_options_) {
+        printOptionsMap(output, config_options_.get(), "config_options");
+    }
+    output << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
+PhysicalSelectIntoNode* PhysicalSelectIntoNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalSelectIntoNode*>(node);
+}
+
 Status PhysicalLoadDataNode::InitSchema(PhysicalPlanContext* ctx) { return Status::OK(); }
 Status PhysicalLoadDataNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
                                              PhysicalOpNode** out) {
@@ -1277,7 +1302,7 @@ void PhysicalLoadDataNode::Print(std::ostream& output, const std::string& tab) c
     PrintChildren(output, tab);
 }
 
-void PhysicalDeleteNode::Print(std::ostream &output, const std::string &tab) const {
+void PhysicalDeleteNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(target=" << node::DeleteTargetString(GetTarget()) << ", job_id=" << GetJobId() << ")";
 }

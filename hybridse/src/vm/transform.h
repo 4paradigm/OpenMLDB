@@ -145,8 +145,7 @@ class BatchModeTransformer {
     Status ValidateWindowIndexOptimization(const WindowOp& window,
                                            PhysicalOpNode* in);
     Status ValidateJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
-    Status ValidateRequestJoinIndexOptimization(const Join& join,
-                                                PhysicalOpNode* in);
+    Status ValidateRequestJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
     Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
     Status ValidateOnlyFullGroupBy(const node::ProjectListNode* project_list, const node::ExprListNode* group_keys,
                                    const SchemasContext* schemas_ctx);
@@ -177,6 +176,9 @@ class BatchModeTransformer {
     virtual Status TransformDistinctOp(const node::DistinctPlanNode* node,
                                        PhysicalOpNode** output);
     virtual Status TransformDeleteOp(const node::DeletePlanNode* node, PhysicalOpNode** output);
+
+    virtual Status TransformSelectIntoOp(const node::SelectIntoPlanNode* node, PhysicalOpNode* child,
+                                         PhysicalOpNode** output);
 
     virtual Status TransformLoadDataOp(const node::LoadDataPlanNode* node,
                                        PhysicalOpNode** output);
