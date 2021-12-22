@@ -79,6 +79,25 @@ std::string db = "";  // NOLINT
 using VariableMap = std::map<std::string, std::string>;
 VariableMap session_variables = {VariableMap::value_type("execute_mode", "online")};
 
+bool isOnlineMode() {
+    for (auto& pair : session_variables) {
+        if (pair.first == "execute_mode") {
+            std::string execute_mode = pair.second;
+            if (execute_mode == "online") {
+                return true;
+            } else if (execute_mode == "offline") {
+                return false;
+            } else {
+                std::cout << "ERROR: unknown execute mode " << execute_mode << ", use online mode" << std::endl;
+                return true;
+            }
+        }
+    }
+
+    std::cout << "Execute mode is not set, use online mode" << std::endl;
+    return true;
+}
+
 void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& file_path,
                    const std::shared_ptr<hybridse::node::OptionsMap>& options_map, ::openmldb::base::Status* status) {
     if (!result_set) {
@@ -419,6 +438,36 @@ void PrintJobInfos(std::ostream& stream, std::vector<::openmldb::taskmanager::Jo
     stream << job_infos.size() << " jobs in set" << std::endl;
 }
 
+void PrintOfflineTableInfo(std::ostream& stream, const ::openmldb::nameserver::OfflineTableInfo& offline_table_info) {
+    ::hybridse::base::TextTable t('-', ' ', ' ');
+
+    t.add("Offline path");
+    t.add("Format");
+    t.add("Deep copy");
+    t.add("Options");
+    t.end_of_row();
+
+    auto& options = offline_table_info.options();
+    std::string optionStr;
+    bool first = true;
+    for (auto &pair : options) {
+        if (first) {
+            optionStr += pair.first + ":" + pair.second;
+            first = false;
+        } else {
+            optionStr += ", " + pair.first + ":" + pair.second;
+        }
+    }
+
+    t.add(offline_table_info.path());
+    t.add(offline_table_info.format());
+    t.add(offline_table_info.deep_copy() ? "true" : "false");
+    t.add(optionStr);
+    t.end_of_row();
+
+    stream << t << std::endl;
+}
+
 void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
     std::shared_ptr<client::NsClient> ns;
     switch (cmd_node->GetCmdType()) {
@@ -463,6 +512,9 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
 
             PrintSchema(table->column_desc());
             PrintColumnKey(table->column_key());
+            if(table->has_offline_table_info()) {
+                PrintOfflineTableInfo(std::cout, table->offline_table_info());
+            }
             break;
         }
 
@@ -1244,25 +1296,16 @@ void HandleSQL(const std::string& sql) {
         }
         case hybridse::node::kPlanTypeFuncDef:
         case hybridse::node::kPlanTypeQuery: {
-            ::hybridse::sdk::Status status;
-
-            // Get execute mode
-            std::string execute_mode;
-            for (auto& pair : session_variables) {
-                if (pair.first == "execute_mode") {
-                    execute_mode = pair.second;
-                }
-            }
-
-            if (execute_mode == "online") {
+            if (isOnlineMode()) {
                 // Run online query
+                ::hybridse::sdk::Status status;
                 auto rs = sr->ExecuteSQL(db, sql, &status);
                 if (!rs) {
                     std::cout << "ERROR: " << status.msg << std::endl;
                 } else {
                     PrintResultSet(std::cout, rs.get());
                 }
-            } else if (execute_mode == "offline") {
+            } else {
                 // Run offline query
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
