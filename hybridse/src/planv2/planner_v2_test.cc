@@ -39,6 +39,7 @@ class PlannerV2Test : public ::testing::TestWithParam<SqlCase> {
  protected:
     NodeManager *manager_;
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PlannerV2Test);
 
 INSTANTIATE_TEST_SUITE_P(SqlSimpleQueryParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
@@ -1597,7 +1598,7 @@ FROM
 }
 
 TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
-    const std::string sql = "LOAD DATA INFILE 'hello.csv' INTO TABLE t1 OPTIONS (key = 'cat');";
+    const std::string sql = "LOAD DATA INFILE 'hello.csv' INTO TABLE t1 OPTIONS (key = 'cat') CONFIG ( foo = 'bar' );";
     node::PlanNodeList plan_trees;
     base::Status status;
     NodeManager nm;
@@ -1608,14 +1609,19 @@ TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
   +-db: <nil>
   +-table: t1
   +-options:
-    +-key:
+  |  +-key:
+  |    +-expr[primary]
+  |      +-value: cat
+  |      +-type: string
+  +-config_options:
+    +-foo:
       +-expr[primary]
-        +-value: cat
+        +-value: bar
         +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
 }
 
 TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
-    const std::string sql = "SELECT c2 FROM t0 INTO OUTFILE 'm.txt' OPTIONS (key = 'cat');";
+    const std::string sql = "SELECT c2 FROM t0 INTO OUTFILE 'm.txt' OPTIONS (key = 'cat') CONFIG (bar='foo');";
     node::PlanNodeList plan_trees;
     base::Status status;
     NodeManager nm;
@@ -1646,9 +1652,14 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
   |    |      +-alias: <nil>
   |    +-window_list: []
   +-options:
-    +-key:
+  |  +-key:
+  |    +-expr[primary]
+  |      +-value: cat
+  |      +-type: string
+  +-config_options:
+    +-bar:
       +-expr[primary]
-        +-value: cat
+        +-value: foo
         +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
 
     const auto select_into = dynamic_cast<node::SelectIntoPlanNode*>(plan_trees.front());
@@ -1661,17 +1672,18 @@ FROM
 }
 
 TEST_F(PlannerV2Test, SetPlanNodeTest) {
-    const auto sql = "SET select_mode = 'TRINO'";
+    const auto sql = "SET @@global.execute_mode = 'online'";
     node::PlanNodeList plan_trees;
     base::Status status;
     NodeManager nm;
     ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
     ASSERT_EQ(1, plan_trees.size());
     EXPECT_STREQ(R"sql(+-[kPlanTypeSet]
-  +-key: select_mode
+  +-scope: GlobalSystemVariable
+  +-key: execute_mode
   +-value:
     +-expr[primary]
-      +-value: TRINO
+      +-value: online
       +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
 }
 //
@@ -1722,6 +1734,7 @@ class PlannerV2ErrorTest : public ::testing::TestWithParam<SqlCase> {
  protected:
     NodeManager *manager_;
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PlannerV2ErrorTest);
 INSTANTIATE_TEST_SUITE_P(SqlErrorQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(SqlUnsupporQuery, PlannerV2ErrorTest,
@@ -1790,6 +1803,13 @@ TEST_F(PlannerV2ErrorTest, SqlSyntaxErrorTest) {
                      "Syntax error: Expected keyword ON or keyword USING but got keyword WHEN [at 1:46]\n"
                      "SELECT t1.col1, t2.col2 FROM t1 LAST JOIN t2 when t1.id=t2.id;\n"
                      "                                             ^");
+
+    // config clause: can't appear inside subquery
+    expect_converted("select T1.a as a, T2.b as b from Table1 as T1 config (k='k') last join Table2 T2 using (c, d);",
+                     common::kSyntaxError,
+                     R"s(Syntax error: Expected end of input but got keyword LAST [at 1:62]
+...a as a, T2.b as b from Table1 as T1 config (k='k') last join Table2 T2 usi...
+                                                      ^)s");
 }
 
 
@@ -1829,6 +1849,46 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
 
     expect_converted(R"sql(select 'mike' like 'm%' escape '2c';)sql",
         common::kUnsupportSql, "escape value is not string or string size >= 2");
+}
+
+TEST_F(PlannerV2ErrorTest, NonSupportOnlineServingSQL) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string &sql, const int code, const std::string &msg) {
+      base::Status status;
+      node::PlanNodeList plan_trees;
+      // Generate SQL logical plan for online serving
+      ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, false)) << status;
+      ASSERT_EQ(code, status.code) << status;
+      ASSERT_EQ(msg, status.msg) << status;
+      std::cout << msg << std::endl;
+    };
+
+
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 GROUP BY COL1;
+        )",
+        common::kPlanError, "Non-support kGroupPlan Op in online serving");
+
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) from t1 HAVING SUM(COL2) >0;
+        )",
+        common::kPlanError, "Non-support HAVING Op in online serving");
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) from t1;
+        )",
+        common::kPlanError, "Aggregate over a table cannot be supported in online serving");
+    expect_converted(
+        R"(
+        SELECT COL1 FROM t1 order by COL1;
+        )",
+        common::kPlanError, "Non-support kSortPlan Op in online serving");
+
+    expect_converted(
+        R"(LOAD DATA INFILE 'a.csv' INTO TABLE t1 OPTIONS(foo='bar', num=1);)",
+        common::kPlanError, "Non-support LOAD DATA Op in online serving");
 }
 }  // namespace plan
 }  // namespace hybridse

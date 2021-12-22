@@ -17,9 +17,13 @@
 set -ex
 
 ROOT_DIR=$(pwd)
+
+# on hybridsql 0.4.1 or later, 'THIRD_PARTY_SRC_DIR' is defined and is '/deps/src'
+THIRDSRC=${THIRD_PARTY_SRC_DIR:-thirdsrc}
+
 test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
-cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
-cd thirdsrc/zookeeper-3.4.14
+cp steps/zoo.cfg "$THIRDSRC/zookeeper-3.4.14/conf"
+cd "$THIRDSRC/zookeeper-3.4.14"
 # TODO(hw): macos no -p
 netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
 ./bin/zkServer.sh start && cd "$ROOT_DIR"
@@ -41,4 +45,4 @@ cd "${ROOT_DIR}"/python/test
 nosetests --with-xunit
 
 cd "${ROOT_DIR}"/onebox && sh stop_all.sh && cd "$ROOT_DIR"
-cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh stop && cd "$ROOT_DIR"
+cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop && cd "$ROOT_DIR"

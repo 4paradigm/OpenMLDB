@@ -47,7 +47,7 @@ TabletClient::~TabletClient() {}
 int TabletClient::Init() { return client_.Init(); }
 
 bool TabletClient::Query(const std::string& db, const std::string& sql, const std::string& row, brpc::Controller* cntl,
-                         openmldb::api::QueryResponse* response, const bool is_debug, bool performance_sensitive) {
+                         openmldb::api::QueryResponse* response, const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
     ::openmldb::api::QueryRequest request;
     request.set_sql(sql);
@@ -56,7 +56,6 @@ bool TabletClient::Query(const std::string& db, const std::string& sql, const st
     request.set_is_debug(is_debug);
     request.set_row_size(row.size());
     request.set_row_slices(1);
-    request.set_is_performance_sensitive(performance_sensitive);
     auto& io_buf = cntl->request_attachment();
     if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()), row.size(), &io_buf)) {
         LOG(WARNING) << "Encode row buffer failed";
@@ -73,8 +72,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql, const st
 bool TabletClient::Query(const std::string& db, const std::string& sql,
                          const std::vector<openmldb::type::DataType>& parameter_types,
                          const std::string& parameter_row,
-                         brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug,
-                         bool performance_sensitive) {
+                         brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
     ::openmldb::api::QueryRequest request;
     request.set_sql(sql);
@@ -83,7 +81,6 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     request.set_is_debug(is_debug);
     request.set_parameter_row_size(parameter_row.size());
     request.set_parameter_row_slices(1);
-    request.set_is_performance_sensitive(performance_sensitive);
     for (auto& type : parameter_types) {
         request.add_parameter_types(type);
     }
@@ -300,13 +297,15 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::vector<std::pair<s
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::vector<std::pair<std::string, uint32_t>>& dimensions,
                        const std::vector<uint64_t>& ts_dimensions, const std::string& value) {
-    return Put(tid, pid, dimensions, ts_dimensions, value, 0);
+    return Put(tid, pid, dimensions, ts_dimensions, value, 1);
 }
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, const char* pk, uint64_t time, const char* value, uint32_t size,
                        uint32_t format_version) {
     ::openmldb::api::PutRequest request;
-    request.set_pk(pk);
+    auto dim = request.add_dimensions();
+    dim->set_key(pk);
+    dim->set_idx(0);
     request.set_time(time);
     request.set_value(value, size);
     request.set_tid(tid);
@@ -1095,24 +1094,40 @@ bool TabletClient::DeleteIndex(uint32_t tid, uint32_t pid, const std::string& id
 
 bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common::ColumnKey& column_key,
                             std::shared_ptr<TaskInfo> task_info) {
+    return AddMultiIndex(tid, pid, {column_key}, task_info).OK();
+}
+
+base::Status TabletClient::AddMultiIndex(uint32_t tid, uint32_t pid,
+        const std::vector<::openmldb::common::ColumnKey>& column_keys,
+        std::shared_ptr<TaskInfo> task_info) {
     ::openmldb::api::AddIndexRequest request;
     ::openmldb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    ::openmldb::common::ColumnKey* cur_column_key = request.mutable_column_key();
-    cur_column_key->CopyFrom(column_key);
+    if (column_keys.empty()) {
+        if (task_info) {
+            task_info->set_status(::openmldb::api::TaskStatus::kFailed);
+        }
+        return {base::ReturnCode::kError, "no column key"};
+    } else if (column_keys.size() == 1) {
+        request.mutable_column_key()->CopyFrom(column_keys[0]);
+    } else {
+        for (const auto& column_key : column_keys) {
+            request.add_column_keys()->CopyFrom(column_key);
+        }
+    }
     bool ok = client_.SendRequest(&openmldb::api::TabletServer_Stub::AddIndex, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         if (task_info) {
             task_info->set_status(::openmldb::api::TaskStatus::kFailed);
         }
-        return false;
+        return {base::ReturnCode::kError, response.msg()};
     }
     if (task_info) {
         task_info->set_status(::openmldb::api::TaskStatus::kDone);
     }
-    return true;
+    return {};
 }
 
 bool TabletClient::DumpIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,

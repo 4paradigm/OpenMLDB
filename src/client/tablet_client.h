@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "base/kv_iterator.h"
+#include "base/status.h"
 #include "brpc/channel.h"
 #include "client/client.h"
 #include "codec/schema_codec.h"
@@ -67,12 +68,10 @@ class TabletClient : public Client {
 
     bool Query(const std::string& db, const std::string& sql,
                const std::vector<openmldb::type::DataType>& parameter_types, const std::string& parameter_row,
-               brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug = false,
-               bool performance_sensitive = true);
+               brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug = false);
 
     bool Query(const std::string& db, const std::string& sql, const std::string& row, brpc::Controller* cntl,
-               ::openmldb::api::QueryResponse* response, const bool is_debug = false,
-               bool performance_sensitive = true);
+               ::openmldb::api::QueryResponse* response, const bool is_debug = false);
 
     bool SQLBatchRequestQuery(const std::string& db, const std::string& sql,
                               std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch>, brpc::Controller* cntl,
@@ -228,6 +227,10 @@ class TabletClient : public Client {
 
     bool AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common::ColumnKey& column_key,
                   std::shared_ptr<TaskInfo> task_info);
+
+    base::Status AddMultiIndex(uint32_t tid, uint32_t pid,
+            const std::vector<::openmldb::common::ColumnKey>& column_keys,
+            std::shared_ptr<TaskInfo> task_info);
 
     bool DumpIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
                        const ::openmldb::common::ColumnKey& column_key, uint32_t idx,

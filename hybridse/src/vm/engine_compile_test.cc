@@ -82,59 +82,6 @@ TEST_F(EngineCompileTest, EngineLRUCacheTest) {
     }
 }
 
-TEST_F(EngineCompileTest, EngineLRUCacheTestWithPerformanceSensitive) {
-    // Build Simple Catalog
-    auto catalog = BuildSimpleCatalog();
-
-    // database simple_db
-    hybridse::type::Database db;
-    db.set_name("simple_db");
-
-    // table t1
-    hybridse::type::TableDef table_def;
-    sqlcase::CaseSchemaMock::BuildTableDef(table_def);
-    table_def.set_name("t1");
-    ::hybridse::type::IndexDef* index = table_def.add_indexes();
-    index->set_name("index12");
-    index->add_first_keys("col1");
-    index->add_first_keys("col2");
-    index->set_second_key("col5");
-    AddTable(db, table_def);
-
-    // table t2
-    hybridse::type::TableDef table_def2;
-    sqlcase::CaseSchemaMock::BuildTableDef(table_def2);
-    table_def2.set_name("t2");
-    AddTable(db, table_def2);
-    catalog->AddDatabase(db);
-
-    // Simple Engine
-    EngineOptions options;
-    options.SetCompileOnly(true);
-    options.SetMaxSqlCacheSize(1);
-    Engine engine(catalog, options);
-
-    std::string sql = "select col1, col2 from t1;";
-    {
-        base::Status get_status;
-        BatchRunSession bsession1;
-        bsession1.SetPerformanceSensitive(true);
-        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession1, get_status)) << get_status;
-        ASSERT_EQ(get_status.code, common::kOk);
-
-        BatchRunSession bsession2;
-        bsession2.SetPerformanceSensitive(true);
-        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession2, get_status));
-        ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_EQ(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
-
-        BatchRunSession bsession3;
-        bsession3.SetPerformanceSensitive(false);
-        ASSERT_TRUE(engine.Get(sql, "simple_db", bsession3, get_status));
-        ASSERT_EQ(get_status.code, common::kOk);
-        ASSERT_NE(bsession2.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
-    }
-}
 
 TEST_F(EngineCompileTest, EngineWithParameterizedLRUCacheTest) {
     // Build Simple Catalog
@@ -253,25 +200,21 @@ TEST_F(EngineCompileTest, EngineEmptyDefaultDBLRUCacheTest) {
     {
         base::Status get_status;
         BatchRunSession bsession1;
-        bsession1.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "", bsession1, get_status)) << get_status;
         ASSERT_EQ(get_status.code, common::kOk);
         BatchRunSession bsession2;
-        bsession2.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "", bsession2, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_EQ(bsession1.GetCompileInfo().get(), bsession2.GetCompileInfo().get());
 
         // cache compile info is different under different default db
         BatchRunSession bsession3;
-        bsession3.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql, "default_db", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_NE(bsession1.GetCompileInfo().get(), bsession3.GetCompileInfo().get());
 
         // cache compile info is different under different default db
         BatchRunSession bsession4;
-        bsession4.SetPerformanceSensitive(false);
         ASSERT_TRUE(engine.Get(sql2, "", bsession3, get_status));
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_NE(bsession1.GetCompileInfo().get(), bsession4.GetCompileInfo().get());
@@ -324,7 +267,6 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             BatchRunSession session;
-            session.SetPerformanceSensitive(false);
             ASSERT_TRUE(engine.Get(sqlstr, "simple_db", session, get_status));
         }
     }
@@ -509,7 +451,7 @@ TEST_F(EngineCompileTest, RouterTest) {
         codec::Schema empty_parameter_schema;
         base::Status status;
         ASSERT_TRUE(engine.Explain(sql, "simple_db", kBatchRequestMode,
-                                   empty_parameter_schema, &explain_output, &status, false));
+                                   empty_parameter_schema, &explain_output, &status));
         ASSERT_EQ(explain_output.router.GetMainTable(), "t1");
         ASSERT_EQ(explain_output.router.GetRouterCol(), "col2");
     }
@@ -553,7 +495,7 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
     base::Status status;
     ASSERT_TRUE(engine.Explain(sql, "simple_db", kBatchRequestMode,
                                common_column_indices, &explain_output,
-                               &status, false));
+                               &status));
     ASSERT_TRUE(status.isOK()) << status;
     auto& output_schema = explain_output.output_schema;
     ASSERT_EQ(false, output_schema.Get(0).is_constant());
@@ -563,9 +505,68 @@ TEST_F(EngineCompileTest, ExplainBatchRequestTest) {
     ASSERT_EQ(true, output_schema.Get(4).is_constant());
     ASSERT_EQ(true, output_schema.Get(5).is_constant());
 }
+TEST_F(EngineCompileTest, MockRequestExplainTest) {
+    // Build Simple Catalog
+    auto catalog = BuildSimpleCatalog();
 
+    // database simple_db
+    hybridse::type::Database db;
+    db.set_name("simple_db");
 
+    // table t1
+    hybridse::type::TableDef table_def;
+    sqlcase::CaseSchemaMock::BuildTableDef(table_def);
+    table_def.set_name("t1");
+    AddTable(db, table_def);
+    catalog->AddDatabase(db);
 
+    std::string sql =
+        "select col0, col1, col2, sum(col1) over w1, \n"
+        "sum(col2) over w1, sum(col5) over w1 from t1 \n"
+        "window w1 as (partition by col2 \n"
+        "order by col5 rows between 3 preceding and current row);";
+    EngineOptions options;
+    options.SetCompileOnly(true);
+    Engine engine(catalog, options);
+    ExplainOutput explain_output;
+    base::Status status;
+    ASSERT_TRUE(engine.Explain(sql, "simple_db", kMockRequestMode,
+                               &explain_output,
+                               &status));
+    ASSERT_TRUE(status.isOK()) << status;
+}
+
+TEST_F(EngineCompileTest, MockRequestCompileTest) {
+    // Build Simple Catalog
+    auto catalog = BuildSimpleCatalog();
+
+    // database simple_db
+    hybridse::type::Database db;
+    db.set_name("simple_db");
+
+    // table t1
+    hybridse::type::TableDef table_def;
+    sqlcase::CaseSchemaMock::BuildTableDef(table_def);
+    table_def.set_name("t1");
+    AddTable(db, table_def);
+    catalog->AddDatabase(db);
+
+    std::string sql =
+        "select col0, col1, col2, sum(col1) over w1, \n"
+        "sum(col2) over w1, sum(col5) over w1 from t1 \n"
+        "window w1 as (partition by col2 \n"
+        "order by col5 rows between 3 preceding and current row);";
+    EngineOptions options;
+    Engine engine(catalog, options);
+    base::Status status;
+    vm::MockRequestRunSession session;
+    ASSERT_TRUE(engine.Get(sql, "simple_db", session, status)) << status;
+
+    ASSERT_TRUE(status.isOK()) << status;
+    ASSERT_EQ(7u, session.GetRequestSchema().size());
+    ASSERT_EQ("t1", session.GetRequestName());
+    ASSERT_EQ("simple_db", session.GetRequestDbName());
+}
 TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
     // Build Simple Catalog
     auto catalog = BuildSimpleCatalog();
@@ -611,7 +612,6 @@ TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             BatchRunSession session;
-            session.SetPerformanceSensitive(false);
             ASSERT_TRUE(engine.Get(sqlstr, "", session, get_status)) << get_status;
         }
     }

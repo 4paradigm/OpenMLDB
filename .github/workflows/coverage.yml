@@ -1,0 +1,69 @@
+name: coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths-ignore:
+      - docs/
+      - demo/
+      - release/
+      - image/
+      - tools/
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
+    env:
+      CMAKE_BUILD_TYPE: Debug
+      SQL_PYSDK_ENABLE: OFF
+      SQL_JAVASDK_ENABLE: ON
+      TESTING_ENABLE: ON
+      NPROC: 8
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('java/**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: coverage configure
+        run: |
+          make coverage-configure
+
+      - name: build openmldb
+        run: |
+          cmake --build build --target openmldb -- -j${{ env.NPROC }}
+
+      - name: start service
+        run: |
+          sh steps/ut_zookeeper.sh start
+          cd onebox
+          bash start_onebox.sh
+
+      - name: Build and Coverage
+        run: |
+          make coverage
+
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v2
+        with:
+          files: build/coverage.info,java/**/target/site/jacoco/jacoco.xml
+          name: coverage
+          fail_ci_if_error: true
+          verbose: true
+
+      - name: stop service
+        run: |
+          ./onebox/stop_all.sh
+          sh steps/ut_zookeeper.sh stop

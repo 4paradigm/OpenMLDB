@@ -127,8 +127,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     std::atomic<bool> detect(false);
     ok = client2.WatchItem(node, [&detect] { detect.store(true); });
     ASSERT_TRUE(ok);
-    ok = client.SetNodeValue(node, "2");
-    ASSERT_TRUE(ok);
+    ASSERT_TRUE(client.SetNodeValue(node, "2"));
     for (int i = 0 ; i < 30; i++) {
         if (detect.load()) {
             break;
@@ -137,8 +136,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     }
     ASSERT_TRUE(detect.load());
     detect.store(false);
-    ok = client.SetNodeValue(node, "3");
-    ASSERT_TRUE(ok);
+    ASSERT_TRUE(client.SetNodeValue(node, "3"));
     for (int i = 0 ; i < 30; i++) {
         if (detect.load()) {
             break;

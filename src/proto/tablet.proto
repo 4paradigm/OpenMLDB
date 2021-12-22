@@ -181,7 +181,7 @@ message PutRequest {
     optional uint32 tid = 4;
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
-    repeated TSDimension ts_dimensions = 7;
+    repeated TSDimension ts_dimensions = 7 [deprecated = true];
     optional uint32 format_version = 8 [default = 0];
 }
 
@@ -381,7 +381,7 @@ message LogEntry {
     optional uint64 ts = 5;
     repeated Dimension dimensions = 6;
     optional MethodType method_type = 7;
-    repeated TSDimension ts_dimensions = 8;
+    repeated TSDimension ts_dimensions = 8 [deprecated = true];
 }
 
 message AppendEntriesRequest {
@@ -576,6 +576,7 @@ message AddIndexRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional openmldb.common.ColumnKey column_key = 3;
+    repeated openmldb.common.ColumnKey column_keys = 4;
 }
 
 message SetModeRequest {
@@ -660,7 +661,6 @@ message QueryRequest {
     optional uint32 parameter_row_size = 10;
     optional uint32 parameter_row_slices = 11;
     repeated openmldb.type.DataType parameter_types = 12;
-    optional bool is_performance_sensitive = 13 [default = true];
 }
 
 message QueryResponse {

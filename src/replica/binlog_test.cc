@@ -35,6 +35,7 @@
 #include "storage/table.h"
 #include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -93,9 +94,8 @@ TEST_F(BinlogTest, DeleteBinlog) {
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     int count = 1000;
     while (count) {
-        char key[20];
-        snprintf(key, sizeof(key), "testkey_%d", count);
-        ret = client.Put(tid, pid, key, cur_time, std::string(10 * 1024, 'a'));
+        std::string key = "testkey_" + std::to_string(count);
+        ret = client.Put(tid, pid, key, cur_time, ::openmldb::test::EncodeKV(key, std::string(10 * 1024, 'a')));
         count--;
     }
     ret = client.MakeSnapshot(tid, pid, 0);

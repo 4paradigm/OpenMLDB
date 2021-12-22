@@ -16,14 +16,14 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make thirdparty
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
       - name: test
@@ -40,14 +40,14 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make thirdparty
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
       - name: test
@@ -64,14 +64,14 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make thirdparty
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
       - name: test
@@ -88,14 +88,14 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make thirdparty
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
       - name: test
@@ -112,14 +112,14 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'standalone-cli' || github.event.inputs.EXEC_TEST_TYPE == 'cli' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make thirdparty
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
       - name: test
@@ -136,14 +136,14 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'standalone-cli' || github.event.inputs.EXEC_TEST_TYPE == 'cli' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make thirdparty
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
       - name: test
@@ -160,14 +160,14 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'python' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build pysdk
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make thirdparty
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
       - name: test
@@ -200,14 +200,14 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'python' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build pysdk
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make thirdparty
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
       - name: test
@@ -224,14 +224,14 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'apiserver' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make thirdparty
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
       - name: test
@@ -248,14 +248,14 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'batch' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
+          make thirdparty
           mkdir -p build
           source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
       - name: test

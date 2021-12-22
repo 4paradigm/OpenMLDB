@@ -26,11 +26,12 @@
 #include <utility>
 #include <vector>
 
+#include "../../hybridse/include/node/node_enum.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "base/linenoise.h"
 #include "base/texttable.h"
-#include "catalog/schema_adapter.h"
+#include "client/taskmanager_client.h"
 #include "cmd/display.h"
 #include "cmd/file_option_parser.h"
 #include "cmd/split.h"
@@ -39,6 +40,7 @@
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
 #include "proto/fe_type.pb.h"
+#include "schema/schema_adapter.h"
 #include "sdk/db_sdk.h"
 #include "sdk/node_adapter.h"
 #include "sdk/sql_cluster_router.h"
@@ -57,7 +59,6 @@ DECLARE_int32(request_timeout_ms);
 // TODO(zekai): add sql_cmd.cc
 namespace openmldb::cmd {
 using hybridse::plan::PlanAPI;
-using ::openmldb::catalog::TTL_TYPE_MAP;
 const std::string LOGO =  // NOLINT
 
     "  _____                    ______  _       _____   ______   \n"
@@ -75,6 +76,8 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
 std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK* cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
+using VariableMap = std::map<std::string, std::string>;
+VariableMap session_variables = {VariableMap::value_type("execute_mode", "online")};
 
 void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& file_path,
                    const std::shared_ptr<hybridse::node::OptionsMap>& options_map, ::openmldb::base::Status* status) {
@@ -383,6 +386,39 @@ bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& n
     return true;
 }
 
+void PrintJobInfos(std::ostream& stream, std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
+    ::hybridse::base::TextTable t('-', ' ', ' ');
+
+    t.add("id");
+    t.add("job_type");
+    t.add("state");
+    t.add("start_time");
+    t.add("end_time");
+    t.add("parameter");
+    t.add("cluster");
+    t.add("application_id");
+    t.add("error");
+
+    t.end_of_row();
+
+    for (auto& job_info : job_infos) {
+        //request.add_endpoint_group(endpoint);
+        t.add(std::to_string(job_info.id()));
+        t.add(job_info.job_type());
+        t.add(job_info.state());
+        t.add(std::to_string(job_info.start_time()));
+        t.add(std::to_string(job_info.end_time()));
+        t.add(job_info.parameter());
+        t.add(job_info.cluster());
+        t.add(job_info.application_id());
+        t.add(job_info.error());
+        t.end_of_row();
+    }
+
+    stream << t << std::endl;
+    stream << job_infos.size() << " jobs in set" << std::endl;
+}
+
 void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
     std::shared_ptr<client::NsClient> ns;
     switch (cmd_node->GetCmdType()) {
@@ -608,8 +644,65 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             }
             break;
         }
+        case hybridse::node::kCmdShowSessionVariables: {
+            std::vector<std::vector<std::string>> items;
+            for (auto& pair : session_variables) {
+                items.push_back({pair.first, pair.second});
+            }
+            PrintItemTable(std::cout, {"Variable_name", "Value"}, items);
+            break;
+        }
+        case hybridse::node::kCmdShowGlobalVariables: {
+            std::cout << "ERROR: global variable is unsupported now" << std::endl;
+            break;
+        }
         case hybridse::node::kCmdExit: {
             exit(0);
+        }
+        case hybridse::node::kCmdShowJobs: {
+            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+            sr->ShowJobs(false, job_infos);
+            PrintJobInfos(std::cout, job_infos);
+            break;
+        }
+        case hybridse::node::kCmdShowJob: {
+            int job_id;
+            try {
+                // Check argument type
+                job_id = std::stoi(cmd_node->GetArgs()[0]);
+            } catch (...) {
+                std::cout << "ERROR: Failed to parse job id: " << cmd_node->GetArgs()[0] << std::endl;
+                return;
+            }
+
+            ::openmldb::taskmanager::JobInfo job_info;
+            sr->ShowJob(job_id, job_info);
+            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+
+            if (job_info.id() > 0) {
+                job_infos.push_back(job_info);
+            }
+            PrintJobInfos(std::cout, job_infos);
+            break;
+        }
+        case hybridse::node::kCmdStopJob: {
+            int job_id;
+            try {
+                job_id = std::stoi(cmd_node->GetArgs()[0]);
+            } catch (...) {
+                std::cout << "ERROR: Failed to parse job id: " << cmd_node->GetArgs()[0] << std::endl;
+                return;
+            }
+
+            ::openmldb::taskmanager::JobInfo job_info;
+            sr->StopJob(job_id, job_info);
+
+            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+            if (job_info.id() > 0) {
+                job_infos.push_back(job_info);
+            }
+            PrintJobInfos(std::cout, job_infos);
+            break;
         }
         default: {
             return;
@@ -653,7 +746,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     std::string select_sql = deploy_node->StmtStr() + ";";
     hybridse::vm::ExplainOutput explain_output;
     hybridse::base::Status sql_status;
-    if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kRequestMode, &explain_output, &sql_status, false)) {
+    if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kMockRequestMode, &explain_output, &sql_status)) {
         return {base::ReturnCode::kError, sql_status.msg};
     }
     // pack ProcedureInfo
@@ -668,8 +761,8 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     sp_info.set_main_table(explain_output.request_name);
     auto input_schema = sp_info.mutable_input_schema();
     auto output_schema = sp_info.mutable_output_schema();
-    if (!openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, input_schema) ||
-        !openmldb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, output_schema)) {
+    if (!openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.input_schema, input_schema) ||
+        !openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.output_schema, output_schema)) {
         return {base::ReturnCode::kError, "convert schema failed"};
     }
 
@@ -714,14 +807,6 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     if (!ret.OK()) {
         return {base::ReturnCode::kError, "get table failed " + ret.msg};
     }
-    auto tablet_accessor = cs->GetTablet();
-    if (!tablet_accessor) {
-        return {base::ReturnCode::kError, "cannot connect tablet"};
-    }
-    auto tablet_client = tablet_accessor->GetClient();
-    if (!tablet_client) {
-        return {base::ReturnCode::kError, "tablet client is null"};
-    }
     std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>> table_schema_map;
     std::map<std::string, ::openmldb::nameserver::TableInfo> table_map;
     for (const auto& table : tables) {
@@ -735,40 +820,39 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     }
     auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
-    // check ts col
     for (auto& kv : index_map) {
         auto it = table_map.find(kv.first);
         if (it == table_map.end()) {
             return {base::ReturnCode::kError, "table " + kv.first + "is not exist"};
         }
-        std::set<std::string> ts_set;
-        for (const auto& column_key : it->second.column_key()) {
-            if (!column_key.ts_name().empty()) {
-                ts_set.insert(column_key.ts_name());
-            }
+        std::set<std::string> col_set;
+        for (const auto& column_desc : it->second.column_desc()) {
+            col_set.insert(column_desc.name());
         }
-        for (auto& column_key : kv.second) {
-            if (!column_key.ts_name().empty() && ts_set.count(column_key.ts_name()) == 0) {
-                return {base::ReturnCode::kError,
-                        "ts col " + column_key.ts_name() + " is not exist in table " + kv.first};
-            }
-        }
-    }
-    // add index
-    for (auto& kv : index_map) {
-        auto it = table_map.find(kv.first);
         std::vector<std::set<std::string>> index_cols_set;
         for (const auto& column_key : it->second.column_key()) {
-            std::set<std::string> col_set;
+            std::set<std::string> cur_col_set;
             for (const auto& col_name : column_key.col_name()) {
-                col_set.insert(col_name);
+                cur_col_set.insert(col_name);
             }
-            index_cols_set.emplace_back(std::move(col_set));
+            index_cols_set.emplace_back(std::move(cur_col_set));
         }
         int cur_index_num = it->second.column_key_size();
         int add_index_num = 0;
         std::vector<::openmldb::common::ColumnKey> new_indexs;
         for (auto& column_key : kv.second) {
+            if (!column_key.has_ttl()) {
+                return {base::ReturnCode::kError, "table " + kv.first + " index has not ttl"};
+            }
+            if (!column_key.ts_name().empty() && col_set.count(column_key.ts_name()) == 0) {
+                return {base::ReturnCode::kError,
+                        "ts col " + column_key.ts_name() + " is not exist in table " + kv.first};
+            }
+            for (const auto& col : column_key.col_name()) {
+                if (col_set.count(col) == 0) {
+                    return {base::ReturnCode::kError, "col " + col + " is not exist in table " + kv.first};
+                }
+            }
             int same_cnt = 0;
             for (const auto& col_set : index_cols_set) {
                 if (column_key.col_name_size() == static_cast<int>(col_set.size())) {
@@ -787,62 +871,87 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
                 // skip exist index
                 continue;
             }
-            std::vector<openmldb::common::ColumnDesc> cols;
-            for (const auto& col_name : column_key.col_name()) {
-                for (const auto& col : it->second.column_desc()) {
-                    if (col.name() == col_name) {
-                        cols.push_back(col);
-                        break;
-                    }
-                }
-            }
-            if (cols.empty()) {
-                return {base::ReturnCode::kError, "table " + kv.first + " index col is not exist"};
-            }
             column_key.set_index_name("INDEX_" + std::to_string(cur_index_num + add_index_num) + "_" +
                                       std::to_string(::baidu::common::timer::now_time()));
-            if (!column_key.has_ttl()) {
-                return {base::ReturnCode::kError, "table " + kv.first + " has not ttl"};
-            }
             add_index_num++;
-            std::string msg;
-            if (!ns->AddIndex(kv.first, column_key, &cols, msg)) {
-                return {base::ReturnCode::kError, "table " + kv.first + " add index failed"};
-            }
-            new_indexs.push_back(column_key);
+            new_indexs.emplace_back(column_key);
         }
         if (!new_indexs.empty()) {
+            uint64_t record_cnt = 0;
+            for (int idx = 0; idx < it->second.table_partition_size(); idx++) {
+                record_cnt += it->second.table_partition(idx).record_cnt();
+            }
+            if (record_cnt > 0) {
+                return {base::ReturnCode::kError, "table " + kv.first +
+                    " has online data, cannot deploy. please drop this table and create a new one"};
+            }
             new_index_map.emplace(kv.first, std::move(new_indexs));
         }
     }
-    // load new index data to table
-    for (auto& kv : new_index_map) {
-        auto it = table_map.find(kv.first);
-        if (it == table_map.end()) {
-            continue;
+    if (cs->IsClusterMode()) {
+        for (auto& kv : new_index_map) {
+            auto status = ns->AddMultiIndex(kv.first, kv.second);
+            if (!status.OK()) {
+                status.msg = "table " + kv.first + " add index failed. " + status.msg;
+                return status;
+            }
         }
-        uint32_t tid = it->second.tid();
-        uint32_t pid = 0;
-        if (!tablet_client->ExtractMultiIndexData(tid, pid, it->second.table_partition_size(), kv.second)) {
-            return {base::ReturnCode::kError, "table " + kv.first + " load data failed"};
+    } else {
+        auto tablet_accessor = cs->GetTablet();
+        if (!tablet_accessor) {
+            return {base::ReturnCode::kError, "cannot connect tablet"};
+        }
+        auto tablet_client = tablet_accessor->GetClient();
+        if (!tablet_client) {
+            return {base::ReturnCode::kError, "tablet client is null"};
+        }
+        // add index
+        for (auto& kv : new_index_map) {
+            auto it = table_map.find(kv.first);
+            for (auto& column_key : kv.second) {
+                std::vector<openmldb::common::ColumnDesc> cols;
+                for (const auto& col_name : column_key.col_name()) {
+                    for (const auto& col : it->second.column_desc()) {
+                        if (col.name() == col_name) {
+                            cols.push_back(col);
+                            break;
+                        }
+                    }
+                }
+                std::string msg;
+                if (!ns->AddIndex(kv.first, column_key, &cols, msg)) {
+                    return {base::ReturnCode::kError, "table " + kv.first + " add index failed"};
+                }
+            }
+        }
+        // load new index data to table
+        for (auto& kv : new_index_map) {
+            auto it = table_map.find(kv.first);
+            if (it == table_map.end()) {
+                continue;
+            }
+            uint32_t tid = it->second.tid();
+            uint32_t pid = 0;
+            if (!tablet_client->ExtractMultiIndexData(tid, pid, it->second.table_partition_size(), kv.second)) {
+                return {base::ReturnCode::kError, "table " + kv.first + " load data failed"};
+            }
         }
     }
     return ns->CreateProcedure(sp_info, FLAGS_request_timeout_ms);
 }
 
-void SetVariable(const std::string& key, const hybridse::node::ConstNode* value) {
-    auto lower_key = boost::to_lower_copy(key);
-    if (lower_key == "performance_sensitive") {
-        if (value->GetDataType() == hybridse::node::kBool) {
-            bool performance_sensitive = value->GetBool();
-            sr->SetPerformanceSensitive(performance_sensitive);
-            printf("SUCCEED: Success to set %s as %s\n", key.c_str(), performance_sensitive ? "true" : "false");
-        } else {
-            printf("ERROR: The type of %s should be bool\n", key.c_str());
-        }
-    } else {
-        printf("ERROR: The variable key %s is not supported\n", key.c_str());
+void HandleSet(hybridse::node::SetPlanNode* node) {
+    if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
+        printf("ERROR: global system variable is unsupported\n");
+        return;
     }
+    auto it = session_variables.find(node->Key());
+    if (it == session_variables.end()) {
+        printf("ERROR: no session variable %s\n", node->Key().c_str());
+        return;
+    }
+    session_variables[node->Key()] = node->Value()->GetExprString();
+    printf("SUCCEED: OK\n");
 }
 
 template <typename T>
@@ -1161,8 +1270,7 @@ void HandleSQL(const std::string& sql) {
             return;
         }
         case hybridse::node::kPlanTypeSet: {
-            auto* set_node = dynamic_cast<hybridse::node::SetPlanNode*>(node);
-            SetVariable(set_node->Key(), set_node->Value());
+            HandleSet(dynamic_cast<hybridse::node::SetPlanNode*>(node));
             return;
         }
         case hybridse::node::kPlanTypeLoadData: {
