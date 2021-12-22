@@ -8864,6 +8864,62 @@ bool NameServerImpl::UpdateZkTableNodeWithoutNotify(const TableInfo* table_info)
     return true;
 }
 
+base::Status NameServerImpl::AddMultiIndexs(const std::string& db, const std::string& name,
+        std::shared_ptr<TableInfo> table_info,
+        const ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnKey>& column_keys) {
+    auto status = schema::IndexUtil::CheckUnique(column_keys);
+    if (!status.OK()) {
+        return status;
+    }
+    std::map<std::string, ::openmldb::common::ColumnDesc> column_map;
+    for (const auto& col : table_info->column_desc()) {
+        column_map.emplace(col.name(), col);
+    }
+    status = schema::IndexUtil::CheckIndex(column_map, column_keys);
+    if (!status.OK()) {
+        return status;
+    }
+    std::vector<openmldb::common::ColumnKey> indexs;
+    for (int idx = 0; idx < column_keys.size(); idx++) {
+        int32_t index_pos = 0;
+        if (schema::IndexUtil::CheckExist(column_keys.Get(idx), table_info->column_key(), &index_pos)) {
+            return {ReturnCode::kIndexAlreadyExists, "index has already exist!"};
+        }
+        indexs.push_back(column_keys.Get(idx));
+    }
+    uint32_t tid = table_info->tid();
+    for (const auto& part : table_info->table_partition()) {
+        uint32_t pid = part.pid();
+        for (const auto& meta : part.partition_meta()) {
+            std::shared_ptr<TabletInfo> tablet = GetTabletInfo(meta.endpoint());
+            if (!tablet) {
+                continue;
+            }
+            if (!tablet->Health()) {
+                LOG(WARNING) << "endpoint[" << meta.endpoint() << "] is offline";
+                return {base::ReturnCode::kError, "endpoint" + meta.endpoint() + ""};
+            }
+            auto status = tablet->client_->AddMultiIndex(tid, pid, indexs, nullptr);
+            if (!status.OK()) {
+                LOG(WARNING) << "add index failed. tid " << tid << " pid " << pid <<
+                    " endpoint " << meta.endpoint();
+                return status;
+            }
+        }
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    table_info.reset();
+    if (!GetTableInfoUnlock(name, db, &table_info)) {
+        return {ReturnCode::kTableIsNotExist, "table is not exist!"};
+    }
+    for (int idx = 0; idx < column_keys.size(); idx++) {
+        table_info->add_column_key()->CopyFrom(column_keys.Get(idx));
+    }
+    UpdateZkTableNode(table_info);
+    PDLOG(INFO, "add index ok. table[%s] index num[%d]", name.c_str(), column_keys.size());
+    return {};
+}
+
 void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* request, GeneralResponse* response,
                               Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -8872,9 +8928,9 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         LOG(WARNING) << "cur nameserver is not leader";
         return;
     }
-    std::shared_ptr<TableInfo> table_info;
     const std::string& name = request->name();
     const std::string& db = request->db();
+    std::shared_ptr<TableInfo> table_info;
     const std::string& index_name = request->column_key().index_name();
     std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> tablet_client_map;
     if (!GetTableInfo(name, db, &table_info)) {
@@ -8885,6 +8941,15 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     if (table_info->column_key_size() == 0) {
         base::SetResponseStatus(ReturnCode::kHasNotColumnKey, "table has no column key", response);
         LOG(WARNING) << "table " << name << " has no column key";
+        return;
+    }
+    if (request->column_keys_size() > 0) {
+        auto status = AddMultiIndexs(db, name, table_info, request->column_keys());
+        if (status.OK()) {
+            base::SetResponseOK(response);
+        } else {
+            base::SetResponseStatus(status, response);
+        }
         return;
     }
     int32_t index_pos = 0;

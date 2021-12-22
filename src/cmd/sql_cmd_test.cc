@@ -41,11 +41,22 @@ namespace cmd {
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
+
+struct CLI {
+    ::openmldb::sdk::DBSDK* cs = nullptr;
+    ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
+};
+
+CLI standalone_cli;
+CLI cluster_cli;
+
 class SqlCmdTest : public ::testing::Test {
  public:
     SqlCmdTest() {}
     ~SqlCmdTest() {}
 };
+
+class DBSDKTest : public ::testing::TestWithParam<CLI*> {};
 
 static void ExecuteSelectInto(const std::string& db, const std::string& sql, std::shared_ptr<sdk::SQLRouter> router,
                               ::openmldb::base::Status* openmldb_base_status) {
@@ -180,14 +191,19 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     remove(file_path.c_str());
 }
 
-TEST_F(SqlCmdTest, deploy) {
+TEST_P(DBSDKTest, deploy) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql =
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
         "c8 date, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
     HandleSQL(create_sql);
-    HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+    if (!cs->IsClusterMode()) {
+        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+    }
 
     std::string deploy_sql =
         "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
@@ -219,7 +235,10 @@ TEST_F(SqlCmdTest, deploy) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "auto_uxJFNZMi", msg));
 }
 
-TEST_F(SqlCmdTest, create_without_index_col) {
+TEST_P(DBSDKTest, create_without_index_col) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
     HandleSQL("create database test2;");
     HandleSQL("use test2;");
     std::string create_sql =
@@ -238,7 +257,10 @@ TEST_F(SqlCmdTest, create_without_index_col) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
-TEST_F(SqlCmdTest, load_data) {
+TEST_P(DBSDKTest, load_data) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
     std::string read_file_path = "/tmp/data" + GenRand() + ".csv";
     std::string write_file_path = "/tmp/data" + GenRand() + ".csv";
     std::ofstream ofile;
@@ -276,6 +298,8 @@ TEST_F(SqlCmdTest, load_data) {
     ofile.close();
 }
 
+INSTANTIATE_TEST_SUITE_P(DBSDK, DBSDKTest, testing::Values(&standalone_cli, &cluster_cli));
+
 }  // namespace cmd
 }  // namespace openmldb
 
@@ -289,10 +313,19 @@ int main(int argc, char** argv) {
     int ok = ::openmldb::cmd::mc_->SetUp(1);
     sleep(1);
     srand(time(NULL));
+    ::openmldb::sdk::ClusterOptions copt;
+    copt.zk_cluster = mc.GetZkCluster();
+    copt.zk_path = mc.GetZkPath();
+    ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
+    ::openmldb::cmd::cluster_cli.cs->Init();
+    ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);
     env.SetUp();
     FLAGS_host = "127.0.0.1";
     FLAGS_port = env.GetNsPort();
-    ::openmldb::cmd::StandAloneInit();
+
+    ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
+    ::openmldb::cmd::standalone_cli.cs->Init();
+    ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
 
     ok = RUN_ALL_TESTS();
     ::openmldb::cmd::mc_->Close();

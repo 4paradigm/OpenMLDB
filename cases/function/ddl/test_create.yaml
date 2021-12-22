@@ -178,7 +178,7 @@ cases:
     sqlDialect: ["HybridSQL"]
     sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(ts=c4,ttl=0m));
     expect:
-      success: false
+      success: true
   -
     id: 15
     desc: ts边界-指定的ts为string
@@ -530,7 +530,7 @@ cases:
       index(key=(c3), ttl=(10m,10), ttl_type=absorlat),
       index(key=(c4), ts=c4, ttl=(10m,10), ttl_type=absorlat));
     expect:
-      success: false
+      success: true
   -
     id: 47
     desc: create with only key
