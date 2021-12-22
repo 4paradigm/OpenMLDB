@@ -1213,6 +1213,10 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     if (create_node == nullptr || ns_ptr == nullptr) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : null pointer");
     }
+    std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
+    if (db_name.empty()) {
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
+    }
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db);
     hybridse::base::Status sql_status;
