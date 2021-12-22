@@ -99,7 +99,6 @@ class SQLInsertRow {
  private:
     bool DateToString(uint32_t year, uint32_t month, uint32_t day, std::string* date);
     bool MakeDefault();
-    bool PackTs(uint64_t ts);
     void PackDimension(const std::string& val);
     inline bool IsDimension() { return raw_dimensions_.find(rb_.GetAppendPos()) != raw_dimensions_.end(); }
 

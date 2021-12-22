@@ -177,7 +177,6 @@ bool SQLInsertRow::AppendInt64(int64_t val) {
     if (IsDimension()) {
         PackDimension(std::to_string(val));
     }
-    PackTs(val);
     if (rb_.AppendInt64(val)) {
         return MakeDefault();
     }
@@ -188,7 +187,6 @@ bool SQLInsertRow::AppendTimestamp(int64_t val) {
     if (IsDimension()) {
         PackDimension(std::to_string(val));
     }
-    PackTs(val);
     if (rb_.AppendTimestamp(val)) {
         return MakeDefault();
     }
