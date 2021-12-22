@@ -216,7 +216,7 @@ TEST_F(SQLSDKQueryTest, ExecuteLatestWhereTest) {
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
-    std::string db = "sql_where_test";
+    std::string db = "sql_latest_where_test";
     hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
     ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
