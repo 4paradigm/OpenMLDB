@@ -1598,7 +1598,7 @@ FROM
 }
 
 TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
-    const std::string sql = "LOAD DATA INFILE 'hello.csv' INTO TABLE t1 OPTIONS (key = 'cat');";
+    const std::string sql = "LOAD DATA INFILE 'hello.csv' INTO TABLE t1 OPTIONS (key = 'cat') CONFIG ( foo = 'bar' );";
     node::PlanNodeList plan_trees;
     base::Status status;
     NodeManager nm;
@@ -1609,14 +1609,19 @@ TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
   +-db: <nil>
   +-table: t1
   +-options:
-    +-key:
+  |  +-key:
+  |    +-expr[primary]
+  |      +-value: cat
+  |      +-type: string
+  +-config_options:
+    +-foo:
       +-expr[primary]
-        +-value: cat
+        +-value: bar
         +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
 }
 
 TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
-    const std::string sql = "SELECT c2 FROM t0 INTO OUTFILE 'm.txt' OPTIONS (key = 'cat');";
+    const std::string sql = "SELECT c2 FROM t0 INTO OUTFILE 'm.txt' OPTIONS (key = 'cat') CONFIG (bar='foo');";
     node::PlanNodeList plan_trees;
     base::Status status;
     NodeManager nm;
@@ -1647,9 +1652,14 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
   |    |      +-alias: <nil>
   |    +-window_list: []
   +-options:
-    +-key:
+  |  +-key:
+  |    +-expr[primary]
+  |      +-value: cat
+  |      +-type: string
+  +-config_options:
+    +-bar:
       +-expr[primary]
-        +-value: cat
+        +-value: foo
         +-type: string)sql", plan_trees.front()->GetTreeString().c_str());
 
     const auto select_into = dynamic_cast<node::SelectIntoPlanNode*>(plan_trees.front());
@@ -1793,6 +1803,13 @@ TEST_F(PlannerV2ErrorTest, SqlSyntaxErrorTest) {
                      "Syntax error: Expected keyword ON or keyword USING but got keyword WHEN [at 1:46]\n"
                      "SELECT t1.col1, t2.col2 FROM t1 LAST JOIN t2 when t1.id=t2.id;\n"
                      "                                             ^");
+
+    // config clause: can't appear inside subquery
+    expect_converted("select T1.a as a, T2.b as b from Table1 as T1 config (k='k') last join Table2 T2 using (c, d);",
+                     common::kSyntaxError,
+                     R"s(Syntax error: Expected end of input but got keyword LAST [at 1:62]
+...a as a, T2.b as b from Table1 as T1 config (k='k') last join Table2 T2 usi...
+                                                      ^)s");
 }
 
 
@@ -1832,7 +1849,6 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
 
     expect_converted(R"sql(select 'mike' like 'm%' escape '2c';)sql",
         common::kUnsupportSql, "escape value is not string or string size >= 2");
-
 }
 
 TEST_F(PlannerV2ErrorTest, NonSupportOnlineServingSQL) {

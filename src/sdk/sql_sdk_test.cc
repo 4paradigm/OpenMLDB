@@ -203,6 +203,44 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureAsynTest) {
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
+TEST_F(SQLSDKQueryTest, ExecuteLatestWhereTest) {
+    std::string ddl =
+        "create table latest_table(c1 string, c2 int, c3 timestamp, c4 timestamp, "
+        "index(key=(c1),ts=c4,ttl_type=latest, ttl=2));";
+    SQLRouterOptions sql_opt;
+    sql_opt.session_timeout = 30000;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) {
+        FAIL() << "Fail new cluster sql router";
+    }
+    std::string db = "sql_latest_where_test";
+    hybridse::sdk::Status status;
+    ASSERT_TRUE(router->CreateDB(db, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string insert_sql = "insert into latest_table values('aa',1,1590738990000,1637047962096);";
+    ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
+    insert_sql = "insert into latest_table values('aa',1,1590738990000,1637047962097);";
+    ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
+    insert_sql = "insert into latest_table values('aa',1,1590738990000,1637047962098);";
+    ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
+    std::string select = "select * from latest_table;";
+    auto rs = router->ExecuteSQL(db, select, &status);
+    if (!rs) {
+        FAIL() << "fail to execute sql";
+    }
+    ASSERT_EQ(rs->Size(), 2);
+    std::string select_where = "select * from latest_table where c1='aa';";
+    rs = router->ExecuteSQL(db, select_where, &status);
+    if (!rs) {
+        FAIL() << "fail to execute sql";
+    }
+    ASSERT_EQ(rs->Size(), 2);
+}
+
 TEST_F(SQLSDKQueryTest, ExecuteWhereTest) {
     std::string ddl =
         "create table trans(c_sk_seq string,\n"

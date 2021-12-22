@@ -210,6 +210,9 @@ class NsClient : public Client {
                   std::vector<openmldb::common::ColumnDesc>* cols,
                   std::string& msg);  // NOLINT
 
+    base::Status AddMultiIndex(const std::string& table_name,
+            const std::vector<::openmldb::common::ColumnKey>& column_keys);
+
     bool DeleteIndex(const std::string& table_name, const std::string& idx_name,
                      std::string& msg);  // NOLINT
 
@@ -223,6 +226,8 @@ class NsClient : public Client {
 
     bool ShowProcedure(const std::string& db_name, const std::string& sp_name, std::vector<api::ProcedureInfo>* infos,
                        std::string* msg);
+
+    bool UpdateOfflineTableInfo(const nameserver::TableInfo& table_info);
 
  private:
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> client_;

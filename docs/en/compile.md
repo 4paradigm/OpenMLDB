@@ -11,13 +11,13 @@ The docker image has packed required tools and dependencies, so there is no need
 1. Pull the docker image
 
    ```bash
-    docker pull 4pdosc/hybridsql:0.4.0
+    docker pull 4pdosc/hybridsql:0.4.1
    ```
 
 2. Create a docker container with the hybridsql docker image
 
    ```bash
-   docker run -it 4pdosc/hybridsql:0.4.0 bash
+   docker run -it 4pdosc/hybridsql:0.4.1 bash
    ```
 
 3. Download the OpenMLDB source code inside docker container

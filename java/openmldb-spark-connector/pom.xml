@@ -9,7 +9,6 @@
         <version>0.4.0-SNAPSHOT</version>
     </parent>
 
-    <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-spark-connector</artifactId>
     <packaging>jar</packaging>
 
@@ -19,7 +18,7 @@
             <id>hw</id>
             <name>Huang Wei</name>
             <email>huangwei@apache.org</email>
-            <url>http://github.com/vagetablechicken</url>
+            <url>https://github.com/vagetablechicken</url>
             <organization>4Paradigm</organization>
             <organizationUrl>https://www.4paradigm.com/</organizationUrl>
         </developer>
@@ -65,12 +64,6 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_${scala.binary.version}</artifactId>
-            <version>3.0.0</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testng</groupId>

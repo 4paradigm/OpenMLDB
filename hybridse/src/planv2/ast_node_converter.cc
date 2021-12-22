@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "absl/strings/match.h"
 #include "base/fe_status.h"
@@ -516,6 +517,12 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             CHECK_TRUE(query_stmt != nullptr, common::kSqlAstError, "not an ASTQueryStatement");
             node::QueryNode* query_node = nullptr;
             CHECK_STATUS(ConvertQueryNode(query_stmt->query(), node_manager, &query_node));
+            if (query_stmt->config_clause() != nullptr) {
+                auto options = std::make_shared<node::OptionsMap>();
+                CHECK_STATUS(
+                    ConvertAstOptionsListToMap(query_stmt->config_clause()->options_list(), node_manager, options));
+                query_node->config_options_ = std::move(options);
+            }
             *output = query_node;
             break;
         }
@@ -730,7 +737,13 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             if (load_data_stmt->options_list() != nullptr) {
                 CHECK_STATUS(ConvertAstOptionsListToMap(load_data_stmt->options_list(), node_manager, options));
             }
-            *output = node_manager->MakeLoadDataNode(file_name, db, table, options);
+            auto config_options = std::make_shared<node::OptionsMap>();
+            if (load_data_stmt->opt_config() != nullptr) {
+                CHECK_STATUS(ConvertAstOptionsListToMap(load_data_stmt->opt_config()->options_list(), node_manager,
+                                                        config_options));
+            }
+            *output =
+                node_manager->MakeLoadDataNode(file_name, db, table, options, config_options);
             break;
         }
         case zetasql::AST_DEPLOY_STATEMENT: {
@@ -754,7 +767,13 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             if (ast_select_into_stmt->options_list() != nullptr) {
                 CHECK_STATUS(ConvertAstOptionsListToMap(ast_select_into_stmt->options_list(), node_manager, options));
             }
-            *output = node_manager->MakeSelectIntoNode(query, ast_select_into_stmt->UnparseQuery(), out_file, options);
+            auto config_options = std::make_shared<node::OptionsMap>();
+            if (ast_select_into_stmt->opt_config() != nullptr) {
+                CHECK_STATUS(ConvertAstOptionsListToMap(ast_select_into_stmt->opt_config()->options_list(),
+                                                        node_manager, config_options));
+            }
+            *output = node_manager->MakeSelectIntoNode(query, ast_select_into_stmt->UnparseQuery(), out_file, options,
+                                                       config_options);
             break;
         }
         case zetasql::AST_STOP_STATEMENT: {
@@ -1939,7 +1958,7 @@ base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options, 
         node::ExprNode* value = nullptr;
         CHECK_STATUS(ConvertExprNode(entry_value, node_manager, &value));
         CHECK_TRUE(value->GetExprType() == node::kExprPrimary, common::kSqlAstError,
-                   "Unsupported value other than const type");
+                   "Unsupported value other than const type: ", entry_value->DebugString());
         options_map->emplace(key, dynamic_cast<const node::ConstNode*>(value));
     }
     return base::Status::OK();

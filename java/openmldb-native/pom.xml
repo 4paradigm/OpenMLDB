@@ -12,6 +12,9 @@
     <artifactId>openmldb-native</artifactId>
     <packaging>jar</packaging>
     <name>openmldb-native</name>
+    <!-- do not delete the version, a macos variant will also release for openmldb-native,
+    	 so it's version is not only inherited from parent -->
+    <version>${variant.native.version}</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -66,9 +69,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <forkMode>always</forkMode>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>

@@ -308,6 +308,10 @@ class NameServerImpl : public NameServer {
     void SetSdkEndpoint(RpcController* controller, const SetSdkEndpointRequest* request, GeneralResponse* response,
                         Closure* done);
 
+    void UpdateOfflineTableInfo(::google::protobuf::RpcController* controller,
+                                const ::openmldb::nameserver::TableInfo* request,
+                       ::openmldb::nameserver::GeneralResponse* response, ::google::protobuf::Closure* done);
+
     int SyncExistTable(const std::string& alias, const std::string& name, const std::string& db,
                        const std::vector<::openmldb::nameserver::TableInfo> tables_remote,
                        const ::openmldb::nameserver::TableInfo& table_info_local, uint32_t pid, int& code,  // NOLINT
@@ -739,6 +743,10 @@ class NameServerImpl : public NameServer {
 
     bool AddFieldToTablet(const std::vector<openmldb::common::ColumnDesc>& cols, std::shared_ptr<TableInfo> table_info,
                           openmldb::common::VersionPair* new_pair);
+
+    base::Status AddMultiIndexs(const std::string& db, const std::string& name,
+            std::shared_ptr<TableInfo> table_info,
+            const ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnKey>& column_keys);
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 

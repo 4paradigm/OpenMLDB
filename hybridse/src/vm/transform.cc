@@ -873,6 +873,9 @@ Status BatchModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* n
     // db.table should be checked when you get the physical plan
     CHECK_STATUS(
         CreateOp<PhysicalLoadDataNode>(&load_data_op, node->File(), node->Db(), node->Table(), node->Options()));
+    if (node->ConfigOptions() != nullptr) {
+        load_data_op->config_options_ = node->ConfigOptions();
+    }
     *output = load_data_op;
     return Status::OK();
 }

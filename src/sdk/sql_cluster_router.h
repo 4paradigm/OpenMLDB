@@ -121,7 +121,7 @@ class SQLClusterRouter : public SQLRouter {
     bool ExecuteInsert(const std::string& db, const std::string& sql, std::shared_ptr<SQLInsertRows> rows,
                        hybridse::sdk::Status* status) override;
 
-    std::shared_ptr<TableReader> GetTableReader();
+    std::shared_ptr<TableReader> GetTableReader() override;
 
     std::shared_ptr<ExplainInfo> Explain(const std::string& db, const std::string& sql,
                                          ::hybridse::sdk::Status* status) override;
@@ -175,7 +175,7 @@ class SQLClusterRouter : public SQLRouter {
 
     std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-        std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status);
+        std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) override;
 
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const std::string& db, const std::string& sql,
                                                                       const ::hybridse::vm::EngineMode engine_mode,
@@ -199,6 +199,15 @@ class SQLClusterRouter : public SQLRouter {
     std::vector<std::string> GetTableNames(const std::string& db) override;
 
     ::openmldb::nameserver::TableInfo GetTableInfo(const std::string& db, const std::string& table) override;
+
+    bool UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) override;
+
+    ::openmldb::base::Status ShowJobs(const bool only_unfinished,
+                                      std::vector<::openmldb::taskmanager::JobInfo>& job_infos) override;
+
+    ::openmldb::base::Status ShowJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) override;
+
+    ::openmldb::base::Status StopJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) override;
 
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);

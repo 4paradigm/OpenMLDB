@@ -380,10 +380,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (!ok) {
             logger.error("showDatabases fail: {}", status.getMsg());
         } else {
-            for (int i=0; i < dbs.size(); ++i) {
-                databases.add(dbs.get(i));
-
-            }
+            databases.addAll(dbs);
         }
 
         status.delete();
@@ -392,19 +389,21 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     public List<String> getTableNames(String db) {
-        List<String> tableNames = new ArrayList<>();
         VectorString names = sqlRouter.GetTableNames(db);
-        for (int i=0; i < names.size(); ++i) {
-            tableNames.add(names.get(i));
-        }
+        List<String> tableNames = new ArrayList<>(names);
         names.delete();
-
         return tableNames;
     }
 
     public NS.TableInfo getTableInfo(String db, String table) {
-        NS.TableInfo tableInfo = sqlRouter.GetTableInfo(db, table);
-        return tableInfo;
+        return sqlRouter.GetTableInfo(db, table);
     }
 
+    public boolean updateOfflineTableInfo(NS.TableInfo info) {
+        return sqlRouter.UpdateOfflineTableInfo(info);
+    }
+
+    public boolean refreshCatalog() {
+        return sqlRouter.RefreshCatalog();
+    }
 }

@@ -5665,7 +5665,8 @@ TEST_F(TabletImplTest, AddIndex) {
     ::openmldb::api::GeneralResponse add_index_response;
     add_index_request.set_tid(id);
     add_index_request.set_pid(1);
-    SchemaCodec::SetIndex(add_index_request.mutable_column_key(), "mcc", "mcc", "ts1", ::openmldb::type::kAbsoluteTime, 20, 0);
+    SchemaCodec::SetIndex(add_index_request.mutable_column_key(), "mcc", "mcc", "ts1",
+            ::openmldb::type::kAbsoluteTime, 20, 0);
     tablet.AddIndex(NULL, &add_index_request, &add_index_response, &closure);
     ASSERT_EQ(0, response.code());
 

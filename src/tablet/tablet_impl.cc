@@ -4622,10 +4622,21 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
         return;
     }
-    if (!mem_table->AddIndex(request->column_key())) {
-        PDLOG(WARNING, "add index failed. tid %u, pid %u", tid, pid);
-        base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
-        return;
+    if (request->column_keys_size() > 0) {
+        for (const auto& column_key : request->column_keys()) {
+            // TODO(denglong): support add multi indexs in memory table
+            if (!mem_table->AddIndex(column_key)) {
+                PDLOG(WARNING, "add index %s failed. tid %u, pid %u", column_key.index_name().c_str(), tid, pid);
+                base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
+                return;
+            }
+        }
+    } else {
+        if (!mem_table->AddIndex(request->column_key())) {
+            PDLOG(WARNING, "add index failed. tid %u, pid %u", tid, pid);
+            base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
+            return;
+        }
     }
     std::string db_root_path;
     bool ok = ChooseDBRootPath(tid, pid, db_root_path);
@@ -4645,7 +4656,13 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         base::SetResponseStatus(base::ReturnCode::kWriteDataFailed, "write meta data failed", response);
         return;
     }
-    PDLOG(INFO, "add index %s ok. tid %u pid %u", request->column_key().index_name().c_str(), tid, pid);
+    if (request->column_keys_size() > 0) {
+        for (const auto& column_key : request->column_keys()) {
+            PDLOG(INFO, "add index %s ok. tid %u pid %u", column_key.index_name().c_str(), tid, pid);
+        }
+    } else {
+        PDLOG(INFO, "add index %s ok. tid %u pid %u", request->column_key().index_name().c_str(), tid, pid);
+    }
     if (!catalog_->UpdateTableMeta(*(table->GetTableMeta()))) {
         PDLOG(WARNING, "update table meta failed. tid %u pid %u", tid, pid);
     }
