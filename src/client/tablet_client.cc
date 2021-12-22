@@ -1094,24 +1094,40 @@ bool TabletClient::DeleteIndex(uint32_t tid, uint32_t pid, const std::string& id
 
 bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common::ColumnKey& column_key,
                             std::shared_ptr<TaskInfo> task_info) {
+    return AddMultiIndex(tid, pid, {column_key}, task_info).OK();
+}
+
+base::Status TabletClient::AddMultiIndex(uint32_t tid, uint32_t pid,
+        const std::vector<::openmldb::common::ColumnKey>& column_keys,
+        std::shared_ptr<TaskInfo> task_info) {
     ::openmldb::api::AddIndexRequest request;
     ::openmldb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    ::openmldb::common::ColumnKey* cur_column_key = request.mutable_column_key();
-    cur_column_key->CopyFrom(column_key);
+    if (column_keys.empty()) {
+        if (task_info) {
+            task_info->set_status(::openmldb::api::TaskStatus::kFailed);
+        }
+        return {base::ReturnCode::kError, "no column key"};
+    } else if (column_keys.size() == 1) {
+        request.mutable_column_key()->CopyFrom(column_keys[0]);
+    } else {
+        for (const auto& column_key : column_keys) {
+            request.add_column_keys()->CopyFrom(column_key);
+        }
+    }
     bool ok = client_.SendRequest(&openmldb::api::TabletServer_Stub::AddIndex, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         if (task_info) {
             task_info->set_status(::openmldb::api::TaskStatus::kFailed);
         }
-        return false;
+        return {base::ReturnCode::kError, response.msg()};
     }
     if (task_info) {
         task_info->set_status(::openmldb::api::TaskStatus::kDone);
     }
-    return true;
+    return {};
 }
 
 bool TabletClient::DumpIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,

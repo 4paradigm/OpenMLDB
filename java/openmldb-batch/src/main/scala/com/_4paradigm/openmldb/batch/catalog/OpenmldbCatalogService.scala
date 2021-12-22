@@ -30,7 +30,7 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
 
   val sqlExecutor = new SqlClusterExecutor(option)
 
-  def getDatabases(): Array[String] = {
+  def getDatabases: Array[String] = {
     sqlExecutor.showDatabases().asScala.toArray
   }
 
@@ -39,7 +39,8 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
   }
 
   def getTableInfos(db: String): Array[NS.TableInfo] = {
-    // TODO: Optimize to get all table info within one rpc
+    // TODO: Optimize to get all table info once(actually getting from the cache would not take so long)
+    //  ref GetTables(db)
     val tableNames = sqlExecutor.getTableNames(db)
 
     val tableInfos = new mutable.ArrayBuffer[NS.TableInfo](tableNames.size())
@@ -48,6 +49,14 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
     )
 
     tableInfos.toArray
+  }
+
+  def getTableInfo(db: String, table: String): NS.TableInfo = {
+    sqlExecutor.getTableInfo(db, table)
+  }
+
+  def updateOfflineTableInfo(info: NS.TableInfo): Boolean = {
+    sqlExecutor.updateOfflineTableInfo(info)
   }
 
 }

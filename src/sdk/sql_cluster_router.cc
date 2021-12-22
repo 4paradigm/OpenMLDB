@@ -1216,8 +1216,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db);
     hybridse::base::Status sql_status;
-    bool allow_empty_col_index = cluster_sdk_->IsClusterMode() ? false : true;
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, allow_empty_col_index, &table_info, &sql_status);
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
     if (sql_status.code != 0) {
         return base::Status(sql_status.code, sql_status.msg);
     }
@@ -1465,10 +1464,39 @@ std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) 
 
 ::openmldb::nameserver::TableInfo SQLClusterRouter::GetTableInfo(const std::string& db, const std::string& table) {
     auto table_infos = cluster_sdk_->GetTableInfo(db, table);
-    if(!table_infos){
+    if (!table_infos) {
         return {};
     }
     return *table_infos;
+}
+
+bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) {
+    return cluster_sdk_->GetNsClient()->UpdateOfflineTableInfo(info);
+}
+
+::openmldb::base::Status SQLClusterRouter::ShowJobs(const bool only_unfinished,
+                                                    std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
+    return taskmanager_client_ptr->ShowJobs(only_unfinished, job_infos);
+}
+
+::openmldb::base::Status SQLClusterRouter::ShowJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
+    return taskmanager_client_ptr->ShowJob(id, job_info);
+}
+
+::openmldb::base::Status SQLClusterRouter::StopJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
+    return taskmanager_client_ptr->StopJob(id, job_info);
 }
 
 }  // namespace sdk

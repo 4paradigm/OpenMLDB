@@ -17,6 +17,9 @@
 #ifndef SRC_SDK_SQL_ROUTER_H_
 #define SRC_SDK_SQL_ROUTER_H_
 
+#include <base/status.h>
+#include <proto/taskmanager.pb.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -141,9 +144,20 @@ class SQLRouter {
     virtual std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
                                                                   const std::string& table_name) = 0;
 
-    virtual std::vector<std::string>GetTableNames(const std::string& db) = 0;
+    virtual std::vector<std::string> GetTableNames(const std::string& db) = 0;
 
     virtual ::openmldb::nameserver::TableInfo GetTableInfo(const std::string& db, const std::string& table) = 0;
+
+    virtual bool UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) = 0;
+
+    virtual ::openmldb::base::Status ShowJobs(const bool only_unfinished,
+                                              std::vector<::openmldb::taskmanager::JobInfo>& job_infos) = 0;
+
+    virtual ::openmldb::base::Status ShowJob(const int id,
+                                             ::openmldb::taskmanager::JobInfo& job_info) = 0;
+
+    virtual ::openmldb::base::Status StopJob(const int id,
+                                             ::openmldb::taskmanager::JobInfo& job_info) = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
@@ -198,4 +212,3 @@ std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
 }  // namespace sdk
 }  // namespace openmldb
 #endif  // SRC_SDK_SQL_ROUTER_H_
-
