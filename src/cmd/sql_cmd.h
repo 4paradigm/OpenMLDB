@@ -1245,11 +1245,34 @@ void HandleSQL(const std::string& sql) {
         case hybridse::node::kPlanTypeFuncDef:
         case hybridse::node::kPlanTypeQuery: {
             ::hybridse::sdk::Status status;
-            auto rs = sr->ExecuteSQL(db, sql, &status);
-            if (!rs) {
-                std::cout << "ERROR: " << status.msg << std::endl;
-            } else {
-                PrintResultSet(std::cout, rs.get());
+
+            // Get execute mode
+            std::string execute_mode;
+            for (auto& pair : session_variables) {
+                if (pair.first == "execute_mode") {
+                    execute_mode = pair.second;
+                }
+            }
+
+            if (execute_mode == "online") {
+                // Run online query
+                auto rs = sr->ExecuteSQL(db, sql, &status);
+                if (!rs) {
+                    std::cout << "ERROR: " << status.msg << std::endl;
+                } else {
+                    PrintResultSet(std::cout, rs.get());
+                }
+            } else if (execute_mode == "offline") {
+                // Run offline query
+                ::openmldb::taskmanager::JobInfo job_info;
+                std::map<std::string, std::string> config;
+                auto status = sr->ExecuteOfflineQuery(sql, config, db, job_info);
+
+                std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+                if (status.OK() && job_info.id() > 0) {
+                    job_infos.push_back(job_info);
+                }
+                PrintJobInfos(std::cout, job_infos);
             }
             return;
         }
