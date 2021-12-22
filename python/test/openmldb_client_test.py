@@ -52,7 +52,9 @@ class TestOpenMLDBClient(unittest.TestCase):
     connection.execute(insert3, ({"col3":"fujian", "col4":"fuzhou"}));
     connection.execute(insert4, ({"col1":1003, "col2":"2020-12-28", "col3":"jiangxi", "col4":"nanchang", "col5":4}));
     connection.execute(insert5, ({"col2":"2020-12-29"}));
-    self.check_dbapi(connection)
+    
+    self.check_fetchmany(connection)
+    self.check_fetchall(connection)
     self.check_exectute_many(connection,insert4)
 
     data = {1000 : [1000, '2020-12-25', 'guangdon', '广州', 1],
@@ -187,14 +189,19 @@ class TestOpenMLDBClient(unittest.TestCase):
     except Exception as e:
       self.assertTrue(False)
 
-  def check_dbapi(self,connection):
+  def check_fetchmany(self,connection):
     try:
       result = connection.execute("select * from tsql1010;")
       print(result.fetchmany(size=2))
+    except Exception as e:
+      self.assertTrue(False)
+      
+  def check_fetchall(self,connection):
+    try:
+      result = connection.execute("select * from tsql1010;")
       print(result.fetchall())
     except Exception as e:
       self.assertTrue(False)
-
 
   def test_parameterized_query(self):
     logging.info("test_parameterized_query...")
