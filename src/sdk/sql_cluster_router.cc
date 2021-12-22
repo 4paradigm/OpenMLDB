@@ -678,7 +678,7 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
             auto column = parameter_schema_raw.Add();
             hybridse::type::Type hybridse_type;
             if (!openmldb::schema::SchemaAdapter::ConvertType(parameter->GetSchema()->GetColumnType(i),
-                                                               &hybridse_type)) {
+                                                              &hybridse_type)) {
                 LOG(WARNING) << "Invalid parameter type ";
                 return {};
             }
@@ -1177,7 +1177,7 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(co
 base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
                                             std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
     if (cmd_node == nullptr || ns_ptr == nullptr) {
-        return base::Status(base::ReturnCode::kSQLCmdRunError, "null pointer");
+        return {base::ReturnCode::kSQLCmdRunError, "null pointer"};
     }
     bool ret = true;
     std::string msg;
@@ -1199,11 +1199,11 @@ base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* c
             break;
         }
         default: {
-            return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute script with unsupported type");
+            return {base::ReturnCode::kSQLCmdRunError, "fail to execute script with unsupported type"};
         }
     }
     if (!ret) {
-        return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
+        return {base::ReturnCode::kSQLCmdRunError, msg};
     }
     return {};
 }
