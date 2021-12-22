@@ -427,6 +427,7 @@ message AddIndexRequest {
     optional openmldb.common.ColumnKey column_key = 2;
     optional string db = 3 [default = ""];
     repeated openmldb.common.ColumnDesc cols = 4;
+    repeated openmldb.common.ColumnKey column_keys = 5;
 }
 
 message DeleteIndexRequest {
@@ -515,6 +516,7 @@ service NameServer {
     rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
     rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
     rpc ShowCatalog(ShowCatalogRequest) returns (ShowCatalogResponse);
+    rpc UpdateOfflineTableInfo(TableInfo) returns (GeneralResponse);
 
     // sql procedure interfaces
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);

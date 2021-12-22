@@ -24,6 +24,7 @@ import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, Ph
   PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalLoadDataNode,
   PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode,
   PhysicalSortNode, PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType}
+import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan,
   JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, SortByPlan, WindowAggPlan}
 import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
@@ -31,12 +32,15 @@ import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
+
 import scala.collection.mutable
 import scala.collection.JavaConversions.seqAsJavaList
 
 class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppName: String) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
+
+  var openmldbSession: OpenmldbSession = _
 
   if (this.config.hybridseJsdkLibraryPath.equals("")) {
     // Set library path to the one in openmldb jsdk
@@ -64,11 +68,19 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
     this(session, OpenmldbBatchConfig.fromSparkSession(session), session.conf.get("spark.app.name"))
   }
 
+  def this(openmldbSession: OpenmldbSession, config: OpenmldbBatchConfig) = {
+    this(openmldbSession.getSparkSession, config)
+    this.openmldbSession = openmldbSession
+  }
+
   def plan(sql: String, registeredTables: mutable.Map[String, mutable.Map[String, DataFrame]]): SparkInstance = {
     // Translation state
     val tag = s"$sparkAppName-$sql"
     val planCtx = new PlanContext(tag, session, this, config)
 
+    if (openmldbSession != null) {
+      planCtx.setOpenmldbSession(openmldbSession)
+    }
     // Set input tables
     planCtx.setRegisteredTables(registeredTables)
 
@@ -112,7 +124,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
 
   def plan(sql: String, registeredDefaultDbTables: Map[String, DataFrame]): SparkInstance = {
     val registeredTables = new mutable.HashMap[String, mutable.Map[String, DataFrame]]()
-    registeredTables.put(config.defaultDb, collection.mutable.Map(registeredDefaultDbTables.toSeq: _*) )
+    registeredTables.put(config.defaultDb, collection.mutable.Map(registeredDefaultDbTables.toSeq: _*))
     plan(sql, registeredTables)
   }
 

@@ -16,13 +16,12 @@
 
 import com._4paradigm.openmldb.sdk.SdkOption
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.scalatest.FunSuite
 
 import java.lang.Thread.currentThread
 
 class TestWrite extends FunSuite {
-
   test("Test write a local file to openmldb") {
     val sess = SparkSession.builder().master("local[*]").getOrCreate()
     val readFilePath = currentThread.getContextClassLoader.getResource("test.csv")
@@ -35,12 +34,10 @@ class TestWrite extends FunSuite {
     df.show()
     // check if nullValue option works
     val nullRow = df.collect()(1)
-    print(nullRow)
-    var i = 0
+    println(nullRow)
     for (i <- 0 until nullRow.length) {
       assert(nullRow.isNullAt(i))
     }
-
 
     val zkCluster = "127.0.0.1:6181"
     val zkPath = "/onebox"
@@ -62,5 +59,17 @@ class TestWrite extends FunSuite {
       //      .format("com._4paradigm.openmldb.spark.OpenmldbSource")
       .format("openmldb")
       .options(options).mode("append").save()
+
+    // If no schema, it determines the columns as string types. And the DataFrameWriter can't do smart type conversion
+    val df1 = sess.read.option("header", "true").option("nullValue", "null")
+      // spark timestampFormat is DateTime, so in test.csv, the value of c9 can't be long int.
+      .csv(readFilePath.toString)
+    try {
+      df1.write.format("openmldb").options(options).mode("append").save()
+      fail("unreachable")
+    } catch {
+      case e: AnalysisException => println(s"catch $e")
+      case e: Any => fail(s"shouldn't catch $e")
+    }
   }
 }
