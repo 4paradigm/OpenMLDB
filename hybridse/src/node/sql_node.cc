@@ -296,6 +296,7 @@ const std::string ConstNode::GetExprString() const {
         case hybridse::node::kInt32:
             return std::to_string(val_.vint);
         case hybridse::node::kInt64:
+            return std::to_string(val_.vlong);
         case hybridse::node::kFloat:
             return std::to_string(val_.vfloat);
         case hybridse::node::kDouble:
