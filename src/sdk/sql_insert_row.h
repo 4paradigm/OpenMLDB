@@ -81,7 +81,6 @@ class SQLInsertRow {
     bool IsComplete();
     bool Build();
     const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& GetDimensions();
-    inline const std::vector<uint64_t>& GetTs() { return ts_; }
     inline const std::string& GetRow() { return val_; }
     inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() { return schema_; }
 
@@ -110,10 +109,8 @@ class SQLInsertRow {
     DefaultValueMap default_map_;
     uint32_t default_string_length_;
     std::map<uint32_t, std::vector<uint32_t>> index_map_;
-    std::set<uint32_t> ts_set_;
     std::map<uint32_t, std::string> raw_dimensions_;
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions_;
-    std::vector<uint64_t> ts_;
     ::openmldb::codec::RowBuilder rb_;
     std::string val_;
     uint32_t str_size_;

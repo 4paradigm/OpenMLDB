@@ -62,9 +62,6 @@ SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> ta
                 index_map_[idx].push_back(column_name_map[column]);
                 raw_dimensions_[column_name_map[column]] = hybridse::codec::NONETOKEN;
             }
-            if (!table_info_->column_key(idx).ts_name().empty()) {
-                ts_set_.insert(column_name_map[table_info_->column_key(idx).ts_name()]);
-            }
         }
     }
 }
@@ -84,13 +81,7 @@ bool SQLInsertRow::Init(int str_length) {
 
 void SQLInsertRow::PackDimension(const std::string& val) { raw_dimensions_[rb_.GetAppendPos()] = val; }
 
-bool SQLInsertRow::PackTs(uint64_t ts) {
-    if (ts_set_.count(rb_.GetAppendPos())) {
-        ts_.push_back(ts);
-        return true;
-    }
-    return false;
-}
+
 
 const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& SQLInsertRow::GetDimensions() {
     if (!dimensions_.empty()) {
@@ -277,9 +268,6 @@ bool SQLInsertRow::AppendDate(int32_t date) {
 bool SQLInsertRow::AppendNULL() {
     if (IsDimension()) {
         PackDimension(hybridse::codec::NONETOKEN);
-    }
-    if (ts_set_.count(rb_.GetAppendPos())) {
-        return false;
     }
     if (rb_.AppendNULL()) {
         return MakeDefault();
