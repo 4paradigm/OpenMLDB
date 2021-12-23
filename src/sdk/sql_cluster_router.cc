@@ -678,7 +678,7 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
             auto column = parameter_schema_raw.Add();
             hybridse::type::Type hybridse_type;
             if (!openmldb::schema::SchemaAdapter::ConvertType(parameter->GetSchema()->GetColumnType(i),
-                                                               &hybridse_type)) {
+                                                              &hybridse_type)) {
                 LOG(WARNING) << "Invalid parameter type ";
                 return {};
             }
@@ -1177,7 +1177,7 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(co
 base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
                                             std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
     if (cmd_node == nullptr || ns_ptr == nullptr) {
-        return base::Status(base::ReturnCode::kSQLCmdRunError, "null pointer");
+        return {base::ReturnCode::kSQLCmdRunError, "null pointer"};
     }
     bool ret = true;
     std::string msg;
@@ -1199,11 +1199,11 @@ base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* c
             break;
         }
         default: {
-            return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute script with unsupported type");
+            return {base::ReturnCode::kSQLCmdRunError, "fail to execute script with unsupported type"};
         }
     }
     if (!ret) {
-        return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
+        return {base::ReturnCode::kSQLCmdRunError, msg};
     }
     return {};
 }
@@ -1220,8 +1220,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db);
     hybridse::base::Status sql_status;
-    bool allow_empty_col_index = cluster_sdk_->IsClusterMode() ? false : true;
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, allow_empty_col_index, &table_info, &sql_status);
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
     if (sql_status.code != 0) {
         return base::Status(sql_status.code, sql_status.msg);
     }
@@ -1469,7 +1468,7 @@ std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) 
 
 ::openmldb::nameserver::TableInfo SQLClusterRouter::GetTableInfo(const std::string& db, const std::string& table) {
     auto table_infos = cluster_sdk_->GetTableInfo(db, table);
-    if(!table_infos){
+    if (!table_infos) {
         return {};
     }
     return *table_infos;
@@ -1502,6 +1501,39 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
         return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
     }
     return taskmanager_client_ptr->StopJob(id, job_info);
+}
+
+::openmldb::base::Status SQLClusterRouter::ExecuteOfflineQuery(const std::string& sql,
+                                                               const std::map<std::string, std::string>& config,
+                                                               const std::string& default_db,
+                                                               ::openmldb::taskmanager::JobInfo& job_info) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
+    return taskmanager_client_ptr->RunBatchAndShow(sql, config, default_db, job_info);
+}
+
+::openmldb::base::Status SQLClusterRouter::ImportOnlineData(const std::string& sql,
+                                                            const std::map<std::string, std::string>& config,
+                                                            const std::string& default_db,
+                                                            ::openmldb::taskmanager::JobInfo& job_info) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
+    return taskmanager_client_ptr->ImportOnlineData(sql, config, default_db, job_info);
+}
+
+::openmldb::base::Status SQLClusterRouter::ImportOfflineData(const std::string& sql,
+                                                             const std::map<std::string, std::string>& config,
+                                                             const std::string& default_db,
+                                                             ::openmldb::taskmanager::JobInfo& job_info) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+    }
+    return taskmanager_client_ptr->ImportOfflineData(sql, config, default_db, job_info);
 }
 
 }  // namespace sdk

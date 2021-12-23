@@ -42,7 +42,7 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
  public:
     MemTableWindowIterator(TimeEntries::Iterator* it, ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
                            uint64_t expire_cnt)
-        : it_(it), record_idx_(0), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
+        : it_(it), record_idx_(1), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
 
     ~MemTableWindowIterator() { delete it_; }
 
