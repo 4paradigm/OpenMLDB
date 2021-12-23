@@ -79,23 +79,16 @@ std::string db = "";  // NOLINT
 using VariableMap = std::map<std::string, std::string>;
 VariableMap session_variables = {VariableMap::value_type("execute_mode", "online")};
 
-bool isOnlineMode() {
-    for (auto& pair : session_variables) {
-        if (pair.first == "execute_mode") {
-            std::string execute_mode = pair.second;
-            if (execute_mode == "online") {
-                return true;
-            } else if (execute_mode == "offline") {
-                return false;
-            } else {
-                std::cout << "ERROR: unknown execute mode " << execute_mode << ", use online mode" << std::endl;
-                return true;
-            }
-        }
+bool IsOnlineMode() {
+    auto execute_mode = session_variables["execute_mode"];
+    if (execute_mode == "online") {
+        return true;
+    } else if (execute_mode == "offline") {
+        return false;
+    } else {
+        std::cout << "ERROR: unknown execute mode " << execute_mode << ", use online mode" << std::endl;
+        return true;
     }
-
-    std::cout << "Execute mode is not set, use online mode" << std::endl;
-    return true;
 }
 
 void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& file_path,
@@ -1271,7 +1264,7 @@ void HandleSQL(const std::string& sql) {
             return;
         }
         case hybridse::node::kPlanTypeInsert: {
-            if (!isOnlineMode()) {
+            if (!IsOnlineMode()) {
                 // Not support for inserting into offline storage
                 std::cout << "ERROR: Can not insert in offline mode, please set @@SESSION.execute_mode='online'"
                           << std::endl;
@@ -1303,7 +1296,7 @@ void HandleSQL(const std::string& sql) {
         }
         case hybridse::node::kPlanTypeFuncDef:
         case hybridse::node::kPlanTypeQuery: {
-            if (isOnlineMode()) {
+            if (IsOnlineMode()) {
                 // Run online query
                 ::hybridse::sdk::Status status;
                 auto rs = sr->ExecuteSQL(db, sql, &status);
@@ -1349,13 +1342,13 @@ void HandleSQL(const std::string& sql) {
         case hybridse::node::kPlanTypeLoadData: {
             auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
 
-            if (FLAGS_host.empty() || FLAGS_port == 0) {
+            if (cs->IsClusterMode()) {
                 // Handle in cluster mode
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
 
                 ::openmldb::base::Status status;
-                if (isOnlineMode()) {
+                if (IsOnlineMode()) {
                     // Handle in online mode
                     status = sr->ImportOnlineData(sql, config, db, job_info);
                 } else {
