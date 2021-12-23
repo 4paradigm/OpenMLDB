@@ -30,7 +30,6 @@ jobs:
     env:
       OS: linux
       SQL_PYSDK_ENABLE: OFF
-      SQL_JAVASDK_ENABLE: OFF
       TESTING_ENABLE: ON
       NPROC: 8
     steps:
@@ -46,7 +45,14 @@ jobs:
           fi
           echo "OPENMLDB_PREFIX=openmldb-$VERSION" >> $GITHUB_ENV
 
+      - name: enable java on release
+        if: github.event_name == 'push'
+        run: |
+          echo "SQL_JAVASDK_ENABLE=ON" >> $GITHUB_ENV
+
       - name: configure
+        env:
+          SQL_JAVASDK_ENABLE: ${{ env.SQL_JAVASDK_ENABLE }}
         run: |
           make configure CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
 

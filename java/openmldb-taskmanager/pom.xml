@@ -282,7 +282,7 @@
                     <includeConfigurationDirectoryInClasspath>true</includeConfigurationDirectoryInClasspath>
                     <repositoryLayout>flat</repositoryLayout>
                     <repositoryName>lib</repositoryName>
-                    <assembleDirectory>${project.build.directory}/${project.name}-${project.version}</assembleDirectory>
+                    <assembleDirectory>${project.build.directory}/${project.name}-binary</assembleDirectory>
                     <binFileExtensions>
                         <unix>.sh</unix>
                     </binFileExtensions>
