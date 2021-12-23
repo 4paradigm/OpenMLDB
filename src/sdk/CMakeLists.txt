@@ -180,7 +180,26 @@ if(SQL_JAVASDK_ENABLE)
     add_dependencies(cp_native_so cp_hybridse_native_so)
 
     add_custom_target(sql_javasdk_package ALL
-        COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
+        COMMAND ${MAVEN_EXECUTABLE} clean package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java)
     add_dependencies(sql_javasdk_package cp_native_so)
+
+
+    FILE(GLOB TASKMANAGER_BIN "${PROJECT_SOURCE_DIR}/java/openmldb-taskmanager/target/openmldb-taskmanager-binary/bin/*")
+    FILE(GLOB TASKMANAGER_CONF "${PROJECT_SOURCE_DIR}/java/openmldb-taskmanager/target/openmldb-taskmanager-binary/conf/*")
+    FILE(GLOB TASKMANAGER_LIB "${PROJECT_SOURCE_DIR}/java/openmldb-taskmanager/target/openmldb-taskmanager-binary/lib/*")
+    install(FILES ${TASKMANAGER_BIN}
+            DESTINATION taskmanager/bin/
+            PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+    install(FILES ${TASKMANAGER_CONF}
+            DESTINATION taskmanager/conf/
+            PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
+    install(FILES ${TASKMANAGER_LIB}
+            DESTINATION taskmanager/lib/
+            PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
+
+    FILE(GLOB BATCHJOB_JAR "${PROJECT_SOURCE_DIR}/java/openmldb-batchjob/target/openmldb-batchjob*.jar")
+    install(FILES ${BATCHJOB_JAR}
+            DESTINATION batchjob/
+            PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
 endif()
