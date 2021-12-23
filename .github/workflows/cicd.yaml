@@ -30,7 +30,6 @@ jobs:
     env:
       OS: linux
       SQL_PYSDK_ENABLE: OFF
-      SQL_JAVASDK_ENABLE: ON # enable to build and package Java files
       TESTING_ENABLE: ON
       NPROC: 8
     steps:
@@ -45,6 +44,11 @@ jobs:
             bash steps/prepare_release.sh "$VERSION"
           fi
           echo "OPENMLDB_PREFIX=openmldb-$VERSION" >> $GITHUB_ENV
+
+      - name: enable java on release
+          if: github.event_name == 'push'
+          run: |
+            echo "SQL_JAVASDK_ENABLE=ON" >> $GITHUB_ENV
 
       - name: configure
         run: |
