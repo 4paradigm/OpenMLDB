@@ -51,4 +51,11 @@ public class DeploymentTest extends StandaloneTest {
     public void testDrop(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/deploy/test_create_deploy_wkd.yaml")
+    @Story("create_wkd")
+    public void testCreateWkd(SQLCase testCase){
+        ExecutorFactory.build(testCase,SQLCaseType.kStandaloneCLI).run();
+    }
 }
