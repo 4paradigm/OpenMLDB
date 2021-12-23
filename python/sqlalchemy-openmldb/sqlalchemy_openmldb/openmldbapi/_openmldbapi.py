@@ -304,7 +304,7 @@ class Cursor(object):
 
     @connected
     def executemany(self, operation, parameters=()):
-        raise NotSupportedError("executemany() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def fetchone(self):
         if self._resultSet is None: return "call fetchone"
@@ -325,20 +325,20 @@ class Cursor(object):
 
     @connected
     def fetchmany(self, size=None):
-        raise NotSupportedError("fetchmany() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def nextset(self):
-        raise NotSupportedError("nextset() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def setinputsizes(self, size):
-        raise NotSupportedError("setinputsizes() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def setoutputsize(self, size, columns=()):
-        raise NotSupportedError("setoutputsizes() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
         
     @connected
     def fetchall(self):
-        raise NotSupportedError("fetchall() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
 
     @staticmethod
@@ -365,13 +365,13 @@ class Cursor(object):
 
     @connected
     def get_query_metadata(self):
-        raise NotSupportedError("get_query_metadata() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def get_default_plugin(self):
-        raise NotSupportedError("get_default_plugin() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def __iter__(self):
-        raise NotSupportedError("__iter__() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def batch_row_request(self, sql, commonCol, parameters):
         ok, rs = self.connection._sdk.doBatchRowRequest(self.db, sql, commonCol, parameters)
@@ -418,15 +418,15 @@ class Connection(object):
 
 
     def execute(self):
-        raise NotSupportedError("Connection.execute() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @connected
     def _cursor_execute(self, cursor, statement, parameters):
-        raise NotSupportedError("_cursor_execute() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @connected
     def do_rollback(self, dbapi_connection):
-        raise NotSupportedError("do_rollback() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @connected
     def rollback(self):
@@ -441,7 +441,7 @@ class Connection(object):
         pass
 
     def close(self):
-        raise NotSupportedError("Connection.close() is currently unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def cursor(self):
         return Cursor(self._db, self._zk, self._zkPath, self)
