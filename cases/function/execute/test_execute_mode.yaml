@@ -52,6 +52,7 @@ cases:
       - show variables;
     expect:
 
+
   -
     id: 3
     desc: EXECUTE_MODE为小写
