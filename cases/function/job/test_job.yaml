@@ -166,13 +166,4 @@ cases:
     sqls:
       - stop jobe JOB-11220021;
     expects:
-
-
-
-
-
-
-
-
-
-
+  -
