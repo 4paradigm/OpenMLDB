@@ -1271,6 +1271,13 @@ void HandleSQL(const std::string& sql) {
             return;
         }
         case hybridse::node::kPlanTypeInsert: {
+            if (!isOnlineMode()) {
+                // Not support for inserting into offline storage
+                std::cout << "ERROR: Can not insert in offline mode, please set @@SESSION.execute_mode='online'"
+                          << std::endl;
+                return;
+            }
+
             // TODO(denglong): Should support table name with database name
             if (db.empty()) {
                 std::cout << "ERROR: Please use database first" << std::endl;
