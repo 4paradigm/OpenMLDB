@@ -209,6 +209,21 @@ class SQLClusterRouter : public SQLRouter {
 
     ::openmldb::base::Status StopJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) override;
 
+    ::openmldb::base::Status ExecuteOfflineQuery(const std::string& sql,
+                                                 const std::map<std::string, std::string>& config,
+                                                 const std::string& default_db,
+                                                 ::openmldb::taskmanager::JobInfo& job_info) override;
+
+    ::openmldb::base::Status ImportOnlineData(const std::string& sql,
+                                              const std::map<std::string, std::string>& config,
+                                              const std::string& default_db,
+                                              ::openmldb::taskmanager::JobInfo& job_info) override;
+
+    ::openmldb::base::Status ImportOfflineData(const std::string& sql,
+                                               const std::map<std::string, std::string>& config,
+                                               const std::string& default_db,
+                                               ::openmldb::taskmanager::JobInfo& job_info) override;
+
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 
