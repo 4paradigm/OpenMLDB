@@ -71,7 +71,7 @@
     <dependency>
       <groupId>com.4paradigm.openmldb</groupId>
       <artifactId>openmldb-batch</artifactId>
-      <version>0.3.0-allinone</version>
+      <version>${project.parent.version}</version>
       <exclusions>
         <exclusion>
           <groupId>org.apache.spark</groupId>
