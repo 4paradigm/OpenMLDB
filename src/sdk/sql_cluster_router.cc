@@ -497,7 +497,7 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::name
     }
     return default_map;
 }
-
+// Get Cache with given db, sql and engine mode
 std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(const std::string& db, const std::string& sql) {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = input_lru_cache_.find(db);
@@ -739,6 +739,70 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     return tablet->GetClient();
 }
 
+// Get clients when online batch query in Cluster OpenMLDB
+bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
+    const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter,
+    std::vector<std::shared_ptr<::openmldb::client::TabletClient>>& clients) {
+    ::hybridse::codec::Schema parameter_schema_raw;
+    if (parameter) {
+        for (int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
+            auto column = parameter_schema_raw.Add();
+            hybridse::type::Type hybridse_type;
+            if (!openmldb::schema::SchemaAdapter::ConvertType(parameter->GetSchema()->GetColumnType(i),
+                                                              &hybridse_type)) {
+                LOG(WARNING) << "Invalid parameter type ";
+                return {};
+            }
+            column->set_type(hybridse_type);
+        }
+    }
+    auto cache = GetCache(db, sql);
+    auto parameter_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(parameter_schema_raw);
+    if (cache && cache->IsCompatibleCache(parameter_schema)) {
+        cache.reset();
+    }
+    if (!cache) {
+        ::hybridse::vm::ExplainOutput explain;
+        ::hybridse::base::Status vm_status;
+        if (cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kBatchMode, parameter_schema_raw, &explain, &vm_status)) {
+            std::shared_ptr<::hybridse::sdk::SchemaImpl> schema;
+
+            const std::string& main_table = explain.router.GetMainTable();
+            const std::string& main_db = explain.router.GetMainDb().empty() ? db : explain.router.GetMainDb();
+            auto table_info = cluster_sdk_->GetTableInfo(main_db, main_table);
+            ::hybridse::codec::Schema raw_schema;
+            if (table_info &&
+                ::openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc(), &raw_schema)) {
+                schema = std::make_shared<::hybridse::sdk::SchemaImpl>(raw_schema);
+            }
+            if (schema) {
+                cache = std::make_shared<SQLCache>(schema, parameter_schema, explain.router);
+                SetCache(db, sql, cache);
+            }
+        }
+    }
+    if (cache) {
+        const std::string& main_table = cache->router.GetMainTable();
+        const std::string main_db = cache->router.GetMainDb().empty() ? db : cache->router.GetMainDb();
+        if (!main_table.empty()) {
+            DLOG(INFO) << "get main table" << main_table;
+            std::string val;
+            std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
+            if (!cluster_sdk_->GetTablet(main_db, main_table, &tablets)) {
+                LOG(WARNING) << "ERROR: Fail to get tablet clients for " << main_db << "." << main_table;
+                return false;
+            }
+
+            for(const auto tablet: tablets) {
+                clients.push_back(tablet->GetClient());
+            }
+            return true;
+        }
+    }
+
+    LOG(WARNING) << "fail to get tablet";
+    return false;
+}
 std::shared_ptr<TableReader> SQLClusterRouter::GetTableReader() {
     std::shared_ptr<TableReaderImpl> reader(new TableReaderImpl(cluster_sdk_));
     return reader;
@@ -848,19 +912,21 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
         return {};
     }
 
-    auto client = GetTabletClient(db, sql, hybridse::vm::kBatchMode, std::shared_ptr<SQLRequestRow>(), parameter);
-    if (!client) {
-        DLOG(INFO) << "no tablet available for sql " << sql;
+    std::vector<std::shared_ptr<::openmldb::client::TabletClient>> clients;
+    if (!GetTabletClientsForClusterOnlineBatchQuery(db, sql, clients)) {
+        DLOG(INFO) << "no tablet avaliable for sql " << sql;
         return {};
     }
-    DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
-    if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
-                       options_.enable_debug)) {
-        status->msg = response->msg();
-        status->code = -1;
-        return {};
+    for (auto client: clients) {
+        DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
+        if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
+                           options_.enable_debug)) {
+            status->msg = response->msg();
+            status->code = -1;
+            return {};
+        }
+        auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);
     }
-    auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);
     return rs;
 }
 
