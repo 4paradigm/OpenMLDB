@@ -80,6 +80,9 @@ object SparkJobManager {
     if (defaultDb.nonEmpty) {
       launcher.setConf("spark.openmldb.default.db", defaultDb)
     }
+    if (TaskManagerConfig.OFFLINE_DATA_PREFIX.nonEmpty) {
+      launcher.setConf("spark.openmldb.offline.data.prefix", TaskManagerConfig.OFFLINE_DATA_PREFIX)
+    }
     for ((k, v) <- sparkConf) {
       launcher.setConf(k, v)
     }
