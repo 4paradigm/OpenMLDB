@@ -819,3 +819,29 @@ cases:
           +-replica_num: 1
           +-partition_num: 1
           +-distribution_list: []
+  - id: 28
+    desc: Create table with database.table
+    sql: |
+      create table db1.test(
+          column1 string,
+          column3 int
+      );
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: db1.test
+          +-IF NOT EXIST: 0
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column1
+          |  |    +-column_type: string
+          |  |    +-NOT NULL: 0
+          |  +-1:
+          |    +-node[kColumnDesc]
+          |      +-column_name: column3
+          |      +-column_type: int32
+          |      +-NOT NULL: 0
+          +-replica_num: 1
+          +-partition_num: 1
+          +-distribution_list: []

@@ -906,11 +906,13 @@ ProjectNode *NodeManager::MakeProjectNode(const int32_t pos, const std::string &
     RegisterNode(node_ptr);
     return node_ptr;
 }
-CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string &table_name, int replica_num, int partition_num,
+CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string& db_name,
+                                                     const std::string &table_name,
+                                                     int replica_num, int partition_num,
                                                      const NodePointVector &column_list,
                                                      const NodePointVector &partition_meta_list) {
     node::CreatePlanNode *node_ptr =
-        new CreatePlanNode(table_name, replica_num, partition_num, column_list, partition_meta_list);
+        new CreatePlanNode(db_name, table_name, replica_num, partition_num, column_list, partition_meta_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }

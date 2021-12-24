@@ -342,7 +342,9 @@ base::Status Planner::CreateSetPlanNode(const node::SetNode *root, node::PlanNod
 base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create table plan with null node")
     const node::CreateStmt *create_tree = static_cast<const node::CreateStmt *>(root);
-    *output = node_manager_->MakeCreateTablePlanNode(create_tree->GetTableName(), create_tree->GetReplicaNum(),
+    *output = node_manager_->MakeCreateTablePlanNode(create_tree->GetDbName(),
+                                                     create_tree->GetTableName(),
+                                                     create_tree->GetReplicaNum(),
                                                      create_tree->GetPartitionNum(), create_tree->GetColumnDefList(),
                                                      create_tree->GetDistributionList());
     return base::Status::OK();

@@ -214,6 +214,10 @@ class SqlCase {
         if (value != nullptr) {
             return std::string(value);
         }
+        value = getenv("YAML_CASE_BASE_DIR");
+        if (value != nullptr) {
+            return std::string(value);
+        }
         return "";
     }
     static bool IsDebug() {
