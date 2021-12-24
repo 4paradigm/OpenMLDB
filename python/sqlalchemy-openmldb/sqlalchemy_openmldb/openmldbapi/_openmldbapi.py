@@ -304,7 +304,7 @@ class Cursor(object):
 
     @connected
     def executemany(self, operation, parameters=()):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def fetchone(self):
         if self._resultSet is None: return "call fetchone"
@@ -325,20 +325,20 @@ class Cursor(object):
 
     @connected
     def fetchmany(self, size=None):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def nextset(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def setinputsizes(self, size):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def setoutputsize(self, size, columns=()):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
         
     @connected
     def fetchall(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
 
     @staticmethod
@@ -365,13 +365,13 @@ class Cursor(object):
 
     @connected
     def get_query_metadata(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def get_default_plugin(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def __iter__(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def batch_row_request(self, sql, commonCol, parameters):
         ok, rs = self.connection._sdk.doBatchRowRequest(self.db, sql, commonCol, parameters)
@@ -418,16 +418,15 @@ class Connection(object):
 
 
     def execute(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @connected
     def _cursor_execute(self, cursor, statement, parameters):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @connected
     def do_rollback(self, dbapi_connection):
-        pass
-
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @connected
     def rollback(self):
@@ -442,7 +441,7 @@ class Connection(object):
         pass
 
     def close(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def cursor(self):
         return Cursor(self._db, self._zk, self._zkPath, self)
