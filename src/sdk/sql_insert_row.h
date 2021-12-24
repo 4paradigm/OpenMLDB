@@ -81,7 +81,6 @@ class SQLInsertRow {
     bool IsComplete();
     bool Build();
     const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& GetDimensions();
-    inline const std::vector<uint64_t>& GetTs() { return ts_; }
     inline const std::string& GetRow() { return val_; }
     inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() { return schema_; }
 
@@ -100,7 +99,6 @@ class SQLInsertRow {
  private:
     bool DateToString(uint32_t year, uint32_t month, uint32_t day, std::string* date);
     bool MakeDefault();
-    bool PackTs(uint64_t ts);
     void PackDimension(const std::string& val);
     inline bool IsDimension() { return raw_dimensions_.find(rb_.GetAppendPos()) != raw_dimensions_.end(); }
 
@@ -113,7 +111,6 @@ class SQLInsertRow {
     std::set<uint32_t> ts_set_;
     std::map<uint32_t, std::string> raw_dimensions_;
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions_;
-    std::vector<uint64_t> ts_;
     ::openmldb::codec::RowBuilder rb_;
     std::string val_;
     uint32_t str_size_;
