@@ -1,10 +1,10 @@
 # 部署OpenMLDB
 
-## 部署zookeeper
+## 部署Zookeeper
 建议部署3.4.14版本  
-如果已有可用zookeeper集群可略过此步骤
+如果已有可用Zookeeper集群可略过此步骤
 
-### 1. 下载zookeeper安装包
+### 1. 下载Zookeeper安装包
 ```
 wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
 tar -zxvf zookeeper-3.4.14.tar.gz
@@ -19,11 +19,11 @@ dataDir=./data
 clientPort=6181
 ```
 
-### 3. 启动zookeeper
+### 3. 启动Zookeeper
 ```
 sh bin/zkServer.sh start
 ```
-部署zookeeper集群[参考这里](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html)
+部署Zookeeper集群[参考这里](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html)
 
 ## 部署`nameserver`
 ### 1. 下载OpenMLDB部署包

@@ -88,8 +88,8 @@ cd openmldb-tablet-2.2.0
 ```
 
 **Note**
-* the value of `endpoint` cann't be `0.0.0.0` or `127.0.0.1`
-* ensure to set a correct host for all of the OpenMLDB clients if a domain name is used for the `endpoint`, otherwise the sever is inaccessible.
+* the value of `endpoint` cannot be `0.0.0.0` or `127.0.0.1`
+* ensure to set a correct host for all of the OpenMLDB clients if a domain name is used for the `endpoint`, otherwise the server is inaccessible.
 * the value of `zk_cluster` and `zk_root_path` must be same with `nameserver`
 
 ### 3. start tablet
@@ -132,7 +132,7 @@ cd openmldb-apiserver-0.2.2
 
 **Note:**
 
-* the value of `endpoint` cann't be `0.0.0.0` or `127.0.0.1`, you can also choose to only use `--port` instead of `--endpoint`.
+* the value of `endpoint` cannot be `0.0.0.0` or `127.0.0.1`, you can also choose to only use `--port` instead of `--endpoint`.
 * to set the thread number of `APIServer`, use `--thread_pool_size`, default value is 16.
 
 ### 3. start the APIServer
