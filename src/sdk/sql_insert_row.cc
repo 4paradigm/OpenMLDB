@@ -62,6 +62,9 @@ SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> ta
                 index_map_[idx].push_back(column_name_map[column]);
                 raw_dimensions_[column_name_map[column]] = hybridse::codec::NONETOKEN;
             }
+            if (!table_info_->column_key(idx).ts_name().empty()) {
+                ts_set_.insert(column_name_map[table_info_->column_key(idx).ts_name()]);
+            }
         }
     }
 }
@@ -266,6 +269,9 @@ bool SQLInsertRow::AppendDate(int32_t date) {
 bool SQLInsertRow::AppendNULL() {
     if (IsDimension()) {
         PackDimension(hybridse::codec::NONETOKEN);
+    }
+    if (ts_set_.count(rb_.GetAppendPos())) {
+        return false;
     }
     if (rb_.AppendNULL()) {
         return MakeDefault();

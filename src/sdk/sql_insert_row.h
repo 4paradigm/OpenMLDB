@@ -108,6 +108,7 @@ class SQLInsertRow {
     DefaultValueMap default_map_;
     uint32_t default_string_length_;
     std::map<uint32_t, std::vector<uint32_t>> index_map_;
+    std::set<uint32_t> ts_set_;
     std::map<uint32_t, std::string> raw_dimensions_;
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions_;
     ::openmldb::codec::RowBuilder rb_;
