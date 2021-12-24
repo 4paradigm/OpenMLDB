@@ -3722,20 +3722,7 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
     }
 }
 
-::openmldb::base::Status NameServerImpl::CreateOfflineTable(const std::string& db_name, const std::string& table_name,
-                                                            const std::string& partition_key, const Schema& schema) {
-    if (nearline_tablet_.client_ && nearline_tablet_.Health()) {
-        auto ret = nearline_tablet_.client_->CreateTable(db_name, table_name, partition_key, schema);
-        if (ret.OK()) {
-            PDLOG(INFO, "create table %s success", table_name.c_str());
-        } else {
-            PDLOG(WARNING, "fail to create table %s. error: %s", table_name.c_str(), ret.msg.c_str());
-        }
-        return ret;
-    }
-    PDLOG(WARNING, "fail to create table %s", table_name.c_str());
-    return ::openmldb::base::Status(-1, "nearline tablet is not health");
-}
+
 
 bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
     std::string table_value;
