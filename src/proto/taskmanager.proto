@@ -1,7 +1,5 @@
 syntax = "proto2";
 
-import "common.proto";
-
 package openmldb.taskmanager;
 
 option java_package = "com._4paradigm.openmldb.proto";
@@ -88,6 +86,16 @@ message ImportOfflineDataRequest {
     optional string default_db = 3 [default = ""];
 };
 
+message DropOfflineTableRequest {
+    required string db = 1;
+    required string table = 2;
+};
+
+message DropOfflineTableResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+};
+
 service TaskManagerServer {
     // Job management
     rpc ShowJobs(ShowJobsRequest) returns (ShowJobsResponse);
@@ -101,4 +109,5 @@ service TaskManagerServer {
     rpc RunBatchAndShow(RunBatchAndShowRequest) returns (ShowJobResponse);
     rpc ImportOnlineData(ImportOnlineDataRequest) returns (ShowJobResponse);
     rpc ImportOfflineData(ImportOfflineDataRequest) returns (ShowJobResponse);
+    rpc DropOfflineTable(DropOfflineTableRequest) returns (DropOfflineTableResponse);
 };

@@ -38,6 +38,7 @@ public class TaskManagerConfig {
     public static String SPARK_YARN_JARS;
     public static String SPARK_HOME;
     public static int PREFETCH_JOBID_NUM;
+    public static String NAMENODE_URI;
 
     static {
         try {
@@ -62,6 +63,7 @@ public class TaskManagerConfig {
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
             SPARK_HOME = prop.getProperty("spark.home");
             PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.job.num", "10"));
+            NAMENODE_URI= prop.getProperty("namenode.uri", "");
         } catch (Exception e) {
             e.printStackTrace();
         }
