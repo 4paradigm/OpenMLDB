@@ -31,7 +31,6 @@
 
 #include "base/hash.h"
 #include "base/random.h"
-#include "client/nearline_tablet_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "codec/schema_codec.h"
@@ -78,9 +77,6 @@ struct TabletInfo {
     bool Health() const { return state_ == ::openmldb::type::EndpointState::kHealthy; }
 };
 
-struct NearLineTabletInfo : public EndpointInfo {
-    std::shared_ptr<::openmldb::client::NearLineTabletClient> client_;
-};
 
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
@@ -761,7 +757,6 @@ class NameServerImpl : public NameServer {
  private:
     std::mutex mu_;
     Tablets tablets_;
-    NearLineTabletInfo nearline_tablet_;
     ::openmldb::nameserver::TableInfos table_info_;
     std::map<std::string, ::openmldb::nameserver::TableInfos> db_table_info_;
     std::map<std::string, std::shared_ptr<::openmldb::nameserver::ClusterInfo>> nsc_;
