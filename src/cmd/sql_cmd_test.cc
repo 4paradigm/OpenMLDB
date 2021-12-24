@@ -257,6 +257,7 @@ TEST_P(DBSDKTest, create_without_index_col) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
+/* TODO: Only run test in standalone mode
 TEST_P(DBSDKTest, load_data) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -297,6 +298,7 @@ TEST_P(DBSDKTest, load_data) {
     ifile.close();
     ofile.close();
 }
+*/
 
 INSTANTIATE_TEST_SUITE_P(DBSDK, DBSDKTest, testing::Values(&standalone_cli, &cluster_cli));
 

@@ -164,7 +164,7 @@ object LoadDataPlan {
         // deep copy
         // TODO(hw): generate new offline address
         // write default settings: no option and parquet format
-        var (writePath, writeFormat) = ("/tmp/load_data_test", "parquet")
+        var (writePath, writeFormat) = ("file:///tmp/load_data_test", "parquet")
         var writeOptions: mutable.Map[String, String] = mutable.Map()
         if (infoExists) {
           require(mode != "errorifexists", "offline info exists")
