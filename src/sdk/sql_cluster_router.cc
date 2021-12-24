@@ -664,6 +664,53 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     return true;
 }
 
+bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, hybridse::sdk::Status* status) {
+    if (db.empty() || table.empty()) {
+        status->msg = "db name(" + db + ") or table name(" + table + ") is invalid";
+        status->code = -2;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+
+    auto tableInfo = GetTableInfo(db, table);
+    // Check offline table info first
+    if(tableInfo.has_offline_table_info()) {
+        auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+        if (!taskmanager_client_ptr) {
+            status->msg = "no TaskManager exist";
+            status->code = -2;
+            LOG(WARNING) << status->msg;
+            return false;
+        }
+        ::openmldb::base::Status rpcStatus = taskmanager_client_ptr->DropOfflineTable(db, table);
+        if (rpcStatus.code != 0) {
+            status->msg = rpcStatus.msg;
+            status->code = rpcStatus.code;
+            LOG(WARNING) << status->msg;
+            return false;
+        }
+    }
+
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        status->msg = "no nameserver exist";
+        status->code = -2;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+    std::string err;
+
+    bool ok = ns_ptr->DropTable(db, table, err);
+    if (!ok) {
+        status->msg = "fail to drop db " + db + " for error ";
+        status->code = -2;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+
+    return true;
+}
+
 std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
     const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
     const std::shared_ptr<SQLRequestRow>& row) {
