@@ -3639,8 +3639,13 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         }
     }
 
+    if (table_info->column_key_size() == 0) {
+        // if no column_key, add one which key is the first column which is not float or double
+        // the logic should be the same as 'create table xx(xx,index(key=<auto_selected_col>)) xx;'
+        // Ref NsClient::TransformToTableDef
+        schema::IndexUtil::AddDefaultIndex(table_info.get());
+    }
 
-    schema::IndexUtil::AddDefaultIndex(table_info.get());
     if (!IsClusterMode()) {
         table_info->set_partition_num(1);
         table_info->set_replica_num(1);
@@ -8827,6 +8832,7 @@ base::Status NameServerImpl::AddMultiIndexs(const std::string& db, const std::st
     for (const auto& col : table_info->column_desc()) {
         column_map.emplace(col.name(), col);
     }
+
     status = schema::IndexUtil::CheckIndex(column_map, column_keys);
     if (!status.OK()) {
         return status;
