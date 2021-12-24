@@ -60,7 +60,7 @@ object SparkJobManager {
   }
 
   def submitSparkJob(jobType: String, mainClass: String, args: List[String] = List(),
-                     sparkConf: Map[String, String] = Map()): JobInfo = {
+                     sparkConf: Map[String, String] = Map(), defaultDb: String = ""): JobInfo = {
 
     val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
 
@@ -77,6 +77,9 @@ object SparkJobManager {
     }
 
     // Set ad-hoc Spark configuration
+    if (defaultDb.nonEmpty) {
+      launcher.setConf("spark.openmldb.default.db", defaultDb)
+    }
     for ((k, v) <- sparkConf) {
       launcher.setConf(k, v)
     }

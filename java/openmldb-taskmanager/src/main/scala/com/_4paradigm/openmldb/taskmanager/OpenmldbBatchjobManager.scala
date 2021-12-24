@@ -42,36 +42,36 @@ object OpenmldbBatchjobManager {
    * @param outputPath the output path
    * @return the Yarn AppId in String format
    */
-  def runBatchSql(sql: String, outputPath: String, sparkConf: java.util.Map[String, String]): JobInfo = {
+  def runBatchSql(sql: String, outputPath: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
     val jobType = "RunBatchSql"
     val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchSql"
     val args = List(sql, outputPath)
 
-    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap)
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
   }
 
-  def runBatchAndShow(sql: String, sparkConf: java.util.Map[String, String]): JobInfo = {
+  def runBatchAndShow(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
     val jobType = "RunBatchAndShow"
     val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchAndShow"
     val args = List(sql)
 
-    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap)
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
   }
 
-  def importOnlineData(sql: String, sparkConf: java.util.Map[String, String]): JobInfo = {
+  def importOnlineData(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
     val jobType = "ImportOnlineData"
     val mainClass = "com._4paradigm.openmldb.batchjob.ImportOnlineData"
     val args = List(sql)
 
-    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap)
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
   }
 
-  def importOfflineData(sql: String, sparkConf: java.util.Map[String, String]): JobInfo = {
+  def importOfflineData(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
     val jobType = "ImportOfflineData"
     val mainClass = "com._4paradigm.openmldb.batchjob.ImportOfflineData"
     val args = List(sql)
 
-    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap)
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
   }
 
 }
