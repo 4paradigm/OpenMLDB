@@ -15,7 +15,7 @@ cp conf/zoo_sample.cfg conf/zoo.cfg
 ```
 
 ### 2. modify the configuration file
-open `conf/zoo.cfg`, modify the `dataDir` and `clientPort`.
+open `conf/zoo.cfg`, modify the entries `dataDir` and `clientPort`.
 
 ```
 dataDir=./data
@@ -28,10 +28,10 @@ clientPort=6181
 sh bin/zkServer.sh start
 ```
 
-the deploy of Zookeeper cluster is [here](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html)
+Please refer to the [ZooKeeper page](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html) for detailed deployment instructions.
 
-## Deploy Nameserver
-### 1. download OpenMLDB package
+## Deploy the Nameserver
+### 1. download the OpenMLDB package
 
 ````
 wget https://github.com/4paradigm/OpenMLDB/releases/download/0.2.2/openmldb-0.2.2-linux.tar.gz
@@ -42,8 +42,8 @@ cd openmldb-ns-0.2.2
 
 ### 2. modify the configuration file: `conf/nameserver.flags`
 
-* modify `endpoint` item
-* set `zk_cluster` to the Zookeeper cluster you started. the ip is from Zookeeper machine, and the port is the value of `clientPort` item in Zookeeper configuration file. If your Zookeeper is a cluster, then follow this format `ip1:port1,ip2:port2,ip3:port3`
+* modify the entry `endpoint`
+* `zk_cluster` should be set to the ZooKeeper cluster address that you have started; and the `ip` is corresponding to ZooKeeper machine's IP address; and the `port` is the value of `clientPort` set in the ZooKeeper configuration file. If your ZooKeeper is deployed on a cluster, you should follow this format `ip1:port1,ip2:port2,ip3:port3`
 * note that if you share a Zookeeper with other OpenMLDB, you must use a different `zk_root_path`
 
 ```
@@ -54,16 +54,16 @@ cd openmldb-ns-0.2.2
 --enable_distsql=true
 ```
 
-**Note: the value of `endpoint` cann't be `0.0.0.0` or `127.0.0.1`**
+**Note: the value of `endpoint` cannot be `0.0.0.0` or `127.0.0.1`**
 
-### 3. start nameserver
+### 3. start the nameserver
 
 ```
 sh bin/start.sh start nameserver
 ```
 
-## Deploy Tablet
-### 1. download OpenMLDB package
+## Deploy the Tablets
+### 1. download the OpenMLDB package
 
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/0.2.2/openmldb-0.2.2-linux.tar.gz
@@ -72,7 +72,7 @@ mv openmldb-0.2.2-linux openmldb-tablet-2.2.0
 cd openmldb-tablet-2.2.0
 ```
 
-### 2. modify configuration file `conf/tablet.flags`
+### 2. modify the configuration file `conf/tablet.flags`
 * modify `endpoint`
 * set `zk_cluster` to the Zookeeper cluster you started.
 * note that if you share a Zookeeper with other OpenMLDB, you must use a different `zk_root_path`
@@ -89,7 +89,7 @@ cd openmldb-tablet-2.2.0
 
 **Note**
 * the value of `endpoint` cann't be `0.0.0.0` or `127.0.0.1`
-* make sure set right host for all of the machine that running the client of OpenMLDB if use domain for `endpoint` item. Otherwise, the server will not be able to access
+* ensure to set a correct host for all of the OpenMLDB clients if a domain name is used for the `endpoint`, otherwise the sever is inaccessible.
 * the value of `zk_cluster` and `zk_root_path` must be same with `nameserver`
 
 ### 3. start tablet
@@ -98,15 +98,15 @@ cd openmldb-tablet-2.2.0
 sh bin/start.sh start tablet
 ```
 
-**Note: this service will create a new file named `tablet.pid` after started, the file contains a `PID` for current process. if the `PID` is running, `tablet` will failed to start**
+**Note: this service will create a new file named `tablet.pid` after started, the file contains a `PID` for current process. if the `PID` is running, `tablet` will fail to start**
 
-Repeat the above steps to deploy multi `nameserver` and `tablet`.
+Repeat the above steps to deploy multiple `nameserver` and `tablet`.
 
 ## Deploy APIServer
 
-`APIServer` receive a http request，then forward to `OpenMLDB` and return a response to client. It's stateless, and is not a necessary component for `OpenMLDB`.
+`APIServer` receives a http request，then forwards to `OpenMLDB` and returns a response to the client. It's stateless, and is not a necessary component for `OpenMLDB`.
 
-Before starting `APIServer`, please make sure that `OpenMLDB` aready started, otherwise `APIServer` will failed to initialize and exit.
+Before starting `APIServer`, please make sure that `OpenMLDB` aready started, otherwise `APIServer` will fail to initialize and exit.
 
 ### 1. download the OpenMLDB package
 
