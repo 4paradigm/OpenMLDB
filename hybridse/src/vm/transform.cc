@@ -1693,8 +1693,6 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
                 auto select_into_plan = dynamic_cast<const ::hybridse::node::SelectIntoPlanNode*>(node);
                 // should do optimization
                 ::hybridse::vm::PhysicalOpNode* child = nullptr;
-                ::hybridse::node::PlanNodeList select_query;
-                select_query.push_back(select_into_plan->Query());
                 CHECK_STATUS(TransformPhysicalPlan({select_into_plan->Query()}, &child))
                 return TransformSelectIntoOp(select_into_plan, child, output);
             }
