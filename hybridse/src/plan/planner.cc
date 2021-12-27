@@ -328,7 +328,9 @@ base::Status Planner::CreateLoadDataPlanNode(const node::LoadDataNode *root, nod
 
 base::Status Planner::CreateSelectIntoPlanNode(const node::SelectIntoNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create select into plan with null node");
-    *output = node_manager_->MakeSelectIntoPlanNode(root->Query(), root->QueryStr(), root->OutFile(), root->Options(),
+    PlanNode *query = nullptr;
+    CHECK_STATUS(CreateQueryPlan(root->Query(), &query))
+    *output = node_manager_->MakeSelectIntoPlanNode(query, root->QueryStr(), root->OutFile(), root->Options(),
                                                     root->ConfigOptions());
     return base::Status::OK();
 }
@@ -341,7 +343,7 @@ base::Status Planner::CreateSetPlanNode(const node::SetNode *root, node::PlanNod
 
 base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create table plan with null node")
-    const node::CreateStmt *create_tree = static_cast<const node::CreateStmt *>(root);
+    auto create_tree = dynamic_cast<const node::CreateStmt *>(root);
     *output = node_manager_->MakeCreateTablePlanNode(create_tree->GetTableName(), create_tree->GetReplicaNum(),
                                                      create_tree->GetPartitionNum(), create_tree->GetColumnDefList(),
                                                      create_tree->GetDistributionList());

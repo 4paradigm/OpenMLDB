@@ -103,6 +103,7 @@ endif ()
 
 
 if (TESTING_ENABLE)
+    set(CTEST_OUTPUT_ON_FAILURE ON)
     enable_testing()
 endif ()
 
