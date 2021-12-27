@@ -20,6 +20,7 @@ import com._4paradigm.openmldb.proto.Tablet;
 import com._4paradigm.openmldb.proto.Common;
 import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.proto.Type;
+import com._4paradigm.openmldb.common.codec.RowBuilder;
 import com.baidu.brpc.RpcContext;
 import com.google.common.base.Preconditions;
 import org.apache.commons.csv.CSVRecord;
