@@ -1,5 +1,7 @@
 # APIServer
 
+To deploy `APIServer` click this: [Deploy OpenMLDB](deploy.md).
+
 Please refer to this [RFC](https://github.com/4paradigm/rfcs/blob/main/fedb/api-server.md) for the comparison of JSON and OpenMLDB data types.
 
 ## Instructions
