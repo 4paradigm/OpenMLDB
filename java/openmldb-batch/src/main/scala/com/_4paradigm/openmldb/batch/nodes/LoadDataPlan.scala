@@ -160,7 +160,11 @@ object LoadDataPlan {
       } else {
         // deep copy
         // Generate new offline address by db name, table name and config of prefix
-        val offlineDataPrefix = if (ctx.getConf.offlineDataPrefix.endsWith("/")) ctx.getConf.offlineDataPrefix.dropRight(1) else ctx.getConf.offlineDataPrefix
+        val offlineDataPrefix = if (ctx.getConf.offlineDataPrefix.endsWith("/")) {
+          ctx.getConf.offlineDataPrefix.dropRight(1)
+        } else {
+          ctx.getConf.offlineDataPrefix
+        }
         val offlineDataPath = s"$offlineDataPrefix/$db/$table"
         // write default settings: no option and parquet format
         var (writePath, writeFormat) = (offlineDataPath, "parquet")
