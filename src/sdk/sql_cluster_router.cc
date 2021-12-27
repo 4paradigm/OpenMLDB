@@ -1222,7 +1222,8 @@ base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* c
     switch (cmd_node->GetCmdType()) {
         case hybridse::node::kCmdDropTable: {
             const std::string& name = cmd_node->GetArgs()[0];
-            ret = ns_ptr->DropTable(db, name, msg);
+            hybridse::sdk::Status status;
+            ret = this->DropTable(db, name, &status);
             break;
         }
         case hybridse::node::kCmdDropIndex: {
