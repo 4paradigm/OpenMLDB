@@ -1627,7 +1627,6 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
     NodeManager nm;
     ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
     ASSERT_EQ(1, plan_trees.size());
-    LOG(INFO) << plan_trees.front()->GetTreeString().c_str();
     EXPECT_STREQ(R"sql(+-[kPlanTypeSelectInto]
   +-out_file: m.txt
   +- query:
