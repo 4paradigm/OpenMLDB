@@ -1344,6 +1344,12 @@ void HandleSQL(const std::string& sql) {
         case hybridse::node::kPlanTypeLoadData: {
             auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
 
+            // Check if passes db or uses default db
+            if (plan->Db().empty() && db.empty()) {
+                std::cout << "ERROR: no db in sql and no default db" << std::endl;
+                return;
+            }
+
             if (cs->IsClusterMode()) {
                 // Handle in cluster mode
                 ::openmldb::taskmanager::JobInfo job_info;
