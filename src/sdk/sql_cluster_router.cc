@@ -904,7 +904,6 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     ::hybridse::sdk::Status* status) {
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_.request_timeout);
-    auto response = std::make_shared<::openmldb::api::QueryResponse>();
     std::vector<openmldb::type::DataType> parameter_types;
     if (parameter && !ExtractDBTypes(parameter->GetSchema(), parameter_types)) {
         status->msg = "convert parameter types error";
@@ -913,12 +912,15 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     }
 
     std::vector<std::shared_ptr<::openmldb::client::TabletClient>> clients;
-    if (!GetTabletClientsForClusterOnlineBatchQuery(db, sql, clients)) {
+    if (!GetTabletClientsForClusterOnlineBatchQuery(db, sql, parameter, clients)) {
         DLOG(INFO) << "no tablet avaliable for sql " << sql;
         return {};
     }
-    for (auto client: clients) {
+    if (clients.size() == 1) {
+        // Batch query from single tablet
+        auto client = clients[0];
         DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
+        auto response = std::make_shared<::openmldb::api::QueryResponse>();
         if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
                            options_.enable_debug)) {
             status->msg = response->msg();
@@ -926,8 +928,25 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
             return {};
         }
         auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);
+        return rs;
+    } else {
+        // Batch query from multiple tablets and merge the result set
+        std::vector<std::shared_ptr<ResultSetSQL>> result_set_list;
+        for (auto client : clients) {
+            DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
+            auto response = std::make_shared<::openmldb::api::QueryResponse>();
+            if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(),
+                               response.get(), options_.enable_debug)) {
+                status->msg = response->msg();
+                status->code = -1;
+                return {};
+            }
+            result_set_list.emplace_back(
+                std::dynamic_pointer_cast<ResultSetSQL>(ResultSetSQL::MakeResultSet(response, cntl, status)));
+        }
+        auto rs = std::make_shared<MultipleResultSetSQL>(result_set_list);
+        return rs;
     }
-    return rs;
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
