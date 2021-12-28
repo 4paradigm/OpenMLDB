@@ -354,11 +354,8 @@ bool like_internal(std::string_view name, std::string_view pattern, const char *
         // 1. true if there is only special character <percent>s left in pattern
         // 2. false otherwise
         for (; pattern_it != pattern_end; std::advance(pattern_it, 1)) {
-            if (escape != nullptr && *pattern_it == *escape) {
-                // std::advance(pattern_it, 1);
-                return false;
-            }
-            if (*pattern_it != '%') {
+            if ((escape != nullptr && *pattern_it == *escape) || *pattern_it != '%') {
+                // character under pattern_it is escape character or is not <percent> character, return false
                 return false;
             }
         }
