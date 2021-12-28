@@ -742,7 +742,7 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
 // Get clients when online batch query in Cluster OpenMLDB
 bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
     const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter,
-    std::vector<std::shared_ptr<::openmldb::client::TabletClient>>& clients) {
+    std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients) {
     ::hybridse::codec::Schema parameter_schema_raw;
     if (parameter) {
         for (int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
@@ -794,7 +794,7 @@ bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
             }
 
             for(const auto tablet: tablets) {
-                clients.push_back(tablet->GetClient());
+                clients.insert(tablet->GetClient());
             }
             return true;
         }
@@ -902,8 +902,6 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const s
 std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParameterized(
     const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
     ::hybridse::sdk::Status* status) {
-    auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(options_.request_timeout);
     std::vector<openmldb::type::DataType> parameter_types;
     if (parameter && !ExtractDBTypes(parameter->GetSchema(), parameter_types)) {
         status->msg = "convert parameter types error";
@@ -911,14 +909,16 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
         return {};
     }
 
-    std::vector<std::shared_ptr<::openmldb::client::TabletClient>> clients;
+    std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>> clients;
     if (!GetTabletClientsForClusterOnlineBatchQuery(db, sql, parameter, clients)) {
         DLOG(INFO) << "no tablet avaliable for sql " << sql;
         return {};
     }
     if (clients.size() == 1) {
         // Batch query from single tablet
-        auto client = clients[0];
+        auto cntl = std::make_shared<::brpc::Controller>();
+        cntl->set_timeout_ms(options_.request_timeout);
+        auto client = *(clients.begin());
         DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
         auto response = std::make_shared<::openmldb::api::QueryResponse>();
         if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
@@ -934,6 +934,8 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
         std::vector<std::shared_ptr<ResultSetSQL>> result_set_list;
         for (auto client : clients) {
             DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
+            auto cntl = std::make_shared<::brpc::Controller>();
+            cntl->set_timeout_ms(options_.request_timeout);
             auto response = std::make_shared<::openmldb::api::QueryResponse>();
             if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(),
                                response.get(), options_.enable_debug)) {
@@ -943,8 +945,14 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
             }
             result_set_list.emplace_back(
                 std::dynamic_pointer_cast<ResultSetSQL>(ResultSetSQL::MakeResultSet(response, cntl, status)));
+            if (status->code != 0) {
+                return {};
+            }
         }
-        auto rs = std::make_shared<MultipleResultSetSQL>(result_set_list);
+        auto rs = MultipleResultSetSQL::MakeResultSet(result_set_list, 0, status);
+        if (status->code != 0) {
+            return {};
+        }
         return rs;
     }
 }

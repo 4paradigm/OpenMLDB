@@ -393,21 +393,7 @@ static bool IsBatchSupportMode(const std::string& mode) {
     }
     return true;
 }
-TEST_P(SQLSDKQueryTest, SqlSdkDistributeBatchTest) {
-    auto sql_case = GetParam();
-    if (!IsBatchSupportMode(sql_case.mode())) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
-        return;
-    }
-    if (sql_case.batch_request().columns_.empty()) {
-        LOG(WARNING) << "No batch request specified";
-        return;
-    }
-    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
-    DistributeRunBatchRequestModeSDK(sql_case, router_);
-    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-}
+
 TEST_P(SQLSDKQueryTest, SqlSdkDistributeBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
@@ -633,7 +619,17 @@ TEST_F(SQLClusterTest, GetTableSchema) {
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
 }
-
+TEST_P(SQLSDKClusterOnlineBatchQueryTest, SqlSdkDistributeBatchTest) {
+    auto sql_case = GetParam();
+    if (!IsBatchSupportMode(sql_case.mode())) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    DistributeRunBatchModeSDK(sql_case, router_, mc_->GetTbEndpoint());
+    LOG(INFO) << "Finish SqlSdkDistributeBatchTest: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
 
 }  // namespace sdk
 }  // namespace openmldb

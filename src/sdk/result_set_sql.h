@@ -97,6 +97,17 @@ class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
         : result_set_list_(result_set_list), result_set_idx_(0), limit_cnt_(limit_cnt), result_idx_(0) {}
     ~MultipleResultSetSQL() {}
 
+    static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
+        const std::vector<std::shared_ptr<ResultSetSQL>>& result_set_list, const int limit_cnt, ::hybridse::sdk::Status* status) {
+        std::shared_ptr<::openmldb::sdk::MultipleResultSetSQL> rs =
+            std::make_shared<openmldb::sdk::MultipleResultSetSQL>(result_set_list, limit_cnt);
+        if (!rs->Init()) {
+            status->code = -1;
+            status->msg = "request error, MultipleResultSetSQL init failed";
+            return std::shared_ptr<ResultSet>();
+        }
+        return rs;
+    }
     bool Init() {
         if (result_set_list_.empty()) {
             return false;
@@ -109,6 +120,7 @@ class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
         result_set_idx_ = 0;
         result_idx_ = 0;
         result_set_base_ = result_set_list_[0];
+        return true;
     }
 
     bool Reset() {

@@ -23,6 +23,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_set>
 
 #include "base/random.h"
 #include "base/spinlock.h"
@@ -185,7 +186,7 @@ class SQLClusterRouter : public SQLRouter {
         const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<SQLRequestRow>& parameter_row);
     bool GetTabletClientsForClusterOnlineBatchQuery(
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter_row,
-        std::vector<std::shared_ptr<::openmldb::client::TabletClient>>& clients); //NOLINT
+        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients); //NOLINT
 
     std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
                                                           const std::string& table_name) override;
