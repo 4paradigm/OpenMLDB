@@ -253,7 +253,7 @@ public class BulkLoadGenerator implements Runnable {
         }
     }
 
-    private ByteBuffer buildData(Map<String, String> valueMap) {
+    private ByteBuffer buildData(Map<String, String> valueMap) throws Exception{
         List<Object> rowValues = new ArrayList<>();
         for (int j = 0; j < tableInfo.getColumnDescCount(); j++) {
             Common.ColumnDesc desc = tableInfo.getColumnDesc(j);
@@ -265,8 +265,15 @@ public class BulkLoadGenerator implements Runnable {
             }
             rowValues.add(obj);
         }
-        ByteBuffer dataBuffer = RowBuilder.encode(rowValues.toArray(), tableInfo.getColumnDescList(), 1);
-        Preconditions.checkState(tableInfo.getCompressType() == Type.CompressType.kNoCompress); // TODO(hw): support snappy later
+
+        ByteBuffer dataBuffer;
+        try{
+            dataBuffer = RowBuilder.encode(rowValues.toArray(), tableInfo.getColumnDescList(), 1);
+            Preconditions.checkState(tableInfo.getCompressType() == Type.CompressType.kNoCompress); // TODO(hw): support snappy later
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            throw e;
+        }
         return dataBuffer;
     }
 
