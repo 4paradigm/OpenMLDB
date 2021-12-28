@@ -296,37 +296,37 @@ void date_to_string(codec::Date *date, hybridse::codec::StringRef *output) {
 */
 template <typename EQUAL>
 bool like_internal(std::string_view name, std::string_view pattern, const char *escape, EQUAL &&equal) {
-    auto it = pattern.cbegin();
-    auto end = pattern.cend();
-    auto n_it = name.cbegin();
-    auto n_end = name.cend();
+    auto pattern_it = pattern.cbegin();
+    auto pattern_end = pattern.cend();
+    auto name_it = name.cbegin();
+    auto name_end = name.cend();
 
-    while (it != end) {
-        if (n_it == n_end) {
-            return false;
+    while (pattern_it != pattern_end) {
+        if (name_it == name_end) {
+            break;
         }
 
-        char c = *it;
+        char c = *pattern_it;
         if (escape != nullptr && c == *escape) {
             // exact character match
-            if (std::next(it) == end) {
+            if (std::next(pattern_it) == pattern_end) {
                 // the pattern is terminated with escape character, just return false
                 return false;
             }
-            c = *std::next(it);
-            if (!equal(c, *n_it)) {
+            c = *std::next(pattern_it);
+            if (!equal(c, *name_it)) {
                 return false;
             }
 
-            std::advance(it, 2);
+            std::advance(pattern_it, 2);
         } else {
             switch (c) {
                 case '%': {
-                    std::advance(it, 1);
-                    for (auto back = n_end; back >= n_it; std::advance(back, -1)) {
-                        if (like_internal(std::string_view(back, std::distance(back, n_end)),
-                                                std::string_view(it, std::distance(it, end)),
-                                                escape, std::forward<EQUAL>(equal))) {
+                    std::advance(pattern_it, 1);
+                    auto sub_pattern = std::string_view(pattern_it, std::distance(pattern_it, pattern_end));
+                    for (auto back = name_end; back >= name_it; std::advance(back, -1)) {
+                        if (like_internal(std::string_view(back, std::distance(back, name_end)),
+                                          sub_pattern, escape, std::forward<EQUAL>(equal))) {
                             return true;
                         }
                     }
@@ -336,20 +336,37 @@ bool like_internal(std::string_view name, std::string_view pattern, const char *
                     break;
                 }
                 default: {
-                    if (!equal(c, *n_it)) {
+                    if (!equal(c, *name_it)) {
                         return false;
                     }
                     break;
                 }
             }
 
-            std::advance(it, 1);
+            std::advance(pattern_it, 1);
         }
 
-        std::advance(n_it, 1);
+        std::advance(name_it, 1);
     }
 
-    return n_it == n_end;
+    if (pattern_it != pattern_end) {
+        // when pattern iterator do not reach the end
+        // 1. true if there is only special character <percent>s left in pattern
+        // 2. false otherwise
+        for (; pattern_it != pattern_end; std::advance(pattern_it, 1)) {
+            if (escape != nullptr && *pattern_it == *escape) {
+                // std::advance(pattern_it, 1);
+                return false;
+            }
+            if (*pattern_it != '%') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    return name_it == name_end;
 }
 
 /*
