@@ -19,7 +19,7 @@ import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.PhysicalLoadDataNode
 import com._4paradigm.openmldb.batch.utils.SparkRowUtil
-import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
+import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import com._4paradigm.openmldb.proto.NS.OfflineTableInfo
 import com._4paradigm.openmldb.proto.Type.DataType
 import org.apache.spark.sql.types.StructType
@@ -102,10 +102,7 @@ object LoadDataPlan {
 
   def gen(ctx: PlanContext, node: PhysicalLoadDataNode): SparkInstance = {
     val inputFile = node.File()
-    var db = ctx.getConf.defaultDb
-    if (node.Db().nonEmpty) {
-      db = node.Db()
-    }
+    val db = if (node.Db().nonEmpty) node.Db() else ctx.getConf.defaultDb
     val table = node.Table()
     val spark = ctx.getSparkSession
 
@@ -162,9 +159,15 @@ object LoadDataPlan {
         newInfoBuilder.setOfflineTableInfo(offlineBuilder)
       } else {
         // deep copy
-        // TODO(hw): generate new offline address
+        // Generate new offline address by db name, table name and config of prefix
+        val offlineDataPrefix = if (ctx.getConf.offlineDataPrefix.endsWith("/")) {
+          ctx.getConf.offlineDataPrefix.dropRight(1)
+        } else {
+          ctx.getConf.offlineDataPrefix
+        }
+        val offlineDataPath = s"$offlineDataPrefix/$db/$table"
         // write default settings: no option and parquet format
-        var (writePath, writeFormat) = ("file:///tmp/load_data_test", "parquet")
+        var (writePath, writeFormat) = (offlineDataPath, "parquet")
         var writeOptions: mutable.Map[String, String] = mutable.Map()
         if (infoExists) {
           require(mode != "errorifexists", "offline info exists")

@@ -15,7 +15,7 @@
         <module>openmldb-jdbc</module>
         <module>openmldb-native</module>
         <module>openmldb-common</module>
-        <!-- <module>openmldb-nearline-tablet</module> -->
+
         <module>openmldb-batchjob</module>
         <module>openmldb-taskmanager</module>
         <module>openmldb-batch</module>

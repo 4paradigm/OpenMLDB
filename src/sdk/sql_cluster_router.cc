@@ -677,6 +677,59 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     }
     return true;
 }
+
+bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, hybridse::sdk::Status* status) {
+    if (db.empty() || table.empty()) {
+        status->msg = "db name(" + db + ") or table name(" + table + ") is invalid";
+        status->code = -2;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+
+    auto tableInfo = GetTableInfo(db, table);
+    // Check offline table info first
+    if(tableInfo.has_offline_table_info()) {
+        auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+        if (!taskmanager_client_ptr) {
+            status->msg = "no TaskManager exist";
+            status->code = -2;
+            LOG(WARNING) << status->msg;
+            return false;
+        }
+        ::openmldb::base::Status rpcStatus = taskmanager_client_ptr->DropOfflineTable(db, table);
+        if (rpcStatus.code != 0) {
+            status->msg = rpcStatus.msg;
+            status->code = rpcStatus.code;
+            LOG(WARNING) << status->msg;
+            return false;
+        }
+    }
+
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        status->msg = "no nameserver exist";
+        status->code = -2;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+    std::string err;
+
+    bool ok = ns_ptr->DropTable(db, table, err);
+    if (!ok) {
+        status->msg = "fail to drop db " + db + " for error ";
+        status->code = -2;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+
+    return true;
+}
+
+std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
+    const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
+    const std::shared_ptr<SQLRequestRow>& row) {
+    return GetTabletClient(db, sql, engine_mode, row, std::shared_ptr<openmldb::sdk::SQLRequestRow>());
+}
 /**
  * Get SQL cache
  * @param db
@@ -1050,11 +1103,7 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
         return false;
     }
     const auto& dimensions = row->GetDimensions();
-    const auto& ts_dimensions = row->GetTs();
-    uint64_t cur_ts = 0;
-    if (ts_dimensions.empty()) {
-        cur_ts = ::baidu::common::timer::get_micros() / 1000;
-    }
+    uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
     for (const auto& kv : dimensions) {
         uint32_t pid = kv.first;
         if (pid < tablets.size()) {
@@ -1064,12 +1113,7 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                 if (client) {
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
-                    bool ret = false;
-                    if (ts_dimensions.empty()) {
-                        ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second, 1);
-                    } else {
-                        ret = client->Put(tid, pid, kv.second, row->GetTs(), row->GetRow(), 1);
-                    }
+                    bool ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second, 1);
                     if (!ret) {
                         status->msg = "fail to make a put request to table. tid " + std::to_string(tid);
                         LOG(WARNING) << status->msg;
@@ -1278,7 +1322,8 @@ base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* c
     switch (cmd_node->GetCmdType()) {
         case hybridse::node::kCmdDropTable: {
             const std::string& name = cmd_node->GetArgs()[0];
-            ret = ns_ptr->DropTable(db, name, msg);
+            hybridse::sdk::Status status;
+            ret = this->DropTable(db, name, &status);
             break;
         }
         case hybridse::node::kCmdDropIndex: {

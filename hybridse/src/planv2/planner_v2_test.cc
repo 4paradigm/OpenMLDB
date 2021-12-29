@@ -1629,28 +1629,26 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
     ASSERT_EQ(1, plan_trees.size());
     EXPECT_STREQ(R"sql(+-[kPlanTypeSelectInto]
   +-out_file: m.txt
-  +-query:
-  |  +-node[kQuery]: kQuerySelect
-  |    +-distinct_opt: false
-  |    +-where_expr: null
-  |    +-group_expr_list: null
-  |    +-having_expr: null
-  |    +-order_expr_list: null
-  |    +-limit: null
-  |    +-select_list[list]:
-  |    |  +-0:
-  |    |    +-node[kResTarget]
-  |    |      +-val:
-  |    |      |  +-expr[column ref]
-  |    |      |    +-relation_name: <nil>
-  |    |      |    +-column_name: c2
-  |    |      +-name: <nil>
-  |    +-tableref_list[list]:
-  |    |  +-0:
-  |    |    +-node[kTableRef]: kTable
-  |    |      +-table: t0
-  |    |      +-alias: <nil>
-  |    +-window_list: []
+  +- query:
+  |  +-[kQueryPlan]
+  |  +-[kProjectPlan]
+  |    +-table: t0
+  |    +-project_list_vec[list]:
+  |      +-[kProjectList]
+  |        +-projects on table [list]:
+  |          +-[kProjectNode]
+  |            +-[0]c2: c2
+  |  +-[kTablePlan]
+  |    +-table: t0
+  |    +-[kProjectPlan]
+  |      +-table: t0
+  |      +-project_list_vec[list]:
+  |        +-[kProjectList]
+  |          +-projects on table [list]:
+  |            +-[kProjectNode]
+  |              +-[0]c2: c2
+  |    +-[kTablePlan]
+  |      +-table: t0
   +-options:
   |  +-key:
   |    +-expr[primary]

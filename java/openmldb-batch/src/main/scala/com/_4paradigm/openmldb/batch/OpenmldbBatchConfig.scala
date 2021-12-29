@@ -138,6 +138,9 @@ class OpenmldbBatchConfig extends Serializable {
 
   @ConfigOption(name = "openmldb.loaddata.mode", doc = "The mode to choose target storage: online/offline")
   var loadDataMode = "offline"
+
+  @ConfigOption(name = "openmldb.offline.data.prefix", doc = "The prefix of offline data")
+  var offlineDataPrefix = "file:///tmp/openmldb_offline/"
 }
 
 

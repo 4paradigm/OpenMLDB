@@ -553,13 +553,15 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             if (!CheckAnswerIfInteractive("table", name)) {
                 return;
             }
-            std::string error;
-            bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DropTable(name, error));
+
+            hybridse::sdk::Status status;
+            bool ok = sr->DropTable(db, name, &status);
+
             if (ok) {
                 std::cout << "SUCCEED: Drop successfully" << std::endl;
                 sr->RefreshCatalog();
             } else {
-                std::cout << "ERROR: Failed to drop, " << error << std::endl;
+                std::cout << "ERROR: Failed to drop, " << status.msg << std::endl;
             }
             break;
         }
@@ -1341,6 +1343,12 @@ void HandleSQL(const std::string& sql) {
         }
         case hybridse::node::kPlanTypeLoadData: {
             auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
+
+            // Check if passes db or uses default db
+            if (plan->Db().empty() && db.empty()) {
+                std::cout << "ERROR: no db in sql and no default db" << std::endl;
+                return;
+            }
 
             if (cs->IsClusterMode()) {
                 // Handle in cluster mode
