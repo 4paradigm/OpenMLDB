@@ -24,9 +24,12 @@ cases:
         rows:
           - ["aa",1,2,1590738989000]
     sqls:
-      - set @@SESSION.EXECUTE_MODEe = "online";
+      - set @@SESSION.execute_mode="online";
       - show variables;
     expect:
+      columns: ["Variable_name string","Value string"]
+      rows:
+        - ["execute_mode","online"]
   -
     id: 1
     desc: EXECUTE_MODE=offline
@@ -36,9 +39,12 @@ cases:
         rows:
           - ["aa",1,2,1590738989000]
     sqls:
-      - set @@SESSION.EXECUTE_MODE = "offline";
+      - set @@SESSION.execute_mode="offline";
       - show variables;
     expect:
+      columns: ["Variable_name","Value"]
+      rows:
+        - ["execute_mode","offline"]
   -
     id: 2
     desc: EXECUTE_MODE为其他字符
@@ -51,6 +57,7 @@ cases:
       - set @@SESSION.execute_olol = "offline";
       - show variables;
     expect:
+      success: false
   -
     id: 3
     desc: EXECUTE_MODE为小写
@@ -63,19 +70,32 @@ cases:
       - set @@SESSION.execute_mode = "online";
       - show variables;
     expect:
+      success: false
   -
     id: 4
     desc: EXECUTE_MODE=online，创建表，insert数据，并查询
     inputs:
       -
         columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
       - set @@SESSION.execute_mode = "online";
+      - insert into {0} value ("aa",1,2,1590738989000);
       - select * from {0};
     expect:
       columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
       rows:
         - ["aa",1,2,1590738989000]
   -
+    id: 5
+    desc: EXECUTE_MODE=offline，创建表，insert数据，并查询
+    inputs:
+      -
+        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
+    sqls:
+      - set @@SESSION.execute_mode = "offline";
+      - insert into {0} values ("bb",2,3,1590738989000);
+      - select * from {0};
+    expect:
+      colunms: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
+      rows:
+        - ["bb",2,3,1590738989000]
