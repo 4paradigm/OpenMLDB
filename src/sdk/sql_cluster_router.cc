@@ -265,7 +265,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
         LOG(WARNING) << "get insert information failed";
         return {};
     }
-    cache = std::make_shared<SQLCache>(table_info, default_map, str_length);
+    cache = std::make_shared<SQLCache>(table_info, default_map, str_length, 0);
     SetCache(db, sql, cache);
     return std::make_shared<SQLInsertRow>(table_info, cache->column_schema, default_map, str_length);
 }
@@ -663,15 +663,18 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     }
     return true;
 }
-
-std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
+/**
+ * Get SQL cache
+ * @param db
+ * @param sql
+ * @param engine_mode
+ * @param row
+ * @param parameter
+ * @return
+ */
+std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(
     const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
-    const std::shared_ptr<SQLRequestRow>& row) {
-    return GetTabletClient(db, sql, engine_mode, row, std::shared_ptr<openmldb::sdk::SQLRequestRow>());
-}
-std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
-    const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
-    const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {
+    const std::shared_ptr<SQLRequestRow>& parameter) {
     ::hybridse::codec::Schema parameter_schema_raw;
     if (parameter) {
         for (int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
@@ -685,7 +688,6 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
             column->set_type(hybridse_type);
         }
     }
-    std::shared_ptr<::openmldb::catalog::TabletAccessor> tablet;
     auto cache = GetCache(db, sql);
     auto parameter_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(parameter_schema_raw);
     if (cache && cache->IsCompatibleCache(parameter_schema)) {
@@ -709,11 +711,23 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
                 }
             }
             if (schema) {
-                cache = std::make_shared<SQLCache>(schema, parameter_schema, explain.router);
+                cache = std::make_shared<SQLCache>(schema, parameter_schema, explain.router, explain.limit_cnt);
                 SetCache(db, sql, cache);
             }
         }
     }
+    return cache;
+}
+std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
+    const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
+    const std::shared_ptr<SQLRequestRow>& row) {
+    return GetTabletClient(db, sql, engine_mode, row, std::shared_ptr<openmldb::sdk::SQLRequestRow>());
+}
+std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
+    const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
+    const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {
+    auto cache = GetSQLCache(db, sql, engine_mode, parameter);
+    std::shared_ptr<::openmldb::catalog::TabletAccessor> tablet;
     if (cache) {
         const std::string& col = cache->router.GetRouterCol();
         const std::string& main_table = cache->router.GetMainTable();
@@ -743,44 +757,7 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
 bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
     const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter,
     std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients) {
-    ::hybridse::codec::Schema parameter_schema_raw;
-    if (parameter) {
-        for (int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
-            auto column = parameter_schema_raw.Add();
-            hybridse::type::Type hybridse_type;
-            if (!openmldb::schema::SchemaAdapter::ConvertType(parameter->GetSchema()->GetColumnType(i),
-                                                              &hybridse_type)) {
-                LOG(WARNING) << "Invalid parameter type ";
-                return {};
-            }
-            column->set_type(hybridse_type);
-        }
-    }
-    auto cache = GetCache(db, sql);
-    auto parameter_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(parameter_schema_raw);
-    if (cache && cache->IsCompatibleCache(parameter_schema)) {
-        cache.reset();
-    }
-    if (!cache) {
-        ::hybridse::vm::ExplainOutput explain;
-        ::hybridse::base::Status vm_status;
-        if (cluster_sdk_->GetEngine()->Explain(sql, db, hybridse::vm::kBatchMode, parameter_schema_raw, &explain, &vm_status)) {
-            std::shared_ptr<::hybridse::sdk::SchemaImpl> schema;
-
-            const std::string& main_table = explain.router.GetMainTable();
-            const std::string& main_db = explain.router.GetMainDb().empty() ? db : explain.router.GetMainDb();
-            auto table_info = cluster_sdk_->GetTableInfo(main_db, main_table);
-            ::hybridse::codec::Schema raw_schema;
-            if (table_info &&
-                ::openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc(), &raw_schema)) {
-                schema = std::make_shared<::hybridse::sdk::SchemaImpl>(raw_schema);
-            }
-            if (schema) {
-                cache = std::make_shared<SQLCache>(schema, parameter_schema, explain.router);
-                SetCache(db, sql, cache);
-            }
-        }
-    }
+    auto cache = GetSQLCache(db, sql, hybridse::vm::kBatchMode, parameter);
     if (cache) {
         const std::string& main_table = cache->router.GetMainTable();
         const std::string main_db = cache->router.GetMainDb().empty() ? db : cache->router.GetMainDb();
@@ -949,7 +926,11 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
                 return {};
             }
         }
-        auto rs = MultipleResultSetSQL::MakeResultSet(result_set_list, 0, status);
+        auto cache = GetSQLCache(db, sql, hybridse::vm::kBatchMode, parameter);
+        if (!cache) {
+            return {};
+        }
+        auto rs = MultipleResultSetSQL::MakeResultSet(result_set_list, cache->limit_cnt, status);
         if (status->code != 0) {
             return {};
         }
