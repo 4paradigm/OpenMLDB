@@ -245,9 +245,11 @@ class SQLClusterRouter : public SQLRouter {
                 ::hybridse::sdk::Status* status);
 
     bool IsConstQuery(::hybridse::vm::PhysicalOpNode* node);
-    std::shared_ptr<SQLCache> GetCache(const std::string& db, const std::string& sql);
+    std::shared_ptr<SQLCache> GetCache(const std::string& db, const std::string& sql,
+                                       const hybridse::vm::EngineMode engine_mode);
 
-    void SetCache(const std::string& db, const std::string& sql, const std::shared_ptr<SQLCache>& router_cache);
+    void SetCache(const std::string& db, const std::string& sql,
+                  const hybridse::vm::EngineMode engine_mode, const std::shared_ptr<SQLCache>& router_cache);
 
     bool GetSQLPlan(const std::string& sql, ::hybridse::node::NodeManager* nm, ::hybridse::node::PlanNodeList* plan);
 
@@ -274,7 +276,9 @@ class SQLClusterRouter : public SQLRouter {
  private:
     SQLRouterOptions options_;
     DBSDK* cluster_sdk_;
-    std::map<std::string, base::lru_cache<std::string, std::shared_ptr<SQLCache>>> input_lru_cache_;
+    std::map<std::string,
+             std::map<hybridse::vm::EngineMode,
+                      base::lru_cache<std::string, std::shared_ptr<SQLCache>>>> input_lru_cache_;
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
 };

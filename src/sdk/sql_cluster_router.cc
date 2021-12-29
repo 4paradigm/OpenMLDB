@@ -199,7 +199,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(const std::string
     if (status == nullptr) {
         return {};
     }
-    std::shared_ptr<SQLCache> cache = GetCache(db, sql);
+    std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kRequestMode);
     std::set<std::string> col_set;
     if (cache) {
         status->code = 0;
@@ -221,7 +221,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(const std::string
     }
     std::shared_ptr<::hybridse::sdk::SchemaImpl> schema =
         std::make_shared<::hybridse::sdk::SchemaImpl>(explain.input_schema);
-    SetCache(db, sql, std::make_shared<SQLCache>(schema, explain.router));
+    SetCache(db, sql, hybridse::vm::kRequestMode, std::make_shared<SQLCache>(schema, explain.router));
     const std::string& router_col = explain.router.GetRouterCol();
     if (!router_col.empty()) {
         col_set.insert(router_col);
@@ -251,7 +251,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
     if (status == nullptr) {
         return {};
     }
-    std::shared_ptr<SQLCache> cache = GetCache(db, sql);
+    std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
     if (cache) {
         status->code = 0;
         return std::make_shared<SQLInsertRow>(cache->table_info, cache->column_schema, cache->default_map,
@@ -266,7 +266,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
         return {};
     }
     cache = std::make_shared<SQLCache>(table_info, default_map, str_length, 0);
-    SetCache(db, sql, cache);
+    SetCache(db, sql, hybridse::vm::kBatchMode, cache);
     return std::make_shared<SQLInsertRow>(table_info, cache->column_schema, default_map, str_length);
 }
 bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::string& sql,
@@ -498,10 +498,16 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::name
     return default_map;
 }
 // Get Cache with given db, sql and engine mode
-std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(const std::string& db, const std::string& sql) {
+std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(const std::string& db, const std::string& sql,
+                                                     const hybridse::vm::EngineMode engine_mode) {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
-    auto it = input_lru_cache_.find(db);
-    if (it != input_lru_cache_.end()) {
+    auto mode_cache_it = input_lru_cache_.find(db);
+    if (mode_cache_it == input_lru_cache_.end()) {
+        return {};
+    }
+
+    auto it = mode_cache_it->second.find(engine_mode);
+    if (it != mode_cache_it->second.end()) {
         auto value = it->second.get(sql);
         if (value != boost::none) {
             // Check cache validation, the name is the same, but the tid may be different.
@@ -522,15 +528,23 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(const std::string& db, cons
 }
 
 void SQLClusterRouter::SetCache(const std::string& db, const std::string& sql,
+                                const hybridse::vm::EngineMode engine_mode,
                                 const std::shared_ptr<SQLCache>& router_cache) {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = input_lru_cache_.find(db);
     if (it == input_lru_cache_.end()) {
-        decltype(input_lru_cache_)::mapped_type sql_cache(options_.max_sql_cache_size);
-        input_lru_cache_.insert(std::make_pair(db, sql_cache));
+        decltype(input_lru_cache_)::mapped_type db_value;
+        input_lru_cache_.insert(std::make_pair(db, db_value));
         it = input_lru_cache_.find(db);
     }
-    it->second.upsert(sql, router_cache);
+
+    auto cache_it = it->second.find(engine_mode);
+    if (cache_it == it->second.end()) {
+        decltype(it->second)::mapped_type value(options_.max_sql_cache_size);
+        it->second.insert(std::make_pair(engine_mode, value));
+        cache_it = it->second.find(engine_mode);
+    }
+    cache_it->second.upsert(sql, router_cache);
 }
 
 std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string& db, const std::string& sql,
@@ -538,7 +552,7 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string
     if (status == nullptr) {
         return {};
     }
-    std::shared_ptr<SQLCache> cache = GetCache(db, sql);
+    std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
     if (cache) {
         status->code = 0;
         return std::make_shared<SQLInsertRows>(cache->table_info, cache->column_schema, cache->default_map,
@@ -551,7 +565,7 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string
         return {};
     }
     cache = std::make_shared<SQLCache>(table_info, default_map, str_length);
-    SetCache(db, sql, cache);
+    SetCache(db, sql, hybridse::vm::kBatchMode, cache);
     return std::make_shared<SQLInsertRows>(table_info, cache->column_schema, default_map, str_length);
 }
 
@@ -688,7 +702,7 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(
             column->set_type(hybridse_type);
         }
     }
-    auto cache = GetCache(db, sql);
+    auto cache = GetCache(db, sql, engine_mode);
     auto parameter_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(parameter_schema_raw);
     if (cache && cache->IsCompatibleCache(parameter_schema)) {
         cache.reset();
@@ -710,10 +724,8 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(
                     schema = std::make_shared<::hybridse::sdk::SchemaImpl>(raw_schema);
                 }
             }
-            if (schema) {
-                cache = std::make_shared<SQLCache>(schema, parameter_schema, explain.router, explain.limit_cnt);
-                SetCache(db, sql, cache);
-            }
+            cache = std::make_shared<SQLCache>(schema, parameter_schema, explain.router, explain.limit_cnt);
+            SetCache(db, sql, engine_mode, cache);
         }
     }
     return cache;
@@ -765,14 +777,22 @@ bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
             DLOG(INFO) << "get main table" << main_table;
             std::string val;
             std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
+
             if (!cluster_sdk_->GetTablet(main_db, main_table, &tablets)) {
                 LOG(WARNING) << "ERROR: Fail to get tablet clients for " << main_db << "." << main_table;
                 return false;
             }
 
-            for(const auto tablet: tablets) {
+            for(auto tablet: tablets) {
                 clients.insert(tablet->GetClient());
             }
+            return true;
+        } else {
+            auto tablet = cluster_sdk_->GetTablet();
+            if (!tablet) {
+                return false;
+            }
+            clients.insert(tablet->GetClient());
             return true;
         }
     }
@@ -1072,7 +1092,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
         LOG(WARNING) << "input is invalid";
         return false;
     }
-    std::shared_ptr<SQLCache> cache = GetCache(db, sql);
+    std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
     if (cache) {
         std::shared_ptr<::openmldb::nameserver::TableInfo> table_info = cache->table_info;
         std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
@@ -1102,7 +1122,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
         LOG(WARNING) << "input is invalid";
         return false;
     }
-    std::shared_ptr<SQLCache> cache = GetCache(db, sql);
+    std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
     if (cache) {
         std::shared_ptr<::openmldb::nameserver::TableInfo> table_info = cache->table_info;
         std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
