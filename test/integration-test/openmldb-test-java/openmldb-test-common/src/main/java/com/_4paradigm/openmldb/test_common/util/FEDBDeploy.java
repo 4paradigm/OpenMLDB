@@ -43,6 +43,8 @@ public class FEDBDeploy {
     private boolean useName;
     @Setter
     private boolean isCluster = true;
+    @Setter
+    private String sparkMaster = "local";
 
     public FEDBDeploy(String version){
         this.version = version;
@@ -309,6 +311,47 @@ public class FEDBDeploy {
             e.printStackTrace();
         }
         throw new RuntimeException("apiserver部署失败");
+    }
+    
+    
+    public String deploySpark(String testPath){
+        try {
+            ExecutorUtil.run("wget -P "+testPath+" "+ FedbDeployConfig.getSparkUrl(version));
+            String sparkHome = ExecutorUtil.run("ls | grep spark | grep  -v .tgz "+testPath).get(0);
+            String sparkPath = testPath+"/"+sparkHome;
+            return sparkHome;
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        throw new RuntimeException("spark 部署失败");
+    }
+
+    public int deployTaskManager(String testPath, String ip, int index, String zk_endpoint, String name){
+        try {
+            String sparkHome = deploySpark(testPath);
+            int port = LinuxUtil.getNoUsedPort();
+            String task_manager_name = "/openmldb-task_manager-"+index;
+            List<String> commands = Lists.newArrayList(
+                    "cp -r " + testPath + "/" + fedbName + " " + testPath + task_manager_name,
+                    "sed -i 's#server.host=.*#server.host=" + ip + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's#server.port=.*#server.port=" + port + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's@zookeeper.root_path=.*@zookeeper.root_path=/openmldb@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's@spark.master=.*@spark.master=" + sparkMaster + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's@spark.home=.*@zspark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
+            );
+            commands.forEach(ExecutorUtil::run);
+
+            ExecutorUtil.run("sh "+testPath+task_manager_name+"/taskmanager/bin/taskmanager.sh");
+            boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
+            if(used){
+                log.info("task manager部署成功，port："+port);
+                return port;
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        throw new RuntimeException("task manager部署失败");
     }
 
     public FEDBInfo deployStandalone(String testPath, String ip){
