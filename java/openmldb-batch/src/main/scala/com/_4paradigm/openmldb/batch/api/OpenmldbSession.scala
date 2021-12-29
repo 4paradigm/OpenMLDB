@@ -155,7 +155,6 @@ class OpenmldbSession {
       return OpenmldbDataframe(this, sparksql(sqlText))
     }
 
-
     val planner = new SparkPlanner(this, config)
     this.planner = planner
     val df = planner.plan(sqlText, registeredTables).getDf()
