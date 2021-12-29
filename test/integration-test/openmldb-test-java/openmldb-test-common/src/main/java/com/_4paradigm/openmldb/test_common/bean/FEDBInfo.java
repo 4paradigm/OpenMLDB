@@ -50,6 +50,7 @@ public class FEDBInfo {
     private List<String> blobProxyNames = new ArrayList<>();
     private List<String> apiServerEndpoints = new ArrayList<>();
     private List<String> apiServerNames = new ArrayList<>();
+    private List<String> taskManagerEndpoints = new ArrayList<>();
     private String runCommand;
 
     public String getRunCommand(){
