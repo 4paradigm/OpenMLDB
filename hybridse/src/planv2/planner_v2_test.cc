@@ -40,6 +40,8 @@ class PlannerV2Test : public ::testing::TestWithParam<SqlCase> {
     NodeManager *manager_;
 };
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PlannerV2Test);
+INSTANTIATE_TEST_SUITE_P(SqlConstQueryParse, PlannerV2Test,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/const_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_SUITE_P(SqlSimpleQueryParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
@@ -1860,27 +1862,27 @@ TEST_F(PlannerV2ErrorTest, NonSupportOnlineServingSQL) {
     };
 
 
-//    expect_converted(
-//        R"(
-//        SELECT COL1 from t1 GROUP BY COL1;
-//        )",
-//        common::kPlanError, "Non-support kGroupPlan Op in online serving");
-//
-//    expect_converted(
-//        R"(
-//        SELECT SUM(COL2) from t1 HAVING SUM(COL2) >0;
-//        )",
-//        common::kPlanError, "Non-support HAVING Op in online serving");
-//    expect_converted(
-//        R"(
-//        SELECT SUM(COL2) from t1;
-//        )",
-//        common::kPlanError, "Aggregate over a table cannot be supported in online serving");
-//    expect_converted(
-//        R"(
-//        SELECT COL1 FROM t1 order by COL1;
-//        )",
-//        common::kPlanError, "Non-support kSortPlan Op in online serving");
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 GROUP BY COL1;
+        )",
+        common::kPlanError, "Non-support kGroupPlan Op in online serving");
+
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) from t1 HAVING SUM(COL2) >0;
+        )",
+        common::kPlanError, "Non-support HAVING Op in online serving");
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) from t1;
+        )",
+        common::kPlanError, "Aggregate over a table cannot be supported in online serving");
+    expect_converted(
+        R"(
+        SELECT COL1 FROM t1 order by COL1;
+        )",
+        common::kPlanError, "Non-support kSortPlan Op in online serving");
 
     expect_converted(
         R"(LOAD DATA INFILE 'a.csv' INTO TABLE t1 OPTIONS(foo='bar', num=1);)",
@@ -1935,6 +1937,33 @@ TEST_F(PlannerV2ErrorTest, NonSupportClusterOnlinexTrainingSQL) {
         SELECT COL1 FROM t1 LAST JOIN t2 order by COL5 on t1.COL1 = t2.COL1;
         )",
         common::kPlanError, "Non-support kJoinPlan Op in cluster online training");
+}
+TEST_F(PlannerV2Test, ClusterOnlinexTrainingSQLTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string &sql) {
+      base::Status status;
+      node::PlanNodeList plan_trees;
+      // Generate SQL logical plan for online serving
+      ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true, true)) << status;
+    };
+//    expect_converted(
+//        R"(
+//        SELECT COL1 from t1 ;
+//        )");
+//    expect_converted(
+//        R"(
+//        SELECT COL1 from t1 LIMIT 10;
+//        )");
+//
+//    expect_converted(
+//        R"(
+//        SELECT COL1 from t1 WHERE col2 = 1 LIMIT 10;
+//        )");
+
+    expect_converted(
+        R"(
+        SELECT 1.0 as c1, 2 as c2;
+        )");
 }
 
 TEST_F(PlannerV2Test, GetPlanLimitCnt) {

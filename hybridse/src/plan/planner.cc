@@ -468,9 +468,9 @@ int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
     return limit_cnt;
 }
 base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
-    CHECK_TRUE(nullptr != node, common::kNullInputPointer,
-               "Fail to validate request table: input node is "
-               "null")
+    if (node == nullptr) {
+        return base::Status::OK();
+    }
     switch (node->type_) {
         case node::kPlanTypeTable: {
             break;
@@ -491,6 +491,7 @@ base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
         case node::kPlanTypeLoadData:
         case node::kPlanTypeRename:
         case node::kPlanTypeLimit:
+        case node::kPlanTypeFilter:
         case node::kPlanTypeQuery: {
             for (auto *child : node->GetChildren()) {
                 CHECK_STATUS(ValidateClusterOnlineTrainingOp(child));
