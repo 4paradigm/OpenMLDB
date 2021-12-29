@@ -18,15 +18,10 @@ cases:
   -
     id: 0
     desc: show jobs
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
-      - use test_zw;
+      - use __INTERNAL_DB;
       - set @@SESSION.execute_mode = "offline";
-      - LOAD DATA INFILE 'hdfs://ip:port/openmldb/demodata' INTO TABLE {0};
+      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
       - show jobs;
     expects:
       columns: ["JOBID string","JOB_TYPE string","STATUS string"]
@@ -43,9 +38,10 @@ cases:
     sqls:
       - use test_zw;
       - set @@SESSION.execute_mode = "offline";
-      - LOAD DATA INFILE 'hdfs://ip:port/openmldb/demodata' INTO TABLE {0};
+      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
       - showjobs;
     expects:
+      success: false
   -
     id: 2
     desc: 切换不同的db，show jobs
@@ -57,7 +53,7 @@ cases:
     sqls:
       - use test_zw;
       - set @@SESSION.execute_mode = "offline";
-      - LOAD DATA INFILE 'hdfs://ip:port/openmldb/demodata' INTO TABLE {0};
+      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
       - use other_db;
       - show jobs;
     expects:
@@ -73,7 +69,8 @@ cases:
         rows:
           - ["aa",1,2,1590738989000]
     sqls:
-      - show job JOB-11220021;
+      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
+      - show job 1;
     expects:
       columns: ["JOBID string","JOB_TYPE string","URL string","CONTENT string"]
       rows:
@@ -87,7 +84,8 @@ cases:
         rows:
           - ["aa",1,2,1590738989000]
     sqls:
-      - show job JOB-xxxxxx;
+      insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
+      - show job 1111;
     expects:
   -
     id: 5
@@ -98,8 +96,10 @@ cases:
         rows:
           - ["aa",1,2,1590738989000]
     sqls:
-      - show jobe JOB-11220021;
+      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
+      - show jobe 1;
     expects:
+      success: false
   -
     id: 6
     desc: delete job jobID
@@ -142,8 +142,14 @@ cases:
         rows:
           - ["aa",1,2,1590738989000]
     sqls:
+      - set @@SESSION.execute_mode="offline";
+      - load data infile 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/csv-import-10000-1.csv' into table test_smoke options(deep_copy=true,mode='append');
       - stop job JOB-11220021;
     expects:
+      columns: ["id int","job_state string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
+      rows:
+        - [1,"ImportOfflineData","STOPPED","","","load data infile 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/csv-import-10000-1.csv' into table test_smoke options(deep_copy=true,mode='append');",
+        "local","local-1640683224470",""]
    -
     id: 10
     desc: jobID不存在
@@ -155,6 +161,7 @@ cases:
     sqls:
       - stop job JOB-xxxxxx;
     expects:
+      success: false
   -
     id: 11
     desc: 语法错误
@@ -166,4 +173,4 @@ cases:
     sqls:
       - stop jobe JOB-11220021;
     expects:
-  -
+      success: false;
