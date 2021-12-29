@@ -432,23 +432,39 @@ base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
     return base::Status::OK();
 }
 /**
- * Validate cluster online training op with given plan tree
- * - Support Ops:
- *   - TABLE
- *   - SELECT
- *   - WHERE
- * - UnSupport Ops::
- *   - CREATE TABLE
- *   - INSERT TABLE
- *   - GROUP BY
- *   - HAVING clause
- *   - FILTER
- *   - WINDOW
- *   - AGG
- *   -
+ * Get the limit count of given SQL query
  * @param node
  * @return
  */
+int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
+    if (nullptr == node) {
+        return 0;
+    }
+    int limit_cnt = 0;
+    switch (node->type_) {
+        case node::kPlanTypeTable: {
+            return 0;
+        }
+        case node::kPlanTypeLimit: {
+            auto limit_node = dynamic_cast<node::LimitPlanNode*>(node);
+            limit_cnt = limit_node->GetLimitCnt();
+        }
+        default: {
+            if (node->GetChildrenSize() > 0) {
+                int cnt= GetPlanTreeLimitCount(node->GetChildren()[0]);
+                if (cnt > 0) {
+                    if (limit_cnt == 0) {
+                        limit_cnt = cnt;
+                    } else {
+                        limit_cnt = std::min(cnt, limit_cnt);
+                    }
+                }
+            }
+            break;
+        }
+    }
+    return limit_cnt;
+}
 base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
     CHECK_TRUE(nullptr != node, common::kNullInputPointer,
                "Fail to validate request table: input node is "

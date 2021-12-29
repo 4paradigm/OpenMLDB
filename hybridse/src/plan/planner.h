@@ -53,6 +53,7 @@ class Planner {
     bool MergeWindows(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
                       std::vector<const node::WindowDefNode *> *windows);
 
+    static int GetPlanTreeLimitCount(node::PlanNode *node);
  protected:
     const bool is_batch_mode_;
     const bool is_cluster_optimized_;

@@ -1938,6 +1938,34 @@ TEST_F(PlannerV2ErrorTest, NonSupportClusterOnlinexTrainingSQL) {
         )",
         common::kPlanError, "Non-support kJoinPlan Op in cluster online training");
 }
+
+TEST_F(PlannerV2Test, GetPlanLimitCnt) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string &sql, int limit_cnt) {
+      base::Status status;
+      node::PlanNodeList plan_trees;
+      // Generate SQL logical plan for online serving
+      ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true, false)) << status;
+      ASSERT_EQ(1, plan_trees.size());
+      ASSERT_EQ(limit_cnt, plan::PlanAPI::GetPlanLimitCount(plan_trees[0]));
+    };
+
+
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 LIMIT 10;
+        )", 10);
+
+    expect_converted(
+        R"(
+        SELECT COL1 from (SELECT COL1, COL2 FROM t1 LIMIT 5) as t11 LIMIT 10;
+        )", 5);
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 last join (SELECT COL1, COL2 FROM t2 LIMIT 5) as t22 on t1.col1 = t22.col1 LIMIT 10;
+        )", 10);
+
+}
 }  // namespace plan
 }  // namespace hybridse
 
