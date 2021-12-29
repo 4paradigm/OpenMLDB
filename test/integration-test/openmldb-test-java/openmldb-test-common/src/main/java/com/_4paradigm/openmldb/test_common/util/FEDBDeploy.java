@@ -43,6 +43,8 @@ public class FEDBDeploy {
     private boolean useName;
     @Setter
     private boolean isCluster = true;
+    @Setter
+    private String sparkMaster = "local";
 
     public FEDBDeploy(String version){
         this.version = version;
@@ -83,6 +85,7 @@ public class FEDBDeploy {
         builder.nsEndpoints(Lists.newArrayList()).nsNames(Lists.newArrayList());
         builder.tabletEndpoints(Lists.newArrayList()).tabletNames(Lists.newArrayList());
         builder.apiServerEndpoints(Lists.newArrayList()).apiServerNames(Lists.newArrayList());
+        builder.taskManagerEndpoints(Lists.newArrayList());
         builder.fedbPath(testPath+"/openmldb-ns-1/bin/openmldb");
         FEDBInfo fedbInfo = builder.build();
         for(int i=1;i<=tablet;i++) {
@@ -118,6 +121,10 @@ public class FEDBDeploy {
                 apiserver_port = deployApiserver(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
+        }
+        for(int i=1;i<=1;i++) {
+            int task_manager_port = deployTaskManager(testPath,ip,i,zk_point);
+            fedbInfo.getTaskManagerEndpoints().add(ip+":"+task_manager_port);
         }
         log.info("openmldb-info:"+fedbInfo);
         return fedbInfo;
@@ -309,6 +316,48 @@ public class FEDBDeploy {
             e.printStackTrace();
         }
         throw new RuntimeException("apiserver部署失败");
+    }
+    
+    
+    public String deploySpark(String testPath){
+        try {
+            ExecutorUtil.run("wget -P "+testPath+" -q "+ FedbDeployConfig.getSparkUrl(version));
+            String tarName = ExecutorUtil.run("ls "+ testPath +" | grep spark").get(0);
+            ExecutorUtil.run("tar -zxvf " + testPath + "/"+tarName+" -C "+testPath);
+            String sparkHome = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
+            String sparkPath = testPath+"/"+sparkHome;
+            return sparkPath;
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        throw new RuntimeException("spark 部署失败");
+    }
+
+    public int deployTaskManager(String testPath, String ip, int index, String zk_endpoint){
+        try {
+            String sparkHome = deploySpark(testPath);
+            int port = LinuxUtil.getNoUsedPort();
+            String task_manager_name = "/openmldb-task_manager-"+index;
+            List<String> commands = Lists.newArrayList(
+                    "cp -r " + testPath + "/" + fedbName + " " + testPath + task_manager_name,
+                    "sed -i 's#server.host=.*#server.host=" + ip + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's#server.port=.*#server.port=" + port + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's@zookeeper.root_path=.*@zookeeper.root_path=/openmldb@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's@spark.master=.*@spark.master=" + sparkMaster + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's@spark.home=.*@zspark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties"
+            );
+            commands.forEach(ExecutorUtil::run);
+            ExecutorUtil.run("nohup sh "+testPath+task_manager_name+"/taskmanager/bin/taskmanager.sh > "+testPath+task_manager_name+"/task_manager.log 2>&1 &");
+            boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
+            if(used){
+                log.info("task manager部署成功，port："+port);
+                return port;
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        throw new RuntimeException("task manager部署失败");
     }
 
     public FEDBInfo deployStandalone(String testPath, String ip){
