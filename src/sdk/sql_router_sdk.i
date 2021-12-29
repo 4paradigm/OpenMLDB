@@ -24,6 +24,10 @@
 #ifdef SWIGJAVA
 %include various.i
 %apply char *BYTE { char *string_buffer_var_name };
+
+// Enable protobuf interfaces
+%include "swig_library/java/protobuf.i"
+%protobuf(openmldb::nameserver::TableInfo, com._4paradigm.openmldb.proto.NS.TableInfo);
 #endif
 
 %shared_ptr(hybridse::sdk::ResultSet);

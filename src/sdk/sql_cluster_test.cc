@@ -23,7 +23,6 @@
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
-#include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"

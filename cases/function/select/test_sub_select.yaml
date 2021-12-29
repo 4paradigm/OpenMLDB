@@ -177,7 +177,7 @@ cases:
     id: 7
     desc: window样本表和副表都作子查询
     sqlDialect: ["HybridSQL"]
-    mode: rtidb-batch-unsupport, python-unsupport, cluster-unsupport,cli-unsupport
+    mode: python-unsupport, cluster-unsupport,cli-unsupport
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
@@ -258,7 +258,7 @@ cases:
   -
     id: 9
     desc: 特征拼接
-    mode: rtidb-batch-unsupport, offline-unsupport, python-unsupport,cli-unsupport
+    mode: offline-unsupport, python-unsupport,cli-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -

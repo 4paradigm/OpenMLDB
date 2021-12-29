@@ -85,9 +85,10 @@ class FileOptionsParser {
             return {base::kSQLCmdRunError, "ERROR: node is nullptr"};
         }
         if (node->GetDataType() != option_type) {
-            return {openmldb::base::kSQLCmdRunError, "ERROR: wrong type " + hybridse::node::DataTypeName(node->GetDataType()) +
-                                                         " for option " + option_name + ", it should be " +
-                                                         hybridse::node::DataTypeName(option_type)};
+            return {openmldb::base::kSQLCmdRunError, "ERROR: wrong type " +
+                hybridse::node::DataTypeName(node->GetDataType()) +
+                " for option " + option_name + ", it should be " +
+                hybridse::node::DataTypeName(option_type)};
         }
         if (!f(node)) {
             return {base::kSQLCmdRunError, "ERROR: parse option " + option_name + " failed"};

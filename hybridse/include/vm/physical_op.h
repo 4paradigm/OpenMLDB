@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "node/plan_node.h"
 #include "passes/expression/expr_pass.h"
 #include "vm/catalog.h"
@@ -55,6 +56,8 @@ enum PhysicalOpType {
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
     kPhysicalOpLoadData,
+    kPhysicalOpDelete,
+    kPhysicalOpSelectInto,
 };
 
 enum PhysicalSchemaType { kSchemaTypeTable, kSchemaTypeRow, kSchemaTypeGroup };
@@ -98,8 +101,12 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "INDEX_SEEK";
         case kPhysicalOpLoadData:
             return "LOAD_DATA";
+        case kPhysicalOpDelete:
+            return "DELETE";
+        case kPhysicalOpSelectInto:
+            return "SELECT_INTO";
         default:
-            return "UNKNOW";
+            return "UNKNOWN";
     }
 }
 
@@ -559,6 +566,9 @@ class PhysicalDataProviderNode : public PhysicalOpNode {
 
     static PhysicalDataProviderNode *CastFrom(PhysicalOpNode *node);
     const std::string &GetName() const;
+    const std::string& GetDb() const {
+        return table_handler_->GetDatabase();
+    }
     const DataProviderType provider_type_;
     const std::shared_ptr<TableHandler> table_handler_;
 };
@@ -1607,11 +1617,58 @@ class PhysicalDistinctNode : public PhysicalUnaryNode {
     virtual ~PhysicalDistinctNode() {}
 };
 
+class PhysicalSelectIntoNode : public PhysicalUnaryNode {
+ public:
+    PhysicalSelectIntoNode(PhysicalOpNode *node, const std::string &query_str, const std::string &out_file,
+                           std::shared_ptr<node::OptionsMap> options, std::shared_ptr<node::OptionsMap> config_options)
+        : PhysicalUnaryNode(node, kPhysicalOpSelectInto, false),
+          query_str_(query_str),
+          out_file_(out_file),
+          options_(std::move(options)),
+          config_options_(std::move(config_options)) {}
+    ~PhysicalSelectIntoNode() override = default;
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status InitSchema(PhysicalPlanContext *) override;
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+    static PhysicalSelectIntoNode *CastFrom(PhysicalOpNode *node);
+
+    const std::string &QueryStr() const { return query_str_; }
+    const std::string &OutFile() const { return out_file_; }
+
+    // avoid to use map<A, B*>, the B* will result in python swig errors,
+    //     e.g. no member named 'type_name' in 'swig::traits<B>'
+    // vector<pair<>> is too complex, and will get a class in the package root dir.
+    const hybridse::node::ConstNode *GetOption(const std::string &option) const {
+        if (!options_) {
+            return nullptr;
+        }
+        auto it = options_->find(option);
+        return it == options_->end() ? nullptr : it->second;
+    }
+    const hybridse::node::ConstNode *GetConfigOption(const std::string &option) const {
+        if (!config_options_) {
+            return nullptr;
+        }
+        auto it = config_options_->find(option);
+        return it == config_options_->end() ? nullptr : it->second;
+    }
+
+    std::string query_str_, out_file_;
+    std::shared_ptr<node::OptionsMap> options_;
+    std::shared_ptr<node::OptionsMap> config_options_;
+};
+
 class PhysicalLoadDataNode : public PhysicalOpNode {
  public:
     PhysicalLoadDataNode(const std::string &file, const std::string &db, const std::string &table,
-                         std::shared_ptr<node::OptionsMap> options)
-        : PhysicalOpNode(kPhysicalOpLoadData, false), file_(file), db_(db), table_(table), options_(std::move(options)) {}
+                         std::shared_ptr<node::OptionsMap> options, std::shared_ptr<node::OptionsMap> config_options)
+        : PhysicalOpNode(kPhysicalOpLoadData, false),
+          file_(file),
+          db_(db),
+          table_(table),
+          options_(std::move(options)),
+          config_options_(std::move(config_options)) {}
     ~PhysicalLoadDataNode() override = default;
     void Print(std::ostream &output, const std::string &tab) const override;
     base::Status InitSchema(PhysicalPlanContext *) override;
@@ -1622,7 +1679,8 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
     const std::string &File() const { return file_; }
     const std::string &Db() const { return db_; }
     const std::string &Table() const { return table_; }
-    // avoid to use map<A, B*>, the B* will result in python swig errors, e.g. no member named 'type_name' in 'swig::traits<B>'
+    // avoid to use map<A, B*>, the B* will result in python swig errors,
+    //     e.g. no member named 'type_name' in 'swig::traits<B>'
     // vector<pair<>> is too complex, and will get a class in the package root dir.
     const hybridse::node::ConstNode *GetOption(const std::string &option) const {
         if (!options_) {
@@ -1636,8 +1694,32 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
     std::string db_;
     std::string table_;
     std::shared_ptr<node::OptionsMap> options_;
+    std::shared_ptr<node::OptionsMap> config_options_;
 };
 
+// there may more delete variants, don't mark it final
+// the delete node support only 'delete job' statement currently
+class PhysicalDeleteNode : public PhysicalOpNode {
+ public:
+    PhysicalDeleteNode(node::DeleteTarget target, const std::string& job_id)
+        : PhysicalOpNode(kPhysicalOpDelete, false), target_(target), job_id_(job_id) {}
+    ~PhysicalDeleteNode() {}
+
+    const node::DeleteTarget GetTarget() const { return target_; }
+    const std::string& GetJobId() const { return job_id_; }
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status InitSchema(PhysicalPlanContext *) override {
+        return base::Status::OK();
+    }
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override {
+        return base::Status::OK();
+    }
+ private:
+    const node::DeleteTarget target_;
+    const std::string job_id_;
+};
 /**
  * Initialize expression replacer with schema change.
  */

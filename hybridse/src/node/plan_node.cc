@@ -181,8 +181,6 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kCreatePlan";
         case kPlanTypeInsert:
             return "kInsertPlan";
-        case kPlanTypeScan:
-            return std::string("kScanPlan");
         case kPlanTypeLimit:
             return std::string("kLimitPlan");
         case kPlanTypeFilter:
@@ -225,6 +223,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeCreateSp";
         case kPlanTypeSet:
             return "kPlanTypeSet";
+        case kPlanTypeDelete:
+            return "kPlanTypeDelete";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -390,9 +390,9 @@ void ProjectPlanNode::Print(std::ostream &output,
                             const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintValue(output, org_tab + "\t", table_, "table", false);
+    PrintValue(output, org_tab + INDENT, table_, "table", false);
     output << "\n";
-    PrintPlanVector(output, org_tab + "\t", project_list_vec_,
+    PrintPlanVector(output, org_tab + INDENT, project_list_vec_,
                     "project_list_vec", true);
     output << "\n";
     PrintChildren(output, org_tab);
@@ -483,7 +483,7 @@ void TablePlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintValue(output, org_tab + "\t", GetPathString(), is_primary_ ? "primary_table" : "table", true);
+    PrintValue(output, org_tab + INDENT, GetPathString(), is_primary_ ? "primary_table" : "table", true);
 }
 bool TablePlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
@@ -648,6 +648,10 @@ void UnionPlanNode::Print(std::ostream &output,
     output << "\n";
     std::string tab = org_tab + INDENT;
     PrintValue(output, tab, is_all ? "ALL" : "DISTINCT", "union_type", false);
+    if (config_options_ != nullptr) {
+        output << "\n";
+        PrintValue(output, tab, config_options_.get(), "config_options", false);
+    }
     output << "\n";
     PrintChildren(output, org_tab);
 }
@@ -668,7 +672,11 @@ bool UnionPlanNode::Equals(const PlanNode *node) const {
 }
 void QueryPlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
-    PlanNode::Print(output, org_tab);
+    hybridse::node::UnaryPlanNode::Print(output, org_tab);
+    if (config_options_ != nullptr) {
+        output << "\n";
+        PrintValue(output, org_tab + INDENT, config_options_.get(), "config_options", false);
+    }
     output << "\n";
     PrintPlanNode(output, org_tab + INDENT, children_[0], "", true);
 }
@@ -716,7 +724,9 @@ void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) c
     output << "\n";
     PrintValue(output, tab, Table(), "table", false);
     output << "\n";
-    PrintValue(output, tab, *Options().get(), "options", true);
+    PrintValue(output, tab, Options().get(), "options", false);
+    output << "\n";
+    PrintValue(output, tab, ConfigOptions().get(), "config_options", true);
 }
 
 void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) const {
@@ -725,18 +735,38 @@ void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) con
     output << "\n";
     PrintValue(output, new_tab, OutFile(), "out_file", false);
     output << "\n";
-    PrintSqlNode(output, new_tab, Query(), "query", false);
+    output << new_tab << "+- query:\n";
+    Query()->Print(output, new_tab + OR_INDENT);
     output << "\n";
-    PrintValue(output, new_tab, *Options().get(), "options", true);
+    PrintValue(output, new_tab, Options().get(), "options", false);
+    output << "\n";
+    PrintValue(output, new_tab, ConfigOptions().get(), "config_options", true);
 }
 
 void SetPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
+    PrintValue(output, tab, node::VariableScopeName(Scope()), "scope", false);
+    output << "\n";
     PrintValue(output, tab, Key(), "key", false);
     output << "\n";
     PrintSqlNode(output, tab, Value(), "value", true);
 }
+
+bool DeletePlanNode::Equals(const PlanNode *that) const {
+    return LeafPlanNode::Equals(that) && type_ == that->type_ &&
+           GetTarget() == dynamic_cast<const DeletePlanNode *>(that)->GetTarget() &&
+           GetJobId() == dynamic_cast<const DeletePlanNode *>(that)->GetJobId();
+}
+void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
+    PlanNode::Print(output, tab);
+    const std::string next_tab = tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, next_tab, DeleteTargetString(target_), "target", false);
+    output << "\n";
+    PrintValue(output, next_tab, GetJobId(), "job_id", true);
+}
+
 }  // namespace node
 }  // namespace hybridse

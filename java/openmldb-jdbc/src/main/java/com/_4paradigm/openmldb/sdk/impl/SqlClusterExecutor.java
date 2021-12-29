@@ -33,6 +33,7 @@ import com._4paradigm.openmldb.VectorString;
 import com._4paradigm.openmldb.common.LibraryLoader;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
+import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Common;
 import com._4paradigm.openmldb.sdk.Schema;
@@ -43,6 +44,7 @@ import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -50,15 +52,24 @@ import java.util.List;
 import java.util.Map;
 
 public class SqlClusterExecutor implements SqlExecutor {
+    private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
+
     static {
-        String libname = "sql_jsdk";
-        LibraryLoader.loadLibrary(libname);
+        initJavaSdkLibrary();
     }
 
-    private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
+    private static boolean initialized = false;
     private SQLRouter sqlRouter;
 
+    public static void initJavaSdkLibrary() {
+        if (!initialized) {
+            LibraryLoader.loadLibrary("sql_jsdk");
+            initialized = true;
+        }
+    }
+
     public SqlClusterExecutor(SdkOption option) throws SqlException {
+
         SQLRouterOptions sqlOpt = new SQLRouterOptions();
         sqlOpt.setSession_timeout(option.getSessionTimeout());
         sqlOpt.setZk_cluster(option.getZkCluster());
@@ -70,6 +81,21 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
         }
+    }
+
+    public static String findSdkLibraryPath() throws UnsatisfiedLinkError {
+        String libraryPath = "sql_jsdk";
+        String osName = System.getProperty("os.name").toLowerCase();
+        if (osName.equals("mac os x")) {
+            libraryPath = "lib" + libraryPath + ".dylib";
+        } else if (osName.contains("linux")) {
+            libraryPath = "lib" + libraryPath + ".so";
+        }
+        URL resource = LibraryLoader.class.getClassLoader().getResource(libraryPath);
+        if (resource == null) {
+            throw new UnsatisfiedLinkError(String.format("Fail to load library %s", libraryPath));
+        }
+        return resource.getPath();
     }
 
     @Override
@@ -345,4 +371,39 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
     }
 
+    public List<String> showDatabases() {
+        List<String> databases = new ArrayList<>();
+
+        Status status = new Status();
+        VectorString dbs = new VectorString();
+        boolean ok = sqlRouter.ShowDB(dbs, status);
+        if (!ok) {
+            logger.error("showDatabases fail: {}", status.getMsg());
+        } else {
+            databases.addAll(dbs);
+        }
+
+        status.delete();
+        dbs.delete();
+        return databases;
+    }
+
+    public List<String> getTableNames(String db) {
+        VectorString names = sqlRouter.GetTableNames(db);
+        List<String> tableNames = new ArrayList<>(names);
+        names.delete();
+        return tableNames;
+    }
+
+    public NS.TableInfo getTableInfo(String db, String table) {
+        return sqlRouter.GetTableInfo(db, table);
+    }
+
+    public boolean updateOfflineTableInfo(NS.TableInfo info) {
+        return sqlRouter.UpdateOfflineTableInfo(info);
+    }
+
+    public boolean refreshCatalog() {
+        return sqlRouter.RefreshCatalog();
+    }
 }

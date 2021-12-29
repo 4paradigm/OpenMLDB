@@ -91,14 +91,6 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(sqlcase::InitCases("cases/plan/group_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_SUITE_P(
-    SqlHavingPlan, TransformTest,
-    testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
-
-INSTANTIATE_TEST_SUITE_P(
-    SqlOrderPlan, TransformTest,
-    testing::ValuesIn(sqlcase::InitCases("cases/plan/order_query.yaml", FILTERS)));
-
-INSTANTIATE_TEST_SUITE_P(
     SqlJoinPlan, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
@@ -297,7 +289,7 @@ TEST_P(TransformTest, TransformPhysicalPlanEnableWindowParalled) {
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
     auto parameter_types = sql_case.ExtractParameterTypes();
-    BatchModeTransformer transform(&manager, "db", catalog, &parameter_types, m.get(), lib, false, false, false, true);
+    BatchModeTransformer transform(&manager, "db", catalog, &parameter_types, m.get(), lib, false, false, true);
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
@@ -376,7 +368,7 @@ void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog,
         }
         case kRequestMode: {
             transform.reset(new RequestModeTransformer(&manager, "db",
-                                                       catalog, nullptr, m.get(), lib, {}, false, false, false, false));
+                                                       catalog, nullptr, m.get(), lib, {}, false, false, false));
             break;
         }
         default: {
@@ -391,21 +383,6 @@ void PhysicalPlanFailCheck(const std::shared_ptr<Catalog>& catalog,
     status = transform->TransformPhysicalPlan(plan_trees, &physical_plan);
     EXPECT_EQ(err_code, status.code) << status;
     EXPECT_EQ(err_msg.c_str(), status.msg);
-}
-
-TEST_F(TransformTest, RequestModeUnsupportLoadData){
-    hybridse::type::Database db;
-    db.set_name("db");
-
-    hybridse::type::TableDef table_def;
-    BuildTableDef(table_def);
-    AddTable(db, table_def);
-
-    auto catalog = BuildSimpleCatalog(db);
-
-    const std::string sql = R"sql(LOAD DATA INFILE 'a.csv' INTO TABLE t1 OPTIONS(foo='bar', num=1);)sql";
-
-    PhysicalPlanFailCheck(catalog, sql, kRequestMode, common::kPlanError, "Non-support LoadData in request mode");
 }
 
 // physical plan transform will fail if the partition key of a window is not in the supported type list
@@ -1467,6 +1444,56 @@ TEST_P(SimpleCataLogTransformPassOptimizedTest, PassOptimizedTest) {
     simple_catalog->AddDatabase(db);
     auto in_out = GetParam();
     PhysicalPlanCheck(simple_catalog, in_out.first, in_out.second);
+}
+
+TEST_F(TransformTest, DeleteStmt) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    PhysicalPlanCheck(catalog, "delete job 12", R"r(DELETE(target=JOB, job_id=12))r");
+}
+
+TEST_F(TransformTest, GetDatabaseName) {
+    hybridse::type::Database db;
+    db.set_name("db1");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_catalog("db1");
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    auto sql = "select col0 from t1;";
+
+    ::hybridse::node::NodeManager manager;
+    ::hybridse::node::PlanNodeList plan_trees;
+    ::hybridse::base::Status status;
+    plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &manager, status);
+    ASSERT_EQ(common::kOk, status.code);
+
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_op_generator", *ctx);
+    auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
+    BatchModeTransformer transform(&manager, "db1", catalog, nullptr, m.get(), lib);
+
+    transform.AddDefaultPasses();
+    PhysicalOpNode* physical_plan = nullptr;
+
+    status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
+    ASSERT_TRUE(status.isOK()) << status;
+
+    ASSERT_EQ(1, physical_plan->GetProducerCnt());
+    ASSERT_TRUE(physical_plan->GetProducer(0)->GetOpType() == kPhysicalOpDataProvider);
+    auto provider = dynamic_cast<const PhysicalTableProviderNode*>(physical_plan->GetProducer(0));
+    ASSERT_TRUE(provider != nullptr);
+    ASSERT_STREQ("db1", provider->GetDb().c_str());
 }
 
 }  // namespace vm

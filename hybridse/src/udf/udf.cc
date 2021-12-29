@@ -52,6 +52,12 @@ const time_t TZ_OFFSET = TZ * 3600000;
 const int MAX_ALLOC_SIZE = 2048;
 bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
+int32_t dayofyear(int64_t ts) {
+    time_t time = (ts + TZ_OFFSET) / 1000;
+    struct tm t;
+    gmtime_r(&time, &t);
+    return t.tm_yday + 1;
+}
 int32_t dayofmonth(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
@@ -88,6 +94,24 @@ int32_t year(int64_t ts) {
     return t.tm_year + 1900;
 }
 
+int32_t dayofyear(codec::Timestamp *ts) { return dayofyear(ts->ts_); }
+int32_t dayofyear(codec::Date *date) {
+    int32_t day, month, year;
+    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+        return 0;
+    }
+    try {
+        if (month <= 0 || month > 12) {
+            return 0;
+        } else if (day <= 0 || day > 31) {
+            return 0;
+        }
+        boost::gregorian::date d(year, month, day);
+        return d.day_of_year();
+    } catch (...) {
+        return 0;
+    }
+}
 int32_t dayofmonth(codec::Timestamp *ts) { return dayofmonth(ts->ts_); }
 int32_t weekofyear(codec::Timestamp *ts) { return weekofyear(ts->ts_); }
 int32_t month(codec::Timestamp *ts) { return month(ts->ts_); }
@@ -252,6 +276,137 @@ void timestamp_to_date(codec::Timestamp *timestamp,
 void date_to_string(codec::Date *date, hybridse::codec::StringRef *output) {
     date_format(date, "%Y-%m-%d", output);
 }
+
+/*
+* SQL style glob match, use
+* - percent sign (%) as zero or more characters
+* - underscore (_) as exactly one.
+* - backslash (\) as escape character by default
+*
+* rules:
+* - escape
+*   - exception(invalid escape character): if escape size >= 2
+*   - exception(invalid escape sequence)[TODO]:
+*     if <escape character> size = 1, and in pattern string, the follower character of <escape character>
+*     is not <escape character>, <underscore> or <precent>
+*   - empty string or null value means disable escape
+*
+* credit:
+*  Michael Cook, https://github.com/MichaelCook/glob_match/blob/master/glob_match.cpp
+*/
+template <typename EQUAL>
+bool like_internal(std::string_view name, std::string_view pattern, const char *escape, EQUAL &&equal) {
+    auto it = pattern.cbegin();
+    auto end = pattern.cend();
+    auto n_it = name.cbegin();
+    auto n_end = name.cend();
+
+    while (it != end) {
+        if (n_it == n_end) {
+            return false;
+        }
+
+        char c = *it;
+        if (escape != nullptr && c == *escape) {
+            // exact character match
+            if (std::next(it) == end) {
+                // the pattern is terminated with escape character, just return false
+                return false;
+            }
+            c = *std::next(it);
+            if (!equal(c, *n_it)) {
+                return false;
+            }
+
+            std::advance(it, 2);
+        } else {
+            switch (c) {
+                case '%': {
+                    std::advance(it, 1);
+                    for (auto back = n_end; back >= n_it; std::advance(back, -1)) {
+                        if (like_internal(std::string_view(back, std::distance(back, n_end)),
+                                                std::string_view(it, std::distance(it, end)),
+                                                escape, std::forward<EQUAL>(equal))) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                case '_': {
+                    break;
+                }
+                default: {
+                    if (!equal(c, *n_it)) {
+                        return false;
+                    }
+                    break;
+                }
+            }
+
+            std::advance(it, 1);
+        }
+
+        std::advance(n_it, 1);
+    }
+
+    return n_it == n_end;
+}
+
+/*
+* if escape is null or ref to empty string, disable escape feature
+*
+* nullable
+* - any of (name, pattern, escape) is null, return null
+*/
+template <typename EQUAL>
+void like_internal(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, EQUAL &&equal,
+                   bool *out, bool *is_null) {
+    if (name == nullptr || pattern == nullptr || escape == nullptr) {
+        out = nullptr;
+        *is_null = true;
+        return;
+    }
+    std::string_view name_view(name->data_, name->size_);
+    std::string_view pattern_view(pattern->data_, pattern->size_);
+
+    *is_null = false;
+    const char *esc = nullptr;
+    if (escape->size_ > 0) {
+        if (escape->size_ >= 2) {
+            DLOG(ERROR) << "data exception: invalid escape character '" << escape->ToString() << "'";
+            *out = false;
+            return;
+        }
+        esc = escape->data_;
+    }
+    *out = like_internal(name_view, pattern_view, esc, std::forward<EQUAL>(equal));
+}
+
+void like(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out,
+          bool *is_null) {
+    like_internal(
+        name, pattern, escape, [](char lhs, char rhs) { return lhs == rhs; }, out, is_null);
+}
+
+void like(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
+    static codec::StringRef default_esc(1, "\\");
+    like(name, pattern, &default_esc, out, is_null);
+}
+
+void ilike(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out, bool *is_null) {
+    like_internal(
+        name, pattern, escape,
+        [](char lhs, char rhs) {
+            return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+        },
+        out, is_null);
+}
+
+void ilike(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
+    static codec::StringRef default_esc(1, "\\");
+    ilike(name, pattern, &default_esc,  out, is_null);
+}
+
 void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {
     if (nullptr == str) {
         *out = false;

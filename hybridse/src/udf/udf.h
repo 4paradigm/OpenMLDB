@@ -203,6 +203,10 @@ int32_t month(hybridse::codec::Timestamp *ts);
 int32_t year(int64_t ts);
 int32_t year(hybridse::codec::Timestamp *ts);
 
+int32_t dayofyear(int64_t ts);
+int32_t dayofyear(hybridse::codec::Timestamp *ts);
+int32_t dayofyear(hybridse::codec::Date *ts);
+
 int32_t dayofmonth(int64_t ts);
 int32_t dayofmonth(hybridse::codec::Timestamp *ts);
 
@@ -233,6 +237,12 @@ void timestamp_to_date(codec::Timestamp *timestamp,
                        hybridse::codec::Date *output, bool *is_null);
 
 void date_to_string(codec::Date *date, hybridse::codec::StringRef *output);
+
+void like(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out, bool *is_null);
+void like(codec::StringRef *name, codec::StringRef *pattern, bool *out, bool *is_null);
+void ilike(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out, bool *is_null);
+void ilike(codec::StringRef *name, codec::StringRef *pattern, bool *out, bool *is_null);
+
 void date_to_timestamp(codec::Date *date, hybridse::codec::Timestamp *output,
                        bool *is_null);
 void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,

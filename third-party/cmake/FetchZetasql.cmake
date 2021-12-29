@@ -13,15 +13,23 @@
 # limitations under the License.
 
 set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
-set(ZETASQL_VERSION 0.2.2)
-set(ZETASQL_TAG 5cf55cee3d3480101e31fe5c242dbc24f6ec634e)
+set(ZETASQL_VERSION 0.2.6)
+set(ZETASQL_TAG 4b69a81ab5479477dc56b38c3237d830510592a9) # the commit hash for v0.2.6
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64.tar.gz")
-  set(ZETASQL_HASH e0f598a2bc676f5a443b71e30c494c94cfae71ef6154328742d4835021f3ae4c)
+  get_linux_lsb_release_information()
+  if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
+    set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz")
+    set(ZETASQL_HASH b9d8bbee405232f85fea47239300da1832b5b2b167bd41bb6fc201a95fb7d8fb)
+  elseif(LSB_RELEASE_ID_SHORT STREQUAL "ubuntu")
+    set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-ubuntu.tar.gz")
+    set(ZETASQL_HASH de7fe11ceef1b767cbd22c6cda571b8c19cb3305a74f9a97b77805a859147c56)
+  else()
+    message(FATAL_ERROR "no pre-compiled thirdparty for your operation system, try compile thirdparty from source with '-DBUILD_BUNDLED=ON'")
+  endif()
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz")
-  set(ZETASQL_HASH a0abc902c45ceaf8bcb6de375ae4dddd0682b9bdd7ff067025f5e21ef53f8393)
+  set(ZETASQL_HASH 765e31ef0293d47b99cbb94dad06e95430f19668e4c93e0ad8c8835df9b07b21)
 endif()
 
 

@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.batch
 import java.nio.ByteBuffer
 import com._4paradigm.hybridse.sdk.SerializableByteBuffer
 import com._4paradigm.hybridse.vm.PhysicalOpNode
+import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.utils.NodeIndexInfo
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -41,9 +42,17 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
   // Record the index info for all the physical node, key is physical node id, value is index info
   private val nodeIndexInfoMap = mutable.HashMap[Long, NodeIndexInfo]()
 
+  private var openmldbSession: OpenmldbSession = _
+
   def getTag: String = tag
 
   def getSparkSession: SparkSession = session
+
+  def setOpenmldbSession(openmldbSession: OpenmldbSession): Unit = {
+    this.openmldbSession = openmldbSession
+  }
+
+  def getOpenmldbSession: OpenmldbSession = openmldbSession
 
   def setModuleBuffer(buf: ByteBuffer): Unit = {
     moduleBuffer = new SerializableByteBuffer(buf)
@@ -74,7 +83,7 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
     if (!registeredTables.contains(dbName)) {
       return None
     }
-    registeredTables.get(dbName).get.get(tableName)
+    registeredTables(dbName).get(tableName)
   }
 
   def getDataFrame(tableName: String): Option[DataFrame] = {
@@ -85,16 +94,16 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
     planner.getSparkOutput(root, this)
   }
 
-  def getNodeIndexInfoMap(): mutable.HashMap[Long, NodeIndexInfo] = {
+  def getNodeIndexInfoMap: mutable.HashMap[Long, NodeIndexInfo] = {
     nodeIndexInfoMap
   }
 
   def hasIndexInfo(nodeId: Long): Boolean = {
-    !nodeIndexInfoMap.get(nodeId).isEmpty
+    nodeIndexInfoMap.contains(nodeId)
   }
 
   def getIndexInfo(nodeId: Long): NodeIndexInfo = {
-    nodeIndexInfoMap.get(nodeId).get
+    nodeIndexInfoMap(nodeId)
   }
 
   def putNodeIndexInfo(nodeId: Long, nodeIndexInfo: NodeIndexInfo): Unit = {
@@ -106,7 +115,7 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
   /**
    * Run sql with Spark SQL API.
    *
-   * @param sqlText
+   * @param sqlText the SQL script
    * @return
    */
   def sparksql(sqlText: String): DataFrame = {
@@ -120,7 +129,7 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
     val datasetClass = Class.forName("org.apache.spark.sql.Dataset")
     val datasetOfRowsMethod = datasetClass
       .getDeclaredMethod(s"ofRows", classOf[SparkSession], classOf[LogicalPlan], classOf[QueryPlanningTracker])
-    val outputDataset =  datasetOfRowsMethod.invoke(null, session, plan, tracker).asInstanceOf[Dataset[Row]]
+    val outputDataset = datasetOfRowsMethod.invoke(null, session, plan, tracker).asInstanceOf[Dataset[Row]]
     outputDataset
   }
 }

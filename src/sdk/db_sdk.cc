@@ -30,7 +30,6 @@
 
 #include "base/hash.h"
 #include "base/strings.h"
-#include "catalog/schema_adapter.h"
 #include "glog/logging.h"
 
 namespace openmldb::sdk {
@@ -111,6 +110,20 @@ bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint)
     if (!GetRealEndpointFromZk(*endpoint, real_endpoint)) {
         return false;
     }
+    return true;
+}
+
+bool ClusterSDK::GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) {
+    std::string real_path = options_.zk_path + "/taskmanager/leader";
+
+    if (!zk_client_->GetNodeValue(real_path, *endpoint)) {
+        LOG(WARNING) << "fail to get zk value with path " << real_path;
+        return false;
+    }
+    DLOG(INFO) << "leader path " << real_path << " with value " << endpoint;
+
+    // TODO: Maybe allow users to set backup TaskManager endpoint
+    *real_endpoint = "";
     return true;
 }
 
@@ -278,6 +291,20 @@ std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> DBSDK::GetTables
         tables.push_back(iit->second);
     }
     return tables;
+}
+
+std::vector<std::string> DBSDK::GetTableNames(const std::string& db) {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+    std::vector<std::string> tableNames;
+    auto it = table_to_tablets_.find(db);
+    if (it == table_to_tablets_.end()) {
+        return tableNames;
+    }
+    auto iit = it->second.begin();
+    for (; iit != it->second.end(); ++iit) {
+        tableNames.push_back(iit->second->name());
+    }
+    return tableNames;
 }
 
 bool ClusterSDK::GetRealEndpointFromZk(const std::string& endpoint, std::string* real_endpoint) {
