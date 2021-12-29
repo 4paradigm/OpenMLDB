@@ -725,11 +725,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     return true;
 }
 
-std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
-    const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
-    const std::shared_ptr<SQLRequestRow>& row) {
-    return GetTabletClient(db, sql, engine_mode, row, std::shared_ptr<openmldb::sdk::SQLRequestRow>());
-}
+
 /**
  * Get SQL cache
  * @param db
