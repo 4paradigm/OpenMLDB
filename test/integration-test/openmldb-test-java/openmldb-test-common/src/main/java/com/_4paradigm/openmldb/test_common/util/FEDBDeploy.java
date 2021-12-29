@@ -345,7 +345,7 @@ public class FEDBDeploy {
                     "sed -i 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
                     "sed -i 's@zookeeper.root_path=.*@zookeeper.root_path=/openmldb@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
                     "sed -i 's@spark.master=.*@spark.master=" + sparkMaster + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's@spark.home=.*@zspark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties"
+                    "sed -i 's@spark.home=.*@spark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties"
             );
             commands.forEach(ExecutorUtil::run);
             ExecutorUtil.run("nohup sh "+testPath+task_manager_name+"/taskmanager/bin/taskmanager.sh > "+testPath+task_manager_name+"/task_manager.log 2>&1 &");
