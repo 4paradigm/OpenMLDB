@@ -156,6 +156,7 @@ class OpenmldbSession {
     }
 
     var sql: String = sqlText
+
     val planner = new SparkPlanner(this, config)
     this.planner = planner
     val df = planner.plan(sql, registeredTables).getDf()
