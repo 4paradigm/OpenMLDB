@@ -338,14 +338,16 @@ public class FEDBDeploy {
             String sparkHome = deploySpark(testPath);
             int port = LinuxUtil.getNoUsedPort();
             String task_manager_name = "/openmldb-task_manager-"+index;
+            ExecutorUtil.run("cp -r " + testPath + "/" + fedbName + " " + testPath + task_manager_name);
+            String batchJobName = ExecutorUtil.run("ls "+testPath+task_manager_name+"/batchjob | grep openmldb-batchjob | grep -v javadoc | grep -v sources").get(0);
             List<String> commands = Lists.newArrayList(
-                    "cp -r " + testPath + "/" + fedbName + " " + testPath + task_manager_name,
                     "sed -i 's#server.host=.*#server.host=" + ip + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
                     "sed -i 's#server.port=.*#server.port=" + port + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
                     "sed -i 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
                     "sed -i 's@zookeeper.root_path=.*@zookeeper.root_path=/openmldb@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
                     "sed -i 's@spark.master=.*@spark.master=" + sparkMaster + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's@spark.home=.*@spark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties"
+                    "sed -i 's@spark.home=.*@spark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
+                    "sed -i 's@batchjob.jar.path=.*@batchjob.jar.path=" + testPath + task_manager_name + "/batchjob/" + batchJobName + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties"
             );
             commands.forEach(ExecutorUtil::run);
             ExecutorUtil.run("nohup sh "+testPath+task_manager_name+"/taskmanager/bin/taskmanager.sh > "+testPath+task_manager_name+"/task_manager.log 2>&1 &");
