@@ -432,6 +432,61 @@ base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
     return base::Status::OK();
 }
 /**
+ * Validate cluster online training op with given plan tree
+ * - Support Ops:
+ *   - TABLE
+ *   - SELECT
+ *   - WHERE
+ * - UnSupport Ops::
+ *   - CREATE TABLE
+ *   - INSERT TABLE
+ *   - GROUP BY
+ *   - HAVING clause
+ *   - FILTER
+ *   - WINDOW
+ *   - AGG
+ *   -
+ * @param node
+ * @return
+ */
+base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
+    CHECK_TRUE(nullptr != node, common::kNullInputPointer,
+               "Fail to validate request table: input node is "
+               "null")
+    switch (node->type_) {
+        case node::kPlanTypeTable: {
+            break;
+        }
+        case node::kPlanTypeProject: {
+            auto project_node = dynamic_cast<node::ProjectPlanNode*>(node);
+
+            for (auto &each : project_node->project_list_vec_) {
+                node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(each);
+                CHECK_TRUE(nullptr == project_list->GetW(), common::kPlanError,
+                           "Non-support WINDOW Op in cluster online training");
+                CHECK_TRUE(nullptr == project_list->GetHavingCondition(), common::kPlanError,
+                           "Non-support HAVING Op in cluster online training")
+                CHECK_TRUE(!project_list->HasAggProject(), common::kPlanError,
+                           "Aggregate over a table cannot be supported in cluster online training")
+            }
+        }
+        case node::kPlanTypeLoadData:
+        case node::kPlanTypeRename:
+        case node::kPlanTypeLimit:
+        case node::kPlanTypeQuery: {
+            for (auto *child : node->GetChildren()) {
+                CHECK_STATUS(ValidateClusterOnlineTrainingOp(child));
+            }
+            break;
+        }
+        default: {
+            FAIL_STATUS(common::kPlanError, "Non-support ", node->GetTypeName(), " Op in cluster online training");
+            break;
+        }
+    }
+    return base::Status::OK();
+}
+/**
  * Validate there is one and only one request table existing in the Plan tree
  * @param node
  * @param outputs
@@ -509,6 +564,10 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                     }
 
                     CHECK_STATUS(ValidateOnlineServingOp(query_plan));
+                } else {
+                    if (is_cluster_optimized_) {
+                        CHECK_STATUS(ValidateClusterOnlineTrainingOp(query_plan));
+                    }
                 }
 
                 plan_trees.push_back(query_plan);

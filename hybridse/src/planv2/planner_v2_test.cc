@@ -99,7 +99,7 @@ TEST_P(PlannerV2Test, PlannerSucessTest) {
         LOG(INFO) << "statement : " << *tree << std::endl;
     }
 }
-TEST_P(PlannerV2Test, PlannerClusterOptTest) {
+TEST_P(PlannerV2Test, PlannerClusterOnlineServingOptTest) {
     auto sql_case = GetParam();
     std::string sqlstr = sql_case.sql_str();
     std::cout << sqlstr << std::endl;
@@ -1824,22 +1824,20 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
       EXPECT_EQ(msg, status.msg) << status;
     };
 
-
-    // Rule #1
     expect_converted(
         R"(
         SELECT SUM(COL2) over w1 from t1 GROUP BY COL1
         WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
         )",
         common::kPlanError, "Can't support group clause and window clause simultaneously");
-    // Rule #2
+
     expect_converted(
         R"(
         SELECT SUM(COL2) over w1 from t1 HAVING SUM(COL2) >0
         WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
         )",
         common::kPlanError, "Can't support having clause and window clause simultaneously");
-    // Rule #3
+
     expect_converted(
         R"(
         SELECT SUM(COL2) over w1,  SUM(COL3) from t1
@@ -1864,31 +1862,81 @@ TEST_F(PlannerV2ErrorTest, NonSupportOnlineServingSQL) {
     };
 
 
+//    expect_converted(
+//        R"(
+//        SELECT COL1 from t1 GROUP BY COL1;
+//        )",
+//        common::kPlanError, "Non-support kGroupPlan Op in online serving");
+//
+//    expect_converted(
+//        R"(
+//        SELECT SUM(COL2) from t1 HAVING SUM(COL2) >0;
+//        )",
+//        common::kPlanError, "Non-support HAVING Op in online serving");
+//    expect_converted(
+//        R"(
+//        SELECT SUM(COL2) from t1;
+//        )",
+//        common::kPlanError, "Aggregate over a table cannot be supported in online serving");
+//    expect_converted(
+//        R"(
+//        SELECT COL1 FROM t1 order by COL1;
+//        )",
+//        common::kPlanError, "Non-support kSortPlan Op in online serving");
+
+    expect_converted(
+        R"(LOAD DATA INFILE 'a.csv' INTO TABLE t1 OPTIONS(foo='bar', num=1);)",
+        common::kPlanError, "Non-support LOAD DATA Op in online serving");
+}
+
+
+TEST_F(PlannerV2ErrorTest, NonSupportClusterOnlinexTrainingSQL) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string &sql, const int code, const std::string &msg) {
+      base::Status status;
+      node::PlanNodeList plan_trees;
+      // Generate SQL logical plan for online serving
+      ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true, true)) << status;
+      ASSERT_EQ(code, status.code) << status;
+      ASSERT_EQ(msg, status.msg) << status;
+      std::cout << msg << std::endl;
+    };
+
+
     expect_converted(
         R"(
         SELECT COL1 from t1 GROUP BY COL1;
         )",
-        common::kPlanError, "Non-support kGroupPlan Op in online serving");
+        common::kPlanError, "Non-support kGroupPlan Op in cluster online training");
 
     expect_converted(
         R"(
         SELECT SUM(COL2) from t1 HAVING SUM(COL2) >0;
         )",
-        common::kPlanError, "Non-support HAVING Op in online serving");
+        common::kPlanError, "Non-support HAVING Op in cluster online training");
     expect_converted(
         R"(
         SELECT SUM(COL2) from t1;
         )",
-        common::kPlanError, "Aggregate over a table cannot be supported in online serving");
+        common::kPlanError, "Aggregate over a table cannot be supported in cluster online training");
     expect_converted(
         R"(
         SELECT COL1 FROM t1 order by COL1;
         )",
-        common::kPlanError, "Non-support kSortPlan Op in online serving");
+        common::kPlanError, "Non-support kSortPlan Op in cluster online training");
 
     expect_converted(
-        R"(LOAD DATA INFILE 'a.csv' INTO TABLE t1 OPTIONS(foo='bar', num=1);)",
-        common::kPlanError, "Non-support LOAD DATA Op in online serving");
+        R"(
+        SELECT SUM(COL2) over w1 FROM t1
+        WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
+        )",
+        common::kPlanError, "Non-support WINDOW Op in cluster online training");
+
+    expect_converted(
+        R"(
+        SELECT COL1 FROM t1 LAST JOIN t2 order by COL5 on t1.COL1 = t2.COL1;
+        )",
+        common::kPlanError, "Non-support kJoinPlan Op in cluster online training");
 }
 }  // namespace plan
 }  // namespace hybridse
