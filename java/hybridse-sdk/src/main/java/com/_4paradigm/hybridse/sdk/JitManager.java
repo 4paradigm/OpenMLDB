@@ -52,7 +52,9 @@ public class JitManager {
             if (jit == null) {
                 throw new RuntimeException("Fail to create native jit");
             }
-            jit.Init();
+            if(!jit.Init()){
+                throw new RuntimeException("Fail to init jit");
+            }
             HybridSeJitWrapper.InitJitSymbols(jit);
             jits.put(tag, jit);
         }
