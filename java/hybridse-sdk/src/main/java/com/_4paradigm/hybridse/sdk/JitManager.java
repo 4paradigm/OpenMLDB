@@ -129,6 +129,7 @@ public class JitManager {
     public static synchronized void initJitModule(String tag, ByteBuffer moduleBuffer) {
         // ensure worker native
         HybridSeLibrary.initCore();
+        Engine.InitializeGlobalLLVM();
 
         // ensure worker side module
         if (!JitManager.hasModule(tag)) {
@@ -146,6 +147,7 @@ public class JitManager {
     public static synchronized void initJitModule(String tag, ByteBuffer moduleBuffer, String jsdkCoreLibraryPath) {
         // ensure worker native
         HybridSeLibrary.initCore(jsdkCoreLibraryPath);
+        Engine.InitializeGlobalLLVM();
 
         // ensure worker side module
         if (!JitManager.hasModule(tag)) {
