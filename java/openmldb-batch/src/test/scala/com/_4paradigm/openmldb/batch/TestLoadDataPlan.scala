@@ -150,10 +150,11 @@ class TestLoadDataPlan extends SparkTestSuite {
   test("Test LoadData to Openmldb Online Storage") {
     openmldbSession.getOpenmldbBatchConfig.loadDataMode = "online"
     val testFile = "file://" + getClass.getResource("/load_data_test_src").getPath
+    println("simple load to online storage")
     openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
       "options(mode='append', header=false);")
 
-    // online storage doesn't support soft copy
+    println("online storage doesn't support soft copy")
     try {
       openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
         "options(mode='append', header=false, deep_copy=false);")
@@ -161,7 +162,7 @@ class TestLoadDataPlan extends SparkTestSuite {
     } catch {
       case e: IllegalArgumentException => println("It should catch this: " + e.toString)
     }
-    // online storage doesn't support overwrite mode
+    println("online storage doesn't support overwrite mode")
     try {
       openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
         "options(mode='overwrite', header=false);")

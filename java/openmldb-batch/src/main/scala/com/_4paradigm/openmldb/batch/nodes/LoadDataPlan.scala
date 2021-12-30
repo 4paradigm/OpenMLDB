@@ -133,6 +133,7 @@ object LoadDataPlan {
       val df = spark.read.options(options).format(format).schema(struct).load(inputFile)
       if (logger.isDebugEnabled()) {
         logger.debug("read dataframe count: {}", df.count())
+        df.show(10)
       }
       df.write.options(writeOptions).format("openmldb").mode(mode).save()
     } else {
@@ -188,6 +189,7 @@ object LoadDataPlan {
         val df = spark.read.options(options).format(format).load(inputFile)
         if (logger.isDebugEnabled()) {
           logger.debug("read dataframe count: {}", df.count())
+          df.show(10)
         }
         df.write.mode(mode).format(writeFormat).options(writeOptions.toMap).save(writePath)
         val offlineBuilder = OfflineTableInfo.newBuilder().setPath(writePath).setFormat(writeFormat).setDeepCopy(true)
