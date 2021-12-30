@@ -40,6 +40,7 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKTestInsert, SQLSDKTest,
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestMultiRowsInsert, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/dml/multi_insert.yaml")));
 
+
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestConstsSelect, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/const_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKHavingQuery, SQLSDKQueryTest,
@@ -153,6 +154,7 @@ INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestFZFunction, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/test_feature_zero_function.yaml")));
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SQLSDKBatchRequestQueryTest);
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestBatchRequest, SQLSDKBatchRequestQueryTest,
     testing::ValuesIn(SQLSDKBatchRequestQueryTest::InitCases("/cases/function/test_batch_request.yaml")));
@@ -161,6 +163,16 @@ INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestIndexOptimized, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/test_index_optimized.yaml")));
 
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SQLSDKClusterOnlineBatchQueryTest);
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestConstsSelect, SQLSDKClusterOnlineBatchQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/const_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestSelectSample, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/select/test_select_sample.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+SQLSDKTestClusterBatch, SQLSDKClusterOnlineBatchQueryTest,
+testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/cluster/test_cluster_batch.yaml")));
 }  // namespace sdk
 }  // namespace openmldb
 #endif  // SRC_SDK_SQL_SDK_TEST_H_

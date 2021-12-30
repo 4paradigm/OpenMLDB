@@ -196,6 +196,7 @@ class NodeManager {
     BetweenExpr *MakeBetweenExpr(ExprNode *expr, ExprNode *left,
                                  ExprNode *right, const bool is_not_between);
     InExpr *MakeInExpr(ExprNode* lhs, ExprNode* in_list, bool is_not);
+    EscapedExpr *MakeEscapeExpr(ExprNode* pattern, ExprNode* escape);
     BinaryExpr *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
                                    FnOperator op);
     UnaryExpr *MakeUnaryExprNode(ExprNode *left, FnOperator op);
@@ -259,15 +260,23 @@ class NodeManager {
     DeployPlanNode *MakeDeployPlanNode(const std::string& name, const SqlNode* stmt,
                                        const std::string& stmt_str, bool if_not_exist);
 
-    LoadDataNode *MakeLoadDataNode(const std::string &file_name, const std::string& db, const std::string &table,
-                                   const std::shared_ptr<OptionsMap> options);
-    LoadDataPlanNode* MakeLoadDataPlanNode(const std::string& file_name, const std::string &db,
-                                           const std::string& table, const std::shared_ptr<OptionsMap> options);
-    SelectIntoNode* MakeSelectIntoNode(const QueryNode* query, const std::string& query_str,
-                                       const std::string& out_file, const std::shared_ptr<OptionsMap> options);
-    SelectIntoPlanNode* MakeSelectIntoPlanNode(const QueryNode* query, const std::string& query_str,
-                                               const std::string& out_file, const std::shared_ptr<OptionsMap> options);
-    SetNode* MakeSetNode(const std::string& key, const ConstNode* value);
+    // create a delete job node
+    DeleteNode* MakeDeleteNode(DeleteTarget target, std::string_view job_id);
+    DeletePlanNode* MakeDeletePlanNode(const DeleteNode* node);
+
+    LoadDataNode *MakeLoadDataNode(const std::string &file_name, const std::string &db, const std::string &table,
+                                   const std::shared_ptr<OptionsMap> options,
+                                   const std::shared_ptr<OptionsMap> config_option);
+    LoadDataPlanNode *MakeLoadDataPlanNode(const std::string &file_name, const std::string &db,
+                                           const std::string &table, const std::shared_ptr<OptionsMap> options,
+                                           const std::shared_ptr<OptionsMap> config_option);
+    SelectIntoNode *MakeSelectIntoNode(const QueryNode *query, const std::string &query_str,
+                                       const std::string &out_file, const std::shared_ptr<OptionsMap> options,
+                                       const std::shared_ptr<OptionsMap> config_option);
+    SelectIntoPlanNode *MakeSelectIntoPlanNode(PlanNode *query, const std::string &query_str,
+                                               const std::string &out_file, const std::shared_ptr<OptionsMap> options,
+                                               const std::shared_ptr<OptionsMap> config_option);
+    SetNode* MakeSetNode(const node::VariableScope scope, const std::string& key, const ConstNode* value);
     SetPlanNode* MakeSetPlanNode(const SetNode* set_node);
     // Make NodeList
     SqlNode *MakeExplainNode(const QueryNode *query,

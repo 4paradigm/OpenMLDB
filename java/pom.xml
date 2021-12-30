@@ -7,13 +7,15 @@
     <artifactId>openmldb-parent</artifactId>
     <packaging>pom</packaging>
     <name>openmldb</name>
-    <!-- Use the version from different profile -->
     <version>0.4.0-SNAPSHOT</version>
     <modules>
+        <module>hybridse-sdk</module>
+        <module>hybridse-native</module>
+        <module>hybridse-proto</module>
         <module>openmldb-jdbc</module>
         <module>openmldb-native</module>
         <module>openmldb-common</module>
-        <module>openmldb-nearline-tablet</module>
+
         <module>openmldb-batchjob</module>
         <module>openmldb-taskmanager</module>
         <module>openmldb-batch</module>
@@ -21,7 +23,7 @@
     </modules>
     <description>OpenMLDB is an open-source database that is designed and optimized to enable data integrity and efficiency for machine learning driven applications. In addition to 10x faster ML application landing experience, OpenMLDB provides unified computing and storage engines to reduce the complexity and cost of development and operation.</description>
     <url>https://github.com/4paradigm/OpenMLDB</url>
-     <licenses>
+    <licenses>
         <license>
             <name>The Apache Software License, Version 2.0</name>
             <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
@@ -57,192 +59,16 @@
         <java.version>1.8</java.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <!-- Set the default project version -->
-        <default.project.version>0.1.5-pre-3</default.project.version>
-        <default.hybridse.common.version>0.1.0-SNAPSHOT</default.hybridse.common.version>
+
+        <!-- the version for hybridse-native & openmldb-native
+             override this to publish a variant release e.g macos variant
+             checkout java/prepare_release.sh how to prepare a variant release -->
+        <variant.native.version>0.4.0-SNAPSHOT</variant.native.version>
+
+        <plugin.violationSeverity>error</plugin.violationSeverity>
+        <spotless-maven-plugin.version>2.9.0</spotless-maven-plugin.version>
+        <eclipse.jdt.version>4.13.0</eclipse.jdt.version>
     </properties>
-
-
-    <profiles>
-        <profile>
-            <id>default</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <projectVersionFromProfile>${default.project.version}</projectVersionFromProfile>
-                <hybridseCommonVersionFromProfile>${default.hybridse.common.version}</hybridseCommonVersionFromProfile>
-            </properties>
-        </profile>
-        <profile>
-            <id>macos</id>
-            <properties>
-                <projectVersionFromProfile>${default.project.version}-macos</projectVersionFromProfile>
-                <hybridseCommonVersionFromProfile>${default.hybridse.common.version}-macos</hybridseCommonVersionFromProfile>
-            </properties>
-        </profile>
-        <profile>
-            <id>allinone</id>
-            <properties>
-                <projectVersionFromProfile>${default.project.version}-allinone</projectVersionFromProfile>
-                <hybridseCommonVersionFromProfile>${default.hybridse.common.version}-allinone</hybridseCommonVersionFromProfile>
-            </properties>
-        </profile>
-
-        <!-- Build with Spark 2.3.0
-        <profile>
-            <id>spark2.3.0</id>
-            <properties>
-                <spark.version>2.3.0</spark.version>
-                <scala.version>2.11.8</scala.version>
-                <scala.binary.version>2.11</scala.binary.version>
-            </properties>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-        </profile>
-        -->
-
-        <!-- Build with Spark 2.4.5
-        <profile>
-            <id>spark2.4.5</id>
-            <properties>
-                <spark.version>2.4.5</spark.version>
-                <scala.version>2.12.10</scala.version>
-                <scala.binary.version>2.12</scala.binary.version>
-            </properties>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-        </profile>
-        -->
-        <profile>
-            <id>run_shade</id>
-            <build>
-                <!-- <plugins> -->
-                    <!--                    <plugin>-->
-                    <!--                        <groupId>org.apache.maven.plugins</groupId>-->
-                    <!--                        <artifactId>maven-shade-plugin</artifactId>-->
-                    <!--                        <version>2.4.1</version>-->
-                    <!--                        <executions>-->
-                    <!--                            <execution>-->
-                    <!--                                <phase>package</phase>-->
-                    <!--                                <goals>-->
-                    <!--                                    <goal>shade</goal>-->
-                    <!--                                </goals>-->
-                    <!--                                <configuration>-->
-                    <!--                                    <shadedArtifactAttached>true</shadedArtifactAttached>-->
-                    <!--                                    <shadedClassifierName>with-dependencies</shadedClassifierName>-->
-                    <!--                                    &lt;!&ndash; <minimizeJar>true</minimizeJar> &ndash;&gt;-->
-                    <!--                                    &lt;!&ndash; Exclude the jars which are in Spark libraries &ndash;&gt;-->
-                    <!--                                    <artifactSet>-->
-                    <!--                                        <excludes>-->
-                    <!--                                            <exclude>org.apache.spark:*</exclude>-->
-                    <!--                                            <exclude>org.scala-lang:*</exclude>-->
-                    <!--                                            <exclude>org.scala-lang.modules:*</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-annotations</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-auth</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-client</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-common</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-hdfs</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-mapreduce-client-app</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-mapreduce-client-common</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-mapreduce-client-core</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-mapreduce-client-jobclient</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-mapreduce-client-shuffle</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-yarn-api</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-yarn-client</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-yarn-common</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-yarn-server-common</exclude>-->
-                    <!--                                            <exclude>org.apache.hadoop:hadoop-yarn-server-web-proxy</exclude>-->
-                    <!--                                            <exclude>org.apache.parquet:parquet-column</exclude>-->
-                    <!--                                            <exclude>org.apache.parquet:parquet-common</exclude>-->
-                    <!--                                            <exclude>org.apache.parquet:parquet-encoding</exclude>-->
-                    <!--                                            <exclude>org.apache.parquet:parquet-format</exclude>-->
-                    <!--                                            <exclude>org.apache.parquet:parquet-hadoop</exclude>-->
-                    <!--                                            <exclude>org.apache.parquet:parquet-jackson</exclude>-->
-                    <!--                                            <exclude>net.sf.py4j:py4j</exclude>-->
-                    <!--                                            <exclude>com.google.protobuf:protobuf-java</exclude>-->
-                    <!--                                            <exclude>org.antlr:antlr4-runtime</exclude>-->
-                    <!--                                            <exclude>log4j:log4j</exclude>-->
-                    <!--                                            <exclude>org.slf4j:slf4j-api</exclude>-->
-                    <!--                                            <exclude>org.slf4j:slf4j-log4j12</exclude>-->
-                    <!--                                            <exclude>org.apache.logging.log4j:log4j-core</exclude>-->
-                    <!--                                            <exclude>org.apache.logging.log4j:log4j-slf4j-impl</exclude>-->
-                    <!--                                            <exclude>org.apache.avro:avro-ipc</exclude>-->
-                    <!--                                            <exclude>org.apache.avro:avro-mapred</exclude>-->
-                    <!--                                            <exclude>org.apache.commons:commons-compress</exclude>-->
-                    <!--                                            <exclude>org.apache.commons:commons-math3</exclude>-->
-                    <!--                                            <exclude>org.apache.commons:commons-lang3</exclude>-->
-                    <!--                                            <exclude>org.apache.commons:commons-crypto</exclude>-->
-                    <!--                                            <exclude>com.google.code.gson:gson</exclude>-->
-                    <!--                                            <exclude>com.google.guava:guava</exclude>-->
-                    <!--                                            <exclude>org.glassfish.hk2:hk2-api</exclude>-->
-                    <!--                                            <exclude>org.glassfish.hk2:hk2-locator</exclude>-->
-                    <!--                                            <exclude>org.glassfish.hk2:hk2-utils</exclude>-->
-                    <!--                                            <exclude>org.codehaus.jackson:jackson-core-asl</exclude>-->
-                    <!--                                            <exclude>org.codehaus.jackson:jackson-mapper-asl</exclude>-->
-                    <!--                                            <exclude>org.codehaus.jackson:jackson-xc</exclude>-->
-                    <!--                                            <exclude>com.fasterxml.jackson.core:jackson-databind</exclude>-->
-                    <!--                                            <exclude>com.fasterxml.jackson.core:jackson-core</exclude>-->
-                    <!--                                            <exclude>com.fasterxml.jackson.core:jackson-annotations</exclude>-->
-                    <!--                                            <exclude>org.slf4j:jcl-over-slf4j</exclude>-->
-                    <!--                                            <exclude>org.glassfish.jersey.core:jersey-client</exclude>-->
-                    <!--                                            <exclude>org.glassfish.jersey.core:jersey-common</exclude>-->
-                    <!--                                            <exclude>org.glassfish.jersey.bundles.repackaged:jersey-guava</exclude>-->
-                    <!--                                            <exclude>org.glassfish.jersey.core:jersey-server</exclude>-->
-                    <!--                                            <exclude>org.glassfish.jersey.media:jersey-media-jaxb</exclude>-->
-                    <!--                                            <exclude>org.glassfish.jersey.containers:jersey-container-servlet</exclude>-->
-                    <!--                                            <exclude>org.mortbay.jetty:jetty-util</exclude>-->
-                    <!--                                            <exclude>joda-time:joda-time</exclude>-->
-                    <!--                                            <exclude>org.json4s:json4s-jackson_2.11</exclude>-->
-                    <!--                                            <exclude>org.json4s:json4s-core_2.11</exclude>-->
-                    <!--                                            <exclude>org.gson4s:json4s-ast_2.11</exclude>-->
-                    <!--                                            <exclude>com.esotericsoftware:kryo-shaded</exclude>-->
-                    <!--                                            <exclude>org.fusesource.leveldbjni:leveldbjni-all</exclude>-->
-                    <!--                                            <exclude>org.lz4:lz4-java</exclude>-->
-                    <!--                                            <exclude>io.dropwizard.metrics:metrics-core</exclude>-->
-                    <!--                                            <exclude>io.dropwizard.metrics:metrics-jvm</exclude>-->
-                    <!--                                            <exclude>io.dropwizard.metrics:metrics-json</exclude>-->
-                    <!--                                            <exclude>io.dropwizard.metrics:metrics-graphite</exclude>-->
-                    <!--                                            <exclude>com.esotericsoftware:minlog:jar</exclude>-->
-                    <!--                                            <exclude>io.netty:netty</exclude>-->
-                    <!--                                            <exclude>io.netty:netty-all</exclude>-->
-                    <!--                                            <exclude>org.objenesis:objenesis</exclude>-->
-                    <!--                                            <exclude>org.apache.orc:orc-core</exclude>-->
-                    <!--                                            <exclude>org.apache.orc:orc-mapreduce</exclude>-->
-                    <!--                                            <exclude>oro:oro</exclude>-->
-                    <!--                                            <exclude>org.xerial.snappy:snappy-java</exclude>-->
-                    <!--                                            <exclude>javax.xml.stream:stax-api</exclude>-->
-                    <!--                                            <exclude>com.clearspring.analytics:stream</exclude>-->
-                    <!--                                            <exclude>com.univocity:univocity-parsers</exclude>-->
-                    <!--                                            <exclude>javax.validation:validation-api</exclude>-->
-                    <!--                                            <exclude>org.apache.xbean:xbean-asm5-shaded</exclude>-->
-                    <!--                                            <exclude>xmlenc:xmlenc</exclude>-->
-                    <!--                                            <exclude>org.tukaani:xz</exclude>-->
-                    <!--                                            <exclude>com.github.luben:zstd-jni</exclude>-->
-                    <!--                                            <exclude>org.apache.zookeeper:zookeeper</exclude>-->
-                    <!--                                        </excludes>-->
-                    <!--                                    </artifactSet>-->
-                    <!--                                    <filters>-->
-                    <!--                                        <filter>-->
-                    <!--                                            <artifact>*:*</artifact>-->
-                    <!--                                            <excludes>-->
-                    <!--                                                <exclude>META-INF/*.SF</exclude>-->
-                    <!--                                                <exclude>META-INF/*.DSA</exclude>-->
-                    <!--                                                <exclude>META-INF/*.RSA</exclude>-->
-                    <!--                                            </excludes>-->
-                    <!--                                        </filter>-->
-                    <!--                                    </filters>-->
-                    <!--                                </configuration>-->
-                    <!--                            </execution>-->
-                    <!--                        </executions>-->
-                    <!--                    </plugin>-->
-                <!-- </plugins> -->
-            </build>
-        </profile>
-    </profiles>
-
 
     <dependencies>
         <dependency>
@@ -251,7 +77,6 @@
             <version>3.0.0</version>
             <scope>test</scope>
         </dependency>
-
    </dependencies>
 
     <build>
@@ -270,45 +95,152 @@
             </resource>
         </resources>
         <plugins>
+            <!-- those plugins are enable for all submodules -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.7.0</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                </configuration>
             </plugin>
             <plugin>
+                <!-- runs unit tests -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.20.1</version>
-                <configuration>
-                    <reuseForks>false</reuseForks>
-                    <forkCount>1</forkCount>
-                    <argLine>-Xmx4G</argLine>
-                    <forkMode>always</forkMode>
-                </configuration>
             </plugin>
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>versions-maven-plugin</artifactId>
-                <version>2.2</version>
-            </plugin>
-            <plugin>
+                <!-- scala's code coverage plugin -->
                 <groupId>org.scoverage</groupId>
                 <artifactId>scoverage-maven-plugin</artifactId>
-                <version>1.4.0-M5</version>
-                <executions>
-                    <execution>
-                        <id>scoverage-report</id>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
+            <plugin>
+                <!-- bundle git info into jar -->
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <!-- deploy to sonatype -->
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <!-- create jar with source code -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <!-- create jar with javadoc -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <!-- sign those jars(compiled, source, javadoc) with gpg -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <!-- code coverage reports generator for Java projects -->
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+
+        </plugins>
+
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>3.1.2</version>
+                    <configuration>
+                        <configLocation>google_checks.xml</configLocation>
+                        <consoleOutput>false</consoleOutput>
+                        <failsOnError>true</failsOnError>
+                        <failOnViolation>true</failOnViolation>
+                        <violationSeverity>${plugin.violationSeverity}</violationSeverity>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.puppycrawl.tools</groupId>
+                            <artifactId>checkstyle</artifactId>
+                            <version>8.41</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            <plugin>
+              <groupId>org.jacoco</groupId>
+              <artifactId>jacoco-maven-plugin</artifactId>
+              <version>0.8.7</version>
+              <executions>
+                <execution>
+                  <goals>
+                    <goal>prepare-agent</goal>
+                  </goals>
+                </execution>
+                <execution>
+                  <id>report</id>
+                  <phase>prepare-package</phase>
+                  <goals>
+                    <goal>report</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless-maven-plugin.version}</version>
+                    <!-- spotless:check is bound to verfiy phase by default -->
+                    <configuration>
+                        <java>
+                            <eclipse>
+                                <version>${eclipse.jdt.version}</version>
+                                <file>eclipse-formatter.xml</file> <!-- optional -->
+                            </eclipse>
+                            <!-- <licenseHeader> <!&#45;&#45; specify either content or file, but not both &#45;&#45;> -->
+                            <!--     <content>/* Copyright $YEAR 4Paradigm */</content>  <!&#45;&#45; or <file>${basedir}/license&#45;header</file> &#45;&#45;> -->
+                            <!--     <delimiter> -->
+                            <!--         Licensed -->
+                            <!--     </delimiter>  <!&#45;&#45; content until first occurrence of the delimiter regex will be interpreted as header section &#45;&#45;> -->
+                            <!-- </licenseHeader> -->
+                        </java>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.7.0</version>
+                    <configuration>
+                        <source>1.8</source>
+                        <target>1.8</target>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.0.0-M5</version>
+                    <configuration>
+                      <reuseForks>false</reuseForks>
+                      <forkCount>1</forkCount>
+                      <argLine>@{argLine} -Xmx4G</argLine>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>versions-maven-plugin</artifactId>
+                    <version>2.8.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.scoverage</groupId>
+                    <artifactId>scoverage-maven-plugin</artifactId>
+                    <version>1.4.0-M5</version>
+                    <executions>
+                        <execution>
+                            <id>scoverage-report</id>
+                            <phase>prepare-package</phase>
+                            <goals>
+                                <goal>report</goal> <!-- or integration-check -->
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
@@ -370,132 +302,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-              <groupId>pl.project13.maven</groupId>
-              <artifactId>git-commit-id-plugin</artifactId>
-            </plugin>
-            <!--
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>2.4.1</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <transformers>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>${mainClass}</mainClass>
-                                </transformer>
-                            </transformers>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                            <relocations>
-                                <relocation>
-                                    <pattern>com.google.protobuf</pattern>
-                                    <shadedPattern>shade.protobuf</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>com.google.common</pattern>
-                                    <shadedPattern>shade.guava</shadedPattern>
-                                </relocation>
-                            </relocations>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            -->
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-site-plugin</artifactId>
-                <version>3.9.1</version>
-            </plugin>
-            <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-            </plugin>
-
-        </plugins>
-
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-checkstyle-plugin</artifactId>
-                    <version>3.1.2</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>com.puppycrawl.tools</groupId>
-                            <artifactId>checkstyle</artifactId>
-                            <version>8.41</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.7.0</version>
-                    <configuration>
-                        <source>1.7</source>
-                        <target>1.7</target>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>2.20.1</version>
-                    <configuration>
-                        <reuseForks>false</reuseForks>
-                        <forkCount>1</forkCount>
-                        <argLine>-Xmx4G</argLine>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.codehaus.mojo</groupId>
-                    <artifactId>versions-maven-plugin</artifactId>
-                    <version>2.2</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.scoverage</groupId>
-                    <artifactId>scoverage-maven-plugin</artifactId>
-                    <version>1.4.0-M5</version>
-                    <executions>
-                        <execution>
-                            <id>scoverage-report</id>
-                            <phase>prepare-package</phase>
-                            <goals>
-                                <goal>report</goal> <!-- or integration-check -->
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
                 <!-- For deploying in central repository -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -584,13 +390,17 @@
                     <injectAllReactorProjects>true</injectAllReactorProjects>
                   </configuration>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>3.9.1</version>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>
 
     <reporting>
         <plugins>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>

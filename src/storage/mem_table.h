@@ -42,7 +42,7 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
  public:
     MemTableWindowIterator(TimeEntries::Iterator* it, ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
                            uint64_t expire_cnt)
-        : it_(it), record_idx_(0), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
+        : it_(it), record_idx_(1), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
 
     ~MemTableWindowIterator() { delete it_; }
 
@@ -156,16 +156,9 @@ class MemTable : public Table {
 
     bool Init() override;
 
-    // Put a record
     bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) override;
 
-    // Put a multi dimension record
     bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) override;
-
-    // Note the method should incr record_cnt_ manually
-    bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
-
-    bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimensions, const std::string& value) override;
 
     bool GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response);
 

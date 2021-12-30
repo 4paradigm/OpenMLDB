@@ -106,7 +106,15 @@ class SQLSDKBatchRequestQueryTest : public SQLSDKQueryTest {
     static void RunBatchRequestProcedureModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                                 std::shared_ptr<SQLRouter> router, bool is_asyn);
 };
+class SQLSDKClusterOnlineBatchQueryTest : public SQLSDKTest {
+ public:
+    SQLSDKClusterOnlineBatchQueryTest() : SQLSDKTest() {}
+    ~SQLSDKClusterOnlineBatchQueryTest() {}
+    static void DistributeRunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
+                                          std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints,
+                                          int partition_num = 8);
 
+};
 }  // namespace sdk
 }  // namespace openmldb
 

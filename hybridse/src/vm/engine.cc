@@ -48,6 +48,7 @@ EngineOptions::EngineOptions()
       batch_request_optimized_(true),
       enable_expr_optimize_(true),
       enable_batch_window_parallelization_(false),
+      enable_window_column_pruning_(false),
       max_sql_cache_size_(50),
       enable_spark_unsaferow_format_(false) {
     // TODO(chendihao): Pass the parameter to avoid global gflag
@@ -207,8 +208,7 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
 
 bool Engine::Get(const std::string& sql, const std::string& db, RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
-    std::shared_ptr<CompileInfo> cached_info = GetCacheLocked(db, sql, session.engine_mode(),
-        session.GetPerformanceSensitive());
+    std::shared_ptr<CompileInfo> cached_info = GetCacheLocked(db, sql, session.engine_mode());
     if (cached_info && IsCompatibleCache(session, cached_info, status)) {
         session.SetCompileInfo(cached_info);
         return true;
@@ -225,10 +225,10 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     sql_context.sql = sql;
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();
-    sql_context.is_performance_sensitive = session.GetPerformanceSensitive();
     sql_context.is_cluster_optimized = options_.IsClusterOptimzied();
     sql_context.is_batch_request_optimized = options_.IsBatchRequestOptimized();
     sql_context.enable_batch_window_parallelization = options_.IsEnableBatchWindowParallelization();
+    sql_context.enable_window_column_pruning = options_.IsEnableWindowColumnPruning();
     sql_context.enable_expr_optimize = options_.IsEnableExprOptimize();
     sql_context.jit_options = options_.jit_options();
     if (session.engine_mode() == kBatchMode) {
@@ -252,7 +252,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
         }
     }
 
-    SetCacheLocked(db, sql, session.engine_mode(), session.GetPerformanceSensitive(), info);
+    SetCacheLocked(db, sql, session.engine_mode(), info);
     session.SetCompileInfo(info);
     if (session.is_debug_) {
         std::ostringstream plan_oss;
@@ -269,8 +269,9 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
 
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
                      const codec::Schema& parameter_schema,
-                     const std::set<size_t>& common_column_indices, ExplainOutput* explain_output,
-                     base::Status* status, bool performance_sensitive) {
+                     const std::set<size_t>& common_column_indices,
+                     ExplainOutput* explain_output,
+                     base::Status* status) {
     if (explain_output == NULL || status == NULL) {
         LOG(WARNING) << "input args is invalid";
         return false;
@@ -288,7 +289,6 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     ctx.sql = sql;
     ctx.db = db;
     ctx.parameter_types = parameter_schema;
-    ctx.is_performance_sensitive = performance_sensitive;
     ctx.is_cluster_optimized = options_.IsClusterOptimzied();
     ctx.is_batch_request_optimized = !common_column_indices.empty();
     ctx.batch_request_info.common_column_indices = common_column_indices;
@@ -304,6 +304,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     explain_output->ir = ctx.ir;
     explain_output->request_name = ctx.request_name;
     explain_output->request_db_name = ctx.request_db_name;
+    explain_output->limit_cnt = ctx.limit_cnt;
     if (engine_mode == ::hybridse::vm::kBatchMode) {
         std::set<std::pair<std::string, std::string>> tables;
         base::Status status;
@@ -339,32 +340,27 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     return true;
 }
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
-                     ExplainOutput* explain_output, base::Status* status, bool performance_sensitive) {
+                     ExplainOutput* explain_output, base::Status* status) {
     const codec::Schema empty_schema;
-    return Explain(sql, db, engine_mode, empty_schema, {}, explain_output, status, performance_sensitive);
+    return Explain(sql, db, engine_mode, empty_schema, {}, explain_output, status);
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
-                     const codec::Schema& parameter_schema, ExplainOutput* explain_output, base::Status* status,
-                     bool performance_sensitive) {
-    return Explain(sql, db, engine_mode, parameter_schema, {}, explain_output, status, performance_sensitive);
+                     const codec::Schema& parameter_schema, ExplainOutput* explain_output, base::Status* status) {
+    return Explain(sql, db, engine_mode, parameter_schema, {}, explain_output, status);
 }
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
              const std::set<size_t>& common_column_indices,
-             ExplainOutput* explain_output, base::Status* status,
-             bool performance_sensitive) {
+             ExplainOutput* explain_output, base::Status* status) {
     const codec::Schema empty_schema;
-    return Explain(sql, db, engine_mode, empty_schema, common_column_indices, explain_output, status,
-        performance_sensitive);
+    return Explain(sql, db, engine_mode, empty_schema, common_column_indices, explain_output, status);
 }
 
 void Engine::ClearCacheLocked(const std::string& db) {
     std::lock_guard<base::SpinMutex> lock(mu_);
     for (auto& cache : lru_cache_) {
         auto& mode_cache = cache.second;
-        for (auto iter = mode_cache.begin(); iter != mode_cache.end(); iter++) {
-            mode_cache[iter->first].erase(db);
-        }
+        mode_cache.erase(db);
     }
 }
 
@@ -373,7 +369,7 @@ EngineOptions Engine::GetEngineOptions() {
 }
 
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db, const std::string& sql,
-                                                    EngineMode engine_mode, bool performance_sensitive) {
+                                                    EngineMode engine_mode) {
     std::lock_guard<base::SpinMutex> lock(mu_);
     // Check mode
     auto mode_iter = lru_cache_.find(engine_mode);
@@ -381,17 +377,9 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db, const
         return nullptr;
     }
     auto& mode_cache = mode_iter->second;
-
-    // Check performance_sensitive
-    auto performance_sensitive_iter = mode_cache.find(performance_sensitive);
-    if (performance_sensitive_iter == mode_cache.end()) {
-        return nullptr;
-    }
-    auto& performance_sensitive_cache = performance_sensitive_iter->second;
-
     // Check db
-    auto db_iter = performance_sensitive_cache.find(db);
-    if (db_iter == performance_sensitive_cache.end()) {
+    auto db_iter = mode_cache.find(db);
+    if (db_iter == mode_cache.end()) {
         return nullptr;
     }
     auto& lru = db_iter->second;
@@ -406,15 +394,14 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db, const
 }
 
 bool Engine::SetCacheLocked(const std::string& db, const std::string& sql, EngineMode engine_mode,
-                            bool performance_sensitive, std::shared_ptr<CompileInfo> info) {
+                            std::shared_ptr<CompileInfo> info) {
     std::lock_guard<base::SpinMutex> lock(mu_);
 
     auto& mode_cache = lru_cache_[engine_mode];
-    auto& performance_sensitive_cache = mode_cache[performance_sensitive];
     using BoostLRU = boost::compute::detail::lru_cache<std::string, std::shared_ptr<CompileInfo>>;
-    std::map<std::string, BoostLRU>::iterator db_iter = performance_sensitive_cache.find(db);
-    if (db_iter == performance_sensitive_cache.end()) {
-        db_iter = performance_sensitive_cache.insert(db_iter, {db, BoostLRU(options_.GetMaxSqlCacheSize())});
+    std::map<std::string, BoostLRU>::iterator db_iter = mode_cache.find(db);
+    if (db_iter == mode_cache.end()) {
+        db_iter = mode_cache.insert(db_iter, {db, BoostLRU(options_.GetMaxSqlCacheSize())});
     }
     auto& lru = db_iter->second;
     auto value = lru.get(sql);

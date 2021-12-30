@@ -23,7 +23,6 @@
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
-#include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"
@@ -394,6 +393,7 @@ static bool IsBatchSupportMode(const std::string& mode) {
     }
     return true;
 }
+
 TEST_P(SQLSDKQueryTest, SqlSdkDistributeBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
@@ -618,6 +618,17 @@ TEST_F(SQLClusterTest, GetTableSchema) {
 
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
+}
+TEST_P(SQLSDKClusterOnlineBatchQueryTest, SqlSdkDistributeBatchTest) {
+    auto sql_case = GetParam();
+    if (!IsBatchSupportMode(sql_case.mode())) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    DistributeRunBatchModeSDK(sql_case, router_, mc_->GetTbEndpoint());
+    LOG(INFO) << "Finish SqlSdkDistributeBatchTest: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
 }  // namespace sdk

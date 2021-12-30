@@ -463,3 +463,173 @@ cases:
       columns: ["col1:bool"]
       rows:
         - [true]
+
+  # LIKE Operator
+  - id: like_predicate_1
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+    sql: |
+      select col2 LIKE 'M%' as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+      rows:
+        - [true]
+  - id: like_predicate_2
+    desc: undercursor(_) match any one character
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+    sql: |
+      select col2 LIKE 'M_ke' as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+      rows:
+        - [true]
+  - id: like_predicate_3
+    desc: like is case sensitive
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+    sql: |
+      select col2 LIKE 'm_ke' as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+      rows:
+        - [false]
+  - id: like_predicate_4
+    desc: (%) and (_) together
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+    sql: |
+      select col2 LIKE 'M%_e' as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+      rows:
+        - [true]
+  - id: like_predicate_5
+    desc: like is exact match
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+    sql: |
+      select col2 LIKE 'Mik' as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+      rows:
+        - [false]
+  - id: like_predicate_6
+    desc: nullable1, MC:null -> null
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, null]
+    sql: |
+      select col2 LIKE 'Mike' as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+      rows:
+        - [null]
+  - id: like_predicate_7
+    desc: nullable2, PC:null -> null
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string", "col3:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, Mike, null]
+    sql: |
+      select col2 LIKE col3 as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+      rows:
+        - [null]
+  - id: like_predicate_8
+    desc: like escape, specify the default escape manully
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, Mike]
+          - [2, 1590115420001, Mi_e ]
+          - [3, 1590115420001, Mi&_e ]
+    sql: |
+      select col1, col2 LIKE 'Mi_e' ESCAPE '\\' as col2 from t1;
+    expect:
+      columns: ["col1:int", "col2:bool"]
+      order: col1
+      rows:
+        - [1, true]
+        - [2, true]
+        - [3, false]
+  - id: like_predicate_9
+    desc: like escape with &
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, Ace ]
+          - [2, 1590115420001, A_e ]
+          - [3, 1590115420001, A&_e ]
+    sql: |
+      select col1, col2 not LIKE 'A&_e' ESCAPE '&' as col2 from t1;
+    expect:
+      columns: ["col1:int", "col2:bool"]
+      order: col1
+      rows:
+        - [1, true]
+        - [2, false]
+        - [3, true]
+  - id: like_predicate_10
+    desc: empty escape disable escaping
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, A_e ]
+          - [2, 1590115420001, A&ke ]
+          - [3, 1590115420001, A&_e ]
+    sql: |
+      select col1, col2 LIKE 'A&_e' ESCAPE '' as col2 from t1;
+    expect:
+      order: col1
+      columns: ["col1:int", "col2:bool"]
+      rows:
+        - [1, false]
+        - [2, true]
+        - [3, true]
+  - id: like_predicate_11
+    desc: pattern refer to a column
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, Mi_e]
+    sql: |
+      select "Mike" LIKE col2 as col2 from t1;
+    expect:
+      columns: ["col2:bool"]
+      rows:
+        - [true]

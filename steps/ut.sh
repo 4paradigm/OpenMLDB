@@ -18,12 +18,16 @@
 # ut.sh
 #
 WORK_DIR=$(pwd)
+
+# on hybridsql 0.4.1 or later, 'THIRD_PARTY_SRC_DIR' is defined and is '/deps/src'
+THIRDSRC=${THIRD_PARTY_SRC_DIR:-thirdsrc}
+
 # shellcheck disable=SC2039
 ulimit -c unlimited
 test -d reports && rm -rf reports
 mkdir -p reports
-cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
-cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh start && cd "$WORK_DIR" || exit
+cp steps/zoo.cfg "$THIRDSRC/zookeeper-3.4.14/conf"
+cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh start && cd "$WORK_DIR" || exit
 sleep 5
 TMPFILE="code.tmp"
 echo 0 > $TMPFILE
@@ -58,6 +62,6 @@ fi
 code=$(cat $TMPFILE)
 echo "code result: $code"
 rm ${TMPFILE}
-cd thirdsrc/zookeeper-3.4.14 && ./bin/zkServer.sh stop
+cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop
 cd - || exit
 exit "${code}"

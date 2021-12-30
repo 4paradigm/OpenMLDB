@@ -26,6 +26,7 @@
 #include "base/strings.h"
 #include "codec/flat_array.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
@@ -52,8 +53,7 @@ inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
-void CreateBaseTable(::openmldb::storage::Table*& table,  // NOLINT
-                     const ::openmldb::type::TTLType& ttl_type, uint64_t ttl, uint64_t start_ts) {
+::openmldb::api::TableMeta GetTableMeta() {
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table");
     table_meta.set_tid(1);
@@ -61,35 +61,40 @@ void CreateBaseTable(::openmldb::storage::Table*& table,  // NOLINT
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-
+    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "price", ::openmldb::type::kBigInt);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "value", ::openmldb::type::kString);
+    return table_meta;
+}
 
+void CreateBaseTable(::openmldb::storage::Table*& table,  // NOLINT
+                     const ::openmldb::type::TTLType& ttl_type, uint64_t ttl, uint64_t start_ts) {
+    auto table_meta = GetTableMeta();
     SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ttl_type, ttl, ttl);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ttl_type, ttl, ttl);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "card", "ts1", ttl_type, ttl, ttl);
-
     table = new ::openmldb::storage::MemTable(table_meta);
     table->Init();
+    codec::SDKCodec codec(table_meta);
     for (int i = 0; i < 1000; i++) {
+        std::vector<std::string> row = {"card" + std::to_string(i % 100), "mcc" + std::to_string(i),
+            "13", std::to_string(start_ts + i), std::to_string(start_ts + i), "value" + std::to_string(i)};
         ::openmldb::api::PutRequest request;
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
-        dim->set_key("card" + std::to_string(i % 100));
+        dim->set_key(row[0]);
         dim = request.add_dimensions();
         dim->set_idx(1);
-        dim->set_key("mcc" + std::to_string(i));
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
-        ts->set_ts(start_ts + i);
-        ts = request.add_ts_dimensions();
-        ts->set_idx(1);
-        ts->set_ts(start_ts + i);
-        std::string value = "value" + std::to_string(i);
-        ASSERT_TRUE(table->Put(request.dimensions(), request.ts_dimensions(), value));
+        dim->set_key(row[0]);
+        dim->set_idx(2);
+        dim->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()));
     }
     return;
 }
@@ -105,7 +110,8 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts, uint64
     std::string value;
     uint64_t ts;
     int32_t code = 0;
-    ::openmldb::api::TableMeta meta;
+    ::openmldb::api::TableMeta meta = GetTableMeta();
+    ::openmldb::codec::SDKCodec sdk_codec(meta);
     std::map<int32_t, std::shared_ptr<Schema>> vers_schema = q_its->begin()->table->GetAllVersionSchema();
     ::openmldb::storage::TTLSt ttl(expired_ts, 0, ::openmldb::storage::kAbsoluteTime);
     ttl.abs_ttl = expired_ts;
@@ -120,9 +126,11 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts, uint64
         CombineIterator combine_it(*q_its, request.ts(), request.type(), ttl);
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value, &row);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 900 + base_ts);
-        ASSERT_EQ(value, "value900");
+        ASSERT_EQ(row[5], "value900");
     }
 
     // get the st kSubKeyLe
@@ -138,7 +146,9 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts, uint64
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 100 + base_ts);
-        ASSERT_EQ(value, "value100");
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value, &row);
+        ASSERT_EQ(row[5], "value100");
     }
 
     // get the st 900kSubKeyLe
@@ -154,7 +164,9 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts, uint64
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 900 + base_ts);
-        ASSERT_EQ(value, "value900");
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value, &row);
+        ASSERT_EQ(row[5], "value900");
     }
 
     // get the st 899kSubKeyLe
@@ -170,7 +182,9 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts, uint64
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 800 + base_ts);
-        ASSERT_EQ(value, "value800");
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value, &row);
+        ASSERT_EQ(row[5], "value800");
     }
 
     // get the st 800 kSubKeyLe
@@ -186,7 +200,9 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts, uint64
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 800 + base_ts);
-        ASSERT_EQ(value, "value800");
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value, &row);
+        ASSERT_EQ(row[5], "value800");
     }
 
     // get the st 800 kSubKeyLe
@@ -209,7 +225,8 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
     std::string value;
     uint64_t ts;
     int32_t code = 0;
-    ::openmldb::api::TableMeta meta;
+    ::openmldb::api::TableMeta meta = GetTableMeta();
+    ::openmldb::codec::SDKCodec sdk_codec(meta);
     std::map<int32_t, std::shared_ptr<Schema>> vers_schema = q_its->begin()->table->GetAllVersionSchema();
     ::openmldb::storage::TTLSt ttl(0, 10, ::openmldb::storage::kLatestTime);
     // get the st kSubKeyGt
@@ -225,7 +242,9 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ((int64_t)ts, 1900);
-        ASSERT_EQ(value, "value900");
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value, &row);
+        ASSERT_EQ(row[5], "value900");
     }
 
     // get the st == et
@@ -240,7 +259,9 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ((int64_t)ts, 1100);
-        ASSERT_EQ(value, "value100");
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value, &row);
+        ASSERT_EQ(row[5], "value100");
     }
 
     // get the st < et
@@ -281,7 +302,9 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ((signed)ts, 1200);
-        ASSERT_EQ(value, "value200");
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value, &row);
+        ASSERT_EQ(row[5], "value200");
     }
 }
 

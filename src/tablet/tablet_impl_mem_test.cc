@@ -26,6 +26,7 @@
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/heap-checker.h"
 #endif
+#include "test/util.h"
 
 DECLARE_string(db_root_path);
 
@@ -82,25 +83,26 @@ TEST_F(TabletImplMemTest, TestMem) {
     // put once
     {
         ::openmldb::api::PutRequest prequest;
-        prequest.set_pk("test1");
+        auto dim = prequest.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("test1");
         prequest.set_time(9527);
-        prequest.set_value("test2");
+        prequest.set_value(::openmldb::test::EncodeKV("test1", "test2"));
         prequest.set_tid(1);
         prequest.set_pid(1);
         ::openmldb::api::PutResponse presponse;
         tablet->Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
-        prequest.set_time(0);
-        tablet->Put(NULL, &prequest, &presponse, &closure);
-        ASSERT_EQ(114, presponse.code());
     }
     //
     {
         for (uint32_t i = 0; i < 100; i++) {
             ::openmldb::api::PutRequest prequest;
-            prequest.set_pk("test3");
+            auto dim = prequest.add_dimensions();
+            dim->set_idx(0);
+            dim->set_key("test3");
             prequest.set_time(i + 1);
-            prequest.set_value("test2");
+            prequest.set_value(::openmldb::test::EncodeKV("test3", "test2"));
             prequest.set_tid(1);
             prequest.set_pid(1);
             ::openmldb::api::PutResponse presponse;

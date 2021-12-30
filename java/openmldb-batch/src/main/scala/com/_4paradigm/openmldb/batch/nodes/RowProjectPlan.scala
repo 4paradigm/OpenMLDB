@@ -117,7 +117,7 @@ object RowProjectPlan {
         if (hybridseJsdkLibraryPath.equals("")) {
           JitManager.initJitModule(tag, buffer.getBuffer)
         } else {
-          //JitManager.initJitModule(tag, buffer.getBuffer, hybridseJsdkLibraryPath)
+          JitManager.initJitModule(tag, buffer.getBuffer, hybridseJsdkLibraryPath)
         }
 
         val jit = JitManager.getJit(tag)

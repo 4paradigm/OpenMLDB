@@ -53,6 +53,7 @@ class Planner {
     bool MergeWindows(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
                       std::vector<const node::WindowDefNode *> *windows);
 
+    static int GetPlanTreeLimitCount(node::PlanNode *node);
  protected:
     const bool is_batch_mode_;
     const bool is_cluster_optimized_;
@@ -60,7 +61,9 @@ class Planner {
     const bool enable_batch_window_parallelization_;
     bool ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *> *windows);
     bool IsTable(node::PlanNode *node, node::PlanNode **output);
-    base::Status ValidatePrimaryPath(node::PlanNode *node, std::vector<node::PlanNode *> &outputs);  // NOLINT
+    base::Status ValidateRequestTable(node::PlanNode *node, std::vector<node::PlanNode *> &request_tables);  // NOLINT
+    base::Status ValidateOnlineServingOp(node::PlanNode *node);
+    base::Status ValidateClusterOnlineTrainingOp(node::PlanNode *node);
     base::Status CheckWindowFrame(const node::WindowDefNode *w_ptr);
     base::Status CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree);
     base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, PlanNode **plan_tree);
@@ -90,7 +93,7 @@ class SimplePlanner : public Planner {
  public:
     explicit SimplePlanner(node::NodeManager *manager) : Planner(manager, true, false, false) {}
     SimplePlanner(node::NodeManager *manager, bool is_batch_mode, bool is_cluster_optimized = false,
-                  bool enable_batch_window_parallelization = false)
+                  bool enable_batch_window_parallelization = true)
         : Planner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization) {}
     ~SimplePlanner() {}
     base::Status CreatePlanTree(const NodePointVector &parser_trees,

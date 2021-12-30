@@ -160,8 +160,8 @@ Status SqlCompiler::BuildBatchModePhysicalPlan(SqlContext* ctx, const ::hybridse
                                                ::llvm::Module* llvm_module, udf::UdfLibrary* library,
                                                PhysicalOpNode** output) {
     vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library,
-                                         ctx->is_performance_sensitive, ctx->is_cluster_optimized,
-                                         ctx->enable_expr_optimize, ctx->enable_batch_window_parallelization);
+                                         ctx->is_cluster_optimized, ctx->enable_expr_optimize,
+                                         ctx->enable_batch_window_parallelization, ctx->enable_window_column_pruning);
     transformer.AddDefaultPasses();
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output), "Fail to generate physical plan batch mode");
     ctx->schema = *(*output)->GetOutputSchema();
@@ -169,11 +169,12 @@ Status SqlCompiler::BuildBatchModePhysicalPlan(SqlContext* ctx, const ::hybridse
 }
 
 Status SqlCompiler::BuildRequestModePhysicalPlan(SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+                                                 const bool enable_request_performance_sensitive,
                                                  ::llvm::Module* llvm_module, udf::UdfLibrary* library,
                                                  PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library, {},
-                                           ctx->is_performance_sensitive, ctx->is_cluster_optimized, false,
-                                           ctx->enable_expr_optimize);
+                                           ctx->is_cluster_optimized, false, ctx->enable_expr_optimize,
+                                           enable_request_performance_sensitive);
     transformer.AddDefaultPasses();
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
                  "Fail to transform physical plan on request mode");
@@ -191,9 +192,9 @@ Status SqlCompiler::BuildBatchRequestModePhysicalPlan(SqlContext* ctx, const ::h
                                                       ::llvm::Module* llvm_module, udf::UdfLibrary* library,
                                                       PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library,
-                                           ctx->batch_request_info.common_column_indices, ctx->is_performance_sensitive,
+                                           ctx->batch_request_info.common_column_indices,
                                            ctx->is_cluster_optimized, ctx->is_batch_request_optimized,
-                                           ctx->enable_expr_optimize);
+                                           ctx->enable_expr_optimize, true);
     transformer.AddDefaultPasses();
     PhysicalOpNode* output_plan = nullptr;
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, &output_plan),
@@ -262,8 +263,13 @@ Status SqlCompiler::BuildPhysicalPlan(
                                               library, output));
             break;
         }
+        case kMockRequestMode: {
+            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, false, llvm_module,
+                                                      library, output));
+            break;
+        }
         case kRequestMode: {
-            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, llvm_module,
+            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, true, llvm_module,
                                                 library, output));
             break;
         }
@@ -309,6 +315,9 @@ bool SqlCompiler::Parse(SqlContext& ctx,
                                                              ctx.enable_batch_window_parallelization)) {
         LOG(WARNING) << "Fail create sql plan: " << status;
         return false;
+    }
+    if (!ctx.logical_plan.empty()) {
+        ctx.limit_cnt = ::hybridse::plan::PlanAPI::GetPlanLimitCount(ctx.logical_plan[0]);
     }
     return true;
 }

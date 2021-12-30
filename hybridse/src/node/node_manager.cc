@@ -755,37 +755,50 @@ DeployPlanNode *NodeManager::MakeDeployPlanNode(const std::string &name, const S
     DeployPlanNode *node = new DeployPlanNode(name, stmt, stmt_str, if_not_exist);
     return RegisterNode(node);
 }
-LoadDataNode *NodeManager::MakeLoadDataNode(const std::string &file_name, const std::string& db,
-                                            const std::string &table, const std::shared_ptr<OptionsMap> options) {
-    LoadDataNode *node = new LoadDataNode(file_name, db, table, options);
+DeleteNode* NodeManager::MakeDeleteNode(DeleteTarget target, std::string_view job_id) {
+    auto node = new DeleteNode(target, std::string(job_id.data(), job_id.size()));
     return RegisterNode(node);
 }
-LoadDataPlanNode *NodeManager::MakeLoadDataPlanNode(const std::string &file_name,
-                                                    const std::string& db, const std::string& table,
-                                                    const std::shared_ptr<OptionsMap> options) {
-    LoadDataPlanNode *node = new LoadDataPlanNode(file_name, db, table, options);
+DeletePlanNode* NodeManager::MakeDeletePlanNode(const DeleteNode* n) {
+    auto node = new DeletePlanNode(n->GetTarget(), n->GetJobId());
     return RegisterNode(node);
 }
-
-SelectIntoNode* NodeManager::MakeSelectIntoNode(const QueryNode* query, const std::string& query_str,
-                                   const std::string& out_file, const std::shared_ptr<OptionsMap> options) {
-    SelectIntoNode* node = new SelectIntoNode(query, query_str, out_file, options);
+LoadDataNode *NodeManager::MakeLoadDataNode(const std::string &file_name, const std::string &db,
+                                            const std::string &table,
+                                            const std::shared_ptr<OptionsMap> options,
+                                            const std::shared_ptr<OptionsMap> config_option) {
+    LoadDataNode *node = new LoadDataNode(file_name, db, table, std::move(options), std::move(config_option));
     return RegisterNode(node);
 }
-
-SelectIntoPlanNode* NodeManager::MakeSelectIntoPlanNode(const QueryNode* query, const std::string& query_str,
-                                               const std::string& out_file, const std::shared_ptr<OptionsMap> options) {
-    SelectIntoPlanNode* node = new SelectIntoPlanNode(query, query_str, out_file, options);
-    return RegisterNode(node);
-}
-
-SetNode* NodeManager::MakeSetNode(const std::string &key, const ConstNode *value) {
-    SetNode* node = new SetNode(key, value);
+LoadDataPlanNode *NodeManager::MakeLoadDataPlanNode(const std::string &file_name, const std::string &db,
+                                                    const std::string &table, const std::shared_ptr<OptionsMap> options,
+                                                    const std::shared_ptr<OptionsMap> config_option) {
+    LoadDataPlanNode *node = new LoadDataPlanNode(file_name, db, table, options, config_option);
     return RegisterNode(node);
 }
 
+SelectIntoNode *NodeManager::MakeSelectIntoNode(const QueryNode *query, const std::string &query_str,
+                                                const std::string &out_file, const std::shared_ptr<OptionsMap> options,
+                                                const std::shared_ptr<OptionsMap> config_option) {
+    SelectIntoNode* node = new SelectIntoNode(query, query_str, out_file, std::move(options), std::move(config_option));
+    return RegisterNode(node);
+}
+
+SelectIntoPlanNode *NodeManager::MakeSelectIntoPlanNode(PlanNode *query, const std::string &query_str,
+                                                        const std::string &out_file,
+                                                        const std::shared_ptr<OptionsMap> options,
+                                                        const std::shared_ptr<OptionsMap> config_option) {
+    SelectIntoPlanNode* node = new SelectIntoPlanNode(query, query_str, out_file, options, config_option);
+    return RegisterNode(node);
+}
+
+SetNode* NodeManager::MakeSetNode(const node::VariableScope scope, const std::string &key, const
+                                                      ConstNode *value) {
+    SetNode* node = new SetNode(scope, key, value);
+    return RegisterNode(node);
+}
 SetPlanNode* NodeManager::MakeSetPlanNode(const SetNode *set_node) {
-    SetPlanNode* node = new SetPlanNode(set_node->Key(), set_node->Value());
+    SetPlanNode* node = new SetPlanNode(set_node->Scope(), set_node->Key(), set_node->Value());
     return RegisterNode(node);
 }
 
@@ -969,6 +982,10 @@ BetweenExpr *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNo
 InExpr *NodeManager::MakeInExpr(ExprNode* lhs, ExprNode* in_list, bool is_not) {
     InExpr* in_expr = new InExpr(lhs, in_list, is_not);
     return RegisterNode(in_expr);
+}
+EscapedExpr *NodeManager::MakeEscapeExpr(ExprNode* pattern, ExprNode* escape) {
+    EscapedExpr* escape_expr = new EscapedExpr(pattern, escape);
+    return RegisterNode(escape_expr);
 }
 ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
     if (node::ExprListNullOrEmpty(expr_list)) {

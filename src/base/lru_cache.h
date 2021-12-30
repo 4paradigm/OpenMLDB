@@ -11,11 +11,14 @@
 #ifndef SRC_BASE_LRU_CACHE_H_
 #define SRC_BASE_LRU_CACHE_H_
 
-#include <boost/optional.hpp>
-#include <boost/optional/optional_io.hpp>
 #include <list>
 #include <map>
 #include <utility>
+#include <boost/optional.hpp>
+#include <boost/optional/optional_io.hpp>
+
+#include "boost/optional.hpp"
+#include "boost/optional/optional_io.hpp"
 
 namespace openmldb::base {
 

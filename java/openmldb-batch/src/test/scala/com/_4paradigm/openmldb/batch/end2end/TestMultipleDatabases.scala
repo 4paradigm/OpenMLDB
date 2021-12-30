@@ -20,7 +20,6 @@ import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
-import org.scalatest.Ignore
 
 
 class TestMultipleDatabases extends SparkTestSuite {
@@ -47,8 +46,7 @@ class TestMultipleDatabases extends SparkTestSuite {
     assert(outputDf.count() == 2L)
   }
 
-  // TODO: Enable tests when support resolving DataProviderNode with database name
-  ignore("Test SQL with non-default database") {
+  test("Test SQL with non-default database") {
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
@@ -70,7 +68,7 @@ class TestMultipleDatabases extends SparkTestSuite {
     assert(outputDf.count() == 2L)
   }
 
-  ignore("Test SQL with multiple databases") {
+  test("Test SQL with multiple databases") {
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 

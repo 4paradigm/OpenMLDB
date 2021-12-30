@@ -115,6 +115,52 @@ TEST_F(UdfIRBuilderTest, dayofweek_date_udf_test) {
     Date date(2020, 05, 22);
     CheckUdf<int32_t, Date>("dayofweek", 6, date);
 }
+TEST_F(UdfIRBuilderTest, dayofyear_date_udf_test) {
+    {
+        Date date(2020, 05, 22);
+        CheckUdf<int32_t, Date>("dayofyear", 143, date);
+    }
+    {
+        Date date(2021, 01, 01);
+        CheckUdf<int32_t, Date>("dayofyear", 1, date);
+    }
+    {
+        Date date(2020, 12, 31);
+        CheckUdf<int32_t, Date>("dayofyear", 366, date);
+    }
+    {
+        Date date(2021, 12, 31);
+        CheckUdf<int32_t, Date>("dayofyear", 365, date);
+    }
+    {
+        Date date(2021, 13, 31);
+        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+    }
+    {
+        Date date(2021, 0, 31);
+        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+    }
+    {
+        Date date(2021, -1, 31);
+        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+    }
+    {
+        Date date(2021, 12, 32);
+        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+    }
+    {
+        Date date(2021, 12, 0);
+        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+    }
+    {
+        Date date(2021, 12, -10);
+        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+    }
+    {
+        Date date(2021, 2, 29);
+        CheckUdf<int32_t, Date>("dayofyear", 0, date);
+    }
+}
 TEST_F(UdfIRBuilderTest, weekofyear_date_udf_test) {
     {
         Date date(2020, 01, 01);
@@ -179,6 +225,10 @@ TEST_F(UdfIRBuilderTest, dayofweek_timestamp_udf_test) {
     Timestamp time(1590115420000L);
     CheckUdf<int32_t, Timestamp>("dayofweek", 6, time);
 }
+TEST_F(UdfIRBuilderTest, dayofyear_timestamp_udf_test) {
+    Timestamp time(1590115420000L);
+    CheckUdf<int32_t, Timestamp>("dayofyear", 143, time);
+}
 TEST_F(UdfIRBuilderTest, weekofyear_timestamp_udf_test) {
     Timestamp time(1590115420000L);
     CheckUdf<int32_t, Timestamp>("weekofyear", 21, time);
@@ -221,6 +271,12 @@ TEST_F(UdfIRBuilderTest, dayofweek_int64_udf_test) {
     // Sunday
     CheckUdf<int32_t, int64_t>("dayofweek", 1, 1590115420000L + 2 * 86400000L);
     CheckUdf<int32_t, int64_t>("dayofweek", 2, 1590115420000L + 3 * 86400000L);
+}
+TEST_F(UdfIRBuilderTest, dayofyear_int64_udf_test) {
+    CheckUdf<int32_t, int64_t>("dayofyear", 143, 1590115420000L);
+    CheckUdf<int32_t, int64_t>("dayofyear", 144, 1590115420000L + 86400000L);
+    CheckUdf<int32_t, int64_t>("dayofyear", 145, 1590115420000L + 2 * 86400000L);
+    CheckUdf<int32_t, int64_t>("dayofyear", 146, 1590115420000L + 3 * 86400000L);
 }
 TEST_F(UdfIRBuilderTest, weekofyear_int64_udf_test) {
     CheckUdf<int32_t, int64_t>("weekofyear", 21, 1590115420000L);
@@ -561,6 +617,8 @@ TEST_F(UdfIRBuilderTest, upper_ucase) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", StringRef("SQL"), StringRef("Sql"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("SQL"), StringRef("Sql"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("!ABC?"), StringRef("!Abc?"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef(""), StringRef(""));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", StringRef(""), StringRef(""));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", nullptr, nullptr);
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", nullptr, nullptr);
 }
@@ -848,6 +906,50 @@ TEST_F(UdfIRBuilderTest, string_to_float_1) {
 TEST_F(UdfIRBuilderTest, string_to_float_2) {
     CheckUdf<Nullable<float>, Nullable<StringRef>>("float", nullptr,
                                                    codec::StringRef("abc"));
+}
+TEST_F(UdfIRBuilderTest, like_match) {
+    StringRef target("Mike");
+    StringRef pattern("Mi_e");
+    // target is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", nullptr, nullptr, codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    // pattern is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", nullptr, codec::StringRef("Mike"), nullptr, codec::StringRef("\\"));
+    // escape is null, disable escape
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", nullptr, codec::StringRef("Mike"), codec::StringRef("Mi_e"), nullptr);
+
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", false, codec::StringRef("Mike"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mi_e"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "like_match", true, codec::StringRef("Mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
+}
+TEST_F(UdfIRBuilderTest, ilike_match) {
+    // target is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "ilike_match", nullptr, nullptr, codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    // pattern is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "ilike_match", nullptr, codec::StringRef("mike"), nullptr, codec::StringRef("\\"));
+    // escape is null, disable escape
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "ilike_match", nullptr, codec::StringRef("mike"), codec::StringRef("Mi_e"), nullptr);
+
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "ilike_match", true, codec::StringRef("mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "ilike_match", false, codec::StringRef("mike"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "ilike_match", true, codec::StringRef("mi_e"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        "ilike_match", true, codec::StringRef("mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
 }
 }  // namespace codegen
 }  // namespace hybridse

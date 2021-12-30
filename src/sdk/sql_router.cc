@@ -18,6 +18,7 @@
 #include <map>
 #include "base/ddl_parser.h"
 #include "glog/logging.h"
+#include "schema/schema_adapter.h"
 #include "sdk/sql_cluster_router.h"
 
 namespace openmldb::sdk {
@@ -46,7 +47,7 @@ std::map<std::string, std::vector<openmldb::common::ColumnDesc>> convertSchema(
             hybridse::sdk::DataType column_type = column_map.second;
             column_desc.set_name(column_name);
             openmldb::type::DataType data_type;
-            if (!openmldb::catalog::SchemaAdapter::ConvertType(column_type, &data_type)) {
+            if (!openmldb::schema::SchemaAdapter::ConvertType(column_type, &data_type)) {
                 return {};
             }
             column_desc.set_data_type(data_type);

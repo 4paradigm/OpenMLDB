@@ -22,9 +22,17 @@ import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.{JobIdGenerator, JobInfo}
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.slf4j.LoggerFactory
-import java.sql.{PreparedStatement, ResultSet, SQLException, Timestamp}
+import org.apache.hadoop.fs.{FileSystem, LocalFileSystem, Path}
+
+import java.net.URI
+import java.sql.{PreparedStatement, ResultSet, SQLException}
 import java.util.Calendar
+import scala.collection.JavaConverters.seqAsJavaListConverter
 import scala.collection.mutable
+import org.apache.commons.io.FileUtils
+import org.apache.hadoop.conf.Configuration
+
+import java.io.File
 
 object JobInfoManager {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -73,6 +81,11 @@ object JobInfoManager {
     jobInfo
   }
 
+  def getJobs(onlyUnfinished: Boolean): java.util.List[JobInfo] = {
+    val jobs = if (onlyUnfinished) JobInfoManager.getUnfinishedJobs else JobInfoManager.getAllJobs
+    jobs.asJava
+  }
+
   def getAllJobs(): List[JobInfo] = {
     val sql = s"SELECT * FROM $tableName"
     val rs = sqlExecutor.executeSQL(dbName, sql)
@@ -101,13 +114,26 @@ object JobInfoManager {
   def stopJob(jobId: Int): JobInfo = {
     val sql = s"SELECT * FROM $tableName WHERE id = $jobId"
     val rs = sqlExecutor.executeSQL(dbName, sql)
-    val jobInfo = resultSetToJob(rs)
+
+    val jobInfo = if (rs.getFetchSize == 0) {
+      throw new Exception("Job does not exist for id: " + jobId)
+    } else if (rs.getFetchSize == 1) {
+      resultSetToJob(rs)
+    } else {
+      throw new Exception("Job num is more than 1, get " + rs.getFetchSize)
+    }
+
     if (jobInfo.isYarnJob && jobInfo.getApplicationId != null) {
       YarnClientUtil.killYarnJob(jobInfo.getApplicationId)
       // TODO: Maybe start new thread to track the state
       jobInfo.setState(YarnClientUtil.getYarnJobState(jobInfo.getApplicationId).toString)
       jobInfo.sync()
+    } else {
+      // TODO: Set stopped state for other jobs
+      jobInfo.setState("STOPPED")
+      jobInfo.sync()
     }
+
     jobInfo
   }
 
@@ -115,16 +141,24 @@ object JobInfoManager {
     // TODO: Can not support deleting single row row
   }
 
-  def getJob(jobId: Int): JobInfo = {
+  def getJob(jobId: Int): Option[JobInfo] = {
     // TODO: Require to get only one row, https://github.com/4paradigm/OpenMLDB/issues/704
     val sql = s"SELECT * FROM $tableName WHERE id = $jobId"
     val rs = sqlExecutor.executeSQL(dbName, sql)
-    resultSetToJob(rs)
+
+    if (rs.getFetchSize == 0) {
+      None
+    } else if (rs.getFetchSize == 1) {
+      Some(resultSetToJob(rs))
+    } else {
+      throw new Exception("Job num is more than 1, get " + rs.getFetchSize)
+    }
   }
 
   def syncJob(job: JobInfo): Unit = {
     // Escape double quote for generated SQL string
     val escapeErrorString = job.getError.replaceAll("\"", "\\\\\\\"")
+    // TODO: Could not handle select 10 config (a="aa", b="bb");
     val insertSql =
       s"""
          | INSERT INTO $tableName VALUES
@@ -169,6 +203,37 @@ object JobInfoManager {
     }
 
     jobs.toList
+  }
+
+  def dropOfflineTable(db: String, table: String): Unit = {
+    val tableInfo = sqlExecutor.getTableInfo(db, table)
+
+    if (tableInfo.hasOfflineTableInfo) {
+      val offlineTableInfo = tableInfo.getOfflineTableInfo
+
+      val filePath = offlineTableInfo.getPath
+      if(offlineTableInfo.getDeepCopy) {
+
+        if (filePath.startsWith("file://")) {
+          val dir = new File(filePath.substring(7))
+          logger.info(s"Try to delete the path ${filePath.substring(7)}")
+          FileUtils.deleteDirectory(dir)
+
+        } else if (filePath.startsWith("hdfs://")) {
+          val conf = new Configuration();
+          // TODO: Get namenode uri from config file
+          val namenodeUri = TaskManagerConfig.NAMENODE_URI
+          val hdfs = FileSystem.get(URI.create(s"hdfs://$namenodeUri"), conf)
+          hdfs.delete(new Path(filePath.substring(7)), true)
+
+        } else {
+          throw new Exception(s"Get unsupported file path: $filePath")
+        }
+      } else {
+        logger.info(s"Do not delete file $filePath for non deep copy data")
+      }
+    }
+
   }
 
 }

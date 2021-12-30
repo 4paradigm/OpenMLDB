@@ -68,21 +68,34 @@ message(STATUS "Install bundled dependencies into ${DEPS_INSTALL_DIR}")
 
 set(HYBRIDSQL_ASSERTS_HOME https://github.com/4paradigm/hybridsql-asserts)
 
+function(get_linux_lsb_release_information)
+  execute_process(COMMAND bash ${CMAKE_SOURCE_DIR}/get-lsb-release.sh
+    OUTPUT_VARIABLE LSB_RELEASE_ID_SHORT OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  set(LSB_RELEASE_ID_SHORT "${LSB_RELEASE_ID_SHORT}" PARENT_SCOPE)
+endfunction()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  get_linux_lsb_release_information()
+
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-    set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz")
+    set(HYBRIDSQL_ASSERTS_URL "https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz")
     set(HYBRIDSQL_ASSERTS_HASH 128e2147903c6b4f5649284326c60ba048ff369f2925f9957f2973a515c65d75)
   else()
-    set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-x86_64.tar.gz")
-    set(HYBRIDSQL_ASSERTS_HASH 6f62e3906b2409fc190d09569857d259b2a1cbd363bdd550dfc5e204805d7719)
+    if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
+      set(HYBRIDSQL_ASSERTS_URL "https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.3/thirdparty-2021-12-28-linux-gnu-x86_64-centos.tar.gz")
+      set(HYBRIDSQL_ASSERTS_HASH d23968d0762d906587088aa861d470f75b6fb4c0c3e5f007fb064c7e700cba86)
+    elseif(LSB_RELEASE_ID_SHORT STREQUAL "ubuntu")
+      set(HYBRIDSQL_ASSERTS_URL "https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.3/thirdparty-2021-12-28-linux-gnu-x86_64-ubuntu.tar.gz")
+      set(HYBRIDSQL_ASSERTS_HASH ed35a0813106aa5f3642715eae6d6464184021817314999c034e1ed2749999b4)
+    else()
+      message(FATAL_ERROR "no pre-compiled thirdparty for your operation system, try compile thirdparty from source with '-DBUILD_BUNDLED=ON'")
+    endif()
   endif()
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v0.4.0/thirdparty-2021-08-03-darwin-x86_64.tar.gz")
-  set(HYBRIDSQL_ASSERTS_HASH 505cf5068d8d9bd2eed5496d5eda7f83f18f3f2053b064a446876998fad0dc04)
+  set(HYBRIDSQL_ASSERTS_URL "https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.3/thirdparty-2021-12-28-darwin-i386.tar.gz")
+  set(HYBRIDSQL_ASSERTS_HASH 546da9dedbf93e811381dea44fb0c8f88b61430b5a450ff1969ee40bd00ffc97)
 endif()
-
-set(HYBRIDSQL_ASSERTS_SRC_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v0.4.0/thirdsrc-2021-08-03.tar.gz")
-set(HYBRIDSQL_ASSERTS_SRC_HASH 6bd44f5d870d6a4e52ed4c8748cc4a53ceff8744609db36d0a722d3d88c51a00)
 
 if(WITH_ZETASQL)
   include(FetchZetasql)

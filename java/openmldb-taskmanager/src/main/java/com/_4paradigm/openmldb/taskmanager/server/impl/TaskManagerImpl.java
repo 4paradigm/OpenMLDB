@@ -23,6 +23,7 @@ import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import lombok.extern.slf4j.Slf4j;
+import scala.Option;
 
 import java.util.List;
 
@@ -48,15 +49,16 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobsResponse ShowJobs(TaskManager.ShowJobsRequest request) {
         try {
-            List<JobInfo> jobInfos = (List<JobInfo>) (request.hasUnfinished() ? JobInfoManager.getUnfinishedJobs() : JobInfoManager.getAllJobs());
+            List<JobInfo> jobInfos = JobInfoManager.getJobs(request.getUnfinished());
 
             TaskManager.ShowJobsResponse.Builder builder = TaskManager.ShowJobsResponse.newBuilder();
             builder.setCode(StatusCode.SUCCESS);
             for (int i=0; i < jobInfos.size(); ++i) {
-                builder.setJobs(i, jobInfoToProto(jobInfos.get(i)));
+                builder.addJobs(i, jobInfoToProto(jobInfos.get(i)));
             }
             return builder.build();
         } catch (Exception e) {
+            e.printStackTrace();
             return TaskManager.ShowJobsResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
@@ -64,10 +66,17 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobResponse ShowJob(TaskManager.ShowJobRequest request) {
         try {
-            JobInfo jobInfo = JobInfoManager.getJob(request.getId());
-            return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
-                    .build();
+            Option<JobInfo> jobInfo = JobInfoManager.getJob(request.getId());
+
+            TaskManager.ShowJobResponse.Builder responseBuilder = TaskManager.ShowJobResponse.newBuilder()
+                    .setCode(StatusCode.SUCCESS);
+            if (jobInfo.nonEmpty()) {
+                responseBuilder.setJob(jobInfoToProto(jobInfo.get()));
+            }
+
+            return responseBuilder.build();
         } catch (Exception e) {
+            e.printStackTrace();
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
@@ -79,6 +88,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             return TaskManager.StopJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
+            e.printStackTrace();
             return TaskManager.StopJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
@@ -89,6 +99,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             JobInfoManager.deleteJob(request.getId());
             return TaskManager.DeleteJobResponse.newBuilder().setCode(StatusCode.SUCCESS).build();
         } catch (Exception e) {
+            e.printStackTrace();
             return TaskManager.DeleteJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
@@ -100,6 +111,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
+            e.printStackTrace();
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
@@ -107,10 +119,11 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobResponse RunBatchSql(TaskManager.RunBatchSqlRequest request) {
         try {
-            JobInfo jobInfo = OpenmldbBatchjobManager.runBatchSql(request.getSql(), request.getOutputPath(), request.getConfMap());
+            JobInfo jobInfo = OpenmldbBatchjobManager.runBatchSql(request.getSql(), request.getOutputPath(), request.getConfMap(), request.getDefaultDb());
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
+            e.printStackTrace();
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
@@ -118,10 +131,11 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobResponse RunBatchAndShow(TaskManager.RunBatchAndShowRequest request) {
         try {
-            JobInfo jobInfo = OpenmldbBatchjobManager.runBatchAndShow(request.getSql(), request.getConfMap());
+            JobInfo jobInfo = OpenmldbBatchjobManager.runBatchAndShow(request.getSql(), request.getConfMap(), request.getDefaultDb());
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
+            e.printStackTrace();
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
@@ -129,10 +143,11 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobResponse ImportOnlineData(TaskManager.ImportOnlineDataRequest request) {
         try {
-            JobInfo jobInfo = OpenmldbBatchjobManager.importOnlineData(request.getSql(), request.getConfMap());
+            JobInfo jobInfo = OpenmldbBatchjobManager.importOnlineData(request.getSql(), request.getConfMap(), request.getDefaultDb());
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
+            e.printStackTrace();
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
@@ -140,11 +155,23 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobResponse ImportOfflineData(TaskManager.ImportOfflineDataRequest request) {
         try {
-            JobInfo jobInfo = OpenmldbBatchjobManager.importOfflineData(request.getSql(), request.getConfMap());
+            JobInfo jobInfo = OpenmldbBatchjobManager.importOfflineData(request.getSql(), request.getConfMap(), request.getDefaultDb());
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
+            e.printStackTrace();
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
+        }
+    }
+
+    @Override
+    public TaskManager.DropOfflineTableResponse DropOfflineTable(TaskManager.DropOfflineTableRequest request) {
+        try {
+            JobInfoManager.dropOfflineTable(request.getDb(), request.getTable());
+            return TaskManager.DropOfflineTableResponse.newBuilder().setCode(StatusCode.SUCCESS).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return TaskManager.DropOfflineTableResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
 }

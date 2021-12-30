@@ -31,7 +31,6 @@
 
 #include "base/hash.h"
 #include "base/random.h"
-#include "client/nearline_tablet_client.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "codec/schema_codec.h"
@@ -78,9 +77,6 @@ struct TabletInfo {
     bool Health() const { return state_ == ::openmldb::type::EndpointState::kHealthy; }
 };
 
-struct NearLineTabletInfo : public EndpointInfo {
-    std::shared_ptr<::openmldb::client::NearLineTabletClient> client_;
-};
 
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
@@ -156,8 +152,6 @@ class NameServerImpl : public NameServer {
                              std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, uint64_t cur_term,
                              uint32_t tid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
-    ::openmldb::base::Status CreateOfflineTable(const std::string& db_name, const std::string& table_name,
-                                                const std::string& partition_key, const Schema& schema);
 
     void RefreshTablet(uint32_t tid);
 
@@ -308,6 +302,10 @@ class NameServerImpl : public NameServer {
     void SetSdkEndpoint(RpcController* controller, const SetSdkEndpointRequest* request, GeneralResponse* response,
                         Closure* done);
 
+    void UpdateOfflineTableInfo(::google::protobuf::RpcController* controller,
+                                const ::openmldb::nameserver::TableInfo* request,
+                       ::openmldb::nameserver::GeneralResponse* response, ::google::protobuf::Closure* done);
+
     int SyncExistTable(const std::string& alias, const std::string& name, const std::string& db,
                        const std::vector<::openmldb::nameserver::TableInfo> tables_remote,
                        const ::openmldb::nameserver::TableInfo& table_info_local, uint32_t pid, int& code,  // NOLINT
@@ -378,12 +376,6 @@ class NameServerImpl : public NameServer {
     int SetPartitionInfo(TableInfo& table_info);  // NOLINT
 
     void AddDataType(std::shared_ptr<TableInfo> table_info);
-
-    static int CheckTableMeta(const TableInfo& table_info);
-
-    int FillColumnKey(TableInfo* table_info);
-
-    int AddDefaultIndex(TableInfo* table_info);
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
@@ -746,6 +738,10 @@ class NameServerImpl : public NameServer {
     bool AddFieldToTablet(const std::vector<openmldb::common::ColumnDesc>& cols, std::shared_ptr<TableInfo> table_info,
                           openmldb::common::VersionPair* new_pair);
 
+    base::Status AddMultiIndexs(const std::string& db, const std::string& name,
+            std::shared_ptr<TableInfo> table_info,
+            const ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnKey>& column_keys);
+
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 
     std::shared_ptr<TabletInfo> GetTablet(const std::string& endpoint);
@@ -759,7 +755,6 @@ class NameServerImpl : public NameServer {
  private:
     std::mutex mu_;
     Tablets tablets_;
-    NearLineTabletInfo nearline_tablet_;
     ::openmldb::nameserver::TableInfos table_info_;
     std::map<std::string, ::openmldb::nameserver::TableInfos> db_table_info_;
     std::map<std::string, std::shared_ptr<::openmldb::nameserver::ClusterInfo>> nsc_;

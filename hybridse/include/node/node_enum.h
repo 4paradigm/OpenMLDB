@@ -89,6 +89,7 @@ enum SqlNodeType {
     kLoadDataStmt,
     kDeployStmt,
     kSetStmt,
+    kDeleteStmt,
     kUnknow = -1
 };
 
@@ -127,6 +128,7 @@ enum ExprType {
     kExprGetField,
     kExprCond,
     kExprIn,
+    kExprEscaped,
     kExprUnknow = -1
 };
 // typedef hybridse::type::Type DataType;
@@ -187,6 +189,7 @@ enum FnOperator {
     kFnOpDot,         // "."
     kFnOpAt,          // "[]"
     kFnOpLike,        // "LIKE"
+    kFnOpILike,        // "ILIKE"
     kFnOpIn,          // "IN"
     kFnOpBracket,     // "()"
     kFnOpIsNull,      // "is_null"
@@ -246,6 +249,11 @@ enum CmdType {
     kCmdShowDeployment,
     kCmdShowDeployments,
     kCmdDropDeployment,
+    kCmdShowJobs,
+    kCmdShowJob,
+    kCmdStopJob,
+    kCmdShowGlobalVariables,
+    kCmdShowSessionVariables,
     kCmdUnknown = -1
 };
 enum ExplainType {
@@ -258,7 +266,6 @@ enum PlanType {
     kPlanTypeCreate,
     kPlanTypeInsert,
     kPlanTypeExplain,
-    kPlanTypeScan,
     kPlanTypeQuery,
     kPlanTypeLimit,
     kPlanTypeFilter,
@@ -279,12 +286,18 @@ enum PlanType {
     kPlanTypeLoadData,
     kPlanTypeDeploy,
     kPlanTypeSet,
+    kPlanTypeDelete,
     kUnknowPlan = -1,
 };
 
 enum TTLType {
     kAbsolute,
     kLatest,
+};
+
+enum VariableScope {
+    kGlobalSystemVariable,
+    kSessionSystemVariable,
 };
 
 // batch plan node type
