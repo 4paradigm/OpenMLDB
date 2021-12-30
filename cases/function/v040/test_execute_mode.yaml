@@ -18,11 +18,6 @@ cases:
   -
     id: 0
     desc: 测试EXECUTE_MODE=online
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
       - set @@SESSION.execute_mode="online";
       - show variables;
@@ -33,11 +28,6 @@ cases:
   -
     id: 1
     desc: EXECUTE_MODE=offline
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
       - set @@SESSION.execute_mode="offline";
       - show variables;
@@ -48,11 +38,6 @@ cases:
   -
     id: 2
     desc: EXECUTE_MODE为其他字符
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
       - set @@SESSION.execute_olol = "offline";
       - show variables;
@@ -61,11 +46,6 @@ cases:
   -
     id: 3
     desc: EXECUTE_MODE为小写
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
       - set @@SESSION.execute_mode = "online";
       - show variables;
