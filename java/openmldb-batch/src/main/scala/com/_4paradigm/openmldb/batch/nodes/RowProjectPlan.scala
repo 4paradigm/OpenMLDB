@@ -115,10 +115,13 @@ object RowProjectPlan {
         val buffer = projectConfig.moduleNoneBroadcast
 
         if (hybridseJsdkLibraryPath.equals("")) {
+          JitManager.initCore()
           JitManager.initJitModule(tag, buffer.getBuffer)
         } else {
+          JitManager.initCore(hybridseJsdkLibraryPath)
           JitManager.initJitModule(tag, buffer.getBuffer, hybridseJsdkLibraryPath)
         }
+
 
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)
