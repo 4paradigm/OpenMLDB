@@ -1946,19 +1946,19 @@ TEST_F(PlannerV2Test, ClusterOnlinexTrainingSQLTest) {
       // Generate SQL logical plan for online serving
       ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true, true)) << status;
     };
-//    expect_converted(
-//        R"(
-//        SELECT COL1 from t1 ;
-//        )");
-//    expect_converted(
-//        R"(
-//        SELECT COL1 from t1 LIMIT 10;
-//        )");
-//
-//    expect_converted(
-//        R"(
-//        SELECT COL1 from t1 WHERE col2 = 1 LIMIT 10;
-//        )");
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 ;
+        )");
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 LIMIT 10;
+        )");
+
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 WHERE col2 = 1 LIMIT 10;
+        )");
 
     expect_converted(
         R"(
