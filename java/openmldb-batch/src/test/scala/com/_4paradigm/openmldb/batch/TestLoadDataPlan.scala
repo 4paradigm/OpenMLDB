@@ -66,8 +66,7 @@ class TestLoadDataPlan extends SparkTestSuite {
   }
 
   test("Test Load to Openmldb Offline Storage") {
-    val originInfo = getLatestTableInfo(db, table)
-    assert(!originInfo.hasOfflineTableInfo, s"offline info exist!")
+
     val testFile = "file://" + getClass.getResource("/test.csv").getPath
     // TODO(hw): offline address is uncompleted, it's invariant now, so here use 'overwrite' mode to avoid save errors
     var res = openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
