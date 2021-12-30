@@ -784,7 +784,7 @@ SelectIntoNode *NodeManager::MakeSelectIntoNode(const QueryNode *query, const st
     return RegisterNode(node);
 }
 
-SelectIntoPlanNode *NodeManager::MakeSelectIntoPlanNode(const QueryNode *query, const std::string &query_str,
+SelectIntoPlanNode *NodeManager::MakeSelectIntoPlanNode(PlanNode *query, const std::string &query_str,
                                                         const std::string &out_file,
                                                         const std::shared_ptr<OptionsMap> options,
                                                         const std::shared_ptr<OptionsMap> config_option) {

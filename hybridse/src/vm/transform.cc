@@ -852,7 +852,6 @@ Status BatchModeTransformer::TransformDistinctOp(
     return Status::OK();
 }
 
-
 Status BatchModeTransformer::TransformDeleteOp(const node::DeletePlanNode* node, PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
     PhysicalDeleteNode* delete_op = nullptr;
@@ -867,15 +866,23 @@ Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode
     return TransformPlanOp(node->GetChildren()[0], output);
 }
 
+Status BatchModeTransformer::TransformSelectIntoOp(const node::SelectIntoPlanNode* node, PhysicalOpNode* child,
+                                                   PhysicalOpNode** output) {
+    CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
+    PhysicalSelectIntoNode* select_into_op = nullptr;
+    // db.table should be checked when you get the physical plan
+    CHECK_STATUS(CreateOp<PhysicalSelectIntoNode>(&select_into_op, child, node->QueryStr(), node->OutFile(),
+                                                  node->Options(), node->ConfigOptions()))
+    *output = select_into_op;
+    return Status::OK();
+}
+
 Status BatchModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
     PhysicalLoadDataNode* load_data_op = nullptr;
     // db.table should be checked when you get the physical plan
-    CHECK_STATUS(
-        CreateOp<PhysicalLoadDataNode>(&load_data_op, node->File(), node->Db(), node->Table(), node->Options()));
-    if (node->ConfigOptions() != nullptr) {
-        load_data_op->config_options_ = node->ConfigOptions();
-    }
+    CHECK_STATUS(CreateOp<PhysicalLoadDataNode>(&load_data_op, node->File(), node->Db(), node->Table(), node->Options(),
+                                                node->ConfigOptions()));
     *output = load_data_op;
     return Status::OK();
 }
@@ -1644,13 +1651,13 @@ Status BatchModeTransformer::ValidateIndexOptimization(PhysicalOpNode* in) {
 Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanNodeList& trees,
                                                    ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(module_ != nullptr && !trees.empty(), kPlanError, "Module or logical trees is empty");
-
+    CHECK_TRUE(output != nullptr, kPlanError, "output is nullptr")
     auto it = trees.begin();
     for (; it != trees.end(); ++it) {
         const ::hybridse::node::PlanNode* node = *it;
         switch (node->GetType()) {
             case ::hybridse::node::kPlanTypeFuncDef: {
-                const ::hybridse::node::FuncDefPlanNode* func_def_plan =
+                auto func_def_plan =
                     dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(node);
                 CHECK_STATUS(GenFnDef(func_def_plan), "Fail to compile user function def");
                 *output = nullptr;
@@ -1678,18 +1685,23 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
                 break;
             }
             case ::hybridse::node::kPlanTypeCreateSp: {
-                const ::hybridse::node::CreateProcedurePlanNode* sp_plan =
+                auto sp_plan =
                     dynamic_cast<const ::hybridse::node::CreateProcedurePlanNode*>(node);
                 return TransformPhysicalPlan(sp_plan->GetInnerPlanNodeList(), output);
             }
-            case ::hybridse::node::kPlanTypeLoadData: {
-                return TransformPlanOp(node, output);
+            case ::hybridse::node::kPlanTypeSelectInto: {
+                auto select_into_plan = dynamic_cast<const ::hybridse::node::SelectIntoPlanNode*>(node);
+                // should do optimization
+                ::hybridse::vm::PhysicalOpNode* child = nullptr;
+                CHECK_STATUS(TransformPhysicalPlan({select_into_plan->Query()}, &child))
+                return TransformSelectIntoOp(select_into_plan, child, output);
             }
+            case ::hybridse::node::kPlanTypeLoadData:
             case ::hybridse::node::kPlanTypeDelete: {
                 return TransformPlanOp(node, output);
             }
             default: {
-                return Status(kPlanError, "Plan type not supported: " + node::NameOfPlanNodeType(node->GetType()));
+                return {kPlanError, "Plan type not supported: " + node::NameOfPlanNodeType(node->GetType())};
             }
         }
     }
@@ -2001,6 +2013,10 @@ Status BatchModeTransformer::CheckHistoryWindowFrame(
         frame->GetHistoryRangeStart() <= 0 && frame->GetHistoryRowsStart() <= 0,
         kPlanError, "Invalid Request Window: start frame can't exceed CURRENT");
     return Status::OK();
+}
+
+Status BatchModeTransformer::ValidateRequestJoinIndexOptimization(const Join& join, PhysicalOpNode* in) {
+    return Status();
 }
 
 RequestModeTransformer::RequestModeTransformer(node::NodeManager* node_manager, const std::string& db,

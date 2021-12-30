@@ -390,9 +390,9 @@ void ProjectPlanNode::Print(std::ostream &output,
                             const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintValue(output, org_tab + "\t", table_, "table", false);
+    PrintValue(output, org_tab + INDENT, table_, "table", false);
     output << "\n";
-    PrintPlanVector(output, org_tab + "\t", project_list_vec_,
+    PrintPlanVector(output, org_tab + INDENT, project_list_vec_,
                     "project_list_vec", true);
     output << "\n";
     PrintChildren(output, org_tab);
@@ -483,7 +483,7 @@ void TablePlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintValue(output, org_tab + "\t", GetPathString(), is_primary_ ? "primary_table" : "table", true);
+    PrintValue(output, org_tab + INDENT, GetPathString(), is_primary_ ? "primary_table" : "table", true);
 }
 bool TablePlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
@@ -672,7 +672,7 @@ bool UnionPlanNode::Equals(const PlanNode *node) const {
 }
 void QueryPlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
-    PlanNode::Print(output, org_tab);
+    hybridse::node::UnaryPlanNode::Print(output, org_tab);
     if (config_options_ != nullptr) {
         output << "\n";
         PrintValue(output, org_tab + INDENT, config_options_.get(), "config_options", false);
@@ -735,7 +735,8 @@ void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) con
     output << "\n";
     PrintValue(output, new_tab, OutFile(), "out_file", false);
     output << "\n";
-    PrintSqlNode(output, new_tab, Query(), "query", false);
+    output << new_tab << "+- query:\n";
+    Query()->Print(output, new_tab + OR_INDENT);
     output << "\n";
     PrintValue(output, new_tab, Options().get(), "options", false);
     output << "\n";

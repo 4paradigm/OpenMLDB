@@ -731,5 +731,16 @@ void SQLSDKBatchRequestQueryTest::DistributeRunBatchRequestProcedureModeSDK(
     DropTables(sql_case, router);
     LOG(INFO) << "BatchRequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
 }
+void SQLSDKClusterOnlineBatchQueryTest::DistributeRunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
+                                                                  std::shared_ptr<SQLRouter> router,
+                                                                  const std::vector<std::string>& tbEndpoints, const int partition_num) {
+    hybridse::sdk::Status status;
+    CreateDB(sql_case, router);
+    CreateTables(sql_case, router, partition_num);
+    InsertTables(sql_case, router, kInsertAllInputs);
+    BatchExecuteSQL(sql_case, router, tbEndpoints);
+    DropTables(sql_case, router);
+    LOG(INFO) << "DistributeRunBatchModeSDK ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
+}
 }  // namespace sdk
 }  // namespace openmldb

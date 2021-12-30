@@ -31,11 +31,13 @@ namespace client {
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJobs, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
 
-    if (ok && response.code() == 0) {
-        for (int32_t i = 0; i < response.jobs_size(); i++) {
-            ::openmldb::taskmanager::JobInfo job_info;
-            job_info.CopyFrom(response.jobs(i));
-            job_infos.push_back(job_info);
+    if (ok) {
+        if (response.code() == 0) {
+            for (int32_t i = 0; i < response.jobs_size(); i++) {
+                ::openmldb::taskmanager::JobInfo job_info;
+                job_info.CopyFrom(response.jobs(i));
+                job_infos.push_back(job_info);
+            }
         }
         return ::openmldb::base::Status(response.code(), response.msg());
     } else {
@@ -52,9 +54,11 @@ namespace client {
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJob, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
 
-    if (ok && response.code() == 0) {
-        if (response.has_job()) {
-            job_info.CopyFrom(response.job());
+    if (ok) {
+        if(response.code() == 0) {
+            if (response.has_job()) {
+                job_info.CopyFrom(response.job());
+            }
         }
         return ::openmldb::base::Status(response.code(), response.msg());
     } else {
@@ -71,9 +75,11 @@ namespace client {
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::StopJob, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
 
-    if (ok && response.code() == 0) {
-        if (response.has_job()) {
-            job_info.CopyFrom(response.job());
+    if (ok) {
+        if(response.code() == 0) {
+            if (response.has_job()) {
+                job_info.CopyFrom(response.job());
+            }
         }
         return ::openmldb::base::Status(response.code(), response.msg());
     } else {
@@ -95,9 +101,11 @@ namespace client {
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchAndShow, &request,
                                   &response, FLAGS_request_timeout_ms, 1);
 
-    if (ok && response.code() == 0) {
-        if (response.has_job()) {
-            job_info.CopyFrom(response.job());
+    if (ok) {
+        if(response.code() == 0) {
+            if (response.has_job()) {
+                job_info.CopyFrom(response.job());
+            }
         }
         return ::openmldb::base::Status(response.code(), response.msg());
     } else {
@@ -118,9 +126,11 @@ namespace client {
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOnlineData, &request,
                                   &response, FLAGS_request_timeout_ms, 1);
 
-    if (ok && response.code() == 0) {
-        if (response.has_job()) {
-            job_info.CopyFrom(response.job());
+    if (ok) {
+        if(response.code() == 0) {
+            if (response.has_job()) {
+                job_info.CopyFrom(response.job());
+            }
         }
         return ::openmldb::base::Status(response.code(), response.msg());
     } else {
@@ -141,15 +151,35 @@ namespace client {
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOfflineData, &request,
                                   &response, FLAGS_request_timeout_ms, 1);
 
-    if (ok && response.code() == 0) {
-        if (response.has_job()) {
-            job_info.CopyFrom(response.job());
+    if (ok) {
+        if (response.code() == 0) {
+            if (response.has_job()) {
+                job_info.CopyFrom(response.job());
+            }
         }
         return ::openmldb::base::Status(response.code(), response.msg());
     } else {
         return ::openmldb::base::Status(-1, "Fail to request TaskManager server");
     }
 }
+
+::openmldb::base::Status TaskManagerClient::DropOfflineTable(const std::string& db, const std::string& table) {
+    ::openmldb::taskmanager::DropOfflineTableRequest request;
+    ::openmldb::taskmanager::DropOfflineTableResponse response;
+
+    request.set_db(db);
+    request.set_table(table);
+
+    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::DropOfflineTable, &request,
+                                  &response, FLAGS_request_timeout_ms, 1);
+
+    if (ok) {
+        return ::openmldb::base::Status(response.code(), response.msg());
+    } else {
+        return ::openmldb::base::Status(-1, "Fail to request TaskManager server");
+    }
+}
+
 
 }  // namespace client
 }  // namespace openmldb

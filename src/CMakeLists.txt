@@ -19,7 +19,6 @@ add_custom_command(OUTPUT ${project_dir}/src/proto/${proto_name}.pb.cc
         COMMAND ${CMAKE_PREFIX_PATH}/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto
         --cpp_out=${project_dir}/src/proto/
         --java_out=${project_dir}/java/openmldb-native/src/main/java
-        --java_out=${project_dir}/java/openmldb-nearline-tablet/src/main/java
         --java_out=${project_dir}/java/openmldb-import/src/main/java
         --java_out=${project_dir}/java/openmldb-taskmanager/src/main/java
         --java_out=${project_dir}/java/openmldb-common/src/main/java
@@ -73,7 +72,6 @@ compile_proto(tablet ${PROJECT_SOURCE_DIR})
 compile_proto(name_server ${PROJECT_SOURCE_DIR})
 compile_proto(sql_procedure ${PROJECT_SOURCE_DIR})
 compile_proto(api_server ${PROJECT_SOURCE_DIR})
-compile_proto(nl_tablet ${PROJECT_SOURCE_DIR})
 compile_proto(taskmanager ${PROJECT_SOURCE_DIR})
 
 compile_lib(openmldb_codec codec "")
@@ -90,7 +88,7 @@ compile_lib(log log "flags.cc")
 compile_lib(openmldb_sdk sdk "")
 compile_lib(apiserver apiserver "")
 
-add_library(openmldb_proto STATIC proto/type.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/api_server.pb.cc proto/nl_tablet.pb.cc proto/taskmanager.pb.cc proto/name_server.pb.cc)
+add_library(openmldb_proto STATIC proto/type.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/api_server.pb.cc proto/taskmanager.pb.cc proto/name_server.pb.cc)
 
 add_library(openmldb_flags flags.cc)
 

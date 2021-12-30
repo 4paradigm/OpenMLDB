@@ -155,13 +155,9 @@ class OpenmldbSession {
       return OpenmldbDataframe(this, sparksql(sqlText))
     }
 
-    var sql: String = sqlText
-    if (!sql.trim.endsWith(";")) {
-      sql = sql.trim + ";"
-    }
     val planner = new SparkPlanner(this, config)
     this.planner = planner
-    val df = planner.plan(sql, registeredTables).getDf()
+    val df = planner.plan(sqlText, registeredTables).getDf()
     OpenmldbDataframe(this, df)
   }
 

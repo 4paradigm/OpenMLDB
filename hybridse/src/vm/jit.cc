@@ -156,6 +156,7 @@ bool HybridSeLlvmJitWrapper::Init() {
         ::llvm::Error e = jit.takeError();
         if (e) {
             LOG(WARNING) << "fail to init jit let";
+            ::llvm::errs() << e;
             return false;
         }
     }

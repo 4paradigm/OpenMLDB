@@ -70,6 +70,12 @@ object SparkJobManager {
       launcher.addAppArgs(args:_*)
     }
 
+    // TODO: Avoid using zh_CN to load openmldb jsdk so
+    launcher.setConf("spark.yarn.appMasterEnv.LANG", "en_US.UTF-8")
+    launcher.setConf("spark.yarn.appMasterEnv.LC_ALL", "en_US.UTF-8")
+    launcher.setConf("spark.yarn.executorEnv.LANG", "en_US.UTF-8")
+    launcher.setConf("spark.yarn.executorEnv.LC_ALL", "en_US.UTF-8")
+
     // Set ZooKeeper config for openmldb-batch jobs
     if (TaskManagerConfig.ZK_CLUSTER.nonEmpty && TaskManagerConfig.ZK_ROOT_PATH.nonEmpty) {
       launcher.setConf("spark.openmldb.zk.cluster", TaskManagerConfig.ZK_CLUSTER)
@@ -79,6 +85,9 @@ object SparkJobManager {
     // Set ad-hoc Spark configuration
     if (defaultDb.nonEmpty) {
       launcher.setConf("spark.openmldb.default.db", defaultDb)
+    }
+    if (TaskManagerConfig.OFFLINE_DATA_PREFIX.nonEmpty) {
+      launcher.setConf("spark.openmldb.offline.data.prefix", TaskManagerConfig.OFFLINE_DATA_PREFIX)
     }
     for ((k, v) <- sparkConf) {
       launcher.setConf(k, v)

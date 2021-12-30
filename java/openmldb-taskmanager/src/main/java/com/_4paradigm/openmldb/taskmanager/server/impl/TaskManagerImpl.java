@@ -163,4 +163,15 @@ public class TaskManagerImpl implements TaskManagerInterface {
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
+
+    @Override
+    public TaskManager.DropOfflineTableResponse DropOfflineTable(TaskManager.DropOfflineTableRequest request) {
+        try {
+            JobInfoManager.dropOfflineTable(request.getDb(), request.getTable());
+            return TaskManager.DropOfflineTableResponse.newBuilder().setCode(StatusCode.SUCCESS).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return TaskManager.DropOfflineTableResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
+        }
+    }
 }

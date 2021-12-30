@@ -52,6 +52,11 @@ class TestOpenMLDBClient(unittest.TestCase):
     connection.execute(insert3, ({"col3":"fujian", "col4":"fuzhou"}));
     connection.execute(insert4, ({"col1":1003, "col2":"2020-12-28", "col3":"jiangxi", "col4":"nanchang", "col5":4}));
     connection.execute(insert5, ({"col2":"2020-12-29"}));
+    
+    self.check_fetchmany(connection)
+    self.check_fetchall(connection)
+    self.check_exectute_many(connection,insert4)
+
     data = {1000 : [1000, '2020-12-25', 'guangdon', '广州', 1],
         1001 : [1001, '2020-12-26', 'hefei', 'anhui', 2],
         1002 : [1002, '2020-12-27', 'fujian', 'fuzhou', 3],
@@ -166,7 +171,7 @@ class TestOpenMLDBClient(unittest.TestCase):
     logging.info("result size: %d", len(rs))
     for row in rs:
       logging.info(row)
-    
+
   def check_result(self, rs, expectRows, orderIdx = 0):
     rs = sorted(rs, key=lambda x: x[orderIdx])
     expectRows = sorted(expectRows, key=lambda x: x[orderIdx])
@@ -176,7 +181,31 @@ class TestOpenMLDBClient(unittest.TestCase):
     for row in rs:
       self.assertEqual(row, expectRows[i], "not equal row: {}\n{}".format(row, expectRows[i]))
       i+=1
-    
+
+  def check_exectute_many(self,connection,sql):
+    try:
+      connection.execute(sql,[{"col1":1005, "col2":"2020-12-29", "col3":"shandong", "col4":"jinan", "col5":6},
+                              {"col1":1006, "col2":"2020-12-30", "col3":"fujian", "col4":"fuzhou", "col5":7}]);
+      self.assertTrue(False)
+    except Exception as e:
+      pass
+
+  def check_fetchmany(self,connection):
+    try:
+      result = connection.execute("select * from tsql1010;")
+      print(result.fetchmany(size=2))
+      self.assertTrue(False)
+    except Exception as e:
+      pass
+      
+  def check_fetchall(self,connection):
+    try:
+      result = connection.execute("select * from tsql1010;")
+      print(result.fetchall())
+      self.assertTrue(False)
+    except Exception as e:
+      pass
+
   def test_parameterized_query(self):
     logging.info("test_parameterized_query...")
     engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')

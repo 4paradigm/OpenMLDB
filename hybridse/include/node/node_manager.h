@@ -273,7 +273,7 @@ class NodeManager {
     SelectIntoNode *MakeSelectIntoNode(const QueryNode *query, const std::string &query_str,
                                        const std::string &out_file, const std::shared_ptr<OptionsMap> options,
                                        const std::shared_ptr<OptionsMap> config_option);
-    SelectIntoPlanNode *MakeSelectIntoPlanNode(const QueryNode *query, const std::string &query_str,
+    SelectIntoPlanNode *MakeSelectIntoPlanNode(PlanNode *query, const std::string &query_str,
                                                const std::string &out_file, const std::shared_ptr<OptionsMap> options,
                                                const std::shared_ptr<OptionsMap> config_option);
     SetNode* MakeSetNode(const node::VariableScope scope, const std::string& key, const ConstNode* value);
