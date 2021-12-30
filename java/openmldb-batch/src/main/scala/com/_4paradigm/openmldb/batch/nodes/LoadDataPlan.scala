@@ -15,13 +15,10 @@
  */
 package com._4paradigm.openmldb.batch.nodes
 
-import com._4paradigm.hybridse.node.ConstNode
-import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.PhysicalLoadDataNode
-import com._4paradigm.openmldb.batch.utils.SparkRowUtil
-import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
+import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkRowUtil}
+import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.proto.NS.OfflineTableInfo
-import com._4paradigm.openmldb.proto.Type.DataType
 import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
 
@@ -129,24 +126,23 @@ object LoadDataPlan {
         "zkPath" -> ctx.getConf.openmldbZkRootPath)
       // The dataframe which be read should have the correct column types.
       var struct = new StructType
-      DataType.getDescriptor
       info.getColumnDescList.forEach(
         col => struct = struct.add(col.getName, SparkRowUtil.protoTypeToScalaType(col.getDataType), !col.getNotNull)
       )
       logger.info("read schema: {}", struct)
       val df = spark.read.options(options).format(format).schema(struct).load(inputFile)
-      if (logger.isInfoEnabled()) {
-        logger.debug("read dataframe: {}", df)
+      if (logger.isDebugEnabled()) {
+        logger.debug("read dataframe count: {}", df.count())
       }
       df.write.options(writeOptions).format("openmldb").mode(mode).save()
     } else {
       // offline
-      var needUpdateInfo = true
+      var needUpdateInfo = false
       val newInfoBuilder = info.toBuilder
 
       val infoExists = info.hasOfflineTableInfo
       if (!deepCopy) {
-        // soft deep, no need to read files
+        // soft copy, no need to read files
         if (infoExists) {
           require(mode == "overwrite", "offline info has already existed, only overwrite mode works")
         }
@@ -165,6 +161,7 @@ object LoadDataPlan {
         } else {
           ctx.getConf.offlineDataPrefix
         }
+        // TODO(hw): if recreate table, this dir may not be empty
         val offlineDataPath = s"$offlineDataPrefix/$db/$table"
         // write default settings: no option and parquet format
         var (writePath, writeFormat) = (offlineDataPath, "parquet")
@@ -173,17 +170,25 @@ object LoadDataPlan {
           require(mode != "errorifexists", "offline info exists")
           // write options & format use the existed settings
           val old = info.getOfflineTableInfo
-          // overwrite mode won't change the offline data address
-          writePath = old.getPath
-          writeFormat = old.getFormat
-          writeOptions = old.getOptionsMap.asScala
-          // if origin offline data is deep-coped, we don't need to update offline info
-          needUpdateInfo = !old.getDeepCopy
-          // TODO(hw): how about the soft-coped origin offline data?
+          if (!old.getDeepCopy) {
+            // if old offline data is soft-coped, we need to reject the old info
+            // TODO(hw): how about the soft-coped origin offline data?
+            needUpdateInfo = true
+          } else {
+            // if old offline data is deep-coped, we need to use the old info
+            writeFormat = old.getFormat
+            writeOptions = old.getOptionsMap.asScala
+            writePath = old.getPath
+          }
         }
 
         // do deep copy
+        require(inputFile != writePath, "read and write paths shouldn't be the same, it may be happened when we want " +
+          "append data(deep-coped) to the path which is soft link")
         val df = spark.read.options(options).format(format).load(inputFile)
+        if (logger.isDebugEnabled()) {
+          logger.debug("read dataframe count: {}", df.count())
+        }
         df.write.mode(mode).format(writeFormat).options(writeOptions.toMap).save(writePath)
         val offlineBuilder = OfflineTableInfo.newBuilder().setPath(writePath).setFormat(writeFormat).setDeepCopy(true)
           .putAllOptions(writeOptions.asJava)
