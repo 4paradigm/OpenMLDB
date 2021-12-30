@@ -110,16 +110,6 @@ public class JitManager {
         initializedModuleTags.add(tag);
     }
 
-    public static synchronized void initCore() {
-        HybridSeLibrary.initCore();
-        Engine.InitializeGlobalLLVM();
-    }
-
-    public static synchronized void initCore(String jsdkCoreLibraryPath) {
-        HybridSeLibrary.initCore(jsdkCoreLibraryPath);
-        Engine.InitializeGlobalLLVM();
-    }
-
     /**
      * Init llvm module specified by tag. Init native module with module byte buffer.
      *
