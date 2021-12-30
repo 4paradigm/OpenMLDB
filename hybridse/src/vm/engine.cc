@@ -304,6 +304,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     explain_output->ir = ctx.ir;
     explain_output->request_name = ctx.request_name;
     explain_output->request_db_name = ctx.request_db_name;
+    explain_output->limit_cnt = ctx.limit_cnt;
     if (engine_mode == ::hybridse::vm::kBatchMode) {
         std::set<std::pair<std::string, std::string>> tables;
         base::Status status;

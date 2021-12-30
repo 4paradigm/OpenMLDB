@@ -316,6 +316,9 @@ bool SqlCompiler::Parse(SqlContext& ctx,
         LOG(WARNING) << "Fail create sql plan: " << status;
         return false;
     }
+    if (!ctx.logical_plan.empty()) {
+        ctx.limit_cnt = ::hybridse::plan::PlanAPI::GetPlanLimitCount(ctx.logical_plan[0]);
+    }
     return true;
 }
 bool SqlCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,

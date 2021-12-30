@@ -62,6 +62,7 @@ class TransformRequestModeTest : public ::testing::TestWithParam<SqlCase> {
     ::hybridse::node::NodeManager manager;
 };
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformRequestModeTest);
 void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql, std::string exp) {
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
 

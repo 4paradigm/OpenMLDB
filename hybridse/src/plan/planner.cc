@@ -434,6 +434,78 @@ base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
     return base::Status::OK();
 }
 /**
+ * Get the limit count of given SQL query
+ * @param node
+ * @return
+ */
+int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
+    if (nullptr == node) {
+        return 0;
+    }
+    int limit_cnt = 0;
+    switch (node->type_) {
+        case node::kPlanTypeTable: {
+            return 0;
+        }
+        case node::kPlanTypeLimit: {
+            auto limit_node = dynamic_cast<node::LimitPlanNode*>(node);
+            limit_cnt = limit_node->GetLimitCnt();
+        }
+        default: {
+            if (node->GetChildrenSize() > 0) {
+                int cnt= GetPlanTreeLimitCount(node->GetChildren()[0]);
+                if (cnt > 0) {
+                    if (limit_cnt == 0) {
+                        limit_cnt = cnt;
+                    } else {
+                        limit_cnt = std::min(cnt, limit_cnt);
+                    }
+                }
+            }
+            break;
+        }
+    }
+    return limit_cnt;
+}
+base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
+    if (node == nullptr) {
+        return base::Status::OK();
+    }
+    switch (node->type_) {
+        case node::kPlanTypeTable: {
+            break;
+        }
+        case node::kPlanTypeProject: {
+            auto project_node = dynamic_cast<node::ProjectPlanNode*>(node);
+
+            for (auto &each : project_node->project_list_vec_) {
+                node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(each);
+                CHECK_TRUE(nullptr == project_list->GetW(), common::kPlanError,
+                           "Non-support WINDOW Op in cluster online training");
+                CHECK_TRUE(nullptr == project_list->GetHavingCondition(), common::kPlanError,
+                           "Non-support HAVING Op in cluster online training")
+                CHECK_TRUE(!project_list->HasAggProject(), common::kPlanError,
+                           "Aggregate over a table cannot be supported in cluster online training")
+            }
+        }
+        case node::kPlanTypeLoadData:
+        case node::kPlanTypeRename:
+        case node::kPlanTypeLimit:
+        case node::kPlanTypeFilter:
+        case node::kPlanTypeQuery: {
+            for (auto *child : node->GetChildren()) {
+                CHECK_STATUS(ValidateClusterOnlineTrainingOp(child));
+            }
+            break;
+        }
+        default: {
+            FAIL_STATUS(common::kPlanError, "Non-support ", node->GetTypeName(), " Op in cluster online training");
+            break;
+        }
+    }
+    return base::Status::OK();
+}
+/**
  * Validate there is one and only one request table existing in the Plan tree
  * @param node
  * @param outputs
@@ -511,6 +583,10 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                     }
 
                     CHECK_STATUS(ValidateOnlineServingOp(query_plan));
+                } else {
+                    if (is_cluster_optimized_) {
+                        CHECK_STATUS(ValidateClusterOnlineTrainingOp(query_plan));
+                    }
                 }
 
                 plan_trees.push_back(query_plan);

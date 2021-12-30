@@ -69,6 +69,7 @@ class TransformTest : public ::testing::TestWithParam<SqlCase> {
     ~TransformTest() {}
     node::NodeManager manager;
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformTest);
 INSTANTIATE_TEST_SUITE_P(
     SqlSimpleQueryParse, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
@@ -759,6 +760,8 @@ class KeyGenTest : public ::testing::TestWithParam<std::string> {
     ~KeyGenTest() {}
     node::NodeManager nm;
 };
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(KeyGenTest);
 INSTANTIATE_TEST_SUITE_P(KeyGen, KeyGenTest,
                         testing::Values("select col1 from t1;",
                                         "select col1, col2 from t1;"));
@@ -813,6 +816,7 @@ class FilterGenTest : public ::testing::TestWithParam<std::string> {
     ~FilterGenTest() {}
     node::NodeManager nm;
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FilterGenTest);
 INSTANTIATE_TEST_SUITE_P(FilterGen, FilterGenTest,
                         testing::Values("select t1.col1=t2.col1 from t1,t2;",
                                         "select t1.col1!=t2.col2 from t1,t2;",
@@ -870,6 +874,7 @@ class TransformPassOptimizedTest
     TransformPassOptimizedTest() {}
     ~TransformPassOptimizedTest() {}
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformPassOptimizedTest);
 INSTANTIATE_TEST_SUITE_P(
     GroupHavingOptimized, TransformPassOptimizedTest,
     testing::Values(
@@ -1349,7 +1354,7 @@ class SimpleCataLogTransformPassOptimizedTest
     SimpleCataLogTransformPassOptimizedTest() {}
     ~SimpleCataLogTransformPassOptimizedTest() {}
 };
-
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SimpleCataLogTransformPassOptimizedTest);
 // LeftJoinPass dosen't work in simple catalog
 INSTANTIATE_TEST_SUITE_P(
     JoinFilterOptimized, SimpleCataLogTransformPassOptimizedTest,
