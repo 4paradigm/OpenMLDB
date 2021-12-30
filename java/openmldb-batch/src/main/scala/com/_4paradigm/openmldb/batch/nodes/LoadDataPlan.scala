@@ -15,10 +15,13 @@
  */
 package com._4paradigm.openmldb.batch.nodes
 
+import com._4paradigm.hybridse.node.ConstNode
+import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.PhysicalLoadDataNode
-import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkRowUtil}
-import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
+import com._4paradigm.openmldb.batch.utils.SparkRowUtil
+import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import com._4paradigm.openmldb.proto.NS.OfflineTableInfo
+import com._4paradigm.openmldb.proto.Type.DataType
 import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
 
