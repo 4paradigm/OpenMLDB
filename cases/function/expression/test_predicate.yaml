@@ -608,6 +608,7 @@ cases:
           - [3, 1590115440000 ]
           - [4, 1590115450000 ]
           - [5, 1590115460000 ]
+          - [6, 1590115470000 ]
       - columns: ["id int", "ts timestamp", "col2 string"]
         indexs: ["idx:id:ts"]
         rows:
@@ -616,6 +617,7 @@ cases:
           - [3, 1590115440000, mike]
           - [4, 1590115450000, Dan]
           - [5, 1590115460000, Evan_W]
+          - [6, 1590115470000, M]
     dataProvider:
       - ["LIKE", "NOT LIKE", "ILIKE", "NOT ILIKE"] # LIKE / NOT LIKE
       - ["m%", "M_ry" ] # match pattern
@@ -633,6 +635,7 @@ cases:
             - [3, mike]
             - [4, null]
             - [5, null]
+            - [6, null]
         1:
           rows:
             - [1, null]
@@ -640,6 +643,7 @@ cases:
             - [3, null]
             - [4, null]
             - [5, null]
+            - [6, null]
       1:
         0:
           rows:
@@ -648,6 +652,7 @@ cases:
             - [3, null]
             - [4, Dan]
             - [5, Evan_W]
+            - [6, M]
         1:
           rows:
             - [1, John]
@@ -655,6 +660,7 @@ cases:
             - [3, mike]
             - [4, Dan]
             - [5, Evan_W]
+            - [6, M]
       2:
         0:
           rows:
@@ -663,6 +669,7 @@ cases:
             - [3, mike]
             - [4, null]
             - [5, null]
+            - [6, M]
         1:
           rows:
             - [1, null]
@@ -670,6 +677,7 @@ cases:
             - [3, null]
             - [4, null]
             - [5, null]
+            - [6, null]
       3:
         0:
           rows:
@@ -678,6 +686,7 @@ cases:
             - [3, null]
             - [4, Dan]
             - [5, Evan_W]
+            - [6, null]
         1:
           rows:
             - [1, John]
@@ -685,6 +694,7 @@ cases:
             - [3, mike]
             - [4, Dan]
             - [5, Evan_W]
+            - [6, M]
   - id: like_predicate_2
     desc: like predicate with escape
     inputs:
