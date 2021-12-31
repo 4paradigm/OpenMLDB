@@ -62,13 +62,6 @@ public class DDLTest extends FedbTest {
     }
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_create_index_wkd.yaml")
-    @Story("create_index_wkd")
-    public void testCreateIndexWkd(SQLCase testCase){
-        ExecutorFactory.build(testCase,SQLCaseType.kClusterCLI).run();
-    }
-
-    @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/ddl/test_create.yaml")
     @Story("create")
     public void testCreateByCli(SQLCase testCase){

@@ -48,14 +48,14 @@ public class StandaloneTest extends BaseTest {
         }else{
             FedbGlobalVar.mainInfo = FEDBInfo.builder()
                     .deployType(OpenMLDBDeployType.STANDALONE)
-                    .basePath("/home/wangkaidong/fedb-auto-test/standalone")
-                    .fedbPath("/home/wangkaidong/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
+                    .basePath("/home/zhaowei01/fedb-auto-test/standalone")
+                    .fedbPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
                     .nsNum(1).tabletNum(1)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10014"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10015"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10016"))
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10018"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10019"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10020"))
                     .host("172.24.4.55")
-                    .port(10014)
+                    .port(10018)
                     .build();
         }
         String caseEnv = System.getProperty("caseEnv");

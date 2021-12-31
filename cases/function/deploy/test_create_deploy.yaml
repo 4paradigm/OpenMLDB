@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: []
+debugs: ["表已经有索引，deploy一个window，索引的column相同和ts都相同"]
 cases:
   -
     id: 0
@@ -414,8 +414,11 @@ cases:
       - ["ROWS","ROWS_RANGE"]
     sqls:
       - deploy deploy_{0} SELECT id, c1, sum(c1) OVER w1 as w1_c1_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
-      success: false
+      success: true
   -
     id: 13
     desc: 表已经有索引，deploy一个window,使用另一个索引,列和ts都不同
@@ -423,19 +426,15 @@ cases:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c4"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
-          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
-          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
-          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
     dataProvider:
       - ["ROWS","ROWS_RANGE"]
     sqls:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
-      success: false
+      success: true
   -
     id: 14
     desc: 表已经有索引，deploy一个window，索引的column相同，ts不同
@@ -443,18 +442,15 @@ cases:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c1:c4"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
-          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
-          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
-          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
     dataProvider:
       - ["ROWS","ROWS_RANGE"]
     sqls:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
     expect:
-      success: false
+      success: true
   -
     id: 15
     desc: 表已经有索引，deploy一个window，索引的column不同，ts相同,ROWS
@@ -462,12 +458,6 @@ cases:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
-          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
-          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
-          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
     sqls:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - desc {0};
@@ -601,6 +591,21 @@ cases:
           - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
     sqls:
       - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - desc {0};
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 22
+    desc: 表已经有索引，deploy一个window，索引的column相同和ts都相同
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
       - desc {0};
       - show deployment deploy_{0};
     tearDown:
