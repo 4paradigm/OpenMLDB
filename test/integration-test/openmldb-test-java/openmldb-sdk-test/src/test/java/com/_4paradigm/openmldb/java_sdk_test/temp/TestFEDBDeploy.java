@@ -52,6 +52,7 @@ public class TestFEDBDeploy {
     public void testTmp(){
         FEDBDeploy deploy = new FEDBDeploy("tmp");
         deploy.setCluster(true);
+        deploy.setSparkMaster("yarn");
         FEDBInfo fedbInfo = deploy.deployFEDB(2, 3);
         System.out.println(fedbInfo);
     }
