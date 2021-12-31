@@ -21,10 +21,6 @@ import java.util.Properties
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.proto.NS
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{DoubleType, IntegerType, LongType, StructField, StructType}
-
-import scala.collection.JavaConverters.seqAsJavaListConverter
 
 class TestLoadDataPlan extends SparkTestSuite {
   var openmldbSession: OpenmldbSession = _
@@ -81,13 +77,10 @@ class TestLoadDataPlan extends SparkTestSuite {
   ignore("Test Load to Openmldb Offline Storage") {
     val originInfo = getLatestTableInfo(db, table)
     assert(!originInfo.hasOfflineTableInfo, s"shouldn't have info $originInfo")
-    // NOTE: src csv files should be in the directory '/load_data_test_src'
-    // reading the exact file will convert it to a dir on linux, but works fine on macos, sth weird
-    val testFile = "file://" + getClass.getResource("/load_data_test_src").getPath
-
     // P.S. src csv files have header, and the col names are different with table schema, and no s
     // If soft-copy, we don't read data, can't do schema check. So we don't do restrict schema check now.
     // TODO(hw): do restrict schema check even when soft-copy?
+    val testFile = "file://" + getClass.getResource("/load_data_test_src").getPath
 
     println("no offline table info now, soft load data with any mode")
     openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
