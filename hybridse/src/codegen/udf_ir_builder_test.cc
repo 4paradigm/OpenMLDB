@@ -965,6 +965,15 @@ TEST_F(UdfIRBuilderTest, ilike_match) {
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
         udf_name, true, codec::StringRef("mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
 }
+TEST_F(UdfIRBuilderTest, reverse) {
+    auto udf_name = "reverse";
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("SQL"), StringRef("LQS"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("abc"), StringRef("cba"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("a"), StringRef("a"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("123456789"), StringRef("987654321"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(""), StringRef(""));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, nullptr, nullptr);
+}
 }  // namespace codegen
 }  // namespace hybridse
 
