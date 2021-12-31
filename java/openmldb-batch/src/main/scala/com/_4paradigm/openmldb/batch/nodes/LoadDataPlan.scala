@@ -140,22 +140,19 @@ object LoadDataPlan {
       }
       df.write.options(writeOptions).format("openmldb").mode(mode).save()
     } else {
-      // offline
-      var needUpdateInfo = false
+      // only in some case, do not need to update info
+      var needUpdateInfo = true
       val newInfoBuilder = info.toBuilder
 
       val infoExists = info.hasOfflineTableInfo
       if (!deepCopy) {
         // soft copy, no need to read files
-        if (infoExists) {
-          require(mode == "overwrite", "offline info has already existed, only overwrite mode works")
-        }
+        require(!infoExists, "offline info has already existed, we don't know whether to delete the existing data")
+
         // because it's soft-copy, format+options should be the same with read settings
         val offlineBuilder = OfflineTableInfo.newBuilder().setPath(inputFile).setFormat(format).setDeepCopy(false)
           .putAllOptions(options.asJava)
-        // TODO(hw): how about the origin offline data?
-        // update offline info to nameserver
-        needUpdateInfo = true
+        // update to ns later
         newInfoBuilder.setOfflineTableInfo(offlineBuilder)
       } else {
         // deep copy
@@ -165,24 +162,26 @@ object LoadDataPlan {
         } else {
           ctx.getConf.offlineDataPrefix
         }
-        // TODO(hw): if recreate table, this dir may not be empty
+        // If we recreate table, this dir will be cleaned too. It should be safe.
         val offlineDataPath = s"$offlineDataPrefix/$db/$table"
         // write default settings: no option and parquet format
         var (writePath, writeFormat) = (offlineDataPath, "parquet")
         var writeOptions: mutable.Map[String, String] = mutable.Map()
         if (infoExists) {
           require(mode != "errorifexists", "offline info exists")
-          // write options & format use the existed settings
           val old = info.getOfflineTableInfo
           if (!old.getDeepCopy) {
-            // if old offline data is soft-coped, we need to reject the old info
-            // TODO(hw): how about the soft-coped origin offline data?
+            require(mode == "overwrite", "Only overwrite mode works. Old offline data is soft-coped, only can " +
+              "overwrite the offline info, leave the soft-coped data as it is.")
+            // if old offline data is soft-coped, we need to reject the old info, use the 'offlineDataPath' and
+            // normal settings
             needUpdateInfo = true
           } else {
-            // if old offline data is deep-coped, we need to use the old info
+            // if old offline data is deep-coped, we need to use the old info, and don't need to update info to ns
             writeFormat = old.getFormat
             writeOptions = old.getOptionsMap.asScala
             writePath = old.getPath
+            needUpdateInfo = false
           }
         }
 
