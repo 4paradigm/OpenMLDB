@@ -45,7 +45,8 @@ object SparkRowUtil {
       case Type.DataType.kFloat => FloatType
       case Type.DataType.kDouble => DoubleType
       case Type.DataType.kDate => DateType
-      case Type.DataType.kTimestamp => LongType // in openmldb, timestamp format is int64
+      // In online storage, timestamp format is int64. But in offline storage, we use the spark sql timestamp type(DateTime)
+      case Type.DataType.kTimestamp => TimestampType
       case Type.DataType.kVarchar | Type.DataType.kString => StringType
       case e: Any => throw new UnsupportedHybridSeException(s"unsupported proto DataType $e")
     }
