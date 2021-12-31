@@ -185,8 +185,7 @@ object LoadDataPlan {
         }
 
         // do deep copy
-        require(inputFile != writePath, "read and write paths shouldn't be the same, it may be happened when we want " +
-          "append data(deep-coped) to the path which is soft link")
+        require(inputFile != writePath, "read and write paths shouldn't be the same, it may clean data in the path")
         val df = spark.read.options(options).format(format).load(inputFile)
         if (logger.isDebugEnabled()) {
           logger.debug("read dataframe count: {}", df.count())
