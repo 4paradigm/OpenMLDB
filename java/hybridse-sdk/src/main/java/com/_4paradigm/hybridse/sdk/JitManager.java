@@ -52,7 +52,9 @@ public class JitManager {
             if (jit == null) {
                 throw new RuntimeException("Fail to create native jit");
             }
-            jit.Init();
+            if(!jit.Init()){
+                throw new RuntimeException("Fail to init jit");
+            }
             HybridSeJitWrapper.InitJitSymbols(jit);
             jits.put(tag, jit);
         }
@@ -108,16 +110,6 @@ public class JitManager {
         initializedModuleTags.add(tag);
     }
 
-    public static synchronized void initCore() {
-        HybridSeLibrary.initCore();
-        Engine.InitializeGlobalLLVM();
-    }
-
-    public static synchronized void initCore(String jsdkCoreLibraryPath) {
-        HybridSeLibrary.initCore(jsdkCoreLibraryPath);
-        Engine.InitializeGlobalLLVM();
-    }
-
     /**
      * Init llvm module specified by tag. Init native module with module byte buffer.
      *
@@ -127,6 +119,7 @@ public class JitManager {
     public static synchronized void initJitModule(String tag, ByteBuffer moduleBuffer) {
         // ensure worker native
         HybridSeLibrary.initCore();
+        Engine.InitializeGlobalLLVM();
 
         // ensure worker side module
         if (!JitManager.hasModule(tag)) {
@@ -144,6 +137,7 @@ public class JitManager {
     public static synchronized void initJitModule(String tag, ByteBuffer moduleBuffer, String jsdkCoreLibraryPath) {
         // ensure worker native
         HybridSeLibrary.initCore(jsdkCoreLibraryPath);
+        Engine.InitializeGlobalLLVM();
 
         // ensure worker side module
         if (!JitManager.hasModule(tag)) {

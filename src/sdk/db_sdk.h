@@ -88,7 +88,7 @@ class DBSDK {
 
         std::string endpoint, real_endpoint;
         if (!GetTaskManagerAddress(&endpoint, &real_endpoint)) {
-            LOG(DFATAL) << "fail to get TaskManager address";
+            LOG(ERROR) << "fail to get TaskManager address";
             return {};
         }
         taskmanager_client = std::make_shared<::openmldb::client::TaskManagerClient>(endpoint, real_endpoint);

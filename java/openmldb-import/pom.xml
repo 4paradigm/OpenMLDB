@@ -43,6 +43,11 @@
             <version>3.6.1</version>
         </dependency>
         <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-common</artifactId>
+            <version>0.3.2</version>
+        </dependency>
+        <dependency>
             <groupId>com.baidu</groupId>
             <artifactId>brpc-java</artifactId>
             <version>3.0.2</version>
