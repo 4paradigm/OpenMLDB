@@ -120,6 +120,7 @@ object RowProjectPlan {
           JitManager.initJitModule(tag, buffer.getBuffer, hybridseJsdkLibraryPath)
         }
 
+
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)
         val encoder = new SparkRowCodec(projectConfig.inputSchemaSlices)
