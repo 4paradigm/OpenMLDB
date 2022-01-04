@@ -837,7 +837,12 @@ void ucase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
 }
 
 void reverse(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
-    if (str == nullptr || str->size_ == 0 || output == nullptr || is_null_ptr == nullptr) {
+    if (str == nullptr || output == nullptr || is_null_ptr == nullptr) {
+        return;
+    }
+    if (str->size_ == 0) {
+        output->data_ = str->data_;
+        output->size_ = str->size_;
         return;
     }
     char *buffer = AllocManagedStringBuf(str->size_);
