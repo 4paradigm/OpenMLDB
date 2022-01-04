@@ -716,7 +716,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
 
     bool ok = ns_ptr->DropTable(db, table, err);
     if (!ok) {
-        status->msg = "fail to drop db " + db + " for error ";
+        status->msg = "fail to drop db " + db + " for error " + err;
         status->code = -2;
         LOG(WARNING) << status->msg;
         return false;
