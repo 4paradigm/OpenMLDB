@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["表已经有索引，deploy一个window，索引的column相同和ts都相同"]
+debugs: ["表已经有索引，deploy一个window，索引的column相同，ts不同"]
 cases:
   -
     id: 0
