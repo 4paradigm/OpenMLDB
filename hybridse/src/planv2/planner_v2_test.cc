@@ -698,7 +698,7 @@ TEST_F(PlannerV2Test, CmdStmtPlanTest) {
         ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
         node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
         ASSERT_EQ(node::kCmdDropTable, cmd_plan->GetCmdType());
-        ASSERT_EQ(std::vector<std::string>({"t1"}), cmd_plan->GetArgs());
+        ASSERT_EQ(std::vector<std::string>({"db1", "t1"}), cmd_plan->GetArgs());
     }
     {
         const std::string sql_str = "drop table t1;";
@@ -737,7 +737,7 @@ TEST_F(PlannerV2Test, CmdStmtPlanTest) {
         ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
         node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
         ASSERT_EQ(node::kCmdDropIndex, cmd_plan->GetCmdType());
-        ASSERT_EQ(std::vector<std::string>({"t1", "index1"}), cmd_plan->GetArgs());
+        ASSERT_EQ(std::vector<std::string>({"db1", "t1", "index1"}), cmd_plan->GetArgs());
     }
     {
         const std::string sql_str = "drop index t1.index1;";

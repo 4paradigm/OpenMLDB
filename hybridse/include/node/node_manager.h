@@ -249,6 +249,7 @@ class NodeManager {
 
     SqlNode *MakeCmdNode(node::CmdType cmd_type);
     SqlNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
+    SqlNode *MakeCmdNode(node::CmdType cmd_type, const std::vector<std::string> &args);
     SqlNode *MakeCmdNode(node::CmdType cmd_type, const std::string &index_name,
                          const std::string &table_name);
     SqlNode *MakeCreateIndexNode(const std::string &index_name,

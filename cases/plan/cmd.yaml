@@ -108,7 +108,7 @@ cases:
         +-node[CMD]
           +-cmd_type: drop procedure
           +-args: [sp1]
-  - id: 14
+  - id: 14-1
     desc: DROP TABLE
     sql: DROP TABLE t1;
     expect:
@@ -116,7 +116,15 @@ cases:
         +-node[CMD]
           +-cmd_type: drop table
           +-args: [t1]
-  - id: 15
+  - id: 14-2
+    desc: DROP DB.TABLE
+    sql: DROP TABLE db1.t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop table
+          +-args: [db1, t1]
+  - id: 15-1
     desc: DROP INDEX
     sql: DROP INDEX t1.index1
     expect:
@@ -124,6 +132,14 @@ cases:
         +-node[CMD]
           +-cmd_type: drop index
           +-args: [t1, index1]
+  - id: 15-2
+    desc: DROP INDEX
+    sql: DROP INDEX db1.t1.index1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop index
+          +-args: [db1, t1, index1]
   - id: 16
     desc: USE DATABASE
     sql: USE db1

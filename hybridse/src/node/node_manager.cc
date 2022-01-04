@@ -731,11 +731,18 @@ SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::string &arg
     node_ptr->AddArg(arg);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::string &index_name,
-                                  const std::string &table_name) {
+SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::vector<std::string> &args) {
     CmdNode *node_ptr = new CmdNode(cmd_type);
-    node_ptr->AddArg(index_name);
-    node_ptr->AddArg(table_name);
+    for (auto const & arg: args) {
+        node_ptr->AddArg(arg);
+    }
+    return RegisterNode(node_ptr);
+}
+SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::string &arg1,
+                                  const std::string &arg2) {
+    CmdNode *node_ptr = new CmdNode(cmd_type);
+    node_ptr->AddArg(arg1);
+    node_ptr->AddArg(arg2);
     return RegisterNode(node_ptr);
 }
 SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name, const std::string &table_name,

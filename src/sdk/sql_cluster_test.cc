@@ -106,14 +106,17 @@ TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
           "("
           "col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
-    RightDDL(name, ddl);
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + db2 + "." + name + ";", &status));
 
     // create table db2.name when default database is empty
     ddl = "create table " + db2 + "." + name +
           "("
           "col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
-    RightDDL("", name, ddl);
+    ASSERT_TRUE(router->ExecuteDDL("", ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->ExecuteDDL("", "drop table " + db2 + "." + name + ";", &status));
+
     ASSERT_TRUE(router->DropDB(db2, &status));
 }
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
@@ -126,14 +129,16 @@ TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
           "("
           "col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
-    RightDDL(name, ddl);
+    ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
 
     // create table db2.name when db2 not exit
     ddl = "create table db2." + name +
           "("
           "col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
-    RightDDL("", name, ddl);
+    ASSERT_FALSE(router->ExecuteDDL("", ddl, &status)) << "ddl: " << ddl;
+    ASSERT_FALSE(router->ExecuteDDL("", "drop table " + name + ";", &status));
 }
 
 TEST_F(SQLClusterDDLTest, ColumnDefaultValue) {
