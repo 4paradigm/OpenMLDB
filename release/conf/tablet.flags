@@ -74,4 +74,3 @@
 #--load_table_batch=30
 #--load_table_thread_num=3
 #--load_table_queue_size=1000
---enable_distsql=true

@@ -82,7 +82,6 @@ DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
 DECLARE_bool(use_name);
-DECLARE_bool(enable_distsql);
 DECLARE_string(snapshot_compression);
 DECLARE_string(file_compression);
 
@@ -170,7 +169,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 
     ::hybridse::vm::EngineOptions options;
     if (IsClusterMode()) {
-        options.SetClusterOptimized(FLAGS_enable_distsql);
+        options.SetClusterOptimized(true);
     } else {
         options.SetClusterOptimized(false);
     }
