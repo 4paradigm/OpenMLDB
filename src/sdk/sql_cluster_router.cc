@@ -1317,15 +1317,25 @@ base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* c
     std::string msg;
     switch (cmd_node->GetCmdType()) {
         case hybridse::node::kCmdDropTable: {
-            const std::string& name = cmd_node->GetArgs()[0];
             hybridse::sdk::Status status;
-            ret = this->DropTable(db, name, &status);
+            if (cmd_node->GetArgs().size() == 2) {
+                ret = this->DropTable(cmd_node->GetArgs()[0], cmd_node->GetArgs()[1], &status);
+            } else if (cmd_node->GetArgs().size() == 1){
+                ret = this->DropTable(db, cmd_node->GetArgs()[0], &status);
+            } else {
+                return {base::ReturnCode::kSQLCmdRunError, "Invalid Cmd Args size"};
+            }
+            msg = status.msg;
             break;
         }
         case hybridse::node::kCmdDropIndex: {
-            const std::string& index_name = cmd_node->GetArgs()[0];
-            const std::string& table_name = cmd_node->GetArgs()[1];
-            ret = ns_ptr->DeleteIndex(db, table_name, index_name, msg);
+            if (cmd_node->GetArgs().size() == 3) {
+                ret = ns_ptr->DeleteIndex(cmd_node->GetArgs()[0], cmd_node->GetArgs()[1], cmd_node->GetArgs()[2], msg);
+            } else if (cmd_node->GetArgs().size() == 2){
+                ret = ns_ptr->DeleteIndex(db, cmd_node->GetArgs()[1], cmd_node->GetArgs()[2], msg);
+            } else {
+                return {base::ReturnCode::kSQLCmdRunError, "Invalid Cmd Args size"};
+            }
             break;
         }
         case hybridse::node::kCmdDropSp: {
@@ -1348,8 +1358,12 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     if (create_node == nullptr || ns_ptr == nullptr) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : null pointer");
     }
+    std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
+    if (db_name.empty()) {
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
+    }
     ::openmldb::nameserver::TableInfo table_info;
-    table_info.set_db(db);
+    table_info.set_db(db_name);
     hybridse::base::Status sql_status;
     ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
     if (sql_status.code != 0) {

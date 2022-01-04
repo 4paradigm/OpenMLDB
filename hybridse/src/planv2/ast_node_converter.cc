@@ -1868,8 +1868,15 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
         case zetasql::SchemaObjectKind::kTable: {
             CHECK_TRUE(2 >= names.size(), common::kSqlAstError, "Invalid table path expression ",
                        root->name()->ToIdentifierPathString())
-            *output =
-                dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropTable, names.back()));
+            if (names.size() == 1) {
+                *output =
+                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropTable, names.back()));
+
+            } else {
+                *output =
+                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropTable, names[0], names[1]));
+
+            }
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kDatabase: {
@@ -1883,7 +1890,8 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
             CHECK_TRUE(3 >= names.size() && names.size() >= 2, common::kSqlAstError, "Invalid index path expression ",
                        root->name()->ToIdentifierPathString())
             *output = dynamic_cast<node::CmdNode*>(
-                node_manager->MakeCmdNode(node::CmdType::kCmdDropIndex, names[names.size() - 2], names.back()));
+                node_manager->MakeCmdNode(node::CmdType::kCmdDropIndex, names));
+
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kProcedure: {

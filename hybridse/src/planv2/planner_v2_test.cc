@@ -546,7 +546,7 @@ TEST_F(PlannerV2Test, LastJoinPlanTest) {
 
 TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
     const std::string sql_str =
-        "create table IF NOT EXISTS test(\n"
+        "create table IF NOT EXISTS db1.test(\n"
         "    column1 int NOT NULL,\n"
         "    column2 timestamp NOT NULL,\n"
         "    column3 int NOT NULL,\n"
@@ -573,7 +573,7 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
     // validate create plan
     ASSERT_EQ(node::kPlanTypeCreate, plan_ptr->GetType());
     node::CreatePlanNode *createStmt = (node::CreatePlanNode *)plan_ptr;
-
+    ASSERT_EQ("db1", createStmt->GetDatabase());
     ASSERT_EQ(3, createStmt->GetReplicaNum());
     ASSERT_EQ(8, createStmt->GetPartitionNum());
     ASSERT_EQ(3, createStmt->GetDistributionList().size());
@@ -698,7 +698,7 @@ TEST_F(PlannerV2Test, CmdStmtPlanTest) {
         ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
         node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
         ASSERT_EQ(node::kCmdDropTable, cmd_plan->GetCmdType());
-        ASSERT_EQ(std::vector<std::string>({"t1"}), cmd_plan->GetArgs());
+        ASSERT_EQ(std::vector<std::string>({"db1", "t1"}), cmd_plan->GetArgs());
     }
     {
         const std::string sql_str = "drop table t1;";
@@ -737,7 +737,7 @@ TEST_F(PlannerV2Test, CmdStmtPlanTest) {
         ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
         node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
         ASSERT_EQ(node::kCmdDropIndex, cmd_plan->GetCmdType());
-        ASSERT_EQ(std::vector<std::string>({"t1", "index1"}), cmd_plan->GetArgs());
+        ASSERT_EQ(std::vector<std::string>({"db1", "t1", "index1"}), cmd_plan->GetArgs());
     }
     {
         const std::string sql_str = "drop index t1.index1;";

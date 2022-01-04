@@ -356,10 +356,12 @@ class ProjectPlanNode : public UnaryPlanNode {
 
 class CreatePlanNode : public LeafPlanNode {
  public:
-    CreatePlanNode(const std::string &table_name, int replica_num, int partition_num, NodePointVector column_list,
+    CreatePlanNode(const std::string& db_name,
+                   const std::string &table_name, int replica_num, int partition_num,
+                   NodePointVector column_list,
                    NodePointVector distribution_list)
         : LeafPlanNode(kPlanTypeCreate),
-          database_(""),
+          database_(db_name),
           table_name_(table_name),
           replica_num_(replica_num),
           partition_num_(partition_num),

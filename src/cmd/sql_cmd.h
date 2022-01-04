@@ -1227,10 +1227,6 @@ void HandleSQL(const std::string& sql) {
             return;
         }
         case hybridse::node::kPlanTypeCreate: {
-            if (db.empty()) {
-                std::cout << "ERROR: Please use database first" << std::endl;
-                return;
-            }
             auto create_node = dynamic_cast<hybridse::node::CreatePlanNode*>(node);
             auto status = sr->HandleSQLCreateTable(create_node, db, cs->GetNsClient());
             if (status.OK()) {
