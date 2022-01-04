@@ -1967,9 +1967,9 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
         LOG(WARNING) << "fail to run last join: left input empty";
         return false;
     }
-    if (!left_key_gen_.Valid()) {
+    if (!index_key_gen_.Valid() && !left_key_gen_.Valid()) {
         LOG(WARNING) << "can't join right partition table when join "
-                        "left_key_gen_ is invalid";
+                        "left_key_gen_ and index_key_gen_ are invalid";
         return false;
     }
 
@@ -1984,10 +1984,15 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
         left_iter->SeekToFirst();
         while (left_iter->Valid()) {
             const Row& left_row = left_iter->GetValue();
-            const std::string& key_str =
-                index_key_gen_.Valid() ? index_key_gen_.Gen(left_row, parameter) + "|" +
-                                             left_key_gen_.Gen(left_row, parameter)
-                                       : left_key_gen_.Gen(left_row, parameter);
+
+            std::string key_str = "";
+            if (index_key_gen_.Valid()) {
+                key_str = index_key_gen_.Gen(left_row, parameter);
+            }
+            if (left_key_gen_.Valid()) {
+                key_str = key_str.empty() ? left_key_gen_.Gen(left_row, parameter) : key_str.append("|").append
+                                                                                     (left_key_gen_.Gen(left_row, parameter));
+            }
             auto right_table = right->GetSegment(key_str);
             auto left_key_str = std::string(
                 reinterpret_cast<const char*>(left_key.buf()), left_key.size());
