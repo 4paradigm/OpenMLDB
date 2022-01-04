@@ -19,8 +19,10 @@ package com._4paradigm.openmldb.batch.utils
 import com._4paradigm.hybridse.sdk.{HybridSeException, UnsupportedHybridSeException}
 import com._4paradigm.openmldb.proto.Type
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
-  ShortType, StringType, TimestampType}
+import org.apache.spark.sql.types.{
+  BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
+  ShortType, StringType, TimestampType
+}
 
 object SparkRowUtil {
 
@@ -45,7 +47,8 @@ object SparkRowUtil {
       case Type.DataType.kFloat => FloatType
       case Type.DataType.kDouble => DoubleType
       case Type.DataType.kDate => DateType
-      // In online storage, timestamp format is int64. But in offline storage, we use the spark sql timestamp type(DateTime)
+      // In online storage, timestamp format is int64. But in offline storage, we use the spark sql timestamp type
+      // (DateTime)
       case Type.DataType.kTimestamp => TimestampType
       case Type.DataType.kVarchar | Type.DataType.kString => StringType
       case e: Any => throw new UnsupportedHybridSeException(s"unsupported proto DataType $e")
