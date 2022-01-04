@@ -184,7 +184,7 @@ if(SQL_JAVASDK_ENABLE)
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java)
     add_dependencies(sql_javasdk_package cp_native_so)
 
-
+    # Install TaskManager binary and libraries
     FILE(GLOB TASKMANAGER_BIN "${PROJECT_SOURCE_DIR}/java/openmldb-taskmanager/target/openmldb-taskmanager-binary/bin/*")
     FILE(GLOB TASKMANAGER_CONF "${PROJECT_SOURCE_DIR}/java/openmldb-taskmanager/target/openmldb-taskmanager-binary/conf/*")
     FILE(GLOB TASKMANAGER_LIB "${PROJECT_SOURCE_DIR}/java/openmldb-taskmanager/target/openmldb-taskmanager-binary/lib/*")
@@ -196,10 +196,5 @@ if(SQL_JAVASDK_ENABLE)
             PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
     install(FILES ${TASKMANAGER_LIB}
             DESTINATION taskmanager/lib/
-            PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
-
-    FILE(GLOB BATCHJOB_JAR "${PROJECT_SOURCE_DIR}/java/openmldb-batchjob/target/openmldb-batchjob*.jar")
-    install(FILES ${BATCHJOB_JAR}
-            DESTINATION batchjob/
             PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
 endif()

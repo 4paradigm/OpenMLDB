@@ -98,13 +98,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- OpenMLDB -->
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-common</artifactId>
-            <version>${project.parent.version}</version>
-        </dependency>
-
         <!-- Hadoop -->
         <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -151,10 +144,22 @@
             <version>13.0.0</version>
         </dependency>
 
-        <!-- OpenMLDB client -->
+        <!-- OpenMLDB -->
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-common</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-batchjob</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
 
