@@ -40,6 +40,7 @@
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
 #include "proto/fe_type.pb.h"
+#include "schema/index_util.h"
 #include "schema/schema_adapter.h"
 #include "sdk/db_sdk.h"
 #include "sdk/node_adapter.h"
@@ -876,13 +877,9 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
         for (const auto& column_desc : it->second.column_desc()) {
             col_set.insert(column_desc.name());
         }
-        std::vector<std::set<std::string>> index_cols_set;
+        std::set<std::string> index_id_set;
         for (const auto& column_key : it->second.column_key()) {
-            std::set<std::string> cur_col_set;
-            for (const auto& col_name : column_key.col_name()) {
-                cur_col_set.insert(col_name);
-            }
-            index_cols_set.emplace_back(std::move(cur_col_set));
+            index_id_set.insert(openmldb::schema::IndexUtil::GetIDStr(column_key));
         }
         int cur_index_num = it->second.column_key_size();
         int add_index_num = 0;
@@ -900,21 +897,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
                     return {base::ReturnCode::kError, "col " + col + " is not exist in table " + kv.first};
                 }
             }
-            int same_cnt = 0;
-            for (const auto& col_set : index_cols_set) {
-                if (column_key.col_name_size() == static_cast<int>(col_set.size())) {
-                    same_cnt = 0;
-                    for (const auto& col_name : column_key.col_name()) {
-                        if (col_set.find(col_name) != col_set.end()) {
-                            same_cnt++;
-                        }
-                    }
-                    if (same_cnt == column_key.col_name_size()) {
-                        break;
-                    }
-                }
-            }
-            if (same_cnt == column_key.col_name_size()) {
+            if (index_id_set.count(openmldb::schema::IndexUtil::GetIDStr(column_key)) > 0) {
                 // skip exist index
                 continue;
             }
