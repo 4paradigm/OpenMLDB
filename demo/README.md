@@ -68,7 +68,7 @@ docker run -it 4pdosc/openmldb:0.3.2 bash
 ```bash
 ./init.sh standalone
 ```
-**Create table and import the data to OpenMLDB.**
+**Create table and import the data to OpenMLDB**
 
 ```bash
 # Start the OpenMLDB CLI for the standalone mode
@@ -105,7 +105,7 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 **Train model**
 
 ```bash
-python3 train_s.py /tmp/feature.csv /tmp/model.txt
+python3 train.py /tmp/feature.csv /tmp/model.txt
 ```
 **Online SQL deployment**
 
