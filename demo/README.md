@@ -24,25 +24,99 @@ w2 as (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 ```
 
 ## 2. Demo with The Cluster Mode
-
 > :warning: Required docker engine version >= 18.03
-
-```bash
-# Pull the docker and start it
+**Start docker**
+```
 docker run -it 4pdosc/openmldb:0.3.2 bash
-
-# Initilize the environment
+```
+**Initialize environment**
+```bash
 ./init.sh
+```
+**Create table**
+```bash
+# Start the OpenMLDB CLI for the cluster mode
+../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+```
+```sql
+# The below commands are executed in the CLI
+> CREATE DATABASE demo_db;
+> USE demo_db;
+> CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int, INDEX(ts=pickup_datetime));
+```
 
-# Run feature extraction and model training. Feature extraction will read offline data from the local file
-python3 train.py ./fe.sql /tmp/model.txt
+**Import offline data to OpenMLDB**
+```sql
+# The below commands are executed in the CLI
+> USE demo_db;
+> SET @@execute_mode='offline';
+> LOAD DATA INFILE '/work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet' INTO TABLE t1 options(format='parquet', header=true, mode='append');
+# You can see job status by the below command
+> show jobs;
+```
+**Run offline feature extraction**
+```sql
+# The below commands are executed in the CLI
+> USE demo_db;
+> SET @@execute_mode='offline';
+> SELECT trip_duration, passenger_count,
+sum(pickup_latitude) OVER w AS vendor_sum_pl,
+max(pickup_latitude) OVER w AS vendor_max_pl,
+min(pickup_latitude) OVER w AS vendor_min_pl,
+avg(pickup_latitude) OVER w AS vendor_avg_pl,
+sum(pickup_latitude) OVER w2 AS pc_sum_pl,
+max(pickup_latitude) OVER w2 AS pc_max_pl,
+min(pickup_latitude) OVER w2 AS pc_min_pl,
+avg(pickup_latitude) OVER w2 AS pc_avg_pl,
+count(vendor_id) OVER w2 AS pc_cnt,
+count(vendor_id) OVER w AS vendor_cnt
+FROM t1
+WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
+w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
+```
+**Train model**
+```bash
+python3 train.py /tmp/feature.csv /tmp/model.txt
+```
+**Online SQL deployment**
+```sql
+# The below commands are executed in the CLI
+> USE demo_db;
+> SET @@execute_mode='online';
+> DEPLOY demo SELECT trip_duration, passenger_count,
+sum(pickup_latitude) OVER w AS vendor_sum_pl,
+max(pickup_latitude) OVER w AS vendor_max_pl,
+min(pickup_latitude) OVER w AS vendor_min_pl,
+avg(pickup_latitude) OVER w AS vendor_avg_pl,
+sum(pickup_latitude) OVER w2 AS pc_sum_pl,
+max(pickup_latitude) OVER w2 AS pc_max_pl,
+min(pickup_latitude) OVER w2 AS pc_min_pl,
+avg(pickup_latitude) OVER w2 AS pc_avg_pl,
+count(vendor_id) OVER w2 AS pc_cnt,
+count(vendor_id) OVER w AS vendor_cnt
+FROM t1
+WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
+w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
+```
+:bulb: Note that:
 
-# Import the data to online database
-python3 import.py
+- The SQL used for the online deployment should be the same as that for offline feature extraction.
 
-# Start the HTTP service for inference with OpenMLDB
-./start_predict_server.sh ./fe.sql /tmp/model.txt
-
+**Import online data to OpenMLDB**
+```sql
+# The below commands are executed in the CLI
+> USE demo_db;
+> SET @@execute_mode='online';
+> LOAD DATA INFILE 'file:///work/taxi-trip/data/taxi_tour_table_train_simple.csv' INTO TABLE t1 options(format='csv', header=true, mode='append');
+# You can see job status by the below command
+> show jobs;
+```
+**Start HTTP service for inference with OpenMLDB**
+```bash
+./start_predict_server.sh /tmp/model.txt
+```
+**Run inference with HTTP request**
+```bash
 # Run inference with a HTTP request
 python3 predict.py
 # The following output is expected (the numbers might be slightly different)
@@ -85,7 +159,6 @@ docker run -it 4pdosc/openmldb:0.3.2 bash
 
 ```sql
 # The below commands are executed in the CLI
-> SET PERFORMANCE_SENSITIVE = false;
 > SELECT trip_duration, passenger_count,
 sum(pickup_latitude) OVER w AS vendor_sum_pl,
 max(pickup_latitude) OVER w AS vendor_max_pl,
