@@ -30,6 +30,12 @@ import java.util.List;
 @Slf4j
 public class TaskManagerImpl implements TaskManagerInterface {
 
+    /**
+     * Covert JobInfo object to protobuf object.
+     *
+     * @param job the object of class JobInfo
+     * @return the protobuf object
+     */
     public TaskManager.JobInfo jobInfoToProto(JobInfo job) {
         TaskManager.JobInfo.Builder builder =  TaskManager.JobInfo.newBuilder();
         builder.setId(job.getId());
