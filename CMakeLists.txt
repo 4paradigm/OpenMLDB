@@ -103,14 +103,18 @@ endif ()
 
 
 if (TESTING_ENABLE)
+    set(CTEST_OUTPUT_ON_FAILURE ON)
     enable_testing()
 endif ()
 
 set(test_list "")
-if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
-  find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
-  include(CodeCoverage)
-  APPEND_COVERAGE_COMPILER_FLAGS()
+if (COVERAGE_ENABLE)
+    if (NOT CMAKE_COMPILER_IS_GNUCXX)
+        message(FATAL_ERROR "Coverage is only supported on linux")
+    endif ()
+    find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
+    include(CodeCoverage)
+    APPEND_COVERAGE_COMPILER_FLAGS()
 endif ()
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)

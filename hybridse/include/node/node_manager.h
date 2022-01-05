@@ -249,6 +249,7 @@ class NodeManager {
 
     SqlNode *MakeCmdNode(node::CmdType cmd_type);
     SqlNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
+    SqlNode *MakeCmdNode(node::CmdType cmd_type, const std::vector<std::string> &args);
     SqlNode *MakeCmdNode(node::CmdType cmd_type, const std::string &index_name,
                          const std::string &table_name);
     SqlNode *MakeCreateIndexNode(const std::string &index_name,
@@ -273,7 +274,7 @@ class NodeManager {
     SelectIntoNode *MakeSelectIntoNode(const QueryNode *query, const std::string &query_str,
                                        const std::string &out_file, const std::shared_ptr<OptionsMap> options,
                                        const std::shared_ptr<OptionsMap> config_option);
-    SelectIntoPlanNode *MakeSelectIntoPlanNode(const QueryNode *query, const std::string &query_str,
+    SelectIntoPlanNode *MakeSelectIntoPlanNode(PlanNode *query, const std::string &query_str,
                                                const std::string &out_file, const std::shared_ptr<OptionsMap> options,
                                                const std::shared_ptr<OptionsMap> config_option);
     SetNode* MakeSetNode(const node::VariableScope scope, const std::string& key, const ConstNode* value);
@@ -304,6 +305,7 @@ class NodeManager {
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 
     CreatePlanNode *MakeCreateTablePlanNode(
+        const std::string& db_name,
         const std::string &table_name, int replica_num, int partition_num,
         const NodePointVector &column_list,
         const NodePointVector &partition_meta_list);

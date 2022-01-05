@@ -98,13 +98,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- OpenMLDB -->
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-common</artifactId>
-            <version>${project.parent.version}</version>
-        </dependency>
-
         <!-- Hadoop -->
         <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -116,11 +109,15 @@
             <artifactId>hadoop-yarn-client</artifactId>
             <version>${hadoop.version}</version>
         </dependency>
-
         <dependency>
-            <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-core</artifactId>
-            <version>0.12.0</version>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>${hadoop.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
+            <version>${hadoop.version}</version>
         </dependency>
 
         <!-- Spark -->
@@ -147,11 +144,23 @@
             <version>13.0.0</version>
         </dependency>
 
-        <!-- OpenMLDB client -->
+        <!-- OpenMLDB -->
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
-            <version>0.3.1-allinone</version>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-common</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-batchjob</artifactId>
+            <version>${project.parent.version}</version>
         </dependency>
 
     </dependencies>

@@ -23,6 +23,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_set>
 
 #include "base/random.h"
 #include "base/spinlock.h"
@@ -51,24 +52,29 @@ static std::shared_ptr<::hybridse::sdk::Schema> ConvertToSchema(
 
 struct SQLCache {
     SQLCache(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, DefaultValueMap default_map,
-             uint32_t str_length)
-        : table_info(table_info), default_map(default_map), column_schema(), str_length(str_length) {
+             uint32_t str_length, uint32_t limit_cnt = 0)
+        : table_info(table_info), default_map(default_map), column_schema(),
+          str_length(str_length), limit_cnt(limit_cnt) {
         column_schema = openmldb::sdk::ConvertToSchema(table_info);
     }
-    SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema, const ::hybridse::vm::Router& input_router)
+    SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema, const ::hybridse::vm::Router& input_router,
+             uint32_t limit_cnt = 0)
         : table_info(),
           default_map(),
           column_schema(column_schema),
           parameter_schema(),
           str_length(0),
+          limit_cnt(limit_cnt),
           router(input_router) {}
     SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema,
-             std::shared_ptr<::hybridse::sdk::Schema> parameter_schema, const ::hybridse::vm::Router& input_router)
+             std::shared_ptr<::hybridse::sdk::Schema> parameter_schema, const ::hybridse::vm::Router& input_router,
+             uint32_t limit_cnt = 0)
         : table_info(),
           default_map(),
           column_schema(column_schema),
           parameter_schema(parameter_schema),
           str_length(0),
+          limit_cnt(limit_cnt),
           router(input_router) {}
     bool IsCompatibleCache(std::shared_ptr<::hybridse::sdk::Schema> other_parameter_schema) {
         if (!parameter_schema && !other_parameter_schema) {
@@ -93,6 +99,7 @@ struct SQLCache {
     std::shared_ptr<::hybridse::sdk::Schema> column_schema;
     std::shared_ptr<::hybridse::sdk::Schema> parameter_schema;
     uint32_t str_length;
+    uint32_t limit_cnt;
     ::hybridse::vm::Router router;
 };
 
@@ -108,6 +115,8 @@ class SQLClusterRouter : public SQLRouter {
     bool CreateDB(const std::string& db, hybridse::sdk::Status* status) override;
 
     bool DropDB(const std::string& db, hybridse::sdk::Status* status) override;
+
+    bool DropTable(const std::string& db, const std::string& table, hybridse::sdk::Status* status);
 
     bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
 
@@ -183,6 +192,12 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(
         const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
         const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<SQLRequestRow>& parameter_row);
+    std::shared_ptr<SQLCache> GetSQLCache(
+        const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
+        const std::shared_ptr<SQLRequestRow>& parameter_row);
+    bool GetTabletClientsForClusterOnlineBatchQuery(
+        const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter_row,
+        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients); //NOLINT
 
     std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
                                                           const std::string& table_name) override;
@@ -232,9 +247,11 @@ class SQLClusterRouter : public SQLRouter {
                 ::hybridse::sdk::Status* status);
 
     bool IsConstQuery(::hybridse::vm::PhysicalOpNode* node);
-    std::shared_ptr<SQLCache> GetCache(const std::string& db, const std::string& sql);
+    std::shared_ptr<SQLCache> GetCache(const std::string& db, const std::string& sql,
+                                       const hybridse::vm::EngineMode engine_mode);
 
-    void SetCache(const std::string& db, const std::string& sql, const std::shared_ptr<SQLCache>& router_cache);
+    void SetCache(const std::string& db, const std::string& sql,
+                  const hybridse::vm::EngineMode engine_mode, const std::shared_ptr<SQLCache>& router_cache);
 
     bool GetSQLPlan(const std::string& sql, ::hybridse::node::NodeManager* nm, ::hybridse::node::PlanNodeList* plan);
 
@@ -261,7 +278,9 @@ class SQLClusterRouter : public SQLRouter {
  private:
     SQLRouterOptions options_;
     DBSDK* cluster_sdk_;
-    std::map<std::string, base::lru_cache<std::string, std::shared_ptr<SQLCache>>> input_lru_cache_;
+    std::map<std::string,
+             std::map<hybridse::vm::EngineMode,
+                      base::lru_cache<std::string, std::shared_ptr<SQLCache>>>> input_lru_cache_;
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
 };

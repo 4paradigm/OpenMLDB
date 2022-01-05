@@ -356,10 +356,12 @@ class ProjectPlanNode : public UnaryPlanNode {
 
 class CreatePlanNode : public LeafPlanNode {
  public:
-    CreatePlanNode(const std::string &table_name, int replica_num, int partition_num, NodePointVector column_list,
+    CreatePlanNode(const std::string& db_name,
+                   const std::string &table_name, int replica_num, int partition_num,
+                   NodePointVector column_list,
                    NodePointVector distribution_list)
         : LeafPlanNode(kPlanTypeCreate),
-          database_(""),
+          database_(db_name),
           table_name_(table_name),
           replica_num_(replica_num),
           partition_num_(partition_num),
@@ -495,7 +497,7 @@ class DeployPlanNode : public LeafPlanNode {
 
 class SelectIntoPlanNode : public LeafPlanNode {
  public:
-    explicit SelectIntoPlanNode(const QueryNode *query, const std::string &query_str, const std::string &out,
+    explicit SelectIntoPlanNode(PlanNode *query, const std::string &query_str, const std::string &out,
                                 const std::shared_ptr<OptionsMap> options,
                                 const std::shared_ptr<OptionsMap> config_options)
         : LeafPlanNode(kPlanTypeSelectInto),
@@ -507,7 +509,7 @@ class SelectIntoPlanNode : public LeafPlanNode {
 
     ~SelectIntoPlanNode() {}
 
-    const QueryNode* Query() const { return query_; }
+    PlanNode* Query() const { return query_; }
     const std::string& QueryStr() const { return query_str_; }
     const std::string& OutFile() const { return out_file_; }
     const std::shared_ptr<OptionsMap> Options() const { return options_; }
@@ -516,13 +518,13 @@ class SelectIntoPlanNode : public LeafPlanNode {
     void Print(std::ostream& output, const std::string& tab) const override;
 
  private:
-    const QueryNode* query_;
+    PlanNode* query_;
     const std::string query_str_;
     const std::string out_file_;
     // optional options for load data, e.g csv related options
     const std::shared_ptr<OptionsMap> options_;
     // optinal config option for load data, to config offline job parameters
-    const std::shared_ptr<OptionsMap> config_options_ = nullptr;
+    const std::shared_ptr<OptionsMap> config_options_;
 };
 
 class LoadDataPlanNode : public LeafPlanNode {
@@ -550,9 +552,9 @@ class LoadDataPlanNode : public LeafPlanNode {
     const std::string db_;
     const std::string table_;
     // optional options for load data, e.g csv related options
-    const std::shared_ptr<OptionsMap> options_ = nullptr;
+    const std::shared_ptr<OptionsMap> options_;
     // optinal config option for load data, to config offline job parameters
-    const std::shared_ptr<OptionsMap> config_options_ = nullptr;
+    const std::shared_ptr<OptionsMap> config_options_;
 };
 
 class SetPlanNode : public LeafPlanNode {

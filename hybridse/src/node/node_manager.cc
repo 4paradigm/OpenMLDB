@@ -731,11 +731,18 @@ SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::string &arg
     node_ptr->AddArg(arg);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::string &index_name,
-                                  const std::string &table_name) {
+SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::vector<std::string> &args) {
     CmdNode *node_ptr = new CmdNode(cmd_type);
-    node_ptr->AddArg(index_name);
-    node_ptr->AddArg(table_name);
+    for (auto const & arg: args) {
+        node_ptr->AddArg(arg);
+    }
+    return RegisterNode(node_ptr);
+}
+SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::string &arg1,
+                                  const std::string &arg2) {
+    CmdNode *node_ptr = new CmdNode(cmd_type);
+    node_ptr->AddArg(arg1);
+    node_ptr->AddArg(arg2);
     return RegisterNode(node_ptr);
 }
 SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name, const std::string &table_name,
@@ -784,7 +791,7 @@ SelectIntoNode *NodeManager::MakeSelectIntoNode(const QueryNode *query, const st
     return RegisterNode(node);
 }
 
-SelectIntoPlanNode *NodeManager::MakeSelectIntoPlanNode(const QueryNode *query, const std::string &query_str,
+SelectIntoPlanNode *NodeManager::MakeSelectIntoPlanNode(PlanNode *query, const std::string &query_str,
                                                         const std::string &out_file,
                                                         const std::shared_ptr<OptionsMap> options,
                                                         const std::shared_ptr<OptionsMap> config_option) {
@@ -906,11 +913,13 @@ ProjectNode *NodeManager::MakeProjectNode(const int32_t pos, const std::string &
     RegisterNode(node_ptr);
     return node_ptr;
 }
-CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string &table_name, int replica_num, int partition_num,
+CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string& db_name,
+                                                     const std::string &table_name,
+                                                     int replica_num, int partition_num,
                                                      const NodePointVector &column_list,
                                                      const NodePointVector &partition_meta_list) {
     node::CreatePlanNode *node_ptr =
-        new CreatePlanNode(table_name, replica_num, partition_num, column_list, partition_meta_list);
+        new CreatePlanNode(db_name, table_name, replica_num, partition_num, column_list, partition_meta_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }

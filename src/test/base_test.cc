@@ -31,7 +31,7 @@ const std::string SQLCaseTest::AutoTableName() { return GenRand("auto_t"); }
 
 std::string SQLCaseTest::GetYAMLBaseDir() {
     std::string yaml_base_dir;
-    const char *env_name = "YMAL_CASE_BASE_DIR";
+    const char *env_name = "YAML_CASE_BASE_DIR";
     char *value = getenv(env_name);
     if (value != nullptr) {
         yaml_base_dir.assign(value);
@@ -41,7 +41,7 @@ std::string SQLCaseTest::GetYAMLBaseDir() {
     } else {
         yaml_base_dir = "/openmldb";
     }
-    DLOG(INFO) << "InitCases YMAL_CASE_BASE_DIR: " << yaml_base_dir;
+    DLOG(INFO) << "InitCases YAML_CASE_BASE_DIR: " << yaml_base_dir;
     return yaml_base_dir;
 }
 

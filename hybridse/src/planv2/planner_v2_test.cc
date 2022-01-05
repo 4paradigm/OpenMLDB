@@ -40,6 +40,8 @@ class PlannerV2Test : public ::testing::TestWithParam<SqlCase> {
     NodeManager *manager_;
 };
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PlannerV2Test);
+INSTANTIATE_TEST_SUITE_P(SqlConstQueryParse, PlannerV2Test,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/const_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_SUITE_P(SqlSimpleQueryParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
@@ -99,7 +101,7 @@ TEST_P(PlannerV2Test, PlannerSucessTest) {
         LOG(INFO) << "statement : " << *tree << std::endl;
     }
 }
-TEST_P(PlannerV2Test, PlannerClusterOptTest) {
+TEST_P(PlannerV2Test, PlannerClusterOnlineServingOptTest) {
     auto sql_case = GetParam();
     std::string sqlstr = sql_case.sql_str();
     std::cout << sqlstr << std::endl;
@@ -544,7 +546,7 @@ TEST_F(PlannerV2Test, LastJoinPlanTest) {
 
 TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
     const std::string sql_str =
-        "create table IF NOT EXISTS test(\n"
+        "create table IF NOT EXISTS db1.test(\n"
         "    column1 int NOT NULL,\n"
         "    column2 timestamp NOT NULL,\n"
         "    column3 int NOT NULL,\n"
@@ -571,7 +573,7 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
     // validate create plan
     ASSERT_EQ(node::kPlanTypeCreate, plan_ptr->GetType());
     node::CreatePlanNode *createStmt = (node::CreatePlanNode *)plan_ptr;
-
+    ASSERT_EQ("db1", createStmt->GetDatabase());
     ASSERT_EQ(3, createStmt->GetReplicaNum());
     ASSERT_EQ(8, createStmt->GetPartitionNum());
     ASSERT_EQ(3, createStmt->GetDistributionList().size());
@@ -696,7 +698,7 @@ TEST_F(PlannerV2Test, CmdStmtPlanTest) {
         ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
         node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
         ASSERT_EQ(node::kCmdDropTable, cmd_plan->GetCmdType());
-        ASSERT_EQ(std::vector<std::string>({"t1"}), cmd_plan->GetArgs());
+        ASSERT_EQ(std::vector<std::string>({"db1", "t1"}), cmd_plan->GetArgs());
     }
     {
         const std::string sql_str = "drop table t1;";
@@ -735,7 +737,7 @@ TEST_F(PlannerV2Test, CmdStmtPlanTest) {
         ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
         node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
         ASSERT_EQ(node::kCmdDropIndex, cmd_plan->GetCmdType());
-        ASSERT_EQ(std::vector<std::string>({"t1", "index1"}), cmd_plan->GetArgs());
+        ASSERT_EQ(std::vector<std::string>({"db1", "t1", "index1"}), cmd_plan->GetArgs());
     }
     {
         const std::string sql_str = "drop index t1.index1;";
@@ -1629,28 +1631,26 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
     ASSERT_EQ(1, plan_trees.size());
     EXPECT_STREQ(R"sql(+-[kPlanTypeSelectInto]
   +-out_file: m.txt
-  +-query:
-  |  +-node[kQuery]: kQuerySelect
-  |    +-distinct_opt: false
-  |    +-where_expr: null
-  |    +-group_expr_list: null
-  |    +-having_expr: null
-  |    +-order_expr_list: null
-  |    +-limit: null
-  |    +-select_list[list]:
-  |    |  +-0:
-  |    |    +-node[kResTarget]
-  |    |      +-val:
-  |    |      |  +-expr[column ref]
-  |    |      |    +-relation_name: <nil>
-  |    |      |    +-column_name: c2
-  |    |      +-name: <nil>
-  |    +-tableref_list[list]:
-  |    |  +-0:
-  |    |    +-node[kTableRef]: kTable
-  |    |      +-table: t0
-  |    |      +-alias: <nil>
-  |    +-window_list: []
+  +- query:
+  |  +-[kQueryPlan]
+  |  +-[kProjectPlan]
+  |    +-table: t0
+  |    +-project_list_vec[list]:
+  |      +-[kProjectList]
+  |        +-projects on table [list]:
+  |          +-[kProjectNode]
+  |            +-[0]c2: c2
+  |  +-[kTablePlan]
+  |    +-table: t0
+  |    +-[kProjectPlan]
+  |      +-table: t0
+  |      +-project_list_vec[list]:
+  |        +-[kProjectList]
+  |          +-projects on table [list]:
+  |            +-[kProjectNode]
+  |              +-[0]c2: c2
+  |    +-[kTablePlan]
+  |      +-table: t0
   +-options:
   |  +-key:
   |    +-expr[primary]
@@ -1824,22 +1824,20 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
       EXPECT_EQ(msg, status.msg) << status;
     };
 
-
-    // Rule #1
     expect_converted(
         R"(
         SELECT SUM(COL2) over w1 from t1 GROUP BY COL1
         WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
         )",
         common::kPlanError, "Can't support group clause and window clause simultaneously");
-    // Rule #2
+
     expect_converted(
         R"(
         SELECT SUM(COL2) over w1 from t1 HAVING SUM(COL2) >0
         WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
         )",
         common::kPlanError, "Can't support having clause and window clause simultaneously");
-    // Rule #3
+
     expect_converted(
         R"(
         SELECT SUM(COL2) over w1,  SUM(COL3) from t1
@@ -1889,6 +1887,111 @@ TEST_F(PlannerV2ErrorTest, NonSupportOnlineServingSQL) {
     expect_converted(
         R"(LOAD DATA INFILE 'a.csv' INTO TABLE t1 OPTIONS(foo='bar', num=1);)",
         common::kPlanError, "Non-support LOAD DATA Op in online serving");
+}
+
+
+TEST_F(PlannerV2ErrorTest, NonSupportClusterOnlinexTrainingSQL) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string &sql, const int code, const std::string &msg) {
+      base::Status status;
+      node::PlanNodeList plan_trees;
+      // Generate SQL logical plan for online serving
+      ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true, true)) << status;
+      ASSERT_EQ(code, status.code) << status;
+      ASSERT_EQ(msg, status.msg) << status;
+      std::cout << msg << std::endl;
+    };
+
+
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 GROUP BY COL1;
+        )",
+        common::kPlanError, "Non-support kGroupPlan Op in cluster online training");
+
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) from t1 HAVING SUM(COL2) >0;
+        )",
+        common::kPlanError, "Non-support HAVING Op in cluster online training");
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) from t1;
+        )",
+        common::kPlanError, "Aggregate over a table cannot be supported in cluster online training");
+    expect_converted(
+        R"(
+        SELECT COL1 FROM t1 order by COL1;
+        )",
+        common::kPlanError, "Non-support kSortPlan Op in cluster online training");
+
+    expect_converted(
+        R"(
+        SELECT SUM(COL2) over w1 FROM t1
+        WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
+        )",
+        common::kPlanError, "Non-support WINDOW Op in cluster online training");
+
+    expect_converted(
+        R"(
+        SELECT COL1 FROM t1 LAST JOIN t2 order by COL5 on t1.COL1 = t2.COL1;
+        )",
+        common::kPlanError, "Non-support kJoinPlan Op in cluster online training");
+}
+TEST_F(PlannerV2Test, ClusterOnlinexTrainingSQLTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string &sql) {
+      base::Status status;
+      node::PlanNodeList plan_trees;
+      // Generate SQL logical plan for online serving
+      ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true, true)) << status;
+    };
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 ;
+        )");
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 LIMIT 10;
+        )");
+
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 WHERE col2 = 1 LIMIT 10;
+        )");
+
+    expect_converted(
+        R"(
+        SELECT 1.0 as c1, 2 as c2;
+        )");
+}
+
+TEST_F(PlannerV2Test, GetPlanLimitCnt) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string &sql, int limit_cnt) {
+      base::Status status;
+      node::PlanNodeList plan_trees;
+      // Generate SQL logical plan for online serving
+      ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true, false)) << status;
+      ASSERT_EQ(1, plan_trees.size());
+      ASSERT_EQ(limit_cnt, plan::PlanAPI::GetPlanLimitCount(plan_trees[0]));
+    };
+
+
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 LIMIT 10;
+        )", 10);
+
+    expect_converted(
+        R"(
+        SELECT COL1 from (SELECT COL1, COL2 FROM t1 LIMIT 5) as t11 LIMIT 10;
+        )", 5);
+    expect_converted(
+        R"(
+        SELECT COL1 from t1 last join (SELECT COL1, COL2 FROM t2 LIMIT 5) as t22 on t1.col1 = t22.col1 LIMIT 10;
+        )", 10);
+
 }
 }  // namespace plan
 }  // namespace hybridse

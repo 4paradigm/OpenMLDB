@@ -20,10 +20,6 @@ import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
-import org.apache.iceberg.PartitionSpec
-import org.apache.iceberg.catalog.{Namespace, TableIdentifier}
-import org.apache.iceberg.hive.HiveCatalog
-import org.apache.iceberg.spark.SparkSchemaUtil
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -155,13 +151,9 @@ class OpenmldbSession {
       return OpenmldbDataframe(this, sparksql(sqlText))
     }
 
-    var sql: String = sqlText
-    if (!sql.trim.endsWith(";")) {
-      sql = sql.trim + ";"
-    }
     val planner = new SparkPlanner(this, config)
     this.planner = planner
-    val df = planner.plan(sql, registeredTables).getDf()
+    val df = planner.plan(sqlText, registeredTables).getDf()
     OpenmldbDataframe(this, df)
   }
 
@@ -241,45 +233,6 @@ class OpenmldbSession {
    */
   def stop(): Unit = {
     sparkSession.stop()
-  }
-
-  /**
-   * Create table in offline storage.
-   */
-  def createHiveTable(databaseName: String, tableName: String, df: DataFrame): Unit = {
-
-    logger.info("Register the table %s to create table in offline storage".format(tableName))
-    df.createOrReplaceTempView(tableName)
-
-    val conf = getSparkSession.sessionState.newHadoopConf()
-    val catalog = new HiveCatalog(conf)
-    val icebergSchema = SparkSchemaUtil.schemaForTable(getSparkSession, tableName)
-    val partitionSpec = PartitionSpec.builderFor(icebergSchema).build()
-    val tableIdentifier = TableIdentifier.of(databaseName, tableName)
-
-    // Create Iceberg database if not exists
-    val namespace = Namespace.of(databaseName)
-    try {
-      catalog.createNamespace(namespace)
-    } catch {
-      case _: org.apache.iceberg.exceptions.AlreadyExistsException => {
-        logger.warn("Database %s already exists".format(databaseName))
-      }
-    }
-
-    // Check if table exists
-    if (catalog.tableExists(tableIdentifier)) {
-      catalog.close()
-      logger.error("Table %s already exists".format(tableName))
-      throw new HybridSeException("Table %s already exists, Please check the table name".format(tableName))
-    }
-
-    // Create Iceberg table
-    catalog.createTable(tableIdentifier, icebergSchema, partitionSpec)
-    catalog.close()
-
-    // Register table in OpenMLDB engine
-    registerTable(s"$databaseName.$tableName", df)
   }
 
   def registerOpenmldbOfflineTable(catalogService: OpenmldbCatalogService): Unit = {

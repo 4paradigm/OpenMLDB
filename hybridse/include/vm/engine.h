@@ -323,6 +323,7 @@ struct ExplainOutput {
     std::string ir;               ///< Codegen IR String
     vm::Schema output_schema;     ///< The schema of query result
     vm::Router router;            ///< The Router for request-mode query
+    uint32_t limit_cnt;                ///< The limit count
 };
 
 
