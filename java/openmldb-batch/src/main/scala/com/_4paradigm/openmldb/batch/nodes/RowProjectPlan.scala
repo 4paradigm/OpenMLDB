@@ -76,12 +76,7 @@ object RowProjectPlan {
       val outputInternalRowRdd = inputDf.queryExecution.toRdd.mapPartitions(partitionIter => {
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast.getBuffer
-
-        if (openmldbJsdkLibraryPath.equals("")) {
-          SqlClusterExecutor.initJavaSdkLibrary()
-        } else {
-          SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-        }
+        SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
         JitManager.initJitModule(tag, buffer)
 
         val jit = JitManager.getJit(tag)
@@ -115,12 +110,7 @@ object RowProjectPlan {
         // TODO: Do not use broadcast for prophet HybridSE op
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast
-
-        if (openmldbJsdkLibraryPath.equals("")) {
-          SqlClusterExecutor.initJavaSdkLibrary()
-        } else {
-          SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-        }
+        SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
         JitManager.initJitModule(tag, buffer.getBuffer)
 
         val jit = JitManager.getJit(tag)

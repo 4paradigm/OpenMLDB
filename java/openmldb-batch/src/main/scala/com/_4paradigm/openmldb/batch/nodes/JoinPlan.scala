@@ -233,12 +233,7 @@ object JoinPlan {
     def initJIT(): HybridSeJitWrapper = {
       // ensure worker native
       val buffer = moduleBroadcast.getBuffer
-
-      if (openmldbJsdkLibraryPath.equals("")) {
-        SqlClusterExecutor.initJavaSdkLibrary()
-      } else {
-        SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-      }
+      SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
       JitManager.initJitModule(moduleTag, buffer)
 
       JitManager.getJit(moduleTag)

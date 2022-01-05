@@ -204,14 +204,8 @@ object WindowSampleSupport {
 
     private val jit = {
       val buffer = config.moduleNoneBroadcast.getBuffer
-
-      if (sqlConfig.openmldbJsdkLibraryPath.equals("")) {
-        SqlClusterExecutor.initJavaSdkLibrary()
-      } else {
-        SqlClusterExecutor.initJavaSdkLibrary(sqlConfig.openmldbJsdkLibraryPath)
-      }
+      SqlClusterExecutor.initJavaSdkLibrary(sqlConfig.openmldbJsdkLibraryPath)
       JitManager.initJitModule(config.moduleTag, buffer)
-
       JitManager.getJit(config.moduleTag)
     }
 

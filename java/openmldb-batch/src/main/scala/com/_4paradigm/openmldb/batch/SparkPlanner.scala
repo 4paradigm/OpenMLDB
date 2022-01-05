@@ -43,11 +43,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
   var openmldbSession: OpenmldbSession = _
 
   // Ensure native initialized
-  if (config.openmldbJsdkLibraryPath.equals("")) {
-    SqlClusterExecutor.initJavaSdkLibrary()
-  } else {
-    SqlClusterExecutor.initJavaSdkLibrary(config.openmldbJsdkLibraryPath)
-  }
+  SqlClusterExecutor.initJavaSdkLibrary(config.openmldbJsdkLibraryPath)
   Engine.InitializeGlobalLLVM()
 
   def this(session: SparkSession, sparkAppName: String) = {

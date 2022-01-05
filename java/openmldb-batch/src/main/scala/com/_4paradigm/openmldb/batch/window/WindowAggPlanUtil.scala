@@ -209,12 +209,7 @@ object WindowAggPlanUtil {
     // get jit in executor process
     val tag = config.moduleTag
     val buffer = config.moduleNoneBroadcast.getBuffer
-
-    if (sqlConfig.openmldbJsdkLibraryPath.equals("")) {
-      SqlClusterExecutor.initJavaSdkLibrary()
-    } else {
-      SqlClusterExecutor.initJavaSdkLibrary(sqlConfig.openmldbJsdkLibraryPath)
-    }
+    SqlClusterExecutor.initJavaSdkLibrary(sqlConfig.openmldbJsdkLibraryPath)
     JitManager.initJitModule(tag, buffer)
 
     val jit = JitManager.getJit(tag)

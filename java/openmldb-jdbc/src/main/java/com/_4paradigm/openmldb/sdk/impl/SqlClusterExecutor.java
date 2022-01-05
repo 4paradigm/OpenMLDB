@@ -77,7 +77,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         this(option, "sql_jsdk");
     }
 
-    synchronized private static void initJavaSdkLibrary(String libraryPath) {
+    synchronized public static void initJavaSdkLibrary(String libraryPath) {
         if (!initialized) {
             if (libraryPath == null || libraryPath.isEmpty()) {
                 LibraryLoader.loadLibrary("sql_jsdk");
@@ -292,7 +292,7 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     public static List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
-        SqlClusterExecutor.initJavaSdkLibrary();
+        SqlClusterExecutor.initJavaSdkLibrary("");
 
         if (null == tableSchema || tableSchema.isEmpty()) {
             throw new SQLException("input schema is null or empty");
@@ -311,7 +311,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
-        SqlClusterExecutor.initJavaSdkLibrary();
+        SqlClusterExecutor.initJavaSdkLibrary("");
 
         if (null == tableSchema || tableSchema.isEmpty()) {
             throw new SQLException("input schema is null or empty");

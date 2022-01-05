@@ -91,12 +91,7 @@ object GroupByAggregationPlan {
         // Init JIT
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast.getBuffer
-
-        if (openmldbJsdkLibraryPath.equals("")) {
-          SqlClusterExecutor.initJavaSdkLibrary()
-        } else {
-          SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-        }
+        SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
         JitManager.initJitModule(tag, buffer)
 
         val jit = JitManager.getJit(tag)
