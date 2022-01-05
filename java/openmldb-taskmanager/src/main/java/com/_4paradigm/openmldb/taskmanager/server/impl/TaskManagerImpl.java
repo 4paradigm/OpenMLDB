@@ -32,11 +32,25 @@ public class TaskManagerImpl implements TaskManagerInterface {
 
     public TaskManager.JobInfo jobInfoToProto(JobInfo job) {
         TaskManager.JobInfo.Builder builder =  TaskManager.JobInfo.newBuilder();
-        builder.setId(job.getId()).setJobType(job.getJobType()).setState(job.getState()).setStartTime(job.getStartTime().getTime());
+        builder.setId(job.getId());
+        if (job.getJobType() != null) {
+            builder.setJobType(job.getJobType());
+        }
+        if (job.getState() != null) {
+            builder.setState(job.getState());
+        }
+        if (job.getStartTime() != null) {
+            builder.setEndTime(job.getStartTime().getTime());
+        }
         if (job.getEndTime() != null) {
             builder.setEndTime(job.getEndTime().getTime());
         }
-        builder.setParameter(job.getParameter()).setCluster(job.getCluster());
+        if (job.getParameter() != null) {
+            builder.setParameter(job.getParameter());
+        }
+        if (job.getCluster() != null) {
+            builder.setCluster(job.getCluster());
+        }
         if (job.getApplicationId() != null) {
             builder.setApplicationId(job.getApplicationId());
         }
