@@ -44,6 +44,13 @@ class TestSelectIntoPlan extends SparkTestSuite {
     val res = planner.plan(s"select id from t1 into outfile '$filePath' " +
       "options(format='csv', foo='bar', mode='overwrite');", Map("t1" -> t1))
     res.getDf().show()
+
+    // read data is disordered, so only check the count
+    // we saved with header==true, so we should read with header.
+    val df = getSparkSession.read.option("header", "true").schema("id int").csv(filePath)
+    df.show()
+    assert(df.count() == t1.count())
+
     try {
       // writing in default mode 'errorifexsits' will get exception, cuz filePath contains data
       planner.plan(s"select id from t1 into outfile '$filePath' " +
@@ -51,10 +58,5 @@ class TestSelectIntoPlan extends SparkTestSuite {
     } catch {
       case e: AnalysisException => println("It should catch this: " + e.toString)
     }
-
-    // read data is disordered, so only check the count
-    val df = getSparkSession.read.schema("id int").csv(filePath)
-    df.show()
-    assert(df.count() == t1.count())
   }
 }
