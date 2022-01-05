@@ -46,26 +46,6 @@ object JobInfoManager {
   option.setZkPath(TaskManagerConfig.ZK_ROOT_PATH)
   val sqlExecutor = new SqlClusterExecutor(option)
 
-  def createJobSystemTable(): Unit = {
-    // TODO: Check db
-    sqlExecutor.createDB(dbName)
-
-    val createTableSql = s"CREATE TABLE $tableName ( \n" +
-      "                   id int,\n" +
-      "                   job_type string,\n" +
-      "                   state string,\n" +
-      "                   start_time timestamp,\n" +
-      "                   end_time timestamp,\n" +
-      "                   parameter string,\n" +
-      "                   cluster string,\n" +
-      "                   application_id string,\n" +
-      "                   error string,\n" +
-      "                   index(key=id, ttl=1, ttl_type=latest)\n" +
-      "                   )"
-    // TODO: Check table
-    sqlExecutor.executeDDL(dbName, createTableSql)
-  }
-
   def createJobInfo(jobType: String, args: List[String] = List(), sparkConf: Map[String, String] = Map()): JobInfo = {
     val jobId = JobIdGenerator.getUniqueId
     val startTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())

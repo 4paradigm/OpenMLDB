@@ -27,13 +27,7 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String, val open
   val option = new SdkOption
   option.setZkCluster(zkCluster)
   option.setZkPath(zkPath)
-
-  val sqlExecutor = if (openmldbJsdkPath.isEmpty) {
-    new SqlClusterExecutor(option)
-  } else {
-    SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkPath)
-    new SqlClusterExecutor(option, false)
-  }
+  val sqlExecutor = new SqlClusterExecutor(option, openmldbJsdkPath)
 
   def getDatabases: Array[String] = {
     sqlExecutor.showDatabases().asScala.toArray
