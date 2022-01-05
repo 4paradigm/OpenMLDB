@@ -57,17 +57,6 @@ public class SqlClusterExecutor implements SqlExecutor {
     private static boolean initialized = false;
     private SQLRouter sqlRouter;
 
-    public static void initJavaSdkLibrary(String libraryPath) {
-        if (!initialized) {
-            LibraryLoader.loadLibrary(libraryPath);
-            initialized = true;
-        }
-    }
-
-    public static void initJavaSdkLibrary() {
-        initJavaSdkLibrary("sql_jsdk");
-    }
-
     public SqlClusterExecutor(SdkOption option, boolean initializeLibrary) throws SqlException {
         if (initializeLibrary) {
             initJavaSdkLibrary();
@@ -89,19 +78,15 @@ public class SqlClusterExecutor implements SqlExecutor {
         this(option, true);
     }
 
-    public static String findSdkLibraryPath() throws UnsatisfiedLinkError {
-        String libraryPath = "sql_jsdk";
-        String osName = System.getProperty("os.name").toLowerCase();
-        if (osName.equals("mac os x")) {
-            libraryPath = "lib" + libraryPath + ".dylib";
-        } else if (osName.contains("linux")) {
-            libraryPath = "lib" + libraryPath + ".so";
+    public static void initJavaSdkLibrary(String libraryPath) {
+        if (!initialized) {
+            LibraryLoader.loadLibrary(libraryPath);
+            initialized = true;
         }
-        URL resource = LibraryLoader.class.getClassLoader().getResource(libraryPath);
-        if (resource == null) {
-            throw new UnsatisfiedLinkError(String.format("Fail to load library %s", libraryPath));
-        }
-        return resource.getPath();
+    }
+
+    public static void initJavaSdkLibrary() {
+        initJavaSdkLibrary("sql_jsdk");
     }
 
     @Override
@@ -288,7 +273,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return spInfo;
     }
 
-    static private TableColumnDescPairVector convertSchema(Map<String, Schema> tables) throws SQLException {
+    private static TableColumnDescPairVector convertSchema(Map<String, Schema> tables) throws SQLException {
         TableColumnDescPairVector result = new TableColumnDescPairVector();
         for (Map.Entry<String, Schema> entry : tables.entrySet()) {
             String table = entry.getKey();
@@ -305,8 +290,10 @@ public class SqlClusterExecutor implements SqlExecutor {
         return result;
     }
 
-    static public List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
+    public static List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
+        SqlClusterExecutor.initJavaSdkLibrary();
+
         if (null == tableSchema || tableSchema.isEmpty()) {
             throw new SQLException("input schema is null or empty");
         }
@@ -323,7 +310,9 @@ public class SqlClusterExecutor implements SqlExecutor {
         return results;
     }
 
-    static public Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+    public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+        SqlClusterExecutor.initJavaSdkLibrary();
+
         if (null == tableSchema || tableSchema.isEmpty()) {
             throw new SQLException("input schema is null or empty");
         }

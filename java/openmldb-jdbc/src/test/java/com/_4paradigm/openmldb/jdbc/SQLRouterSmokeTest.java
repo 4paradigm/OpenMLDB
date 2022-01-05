@@ -578,7 +578,6 @@ public class SQLRouterSmokeTest {
         Map<String, Schema> dbSchema = new HashMap<>();
         dbSchema.put("t1", sch);
         schemaMaps.put("db1", dbSchema);
-        SqlClusterExecutor.initJavaSdkLibrary();
         List<String> ddls = SqlClusterExecutor.genDDL("select c1 from t1;", schemaMaps);
         Assert.assertEquals(ddls.size(), 1);
         List<Column> schema = SqlClusterExecutor.genOutputSchema("select c1 from t1;", schemaMaps).getColumnList();
