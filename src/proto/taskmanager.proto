@@ -86,6 +86,12 @@ message ImportOfflineDataRequest {
     optional string default_db = 3 [default = ""];
 };
 
+message ExportOfflineDataRequest {
+    required string sql = 1;
+    map<string, string> conf = 2;
+    optional string default_db = 3 [default = ""];
+}
+
 message DropOfflineTableRequest {
     required string db = 1;
     required string table = 2;
@@ -109,5 +115,6 @@ service TaskManagerServer {
     rpc RunBatchAndShow(RunBatchAndShowRequest) returns (ShowJobResponse);
     rpc ImportOnlineData(ImportOnlineDataRequest) returns (ShowJobResponse);
     rpc ImportOfflineData(ImportOfflineDataRequest) returns (ShowJobResponse);
+    rpc ExportOfflineData(ExportOfflineDataRequest) returns (ShowJobResponse);
     rpc DropOfflineTable(DropOfflineTableRequest) returns (DropOfflineTableResponse);
 };
