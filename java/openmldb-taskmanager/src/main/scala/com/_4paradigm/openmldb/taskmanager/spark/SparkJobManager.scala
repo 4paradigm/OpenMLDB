@@ -48,8 +48,6 @@ object SparkJobManager {
         launcher.setMaster("yarn")
           .setDeployMode("cluster")
           .setConf("spark.yarn.maxAppAttempts", "1")
-          // TODO: Set this so that Spark executors will extract jar file and load so for yarn-cluster mode
-          .setConf("spark.openmldb.hybridse.jsdk.path", "sql_jsdk")
       }
       case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
     }

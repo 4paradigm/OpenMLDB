@@ -54,22 +54,24 @@ import java.util.Map;
 public class SqlClusterExecutor implements SqlExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
 
-    static {
-        initJavaSdkLibrary();
-    }
-
     private static boolean initialized = false;
     private SQLRouter sqlRouter;
 
-    public static void initJavaSdkLibrary() {
+    public static void initJavaSdkLibrary(String libraryPath) {
         if (!initialized) {
-            LibraryLoader.loadLibrary("sql_jsdk");
+            LibraryLoader.loadLibrary(libraryPath);
             initialized = true;
         }
     }
 
-    public SqlClusterExecutor(SdkOption option) throws SqlException {
+    public static void initJavaSdkLibrary() {
+        initJavaSdkLibrary("sql_jsdk");
+    }
 
+    public SqlClusterExecutor(SdkOption option, boolean initializeLibrary) throws SqlException {
+        if (initializeLibrary) {
+            initJavaSdkLibrary();
+        }
         SQLRouterOptions sqlOpt = new SQLRouterOptions();
         sqlOpt.setSession_timeout(option.getSessionTimeout());
         sqlOpt.setZk_cluster(option.getZkCluster());
@@ -81,6 +83,10 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
         }
+    }
+
+    public SqlClusterExecutor(SdkOption option) throws SqlException {
+        this(option, true);
     }
 
     public static String findSdkLibraryPath() throws UnsatisfiedLinkError {

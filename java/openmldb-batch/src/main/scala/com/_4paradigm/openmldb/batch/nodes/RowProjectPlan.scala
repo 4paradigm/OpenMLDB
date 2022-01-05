@@ -21,6 +21,7 @@ import com._4paradigm.hybridse.sdk.{JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalTableProjectNode}
 import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, SparkUtil, UnsafeRowUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.types.{LongType, StructType}
@@ -68,7 +69,7 @@ object RowProjectPlan {
       inputTable.getDfConsideringIndex(ctx, node.GetNodeId())
     }
 
-    val hybridseJsdkLibraryPath = ctx.getConf.hybridseJsdkLibraryPath
+    val openmldbJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
 
     val outputDf = if (ctx.getConf.enableUnsafeRowOptimization) { // Use UnsafeRow optimization
 
@@ -76,11 +77,12 @@ object RowProjectPlan {
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast.getBuffer
 
-        if (hybridseJsdkLibraryPath.equals("")) {
-          JitManager.initJitModule(tag, buffer)
+        if (openmldbJsdkLibraryPath.equals("")) {
+          SqlClusterExecutor.initJavaSdkLibrary()
         } else {
-          JitManager.initJitModule(tag, buffer, hybridseJsdkLibraryPath)
+          SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
         }
+        JitManager.initJitModule(tag, buffer)
 
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)
@@ -114,12 +116,12 @@ object RowProjectPlan {
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast
 
-        if (hybridseJsdkLibraryPath.equals("")) {
-          JitManager.initJitModule(tag, buffer.getBuffer)
+        if (openmldbJsdkLibraryPath.equals("")) {
+          SqlClusterExecutor.initJavaSdkLibrary()
         } else {
-          JitManager.initJitModule(tag, buffer.getBuffer, hybridseJsdkLibraryPath)
+          SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
         }
-
+        JitManager.initJitModule(tag, buffer.getBuffer)
 
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)

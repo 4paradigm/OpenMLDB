@@ -57,7 +57,7 @@ object FilterPlan {
         outputSchema = filter.fn_info().fn_schema(),
         moduleTag = ctx.getTag,
         moduleBroadcast = ctx.getSerializableModuleBuffer,
-        hybridseJsdkLibraryPath = ctx.getConf.hybridseJsdkLibraryPath
+        hybridseJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
       )
       ctx.getSparkSession.udf.register(regName, conditionUDF)
 
