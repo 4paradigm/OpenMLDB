@@ -80,7 +80,7 @@ class TestLoadDataPlan extends SparkTestSuite {
     // P.S. src csv files have header, and the col names are different with table schema, and no s
     // If soft-copy, we don't read data, can't do schema check. So we don't do restrict schema check now.
     // TODO(hw): do restrict schema check even when soft-copy?
-    val testFile = "file://" + getClass.getResource("/load_data_test_src").getPath
+    val testFile = "file://" + getClass.getResource("/load_data_test_src/test.csv").getPath
 
     println("no offline table info now, soft load data with any mode")
     openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
@@ -154,7 +154,7 @@ class TestLoadDataPlan extends SparkTestSuite {
 
   test("Test LoadData to Openmldb Online Storage") {
     openmldbSession.getOpenmldbBatchConfig.loadDataMode = "online"
-    val testFile = "file://" + getClass.getResource("/load_data_test_src").getPath
+    val testFile = "file://" + getClass.getResource("/load_data_test_src/test.csv").getPath
     println("simple load to online storage")
     openmldbSession.openmldbSql(s"load data infile '$testFile' into table $db.$table " +
       "options(mode='append');")
