@@ -688,7 +688,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
 
     auto tableInfo = GetTableInfo(db, table);
     // Check offline table info first
-    if(tableInfo.has_offline_table_info()) {
+    if (tableInfo.has_offline_table_info()) {
         auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
         if (!taskmanager_client_ptr) {
             status->msg = "no TaskManager exist";
@@ -725,7 +725,6 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     return true;
 }
 
-
 /**
  * Get SQL cache
  * @param db
@@ -735,9 +734,9 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
  * @param parameter
  * @return
  */
-std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(
-    const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
-    const std::shared_ptr<SQLRequestRow>& parameter) {
+std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(const std::string& db, const std::string& sql,
+                                                        const ::hybridse::vm::EngineMode engine_mode,
+                                                        const std::shared_ptr<SQLRequestRow>& parameter) {
     ::hybridse::codec::Schema parameter_schema_raw;
     if (parameter) {
         for (int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
@@ -832,7 +831,7 @@ bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
                 return false;
             }
 
-            for(auto tablet: tablets) {
+            for (auto tablet : tablets) {
                 clients.insert(tablet->GetClient());
             }
             return true;
@@ -1202,9 +1201,8 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, co
     ::hybridse::vm::ExplainOutput explain_output;
     ::hybridse::base::Status vm_status;
     ::hybridse::codec::Schema parameter_schema;
-    bool ok =
-        cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode, parameter_schema, &explain_output,
-                                           &vm_status);
+    bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::hybridse::vm::kRequestMode, parameter_schema,
+                                                 &explain_output, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;
@@ -1320,7 +1318,7 @@ base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* c
             hybridse::sdk::Status status;
             if (cmd_node->GetArgs().size() == 2) {
                 ret = this->DropTable(cmd_node->GetArgs()[0], cmd_node->GetArgs()[1], &status);
-            } else if (cmd_node->GetArgs().size() == 1){
+            } else if (cmd_node->GetArgs().size() == 1) {
                 ret = this->DropTable(db, cmd_node->GetArgs()[0], &status);
             } else {
                 return {base::ReturnCode::kSQLCmdRunError, "Invalid Cmd Args size"};
@@ -1331,7 +1329,7 @@ base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* c
         case hybridse::node::kCmdDropIndex: {
             if (cmd_node->GetArgs().size() == 3) {
                 ret = ns_ptr->DeleteIndex(cmd_node->GetArgs()[0], cmd_node->GetArgs()[1], cmd_node->GetArgs()[2], msg);
-            } else if (cmd_node->GetArgs().size() == 2){
+            } else if (cmd_node->GetArgs().size() == 2) {
                 ret = ns_ptr->DeleteIndex(db, cmd_node->GetArgs()[1], cmd_node->GetArgs()[2], msg);
             } else {
                 return {base::ReturnCode::kSQLCmdRunError, "Invalid Cmd Args size"};
@@ -1627,7 +1625,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
                                                     std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
-        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+        return {-1, "Fail to get TaskManager client"};
     }
     return taskmanager_client_ptr->ShowJobs(only_unfinished, job_infos);
 }
@@ -1635,7 +1633,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
 ::openmldb::base::Status SQLClusterRouter::ShowJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
-        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+        return {-1, "Fail to get TaskManager client"};
     }
     return taskmanager_client_ptr->ShowJob(id, job_info);
 }
@@ -1643,7 +1641,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
 ::openmldb::base::Status SQLClusterRouter::StopJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
-        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+        return {-1, "Fail to get TaskManager client"};
     }
     return taskmanager_client_ptr->StopJob(id, job_info);
 }
@@ -1654,7 +1652,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
                                                                ::openmldb::taskmanager::JobInfo& job_info) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
-        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+        return {-1, "Fail to get TaskManager client"};
     }
     return taskmanager_client_ptr->RunBatchAndShow(sql, config, default_db, job_info);
 }
@@ -1665,7 +1663,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
                                                             ::openmldb::taskmanager::JobInfo& job_info) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
-        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+        return {-1, "Fail to get TaskManager client"};
     }
     return taskmanager_client_ptr->ImportOnlineData(sql, config, default_db, job_info);
 }
@@ -1676,7 +1674,18 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
                                                              ::openmldb::taskmanager::JobInfo& job_info) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
-        return ::openmldb::base::Status(-1, "Fail to get TaskManager client");
+        return {-1, "Fail to get TaskManager client"};
+    }
+    return taskmanager_client_ptr->ImportOfflineData(sql, config, default_db, job_info);
+}
+
+::openmldb::base::Status SQLClusterRouter::ExportOfflineData(const std::string& sql,
+                                                             const std::map<std::string, std::string>& config,
+                                                             const std::string& default_db,
+                                                             ::openmldb::taskmanager::JobInfo& job_info) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return {-1, "Fail to get TaskManager client"};
     }
     return taskmanager_client_ptr->ImportOfflineData(sql, config, default_db, job_info);
 }

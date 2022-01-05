@@ -399,7 +399,7 @@ bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& n
     return true;
 }
 
-void PrintJobInfos(std::ostream& stream, std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
+void PrintJobInfos(std::ostream& stream, const std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
     ::hybridse::base::TextTable t('-', ' ', ' ');
 
     t.add("id");
@@ -415,7 +415,7 @@ void PrintJobInfos(std::ostream& stream, std::vector<::openmldb::taskmanager::Jo
     t.end_of_row();
 
     for (auto& job_info : job_infos) {
-        //request.add_endpoint_group(endpoint);
+        // request.add_endpoint_group(endpoint);
         t.add(std::to_string(job_info.id()));
         t.add(job_info.job_type());
         t.add(job_info.state());
@@ -444,7 +444,7 @@ void PrintOfflineTableInfo(std::ostream& stream, const ::openmldb::nameserver::O
     auto& options = offline_table_info.options();
     std::string optionStr;
     bool first = true;
-    for (auto &pair : options) {
+    for (auto& pair : options) {
         if (first) {
             optionStr += pair.first + ":" + pair.second;
             first = false;
@@ -506,7 +506,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
 
             PrintSchema(table->column_desc());
             PrintColumnKey(table->column_key());
-            if(table->has_offline_table_info()) {
+            if (table->has_offline_table_info()) {
                 PrintOfflineTableInfo(std::cout, table->offline_table_info());
             }
             break;
@@ -912,8 +912,9 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
                 record_cnt += it->second.table_partition(idx).record_cnt();
             }
             if (record_cnt > 0) {
-                return {base::ReturnCode::kError, "table " + kv.first +
-                    " has online data, cannot deploy. please drop this table and create a new one"};
+                return {base::ReturnCode::kError,
+                        "table " + kv.first +
+                            " has online data, cannot deploy. please drop this table and create a new one"};
             }
             new_index_map.emplace(kv.first, std::move(new_indexs));
         }
@@ -1301,19 +1302,32 @@ void HandleSQL(const std::string& sql) {
             return;
         }
         case hybridse::node::kPlanTypeSelectInto: {
-            auto* select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode*>(node);
-            const std::string& query_sql = select_into_plan_node->QueryStr();
-            const std::string& file_path = select_into_plan_node->OutFile();
-            const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
-            ::hybridse::sdk::Status status;
-            auto rs = sr->ExecuteSQL(db, query_sql, &status);
-            if (!rs) {
-                std::cout << "ERROR: Failed to execute query" << std::endl;
+            ::openmldb::base::Status status;
+            if (IsOnlineMode()) {
+                auto* select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode*>(node);
+                const std::string& query_sql = select_into_plan_node->QueryStr();
+                ::hybridse::sdk::Status sdk_status;
+                auto rs = sr->ExecuteSQL(db, query_sql, &sdk_status);
+                if (!rs) {
+                    std::cout << "ERROR: Failed to execute query(" << sdk_status.msg << ")" << std::endl;
+                    return;
+                }
+                const std::string& file_path = select_into_plan_node->OutFile();
+                const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
+                SaveResultSet(rs.get(), file_path, options_map, &status);
             } else {
-                ::openmldb::base::Status openmldb_base_status;
-                SaveResultSet(rs.get(), file_path, options_map, &openmldb_base_status);
-                std::cout << openmldb_base_status.GetMsg() << std::endl;
+                ::openmldb::taskmanager::JobInfo job_info;
+                std::map<std::string, std::string> config;
+                status = sr->ExportOfflineData(sql, config, db, job_info);
+                if (status.OK() && job_info.id() > 0) {
+                    PrintJobInfos(std::cout, {job_info});
+                }
             }
+
+            if (!status.OK()) {
+                std::cout << "ERROR: Failed to select into " << std::endl;
+            }
+            std::cout << status.GetMsg() << "(" << status.GetCode() << ")" << std::endl;
             return;
         }
         case hybridse::node::kPlanTypeSet: {
