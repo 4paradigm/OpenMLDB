@@ -42,18 +42,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
 
   var openmldbSession: OpenmldbSession = _
 
-  if (this.config.hybridseJsdkLibraryPath.equals("")) {
-    // Set library path to the one in openmldb jsdk
-    config.hybridseJsdkLibraryPath = SqlClusterExecutor.findSdkLibraryPath()
-  }
-
   // Ensure native initialized
-  if (config.hybridseJsdkLibraryPath.equals("")) {
-    // Should not load hybridse jsdk so and openmldb jsdk so at the same time
-    SqlClusterExecutor.initJavaSdkLibrary()
-  } else {
-    HybridSeLibrary.initCore(config.hybridseJsdkLibraryPath)
-  }
+  SqlClusterExecutor.initJavaSdkLibrary(config.openmldbJsdkLibraryPath)
   Engine.InitializeGlobalLLVM()
 
   def this(session: SparkSession, sparkAppName: String) = {

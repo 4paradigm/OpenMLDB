@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.commons.io.IOUtils
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
@@ -57,7 +58,8 @@ class OpenmldbSession {
     this.setDefaultSparkConfig()
 
     if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkRootPath.nonEmpty) {
-      openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkRootPath)
+      openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkRootPath,
+        config.openmldbJsdkLibraryPath)
       registerOpenmldbOfflineTable(openmldbCatalogService)
     }
   }
