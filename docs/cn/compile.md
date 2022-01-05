@@ -52,7 +52,7 @@ make NPROC=4
 
 ## 依赖工具
 
-- gcc 8 或更新版本
+- gcc >= 8 或者 AppleClang >= 12.0.0
 - cmake 3.20 或更新版本
 - jdk 8
 - python3, python setuptools, python wheel

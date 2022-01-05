@@ -62,7 +62,7 @@ make NPROC=4
 
 Make sure those tools are installed
 
-- gcc 8 or later
+- gcc >= 8 or AppleClang >= 12.0.0
 - cmake 3.20 or later
 - jdk 8
 - python3, python setuptools, python wheel
