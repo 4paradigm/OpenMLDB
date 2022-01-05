@@ -136,27 +136,33 @@ object JobInfoManager {
   }
 
   def syncJob(job: JobInfo): Unit = {
-    // Escape double quote for generated SQL string
-    val escapeErrorString = job.getError.replaceAll("\"", "\\\\\\\"")
-    // TODO: Could not handle select 10 config (a="aa", b="bb");
-    val insertSql =
-      s"""
-         | INSERT INTO $tableName VALUES
-         | (${job.getId}, "${job.getJobType}", "${job.getState}", ${job.getStartTime.getTime}, ${job.getEndTime.getTime}, "${job.getParameter}", "${job.getCluster}", "${job.getApplicationId}", "${escapeErrorString}")
-         |""".stripMargin
+    val insertSql = s"INSERT INTO $tableName VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    val statement = sqlExecutor.getInsertPreparedStmt(dbName, insertSql)
+    statement.setInt(1, job.getId)
+    statement.setString(2, job.getJobType)
+    statement.setString(3, job.getState)
+    statement.setTimestamp(4, job.getStartTime)
+    statement.setTimestamp(5, job.getEndTime)
+    statement.setString(6, job.getParameter)
+    statement.setString(7, job.getCluster)
+    statement.setString(8, job.getApplicationId)
+    statement.setString(9, job.getError)
 
     var pstmt: PreparedStatement = null
     try {
-      logger.info(s"Run insert SQL: $insertSql")
+      logger.info(s"Run insert SQL with job info: $job")
       pstmt = sqlExecutor.getInsertPreparedStmt(dbName, insertSql)
-      pstmt.execute()
+
+      val ok = statement.execute()
+      if (!ok) {
+        logger.error("Fail to execute insert SQL")
+      }
     } catch {
       case e: SQLException =>
         e.printStackTrace()
     } finally if (pstmt != null) try {
       pstmt.close()
-    }
-    catch {
+    } catch {
       case throwables: SQLException =>
         throwables.printStackTrace()
     }
