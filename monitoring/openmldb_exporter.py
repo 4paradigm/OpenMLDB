@@ -18,17 +18,13 @@
 import os
 import time
 import sys
-dir_name = os.path.dirname(os.path.realpath(sys.argv[0]))
-work_dir = os.path.dirname(dir_name)
-sys.path.insert(0, dir_name + "/prometheus_client-0.6.0")
+
 from prometheus_client import start_http_server
 from prometheus_client import Gauge
-import traceback
 
-try:
-    import urllib.request as request
-except:
-    import urllib2 as request
+dir_name = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+import urllib.request as request
 
 if sys.version_info.major > 2:
     do_open = lambda filename, mode: open(filename, mode, encoding="utf-8")
@@ -39,7 +35,7 @@ method = ["put", "get", "scan", "query", "subquery", "batchquery", "sqlbatchrequ
 method_set = set(method)
 monitor_key = ["count", "error", "qps", "latency", "latency_50",
                "latency_90", "latency_99", "latency_999", "latency_9999", "max_latency"]
-rtidb_log = {
+openmldb_logs = {
     "tablet": [
         {
             "file_name": "/rtidb_mon.log",
@@ -111,6 +107,7 @@ def parse_data(resp):
     return servers
 
 def get_data(url):
+    print("get_data:", url)
     with request.urlopen(url) as resp:
         return parse_data(resp)
 
@@ -142,7 +139,7 @@ def get_mem(url):
 
 def get_conf():
     conf_map = {}
-    with do_open(work_dir + "/conf/monitor.conf", "r") as conf_file:
+    with do_open(dir_name + "/monitor.conf", "r") as conf_file:
         for line in conf_file:
             if line.startswith("#"):
                 continue
@@ -198,10 +195,10 @@ if __name__ == "__main__":
     gauge = {}
     for cur_method in method:
         gauge[cur_method] = Gauge(
-            "rtidb_" + cur_method, cur_method, ["latency", "type"])
+            "openmldb_" + cur_method, cur_method, ["latency", "type"])
 
-    gauge["log"] = Gauge("rtidb_log", "log", ["role", "type"])
-    gauge["memory"] = Gauge("rtidb_memory", "memory", ["role", "type"])
+    gauge["log"] = Gauge("openmldb_log", "log", ["role", "type"])
+    gauge["memory"] = Gauge("openmldb_memory", "memory", ["role", "type"])
 
     endpoint = ""
     if "endpoint" in conf_map:
@@ -214,34 +211,23 @@ if __name__ == "__main__":
         url = "http://" + endpoint + "/status"
         mem_url = "http://{}/TabletServer/ShowMemPool".format(endpoint)
 
-    log_file_name = conf_map["log_dir"] + "/monitor.log"
-    if not os.path.exists(conf_map["log_dir"]):
-        os.mkdir(conf_map["log_dir"])
-    log_file = open(log_file_name, 'w')
     last_date = get_timestamp()[1]
     while True:
         try:
             time_stamp = get_timestamp()[0]
             new_date = get_timestamp()[1]
-            if new_date != last_date:
-                log_file.close()
-                os.rename(log_file_name, log_file_name + "." + last_date)
-                last_date = new_date
-                log_file = open(log_file_name, 'w')
-            for module in rtidb_log.keys():
+            for module in openmldb_logs.keys():
                 if module not in conf_map:
                     continue
-                for var in rtidb_log[module]:
+                for var in openmldb_logs[module]:
                     (count, offset) = search_key(
                         conf_map[module] + var["file_name"], var["offset"], var["item"]["key"])
                     if var["item"]["name"] == "restart_num":
                         var["offset"] = offset
                         if count > 0:
-                            log_file.write(time_stamp + "\t" +
-                                           module + " start\n")
                             var["item"]["num"] += count
-                            rtidb_log[module][1]["item"]["offset"] = 0
-                            rtidb_log[module][1]["item"]["num"] = 0
+                            openmldb_logs[module][1]["item"]["offset"] = 0
+                            openmldb_logs[module][1]["item"]["num"] = 0
                         value = count - 1 if count > 0 else count
                         gauge["log"].labels(
                             module, var["item"]["name"]).set(var["item"]["num"])
@@ -266,16 +252,11 @@ if __name__ == "__main__":
                     else:
                         gauge[lower_method].labels("latency", key).set(
                             result[method_data][key])
-                log_file.write(data + "\n")
-                log_file.flush()
             if len(mem_url) < 1:
                 continue
             mema, memb, memc = get_mem(mem_url)
             gauge["memory"].labels("memory", "use_by_application").set(mema)
             gauge["memory"].labels("memory", "central_cache_freelist").set(memb)
             gauge["memory"].labels("memory", "actual_memory_used").set(memc)
-        except Exception as e:
-            traceback.print_exc(file=log_file)
-            log_file.write("has exception {}\n".format(e))
-        time.sleep(conf_map["interval"])
-    log_file.close()
+        finally:
+            time.sleep(conf_map["interval"])
