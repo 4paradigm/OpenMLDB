@@ -4,6 +4,8 @@
 
 ## 1. 准备工作
 
+> :warning: docker engine版本需求 >= 18.03
+
 本教程均基于 OpenMLDB CLI 进行开发和部署，因此首先需要下载样例数据并且启动 OpenMLDB CLI。我们推荐使用准备好的 docker 镜像来快速体验使用：
 
 1. 拉取镜像（镜像下载大小大约 500 MB，解压后约 1.3 GB）和启动 docker 容器
