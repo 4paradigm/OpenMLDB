@@ -753,6 +753,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             break;
         }
         default: {
+            std::cout << "ERROR: Unsupported command" << std::endl;
             return;
         }
     }
@@ -1039,8 +1040,9 @@ bool AppendColumnValue(const std::string& v, hybridse::sdk::DataType type, bool 
             case hybridse::sdk::kTypeTimestamp: {
                 return row->AppendTimestamp(boost::lexical_cast<int64_t>(v));
             }
-            default:
+            default: {
                 return false;
+            }
         }
     } catch (std::exception const& e) {
         return false;
@@ -1358,7 +1360,13 @@ void HandleSQL(const std::string& sql) {
             }
             return;
         }
+        case hybridse::node::kPlanTypeDelete: {
+            std::cout << "ERROR: delete is not supported yet" << std::endl;
+            return;
+        }
         default: {
+            std::cout << "ERROR: Unsupported command" << std::endl;
+            return;
         }
     }
 }
