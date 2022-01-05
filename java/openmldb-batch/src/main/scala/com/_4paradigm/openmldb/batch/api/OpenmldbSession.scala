@@ -232,8 +232,10 @@ class OpenmldbSession {
    * Stop the Spark session.
    */
   def stop(): Unit = {
-    sparkSession.stop()
+    sparkSession.close()
   }
+
+  def close(): Unit = stop()
 
   def registerOpenmldbOfflineTable(catalogService: OpenmldbCatalogService): Unit = {
     val databases = catalogService.getDatabases
