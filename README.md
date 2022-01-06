@@ -17,35 +17,34 @@
 
 **OpenMLDB is an open-source machine learning database that provides a full stack solution of enterprise FeatureOps.**
 
-## 1. Introduction
+## 1. Our Philosophy
 
-OpenMLDB is an open-source database particularly designed to efficiently provide consistent data for machine learning.  A database for machine learning consists of two major tasks: feature extraction and feature access, which are served as data provisioning for offline training and online inference. Without OpenMLDB, there are two separate systems for online and offline data provisioning, which cost significant effort to verify the online-offline consistency. On the contrary, OpenMLDB supports the unified SQL programming and its execution engine for both online and offline data provisioning. As a result, the online-offline consistency is inherently guaranteed. Moreover, the system is carefully designed and optimized to ensure the efficiency. By taking advantages of OpenMLDB, database engineers are now able to write SQL scripts only to efficiently provide consistent data to machine learning, and an offline model can be immediately deployed for online serving with little cost involved.
+In the process of artificial intelligence engineering (AI), 95% of the time and effort of an enterprise's data and engineering teams will be consumed by data processing, data verification and other related work. In order to solve this problem, those 1% tech giants will spend thousands of hours on building an in-house data and feature platform to address engineering challenges such as online and offline consistency, data correctness, high throughput, low latency and high availability. The other 99% enterprises purchase expensive SaaS tools and data governance services. 
+
+OpenMLDB is committed to solving the data governance challenge of AI engineering in a closed loop, and has been implemented in hundreds of real-world applications for enterprise scenarios. OpenMLDB gives priority to open-source feature engineering capability, and provides enterprises with a full stack feature engineering platform (aka FeatureOps) that supports SQL programming APIs with great ease of use.
+
+## 2. A Full Stack FeatureOps Solution for Enterprises
+
+MLOps provides a set of practices to develop, deploy, and maintain machine learning models in production efficiently and reliably. As a key link, FeatureOps is responsible for feature extraction and serving, bridging DataOps and ModelOps. A closed-loop FeatureOps solution needs to cover all aspects of Feature Engineering, from functionalities (such as feature generation, feature extraction, feature serving, feature sharing, and so on) and production requirements (such as low latency, high throughput, fault recovery, high availability, and so on). OpenMLDB provides a full stack FeatureOps solution for enterprises, with great ease of use for development and management, so that feature engineering development returns to its essence: focusing on high-quality feature extraction script development and is no longer bound by engineering issues.
+
 <p align="center">
- <img src="images/workflow.png" alt="image-20211103103052252" width=800 />
- </p>
+ <img src="images/workflow.png" alt="image-20211103103052253" width=800 />
+</p>
+The figure above shows the workflow of FeatureOps based on OpenMLDB. From feature offline development to online serving, it only needs three steps:
 
-The above figure illustrates the OpenMLDB workflow. SQL engineers first write SQL scripts for offline feature extraction, which provides data for offline model training. When the model quality is satisfied, the online feature extraction and access can be enabled immediately for online serving without additional efforts involved. Thanks to the unified SQL programming and execution engine, the online-offline consistency verification is eliminated, which is inherently guaranteed by OpenMLDB. Furthermore, certain optimization techniques (e.g., data skew optimization and in-memory indexing for offline and online feature extraction, respectively) are adopted to ensure that the performance requirement can be met for both offline training and online inference. In summary, OpenMLDB enables SQL as the only programming interface for consistent and efficient data provisioning for both offline model training and online inference serving.
+1. Offline feature extraction development based SQL
+2. SQL script deployment with one click, switching the system from the offline to online mode
+3. Real-time features extraction and serving by connecting with online data streams
 
-## 2. Highlight Features
-### 2.1. SQL Programming APIs 
+## 3. Highlight Features
 
-We believe SQL is the most suitable programming APIs for feature engineering because of its elegant design and popularity. OpenMLDB enables SQL as the programming APIs for developers for both offline and online feature extraction. Besides, we extend the capability of standard SQL and make it more powerful for feature extraction. 
+**The Unified Online-Offline Execution Engine:** Offline and real-time online feature extraction use a unified execution engine, thus online and offline consistency is inherently guaranteed.
 
-### 2.2 Online-Offline Consistency
+**SQL Based Development and Management Experience**: Feature extraction script development, deployment, and maintenance are all based on SQL and CLI with great ease of use.
 
-Based on the SQL programming APIs, we design an unified execution engine for both online and offline feature extraction. As a result, the online-offline consistency is inherently guaranteed by OpenMLDB with no other cost.
+**Customized Performance Optimization for Feature Computing**: Offline feature computing [provides spark based high-performance batch optimization version](https://github.com/4paradigm/spark); Online real-time feature computing provides tens of milliseconds latency for complex queries under high throughput pressure, which fully meets the performance requirements of high concurrency and low latency.
 
-### 2.3. Efficiency
-
-We propose a few techniques to improve the performance for both offline and online feature extraction. As a result, our offline feature extraction can be significantly faster than existing opensource bigdata processing frameworks. Moreover, our online service can provide low latency (tens of milliseconds) to meet the performance requirement of online inference.
-
-You can read our below  section (7. Publications & Blogs) for more technical detail.
-
-### 2.4 Integrated CLI
-
-We provide a powerful integrated CLI for SQL programming, job management, online and offline deployment, and database administration. Developers who are familiar with database's CLIs should be very comfortable with our tool.
-
-*Note that, the CLI of current release 0.3.0 supports the cluster mode partially. It will be fully supported in the next release of 0.4.0* 
+**Enterprise Level Features**: Designed for large-scale enterprise level applications, it integrates many enterprises level features, including disaster recovery, high availability, seamless capacity expansion, smooth upgrade, monitoring, enterprise level heterogeneous in-memory data architecture support, etc
 
 ## 3. Build & Install
 
