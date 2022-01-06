@@ -1891,8 +1891,7 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
                               const Row& parameter,
                               std::shared_ptr<MemTimeTableHandler> output) {
     if (!left_key_gen_.Valid() && !index_key_gen_.Valid()) {
-        LOG(WARNING) << "can't join right partition table when join "
-                        "left_key_gen_ and index_key_gen_ is invalid";
+        LOG(WARNING) << "can't join right partition table when neither left_key_gen_ or index_key_gen_ is valid";
         return false;
     }
     auto left_iter = left->GetIterator();
