@@ -15,6 +15,7 @@
 
 **English version | [中文版](README_cn.md)**
 
+**OpenMLDB is an open-source machine learning database that provides a full stack solution of enterprise FeatureOps.**
 
 ## 1. Introduction
 
