@@ -194,6 +194,8 @@ object JobInfoManager {
   def dropOfflineTable(db: String, table: String): Unit = {
     val tableInfo = sqlExecutor.getTableInfo(db, table)
 
+    // Refresh catalog to get the latest table info
+    sqlExecutor.refreshCatalog()
     if (tableInfo.hasOfflineTableInfo) {
       val offlineTableInfo = tableInfo.getOfflineTableInfo
 
