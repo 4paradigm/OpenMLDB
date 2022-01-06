@@ -50,25 +50,16 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SqlClusterExecutor implements SqlExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
 
-    static {
-        initJavaSdkLibrary();
-    }
-
-    private static boolean initialized = false;
+    private static final AtomicBoolean initialized = new AtomicBoolean(false);;
     private SQLRouter sqlRouter;
 
-    public static void initJavaSdkLibrary() {
-        if (!initialized) {
-            LibraryLoader.loadLibrary("sql_jsdk");
-            initialized = true;
-        }
-    }
-
-    public SqlClusterExecutor(SdkOption option) throws SqlException {
+    public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
+        initJavaSdkLibrary(libraryPath);
 
         SQLRouterOptions sqlOpt = new SQLRouterOptions();
         sqlOpt.setSession_timeout(option.getSessionTimeout());
@@ -83,19 +74,19 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
     }
 
-    public static String findSdkLibraryPath() throws UnsatisfiedLinkError {
-        String libraryPath = "sql_jsdk";
-        String osName = System.getProperty("os.name").toLowerCase();
-        if (osName.equals("mac os x")) {
-            libraryPath = "lib" + libraryPath + ".dylib";
-        } else if (osName.contains("linux")) {
-            libraryPath = "lib" + libraryPath + ".so";
+    public SqlClusterExecutor(SdkOption option) throws SqlException {
+        this(option, "sql_jsdk");
+    }
+
+    synchronized public static void initJavaSdkLibrary(String libraryPath) {
+        if (!initialized.get()) {
+            if (libraryPath == null || libraryPath.isEmpty()) {
+                LibraryLoader.loadLibrary("sql_jsdk");
+            } else {
+                LibraryLoader.loadLibrary(libraryPath);
+            }
+            initialized.set(true);
         }
-        URL resource = LibraryLoader.class.getClassLoader().getResource(libraryPath);
-        if (resource == null) {
-            throw new UnsatisfiedLinkError(String.format("Fail to load library %s", libraryPath));
-        }
-        return resource.getPath();
     }
 
     @Override
@@ -282,7 +273,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return spInfo;
     }
 
-    static private TableColumnDescPairVector convertSchema(Map<String, Schema> tables) throws SQLException {
+    private static TableColumnDescPairVector convertSchema(Map<String, Schema> tables) throws SQLException {
         TableColumnDescPairVector result = new TableColumnDescPairVector();
         for (Map.Entry<String, Schema> entry : tables.entrySet()) {
             String table = entry.getKey();
@@ -299,8 +290,10 @@ public class SqlClusterExecutor implements SqlExecutor {
         return result;
     }
 
-    static public List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
+    public static List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
+        SqlClusterExecutor.initJavaSdkLibrary("");
+
         if (null == tableSchema || tableSchema.isEmpty()) {
             throw new SQLException("input schema is null or empty");
         }
@@ -317,7 +310,9 @@ public class SqlClusterExecutor implements SqlExecutor {
         return results;
     }
 
-    static public Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+    public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+        SqlClusterExecutor.initJavaSdkLibrary("");
+
         if (null == tableSchema || tableSchema.isEmpty()) {
             throw new SQLException("input schema is null or empty");
         }

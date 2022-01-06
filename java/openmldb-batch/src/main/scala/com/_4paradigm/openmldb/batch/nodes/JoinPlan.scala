@@ -24,6 +24,7 @@ import com._4paradigm.hybridse.node.{ExprListNode, JoinType}
 import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper, PhysicalJoinNode}
 import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkRowUtil, SparkUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.slf4j.LoggerFactory
@@ -112,7 +113,7 @@ object JoinPlan {
         outputSchema = filter.fn_info().fn_schema(),
         moduleTag = ctx.getTag,
         moduleBroadcast = ctx.getSerializableModuleBuffer,
-        hybridseJsdkLibraryPath = ctx.getConf.hybridseJsdkLibraryPath
+        hybridseJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
       )
       spark.udf.register(regName, conditionUDF)
 
@@ -216,7 +217,7 @@ object JoinPlan {
                                    outputSchema: java.util.List[ColumnDef],
                                    moduleTag: String,
                                    moduleBroadcast: SerializableByteBuffer,
-                                   hybridseJsdkLibraryPath: String
+                                   openmldbJsdkLibraryPath: String
                                   ) extends Function1[Row, Boolean] with Serializable {
     private val jit = initJIT()
 
@@ -232,12 +233,8 @@ object JoinPlan {
     def initJIT(): HybridSeJitWrapper = {
       // ensure worker native
       val buffer = moduleBroadcast.getBuffer
-
-      if (hybridseJsdkLibraryPath.equals("")) {
-        JitManager.initJitModule(moduleTag, buffer)
-      } else {
-        JitManager.initJitModule(moduleTag, buffer, hybridseJsdkLibraryPath)
-      }
+      SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
+      JitManager.initJitModule(moduleTag, buffer)
 
       JitManager.getJit(moduleTag)
     }

@@ -50,7 +50,7 @@ Now you've finished the compilation job, and you may try run OpenMLDB inside the
 
 - **Memory**: 8GB+ recommended.
 - **Disk Space**: >=25GB of free disk space for full compilation.
-- **Operating System**: CentOS 7, Ubuntu 20.04 or macOS >= 10.14, other systems are not carefully tested but issue/PR welcome
+- **Operating System**: CentOS 7, Ubuntu 20.04 or macOS >= 10.15, other systems are not carefully tested but issue/PR welcome
 
 💡 Note: by default parallel build is disabled, and it usually takes an hour to finish all the compile jobs. You can enable the parallel build by tweaking the `NPROC` option
 if your machine's resource is enough. This will reduce the compile time but also consume more memory, e.g., following command set the number of concurrent build jobs to 4:
@@ -62,7 +62,7 @@ make NPROC=4
 
 Make sure those tools are installed
 
-- gcc 8 or later
+- gcc >= 8 or AppleClang >= 12.0.0
 - cmake 3.20 or later
 - jdk 8
 - python3, python setuptools, python wheel

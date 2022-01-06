@@ -15,10 +15,8 @@
  */
 package com._4paradigm.openmldb.batch.nodes
 
-import com._4paradigm.hybridse.node.ConstNode
-import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.PhysicalLoadDataNode
-import com._4paradigm.openmldb.batch.utils.SparkRowUtil
+import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkRowUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.proto.NS.OfflineTableInfo
 import org.apache.spark.sql.types.StructType
@@ -29,75 +27,6 @@ import scala.collection.mutable
 
 object LoadDataPlan {
   private val logger = LoggerFactory.getLogger(this.getClass)
-
-  def getStr(node: ConstNode): String = {
-    node.GetStr()
-  }
-
-  def getBool(node: ConstNode): String = {
-    node.GetBool().toString
-  }
-
-  def getStringOrDefault(node: ConstNode, default: String): String = {
-    if (node != null) {
-      node.GetStr()
-    } else {
-      default
-    }
-  }
-
-  def getBoolOrDefault(node: ConstNode, default: String): String = {
-    if (node != null) {
-      node.GetBool().toString
-    } else {
-      default
-    }
-  }
-
-  def parseOption(node: ConstNode, default: String, f: (ConstNode, String) => String): String = {
-    f(node, default)
-  }
-
-  def updateOptionsMap(options: mutable.Map[String, String], node: ConstNode, name: String, getValue: ConstNode =>
-    String): Unit = {
-    if (node != null) {
-      options += (name -> getValue(node))
-    }
-  }
-
-  def parseOptions(node: PhysicalLoadDataNode): (String, Map[String, String], String, Boolean) = {
-    // read format
-    val format = parseOption(node.GetOption("format"), "csv", getStringOrDefault).toLowerCase
-    require(format.equals("csv") || format.equals("parquet"))
-
-    // read options
-    val options: mutable.Map[String, String] = mutable.Map()
-    // default values:
-    // delimiter -> sep: ,
-    // header: true(different with spark)
-    // null_value -> nullValue: null(different with spark)
-    // quote: '\0'(means no quote, the same with spark quote "empty string")
-    options += ("header" -> "true")
-    options += ("nullValue" -> "null")
-    updateOptionsMap(options, node.GetOption("delimiter"), "sep", getStr)
-    updateOptionsMap(options, node.GetOption("header"), "header", getBool)
-    updateOptionsMap(options, node.GetOption("null_value"), "nullValue", getStr)
-    updateOptionsMap(options, node.GetOption("quote"), "quote", getStr)
-
-    // write mode/save mode, not the read mode
-    val modeStr = parseOption(node.GetOption("mode"), "error_if_exists", getStringOrDefault).toLowerCase
-    val mode = modeStr match {
-      case "error_if_exists" => "errorifexists"
-      // append/overwrite, stay the same
-      case "append" | "overwrite" => modeStr
-      case others: Any => throw new UnsupportedHybridSeException(s"unsupported write mode $others")
-    }
-
-    // if symbolic link(aka deep_copy)
-    val deepCopy = parseOption(node.GetOption("deep_copy"), "true", getBoolOrDefault).toBoolean
-
-    (format, options.toMap, mode, deepCopy)
-  }
 
   def gen(ctx: PlanContext, node: PhysicalLoadDataNode): SparkInstance = {
     val inputFile = node.File()
@@ -110,8 +39,10 @@ object LoadDataPlan {
     require(storage == "offline" || storage == "online")
 
     // read settings
-    val (format, options, mode, deepCopy) = parseOptions(node)
-    logger.info("load data to storage {}, read[format {}, options {}], write[mode {}], is soft? {}", storage, format,
+    val (format, options, mode, deepCopyOpt) = HybridseUtil.parseOptions(node)
+    require(deepCopyOpt.nonEmpty)
+    val deepCopy = deepCopyOpt.get
+    logger.info("load data to storage {}, read[format {}, options {}], write[mode {}], is deep? {}", storage, format,
       options, mode, deepCopy.toString)
 
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")

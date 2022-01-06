@@ -40,6 +40,7 @@
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
 #include "proto/fe_type.pb.h"
+#include "schema/index_util.h"
 #include "schema/schema_adapter.h"
 #include "sdk/db_sdk.h"
 #include "sdk/node_adapter.h"
@@ -398,7 +399,7 @@ bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& n
     return true;
 }
 
-void PrintJobInfos(std::ostream& stream, std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
+void PrintJobInfos(std::ostream& stream, const std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
     ::hybridse::base::TextTable t('-', ' ', ' ');
 
     t.add("id");
@@ -414,7 +415,7 @@ void PrintJobInfos(std::ostream& stream, std::vector<::openmldb::taskmanager::Jo
     t.end_of_row();
 
     for (auto& job_info : job_infos) {
-        //request.add_endpoint_group(endpoint);
+        // request.add_endpoint_group(endpoint);
         t.add(std::to_string(job_info.id()));
         t.add(job_info.job_type());
         t.add(job_info.state());
@@ -443,7 +444,7 @@ void PrintOfflineTableInfo(std::ostream& stream, const ::openmldb::nameserver::O
     auto& options = offline_table_info.options();
     std::string optionStr;
     bool first = true;
-    for (auto &pair : options) {
+    for (auto& pair : options) {
         if (first) {
             optionStr += pair.first + ":" + pair.second;
             first = false;
@@ -505,7 +506,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
 
             PrintSchema(table->column_desc());
             PrintColumnKey(table->column_key());
-            if(table->has_offline_table_info()) {
+            if (table->has_offline_table_info()) {
                 PrintOfflineTableInfo(std::cout, table->offline_table_info());
             }
             break;
@@ -752,6 +753,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             break;
         }
         default: {
+            std::cout << "ERROR: Unsupported command" << std::endl;
             return;
         }
     }
@@ -876,13 +878,9 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
         for (const auto& column_desc : it->second.column_desc()) {
             col_set.insert(column_desc.name());
         }
-        std::vector<std::set<std::string>> index_cols_set;
+        std::set<std::string> index_id_set;
         for (const auto& column_key : it->second.column_key()) {
-            std::set<std::string> cur_col_set;
-            for (const auto& col_name : column_key.col_name()) {
-                cur_col_set.insert(col_name);
-            }
-            index_cols_set.emplace_back(std::move(cur_col_set));
+            index_id_set.insert(openmldb::schema::IndexUtil::GetIDStr(column_key));
         }
         int cur_index_num = it->second.column_key_size();
         int add_index_num = 0;
@@ -900,21 +898,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
                     return {base::ReturnCode::kError, "col " + col + " is not exist in table " + kv.first};
                 }
             }
-            int same_cnt = 0;
-            for (const auto& col_set : index_cols_set) {
-                if (column_key.col_name_size() == static_cast<int>(col_set.size())) {
-                    same_cnt = 0;
-                    for (const auto& col_name : column_key.col_name()) {
-                        if (col_set.find(col_name) != col_set.end()) {
-                            same_cnt++;
-                        }
-                    }
-                    if (same_cnt == column_key.col_name_size()) {
-                        break;
-                    }
-                }
-            }
-            if (same_cnt == column_key.col_name_size()) {
+            if (index_id_set.count(openmldb::schema::IndexUtil::GetIDStr(column_key)) > 0) {
                 // skip exist index
                 continue;
             }
@@ -929,8 +913,9 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
                 record_cnt += it->second.table_partition(idx).record_cnt();
             }
             if (record_cnt > 0) {
-                return {base::ReturnCode::kError, "table " + kv.first +
-                    " has online data, cannot deploy. please drop this table and create a new one"};
+                return {base::ReturnCode::kError,
+                        "table " + kv.first +
+                            " has online data, cannot deploy. please drop this table and create a new one"};
             }
             new_index_map.emplace(kv.first, std::move(new_indexs));
         }
@@ -1056,8 +1041,9 @@ bool AppendColumnValue(const std::string& v, hybridse::sdk::DataType type, bool 
             case hybridse::sdk::kTypeTimestamp: {
                 return row->AppendTimestamp(boost::lexical_cast<int64_t>(v));
             }
-            default:
+            default: {
                 return false;
+            }
         }
     } catch (std::exception const& e) {
         return false;
@@ -1318,19 +1304,32 @@ void HandleSQL(const std::string& sql) {
             return;
         }
         case hybridse::node::kPlanTypeSelectInto: {
-            auto* select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode*>(node);
-            const std::string& query_sql = select_into_plan_node->QueryStr();
-            const std::string& file_path = select_into_plan_node->OutFile();
-            const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
-            ::hybridse::sdk::Status status;
-            auto rs = sr->ExecuteSQL(db, query_sql, &status);
-            if (!rs) {
-                std::cout << "ERROR: Failed to execute query" << std::endl;
+            ::openmldb::base::Status status;
+            if (IsOnlineMode()) {
+                auto* select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode*>(node);
+                const std::string& query_sql = select_into_plan_node->QueryStr();
+                ::hybridse::sdk::Status sdk_status;
+                auto rs = sr->ExecuteSQL(db, query_sql, &sdk_status);
+                if (!rs) {
+                    std::cout << "ERROR: Failed to execute query(" << sdk_status.msg << ")" << std::endl;
+                    return;
+                }
+                const std::string& file_path = select_into_plan_node->OutFile();
+                const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
+                SaveResultSet(rs.get(), file_path, options_map, &status);
             } else {
-                ::openmldb::base::Status openmldb_base_status;
-                SaveResultSet(rs.get(), file_path, options_map, &openmldb_base_status);
-                std::cout << openmldb_base_status.GetMsg() << std::endl;
+                ::openmldb::taskmanager::JobInfo job_info;
+                std::map<std::string, std::string> config;
+                status = sr->ExportOfflineData(sql, config, db, job_info);
+                if (status.OK() && job_info.id() > 0) {
+                    PrintJobInfos(std::cout, {job_info});
+                }
             }
+
+            if (!status.OK()) {
+                std::cout << "ERROR: Failed to select into " << std::endl;
+            }
+            std::cout << status.GetMsg() << "(" << status.GetCode() << ")" << std::endl;
             return;
         }
         case hybridse::node::kPlanTypeSet: {
@@ -1375,7 +1374,13 @@ void HandleSQL(const std::string& sql) {
             }
             return;
         }
+        case hybridse::node::kPlanTypeDelete: {
+            std::cout << "ERROR: delete is not supported yet" << std::endl;
+            return;
+        }
         default: {
+            std::cout << "ERROR: Unsupported command" << std::endl;
+            return;
         }
     }
 }

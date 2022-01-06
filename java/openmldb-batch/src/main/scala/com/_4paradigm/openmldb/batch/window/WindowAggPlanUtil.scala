@@ -21,7 +21,8 @@ import com._4paradigm.hybridse.sdk.{HybridSeException, JitManager, SerializableB
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
 import com._4paradigm.hybridse.vm.Window.WindowFrameType
 import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkUtil}
-import com._4paradigm.openmldb.batch.{PlanContext, OpenmldbBatchConfig, SparkInstance}
+import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.sql.{DataFrame, functions}
 import org.apache.spark.sql.types.{LongType, StructType}
@@ -208,7 +209,9 @@ object WindowAggPlanUtil {
     // get jit in executor process
     val tag = config.moduleTag
     val buffer = config.moduleNoneBroadcast.getBuffer
+    SqlClusterExecutor.initJavaSdkLibrary(sqlConfig.openmldbJsdkLibraryPath)
     JitManager.initJitModule(tag, buffer)
+
     val jit = JitManager.getJit(tag)
 
     // create stateful computer

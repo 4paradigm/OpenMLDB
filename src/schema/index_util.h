@@ -51,7 +51,6 @@ class IndexUtil {
 
     static bool FillColumnKey(openmldb::nameserver::TableInfo* table_info);
 
- private:
     static std::string GetIDStr(const ::openmldb::common::ColumnKey& column_key);
 };
 
