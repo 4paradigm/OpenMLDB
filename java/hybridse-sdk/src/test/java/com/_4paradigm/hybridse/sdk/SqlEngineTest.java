@@ -333,7 +333,6 @@ public class SqlEngineTest {
             Assert.assertNull(engine.getPlan());
             Assert.fail("Expect getPlan fail");
         } catch (UnsupportedHybridSeException e) {
-            e.printStackTrace();
             Assert.assertTrue(e.getMessage().contains(errorMsg));
         }
     }
