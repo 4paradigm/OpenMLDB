@@ -41,11 +41,15 @@ else
     sed -i "s/.*system_table_replica_num=.*/--system_table_replica_num=1/g" /work/openmldb/conf/nameserver.flags
     sed -i "s/.*zk_cluster=.*/--zk_cluster=127.0.0.1:2181/g" /work/openmldb/conf/tablet.flags
     sed -i "s/.*zk_root_path=.*/--zk_root_path=\/openmldb/g" /work/openmldb/conf/tablet.flags
+    sed -i "s/.*zk_cluster=.*/--zk_cluster=127.0.0.1:2181/g" /work/openmldb/conf/apiserver.flags
+    sed -i "s/.*zk_root_path=.*/--zk_root_path=\/openmldb/g" /work/openmldb/conf/apiserver.flags
     cd /work/zookeeper-3.4.14 && ./bin/zkServer.sh restart
     sleep 1
     cd /work/openmldb && ./bin/start.sh start tablet
     sleep 1
     cd /work/openmldb && ./bin/start.sh start nameserver
+    sleep 1
+    cd /work/openmldb && ./bin/start.sh start apiserver
     sleep 1
     cd /work/openmldb/taskmanager/bin && sh taskmanager.sh &
     sleep 1
