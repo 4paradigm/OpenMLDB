@@ -1696,7 +1696,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->ImportOfflineData(sql, config, default_db, job_info);
+    return taskmanager_client_ptr->ExportOfflineData(sql, config, default_db, job_info);
 }
 
 bool SQLClusterRouter::NotifyTableChange() {
