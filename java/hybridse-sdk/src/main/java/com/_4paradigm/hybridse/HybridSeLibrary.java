@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * TODO: This class is deprecated and we should load the library by SqlClusterExecutor.initJavaSdkLibrary()
  * Library loader for hybridse jsdk core.
  */
 public class HybridSeLibrary {
