@@ -101,6 +101,7 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 :bulb: Note that:
 
 - The SQL used for the online deployment should be the same as that for offline feature extraction.
+- Do not insert or import online data into the reference tables before deploy
 
 **Import online data to OpenMLDB**
 ```sql
