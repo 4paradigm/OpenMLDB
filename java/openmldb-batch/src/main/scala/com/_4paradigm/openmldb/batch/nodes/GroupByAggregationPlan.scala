@@ -22,6 +22,7 @@ import com._4paradigm.hybridse.vm.{CoreAPI, GroupbyInterface, PhysicalGroupAggre
 import com._4paradigm.openmldb.batch.nodes.RowProjectPlan.ProjectConfig
 import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.{Column, Row}
 import org.slf4j.LoggerFactory
@@ -78,7 +79,7 @@ object GroupByAggregationPlan {
     )
     val groupKeyComparator = HybridseUtil.createGroupKeyComparator(groupIdxs.toArray)
 
-    val hybridseJsdkLibraryPath = ctx.getConf.hybridseJsdkLibraryPath
+    val openmldbJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
 
     // Map partition
     val resultRDD = sortedInputDf.rdd.mapPartitions(iter => {
@@ -90,12 +91,8 @@ object GroupByAggregationPlan {
         // Init JIT
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast.getBuffer
-
-        if (hybridseJsdkLibraryPath.equals("")) {
-          JitManager.initJitModule(tag, buffer)
-        } else {
-          JitManager.initJitModule(tag, buffer, hybridseJsdkLibraryPath)
-        }
+        SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
+        JitManager.initJitModule(tag, buffer)
 
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)

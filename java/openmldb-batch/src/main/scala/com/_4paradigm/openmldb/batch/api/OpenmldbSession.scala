@@ -16,9 +16,9 @@
 
 package com._4paradigm.openmldb.batch.api
 
-import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.commons.io.IOUtils
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
@@ -58,7 +58,8 @@ class OpenmldbSession {
     this.setDefaultSparkConfig()
 
     if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkRootPath.nonEmpty) {
-      openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkRootPath)
+      openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkRootPath,
+        config.openmldbJsdkLibraryPath)
       registerOpenmldbOfflineTable(openmldbCatalogService)
     }
   }
@@ -232,8 +233,10 @@ class OpenmldbSession {
    * Stop the Spark session.
    */
   def stop(): Unit = {
-    sparkSession.stop()
+    sparkSession.close()
   }
+
+  def close(): Unit = stop()
 
   def registerOpenmldbOfflineTable(catalogService: OpenmldbCatalogService): Unit = {
     val databases = catalogService.getDatabases
@@ -247,20 +250,25 @@ class OpenmldbSession {
           val path = offlineTableInfo.getPath
           val format = offlineTableInfo.getFormat
 
-          // default offlineTableInfo required members 'path' & 'format' won't be null
-          if (path != null && path.nonEmpty && format != null && format.nonEmpty) {
-            // Has offline table meta
-            val df = format.toLowerCase match {
-              case "parquet" => sparkSession.read.parquet(path)
-              case "csv" => sparkSession.read.csv(path)
+          // TODO: Ignore the register exception which occurs when switching local and yarn mode
+          try {
+            // default offlineTableInfo required members 'path' & 'format' won't be null
+            if (path != null && path.nonEmpty && format != null && format.nonEmpty) {
+              // Has offline table meta
+              val df = format.toLowerCase match {
+                case "parquet" => sparkSession.read.parquet(path)
+                case "csv" => sparkSession.read.csv(path)
+              }
+              // TODO: Check schema
+              registerTable(dbName, tableName, df)
+            } else {
+              // Register empty df for table
+              logger.info(s"Register empty dataframe fof $dbName.$tableName")
+              // TODO: Create empty df with schema
+              registerTable(dbName, tableName, sparkSession.emptyDataFrame)
             }
-            // TODO: Check schema
-            registerTable(dbName, tableName, df)
-          } else {
-            // Register empty df for table
-            logger.info(s"Register empty dataframe fof $dbName.$tableName")
-            // TODO: Create empty df with schema
-            registerTable(dbName, tableName, sparkSession.emptyDataFrame)
+          } catch {
+            case e: Exception => logger.warn(s"Fail to register table $dbName.$tableName, error: ${e.getMessage}")
           }
         }
       })

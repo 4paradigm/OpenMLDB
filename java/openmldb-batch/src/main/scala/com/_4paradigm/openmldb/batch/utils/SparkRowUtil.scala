@@ -51,7 +51,6 @@ object SparkRowUtil {
       // (DateTime)
       case Type.DataType.kTimestamp => TimestampType
       case Type.DataType.kVarchar | Type.DataType.kString => StringType
-      case e: Any => throw new UnsupportedHybridSeException(s"unsupported proto DataType $e")
     }
   }
 

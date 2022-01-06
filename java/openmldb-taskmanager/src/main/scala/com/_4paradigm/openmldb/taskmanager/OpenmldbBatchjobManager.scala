@@ -74,4 +74,12 @@ object OpenmldbBatchjobManager {
     SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
   }
 
+  def exportOfflineData(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
+    val jobType = "ExportOfflineData"
+    val mainClass = "com._4paradigm.openmldb.batchjob.ExportOfflineData"
+    val args = List(sql)
+
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
+  }
+
 }

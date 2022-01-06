@@ -55,7 +55,7 @@ namespace client {
                                   FLAGS_request_timeout_ms, 1);
 
     if (ok) {
-        if(response.code() == 0) {
+        if (response.code() == 0) {
             if (response.has_job()) {
                 job_info.CopyFrom(response.job());
             }
@@ -76,7 +76,7 @@ namespace client {
                                   FLAGS_request_timeout_ms, 1);
 
     if (ok) {
-        if(response.code() == 0) {
+        if (response.code() == 0) {
             if (response.has_job()) {
                 job_info.CopyFrom(response.job());
             }
@@ -102,7 +102,7 @@ namespace client {
                                   &response, FLAGS_request_timeout_ms, 1);
 
     if (ok) {
-        if(response.code() == 0) {
+        if (response.code() == 0) {
             if (response.has_job()) {
                 job_info.CopyFrom(response.job());
             }
@@ -127,14 +127,14 @@ namespace client {
                                   &response, FLAGS_request_timeout_ms, 1);
 
     if (ok) {
-        if(response.code() == 0) {
+        if (response.code() == 0) {
             if (response.has_job()) {
                 job_info.CopyFrom(response.job());
             }
         }
-        return ::openmldb::base::Status(response.code(), response.msg());
+        return {response.code(), response.msg()};
     } else {
-        return ::openmldb::base::Status(-1, "Fail to request TaskManager server");
+        return {-1, "Fail to request TaskManager server"};
     }
 }
 
@@ -157,9 +157,34 @@ namespace client {
                 job_info.CopyFrom(response.job());
             }
         }
-        return ::openmldb::base::Status(response.code(), response.msg());
+        return {response.code(), response.msg()};
     } else {
-        return ::openmldb::base::Status(-1, "Fail to request TaskManager server");
+        return {-1, "Fail to request TaskManager server"};
+    }
+}
+
+::openmldb::base::Status TaskManagerClient::ExportOfflineData(const std::string& sql,
+                                                              const std::map<std::string, std::string>& config,
+                                                              const std::string& default_db,
+                                                              ::openmldb::taskmanager::JobInfo& job_info) {
+    ::openmldb::taskmanager::ExportOfflineDataRequest request;
+    ::openmldb::taskmanager::ShowJobResponse response;
+
+    request.set_sql(sql);
+    request.set_default_db(default_db);
+
+    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ExportOfflineData, &request,
+                                  &response, FLAGS_request_timeout_ms, 1);
+
+    if (ok) {
+        if (response.code() == 0) {
+            if (response.has_job()) {
+                job_info.CopyFrom(response.job());
+            }
+        }
+        return {response.code(), response.msg()};
+    } else {
+        return {-1, "Fail to request TaskManager server"};
     }
 }
 
@@ -179,7 +204,6 @@ namespace client {
         return ::openmldb::base::Status(-1, "Fail to request TaskManager server");
     }
 }
-
 
 }  // namespace client
 }  // namespace openmldb
