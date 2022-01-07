@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Copyright 2021 4Paradigm
@@ -33,48 +33,47 @@ else:
 
 method = ["put", "get", "scan", "query", "subquery", "batchquery", "sqlbatchrequestquery", "subbatchrequestquery"]
 method_set = set(method)
-monitor_key = ["count", "error", "qps", "latency", "latency_50",
-               "latency_90", "latency_99", "latency_999", "latency_9999", "max_latency"]
+monitor_key = [
+    "count", "error", "qps", "latency", "latency_50", "latency_90", "latency_99", "latency_999", "latency_9999",
+    "max_latency"
+]
 openmldb_logs = {
-    "tablet": [
-        {
-            "file_name": "/rtidb_mon.log",
-            "offset": 0,
-            "item": {
-                "name": "restart_num",
-                "key": "./bin/boot.sh",
-                "num": 0
-            }
-        },
-        {
-            "file_name": "/tablet.WARNING",
-            "offset": 0,
-            "item": {
-                "name": "reconnect_num",
-                "key": "reconnect zk",
-                "num": 0
-            }
-        }],
-    "ns": [
-        {
-            "file_name": "/rtidb_ns_mon.log",
-            "offset": 0,
-            "item": {
-                "name": "restart_num",
-                "key": "./bin/boot_ns.sh",
-                "num": 0
-            }
-        },
-        {
-            "file_name": "/nameserver.WARNING",
-            "offset": 0,
-            "item": {
-                "name": "reconnect_num",
-                "key": "reconnect zk",
-                "num": 0
-            }
-        }]
+    "tablet": [{
+        "file_name": "/tablet_mon.log",
+        "offset": 0,
+        "item": {
+            "name": "restart_num",
+            "key": "./bin/boot.sh",
+            "num": 0
+        }
+    }, {
+        "file_name": "/tablet.WARNING",
+        "offset": 0,
+        "item": {
+            "name": "reconnect_num",
+            "key": "reconnect zk",
+            "num": 0
+        }
+    }],
+    "ns": [{
+        "file_name": "/nameserver_mon.log",
+        "offset": 0,
+        "item": {
+            "name": "restart_num",
+            "key": "./bin/boot_ns.sh",
+            "num": 0
+        }
+    }, {
+        "file_name": "/nameserver.WARNING",
+        "offset": 0,
+        "item": {
+            "name": "reconnect_num",
+            "key": "reconnect zk",
+            "num": 0
+        }
+    }]
 }
+
 
 def parse_data(resp):
     beginParse = False
@@ -103,13 +102,14 @@ def parse_data(resp):
         else:
             stageBegin = True
             server = l.split()[0]
-            servers[server]={}
+            servers[server] = {}
     return servers
 
+
 def get_data(url):
-    print("get_data:", url)
     with request.urlopen(url) as resp:
         return parse_data(resp)
+
 
 def get_mem(url):
     memory_by_application = 0
@@ -137,6 +137,7 @@ def get_mem(url):
             continue
     return memory_by_application, memory_central_cache_freelist, memory_acutal_used
 
+
 def get_conf():
     conf_map = {}
     with do_open(dir_name + "/monitor.conf", "r") as conf_file:
@@ -152,19 +153,19 @@ def get_conf():
                 conf_map["ns"] = arr[1].strip()
             elif arr[0] == "port":
                 conf_map["port"] = int(arr[1].strip())
-            elif arr[0] == "log_dir":
-                conf_map["log_dir"] = arr[1].strip()
             elif arr[0] == "interval":
                 conf_map["interval"] = int(arr[1].strip())
         return conf_map
 
 
 def get_timestamp():
+
     def big_int(ct):
         try:
             return long(ct)
         except:
             return int(ct)
+
     ct = time.time()
     local_time = time.localtime(ct)
     data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
@@ -192,13 +193,20 @@ if __name__ == "__main__":
     if "metric_port" in env_dist:
         port = int(env_dist["metric_port"])
     start_http_server(port)
-    gauge = {}
-    for cur_method in method:
-        gauge[cur_method] = Gauge(
-            "openmldb_" + cur_method, cur_method, ["latency", "type"])
 
-    gauge["log"] = Gauge("openmldb_log", "log", ["role", "type"])
-    gauge["memory"] = Gauge("openmldb_memory", "memory", ["role", "type"])
+    # three gauge metric built in, from service status(named api), log, application memory respectively
+    # NOTE: those gauges are not finalized, any change will happen without warning
+    gauge = {}
+
+    # gauge for method provided by OpenMLDB, has two labels
+    # 1. method: method name, e.g put, get
+    # 2. category: currently two categories:
+    #    1. latency related metric
+    #    2. couter related: qps, error count
+    gauge["api"] = Gauge("openmldb_api", "metric for OpenMLDB server api status", ["method", "category"])
+
+    gauge["log"] = Gauge("openmldb_log", "metric for OpenMLDB log", ["role", "type"])
+    gauge["memory"] = Gauge("openmldb_memory", "metric for OpenMLDB memory", ["type"])
 
     endpoint = ""
     if "endpoint" in conf_map:
@@ -212,16 +220,18 @@ if __name__ == "__main__":
         mem_url = "http://{}/TabletServer/ShowMemPool".format(endpoint)
 
     last_date = get_timestamp()[1]
+    sleep_sec = conf_map["interval"]
     while True:
         try:
             time_stamp = get_timestamp()[0]
             new_date = get_timestamp()[1]
+
+            # analysis openmldb logs
             for module in openmldb_logs.keys():
                 if module not in conf_map:
                     continue
                 for var in openmldb_logs[module]:
-                    (count, offset) = search_key(
-                        conf_map[module] + var["file_name"], var["offset"], var["item"]["key"])
+                    (count, offset) = search_key(conf_map[module] + var["file_name"], var["offset"], var["item"]["key"])
                     if var["item"]["name"] == "restart_num":
                         var["offset"] = offset
                         if count > 0:
@@ -229,13 +239,13 @@ if __name__ == "__main__":
                             openmldb_logs[module][1]["item"]["offset"] = 0
                             openmldb_logs[module][1]["item"]["num"] = 0
                         value = count - 1 if count > 0 else count
-                        gauge["log"].labels(
-                            module, var["item"]["name"]).set(var["item"]["num"])
+                        gauge["log"].labels(role=module, type=var["item"]["name"]).set(var["item"]["num"])
                     else:
                         var["item"]["num"] += count
                         var["offset"] = offset
-                        gauge["log"].labels(module, var["item"]["name"]).set(
-                            str(var["item"]["num"]))
+                        gauge["log"].labels(role=module, type=var["item"]["name"]).set(str(var["item"]["num"]))
+
+            # pull OpenMLDB metric status
             if url == "":
                 continue
             result = get_data(url)
@@ -246,17 +256,17 @@ if __name__ == "__main__":
                 data = "{}\t{}\t".format(time_stamp, lower_method)
                 for key in monitor_key:
                     data = "{}\t{}:{}".format(data, key, result[method_data][key])
-                    if key.find("latency") == -1:
-                        gauge[lower_method].labels("type", key).set(
-                            result[method_data][key])
-                    else:
-                        gauge[lower_method].labels("latency", key).set(
-                            result[method_data][key])
+                    gauge["api"].labels(method=lower_method, category=key).set(result[method_data][key])
+
+            # pull OpenMLDB memory usage
             if len(mem_url) < 1:
                 continue
             mema, memb, memc = get_mem(mem_url)
-            gauge["memory"].labels("memory", "use_by_application").set(mema)
-            gauge["memory"].labels("memory", "central_cache_freelist").set(memb)
-            gauge["memory"].labels("memory", "actual_memory_used").set(memc)
+            gauge["memory"].labels(type="use_by_application").set(mema)
+            gauge["memory"].labels(type="central_cache_freelist").set(memb)
+            gauge["memory"].labels(type="actual_memory_used").set(memc)
+        except Exception as e:
+            print("exception happened during pull metrics: ", e)
         finally:
-            time.sleep(conf_map["interval"])
+            print(time.ctime(), ": pulled, sleep for ", sleep_sec, " seconds")
+            time.sleep(sleep_sec)
