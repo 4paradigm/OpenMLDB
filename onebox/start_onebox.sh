@@ -14,10 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -x -e
 
 ulimit -c unlimited
-# start_onebox.sh
 
 # first start zookeeper
 IP=127.0.0.1
@@ -87,6 +86,32 @@ test -d recycle_bin3 && rm -rf recycle_bin3
                    --tablet_heartbeat_timeout=1\
                    --zk_cluster=${ZK_CLUSTER}\
                    --zk_root_path=/onebox > ns3.log 2>&1 &
+
+# start TaskManager if exists
+if [ -d "../java/openmldb-taskmanager/target/" ]
+then
+  # Change to binary directory
+  pushd ../java/openmldb-taskmanager/target/openmldb-taskmanager-binary/bin > /dev/null
+
+  # Get OS and check
+  OS="$(uname -a | awk '{print $1}' | tr '[:upper:]' '[:lower:]')"
+
+  # Update config
+  if [ "$OS" = 'darwin' ]; then
+    echo 00000
+    sed -i '' 's/zookeeper.cluster=0.0.0.0:2181/zookeeper.cluster=0.0.0.0:6181/g' ../conf/taskmanager.properties
+    sed -i '' 's/zookeeper.root_path=\/openmldb/zookeeper.root_path=\/onebox/g' ../conf/taskmanager.properties
+  else
+    echo 1111
+    sed -i 's/zookeeper.cluster=0.0.0.0:2181/zookeeper.cluster=0.0.0.0:6181/g' ../conf/taskmanager.properties
+    sed -i 's/zookeeper.root_path=\/openmldb/zookeeper.root_path=\/onebox/g' ../conf/taskmanager.properties
+  fi
+
+  # Start taskmanager
+  sh ./taskmanager.sh 2>&1 &
+
+  popd > /dev/null
+fi
 
 sleep 3
 
