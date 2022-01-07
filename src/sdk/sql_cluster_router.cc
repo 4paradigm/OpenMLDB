@@ -686,16 +686,25 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         return false;
     }
 
+    // RefreshCatalog to avoid getting out-of-date table info
+    if (!RefreshCatalog()) {
+        status->msg = "Fail to refresh catalog";
+        status->code = -1;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+
     auto tableInfo = GetTableInfo(db, table);
     // Check offline table info first
     if (tableInfo.has_offline_table_info()) {
         auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
         if (!taskmanager_client_ptr) {
             status->msg = "no TaskManager exist";
-            status->code = -2;
+            status->code = -1;
             LOG(WARNING) << status->msg;
             return false;
         }
+
         ::openmldb::base::Status rpcStatus = taskmanager_client_ptr->DropOfflineTable(db, table);
         if (rpcStatus.code != 0) {
             status->msg = rpcStatus.msg;
@@ -1687,7 +1696,11 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->ImportOfflineData(sql, config, default_db, job_info);
+    return taskmanager_client_ptr->ExportOfflineData(sql, config, default_db, job_info);
+}
+
+bool SQLClusterRouter::NotifyTableChange() {
+    return cluster_sdk_->TriggerNotify();
 }
 
 }  // namespace sdk

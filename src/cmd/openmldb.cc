@@ -368,9 +368,6 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
         return ::openmldb::base::Status(-1, "Encode data error");
     }
     std::vector<uint64_t> ts_dimensions;
-    if (codec.EncodeTsDimension(input_value, &ts_dimensions) < 0) {
-        return ::openmldb::base::Status(-1, "Encode ts dimension error");
-    }
     if (table_info.compress_type() == ::openmldb::type::CompressType::kSnappy) {
         std::string compressed;
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
