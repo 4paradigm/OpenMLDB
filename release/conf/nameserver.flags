@@ -1,4 +1,4 @@
-# nameserver.conf 
+# nameserver.conf
 --endpoint=127.0.0.1:6527
 --role=nameserver
 #--zk_cluster=127.0.0.1:7181
@@ -36,3 +36,6 @@
 #--partition_num=8
 --system_table_replica_num=2
 #--enable_distsql=true
+
+# turn this option on to export openmldb metric status
+# --enable_status_service=false
