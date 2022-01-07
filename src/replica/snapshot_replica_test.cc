@@ -304,6 +304,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     sr.set_pid(pid);
     sr.set_pk("card0");
     sr.set_idx_name("card1");
+    sr.set_st(cur_time + 1);
     sr.set_et(0);
     ::openmldb::api::ScanResponse srp;
     tablet1->Scan(NULL, &sr, &srp, &closure);
