@@ -296,7 +296,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     sr.set_et(0);
     ::openmldb::api::ScanResponse srp;
     tablet1->Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(1, (int64_t)srp.count());
+    ASSERT_EQ(0, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
 
     ::openmldb::api::DropTableRequest dr;
