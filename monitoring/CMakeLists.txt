@@ -21,6 +21,8 @@ install(
 
 install(
   FILES ${CMAKE_CURRENT_SOURCE_DIR}/openmldb_exporter.conf
+    ${CMAKE_CURRENT_SOURCE_DIR}/prometheus_example.yml
+    ${CMAKE_CURRENT_SOURCE_DIR}/openmldb_dashboard.json
   DESTINATION conf
   PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
 )
