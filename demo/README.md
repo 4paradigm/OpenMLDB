@@ -73,11 +73,11 @@ count(vendor_id) OVER w2 AS pc_cnt,
 count(vendor_id) OVER w AS vendor_cnt
 FROM t1
 WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
-w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
+w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data';
 ```
 **Train model**
 ```bash
-python3 train.py /tmp/feature.csv /tmp/model.txt
+python3 train.py /tmp/feature_data /tmp/model.txt
 ```
 **Online SQL deployment**
 ```sql
