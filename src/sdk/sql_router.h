@@ -178,6 +178,8 @@ class SQLRouter {
                                                        const std::map<std::string, std::string>& config,
                                                        const std::string& default_db,
                                                        ::openmldb::taskmanager::JobInfo& job_info) = 0;
+
+    virtual bool NotifyTableChange() = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
