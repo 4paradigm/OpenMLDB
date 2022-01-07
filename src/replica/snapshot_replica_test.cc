@@ -264,17 +264,6 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     bool ret = client.CreateTable(table_meta);
     ASSERT_TRUE(ret);
-    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    std::vector<std::pair<std::string, uint32_t>> dimensions;
-    dimensions.push_back(std::make_pair("card0", 0));
-    dimensions.push_back(std::make_pair("mcc0", 1));
-    std::vector<uint64_t> ts_dimensions = {cur_time, cur_time - 100};
-    ::openmldb::codec::SDKCodec sdk_codec(table_meta);
-    std::vector<std::string> row = {"card0", "mcc0", "1.3", std::to_string(cur_time), std::to_string(cur_time - 100)};
-    std::string value;
-    sdk_codec.EncodeRow(row, &value);
-    ret = client.Put(tid, pid, dimensions, ts_dimensions, value);
-    ASSERT_TRUE(ret);
 
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     FLAGS_endpoint = "127.0.0.1:18530";
@@ -304,7 +293,6 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     sr.set_pid(pid);
     sr.set_pk("card0");
     sr.set_idx_name("card1");
-    sr.set_st(cur_time + 1);
     sr.set_et(0);
     ::openmldb::api::ScanResponse srp;
     tablet1->Scan(NULL, &sr, &srp, &closure);
