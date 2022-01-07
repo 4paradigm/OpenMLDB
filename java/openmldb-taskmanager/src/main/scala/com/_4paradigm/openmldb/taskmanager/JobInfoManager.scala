@@ -119,6 +119,7 @@ object JobInfoManager {
 
   def deleteJob(jobId: Int): Unit = {
     // TODO: Can not support deleting single row row
+    throw new Exception("Delete job is not supported yet")
   }
 
   def getJob(jobId: Int): Option[JobInfo] = {

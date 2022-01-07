@@ -16,11 +16,12 @@
 
 package com._4paradigm.openmldb.taskmanager.spark
 
-import com._4paradigm.openmldb.taskmanager.JobInfoManager
+import com._4paradigm.openmldb.taskmanager.{JobInfoManager, LogManager}
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.apache.spark.launcher.SparkLauncher
+
 import java.nio.file.Paths
 
 object SparkJobManager {
@@ -95,7 +96,7 @@ object SparkJobManager {
 
     if (TaskManagerConfig.JOB_LOG_PATH.nonEmpty) {
       // Create local file and redirect the log of job into single file
-      val jobLogFile = Paths.get(TaskManagerConfig.JOB_LOG_PATH, s"job_${jobInfo.getId}.log").toFile
+      val jobLogFile = LogManager.getJobLogFile(jobInfo.getId)
       launcher.redirectOutput(jobLogFile)
       launcher.redirectError(jobLogFile)
     }

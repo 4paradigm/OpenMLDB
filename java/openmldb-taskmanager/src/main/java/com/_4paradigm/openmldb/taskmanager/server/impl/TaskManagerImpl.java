@@ -18,10 +18,12 @@ package com._4paradigm.openmldb.taskmanager.server.impl;
 
 import com._4paradigm.openmldb.proto.TaskManager;
 import com._4paradigm.openmldb.taskmanager.JobInfoManager;
+import com._4paradigm.openmldb.taskmanager.LogManager;
 import com._4paradigm.openmldb.taskmanager.OpenmldbBatchjobManager;
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
+import com.baidu.brpc.protocol.BrpcMeta;
 import lombok.extern.slf4j.Slf4j;
 import scala.Option;
 
@@ -204,6 +206,17 @@ public class TaskManagerImpl implements TaskManagerInterface {
         } catch (Exception e) {
             e.printStackTrace();
             return TaskManager.DropOfflineTableResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
+        }
+    }
+
+    @Override
+    public TaskManager.GetJobLogResponse GetJobLog(TaskManager.GetJobLogRequest request) {
+        try {
+            String log = LogManager.getJobLog(request.getId());
+            return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.SUCCESS).setLog(log).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
 }
