@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import os
 import time
 import sys
@@ -138,9 +139,14 @@ def get_mem(url):
     return memory_by_application, memory_central_cache_freelist, memory_acutal_used
 
 
-def get_conf():
+def get_conf(conf_file):
     conf_map = {}
-    with do_open(dir_name + "/monitor.conf", "r") as conf_file:
+    if conf_file.startswith('/'):
+        conf_path = conf_file
+    else:
+        conf_path = dir_name + '/' + conf_file
+    print("reading config file: ", conf_path)
+    with do_open(conf_path, "r") as conf_file:
         for line in conf_file:
             if line.startswith("#"):
                 continue
@@ -185,9 +191,16 @@ def search_key(file_name, offset, keyword):
                 count += 1
         return (count, f.tell())
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='OpenMLDB exporter')
+    parser.add_argument("--config", type=str, help="path to config file")
+    return parser.parse_args()
 
-if __name__ == "__main__":
-    conf_map = get_conf()
+
+def main():
+    args = parse_args()
+
+    conf_map = get_conf(args.config or 'openmldb_exporter.conf')
     env_dist = os.environ
     port = conf_map["port"]
     if "metric_port" in env_dist:
@@ -270,3 +283,6 @@ if __name__ == "__main__":
         finally:
             print(time.ctime(), ": pulled, sleep for ", sleep_sec, " seconds")
             time.sleep(sleep_sec)
+
+if __name__ == "__main__":
+    main()
