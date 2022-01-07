@@ -73,8 +73,6 @@ DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
 DECLARE_string(openmldb_log_dir);
-DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
-DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the log level, eg: debug or info");
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
