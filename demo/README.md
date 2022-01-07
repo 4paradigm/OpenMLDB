@@ -25,6 +25,7 @@ w2 as (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 
 ## 2. Demo with The Cluster Mode
 > :warning: Required docker engine version >= 18.03
+
 **Start docker**
 ```
 docker run -it 4pdosc/openmldb:0.3.2 bash
