@@ -279,9 +279,9 @@ def main():
             gauge["memory"].labels(type="central_cache_freelist").set(memb)
             gauge["memory"].labels(type="actual_memory_used").set(memc)
         except Exception as e:
-            print("exception happened during pull metrics: ", e)
+            print(time.ctime(), ", exception happened during pull metrics: ", e)
         finally:
-            print(time.ctime(), ": pulled, sleep for ", sleep_sec, " seconds")
+            print(time.ctime(), ", pulled, sleep for ", sleep_sec, " seconds")
             time.sleep(sleep_sec)
 
 if __name__ == "__main__":
