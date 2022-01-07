@@ -25,7 +25,6 @@
 #include "base/glog_wapper.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/container/deque.hpp"
-#include "codec/flat_array.h"
 #include "codec/schema_codec.h"
 #include "storage/segment.h"
 

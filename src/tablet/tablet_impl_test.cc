@@ -30,8 +30,6 @@
 #include "base/kv_iterator.h"
 #include "base/strings.h"
 #include "boost/lexical_cast.hpp"
-#include "codec/codec.h"
-#include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"

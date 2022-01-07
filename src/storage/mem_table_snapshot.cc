@@ -35,7 +35,6 @@
 #include "base/strings.h"
 #include "base/taskpool.hpp"
 #include "boost/bind.hpp"
-#include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "common/thread_pool.h"
 #include "common/timer.h"

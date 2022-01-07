@@ -25,7 +25,6 @@
 #include "base/hash.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"
-#include "codec/flat_array.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"
