@@ -45,6 +45,7 @@ public class TaskManagerConfig {
     public static int PREFETCH_JOBID_NUM;
     public static String NAMENODE_URI;
     public static String JOB_LOG_PATH;
+    public static String SPARK_DEFAULT_CONF;
 
     static {
         try {
@@ -71,6 +72,7 @@ public class TaskManagerConfig {
             PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.jobid.num", "10"));
             NAMENODE_URI = prop.getProperty("namenode.uri", "");
             JOB_LOG_PATH = prop.getProperty("job.log.path", "../log/");
+            SPARK_DEFAULT_CONF = prop.getProperty("spark.default.conf", "");
 
             if (!JOB_LOG_PATH.isEmpty()) {
                 createJobLogPath(JOB_LOG_PATH);

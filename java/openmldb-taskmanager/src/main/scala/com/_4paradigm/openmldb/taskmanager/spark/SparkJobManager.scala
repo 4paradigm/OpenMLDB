@@ -77,6 +77,16 @@ object SparkJobManager {
     launcher.setConf("spark.yarn.executorEnv.LANG", "en_US.UTF-8")
     launcher.setConf("spark.yarn.executorEnv.LC_ALL", "en_US.UTF-8")
 
+    // TODO: Support escape delimiter
+    // Set default Spark conf by TaskManager configuration file
+    val defaultSparkConfs = TaskManagerConfig.SPARK_DEFAULT_CONF.split(",")
+    defaultSparkConfs.map(sparkConf => {
+      if (sparkConf.nonEmpty) {
+        val kvList = sparkConf.split("=")
+        launcher.setConf(kvList(0), kvList(1))
+      }
+    })
+
     // Set ZooKeeper config for openmldb-batch jobs
     if (TaskManagerConfig.ZK_CLUSTER.nonEmpty && TaskManagerConfig.ZK_ROOT_PATH.nonEmpty) {
       launcher.setConf("spark.openmldb.zk.cluster", TaskManagerConfig.ZK_CLUSTER)
