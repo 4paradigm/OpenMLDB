@@ -93,7 +93,6 @@ object SparkJobManager {
       launcher.setConf(k, v)
     }
 
-
     if (TaskManagerConfig.JOB_LOG_PATH.nonEmpty) {
       // Create local file and redirect the log of job into single file
       val jobLogFile = Paths.get(TaskManagerConfig.JOB_LOG_PATH, s"job_${jobInfo.getId}.log").toFile

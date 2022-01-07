@@ -87,7 +87,7 @@ public class TaskManagerConfig {
             boolean created = directory.mkdirs();
             logger.info("Try to create log path and get result: " + created);
         } else {
-            logger.info("The log path of job already exists: " + logPath);
+            logger.debug("The log path of job already exists: " + logPath);
         }
     }
 
