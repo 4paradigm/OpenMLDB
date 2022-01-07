@@ -98,11 +98,9 @@ then
 
   # Update config
   if [ "$OS" = 'darwin' ]; then
-    echo 00000
     sed -i '' 's/zookeeper.cluster=0.0.0.0:2181/zookeeper.cluster=0.0.0.0:6181/g' ../conf/taskmanager.properties
     sed -i '' 's/zookeeper.root_path=\/openmldb/zookeeper.root_path=\/onebox/g' ../conf/taskmanager.properties
   else
-    echo 1111
     sed -i 's/zookeeper.cluster=0.0.0.0:2181/zookeeper.cluster=0.0.0.0:6181/g' ../conf/taskmanager.properties
     sed -i 's/zookeeper.root_path=\/openmldb/zookeeper.root_path=\/onebox/g' ../conf/taskmanager.properties
   fi
