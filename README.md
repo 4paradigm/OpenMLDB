@@ -64,21 +64,26 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From featur
    
    SQL has the elegant syntax but yet powerful expression ability. SQL based programming experience reduces the learning curve of using OpenMLDB, and further makes it easier for cross department cooperation and sharing. In addition, based on the experience of developing and deploying hundreds of real-world applications using OpenMLDB, it shows that SQL has complete functions in the expression of feature extraction and has withstood the test of practice for a long time.
 
-## 3. Build & Install
+## 5. Build & Install
 
 :point_right: [Read more](docs/en/compile.md)
 
-## 4. Demo & QuickStart
+## 6. QuickStart
 
 Since OpenMLDB v0.3.0, we have introduced two operating modes, which are cluster mode and standalone mode. The cluster mode is suitable for large-scale datasets and real-world applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone mode running on a single node is ideal for small businesses and demonstration. 
 
 We demonstrate the workflow using the cluster and standalone modes:
 
-- :point_right: [Demo code](demo)
 - :point_right: [QuickStart for the cluster mode](docs/en/cluster.md)
 - :point_right: [QuickStart for the standalone mode](docs/en/standalone.md)
 
-## 5. Roadmap
+## 7. Use Cases
+
+:point_right: [Demo code](demo)
+
+## 8. Documentation
+
+## 9. Roadmap
 
 We list a few highlight features that we have planned in the future releases. Please join our community to understand more about our planning and discuss your ideas.
 
@@ -87,7 +92,7 @@ We list a few highlight features that we have planned in the future releases. Pl
 | 0.4.0   | End of 2021       | - Full support of standalone and cluster modes in the integrated CLI |
 | 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Efficient queries over a fairly long period of time by window functions <br />- Kafka/Pulsar connector support for online data source |
 
-## 6. Community
+## 10. Community
 
 You may join our community for feedback and discussion
 
@@ -103,7 +108,7 @@ You may join our community for feedback and discussion
 
   <img src="images/wechat.png" alt="img" width=100 />  
 
-## 7. Publications & Blogs
+## 11. Publications & Blogs
 
 - Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
 - [In-Depth Interpretation of the Latest VLDB 2021 Paper: Artificial Intelligence Driven Real-Time Decision System Database and Optimization Based on Persistent Memory](https://medium.com/@fengxindai0/in-depth-interpretation-of-the-latest-vldb-2021-paper-artificial-intelligence-driven-real-time-f2a818bcf2b2)
@@ -111,5 +116,5 @@ You may join our community for feedback and discussion
 - [Compared to Native Spark 3.0, We Have Achieved Significant Optimization Effects in the AI Application Field](https://towardsdatascience.com/we-have-achieved-significant-optimization-effects-in-the-ai-application-field-compared-to-native-2a055e47250f)
 - [MLOp Practice: Using OpenMLDB in the Real-Time Anti-Fraud Model for the Bank’s Online Transaction](https://towardsdatascience.com/practice-of-openmldbs-transaction-real-time-anti-fraud-model-in-the-bank-s-online-event-40ab41fec6d4)
 
-## 8. [User List](https://github.com/4paradigm/OpenMLDB/discussions/707)
+## 12. [User List](https://github.com/4paradigm/OpenMLDB/discussions/707)
 We have built [a user list](https://github.com/4paradigm/OpenMLDB/discussions/707) to collect feedback from the community. We really appreciate it if you can provide your use cases, comments, or any feedback when using OpenMLDB. We want to hear from you! 
