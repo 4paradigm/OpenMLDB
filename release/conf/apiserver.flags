@@ -6,8 +6,6 @@
 #--zk_root_path=/openmldb_cluster
 
 --openmldb_log_dir=./logs
---log_file_count=24
---log_file_size=1024
 --log_level=info
 
 #--thread_pool_size=16
