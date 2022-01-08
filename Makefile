@@ -111,6 +111,7 @@ test: build
 	# NOTE: some test require zookeeper start first
 	sh ./steps/ut_zookeeper.sh start
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target test -- -j$(NPROC)
+	sh ./steps/ut_zookeeper.sh stop
 
 configure: thirdparty-fast
 	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
