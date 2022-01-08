@@ -42,9 +42,22 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From featur
 
 **SQL Based Development and Management Experience**: Feature extraction script development, deployment, and maintenance are all based on SQL and CLI with great ease of use.
 
-**Customized Performance Optimization for Feature Computing**: Offline feature computing [provides spark based high-performance batch optimization version](https://github.com/4paradigm/spark); Online real-time feature computing provides tens of milliseconds latency for complex queries under high throughput pressure, which fully meets the performance requirements of high concurrency and low latency.
+**Tailored Optimization for Feature Extraction**: Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature extraction. Online feature extraction provides tens of milliseconds latency under high throughput pressure, which fully meets the performance requirements of low latency and high throughput.
 
-**Enterprise Level Features**: Designed for large-scale enterprise level applications, it integrates many enterprises level features, including disaster recovery, high availability, seamless capacity expansion, smooth upgrade, monitoring, enterprise level heterogeneous in-memory data architecture support, etc
+**Enterprise Features**: Designed for large-scale enterprise applications, OpenMLDB integrates important enterprises features, including fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
+
+## 4. FAQ
+
+1. **What are the main usage scenarios?**
+   At present, it mainly provides one-stop feature supply solutions for machine training model and reasoning, including feature calculation, feature storage, feature access service and other functions. In addition, OpenMLDB itself also contains an efficient and fully functional time series database, which is used in finance, IoT and other fields.
+2. **How did OpenMLDB develop?**
+   OpenMLDB originated from the [Fourth Paradigm](https://www.4paradigm.com/) commercial platform of leading artificial intelligence platform provider. We have abstracted, enhanced and community-friendly several core components of commercial products as data supply, and formed them into a systematic open-source product to help more enterprises realize digital transformation at low cost. Before OpenMLDB was open-source, it had been deployed and launched in hundreds of scenarios as one of the commercial components of the Fourth Paradigm.
+3. **Is OpenMLDB a feature store?**
+   OpenMLDB contains all the functions of a feature store, but provides a more complete full stack scheme of FeatureOps. In addition to feature storage, it also has SQL based database development experience, feature calculation, feature online, enterprise level operation and maintenance and other functions.
+4. **Why does OpenMLDB choose SQL as the development language and provide database development experience?**
+   SQL has the characteristics of concise syntax expression and powerful functions. The selection of SQL and database development experience reduces the development threshold on one hand, and makes it easier for cross department cooperation and sharing on the other hand. In addition, the practical experience based on OpenMLDB shows that SQL has complete functions in the expression of feature calculation and has withstood the test of practice for a long time.
+5. **How to get technical support**
+   Welcome to our community to provide you with support.
 
 ## 3. Build & Install
 
