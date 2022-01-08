@@ -210,7 +210,7 @@ if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
   # depends proto targets so java's coverage will work
   set(coverage_deps openmldb_proto hybridse_proto ${test_list})
   SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
-    EXECUTABLE ctest -j ${n_cores}
+    EXECUTABLE ctest --force-new-ctest-process
     DEPENDENCIES ${test_list})
 endif ()
 

@@ -34,19 +34,19 @@ echo 0 > $TMPFILE
 if [ $# -eq 0 ];
 then
     # shellcheck disable=SC2010
-    ls build/bin/ | grep test | grep -v "sql_sdk_test\|sql_cluster_test\|sql_standalone_sdk_test"| grep -v grep | while read -r line
-    do 
+    find build/ -type f -iname '*_test' | grep -v "sql_sdk_test\|sql_cluster_test\|sql_standalone_sdk_test"| grep -v grep | while read -r line
+    do
         ./build/bin/"$line" --gtest_output=xml:./reports/"$line".xml 2>/tmp/"${line}"."${USER}".log 1>&2
         RET=$?
         echo "$line result code is: $RET"
-        if [ $RET -ne 0 ];then 
+        if [ $RET -ne 0 ];then
             cat /tmp/"${line}"."${USER}".log
             echo $RET > $TMPFILE
         else
             rm -f /tmp/"${line}"."${USER}".log
-        fi 
+        fi
     done
-else    
+else
     CASE_NAME=$1
     CASE_LEVEL=$2
     ROOT_DIR=$(pwd)

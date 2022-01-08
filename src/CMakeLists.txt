@@ -60,6 +60,12 @@ function(compile_test DIR)
             else()
                 target_link_libraries(${TEST_TARGET_NAME} ${TEST_LIBS} gtest)
             endif()
+            set_target_properties(${TEST_TARGET_NAME}
+                PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR})
+            add_test(${TEST_TARGET_NAME}
+                ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
+                --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
         endif()
     endforeach()
     set(test_list ${test_list} PARENT_SCOPE)
