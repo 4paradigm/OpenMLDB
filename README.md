@@ -49,12 +49,19 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From featur
 ## 4. FAQ
 
 1. **What are the use cases of OpenMLDB?**
+   
    At present, it mainly provides a full-stack FeatureOps solutions for machine learning applications. Its major functionality consists of feature extraction, feature storage, feature serving, feature sharing, and so on. In addition, OpenMLDB is built based on an efficient and fully functional time-series database, which is used in finance, IoT and other fields.
+   
 2. **How does OpenMLDB evolve?**
+   
    OpenMLDB originated from the commercial product of [4Paradigm](https://www.4paradigm.com/) (a leading artificial intelligence service provider). The core team has abstracted, enhanced and developed community-friendly features based on the commercial product to make it publicly available as an open-source project, in order to benefit more enterprises to achieve successful digital transformations at low cost. Before OpenMLDB was open-source, it had been successfully deployed in hundreds of real-world applications as one of the components in 4Paradigm's commercial products.
+   
 3. **Is OpenMLDB a feature store?**
+   
    OpenMLDB contains all the functions of a feature store, but provides a more complete full-stack FeatureOps solution, which includes feature store, SQL based development experience, a tailored Spark distribution for offline feature extraction, highly optimized indexing for real-time feature extraction, feature serving, and industry features (such as monitoring and high-availability). Furthermore, OpenMLDB is also used as a high performance time-series database besides FeatureOps. 
+   
 4. **Why does OpenMLDB choose SQL as the programming language for users?**
+   
    SQL has the elegant syntax but yet powerful expression ability. SQL based programming experience reduces the learning curve of using OpenMLDB, and further makes it easier for cross department cooperation and sharing. In addition, based on the experience of developing and deploying hundreds of real-world applications using OpenMLDB, it shows that SQL has complete functions in the expression of feature extraction and has withstood the test of practice for a long time.
 
 ## 3. Build & Install
