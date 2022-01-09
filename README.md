@@ -25,7 +25,7 @@ OpenMLDB is a machine learning database that is committed to solving the data go
 
 ## 2. A Full-Stack FeatureOps Solution for Enterprises
 
-MLOps provides a set of practices to develop, deploy, and maintain machine learning models in production efficiently and reliably. As a key link, FeatureOps is responsible for feature engineering, bridging the DataOps and ModelOps. A closed-loop FeatureOps solution needs to cover all aspects of feature engineering, from functionalities (such as feature store, feature extraction, feature serving, feature sharing, and so on) and production requirements (such as low latency, high throughput, fault recovery, high availability, and so on). OpenMLDB provides a full-stack FeatureOps solution for enterprises with great ease of use, so that feature engineering development returns to its essence: focusing on high-quality feature extraction script only and be no longer bound by engineering issues.
+MLOps provides a set of practices to develop, deploy, and maintain machine learning models in production efficiently and reliably. As a key link, FeatureOps is responsible for feature engineering, bridging the DataOps and ModelOps. A closed-loop FeatureOps solution needs to cover all aspects of feature engineering, from functionalities (such as feature store, feature extraction, feature serving, feature sharing, and so on) and production requirements (such as low latency, high throughput, fault recovery, high availability, monitoring, and so on). OpenMLDB provides a full-stack FeatureOps solution for enterprises with great ease of use, so that feature engineering development returns to its essence: focusing on high-quality feature extraction script only and be no longer bound by engineering issues.
 
 <p align="center">
  <img src="images/workflow.png" alt="image-20211103103052253" width=800 />
@@ -42,7 +42,7 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From featur
 
 **Using SQL for Development and Management**: Feature extraction script development, deployment, and maintenance are all based on SQL with great ease of use.
 
-**High Performance Feature Extraction**: Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature processing. Online feature extraction provides tens of milliseconds latency under high throughput pressure, which fully meets the online performance requirements.
+**Customized Optimization for Feature Extraction**: Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature processing. Online feature extraction provides tens of milliseconds latency under high throughput pressure, which fully meets the online performance requirements.
 
 **Designed for Enterprise**: OpenMLDB implements important product features for large-scale enterprise applications, including fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
 
@@ -97,7 +97,7 @@ You can find our detailed documentation here: [docs.openmldb.ai](https://docs.op
 
 | Version | Est. release date | Highlight features                                           |
 | ------- | ----------------- | ------------------------------------------------------------ |
-| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Efficient queries over a fairly long period of time by window functions <br />- Kafka/Pulsar connector support for online data sources <br />- Supporting external storage for online feature extraction engine |
+| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Efficient queries over a fairly long period of time by window functions <br />- Kafka/Pulsar connector support for online data sources <br />- The storage engine of online feature extraction supports external storage devices. |
 
 ## 10. Contributors
 
