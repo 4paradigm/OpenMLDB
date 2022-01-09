@@ -15,7 +15,7 @@
 
 **English version | [中文版](README_cn.md)**
 
-**OpenMLDB is an open-source machine learning database that provides a full-stack solution of enterprise FeatureOps.**
+### OpenMLDB is an open-source machine learning database that provides a full-stack FeatureOps solution for enterprises.
 
 ## 1. Our Philosophy
 
@@ -42,7 +42,7 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From featur
 
 **SQL Based Development and Management Experience**: Feature extraction script development, deployment, and maintenance are all based on SQL and CLI with great ease of use.
 
-**Tailored Optimization for Feature Extraction**: Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature extraction. Online feature extraction provides tens of milliseconds latency under high throughput pressure, which fully meets the performance requirements of low latency and high throughput.
+**High Performance Feature Extraction**: Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature extraction. Online feature extraction provides tens of milliseconds latency under high throughput pressure, which fully meets the performance requirements of low latency and high throughput.
 
 **Enterprise Features**: Designed for large-scale enterprise applications, OpenMLDB integrates important enterprises features, including fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
 
@@ -70,31 +70,48 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From featur
 
 ## 6. QuickStart
 
-Since OpenMLDB v0.3.0, we have introduced two operating modes, which are cluster mode and standalone mode. The cluster mode is suitable for large-scale datasets and real-world applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone mode running on a single node is ideal for small businesses and demonstration. 
+**Cluster and Standalone Deployments**
 
-We demonstrate the workflow using the cluster and standalone modes:
+Since OpenMLDB v0.3.0, we have introduced two deployment modes, which are *cluster deployment* and *standalone deployment*. The cluster deployment is suitable for large-scale applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone deployment running on a single node is ideal for small businesses and demonstration.
 
-- :point_right: [QuickStart for the cluster mode](docs/en/cluster.md)
-- :point_right: [QuickStart for the standalone mode](docs/en/standalone.md)
+The cluster and standalone deployment have the same functionalities but with different limitations for particular functions. Please refer to ==[this document TBD](das)==  for details. 
+
+**Getting Started with OpenMLDB**
+
+- :point_right: [QuickStart for the cluster deployment](docs/en/cluster.md)
+- :point_right: [QuickStart for the standalone deployment](docs/en/standalone.md)
 
 ## 7. Use Cases
 
-:point_right: [Demo code](demo)
+We are making efforts to build a list of real-world use cases based on OpenMLDB to demonstrate how it can fit into your applications. Please stay tuned.
+
+| Application                              | Tools Used         | Brief Introduction                                           |
+| ---------------------------------------- | ------------------ | ------------------------------------------------------------ |
+| [New York City Taxi Trip Duration](demo) | OpenMLDB, LightGBM | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). |
 
 ## 8. Documentation
 
-## 9. Roadmap
+You can find our detailed documentation here: [docs.openmldb.ai](https://docs.openmldb.ai/) 
 
-We list a few highlight features that we have planned in the future releases. Please join our community to understand more about our planning and discuss your ideas.
+## 9. Roadmap
 
 | Version | Est. release date | Highlight features                                           |
 | ------- | ----------------- | ------------------------------------------------------------ |
-| 0.4.0   | End of 2021       | - Full support of standalone and cluster modes in the integrated CLI |
-| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Efficient queries over a fairly long period of time by window functions <br />- Kafka/Pulsar connector support for online data source |
+| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Efficient queries over a fairly long period of time by window functions <br />- Kafka/Pulsar connector support for online data source <br />- Supporting external storage devices for online feature extraction engine |
 
-## 10. Community
+## 10. Contributors
+
+We really appreciate the effort from our community! Please read our [Contribution Guideline](CONTRIBUTING.md) for more detail. If you are a new contributor, you may be interested in the [list of good-first-issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
+
+<a href="https://github.com/4paradigm/openmldb/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" />
+</a>
+
+## 11. Community
 
 You may join our community for feedback and discussion
+
+- **Website**: [https://openmldb.ai/](https://openmldb.ai)
 
 - **Email**: [contact@openmldb.ai](mailto:contact@openmldb.ai)
 
@@ -106,9 +123,9 @@ You may join our community for feedback and discussion
 
 - **WeChat Groups (Chinese)**:
 
-  <img src="images/wechat.png" alt="img" width=100 />  
+  <img src="images/wechat.png" alt="img" width=120 />  
 
-## 11. Publications & Blogs
+## 12. Publications & Blogs
 
 - Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
 - [In-Depth Interpretation of the Latest VLDB 2021 Paper: Artificial Intelligence Driven Real-Time Decision System Database and Optimization Based on Persistent Memory](https://medium.com/@fengxindai0/in-depth-interpretation-of-the-latest-vldb-2021-paper-artificial-intelligence-driven-real-time-f2a818bcf2b2)
@@ -116,5 +133,5 @@ You may join our community for feedback and discussion
 - [Compared to Native Spark 3.0, We Have Achieved Significant Optimization Effects in the AI Application Field](https://towardsdatascience.com/we-have-achieved-significant-optimization-effects-in-the-ai-application-field-compared-to-native-2a055e47250f)
 - [MLOp Practice: Using OpenMLDB in the Real-Time Anti-Fraud Model for the Bank’s Online Transaction](https://towardsdatascience.com/practice-of-openmldbs-transaction-real-time-anti-fraud-model-in-the-bank-s-online-event-40ab41fec6d4)
 
-## 12. [User List](https://github.com/4paradigm/OpenMLDB/discussions/707)
+## 13. [User List](https://github.com/4paradigm/OpenMLDB/discussions/707)
 We have built [a user list](https://github.com/4paradigm/OpenMLDB/discussions/707) to collect feedback from the community. We really appreciate it if you can provide your use cases, comments, or any feedback when using OpenMLDB. We want to hear from you! 
