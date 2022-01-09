@@ -99,20 +99,28 @@ You can find our detailed documentation here: [docs.openmldb.ai](https://docs.op
 | ------- | ----------------- | ------------------------------------------------------------ |
 | 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Efficient queries over a fairly long period of time by window functions <br />- Kafka/Pulsar connector support for online data sources <br />- The storage engine of online feature extraction supports external storage devices. |
 
+Furthermore, there are a few important features on the roadmap that have not been scheduled. We appreciate any feedbacks on those features.
+
+- The cloud-native OpenMLDB
+- The adaptors to open-source machine learning lifecycle management platform, such as MLflow and Airflow
+- Fast recovery based on Intel® Optane™ Persistent Memory
+- Automatic feature extraction
+- Lightweight OpenMLDB for edge computing
+
 ## 10. Contributors
 
 We really appreciate the contribution from our community.
 
 - If you are interested to contribute, please read our [Contribution Guideline](CONTRIBUTING.md) for more detail. 
-- If you are a new contributor, you may be interested in the [list of good-first-issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
+- If you are a new contributor, you may get start with [the list of good-first-issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
+
+Let's clap hands for our community contributors :clap:
 
 <a href="https://github.com/4paradigm/openmldb/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" width=700/>
 </a>
 
 ## 11. Community
-
-You may join our community for feedback and discussion
 
 - **Website**: [https://openmldb.ai/](https://openmldb.ai) (coming soon)
 

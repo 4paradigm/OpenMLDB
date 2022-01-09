@@ -76,7 +76,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 
 OpenMLDB 有两种部署模式：集群部署（cluster deployment）和单机部署（standalone deployment）。集群部署适合于大规模数据的生产环境，提供了良好的可扩展性和高可用性；单机部署适合于小数据场景或者试用目的，更加方便部署和使用。
 
-集群部署和单机部署在功能上完全一致，但是在某些功能上会有不同的限制，==详细参阅此篇说明文档==。
+集群部署和单机部署在功能上完全一致，但是在某些功能上会有不同的限制，==详细参阅此篇说明文档 TBD==。
 
 **快速开始**
 
@@ -102,7 +102,7 @@ OpenMLDB 有两种部署模式：集群部署（cluster deployment）和单机�
 | ------ | ------------ | ------------------------------------------------------------ |
 | 0.5.0  | 2022 Q1      | - 在线服务监控模块<br />- 长时间窗口支持 <br />- 支持第三方在线数据流引入，包括 Kafka 和 Pulsar<br />- 实时特征计算的存储引擎支持外存设备 |
 
-此外，OpenMLDB roadmap 上有一些规划中的重要功能演进，欢迎给我们任何反馈：
+此外，OpenMLDB roadmap 上有一些规划中的重要功能演进，但是尚未具体排期，欢迎给我们任何反馈：
 
 - Cloud-native 版本
 - 适配第三方机器学习流程管理平台，比如 MLflow, Airflow 等
@@ -110,17 +110,30 @@ OpenMLDB 有两种部署模式：集群部署（cluster deployment）和单机�
 - 整合自动特征生成
 - 轻量级 edge 版本
 
-## 8. 社区
+## 10. 开发贡献者
 
+我们非常来自社区的贡献。
+
+- 如果你对于加入 OpenMLDB 开发者感兴趣，请阅读我们的 [Contribution Guideline](CONTRIBUTING.md)。
+- 如果你是一位新加入的贡献者，你或许可以从我们的这个 [good-first-issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) 列表开始。
+
+为我们已有的社区贡献者鼓掌表示感谢 :clap: 
+
+<a href="https://github.com/4paradigm/openmldb/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" width=700/>
+</a>
+
+## 11. 社区
+
+- 网站：[https://openmldb.ai/](https://openmldb.ai) (即将上线)
 - **Email**: [contact@openmldb.ai](mailto:contact@openmldb.ai)
-- **[Slack Workspace](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)**: 你可以在 Slack 上找到我们，通过在线聊天的方式，获取关于 OpenMLDB 的使用和开发支持。
-
+- **[Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)**
 - **GitHub Issues 和 Discussions**: 如果你是一个严肃的开发者，我们非常欢迎加入我们 GitHub 上的开发者社区，近距离参与我们的开发迭代。GitHub Issues 主要用来搜集 bugs 以及反馈新特性需求；GitHub Discussions 主要用来给开发团队发布并且讨论 RFCs。
 - [**技术博客**](https://www.zhihu.com/column/c_1417199590352916480)
 - **微信交流群：**
-  <img src="images/wechat.png" alt="img" width=100 />  
+  <img src="images/wechat.png" alt="img" width=120 />  
 
-## 9. 学术论文和技术博客
+## 12. 学术论文和技术博客
 
 * Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
 * [第四范式OpenMLDB优化创新论文被国际数据库顶会VLDB录用](https://zhuanlan.zhihu.com/p/401513878)
@@ -128,6 +141,6 @@ OpenMLDB 有两种部署模式：集群部署（cluster deployment）和单机�
 * [OpenMLDB在AIOPS领域关于交易系统异常检测应用实践](https://zhuanlan.zhihu.com/p/393602288)
 * [5分钟完成硬件剩余寿命智能预测](https://zhuanlan.zhihu.com/p/399346826)
 
-## 10. [用户列表](https://github.com/4paradigm/OpenMLDB/discussions/707)
+## 13. [用户列表](https://github.com/4paradigm/OpenMLDB/discussions/707)
 
 我们创建了一个用于搜集用户使用反馈意见的[用户列表](https://github.com/4paradigm/OpenMLDB/discussions/707)。我们非常感激我们的社区用户可以留下基于 OpenMLDB 的使用案例、意见、或者任何反馈。我们非常期待听到你的声音！
