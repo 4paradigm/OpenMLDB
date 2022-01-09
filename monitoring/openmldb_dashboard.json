@@ -3,28 +3,80 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "-- Grafana --",
+        "datasource": "Prometheus/OpenMLDB standalone",
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
         "type": "dashboard"
       }
     ]
   },
+  "description": "2 tablet & 1 nameserver",
   "editable": true,
-  "gnetId": null,
+  "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 3,
+  "id": 10,
   "links": [],
+  "liveNow": false,
   "panels": [
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 6,
         "w": 12,
@@ -32,93 +84,102 @@
         "y": 0
       },
       "id": 62,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": false,
-        "min": false,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
       "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.3.3",
       "targets": [
         {
-          "expr": "rtidb_log{role=\"tablet\",type=\"reconnect_num\"}\t",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_log{type=\"reconnect_num\", role=\"tablet\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{type}} - {{instance}}",
           "refId": "A"
         },
         {
-          "expr": "rtidb_log{role=\"tablet\",type=\"restart_num\"}\t",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_log{role=\"tablet\",type=\"restart_num\"}\t",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{type}} - {{instance}}",
           "refId": "B"
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "tablet-log",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 6,
         "w": 12,
@@ -126,93 +187,102 @@
         "y": 0
       },
       "id": 61,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": false,
-        "min": false,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
       "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.3.3",
       "targets": [
         {
-          "expr": "rtidb_log{role=\"ns\",type=\"reconnect_num\"}\t",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_log{role=\"ns\",type=\"reconnect_num\"}\t",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{type}} - {{instance}}",
           "refId": "A"
         },
         {
-          "expr": "rtidb_log{role=\"ns\",type=\"restart_num\"}\t",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_log{role=\"ns\",type=\"restart_num\"}\t",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{type}} - {{instance}}",
           "refId": "B"
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "ns-log",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 11,
         "w": 12,
@@ -220,165 +290,116 @@
         "y": 6
       },
       "id": 35,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
       "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.3.3",
       "targets": [
         {
-          "expr": "rtidb_subquery{latency=\"latency\",type=\"latency_50\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_api{method=\"subquery\"}",
           "format": "time_series",
           "hide": false,
           "instant": false,
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
+          "legendFormat": "{{category}}-{{instance}}",
           "refId": "A"
-        },
-        {
-          "expr": "rtidb_subquery{latency=\"latency\",type=\"latency_90\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "B"
-        },
-        {
-          "expr": "rtidb_subquery{latency=\"latency\",type=\"latency_99\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "C"
-        },
-        {
-          "expr": "rtidb_subquery{latency=\"latency\",type=\"latency_999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "D"
-        },
-        {
-          "expr": "rtidb_subquery{latency=\"latency\",type=\"latency_9999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "E"
-        },
-        {
-          "expr": "rtidb_subquery{latency=\"latency\",type=\"max_latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "F"
-        },
-        {
-          "expr": "rtidb_subquery{latency=\"latency\",type=\"latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "G"
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "subquery-latency",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "µs",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "decimals": null,
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
-        "h": 11,
+        "h": 15,
         "w": 12,
         "x": 12,
         "y": 6
       },
-      "id": 33,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
+      "id": 2,
       "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.3.3",
       "targets": [
         {
-          "expr": "rtidb_batchquery{latency=\"latency\",type=\"latency_50\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_api{method=\"put\"}",
           "format": "time_series",
           "hide": false,
           "instant": false,
@@ -386,99 +407,62 @@
           "intervalFactor": 1,
           "legendFormat": "{{type}}-{{instance}}",
           "refId": "A"
-        },
-        {
-          "expr": "rtidb_batchquery{latency=\"latency\",type=\"latency_90\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "B"
-        },
-        {
-          "expr": "rtidb_batchquery{latency=\"latency\",type=\"latency_99\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "C"
-        },
-        {
-          "expr": "rtidb_batchquery{latency=\"latency\",type=\"latency_999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "D"
-        },
-        {
-          "expr": "rtidb_batchquery{latency=\"latency\",type=\"latency_9999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "E"
-        },
-        {
-          "expr": "rtidb_batchquery{latency=\"latency\",type=\"max_latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "F"
-        },
-        {
-          "expr": "rtidb_batchquery{latency=\"latency\",type=\"latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "G"
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "batchquery-latency",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "µs",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "decimals": null,
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "title": "put-latency",
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 15,
         "w": 12,
@@ -486,32 +470,26 @@
         "y": 17
       },
       "id": 39,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
       "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.3.3",
       "targets": [
         {
-          "expr": "rtidb_scan{latency=\"latency\",type=\"latency_50\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_scan{latency=\"latency\",type=\"latency_50\"}",
           "format": "time_series",
           "hide": false,
           "instant": false,
@@ -521,131 +499,165 @@
           "refId": "A"
         },
         {
-          "expr": "rtidb_scan{latency=\"latency\",type=\"latency_90\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_scan{latency=\"latency\",type=\"latency_90\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{type}}-{{instance}}",
           "refId": "B"
         },
         {
-          "expr": "rtidb_scan{latency=\"latency\",type=\"latency_99\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_scan{latency=\"latency\",type=\"latency_99\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{type}}-{{instance}}",
           "refId": "C"
         },
         {
-          "expr": "rtidb_scan{latency=\"latency\",type=\"latency_999\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_scan{latency=\"latency\",type=\"latency_999\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{type}}-{{instance}}",
           "refId": "D"
         },
         {
-          "expr": "rtidb_scan{latency=\"latency\",type=\"latency_9999\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_scan{latency=\"latency\",type=\"latency_9999\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{type}}-{{instance}}",
           "refId": "E"
         },
         {
-          "expr": "rtidb_scan{latency=\"latency\",type=\"max_latency\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_scan{latency=\"latency\",type=\"max_latency\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{type}}-{{instance}}",
           "refId": "F"
         },
         {
-          "expr": "rtidb_scan{latency=\"latency\",type=\"latency\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_scan{latency=\"latency\",type=\"latency\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{type}}-{{instance}}",
           "refId": "G"
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "scan-latency",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "µs",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "decimals": null,
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 15,
         "w": 12,
         "x": 12,
-        "y": 17
+        "y": 21
       },
-      "id": 2,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "hideZero": false,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
+      "id": 32,
       "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.3.3",
       "targets": [
         {
-          "expr": "rtidb_put{latency=\"latency\",type=\"latency_50\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_api{method=\"get\"}",
           "format": "time_series",
           "hide": false,
           "instant": false,
@@ -653,99 +665,62 @@
           "intervalFactor": 1,
           "legendFormat": "{{type}}-{{instance}}",
           "refId": "A"
-        },
-        {
-          "expr": "rtidb_put{latency=\"latency\",type=\"latency_90\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "B"
-        },
-        {
-          "expr": "rtidb_put{latency=\"latency\",type=\"latency_99\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "C"
-        },
-        {
-          "expr": "rtidb_put{latency=\"latency\",type=\"latency_999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "D"
-        },
-        {
-          "expr": "rtidb_put{latency=\"latency\",type=\"latency_9999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "E"
-        },
-        {
-          "expr": "rtidb_put{latency=\"latency\",type=\"max_latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "F"
-        },
-        {
-          "expr": "rtidb_put{latency=\"latency\",type=\"latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "G"
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "put-latency",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "µs",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "decimals": null,
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "title": "get-latency",
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 15,
         "w": 12,
@@ -753,32 +728,26 @@
         "y": 32
       },
       "id": 34,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
       "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.3.3",
       "targets": [
         {
-          "expr": "rtidb_query{latency=\"latency\",type=\"latency_50\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_api{method=\"query\"}",
           "format": "time_series",
           "hide": false,
           "instant": false,
@@ -786,842 +755,295 @@
           "intervalFactor": 1,
           "legendFormat": "{{type}}-{{instance}}",
           "refId": "A"
-        },
-        {
-          "expr": "rtidb_query{latency=\"latency\",type=\"latency_90\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "B"
-        },
-        {
-          "expr": "rtidb_query{latency=\"latency\",type=\"latency_99\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "C"
-        },
-        {
-          "expr": "rtidb_query{latency=\"latency\",type=\"latency_999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "D"
-        },
-        {
-          "expr": "rtidb_query{latency=\"latency\",type=\"latency_9999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "E"
-        },
-        {
-          "expr": "rtidb_query{latency=\"latency\",type=\"max_latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "F"
-        },
-        {
-          "expr": "rtidb_query{latency=\"latency\",type=\"latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "G"
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "query-latency",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "µs",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "decimals": null,
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
-      "gridPos": {
-        "h": 15,
-        "w": 12,
-        "x": 12,
-        "y": 32
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
       },
-      "id": 32,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rtidb_get{latency=\"latency\",type=\"latency_50\"}",
-          "format": "time_series",
-          "hide": false,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "A"
-        },
-        {
-          "expr": "rtidb_get{latency=\"latency\",type=\"latency_90\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "B"
-        },
-        {
-          "expr": "rtidb_get{latency=\"latency\",type=\"latency_99\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "C"
-        },
-        {
-          "expr": "rtidb_get{latency=\"latency\",type=\"latency_999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "D"
-        },
-        {
-          "expr": "rtidb_get{latency=\"latency\",type=\"latency_9999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "E"
-        },
-        {
-          "expr": "rtidb_get{latency=\"latency\",type=\"max_latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "F"
-        },
-        {
-          "expr": "rtidb_get{latency=\"latency\",type=\"latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "G"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "get-latency",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "µs",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "decimals": null,
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
-      "gridPos": {
-        "h": 15,
-        "w": 12,
-        "x": 0,
-        "y": 47
-      },
-      "id": 36,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rtidb_sqlbatchrequestquery{latency=\"latency\",type=\"latency_50\"}",
-          "format": "time_series",
-          "hide": false,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "A"
-        },
-        {
-          "expr": "rtidb_sqlbatchrequestquery{latency=\"latency\",type=\"latency_90\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "B"
-        },
-        {
-          "expr": "rtidb_sqlbatchrequestquery{latency=\"latency\",type=\"latency_99\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "C"
-        },
-        {
-          "expr": "rtidb_sqlbatchrequestquery{latency=\"latency\",type=\"latency_999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "D"
-        },
-        {
-          "expr": "rtidb_sqlbatchrequestquery{latency=\"latency\",type=\"latency_9999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "E"
-        },
-        {
-          "expr": "rtidb_sqlbatchrequestquery{latency=\"latency\",type=\"max_latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "F"
-        },
-        {
-          "expr": "rtidb_sqlbatchrequestquery{latency=\"latency\",type=\"latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "G"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "sqlbatchrequestquery-latency",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "µs",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "decimals": null,
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
-      "gridPos": {
-        "h": 15,
-        "w": 12,
-        "x": 12,
-        "y": 47
-      },
-      "id": 64,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency_50\"}",
-          "format": "time_series",
-          "hide": false,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "A"
-        },
-        {
-          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency_90\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "B"
-        },
-        {
-          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency_99\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "C"
-        },
-        {
-          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency_999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "D"
-        },
-        {
-          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency_9999\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "E"
-        },
-        {
-          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"max_latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "F"
-        },
-        {
-          "expr": "rtidb_subbatchrequestquery{latency=\"latency\",type=\"latency\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{type}}-{{instance}}",
-          "refId": "G"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "subbatchrequestquery-latency",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "µs",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "decimals": null,
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
-      "gridPos": {
-        "h": 13,
-        "w": 12,
-        "x": 0,
-        "y": 62
-      },
-      "id": 50,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rtidb_get{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "get-{{type}}-{{instance}}",
-          "refId": "A"
-        },
-        {
-          "expr": "rtidb_put{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "put-{{type}}-{{instance}}",
-          "refId": "B"
-        },
-        {
-          "expr": "rtidb_scan{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "scan-{{type}}-{{instance}}",
-          "refId": "C"
-        },
-        {
-          "expr": "rtidb_batchquery{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "batchquery-{{type}}-{{instance}}",
-          "refId": "D"
-        },
-        {
-          "expr": "rtidb_query{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "query-{{type}}-{{instance}}",
-          "refId": "E"
-        },
-        {
-          "expr": "rtidb_sqlbatchrequestquery{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "sqlbatchrequestquery-{{type}}-{{instance}}",
-          "refId": "F"
-        },
-        {
-          "expr": "rtidb_subquery{latency=\"type\",type=\"qps\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "sub-query-{{type}}-{{instance}}",
-          "refId": "G"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "qps",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "none",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
       "gridPos": {
         "h": 13,
         "w": 12,
         "x": 12,
-        "y": 62
+        "y": 36
       },
       "id": 63,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": false,
-        "min": false,
-        "rightSide": true,
-        "show": true,
-        "sideWidth": null,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
       "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.3.3",
       "targets": [
         {
-          "expr": "rtidb_get{latency=\"type\",type=\"count\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_api{category=\"count\", method=\"query\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "get-{{type}}-{{instance}}",
+          "legendFormat": "query-{{type}}-{{instance}}",
           "refId": "A"
         },
         {
-          "expr": "rtidb_put{latency=\"type\",type=\"count\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_api{category=\"count\", method=\"get\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "put-{{type}}-{{instance}}",
+          "legendFormat": "get-{{type}}-{{instance}}",
           "refId": "B"
-        },
-        {
-          "expr": "rtidb_scan{latency=\"type\",type=\"count\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "scan-{{type}}-{{instance}}",
-          "refId": "C"
-        },
-        {
-          "expr": "rtidb_batchquery{latency=\"type\",type=\"count\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "batchquery-{{type}}-{{instance}}",
-          "refId": "D"
-        },
-        {
-          "expr": "rtidb_query{latency=\"type\",type=\"count\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "query-{{type}}-{{instance}}",
-          "refId": "E"
-        },
-        {
-          "expr": "rtidb_sqlbatchrequestquery{latency=\"type\",type=\"count\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "sqlbatchrequestquery-{{type}}-{{instance}}",
-          "refId": "F"
-        },
-        {
-          "expr": "rtidb_subquery{latency=\"type\",type=\"count\"}",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "sub-query-{{type}}-{{instance}}",
-          "refId": "G"
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "count",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "none",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus-1",
-      "fill": 1,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 47
+      },
+      "id": 50,
+      "links": [],
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_api{category=\"qps\", method=\"query\"}",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "{{type}}-{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "qps",
+      "type": "timeseries"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 9,
         "w": 12,
-        "x": 12,
-        "y": 75
+        "x": 0,
+        "y": 60
       },
       "id": 16,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "hideZero": false,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
       "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "8.3.3",
       "targets": [
         {
-          "expr": "rtidb_memory",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "OkWeXB0nk"
+          },
+          "exemplar": true,
+          "expr": "openmldb_memory",
           "format": "time_series",
           "instant": false,
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{instance}}-{{type}}",
           "refId": "A"
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "rtidb memory",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "decbytes",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "title": "OpemMLDB memory",
+      "type": "timeseries"
     }
   ],
   "refresh": false,
-  "schemaVersion": 16,
+  "schemaVersion": 34,
   "style": "dark",
   "tags": [],
   "templating": {
@@ -1657,7 +1079,8 @@
     ]
   },
   "timezone": "",
-  "title": "rtidb databoard",
+  "title": "OpenMLDB databoard",
   "uid": "SXUXvsbMk",
-  "version": 30
+  "version": 7,
+  "weekStart": ""
 }
