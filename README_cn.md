@@ -15,7 +15,7 @@
 
 **[English version](./README.md) | 中文版**
 
-#### OpenMLDB 是一个开源机器学习数据库，提供企业级 FeatureOps 全栈解决方案。
+### OpenMLDB 是一个开源机器学习数据库，提供企业级 FeatureOps 全栈解决方案。
 
 ## 1. 设计理念
 
@@ -25,7 +25,7 @@ OpenMLDB 致力于闭环解决 AI 工程化落地的数据治理难题，并且�
 
 ## 2. 企业级 FeatureOps 全栈解决方案
 
-MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的关键一环，FeatureOps 负责特征计算和供给，衔接 DataOps 和 ModelOps。一个完整的可高效工程化落地的 FeatureOps 解决方案需要覆盖特征工程的各个方面，包括功能（如特征存储、特征计算、特征上线、特征共享、特征服务等）和产品级需求（如低延迟、高吞吐、灾备、高可用、扩缩容、平滑升级、可监控等）。OpenMLDB 提供一套企业级全栈 FeatureOps 解决方案，以及低门槛的基于 SQL 的开发和管理体验，让特征工程开发回归于本质：专注于高质量的特征计算脚本开发，不再被工程化效率落地所羁绊。
+MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的关键一环，FeatureOps 负责特征计算和供给，衔接 DataOps 和 ModelOps。一个完整的可高效工程化落地的 FeatureOps 解决方案需要覆盖特征工程的各个方面，包括功能需求（如特征存储、特征计算、特征上线、特征共享、特征服务等）和产品级需求（如低延迟、高并发、灾备、高可用、扩缩容、平滑升级、可监控等）。OpenMLDB 提供一套企业级全栈 FeatureOps 解决方案，以及低门槛的基于 SQL 的开发和管理体验，让特征工程开发回归于本质：专注于高质量的特征计算脚本开发，不再被工程化效率落地所羁绊。
 
 <p align="center">
  <img src="images/workflow_cn.png" alt="image-20211103103052252" width=800 />
@@ -34,7 +34,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 
 上图显示了基于 OpenMLDB 的 FeatureOps 的基本使用流程，从特征开发到上线，只需要三个步骤：
 
-1. 使用 SQL 进行离线特征计算脚本开发
+1. 使用 SQL 进行线下特征计算脚本开发
 1. SQL 特征计算脚本一键部署上线，由线下模式切换为线上模式
 3. 接入实时数据流，进行线上实时特征计算和供给服务
 
@@ -76,20 +76,19 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 
 OpenMLDB 有两种部署模式：集群部署（cluster deployment）和单机部署（standalone deployment）。集群部署适合于大规模数据的生产环境，提供了良好的可扩展性和高可用性；单机部署适合于小数据场景或者试用目的，更加方便部署和使用。
 
-集群部署和单机部署在功能上完全一致，但是在某些功能上会有不同的限制，==详细参阅此篇说明文档 TBD==。
+集群部署和单机部署在功能上完全一致，但是在某些功能上会有不同的限制，==详细参阅此篇说明文档（TBD）==。
 
-**快速开始**
+**准备开始体验 OpenMLDB**
 
-- :point_right: [集群模式快速上手指南](docs/cn/cluster.md)
-- :point_right: [单机模式快速上手指南](docs/cn/standalone.md)
+==:point_right: [OpenMLDB 快速上手指南](docs/cn/standalone.md)（TBD：合并现有单机和集群的两个文档到一个）==
 
 ## 7. 使用案例
 
 我们正在努力构建一个 OpenMLDB 用于实际案例的列表，为 OpenMLDB 如何在你的业务中发挥价值提供参考，请随时关注我们的列表更新。
 
-| Application                              | Tools              | Brief Introduction                                           |
+| 应用                                     | 所用工具           | 简介                                                         |
 | ---------------------------------------- | ------------------ | ------------------------------------------------------------ |
-| [New York City Taxi Trip Duration](demo) | OpenMLDB, LightGBM | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。 |
+| [New York City Taxi Trip Duration](demo) | OpenMLDB, LightGBM | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
 
 ## 8. OpenMLDB 文档
 
@@ -105,7 +104,7 @@ OpenMLDB 有两种部署模式：集群部署（cluster deployment）和单机�
 此外，OpenMLDB roadmap 上有一些规划中的重要功能演进，但是尚未具体排期，欢迎给我们任何反馈：
 
 - Cloud-native 版本
-- 适配第三方机器学习流程管理平台，比如 MLflow, Airflow 等
+- 适配机器学习全流程管理平台，比如 MLflow, Airflow 等
 - 整合基于傲腾持久内存的快速恢复技术
 - 整合自动特征生成
 - 轻量级 edge 版本
