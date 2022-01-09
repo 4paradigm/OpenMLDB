@@ -61,7 +61,7 @@ openmldb_logs = {
         "offset": 0,
         "item": {
             "name": "restart_num",
-            "key": "./bin/boot_ns.sh",
+            "key": "./bin/boot.sh",
             "num": 0
         }
     }, {
