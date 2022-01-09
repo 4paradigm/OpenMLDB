@@ -20,7 +20,6 @@ env:
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
   EXAMPLES_ENABLE: OFF # turn off hybridse's example code
   HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
-  CTEST_PARALLEL_LEVEL: 2 # parallel test level for ctest (make test)
 
 jobs:
   build_and_cpp_ut:
@@ -33,6 +32,7 @@ jobs:
       SQL_PYSDK_ENABLE: OFF
       TESTING_ENABLE: ON
       NPROC: 8
+      CTEST_PARALLEL_LEVEL: 8 # parallel test level for ctest (make test)
     steps:
       - uses: actions/checkout@v2
 
