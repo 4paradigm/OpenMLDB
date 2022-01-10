@@ -22,7 +22,7 @@ else
   MON_BINARY='./bin/mon'
 fi
 
-export COMPONENTS="tablet nameserver apiserver taskmanager"
+export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
 
 if [ $# -lt 2 ]; then
   echo "Usage: start.sh start/stop/restart <component>"

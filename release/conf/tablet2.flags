@@ -1,7 +1,7 @@
 # tablet.conf 
 #--use_name=false
 #--port=9527
---endpoint=127.0.0.1:9921
+--endpoint=127.0.0.1:9922
 --role=tablet
 
 # if tablet run as cluster mode zk_cluster and zk_root_path should be set
@@ -16,7 +16,9 @@
 #--zk_keep_alive_check_interval=15000
 
 # log conf
---openmldb_log_dir=./logs
+--openmldb_log_dir=./logs2
+--log_file_count=24
+--log_file_size=1024
 --log_level=info
 
 # binlog conf
@@ -34,7 +36,7 @@
 #--io_pool_size=2
 #--task_pool_size=8
 # 多个磁盘使用英文符号, 隔开
---db_root_path=./db
+--db_root_path=./db2
 --recycle_bin_root_path=./recycle
 
 # snapshot conf

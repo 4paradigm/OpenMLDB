@@ -14,13 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+ulimit -c unlimited
+ulimit -n 655360
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../"
 
-export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager"
+if [ -f "./conf/taskmanager.properties" ]; then
+  cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
+fi
 
-for COMPONENT in $COMPONENTS; do
-  ./start.sh stop $COMPONENT
-done
-echo "OpenMLDB stopped"
+sh ./taskmanager/bin/taskmanager.sh

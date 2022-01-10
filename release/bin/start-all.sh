@@ -18,7 +18,7 @@ set -e
 
 cd "$(dirname "$0")"
 
-export COMPONENTS="tablet nameserver apiserver taskmanager"
+export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager"
 
 for COMPONENT in $COMPONENTS; do
   ./start.sh start $COMPONENT
