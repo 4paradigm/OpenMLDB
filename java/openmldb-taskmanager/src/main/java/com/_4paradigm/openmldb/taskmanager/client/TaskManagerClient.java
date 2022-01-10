@@ -25,9 +25,9 @@ import com.baidu.brpc.client.RpcClientOptions;
 import com.baidu.brpc.interceptor.Interceptor;
 import com.baidu.brpc.loadbalance.LoadBalanceStrategy;
 import com.baidu.brpc.protocol.Options;
-import lombok.Data;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /***
@@ -71,8 +71,7 @@ public class TaskManagerClient {
     /**
      * Stop the job.
      *
-     * @param id of job.
-     *
+     * @param id job's id.
      * @throws Exception
      */
     public String stopJob(int id) throws Exception {
@@ -88,36 +87,28 @@ public class TaskManagerClient {
         return response.getMsg();
     }
     /**
-     * RunBatchSql.
+     * Run sql statements in batches without default_db.
      *
-     * @param sql,output_path.
-     *
+     * @param sql query sql string.
+     * @param output_path output path.
      * @throws Exception
      */
-    public String runBatchSql(String sql,String output_path)throws Exception {
-        TaskManager.RunBatchSqlRequest request = TaskManager.RunBatchSqlRequest.newBuilder()
-                .setSql(sql)
-                .setOutputPath(output_path)
-                .build();
-        TaskManager.ShowJobResponse response = taskManagerInterface.RunBatchSql(request);
-
-        if (response.getCode() != 0) {
-            String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
-            throw new Exception(errorMessage);
-        }
-        return response.getMsg();
+    public void runBatchSql(String sql, String output_path) throws Exception {
+        runBatchSql(sql, output_path, new HashMap<String, String>(), "");
     }
     /**
-     * RunBatchSql.
+     * Run sql statements in batches.
      *
-     * @param sql,output_path,default_db(optional) .
-     *
+     * @param sql query sql string.
+     * @param output_path output path.
+     * @param default_db default database.
      * @throws Exception
      */
-    public String runBatchSql(String sql,String output_path,String default_db)throws Exception {
+    public void runBatchSql(String sql, String output_path, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.RunBatchSqlRequest request = TaskManager.RunBatchSqlRequest.newBuilder()
                 .setSql(sql)
                 .setOutputPath(output_path)
+                .putAllConf(conf)
                 .setDefaultDb(default_db)
                 .build();
         TaskManager.ShowJobResponse response = taskManagerInterface.RunBatchSql(request);
@@ -125,36 +116,29 @@ public class TaskManagerClient {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
-        return response.getMsg();
     }
     /**
-     * RunBatchAndShow.
+     * Run batch sql statements and display the results without default_db.
      *
-     * @param sql
-     *
+     * @param sql query sql string.
      * @throws Exception
      */
     public String runBatchAndShow(String sql) throws Exception {
-        TaskManager.RunBatchAndShowRequest request = TaskManager.RunBatchAndShowRequest.newBuilder()
-                .setSql(sql)
-                .build();
-        TaskManager.ShowJobResponse response = taskManagerInterface.RunBatchAndShow(request);
-        if (response.getCode() != 0) {
-            String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
-            throw new Exception(errorMessage);
-        }
-        return response.getMsg();
+        String Msg = runBatchAndShow(sql,new HashMap<String ,String>(),"");
+        return Msg;
     }
     /**
-     * RunBatchAndShow.
+     * Run batch sql statements and display the results.
      *
-     * @param sql,default_db(optional) .
-     *
+     * @param sql query sql string.
+     * @param conf configure.
+     * @param default_db default database.
      * @throws Exception
      */
-    public String runBatchAndShow(String sql,String default_db) throws Exception {
+    public String runBatchAndShow(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.RunBatchAndShowRequest request = TaskManager.RunBatchAndShowRequest.newBuilder()
                 .setSql(sql)
+                .putAllConf(conf)
                 .setDefaultDb(default_db)
                 .build();
         TaskManager.ShowJobResponse response = taskManagerInterface.RunBatchAndShow(request);
@@ -167,11 +151,11 @@ public class TaskManagerClient {
     /**
      * Show the job rely on id.
      *
-     * @param id of job.
+     * @param id job's id.
      * @return the JobInfo object.
      * @throws Exception
      */
-    public TaskManager.JobInfo showOneJob(int id) throws Exception {
+    public TaskManager.JobInfo showJob(int id) throws Exception {
         TaskManager.ShowJobRequest request = TaskManager.ShowJobRequest.newBuilder()
                 .setId(id)
                 .build();
@@ -183,33 +167,27 @@ public class TaskManagerClient {
         return response.getJob();
     }
     /**
-     * ImportOnlineData
+     * Import online data without default_db.
      *
-     * @param sql .
-     *
+     * @param sql query sql string.
      * @throws Exception
      */
     public String importOnlineData(String sql) throws Exception {
-        TaskManager.ImportOnlineDataRequest request = TaskManager.ImportOnlineDataRequest.newBuilder()
-                .setSql(sql)
-                .build();
-        TaskManager.ShowJobResponse response = taskManagerInterface.ImportOnlineData(request);
-        if (response.getCode() != 0) {
-            String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
-            throw new Exception(errorMessage);
-        }
-        return response.getMsg();
+        String Msg = importOnlineData(sql, new HashMap<String, String>(), "");
+        return Msg;
     }
     /**
-     * ImportOnlineData
+     * Import online data.
      *
-     * @param sql and default_db.
-     *
+     * @param sql query sql string
+     * @param conf configure.
+     * @param default_db default database.
      * @throws Exception
      */
-    public String importOnlineData(String sql,String default_db) throws Exception {
+    public String importOnlineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.ImportOnlineDataRequest request = TaskManager.ImportOnlineDataRequest.newBuilder()
                 .setSql(sql)
+                .putAllConf(conf)
                 .setDefaultDb(default_db)
                 .build();
         TaskManager.ShowJobResponse response = taskManagerInterface.ImportOnlineData(request);
@@ -220,33 +198,28 @@ public class TaskManagerClient {
         return response.getMsg();
     }
     /**
-     * ImportOfflineData
+     * Import offline data without default_db.
      *
-     * @param sql
-     *
+     * @param sql query sql string.
      * @throws Exception
      */
     public String importOfflineData(String sql) throws Exception {
-        TaskManager.ImportOfflineDataRequest request = TaskManager.ImportOfflineDataRequest.newBuilder()
-                .setSql(sql)
-                .build();
-        TaskManager.ShowJobResponse response = taskManagerInterface.ImportOfflineData(request);
-        if (response.getCode() != 0) {
-            String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
-            throw new Exception(errorMessage);
-        }
-        return response.getMsg();
+        String Msg = importOfflineData(sql, new HashMap<String, String>(), "");
+        return Msg;
     }
+
     /**
-     * ImportOfflineData
+     * Import offline data.
      *
-     * @param sql and default_db
-     *
+     * @param sql query sql string
+     * @param conf configure.
+     * @param default_db default database.
      * @throws Exception
      */
-    public String importOfflineData(String sql,String default_db) throws Exception {
+    public String importOfflineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.ImportOfflineDataRequest request = TaskManager.ImportOfflineDataRequest.newBuilder()
                 .setSql(sql)
+                .putAllConf(conf)
                 .setDefaultDb(default_db)
                 .build();
         TaskManager.ShowJobResponse response = taskManagerInterface.ImportOfflineData(request);
@@ -257,11 +230,13 @@ public class TaskManagerClient {
         return response.getMsg();
     }
     /**
-     * DropOfflineTable
+     * Delete offline table.
      *
+     * @param db database name
+     * @param table table name
      * @throws Exception
      */
-    public String dropOfflineTable(String db,String table) throws Exception {
+    public String dropOfflineTable(String db, String table) throws Exception {
         TaskManager.DropOfflineTableRequest request = TaskManager.DropOfflineTableRequest.newBuilder()
                 .setDb(db)
                 .setTable(table)
@@ -274,15 +249,28 @@ public class TaskManagerClient {
         return response.getMsg();
     }
     /**
-     * DropOfflineTable
+     * Export offline data without default_db.
      *
-     * @param sql .
-     *
+     * @param sql query sql string
      * @throws Exception
      */
-    public String dropOfflineTable(String sql) throws Exception {
+    public String exportOfflineData(String sql) throws Exception {
+        String Msg = exportOfflineData(sql, new HashMap<String, String>(), "");
+        return Msg;
+    }
+    /**
+     * Export offline data.
+     *
+     * @param sql query sql string.
+     * @param conf configure.
+     * @param default_db default database.
+     * @throws Exception
+     */
+    public String exportOfflineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.ExportOfflineDataRequest request = TaskManager.ExportOfflineDataRequest.newBuilder()
                 .setSql(sql)
+                .putAllConf(conf)
+                .setDefaultDb(default_db)
                 .build();
         TaskManager.ShowJobResponse response = taskManagerInterface.ExportOfflineData(request);
         if (response.getCode() != 0) {
@@ -333,10 +321,10 @@ public class TaskManagerClient {
     }
     /**
      * Submit job to show batch version.
-     *
+     * @return job's id.
      * @throws Exception
      */
-    public void showBatchVersion() throws Exception {
+    public int showBatchVersion() throws Exception {
         TaskManager.ShowBatchVersionRequest request = TaskManager.ShowBatchVersionRequest.newBuilder()
                 .build();
         TaskManager.ShowJobResponse response = taskManagerInterface.ShowBatchVersion(request);
@@ -344,6 +332,6 @@ public class TaskManagerClient {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
+        return response.getJob().getId();
     }
-
 }
