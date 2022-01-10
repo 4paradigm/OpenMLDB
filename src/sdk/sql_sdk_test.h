@@ -40,7 +40,8 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKTestInsert, SQLSDKTest,
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestMultiRowsInsert, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/function/dml/multi_insert.yaml")));
 
-
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestBugTest, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/debug/bug.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestConstsSelect, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/const_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKHavingQuery, SQLSDKQueryTest,
