@@ -100,9 +100,11 @@ then
   if [ "$OS" = 'darwin' ]; then
     sed -i '' 's/zookeeper.cluster=0.0.0.0:2181/zookeeper.cluster=0.0.0.0:6181/g' ../conf/taskmanager.properties
     sed -i '' 's/zookeeper.root_path=\/openmldb/zookeeper.root_path=\/onebox/g' ../conf/taskmanager.properties
+    sed -i '' 's/openmldb-batchjob-0.4.0-SNAPSHOT.jar/openmldb-batchjob-0.4.0-SNAPSHOT.jar/g' ../conf/taskmanager.properties
   else
     sed -i 's/zookeeper.cluster=0.0.0.0:2181/zookeeper.cluster=0.0.0.0:6181/g' ../conf/taskmanager.properties
     sed -i 's/zookeeper.root_path=\/openmldb/zookeeper.root_path=\/onebox/g' ../conf/taskmanager.properties
+    sed -i 's/openmldb-batchjob-0.4.0-SNAPSHOT.jar/openmldb-batchjob-0.4.0-SNAPSHOT.jar/g' ../conf/taskmanager.properties
   fi
 
   # Start taskmanager
