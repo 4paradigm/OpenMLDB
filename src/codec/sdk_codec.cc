@@ -213,22 +213,15 @@ int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data, std::string* r
 }
 
 int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value) {
-    if (format_version_ == 1) {
-        const int8_t* data = reinterpret_cast<const int8_t*>(row.data());
-        int32_t ver = openmldb::codec::RowView::GetSchemaVersion(data);
-        auto it = version_schema_.find(ver);
-        if (it == version_schema_.end()) {
-            return -1;
-        }
-        auto schema = it->second;
-        if (!RowCodec::DecodeRow(*schema, data, schema->size(), false, 0, schema->size(), *value)) {
-            return -1;
-        }
-    } else {
-        openmldb::base::Slice data(row);
-        if (!RowCodec::DecodeRow(base_schema_size_, base_schema_size_ + modify_times_, data, value)) {
-            return -1;
-        }
+    const int8_t* data = reinterpret_cast<const int8_t*>(row.data());
+    int32_t ver = openmldb::codec::RowView::GetSchemaVersion(data);
+    auto it = version_schema_.find(ver);
+    if (it == version_schema_.end()) {
+        return -1;
+    }
+    auto schema = it->second;
+    if (!RowCodec::DecodeRow(*schema, data, schema->size(), false, 0, schema->size(), *value)) {
+        return -1;
     }
     return 0;
 }
