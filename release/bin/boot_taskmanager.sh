@@ -17,12 +17,12 @@
 ulimit -c unlimited
 ulimit -n 655360
 
-cd "$(dirname "$0")/../"
+cd "$(dirname "$0")/../" || exit
 
 if [ -f "./conf/taskmanager.properties" ]; then
   cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
 fi
 
-pushd ./taskmanager/bin/ > /dev/null
+pushd ./taskmanager/bin/ > /dev/null || exit
   sh ./taskmanager.sh
-popd > /dev/null
+popd > /dev/null || exit
