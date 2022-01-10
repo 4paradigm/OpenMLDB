@@ -111,7 +111,7 @@ OpenMLDB 有两种部署模式：集群部署（cluster deployment）和单机�
 
 ## 10. 开发贡献者
 
-我们非常来自社区的贡献。
+我们非常感谢来自社区的贡献。
 
 - 如果你对于加入 OpenMLDB 开发者感兴趣，请阅读我们的 [Contribution Guideline](CONTRIBUTING.md)。
 - 如果你是一位新加入的贡献者，你或许可以从我们的这个 [good-first-issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) 列表开始。
