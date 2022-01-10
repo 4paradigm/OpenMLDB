@@ -21,6 +21,6 @@ cd "$(dirname "$0")"
 export COMPONENTS="standalone_tablet standalone_nameserver standalone_apiserver"
 
 for COMPONENT in $COMPONENTS; do
-  ./start.sh stop $COMPONENT
+  ./start.sh stop "$COMPONENT"
 done
 echo "OpenMLDB stopped"

@@ -21,6 +21,6 @@ cd "$(dirname "$0")"
 export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager"
 
 for COMPONENT in $COMPONENTS; do
-  ./start.sh stop $COMPONENT
+  ./start.sh stop "$COMPONENT"
 done
 echo "OpenMLDB stopped"
