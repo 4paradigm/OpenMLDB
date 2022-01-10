@@ -102,6 +102,16 @@ message DropOfflineTableResponse {
     optional string msg = 2;
 };
 
+message GetJobLogRequest {
+    required int32 id = 1;
+};
+
+message GetJobLogResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    optional string log = 3;
+};
+
 service TaskManagerServer {
     // Job management
     rpc ShowJobs(ShowJobsRequest) returns (ShowJobsResponse);
@@ -117,4 +127,5 @@ service TaskManagerServer {
     rpc ImportOfflineData(ImportOfflineDataRequest) returns (ShowJobResponse);
     rpc ExportOfflineData(ExportOfflineDataRequest) returns (ShowJobResponse);
     rpc DropOfflineTable(DropOfflineTableRequest) returns (DropOfflineTableResponse);
+    rpc GetJobLog(GetJobLogRequest) returns (GetJobLogResponse);
 };

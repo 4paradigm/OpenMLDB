@@ -6,8 +6,6 @@
 --tablet=127.0.0.1:9921
 
 --openmldb_log_dir=./logs
---log_file_count=24
---log_file_size=1024
 --log_level=info
 
 --auto_failover=true

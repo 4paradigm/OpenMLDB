@@ -147,6 +147,15 @@ jobs:
         run: |
           make build
 
+      - name: upload linux library
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v2
+        with:
+          name: shared-library-${{ github.sha }}
+          path: |
+            java/openmldb-native/src/main/resources/libsql_jsdk.so
+            java/hybridse-native/src/main/resources/libhybridse_jsdk_core.so
+
       - name: start services
         run: |
           sh steps/ut_zookeeper.sh start
@@ -194,6 +203,8 @@ jobs:
     # except mvn deploy won't target all modules, just hybridse-native & openmldb-native
     # the job only run on tag push or manual workflow dispatch due to no test runs
     runs-on: macos-latest
+    needs:
+      - java-sdk
     if: github.event_name == 'push'
     env:
       SQL_JAVASDK_ENABLE: ON
@@ -221,7 +232,6 @@ jobs:
 
       - name: Import GPG key
         id: import_gpg
-        if: github.event_name == 'push'
         uses: crazy-max/ghaction-import-gpg@v4
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
@@ -250,15 +260,39 @@ jobs:
       #       java/openmldb-jdbc/target/**/TEST-*.xml
 
       - name: prepare deploy version
-        if: github.event_name == 'push'
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=${VERSION#v}
-          IS_MAC_VARIANT=ON ./java/prepare_release.sh "$VERSION"
+          VARIANT_TYPE=macos ./java/prepare_release.sh "$VERSION"
 
       - name: mvn deploy
         working-directory: java
-        if: github.event_name == 'push'
+        run: |
+          # by convention only native submodule has variant release
+          # so it is a bit tricky to compile and deploy that
+          # firstly run `maven install` install things locally
+          # then selectly `mvn deploy` for hybridse-native & openmldb-native
+          mvn --batch-mode install -DskipTests=true -Dscalatest.skip=true
+          mvn --batch-mode -pl hybridse-native,openmldb-native deploy
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: download shared libraries
+        uses: actions/download-artifact@v2
+        with:
+          name: shared-library-${{ github.sha }}
+          path: java
+
+      - name: prepare deploy allinone
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=${VERSION#v}
+          VARIANT_TYPE=allinone ./java/prepare_release.sh "$VERSION"
+
+      - name: mvn deploy allinone
+        working-directory: java
         run: |
           # by convention only native submodule has variant release
           # so it is a bit tricky to compile and deploy that

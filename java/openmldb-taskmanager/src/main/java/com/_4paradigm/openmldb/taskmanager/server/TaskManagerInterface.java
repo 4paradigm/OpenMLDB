@@ -52,4 +52,7 @@ public interface TaskManagerInterface {
 
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "DropOfflineTable")
     TaskManager.DropOfflineTableResponse DropOfflineTable(TaskManager.DropOfflineTableRequest request);
+
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "GetJobLog")
+    TaskManager.GetJobLogResponse GetJobLog(TaskManager.GetJobLogRequest request);
 }

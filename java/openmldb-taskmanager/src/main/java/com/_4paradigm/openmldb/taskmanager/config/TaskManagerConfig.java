@@ -16,9 +16,14 @@
 
 package com._4paradigm.openmldb.taskmanager.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.io.File;
 import java.util.Properties;
 
 public class TaskManagerConfig {
+    private static Logger logger = LoggerFactory.getLogger(TaskManagerConfig.class);
+
     public static String HOST = "127.0.0.1";
     public static int PORT = 9902;
     public static int WORKER_THREAD = 4;
@@ -39,6 +44,8 @@ public class TaskManagerConfig {
     public static String SPARK_HOME;
     public static int PREFETCH_JOBID_NUM;
     public static String NAMENODE_URI;
+    public static String JOB_LOG_PATH;
+    public static String SPARK_DEFAULT_CONF;
 
     static {
         try {
@@ -63,9 +70,28 @@ public class TaskManagerConfig {
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
             SPARK_HOME = prop.getProperty("spark.home");
             PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.jobid.num", "10"));
-            NAMENODE_URI= prop.getProperty("namenode.uri", "");
+            NAMENODE_URI = prop.getProperty("namenode.uri", "");
+            JOB_LOG_PATH = prop.getProperty("job.log.path", "../log/");
+            SPARK_DEFAULT_CONF = prop.getProperty("spark.default.conf", "");
+
+            if (!JOB_LOG_PATH.isEmpty()) {
+                createJobLogPath(JOB_LOG_PATH);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
+    static void createJobLogPath(String logPath) throws Exception {
+        File directory = new File(String.valueOf(logPath));
+        if (!directory.exists()) {
+            logger.info("The log path of job does not exist: " + logPath);
+            boolean created = directory.mkdirs();
+            logger.info("Try to create log path and get result: " + created);
+        } else {
+            logger.debug("The log path of job already exists: " + logPath);
+        }
+    }
+
+
 }
