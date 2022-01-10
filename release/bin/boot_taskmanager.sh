@@ -23,4 +23,6 @@ if [ -f "./conf/taskmanager.properties" ]; then
   cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
 fi
 
-sh ./taskmanager/bin/taskmanager.sh
+pushd ./taskmanager/bin/ > /dev/null
+  sh ./taskmanager.sh
+popd > /dev/null
