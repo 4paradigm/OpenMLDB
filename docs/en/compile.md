@@ -131,7 +131,7 @@ make CMAKE_BUILD_TYPE=Debug
 
 - TCMALLOC_ENABLE: expose application memory info by tcmalloc
 
-  Default: OFF
+  Default: ON
 
 
 # Optimized Spark Distribution for OpenMLDB (Optional)
