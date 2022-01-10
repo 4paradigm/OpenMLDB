@@ -232,7 +232,6 @@ jobs:
 
       - name: Import GPG key
         id: import_gpg
-        if: github.event_name == 'push'
         uses: crazy-max/ghaction-import-gpg@v4
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
@@ -261,7 +260,6 @@ jobs:
       #       java/openmldb-jdbc/target/**/TEST-*.xml
 
       - name: prepare deploy version
-        if: github.event_name == 'push'
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=${VERSION#v}
@@ -269,7 +267,6 @@ jobs:
 
       - name: mvn deploy
         working-directory: java
-        if: github.event_name == 'push'
         run: |
           # by convention only native submodule has variant release
           # so it is a bit tricky to compile and deploy that
@@ -283,14 +280,12 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: download shared libraries
-        if: github.event_name == 'push'
         uses: actions/download-artifact@v2
         with:
           name: shared-library-${{ github.sha }}
           path: java
 
       - name: prepare deploy allinone
-        if: github.event_name == 'push'
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=${VERSION#v}
@@ -298,7 +293,6 @@ jobs:
 
       - name: mvn deploy allinone
         working-directory: java
-        if: github.event_name == 'push'
         run: |
           # by convention only native submodule has variant release
           # so it is a bit tricky to compile and deploy that
