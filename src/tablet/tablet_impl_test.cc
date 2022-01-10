@@ -1056,6 +1056,7 @@ TEST_F(TabletImplTest, MultiGet) {
         input.push_back("abcd" + std::to_string(i));
         input.push_back("1212" + std::to_string(i));
         std::string value;
+        ::openmldb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
         ::openmldb::api::PutRequest request;
         request.set_time(1100);
         request.set_value(value);
@@ -5408,6 +5409,7 @@ TEST_F(TabletImplTest, DumpIndex) {
         input.push_back(std::to_string(i + 100));
         input.push_back(std::to_string(i + 10000));
         std::string value;
+        ::openmldb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
         ::openmldb::api::PutRequest request;
         request.set_value(value);
         request.set_tid(id);
@@ -5442,6 +5444,7 @@ TEST_F(TabletImplTest, DumpIndex) {
         input.push_back(std::to_string(i + 200));
         input.push_back(std::to_string(i + 20000));
         std::string value;
+        ::openmldb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
         ::openmldb::api::PutRequest request;
         request.set_value(value);
         request.set_tid(id);
