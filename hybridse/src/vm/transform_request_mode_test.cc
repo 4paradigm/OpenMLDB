@@ -231,10 +231,20 @@ void CheckTransformPhysicalPlan(const SqlCase& sql_case, bool is_cluster_optimiz
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status base_status;
     {
-        ASSERT_TRUE(
-            plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, nm, base_status, false, is_cluster_optimized))
-            << base_status;
-        std::cout.flush();
+        if (plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, nm, base_status, false, is_cluster_optimized)) {
+            LOG(INFO) << "\n" << *(plan_trees[0]) << std::endl;
+        } else {
+            LOG(INFO) << base_status.str();
+            EXPECT_EQ(false, sql_case.expect().success_);
+            if (sql_case.expect().code_ != -1) {
+                EXPECT_EQ(sql_case.expect().code_, base_status.code);
+            }
+            if (!sql_case.expect().msg_.empty()) {
+                EXPECT_EQ(sql_case.expect().msg_, base_status.msg);
+            }
+            return;
+        }
+        ASSERT_EQ(0, base_status.code);
     }
 
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -246,14 +256,23 @@ void CheckTransformPhysicalPlan(const SqlCase& sql_case, bool is_cluster_optimiz
     PhysicalOpNode* physical_plan = nullptr;
     transform.AddDefaultPasses();
     Status status = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
-    ASSERT_TRUE(status.isOK()) << "physical plan transform fail: " << status;
-    std::ostringstream oss;
-    physical_plan->Print(oss, "");
-    std::cout << "physical plan:\n" << sqlstr << "\n" << oss.str() << std::endl;
-    std::ostringstream ss;
-    PrintSchema(ss, *physical_plan->GetOutputSchema());
-    std::cout << "schema:\n" << ss.str() << std::endl;
-    //    m->print(::llvm::errs(), NULL);
+    EXPECT_EQ(sql_case.expect().success_, status.isOK()) << status;
+    if (status.isOK()) {
+        std::ostringstream oss;
+        physical_plan->Print(oss, "");
+        std::cout << "physical plan:\n" << sqlstr << "\n" << oss.str() << std::endl;
+        std::ostringstream ss;
+        PrintSchema(ss, *physical_plan->GetOutputSchema());
+        std::cout << "schema:\n" << ss.str() << std::endl;
+    }
+    if (!sql_case.expect().success_) {
+        if (sql_case.expect().code_ != -1) {
+            EXPECT_EQ(sql_case.expect().code_, status.code);
+        }
+        if (!sql_case.expect().msg_.empty()) {
+            EXPECT_EQ(sql_case.expect().msg_, status.msg);
+        }
+    }
 }
 
 TEST_P(TransformRequestModeTest, TransformPhysicalPlan) { CheckTransformPhysicalPlan(GetParam(), false, &manager); }

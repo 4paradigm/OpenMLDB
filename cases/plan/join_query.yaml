@@ -125,4 +125,41 @@ cases:
     sql: |
       SELECT db.t1.COL1, db.t1.COL2, db2.table2.COL1, db2.table2.COL2 FROM db.t1 last join db2.table2 order by
       db2.table2.col5 on db.t1.col1 = db2.table2.col2;
-
+  - id: 10-1
+    desc: join temperary feature table
+    mode: batch-unsupport
+    sql: |
+      select * from
+      (
+      SELECT
+      col1 as id,
+      sum(col2) OVER w1 as w1_col2_sum,
+      FROM t1 WINDOW
+      w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)
+      ) as out0 LAST JOIN
+      (
+      SELECT
+      col1 as id,
+      sum(col2) OVER w2 as w2_col2_sum FROM t1 WINDOW
+      w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)
+      ) as out1 ON out0.id = out1.id;
+  - id: 10-2
+    desc: join temperary feature table with duplicate column name but same column id
+    mode: batch-unsupport
+    sql: |
+      select * from
+      (
+      SELECT
+      col1 as id,
+      col1 as id,
+      t1.col1 as id,
+      sum(col2) OVER w1 as w1_col2_sum,
+      FROM t1 WINDOW
+      w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)
+      ) as out0 LAST JOIN
+      (
+      SELECT
+      col1 as id,
+      sum(col2) OVER w2 as w2_col2_sum FROM t1 WINDOW
+      w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)
+      ) as out1 ON out0.id = out1.id;
