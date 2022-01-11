@@ -119,6 +119,10 @@ make CMAKE_BUILD_TYPE=Debug
 
   默认: OFF
 
+- TCMALLOC_ENABLE: 通过 tcmalloc 的暴露应用的内存信息
+
+  默认: ON
+
 
 ## 针对OpenMLDB优化的Spark发行版（可选）
 
