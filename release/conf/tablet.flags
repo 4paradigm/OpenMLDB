@@ -1,7 +1,7 @@
 # tablet.conf 
 #--use_name=false
 #--port=9527
---endpoint=127.0.0.1:9921
+--endpoint=127.0.0.1:10921
 --role=tablet
 
 # if tablet run as cluster mode zk_cluster and zk_root_path should be set

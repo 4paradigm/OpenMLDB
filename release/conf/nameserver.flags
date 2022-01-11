@@ -1,5 +1,5 @@
 # nameserver.conf 
---endpoint=127.0.0.1:6527
+--endpoint=127.0.0.1:7527
 --role=nameserver
 --zk_cluster=127.0.0.1:2181
 --zk_root_path=/openmldb
