@@ -1,4 +1,4 @@
-# tablet.conf 
+# tablet.conf
 #--use_name=false
 #--port=9527
 --endpoint=127.0.0.1:9921
@@ -73,3 +73,6 @@
 #--load_table_thread_num=3
 #--load_table_queue_size=1000
 --enable_distsql=true
+
+# turn this option on to export openmldb metric status
+# --enable_status_service=false
