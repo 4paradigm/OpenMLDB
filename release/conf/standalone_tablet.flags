@@ -3,8 +3,6 @@
 --role=tablet
 --thread_pool_size=24
 
---zk_session_timeout=10000
-
 --openmldb_log_dir=./standalone_logs
 --log_level=info
 
@@ -19,7 +17,3 @@
 
 --gc_interval=60
 --gc_pool_size=2
-
---stream_bandwidth_limit=20971520
-
---enable_distsql=true

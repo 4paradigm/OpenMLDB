@@ -17,8 +17,6 @@
 
 # log conf
 --openmldb_log_dir=./logs2
---log_file_count=24
---log_file_size=1024
 --log_level=info
 
 # binlog conf
@@ -75,3 +73,6 @@
 #--load_table_thread_num=3
 #--load_table_queue_size=1000
 --enable_distsql=true
+
+# turn this option on to export openmldb metric status
+# --enable_status_service=false
