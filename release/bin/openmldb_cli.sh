@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # Copyright 2021 4Paradigm
 #
@@ -14,13 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
-
-cd "$(dirname "$0")"
-
-export COMPONENTS="standalone_tablet standalone_nameserver standalone_apiserver"
-
-for COMPONENT in $COMPONENTS; do
-  ./start.sh stop "$COMPONENT"
-done
-echo "OpenMLDB stopped"
+./openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
