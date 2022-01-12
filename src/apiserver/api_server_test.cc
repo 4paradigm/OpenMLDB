@@ -417,9 +417,7 @@ TEST_F(APIServerTest, procedure) {
     ASSERT_EQ(0, document["code"].GetInt());
     ASSERT_STREQ("ok", document["msg"].GetString());
     ASSERT_EQ(7, document["data"]["input_schema"].Size());
-    ASSERT_EQ(3, document["data"]["input_common_cols"].Size());
     ASSERT_EQ(3, document["data"]["output_schema"].Size());
-    ASSERT_EQ(2, document["data"]["output_common_cols"].Size());
 
     // call procedure, need schema
     {
@@ -427,7 +425,6 @@ TEST_F(APIServerTest, procedure) {
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
         cntl.request_attachment().append(R"({
-        "common_cols":["bb", 23, 1590738994000],
         "input": [[123, 5.1, 6.1, "2021-08-01"],[234, 5.2, 6.2, "2021-08-02"]],
         "need_schema": true
     })");
@@ -444,7 +441,6 @@ TEST_F(APIServerTest, procedure) {
         ASSERT_EQ(0, document["code"].GetInt());
         ASSERT_STREQ("ok", document["msg"].GetString());
         ASSERT_EQ(2, document["data"]["data"].Size());
-        ASSERT_EQ(2, document["data"]["common_cols_data"].Size());
     }
 
     // call procedure, without schema
@@ -453,7 +449,6 @@ TEST_F(APIServerTest, procedure) {
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
         cntl.request_attachment().append(R"({
-        "common_cols":["bb", 23, 1590738994000],
         "input": [[123, 5.1, 6.1, "2021-08-01"],[234, 5.2, 6.2, "2021-08-02"]],
         "need_schema": false
     })");
@@ -471,7 +466,6 @@ TEST_F(APIServerTest, procedure) {
         ASSERT_STREQ("ok", document["msg"].GetString());
         ASSERT_TRUE(document["data"].FindMember("schema") == document["data"].MemberEnd());
         ASSERT_EQ(2, document["data"]["data"].Size());
-        ASSERT_EQ(2, document["data"]["common_cols_data"].Size());
     }
 
     // drop procedure and table
@@ -530,7 +524,6 @@ TEST_F(APIServerTest, no_common) {
     ASSERT_STREQ("ok", document["msg"].GetString());
     ASSERT_EQ(7, document["data"]["input_schema"].Size());
     ASSERT_EQ(3, document["data"]["output_schema"].Size());
-    ASSERT_EQ(0, document["data"]["output_common_cols"].Size());
 
     // call procedure, without schema
     {
@@ -556,7 +549,6 @@ TEST_F(APIServerTest, no_common) {
         ASSERT_STREQ("ok", document["msg"].GetString());
         ASSERT_TRUE(document["data"].FindMember("schema") == document["data"].MemberEnd());
         ASSERT_EQ(2, document["data"]["data"].Size());
-        ASSERT_EQ(0, document["data"]["common_cols_data"].Size());
     }
 
     // drop procedure and table
@@ -617,7 +609,6 @@ TEST_F(APIServerTest, no_common_not_first_string) {
     ASSERT_STREQ("ok", document["msg"].GetString());
     ASSERT_EQ(8, document["data"]["input_schema"].Size());
     ASSERT_EQ(3, document["data"]["output_schema"].Size());
-    ASSERT_EQ(0, document["data"]["output_common_cols"].Size());
 
     // call procedure, without schema
     {
@@ -643,7 +634,6 @@ TEST_F(APIServerTest, no_common_not_first_string) {
         ASSERT_STREQ("ok", document["msg"].GetString());
         ASSERT_TRUE(document["data"].FindMember("schema") == document["data"].MemberEnd());
         ASSERT_EQ(2, document["data"]["data"].Size());
-        ASSERT_EQ(0, document["data"]["common_cols_data"].Size());
     }
 
     // drop procedure and table

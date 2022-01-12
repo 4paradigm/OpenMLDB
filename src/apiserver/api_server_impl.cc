@@ -84,21 +84,15 @@ void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const Ht
 }
 
 bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                       const butil::rapidjson::Value& common_cols_v,
                                        std::shared_ptr<openmldb::sdk::SQLRequestRow> row) {
     auto sch = row->GetSchema();
 
     // scan all strings to init the total string length
-    decltype(common_cols_v.Size()) str_len_sum = 0;
-    decltype(common_cols_v.Size()) non_common_idx = 0, common_idx = 0;
+    decltype(non_common_cols_v.Size()) str_len_sum = 0;
+    decltype(non_common_cols_v.Size()) non_common_idx = 0;
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
         // if element is null, GetStringLength() will get 0
-        if (sch->IsConstant(i)) {
-            if (sch->GetColumnType(i) == hybridse::sdk::kTypeString) {
-                str_len_sum += common_cols_v[common_idx].GetStringLength();
-            }
-            ++common_idx;
-        } else {
+        if (!sch->IsConstant(i)) {
             if (sch->GetColumnType(i) == hybridse::sdk::kTypeString) {
                 str_len_sum += non_common_cols_v[non_common_idx].GetStringLength();
             }
@@ -107,14 +101,9 @@ bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common
     }
     row->Init(static_cast<int32_t>(str_len_sum));
 
-    non_common_idx = 0, common_idx = 0;
+    non_common_idx = 0;
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
-        if (sch->IsConstant(i)) {
-            if (!AppendJsonValue(common_cols_v[common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
-                return false;
-            }
-            ++common_idx;
-        } else {
+        if (!sch->IsConstant(i)) {
             if (!AppendJsonValue(non_common_cols_v[non_common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i),
                                  row)) {
                 return false;
@@ -306,21 +295,6 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
         return;
     }
 
-    butil::rapidjson::Value common_cols_v;
-    if (has_common_col) {
-        auto common_cols = document.FindMember("common_cols");
-        if (common_cols != document.MemberEnd()) {
-            common_cols_v = common_cols->value;  // move
-            if (!common_cols_v.IsArray()) {
-                writer << err.Set("common_cols is not array");
-                return;
-            }
-        } else {
-            common_cols_v.SetArray();  // If there's no common cols, no need to add this field in request
-        }
-    } else {
-        common_cols_v.SetArray();
-    }
 
     auto input = document.FindMember("input");
     if (input == document.MemberEnd() || !input->value.IsArray() || input->value.Empty()) {
@@ -342,20 +316,8 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
     // Hard copy, and RequestRow needs shared schema
     auto input_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(schema_impl.GetSchema());
     auto common_column_indices = std::make_shared<openmldb::sdk::ColumnIndicesSet>(input_schema);
-    decltype(common_cols_v.Size()) expected_common_size = 0;
-    if (has_common_col) {
-        for (int i = 0; i < input_schema->GetColumnCnt(); ++i) {
-            if (input_schema->IsConstant(i)) {
-                common_column_indices->AddCommonColumnIdx(i);
-                ++expected_common_size;
-            }
-        }
-        if (common_cols_v.Size() != expected_common_size) {
-            writer << err.Set("Invalid common cols size");
-            return;
-        }
-    }
-    auto expected_input_size = input_schema->GetColumnCnt() - expected_common_size;
+
+    auto expected_input_size = input_schema->GetColumnCnt();
 
     // TODO(hw): SQLRequestRowBatch should add common & non-common cols directly
     auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(input_schema, common_column_indices);
@@ -368,7 +330,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
         auto row = std::make_shared<sdk::SQLRequestRow>(input_schema, col_set);
 
         // sizes have been checked
-        if (!Json2SQLRequestRow(rows[i], common_cols_v, row)) {
+        if (!Json2SQLRequestRow(rows[i], row)) {
             writer << err.Set("Translate to request row failed");
             return;
         }
@@ -688,18 +650,6 @@ JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s) {  // NOLINT
     }
     ar.EndArray();
 
-    // data-common_cols_data
-    ar.Member("common_cols_data");
-    rs->Reset();
-    if (rs->Next()) {
-        ar.StartArray();
-        for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
-            if (schema.IsConstant(i)) {
-                WriteValue(ar, rs, i);
-            }
-        }
-        ar.EndArray();  // one row end
-    }
 
     ar.EndObject();  // end data
 
@@ -712,9 +662,7 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ProcedureIn
     ar.Member("procedure") & sp_info->GetSql();
 
     WriteSchema(ar, "input_schema", sp_info->GetInputSchema(), false);
-    WriteSchema(ar, "input_common_cols", sp_info->GetInputSchema(), true);
     WriteSchema(ar, "output_schema", sp_info->GetOutputSchema(), false);
-    WriteSchema(ar, "output_common_cols", sp_info->GetOutputSchema(), true);
 
     // Write db names
     ar.Member("dbs");

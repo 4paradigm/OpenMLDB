@@ -67,7 +67,6 @@ class APIServerImpl : public APIServer {
             const butil::IOBuf& req_body, JsonWriter& writer); // NOLINT
 
     static bool Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                   const butil::rapidjson::Value& common_cols_v,
                                    std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
     template <typename T>
     static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
