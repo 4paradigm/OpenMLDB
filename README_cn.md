@@ -42,7 +42,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 
 **线上线下一致性执行引擎：** 离线和实时特征计算使用统一的计算执行引擎，线上线下一致性得到了天然保证。
 
-**以 SQL 为核心体验的开发和管理：** 低门槛且功能强大的数据库开发体验，全流程基于 SQL 进行特征计算脚本开发以及部署上线。
+**以 SQL 为核心的开发和管理体验：** 低门槛且功能强大的数据库开发体验，全流程基于 SQL 进行特征计算脚本开发以及部署上线。
 
 **面向特征计算的定制化性能优化：** 离线特征计算使用[定制化的针对特征计算优化的 Spark 高性能版本](https://github.com/4paradigm/spark)；线上实时特征计算在高吞吐压力下的复杂查询提供几十毫秒量级的延迟，充分满足高并发、低延迟的性能需求。
 
@@ -80,7 +80,7 @@ OpenMLDB 有两种部署模式：集群部署（cluster deployment）和单机�
 
 **准备开始体验 OpenMLDB**
 
-==:point_right: [OpenMLDB 快速上手指南](docs/cn/standalone.md)（TBD：合并现有单机和集群的两个文档到一个）==
+:point_right: [OpenMLDB 快速上手指南](https://docs.openmldb.ai/v/0.4/content-1/openmldb_quickstart)
 
 ## 7. 使用案例
 
@@ -111,7 +111,7 @@ OpenMLDB 有两种部署模式：集群部署（cluster deployment）和单机�
 
 ## 10. 开发贡献者
 
-我们非常来自社区的贡献。
+我们非常感谢来自社区的贡献。
 
 - 如果你对于加入 OpenMLDB 开发者感兴趣，请阅读我们的 [Contribution Guideline](CONTRIBUTING.md)。
 - 如果你是一位新加入的贡献者，你或许可以从我们的这个 [good-first-issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) 列表开始。
@@ -119,7 +119,7 @@ OpenMLDB 有两种部署模式：集群部署（cluster deployment）和单机�
 为我们已有的社区贡献者鼓掌表示感谢 :clap: 
 
 <a href="https://github.com/4paradigm/openmldb/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" width=700/>
+  <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" width=600/>
 </a>
 
 ## 11. 社区

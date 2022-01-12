@@ -40,6 +40,7 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From offlin
 
 **The Unified Online-Offline Execution Engine:** Offline and real-time online feature extraction use a unified execution engine, thus online-offline consistency is inherently guaranteed.
 
+
 **SQL-Centric Development and Management**: Feature extraction script development, deployment, and maintenance are all based on SQL with great ease of use.
 
 **Customized Optimization for Feature Extraction**: Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature processing. Online feature extraction provides tens of milliseconds latency under high throughput pressure, which fully meets the online performance requirements.
@@ -78,7 +79,7 @@ The cluster and standalone deployments have the same functionalities but with di
 
 **Getting Started with OpenMLDB**
 
-:point_right: [OpenMLDB QuickStart](docs/en/standalone.md) ==(TBD: merge the existing standalone and cluster quickstart docs into to a single one)==
+:point_right: [OpenMLDB QuickStart](https://docs.openmldb.ai/v/0.4/content-1/openmldb_quickstart)
 
 ## 7. Use Cases
 
@@ -116,7 +117,7 @@ We really appreciate the contribution from our community.
 Let's clap hands for our community contributors :clap:
 
 <a href="https://github.com/4paradigm/openmldb/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" width=700/>
+  <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" width=600/>
 </a>
 
 ## 11. Community
@@ -144,4 +145,5 @@ Let's clap hands for our community contributors :clap:
 - [MLOp Practice: Using OpenMLDB in the Real-Time Anti-Fraud Model for the Bank’s Online Transaction](https://towardsdatascience.com/practice-of-openmldbs-transaction-real-time-anti-fraud-model-in-the-bank-s-online-event-40ab41fec6d4)
 
 ## 13. [User List](https://github.com/4paradigm/OpenMLDB/discussions/707)
+
 We are building [a user list](https://github.com/4paradigm/OpenMLDB/discussions/707) to collect feedback from the community. We really appreciate it if you can provide your use cases, comments, or any feedback when using OpenMLDB. We want to hear from you! 
