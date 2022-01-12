@@ -16,9 +16,10 @@
 
 # support version syntax is X.Y.Z[.{pre-prelease-identifier}] where it could be:
 #  - semVer: X.Y.Z    # final release
-#  - X.Y.Z.(a|aplha)N # alpha release
+#  - X.Y.Z.(a|alpha)N # alpha release
 #  - X.Y.Z.(b|beta)N  # beta release
 #  - X.Y.Z.(r|rc)N    # release candidate
+#  Note other version like 'X.Y.Z-rc1' may not work, don't use
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
