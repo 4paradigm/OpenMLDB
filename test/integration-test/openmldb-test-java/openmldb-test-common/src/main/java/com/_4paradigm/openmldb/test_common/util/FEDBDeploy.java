@@ -131,10 +131,10 @@ public class FEDBDeploy {
             fedbInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
         }
 
-        // for(int i=1;i<=1;i++) {
-        //     int task_manager_port = deployTaskManager(testPath,ip,i,zk_point);
-        //     fedbInfo.getTaskManagerEndpoints().add(ip+":"+task_manager_port);
-        // }
+        for(int i=1;i<=1;i++) {
+            int task_manager_port = deployTaskManager(testPath,ip,i,zk_point);
+            fedbInfo.getTaskManagerEndpoints().add(ip+":"+task_manager_port);
+        }
         log.info("openmldb-info:"+fedbInfo);
         return fedbInfo;
     }
