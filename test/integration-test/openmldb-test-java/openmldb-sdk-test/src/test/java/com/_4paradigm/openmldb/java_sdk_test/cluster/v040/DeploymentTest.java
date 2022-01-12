@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
+package com._4paradigm.openmldb.java_sdk_test.cluster.v040;
 
+import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -32,23 +33,24 @@ import org.testng.annotations.Test;
  */
 @Slf4j
 @Feature("deploy")
-public class DeploymentTest extends StandaloneTest {
+public class DeploymentTest extends FedbTest {
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/deploy/test_create_deploy.yaml")
     @Story("create")
     public void testCreate(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/deploy/test_show_deploy.yaml")
     @Story("show")
     public void testShow(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/deploy/test_drop_deploy.yaml")
     @Story("drop")
     public void testDrop(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
+
 }

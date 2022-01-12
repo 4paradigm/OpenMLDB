@@ -47,10 +47,8 @@ cases:
           - [5,"bb",1590738994000]
     sql: select count(1) as v1 from {0};
     expect:
-      columns: ["v1 int"]
-      rows:
-        - [5]
-  - id: 3
+      success: false
+  - id: 2
     desc: "count/sum/max/min/avg一个列"
     inputs:
       -
@@ -69,8 +67,9 @@ cases:
       columns: ["v1 int","v2 int","v3 int","v4 double","v5 bigint"]
       rows:
         - [6,6,1,3.5,21]
-  - id: 4
+  - id: 3
     desc: "表是空的"
+    tags: ["TODO","@chengjing,bug,"]
     inputs:
       -
         columns : ["id bigint","c1 string","c2 int","c7 timestamp"]
@@ -81,7 +80,7 @@ cases:
       columns: ["v1 int","v2 int","v3 int","v4 double","v5 bigint"]
       rows:
         - [0,0,0,0,0]
-  - id: 5
+  - id: 4
     desc: "列有null和空串"
     inputs:
       -
@@ -99,7 +98,7 @@ cases:
       order: c1
       columns: ["v1 int","v2 int","v3 int","v4 double","v5 bigint"]
       rows:
-        - [6,6,1,3,18]
+        - [5,6,1,3.6,18]
 
 
 

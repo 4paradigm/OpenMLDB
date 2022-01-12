@@ -21,11 +21,20 @@ jobs:
       OS: linux
     steps:
       - uses: actions/checkout@v2
+      - name: configure
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
+
+      - name: build
+        run: |
+          make build
+          # GitHub runner disk space is limited
+          # delete thirdparty build directory($ROOT/.deps/) to save disk space
+          # make thirdpartybuild-clean
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          make configure
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON build
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d standalone -l "0"
       - name: TEST Results
@@ -47,9 +56,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          make configure
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON build
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d standalone -l "1,2,3,4,5"
       - name: TEST Results
@@ -71,9 +79,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          make configure
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON build
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l "0"
       - name: TEST Results
@@ -95,9 +102,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: build jsdk and package
         run: |
-          bash steps/init_env.sh ${{ env.HYBRIDSE_SOURCE }}
-          mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=OFF .. && make -j$(nproc) sql_javasdk_package openmldb && cd ../
+          make configure
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON build
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_all.xml -d cluster -l "1,2,3,4,5"
       - name: TEST Results

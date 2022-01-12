@@ -16,7 +16,9 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <openmldb.version>0.3.2-macos</openmldb.version>
+        <openmldb.jdbc.version>0.4.0-SNAPSHOT</openmldb.jdbc.version>
+        <openmldb.navtive.version>0.4.0-macos-SNAPSHOT</openmldb.navtive.version>
+
         <suiteXmlFile>test_suite/test_all.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>
     </properties>
@@ -37,7 +39,12 @@
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
-            <version>${openmldb.version}</version>
+            <version>${openmldb.jdbc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-native</artifactId>
+            <version>${openmldb.navtive.version}</version>
         </dependency>
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>

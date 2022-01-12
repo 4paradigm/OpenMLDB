@@ -61,7 +61,7 @@ public class FedbTest extends BaseTest {
                     .nsNum(2).tabletNum(3)
                     .nsEndpoints(Lists.newArrayList("172.24.4.55:10004", "172.24.4.55:10005"))
                     .tabletEndpoints(Lists.newArrayList("172.24.4.55:10001", "172.24.4.55:10002", "172.24.4.55:10003"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10017"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10006"))
                     .build();
             FedbGlobalVar.env = "cluster";
 

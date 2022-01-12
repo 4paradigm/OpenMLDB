@@ -36,7 +36,7 @@ cases:
     sql: select id,d[0](c1,'a_b') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","v1 bool"]
+      columns: ["id bigint","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -79,7 +79,7 @@ cases:
     sql: select id,c1,d[0](c1,'a%b') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -122,7 +122,7 @@ cases:
     sql: select id,c1,d[0](c1,'_a%b') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -158,10 +158,10 @@ cases:
           - [7,"_a#0B",1590738996000]
     dataProvider:
       - ["like_match","ilike_match"]
-    sql: select id,c1,d[0](c1,'\\\_a%b','\\\') as v1 from {0};
+    sql: select id,c1,d[0](c1,"\\_a%b","\\") as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -200,7 +200,7 @@ cases:
     sql: select id,c1,d[0](c1,'#_a%b','#') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -239,7 +239,7 @@ cases:
     sql: select id,c1,d[0](c1,'__a%b','_') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -278,7 +278,7 @@ cases:
     sql: select id,c1,d[0](c1,'_a%%b','%') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -314,10 +314,10 @@ cases:
           - [7,"_a#0B",1590738996000]
     dataProvider:
       - ["like_match","ilike_match"]
-    sql: select id,c1,d[0](c1,'\\\_a%b') as v1 from {0};
+    sql: select id,c1,d[0](c1,"\\_a%b") as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -339,6 +339,7 @@ cases:
           - [7,"_a#0B",true]
   - id: 8
     desc: "escape为空串，使用\\"
+    mode: cluster-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c7 timestamp"]
@@ -353,10 +354,10 @@ cases:
           - [7,'\\\_a#0B',1590738996000]
     dataProvider:
       - ["like_match","ilike_match"]
-    sql: select id,c1,d[0](c1,'\\\_a%b','') as v1 from {0};
+    sql: select id,c1,d[0](c1,"\\_a%b","") as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -396,7 +397,7 @@ cases:
     sql: select id,c1,d[0](c1,'a%b%') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -406,7 +407,7 @@ cases:
           - [4,"b_c",false]
           - [5,"abc",true]
           - [6,"A0b",false]
-          - [7,"a#Bb",false]
+          - [7,"a#Bb",true]
           - [8,"aaabbcc",true]
       1:
         rows:
@@ -415,7 +416,7 @@ cases:
           - [3,"a%_b%0",true]
           - [4,"b_c",false]
           - [5,"abc",true]
-          - [6,"A0b",false]
+          - [6,"A0b",true]
           - [7,"a#Bb",true]
           - [8,"aaabbcc",true]
   - id: 10
@@ -437,7 +438,7 @@ cases:
     sql: select id,c1,d[0](c1,'_a_b') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -476,7 +477,7 @@ cases:
     sql: select id,c1,d[0](c1,'a%b#%','#') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -515,7 +516,7 @@ cases:
     sql: select id,c1,d[0](c1,'#_a_b','#') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -554,7 +555,7 @@ cases:
     sql: select id,c1,d[0](c1,'#_a%b','#') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -593,7 +594,7 @@ cases:
     sql: select id,c1,d[0](c1,'_a#%b','#') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","c1 string","v1 bool"]
+      columns: ["id bigint","c1 string","v1 bool"]
     expectProvider:
       0:
         rows:
@@ -627,7 +628,7 @@ cases:
     sql: select id,d[0](c1,'a%b') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","v1 bool"]
+      columns: ["id bigint","v1 bool"]
       rows:
         - [1,false]
         - [2,null]
@@ -645,7 +646,7 @@ cases:
     sql: select id,d[0](c1,'') as v1 from {0};
     expect:
       order: id
-      columns: ["id int","v1 bool"]
+      columns: ["id bigint","v1 bool"]
       rows:
         - [1,true]
         - [2,false]
