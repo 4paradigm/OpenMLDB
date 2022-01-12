@@ -575,41 +575,36 @@ TEST_F(TransformTest, PhysicalColumnResolveFailTest) {
 
     PhysicalPlanFailCheck(
         catalog,
-        "select * from\n"
-        "      (\n"
-        "      SELECT\n"
-        "      col1 as id,\n"
-        "      col1 as id,\n"
-        "      sum(col2) OVER w1 as w1_col2_sum,\n"
-        "      FROM t1 WINDOW\n"
-        "      w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)\n"
-        "      ) as out0 LAST JOIN\n"
-        "      (\n"
-        "      SELECT\n"
-        "      col1 as id,\n"
-        "      sum(col2) OVER w2 as w2_col2_sum FROM t1 WINDOW\n"
-        "      w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)\n"
-        "      ) as out1 ON out0.id = out1.id;",
-        kRequestMode, common::kOk,
-        "ok");
+        R"sql(select * from
+              (
+                SELECT col1 as id, col1 as id, sum(col2) OVER w1 as w1_col2_sum,
+                FROM t1
+                WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)
+              ) as out0
+              LAST JOIN
+              (
+                SELECT col1 as id, sum(col2) OVER w2 as w2_col2_sum
+                FROM t1
+                WINDOW w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)
+              ) as out1
+              ON out0.id = out1.id;)sql",
+        kBatchMode, common::kOk, "ok");
+
     PhysicalPlanFailCheck(
         catalog,
-        "select * from\n"
-        "      (\n"
-        "      SELECT\n"
-        "      col1 as id,\n"
-        "      col2 as id,\n"
-        "      sum(col2) OVER w1 as w1_col2_sum,\n"
-        "      FROM t1 WINDOW\n"
-        "      w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)\n"
-        "      ) as out0 LAST JOIN\n"
-        "      (\n"
-        "      SELECT\n"
-        "      col1 as id,\n"
-        "      sum(col2) OVER w2 as w2_col2_sum FROM t1 WINDOW\n"
-        "      w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)\n"
-        "      ) as out1 ON out0.id = out1.id;",
-        kRequestMode, common::kColumnAmbiguous,
+        R"sql(select * from
+              (
+                SELECT col1 as id, col2 as id, sum(col2) OVER w1 as w1_col2_sum,
+                FROM t1
+                WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)
+              ) as out0
+              LAST JOIN
+              (
+                SELECT col1 as id, sum(col2) OVER w2 as w2_col2_sum
+                FROM t1
+                WINDOW w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)
+              ) as out1 ON out0.id = out1.id;)sql",
+        kBatchMode, common::kColumnAmbiguous,
         "Ambiguous column name .out0.id");
 }
 
