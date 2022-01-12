@@ -1,0 +1,19 @@
+# tablet.conf 
+--endpoint=127.0.0.1:9921
+--role=tablet
+--thread_pool_size=24
+
+--openmldb_log_dir=./standalone_logs
+--log_level=info
+
+--binlog_notify_on_put=true
+--binlog_single_file_max_size=2048
+--binlog_sync_to_disk_interval=5000
+
+--db_root_path=./standalone_db
+--recycle_bin_root_path=./recycle
+
+--make_snapshot_time=23
+
+--gc_interval=60
+--gc_pool_size=2

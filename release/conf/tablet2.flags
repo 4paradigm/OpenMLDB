@@ -1,20 +1,22 @@
-# tablet.conf
+# tablet.conf 
 #--use_name=false
 #--port=9527
---endpoint=127.0.0.1:10921
+--endpoint=127.0.0.1:10922
 --role=tablet
 
+# if tablet run as cluster mode zk_cluster and zk_root_path should be set
 --zk_cluster=127.0.0.1:2181
 --zk_root_path=/openmldb
 
 # thread_pool_size建议和cpu核数一致
 --thread_pool_size=24
+#--file_compression=off
 
 --zk_session_timeout=10000
 #--zk_keep_alive_check_interval=15000
 
 # log conf
---openmldb_log_dir=./logs
+--openmldb_log_dir=./logs2
 --log_level=info
 
 # binlog conf
@@ -32,7 +34,7 @@
 #--io_pool_size=2
 #--task_pool_size=8
 # 多个磁盘使用英文符号, 隔开
---db_root_path=./db
+--db_root_path=./db2
 --recycle_bin_root_path=./recycle
 
 # snapshot conf
