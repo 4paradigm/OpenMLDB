@@ -110,7 +110,7 @@ if(SQL_PYSDK_ENABLE)
                 # Do not strip library for MacOS, refer to https://github.com/4paradigm/OpenMLDB/issues/905
                 COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
                 COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-                COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel
+                COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name macosx_10_15_x86_64
                 BYPRODUCTS
                 python/sqlalchemy-openmldb
                 python/build
@@ -129,7 +129,7 @@ if(SQL_PYSDK_ENABLE)
             COMMAND strip ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_sql_router_sdk.so
             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
             COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-            COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel
+            COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name manylinux1_x86_64
             BYPRODUCTS
               python/sqlalchemy-openmldb
               python/build

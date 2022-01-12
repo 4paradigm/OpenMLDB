@@ -50,11 +50,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SqlClusterExecutor implements SqlExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
 
-    private static boolean initialized = false;
+    private static final AtomicBoolean initialized = new AtomicBoolean(false);;
     private SQLRouter sqlRouter;
 
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
@@ -78,14 +79,13 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     synchronized public static void initJavaSdkLibrary(String libraryPath) {
-        if (!initialized) {
+        if (!initialized.get()) {
             if (libraryPath == null || libraryPath.isEmpty()) {
                 LibraryLoader.loadLibrary("sql_jsdk");
             } else {
                 LibraryLoader.loadLibrary(libraryPath);
             }
-            LibraryLoader.loadLibrary(libraryPath);
-            initialized = true;
+            initialized.set(true);
         }
     }
 

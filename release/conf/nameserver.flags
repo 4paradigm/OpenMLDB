@@ -1,13 +1,10 @@
 # nameserver.conf 
---endpoint=127.0.0.1:6527
+--endpoint=127.0.0.1:7527
 --role=nameserver
-#--zk_cluster=127.0.0.1:7181
-#--zk_root_path=/openmldb_cluster
---tablet=127.0.0.1:9921
+--zk_cluster=127.0.0.1:2181
+--zk_root_path=/openmldb
 
 --openmldb_log_dir=./logs
---log_file_count=24
---log_file_size=1024
 --log_level=info
 
 --auto_failover=true
@@ -36,3 +33,6 @@
 #--partition_num=8
 --system_table_replica_num=2
 #--enable_distsql=true
+
+# turn this option on to export openmldb metric status
+# --enable_status_service=false

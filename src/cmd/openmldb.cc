@@ -73,8 +73,6 @@ DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
 DECLARE_string(openmldb_log_dir);
-DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
-DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the log level, eg: debug or info");
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
@@ -284,7 +282,7 @@ void StartTablet() {
 #endif
 
 int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
-            const std::vector<uint64_t>& ts_dimensions, uint64_t ts, const std::string& value,
+            uint64_t ts, const std::string& value,
             const google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>& table_partition,
             uint32_t format_version) {
     std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> clients;
@@ -323,17 +321,12 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
                 return -1;
             }
         }
-        if (ts_dimensions.empty()) {
-            if (!clients[endpoint]->Put(tid, pid, ts, value, iter->second, format_version)) {
-                printf("put failed. tid %u pid %u endpoint %s ts %lu \n", tid, pid, endpoint.c_str(), ts);
-                return -1;
-            }
-        } else {
-            if (!clients[endpoint]->Put(tid, pid, iter->second, ts_dimensions, value, format_version)) {
-                printf("put failed. tid %u pid %u endpoint %s ts_dimensions\n", tid, pid, endpoint.c_str());
-                return -1;
-            }
+
+        if (!clients[endpoint]->Put(tid, pid, ts, value, iter->second, format_version)) {
+            printf("put failed. tid %u pid %u endpoint %s ts %lu \n", tid, pid, endpoint.c_str(), ts);
+            return -1;
         }
+
     }
     std::cout << "Put ok" << std::endl;
     return 0;
@@ -367,10 +360,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
     if (codec.EncodeRow(input_value, &value) < 0) {
         return ::openmldb::base::Status(-1, "Encode data error");
     }
-    std::vector<uint64_t> ts_dimensions;
-    if (codec.EncodeTsDimension(input_value, &ts_dimensions) < 0) {
-        return ::openmldb::base::Status(-1, "Encode ts dimension error");
-    }
+
     if (table_info.compress_type() == ::openmldb::type::CompressType::kSnappy) {
         std::string compressed;
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
@@ -378,7 +368,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
     }
     const int tid = table_info.tid();
     const uint32_t fmt_ver = table_info.format_version();
-    PutData(tid, dimensions, ts_dimensions, ts, value, table_info.table_partition(), fmt_ver);
+    PutData(tid, dimensions, ts, value, table_info.table_partition(), fmt_ver);
 
     return ::openmldb::base::Status(0, "ok");
 }

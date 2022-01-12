@@ -61,6 +61,8 @@ cases:
     sql: select {0}.c1,{0}.c2 from {0};
     expect:
       success: false
+      code: 1000
+      msg: unknow error
   - id: 3
     desc: 普通select with placeholders
     parameters:

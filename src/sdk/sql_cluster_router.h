@@ -244,6 +244,8 @@ class SQLClusterRouter : public SQLRouter {
                                                const std::string& default_db,
                                                ::openmldb::taskmanager::JobInfo& job_info) override;
 
+    bool NotifyTableChange() override;
+
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 

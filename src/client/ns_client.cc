@@ -580,6 +580,7 @@ bool NsClient::UpdateTableAliveStatus(const std::string& endpoint, std::string& 
     request.set_endpoint(endpoint);
     request.set_name(name);
     request.set_is_alive(is_alive);
+    request.set_db(GetDb());
     if (pid < UINT32_MAX) {
         request.set_pid(pid);
     }
@@ -597,6 +598,7 @@ bool NsClient::UpdateTTL(const std::string& name, const ::openmldb::type::TTLTyp
     ::openmldb::nameserver::UpdateTTLRequest request;
     ::openmldb::nameserver::UpdateTTLResponse response;
     request.set_name(name);
+    request.set_db(GetDb());
     ::openmldb::common::TTLSt* ttl_desc = request.mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
