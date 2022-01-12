@@ -79,7 +79,7 @@ The cluster and standalone deployments have the same functionalities but with di
 
 **Getting Started with OpenMLDB**
 
-:point_right: [OpenMLDB QuickStart](docs/en/standalone.md) ==(TBD: merge the existing standalone and cluster quickstart docs into to a single one)==
+:point_right: [OpenMLDB QuickStart](https://docs.openmldb.ai/v/0.4/content-1/openmldb_quickstart)
 
 ## 7. Use Cases
 
@@ -117,7 +117,7 @@ We really appreciate the contribution from our community.
 Let's clap hands for our community contributors :clap:
 
 <a href="https://github.com/4paradigm/openmldb/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" width=700/>
+  <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" width=600/>
 </a>
 
 ## 11. Community
@@ -147,4 +147,3 @@ Let's clap hands for our community contributors :clap:
 ## 13. [User List](https://github.com/4paradigm/OpenMLDB/discussions/707)
 
 We are building [a user list](https://github.com/4paradigm/OpenMLDB/discussions/707) to collect feedback from the community. We really appreciate it if you can provide your use cases, comments, or any feedback when using OpenMLDB. We want to hear from you! 
-
