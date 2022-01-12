@@ -604,7 +604,7 @@ TEST_F(TransformTest, PhysicalColumnResolveFailTest) {
                 FROM t1
                 WINDOW w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)
               ) as out1 ON out0.id = out1.id;)sql",
-        kRequestMode, common::kColumnAmbiguous,
+        kBatchMode, common::kColumnAmbiguous,
         "Ambiguous column name .out0.id");
 }
 
