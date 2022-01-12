@@ -30,9 +30,9 @@ sh openmldb-tablet-3/bin/start.sh start tablet
 sh openmldb-apiserver-1/bin/start.sh start apiserver
 sh zookeeper-3.4.14/bin/zkServer.sh start
 
-cp -r openmldb fedb-ns-1/bin/
-cp -r openmldb fedb-ns-2/bin/
-cp -r openmldb fedb-tablet-1/bin/
-cp -r openmldb fedb-tablet-2/bin/
-cp -r openmldb fedb-tablet-3/bin/
-cp -r openmldb fedb-apiserver-1/bin/
+cp -r openmldb openmldb-ns-1/bin/
+cp -r openmldb openmldb-ns-2/bin/
+cp -r openmldb openmldb-tablet-1/bin/
+cp -r openmldb openmldb-tablet-2/bin/
+cp -r openmldb openmldb-tablet-3/bin/
+cp -r openmldb openmldb-apiserver-1/bin/
