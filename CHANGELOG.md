@@ -10,7 +10,7 @@
 
 ### Other Features
 
-- Support SQL syntax: LIKE, HAVING (#841,#29 #aceforeverd; #927,698 #jingchen2222)
+- Support SQL syntax: LIKE, HAVING (#841 @aceforeverd; #927,#698 @jingchen2222)
 - Support new built-in functions: reverse (#1004 @nautaa), dayofyear (#856 @Nicholas-SR)
 - Improve the compilation and install process, and support building from sources (#999,#871,#594,#752,#793,#805,#875,#871,#999 @aceforeverd; #992 @vagetablechicken)
 - Improve the GitHub CI/CD workflow (#842,#884,#875,#919,#1056,#874 @aceforeverd)
