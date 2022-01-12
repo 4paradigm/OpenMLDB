@@ -43,7 +43,7 @@ docker run -it 4pdosc/openmldb:0.3.2 bash
 # The below commands are executed in the CLI
 > CREATE DATABASE demo_db;
 > USE demo_db;
-> CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int, INDEX(ts=pickup_datetime));
+> CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int);
 ```
 
 **Import offline data to OpenMLDB**
@@ -115,7 +115,7 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 ```
 **Start HTTP service for inference with OpenMLDB**
 ```bash
-./start_predict_server.sh /tmp/model.txt
+./start_predict_server.sh 127.0.0.1:9080 /tmp/model.txt
 ```
 **Run inference with HTTP request**
 ```bash
@@ -154,7 +154,7 @@ docker run -it 4pdosc/openmldb:0.3.2 bash
 # The below commands are executed in the CLI
 > CREATE DATABASE demo_db;
 > USE demo_db;
-> CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int, INDEX(ts=pickup_datetime));
+> CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int);
 > LOAD DATA INFILE './data/taxi_tour.csv' INTO TABLE t1;
 ```
 **Run offline feature extraction**
@@ -215,7 +215,7 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 **Start HTTP service for inference with OpenMLDB**
 
 ```
-./start_predict_server.sh /tmp/model.txt
+./start_predict_server.sh 127.0.0.1:8080 /tmp/model.txt
 ```
 
 **Run inference with HTTP request**
