@@ -63,8 +63,8 @@ case $OP in
     start)
         echo "Starting $COMPONENT ... "
         if [ -f "$OPENMLDB_PID_FILE" ]; then
-            if cat "$OPENMLDB_PID_FILE"| tr -d '\0' | xargs kill -0 > /dev/null 2>&1; then
-                echo tablet already running as process "$(cat "$OPENMLDB_PID_FILE" | tr -d '\0')".
+            if tr -d '\0' < "$OPENMLDB_PID_FILE" | xargs kill -0 > /dev/null 2>&1; then
+                echo tablet already running as process "$(tr -d '\0' < "$OPENMLDB_PID_FILE")".
                 exit 0
             fi
         fi
@@ -83,7 +83,7 @@ case $OP in
         then
              echo "no $COMPONENT to stop (could not find file $OPENMLDB_PID_FILE)"
         else
-            cat "$OPENMLDB_PID_FILE"| tr -d '\0' | xargs kill
+            tr -d '\0' < "$OPENMLDB_PID_FILE" | xargs kill
             rm "$OPENMLDB_PID_FILE"
             echo STOPPED
         fi
