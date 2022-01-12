@@ -27,13 +27,14 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.util.*;
 
 public class InsertPreparedStatementImpl implements PreparedStatement {
-    public static final Charset CHARSET = Charset.forName("utf-8");
+    public static final Charset CHARSET = StandardCharsets.UTF_8;
     private String currentSql = null;
     private SQLInsertRow currentRow = null;
     private SQLInsertRows currentRows = null;
@@ -49,6 +50,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private Map<String, SQLInsertRows> sqlRowsMap = new HashMap<>();
     private List<Integer> scehmaIdxs = null;
     private Map<Integer, Integer> stringsLen = new HashMap<>();
+
     public InsertPreparedStatementImpl(String db, String sql, SQLRouter router) throws SQLException {
         Status status = new Status();
         SQLInsertRows rows = router.GetInsertRows(db, sql, status);
@@ -59,7 +61,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 rows.delete();
             }
             logger.error("getInsertRows fail: {}", msg);
-            throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
+            throw new SQLException("get insert rows fail " + msg + " in construction preparedstatement");
         }
         this.currentRows = rows;
         this.currentRow = rows.NewRow();
@@ -201,7 +203,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             setNull(i);
             return;
         }
-        byte bytes[] = s.getBytes(CHARSET);
+        byte[] bytes = s.getBytes(CHARSET);
         stringsLen.put(i, bytes.length);
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, bytes);
@@ -285,6 +287,12 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (currentRow == null) {
             currentRow = currentRows.NewRow();
         }
+        if (currentRow == null) {
+            long rowCount = currentRows.GetCnt();
+            logger.error("current rows count {}, rows.back().IsComplete = {}", rowCount, rowCount > 0 ?
+                    currentRows.GetRow(rowCount - 1).IsComplete() : "N/A");
+            throw new SQLException("create jni row failed");
+        }
 
         int strLen = 0;
         for (Map.Entry<Integer, Integer> entry : stringsLen.entrySet()) {
@@ -300,12 +308,12 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             Object data = currentDatas.get(i);
             if (data == null) {
                 ok = currentRow.AppendNULL();
-            } else  {
+            } else {
                 DataType curType = currentDatasType.get(i);
                 if (DataType.kTypeBool.equals(curType)) {
                     ok = currentRow.AppendBool((boolean) data);
                 } else if (DataType.kTypeDate.equals(curType)) {
-                    java.sql.Date date = (java.sql.Date)data;
+                    java.sql.Date date = (java.sql.Date) data;
                     ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
                 } else if (DataType.kTypeDouble.equals(curType)) {
                     ok = currentRow.AppendDouble((double) data);
@@ -318,7 +326,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 } else if (DataType.kTypeInt64.equals(curType)) {
                     ok = currentRow.AppendInt64((long) data);
                 } else if (DataType.kTypeString.equals(curType)) {
-                    byte[] bdata = (byte[])data;
+                    byte[] bdata = (byte[]) data;
                     ok = currentRow.AppendString(bdata, bdata.length);
                 } else if (DataType.kTypeTimestamp.equals(curType)) {
                     ok = currentRow.AppendTimestamp((long) data);
@@ -766,7 +774,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (closed) {
             throw new SQLException("preparedstatement closed");
         }
-        int result[] = new int[1+sqlRowsMap.size()];
+        int result[] = new int[1 + sqlRowsMap.size()];
         Status status = new Status();
         boolean ok = router.ExecuteInsert(db, currentSql, currentRows, status);
         if (!ok) {

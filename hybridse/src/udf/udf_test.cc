@@ -723,6 +723,17 @@ TEST_F(ExternUdfTest, LikeMatchTest) {
     check_like(true, false, R"r(Evan\kkbw)r", R"r(Evan\%w)r", "");
     check_like(true, false, R"r(Evan\no\sw)r", R"r(Evan\%\_w)r", "");
 
+    // special check if pattern end with special character <percent>
+    check_like(true, false, "a_b", "a%b%", "\\");
+    check_like(true, false, "a_b", "a%b%%", "\\");
+    check_like(true, false, "a_b", "a_b%%%", "\\");
+    // escape <percent>, it is not special character any more
+    check_like(false, false, "a_b", "a_b\\%", "\\");
+    check_like(false, false, "a_b", "a_b%%", "%");
+    // NOTE: it is a invalid pattern sequence here: end with escape character
+    //  currently we return false, but might change to throw exception in the further
+    check_like(false, false, "a_b", "a_b%", "%");
+
     // invalid match pattern
     check_like(false, false, R"r(Evan_w\)r", R"r(Evan_w\)r", "\\");
 }
@@ -817,6 +828,17 @@ TEST_F(ExternUdfTest, ILikeMatchTest) {
     check_ilike(false, false, R"r(Evan%aw)r", R"r(evan\%w)r", "\\");
     check_ilike(true, false, R"r(Evan\kkbw)r", R"r(evan\%w)r", "");
     check_ilike(true, false, R"r(Evan\no\sw)r", R"r(evan\%\_w)r", "");
+
+    // special check if pattern end with special character <percent>
+    check_ilike(true, false, "A_b", "a%b%", "\\");
+    check_ilike(true, false, "A_b", "a%b%%", "\\");
+    check_ilike(true, false, "a_b", "a_b%%%", "\\");
+    // escape <percent>, it is not special character any more
+    check_ilike(false, false, "A_b", "a_b\\%", "\\");
+    check_ilike(false, false, "A_b", "a_b%%", "%");
+    // NOTE: it is a invalid pattern sequence here: end with escape character
+    //  currently we return false, but might change to throw exception in the further
+    check_ilike(false, false, "A_b", "a_b%", "%");
 
     // might better to throw a exception
     // invalid match pattern

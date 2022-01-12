@@ -46,6 +46,12 @@ bool PlanAPI::CreatePlanTreeFromScript(const std::string &sql, PlanNodeList &pla
     return status.isOK();
 }
 
+const int PlanAPI::GetPlanLimitCount(node::PlanNode* plan_tree) {
+    if (nullptr == plan_tree) {
+        return 0;
+    }
+    return Planner::GetPlanTreeLimitCount(plan_tree);
+}
 const std::string PlanAPI::GenerateName(const std::string prefix, int id) {
     time_t t;
     time(&t);

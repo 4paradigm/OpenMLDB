@@ -239,7 +239,7 @@ TEST_F(PlanNodeTest, ExtractColumnsAndIndexsTest) {
     ColumnIndexNode *index_node = dynamic_cast<ColumnIndexNode *>(manager_->MakeColumnIndexNode(index_items));
     index_node->SetName("index1");
     CreatePlanNode *node =
-        manager_->MakeCreateTablePlanNode("t1", 3, 8,
+        manager_->MakeCreateTablePlanNode("", "t1", 3, 8,
                                           {manager_->MakeColumnDescNode("col1", node::kInt32, true),
                                            manager_->MakeColumnDescNode("col2", node::kInt32, true),
                                            manager_->MakeColumnDescNode("col3", node::kFloat, true),

@@ -108,10 +108,13 @@ if (TESTING_ENABLE)
 endif ()
 
 set(test_list "")
-if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
-  find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
-  include(CodeCoverage)
-  APPEND_COVERAGE_COMPILER_FLAGS()
+if (COVERAGE_ENABLE)
+    if (NOT CMAKE_COMPILER_IS_GNUCXX)
+        message(FATAL_ERROR "Coverage is only supported on linux")
+    endif ()
+    find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
+    include(CodeCoverage)
+    APPEND_COVERAGE_COMPILER_FLAGS()
 endif ()
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
@@ -219,6 +222,8 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+
+add_subdirectory(monitoring)
 
 FILE(GLOB OPENMLDB_SCRIPTS "${CMAKE_SOURCE_DIR}/release/bin/*")
 FILE(GLOB OPENMLDB_CONFS "${CMAKE_SOURCE_DIR}/release/conf/*")

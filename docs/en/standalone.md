@@ -4,6 +4,8 @@ In this tutorial, we demonstrate a typical life-cycle of using OpenMDLB, includi
 
 ## 1. Preparation
 
+> :warning: Required docker engine version >= 18.03
+
 We first need to download the sample data set and start the OpenMLDB CLI. We strongly recommend to use our docker image for quick start:
 
 1. Pull the image (download size around 500 MB) and start the container 

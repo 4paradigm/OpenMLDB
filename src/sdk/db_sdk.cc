@@ -91,6 +91,11 @@ void ClusterSDK::WatchNotify() {
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
 }
 
+bool ClusterSDK::TriggerNotify() const {
+    LOG(INFO) << "Trigger table notify node";
+    return zk_client_->Increment(notify_path_);
+}
+
 bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint) {
     std::string ns_node = options_.zk_path + "/leader";
     std::vector<std::string> children;

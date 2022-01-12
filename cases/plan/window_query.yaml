@@ -272,7 +272,7 @@ cases:
     sql: |
       SELECT
       sum(col2) OVER w1 as w1_col2_sum,
-      sum(col2) OVER w2 as w1_col2_sum
+      sum(col2) OVER w2 as w2_col2_sum
       FROM t1 WINDOW
       w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME),
       w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW MAXSIZE 20 EXCLUDE CURRENT_TIME) limit 10;

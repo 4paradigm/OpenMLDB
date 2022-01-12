@@ -72,9 +72,8 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             Preconditions.checkState(record.numFields() == metaData.getColumnCount());
             addRow(record, preparedStatement);
             preparedStatement.addBatch();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new IOException(e.getMessage());
+        } catch (Exception e) {
+            throw new IOException("convert to openmldb row failed", e);
         }
     }
 
@@ -114,7 +113,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
                     preparedStatement.setDate(i + 1, new Date(record.getInt(i)));
                     break;
                 case Types.TIMESTAMP:
-                    // record.getLong(i) gets us timestamp, and sql timestamp unit is ms.
+                    // record.getLong(spark sql TimestampType) gets us timestamp, and sql timestamp unit is ms
                     preparedStatement.setTimestamp(i + 1, new Timestamp(record.getLong(i) / 1000));
                     break;
                 default:

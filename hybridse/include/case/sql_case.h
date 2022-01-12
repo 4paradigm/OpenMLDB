@@ -56,6 +56,8 @@ class SqlCase {
         // SqlNode's TreeString output
         std::string node_tree_str_;
         bool success_ = true;
+        int code_ = -1;
+        std::string msg_;
     };
     SqlCase() {}
     virtual ~SqlCase() {}
@@ -211,6 +213,10 @@ class SqlCase {
     static std::string SqlCaseBaseDir() {
         const char* env_name = "SQL_CASE_BASE_DIR";
         char* value = getenv(env_name);
+        if (value != nullptr) {
+            return std::string(value);
+        }
+        value = getenv("YAML_CASE_BASE_DIR");
         if (value != nullptr) {
             return std::string(value);
         }

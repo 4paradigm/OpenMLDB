@@ -116,3 +116,6 @@ OpenMLD 社区持续进行开发迭代，在此列出我们已经初步规划好
 * [OpenMLDB在AIOPS领域关于交易系统异常检测应用实践](https://zhuanlan.zhihu.com/p/393602288)
 * [5分钟完成硬件剩余寿命智能预测](https://zhuanlan.zhihu.com/p/399346826)
 
+## 10. [用户列表](https://github.com/4paradigm/OpenMLDB/discussions/707)
+
+我们创建了一个用于搜集用户使用反馈意见的[用户列表](https://github.com/4paradigm/OpenMLDB/discussions/707)。我们非常感激我们的社区用户可以留下基于 OpenMLDB 的使用案例、意见、或者任何反馈。我们非常期待听到你的声音！

@@ -1,3 +1,5 @@
+#! /bin/sh
+
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#! /bin/sh
-#
-# stop_all.sh
+set -x -e
+
 ps -ef | grep openmldb | grep onebox | awk '{print $2}' | while read line; do kill -9 $line; done
+
+ps -ef | grep taskmanager | grep -v "grep" | awk '{print $2}' | while read line; do kill -9 $line; done

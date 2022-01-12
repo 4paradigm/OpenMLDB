@@ -267,38 +267,8 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::str
     LOG(WARNING) << "fail to send write request for " << response.msg() << " and error code " << response.code();
     return false;
 }
-bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::vector<std::pair<std::string, uint32_t>>& dimensions,
-                       const std::vector<uint64_t>& ts_dimensions, const std::string& value, uint32_t format_version) {
-    ::openmldb::api::PutRequest request;
-    request.set_value(value);
-    request.set_tid(tid);
-    request.set_pid(pid);
-    for (size_t i = 0; i < dimensions.size(); i++) {
-        ::openmldb::api::Dimension* d = request.add_dimensions();
-        d->set_key(dimensions[i].first);
-        d->set_idx(dimensions[i].second);
-    }
-    for (size_t i = 0; i < ts_dimensions.size(); i++) {
-        ::openmldb::api::TSDimension* d = request.add_ts_dimensions();
-        d->set_ts(ts_dimensions[i]);
-        d->set_idx(i);
-    }
-    request.set_format_version(format_version);
-    ::openmldb::api::PutResponse response;
-    bool ok =
-        client_.SendRequest(&::openmldb::api::TabletServer_Stub::Put, &request, &response, FLAGS_request_timeout_ms, 1);
-    if (ok && response.code() == 0) {
-        return true;
-    }
-    LOG(WARNING) << "put row to table " << tid << " failed with error " << response.msg() << " and error code "
-                 << response.code();
-    return false;
-}
 
-bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::vector<std::pair<std::string, uint32_t>>& dimensions,
-                       const std::vector<uint64_t>& ts_dimensions, const std::string& value) {
-    return Put(tid, pid, dimensions, ts_dimensions, value, 1);
-}
+
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, const char* pk, uint64_t time, const char* value, uint32_t size,
                        uint32_t format_version) {

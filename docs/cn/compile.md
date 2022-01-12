@@ -43,7 +43,7 @@
 
 - **内存**: 推荐 8GB+.
 - **硬盘**: 全量编译需要至少 25GB 的空闲磁盘空间
-- **操作系统**: CentOS 7, Ubuntu 20.04 或者 macOS >= 10.14, 其他系统未经测试，欢迎提 issue 或 PR
+- **操作系统**: CentOS 7, Ubuntu 20.04 或者 macOS >= 10.15, 其他系统未经测试，欢迎提 issue 或 PR
 
 💡 注意：默认关闭了并发编译，其典型的编译时间大约在一小时左右。如果你认为编译机器的资源足够，可以通过调整编译参数 `NPROC` 来启用并发编译功能。这会减少编译所需要的时间但也需要更多但内存。例如下面命令将并发编译数设置成使用四个核进行并发编译：
 ```bash
@@ -52,7 +52,7 @@ make NPROC=4
 
 ## 依赖工具
 
-- gcc 8 或更新版本
+- gcc >= 8 或者 AppleClang >= 12.0.0
 - cmake 3.20 或更新版本
 - jdk 8
 - python3, python setuptools, python wheel
@@ -118,6 +118,10 @@ make CMAKE_BUILD_TYPE=Debug
 - BUILD_BUNDLED: 从源码编译 thirdparty 依赖，而不是下载预编译包
 
   默认: OFF
+
+- TCMALLOC_ENABLE: 通过 tcmalloc 的暴露应用的内存信息
+
+  默认: ON
 
 
 ## 针对OpenMLDB优化的Spark发行版（可选）

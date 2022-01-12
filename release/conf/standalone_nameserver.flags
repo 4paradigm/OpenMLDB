@@ -1,0 +1,9 @@
+# nameserver.conf
+--endpoint=127.0.0.1:6527
+--role=nameserver
+--tablet=127.0.0.1:9921
+
+--openmldb_log_dir=./standalone_logs
+--log_level=info
+
+--system_table_replica_num=1

@@ -30,8 +30,9 @@ object ImportOnlineData {
   }
 
   def importOnlineData(sql: String): Unit = {
-    val spark = new OpenmldbSession(SparkSession.builder().config("openmldb.loaddata.mode", "online").getOrCreate())
-    spark.sql(sql)
+    val sess = new OpenmldbSession(SparkSession.builder().config("openmldb.loaddata.mode", "online").getOrCreate())
+    sess.sql(sql)
+    sess.close()
   }
 
 }

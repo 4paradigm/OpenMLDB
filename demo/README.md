@@ -25,6 +25,8 @@ w2 as (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 
 ## 2. Demo with The Cluster Mode
 
+> :warning: Required docker engine version >= 18.03
+
 ```bash
 # Pull the docker and start it
 docker run -it 4pdosc/openmldb:0.3.2 bash
@@ -53,6 +55,9 @@ python3 predict.py
 :bulb: To read more details about the cluster mode, please refer to the [QuickStart (Cluster Mode)](https://github.com/4paradigm/OpenMLDB/blob/main/docs/en/cluster.md)
 
 ## 3. Demo with The Standalone Mode
+
+> :warning: Required docker engine version >= 18.03
+
 **Start docker**
 
 ```bash

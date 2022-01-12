@@ -14,10 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -x -e
+
+cd "$(dirname "$0")/../"
 
 ulimit -c unlimited
-# start_onebox.sh
 
 # first start zookeeper
 IP=127.0.0.1
@@ -33,7 +34,7 @@ TABLET3=$IP:9522
 # start tablet0
 test -d tablet0-binlogs && rm -rf tablet0-binlogs
 test -d recycle_bin0 && rm -rf recycle_bin0
-../build/bin/openmldb --db_root_path=tablet0-binlogs \
+./build/bin/openmldb --db_root_path=tablet0-binlogs \
                    --recycle_bin_root_path=recycle_bin0 \
                    --endpoint=${TABLET1} --role=tablet \
                    --binlog_notify_on_put=true\
@@ -45,7 +46,7 @@ test -d recycle_bin1 && rm -rf recycle_bin1
 
 
 # start tablet1
-../build/bin/openmldb --db_root_path=tablet1-binlogs \
+./build/bin/openmldb --db_root_path=tablet1-binlogs \
                    --recycle_bin_root_path=recycle_bin1 \
                    --endpoint=${TABLET2} --role=tablet \
                    --zk_cluster=${ZK_CLUSTER}\
@@ -57,7 +58,7 @@ test -d recycle_bin2 && rm -rf recycle_bin2
 
 
 # start tablet2
-../build/bin/openmldb --db_root_path=tablet2-binlogs \
+./build/bin/openmldb --db_root_path=tablet2-binlogs \
                    --recycle_bin_root_path=recycle_bin2 \
                    --endpoint=${TABLET3} --role=tablet \
                    --binlog_notify_on_put=true\
@@ -68,25 +69,49 @@ test -d recycle_bin2 && rm -rf recycle_bin2
 test -d recycle_bin3 && rm -rf recycle_bin3
 
 # start ns1 
-../build/bin/openmldb --endpoint=${NS1} --role=nameserver \
+./build/bin/openmldb --endpoint=${NS1} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
                    --zk_root_path=/onebox > ns1.log 2>&1 &
 
 # start ns2 
-../build/bin/openmldb --endpoint=${NS2} --role=nameserver \
+./build/bin/openmldb --endpoint=${NS2} --role=nameserver \
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
                    --zk_root_path=/onebox > ns2.log 2>&1 &
 
 # start ns3 
-../build/bin/openmldb --endpoint=${NS3} --role=nameserver \
+./build/bin/openmldb --endpoint=${NS3} --role=nameserver \
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
                    --zk_cluster=${ZK_CLUSTER}\
                    --zk_root_path=/onebox > ns3.log 2>&1 &
+
+# start TaskManager if exists
+if [ -d "./java/openmldb-taskmanager/target/openmldb-taskmanager-binary/bin/" ]
+then
+  # Change to binary directory
+  pushd ./java/openmldb-taskmanager/target/openmldb-taskmanager-binary/bin > /dev/null
+
+
+  # Update config
+  if [[ $OSTYPE == 'darwin'* ]]; then
+    sed -i '' 's/zookeeper.cluster=0.0.0.0:2181/zookeeper.cluster=0.0.0.0:6181/g' ../conf/taskmanager.properties
+    sed -i '' 's/zookeeper.root_path=\/openmldb/zookeeper.root_path=\/onebox/g' ../conf/taskmanager.properties
+    sed -i '' 's/openmldb-batchjob-0.4.0-SNAPSHOT.jar/openmldb-batchjob-0.4.0-SNAPSHOT.jar/g' ../conf/taskmanager.properties
+  else
+    sed -i 's/zookeeper.cluster=0.0.0.0:2181/zookeeper.cluster=0.0.0.0:6181/g' ../conf/taskmanager.properties
+    sed -i 's/zookeeper.root_path=\/openmldb/zookeeper.root_path=\/onebox/g' ../conf/taskmanager.properties
+    sed -i 's/openmldb-batchjob-0.4.0-SNAPSHOT.jar/openmldb-batchjob-0.4.0-SNAPSHOT.jar/g' ../conf/taskmanager.properties
+  fi
+
+  # Start taskmanager
+  sh ./taskmanager.sh 2>&1 &
+
+  popd > /dev/null
+fi
 
 sleep 3
 

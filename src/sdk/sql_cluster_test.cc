@@ -73,13 +73,19 @@ class SQLClusterDDLTest : public SQLClusterTest {
         router.reset();
     }
 
-    void RightDDL(const std::string& name, const std::string& ddl) {
+    void RightDDL(const std::string& db, const std::string& name, const std::string& ddl) {
         ::hybridse::sdk::Status status;
         ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
         ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
     }
+    void RightDDL(const std::string& name, const std::string& ddl) {
+        RightDDL(db, name, ddl);
+    }
 
     void WrongDDL(const std::string& name, const std::string& ddl) {
+        WrongDDL(db, name, ddl);
+    }
+    void WrongDDL(const std::string& db, const std::string& name, const std::string& ddl) {
         ::hybridse::sdk::Status status;
         ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
         ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
@@ -88,6 +94,52 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::shared_ptr<SQLRouter> router;
     std::string db;
 };
+TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
+    std::string name = "test" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string ddl;
+
+    std::string db2 = "db" + GenRand();
+    ASSERT_TRUE(router->CreateDB(db2, &status));
+    // create table db2.name
+    ddl = "create table " + db2 + "." + name +
+          "("
+          "col1 int, col2 bigint, col3 string,"
+          "index(key=col3, ts=col2));";
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + db2 + "." + name + ";", &status));
+
+    // create table db2.name when default database is empty
+    ddl = "create table " + db2 + "." + name +
+          "("
+          "col1 int, col2 bigint, col3 string,"
+          "index(key=col3, ts=col2));";
+    ASSERT_TRUE(router->ExecuteDDL("", ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->ExecuteDDL("", "drop table " + db2 + "." + name + ";", &status));
+
+    ASSERT_TRUE(router->DropDB(db2, &status));
+}
+TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
+    std::string name = "test" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string ddl;
+
+    // create table db2.name when db2 not exist
+    ddl = "create table db2." + name +
+          "("
+          "col1 int, col2 bigint, col3 string,"
+          "index(key=col3, ts=col2));";
+    ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
+
+    // create table db2.name when db2 not exit
+    ddl = "create table db2." + name +
+          "("
+          "col1 int, col2 bigint, col3 string,"
+          "index(key=col3, ts=col2));";
+    ASSERT_FALSE(router->ExecuteDDL("", ddl, &status)) << "ddl: " << ddl;
+    ASSERT_FALSE(router->ExecuteDDL("", "drop table " + name + ";", &status));
+}
 
 TEST_F(SQLClusterDDLTest, ColumnDefaultValue) {
     std::string name = "test" + GenRand();
@@ -393,6 +445,7 @@ static bool IsBatchSupportMode(const std::string& mode) {
     }
     return true;
 }
+
 TEST_P(SQLSDKQueryTest, SqlSdkDistributeBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
@@ -617,6 +670,17 @@ TEST_F(SQLClusterTest, GetTableSchema) {
 
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
+}
+TEST_P(SQLSDKClusterOnlineBatchQueryTest, SqlSdkDistributeBatchTest) {
+    auto sql_case = GetParam();
+    if (!IsBatchSupportMode(sql_case.mode())) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    DistributeRunBatchModeSDK(sql_case, router_, mc_->GetTbEndpoint());
+    LOG(INFO) << "Finish SqlSdkDistributeBatchTest: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
 }  // namespace sdk

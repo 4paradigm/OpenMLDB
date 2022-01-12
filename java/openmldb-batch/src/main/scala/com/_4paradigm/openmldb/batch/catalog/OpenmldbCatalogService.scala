@@ -22,13 +22,16 @@ import com._4paradigm.openmldb.sdk.SdkOption
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
 
-class OpenmldbCatalogService(val zkCluster: String, val zkPath: String) {
+class OpenmldbCatalogService(val zkCluster: String, val zkPath: String, val openmldbJsdkPath: String) {
 
   val option = new SdkOption
   option.setZkCluster(zkCluster)
   option.setZkPath(zkPath)
+  val sqlExecutor = new SqlClusterExecutor(option, openmldbJsdkPath)
 
-  val sqlExecutor = new SqlClusterExecutor(option)
+  def this(zkCluster: String, zkPath: String) = {
+    this(zkCluster, zkPath, "")
+  }
 
   def getDatabases: Array[String] = {
     sqlExecutor.showDatabases().asScala.toArray

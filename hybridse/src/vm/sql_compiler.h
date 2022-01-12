@@ -63,6 +63,7 @@ struct SqlContext {
     std::string request_name;
     Schema parameter_types;
     uint32_t row_size;
+    uint32_t limit_cnt = 0;
     std::string ir;
     std::string logical_plan_str;
     std::string physical_plan_str;

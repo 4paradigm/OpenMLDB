@@ -69,7 +69,7 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>3.11.0</version>
+            <version>3.16.1</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -96,13 +96,6 @@
             <artifactId>lombok</artifactId>
             <version>1.18.4</version>
             <scope>provided</scope>
-        </dependency>
-
-        <!-- OpenMLDB -->
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-common</artifactId>
-            <version>${project.parent.version}</version>
         </dependency>
 
         <!-- Hadoop -->
@@ -151,10 +144,22 @@
             <version>13.0.0</version>
         </dependency>
 
-        <!-- OpenMLDB client -->
+        <!-- OpenMLDB -->
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-common</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-batchjob</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
 

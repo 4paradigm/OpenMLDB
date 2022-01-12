@@ -61,6 +61,7 @@ using hybridse::sqlcase::SqlCase;
 const std::vector<std::string> FILTERS({"physical-plan-unsupport",
                                         "zetasql-unsupport",
                                         "logical-plan-unsupport",
+                                        "batch-unsupport",
                                         "parser-unsupport"});
 
 class TransformTest : public ::testing::TestWithParam<SqlCase> {
@@ -69,6 +70,7 @@ class TransformTest : public ::testing::TestWithParam<SqlCase> {
     ~TransformTest() {}
     node::NodeManager manager;
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformTest);
 INSTANTIATE_TEST_SUITE_P(
     SqlSimpleQueryParse, TransformTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
@@ -528,6 +530,89 @@ TEST_F(TransformTest, PhysicalPlanFailOnOnlyFullGroupBy) {
         "functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by");
 }
 
+// OpenMLDB column resolve failure check
+TEST_F(TransformTest, PhysicalColumnResolveFailTest) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col1 as c1, col3 from t1) as tt;",
+        kBatchMode, common::kOk,
+        "ok");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col1 as c1, col3 from t1) as tt;",
+        kRequestMode, common::kOk,
+        "ok");
+
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from t1;",
+        kBatchMode, common::kColumnNotFound,
+        "Fail to find column c1");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from t1;",
+        kRequestMode, common::kColumnNotFound,
+        "Fail to find column c1");
+
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col2 as c1, col3 from t1) as tt;",
+        kBatchMode, common::kColumnAmbiguous,
+        "Ambiguous column name c1");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col2 as c1, col3 from t1) as tt;",
+        kRequestMode, common::kColumnAmbiguous,
+        "Ambiguous column name c1");
+
+    PhysicalPlanFailCheck(
+        catalog,
+        "select * from\n"
+        "      (\n"
+        "      SELECT\n"
+        "      col1 as id,\n"
+        "      col1 as id,\n"
+        "      sum(col2) OVER w1 as w1_col2_sum,\n"
+        "      FROM t1 WINDOW\n"
+        "      w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)\n"
+        "      ) as out0 LAST JOIN\n"
+        "      (\n"
+        "      SELECT\n"
+        "      col1 as id,\n"
+        "      sum(col2) OVER w2 as w2_col2_sum FROM t1 WINDOW\n"
+        "      w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)\n"
+        "      ) as out1 ON out0.id = out1.id;",
+        kRequestMode, common::kOk,
+        "ok");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select * from\n"
+        "      (\n"
+        "      SELECT\n"
+        "      col1 as id,\n"
+        "      col2 as id,\n"
+        "      sum(col2) OVER w1 as w1_col2_sum,\n"
+        "      FROM t1 WINDOW\n"
+        "      w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)\n"
+        "      ) as out0 LAST JOIN\n"
+        "      (\n"
+        "      SELECT\n"
+        "      col1 as id,\n"
+        "      sum(col2) OVER w2 as w2_col2_sum FROM t1 WINDOW\n"
+        "      w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)\n"
+        "      ) as out1 ON out0.id = out1.id;",
+        kRequestMode, common::kColumnAmbiguous,
+        "Ambiguous column name .out0.id");
+}
+
 TEST_F(TransformTest, TransfromConditionsTest) {
     std::vector<std::pair<std::string, std::vector<std::string>>> sql_exp;
 
@@ -759,6 +844,8 @@ class KeyGenTest : public ::testing::TestWithParam<std::string> {
     ~KeyGenTest() {}
     node::NodeManager nm;
 };
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(KeyGenTest);
 INSTANTIATE_TEST_SUITE_P(KeyGen, KeyGenTest,
                         testing::Values("select col1 from t1;",
                                         "select col1, col2 from t1;"));
@@ -813,6 +900,7 @@ class FilterGenTest : public ::testing::TestWithParam<std::string> {
     ~FilterGenTest() {}
     node::NodeManager nm;
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FilterGenTest);
 INSTANTIATE_TEST_SUITE_P(FilterGen, FilterGenTest,
                         testing::Values("select t1.col1=t2.col1 from t1,t2;",
                                         "select t1.col1!=t2.col2 from t1,t2;",
@@ -870,6 +958,7 @@ class TransformPassOptimizedTest
     TransformPassOptimizedTest() {}
     ~TransformPassOptimizedTest() {}
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformPassOptimizedTest);
 INSTANTIATE_TEST_SUITE_P(
     GroupHavingOptimized, TransformPassOptimizedTest,
     testing::Values(
@@ -1349,7 +1438,7 @@ class SimpleCataLogTransformPassOptimizedTest
     SimpleCataLogTransformPassOptimizedTest() {}
     ~SimpleCataLogTransformPassOptimizedTest() {}
 };
-
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SimpleCataLogTransformPassOptimizedTest);
 // LeftJoinPass dosen't work in simple catalog
 INSTANTIATE_TEST_SUITE_P(
     JoinFilterOptimized, SimpleCataLogTransformPassOptimizedTest,

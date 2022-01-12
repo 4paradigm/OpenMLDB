@@ -15,13 +15,10 @@
  */
 package com._4paradigm.openmldb.batch.nodes
 
-import com._4paradigm.hybridse.node.ConstNode
-import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.PhysicalLoadDataNode
-import com._4paradigm.openmldb.batch.utils.SparkRowUtil
-import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
+import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkRowUtil}
+import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.proto.NS.OfflineTableInfo
-import com._4paradigm.openmldb.proto.Type.DataType
 import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
 
@@ -30,75 +27,6 @@ import scala.collection.mutable
 
 object LoadDataPlan {
   private val logger = LoggerFactory.getLogger(this.getClass)
-
-  def getStr(node: ConstNode): String = {
-    node.GetStr()
-  }
-
-  def getBool(node: ConstNode): String = {
-    node.GetBool().toString
-  }
-
-  def getStringOrDefault(node: ConstNode, default: String): String = {
-    if (node != null) {
-      node.GetStr()
-    } else {
-      default
-    }
-  }
-
-  def getBoolOrDefault(node: ConstNode, default: String): String = {
-    if (node != null) {
-      node.GetBool().toString
-    } else {
-      default
-    }
-  }
-
-  def parseOption(node: ConstNode, default: String, f: (ConstNode, String) => String): String = {
-    f(node, default)
-  }
-
-  def updateOptionsMap(options: mutable.Map[String, String], node: ConstNode, name: String, getValue: ConstNode =>
-    String): Unit = {
-    if (node != null) {
-      options += (name -> getValue(node))
-    }
-  }
-
-  def parseOptions(node: PhysicalLoadDataNode): (String, Map[String, String], String, Boolean) = {
-    // read format
-    val format = parseOption(node.GetOption("format"), "csv", getStringOrDefault).toLowerCase
-    require(format.equals("csv") || format.equals("parquet"))
-
-    // read options
-    val options: mutable.Map[String, String] = mutable.Map()
-    // default values:
-    // delimiter -> sep: ,
-    // header: true(different with spark)
-    // null_value -> nullValue: null(different with spark)
-    // quote: '\0'(means no quote, the same with spark quote "empty string")
-    options += ("header" -> "true")
-    options += ("nullValue" -> "null")
-    updateOptionsMap(options, node.GetOption("delimiter"), "sep", getStr)
-    updateOptionsMap(options, node.GetOption("header"), "header", getBool)
-    updateOptionsMap(options, node.GetOption("null_value"), "nullValue", getStr)
-    updateOptionsMap(options, node.GetOption("quote"), "quote", getStr)
-
-    // write mode/save mode, not the read mode
-    val modeStr = parseOption(node.GetOption("mode"), "error_if_exists", getStringOrDefault).toLowerCase
-    val mode = modeStr match {
-      case "error_if_exists" => "errorifexists"
-      // append/overwrite, stay the same
-      case "append" | "overwrite" => modeStr
-      case others: Any => throw new UnsupportedHybridSeException(s"unsupported write mode $others")
-    }
-
-    // if symbolic link(aka deep_copy)
-    val deepCopy = parseOption(node.GetOption("deep_copy"), "true", getBoolOrDefault).toBoolean
-
-    (format, options.toMap, mode, deepCopy)
-  }
 
   def gen(ctx: PlanContext, node: PhysicalLoadDataNode): SparkInstance = {
     val inputFile = node.File()
@@ -111,8 +39,10 @@ object LoadDataPlan {
     require(storage == "offline" || storage == "online")
 
     // read settings
-    val (format, options, mode, deepCopy) = parseOptions(node)
-    logger.info("load data to storage {}, read[format {}, options {}], write[mode {}], is soft? {}", storage, format,
+    val (format, options, mode, deepCopyOpt) = HybridseUtil.parseOptions(node)
+    require(deepCopyOpt.nonEmpty)
+    val deepCopy = deepCopyOpt.get
+    logger.info("load data to storage {}, read[format {}, options {}], write[mode {}], is deep? {}", storage, format,
       options, mode, deepCopy.toString)
 
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")
@@ -129,33 +59,30 @@ object LoadDataPlan {
         "zkPath" -> ctx.getConf.openmldbZkRootPath)
       // The dataframe which be read should have the correct column types.
       var struct = new StructType
-      DataType.getDescriptor
       info.getColumnDescList.forEach(
         col => struct = struct.add(col.getName, SparkRowUtil.protoTypeToScalaType(col.getDataType), !col.getNotNull)
       )
       logger.info("read schema: {}", struct)
       val df = spark.read.options(options).format(format).schema(struct).load(inputFile)
-      if (logger.isInfoEnabled()) {
-        logger.debug("read dataframe: {}", df)
+      if (logger.isDebugEnabled()) {
+        logger.debug("read dataframe count: {}", df.count())
+        df.show(10)
       }
       df.write.options(writeOptions).format("openmldb").mode(mode).save()
     } else {
-      // offline
+      // only in some case, do not need to update info
       var needUpdateInfo = true
       val newInfoBuilder = info.toBuilder
 
       val infoExists = info.hasOfflineTableInfo
       if (!deepCopy) {
-        // soft deep, no need to read files
-        if (infoExists) {
-          require(mode == "overwrite", "offline info has already existed, only overwrite mode works")
-        }
+        // soft copy, no need to read files
+        require(!infoExists, "offline info has already existed, we don't know whether to delete the existing data")
+
         // because it's soft-copy, format+options should be the same with read settings
         val offlineBuilder = OfflineTableInfo.newBuilder().setPath(inputFile).setFormat(format).setDeepCopy(false)
           .putAllOptions(options.asJava)
-        // TODO(hw): how about the origin offline data?
-        // update offline info to nameserver
-        needUpdateInfo = true
+        // update to ns later
         newInfoBuilder.setOfflineTableInfo(offlineBuilder)
       } else {
         // deep copy
@@ -165,25 +92,36 @@ object LoadDataPlan {
         } else {
           ctx.getConf.offlineDataPrefix
         }
+        // If we recreate table, this dir will be cleaned too. It should be safe.
         val offlineDataPath = s"$offlineDataPrefix/$db/$table"
         // write default settings: no option and parquet format
         var (writePath, writeFormat) = (offlineDataPath, "parquet")
         var writeOptions: mutable.Map[String, String] = mutable.Map()
         if (infoExists) {
           require(mode != "errorifexists", "offline info exists")
-          // write options & format use the existed settings
           val old = info.getOfflineTableInfo
-          // overwrite mode won't change the offline data address
-          writePath = old.getPath
-          writeFormat = old.getFormat
-          writeOptions = old.getOptionsMap.asScala
-          // if origin offline data is deep-coped, we don't need to update offline info
-          needUpdateInfo = !old.getDeepCopy
-          // TODO(hw): how about the soft-coped origin offline data?
+          if (!old.getDeepCopy) {
+            require(mode == "overwrite", "Only overwrite mode works. Old offline data is soft-coped, only can " +
+              "overwrite the offline info, leave the soft-coped data as it is.")
+            // if old offline data is soft-coped, we need to reject the old info, use the 'offlineDataPath' and
+            // normal settings
+            needUpdateInfo = true
+          } else {
+            // if old offline data is deep-coped, we need to use the old info, and don't need to update info to ns
+            writeFormat = old.getFormat
+            writeOptions = old.getOptionsMap.asScala
+            writePath = old.getPath
+            needUpdateInfo = false
+          }
         }
 
         // do deep copy
+        require(inputFile != writePath, "read and write paths shouldn't be the same, it may clean data in the path")
         val df = spark.read.options(options).format(format).load(inputFile)
+        if (logger.isDebugEnabled()) {
+          logger.debug("read dataframe count: {}", df.count())
+          df.show(10)
+        }
         df.write.mode(mode).format(writeFormat).options(writeOptions.toMap).save(writePath)
         val offlineBuilder = OfflineTableInfo.newBuilder().setPath(writePath).setFormat(writeFormat).setDeepCopy(true)
           .putAllOptions(writeOptions.asJava)

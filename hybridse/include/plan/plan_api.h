@@ -32,6 +32,7 @@ class PlanAPI {
                                          Status& status,  // NOLINT (runtime/references)
                                          bool is_batch_mode = true, bool is_cluster = false,
                                          bool enable_batch_window_parallelization = false);
+    static const int GetPlanLimitCount(node::PlanNode* plan_trees);
     static const std::string GenerateName(const std::string prefix, int id);
 };
 

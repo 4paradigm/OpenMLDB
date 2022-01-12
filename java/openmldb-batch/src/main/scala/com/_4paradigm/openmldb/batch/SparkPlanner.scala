@@ -22,11 +22,12 @@ import com._4paradigm.hybridse.node.JoinType
 import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
 import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
   PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalLoadDataNode,
-  PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSimpleProjectNode,
-  PhysicalSortNode, PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType}
+  PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode, PhysicalSelectIntoNode,
+  PhysicalSimpleProjectNode, PhysicalSortNode, PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType}
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan,
-  JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SimpleProjectPlan, SortByPlan, WindowAggPlan}
+  JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SelectIntoPlan, SimpleProjectPlan, SortByPlan,
+  WindowAggPlan}
 import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -42,18 +43,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
 
   var openmldbSession: OpenmldbSession = _
 
-  if (this.config.hybridseJsdkLibraryPath.equals("")) {
-    // Set library path to the one in openmldb jsdk
-    config.hybridseJsdkLibraryPath = SqlClusterExecutor.findSdkLibraryPath()
-  }
-
   // Ensure native initialized
-  if (config.hybridseJsdkLibraryPath.equals("")) {
-    // Should not load hybridse jsdk so and openmldb jsdk so at the same time
-    SqlClusterExecutor.initJavaSdkLibrary()
-  } else {
-    HybridSeLibrary.initCore(config.hybridseJsdkLibraryPath)
-  }
+  SqlClusterExecutor.initJavaSdkLibrary(config.openmldbJsdkLibraryPath)
   Engine.InitializeGlobalLLVM()
 
   def this(session: SparkSession, sparkAppName: String) = {
@@ -273,6 +264,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
       //  FilterPlan.gen(ctx, PhysicalFilterNode.CastFrom(root), children.head)
       case PhysicalOpType.kPhysicalOpLoadData =>
         LoadDataPlan.gen(ctx, PhysicalLoadDataNode.CastFrom(root))
+      case PhysicalOpType.kPhysicalOpSelectInto =>
+        SelectIntoPlan.gen(ctx, PhysicalSelectIntoNode.CastFrom(root), children.head)
       case _ =>
         throw new UnsupportedHybridSeException(s"Plan type $opType not supported")
     }

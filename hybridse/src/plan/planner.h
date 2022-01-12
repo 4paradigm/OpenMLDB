@@ -53,6 +53,7 @@ class Planner {
     bool MergeWindows(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
                       std::vector<const node::WindowDefNode *> *windows);
 
+    static int GetPlanTreeLimitCount(node::PlanNode *node);
  protected:
     const bool is_batch_mode_;
     const bool is_cluster_optimized_;
@@ -62,6 +63,7 @@ class Planner {
     bool IsTable(node::PlanNode *node, node::PlanNode **output);
     base::Status ValidateRequestTable(node::PlanNode *node, std::vector<node::PlanNode *> &request_tables);  // NOLINT
     base::Status ValidateOnlineServingOp(node::PlanNode *node);
+    base::Status ValidateClusterOnlineTrainingOp(node::PlanNode *node);
     base::Status CheckWindowFrame(const node::WindowDefNode *w_ptr);
     base::Status CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree);
     base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, PlanNode **plan_tree);

@@ -18,6 +18,7 @@
 #define SRC_CLIENT_TASKMANAGER_CLIENT_H_
 
 #include <string>
+
 #include "base/status.h"
 #include "client/client.h"
 #include "proto/taskmanager.pb.h"
@@ -30,17 +31,14 @@ class TaskManagerClient : public Client {
  public:
     TaskManagerClient(const std::string& endpoint, const std::string& real_endpoint, bool use_sleep_policy)
         : Client(endpoint, real_endpoint),
-        client_(real_endpoint.empty() ? endpoint : real_endpoint, use_sleep_policy) {}
+          client_(real_endpoint.empty() ? endpoint : real_endpoint, use_sleep_policy) {}
 
     TaskManagerClient(const std::string& endpoint, const std::string& real_endpoint)
-        : Client(endpoint, real_endpoint),
-          client_(real_endpoint.empty() ? endpoint : real_endpoint, true) {}
+        : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint, true) {}
 
-    ~TaskManagerClient() {}
+    ~TaskManagerClient() override {}
 
-    int Init() override {
-        return client_.Init();
-    }
+    int Init() override { return client_.Init(); }
 
     ::openmldb::base::Status ShowJobs(const bool only_unfinished,
                                       std::vector<::openmldb::taskmanager::JobInfo>& job_infos);
@@ -53,9 +51,14 @@ class TaskManagerClient : public Client {
                                              const std::string& default_db, ::openmldb::taskmanager::JobInfo& job_info);
 
     ::openmldb::base::Status ImportOnlineData(const std::string& sql, const std::map<std::string, std::string>& config,
-                                              const std::string& default_db, ::openmldb::taskmanager::JobInfo& job_info);
+                                              const std::string& default_db,
+                                              ::openmldb::taskmanager::JobInfo& job_info);
 
     ::openmldb::base::Status ImportOfflineData(const std::string& sql, const std::map<std::string, std::string>& config,
+                                               const std::string& default_db,
+                                               ::openmldb::taskmanager::JobInfo& job_info);
+
+    ::openmldb::base::Status ExportOfflineData(const std::string& sql, const std::map<std::string, std::string>& config,
                                                const std::string& default_db,
                                                ::openmldb::taskmanager::JobInfo& job_info);
 

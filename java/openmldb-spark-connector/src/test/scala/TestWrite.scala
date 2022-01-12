@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
+import java.lang.Thread.currentThread
+
 import com._4paradigm.openmldb.sdk.SdkOption
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.scalatest.FunSuite
-
-import java.lang.Thread.currentThread
 
 class TestWrite extends FunSuite {
   test("Test write a local file to openmldb") {
@@ -51,7 +51,8 @@ class TestWrite extends FunSuite {
     option.setZkPath(zkPath)
     val executor = new SqlClusterExecutor(option)
     executor.createDB(db)
-    executor.executeDDL(db, "create table " + table + "(c1 bool, c2 smallint, c3 int, c4 bigint, c5 float, c6 double," +
+    executor.executeDDL(db, s"drop table $table")
+    executor.executeDDL(db, s"create table $table(c1 bool, c2 smallint, c3 int, c4 bigint, c5 float, c6 double," +
       "c7 string, c8 date, c9 timestamp, c10_str string);")
 
     // batch write can't use ErrorIfExists
