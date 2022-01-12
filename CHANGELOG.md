@@ -22,7 +22,7 @@
 - Support data import and export for the cluster deployment
 - Support default values when creating a table (#563 @zoyopei)
 - Support string delimiters and quotes (#668 @ZackeryWang)
-- Add a new `lru_cache` to support upsert (#795 vagetablechicken)
+- Add a new `lru_cache` to support upsert (#795 @vagetablechicken)
 - Support adding index with any `ts_col` (#828 @dl239)
 - Improve documentations (#952 #885 @mahengyang; #834 @Nicholas-SR)
 
