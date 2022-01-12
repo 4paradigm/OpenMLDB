@@ -505,6 +505,8 @@ void EngineTestRunner::RunBenchmark(size_t iters) {
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(EngineTest);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BatchRequestEngineTest);
 
+INSTANTIATE_TEST_SUITE_P(EngineTestBug, EngineTest,
+                         testing::ValuesIn(sqlcase::InitCases("/cases/debug/bug.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineFailQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/fail_query.yaml")));
 

@@ -1122,3 +1122,74 @@ cases:
         - [3,"aa",22,31,62]
         - [4,"bb",23,34,34]
         - [5,"bb",24,34,68]
+  - id: 22
+    desc: lastjoin后group by
+    mode: request-unsupport, cluster-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",21,31,1590738990000 ]
+          - [ "cc",41,51,1590738991000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,151,1590738992000 ]
+    sql: select {0}.c1,sum({1}.c3) as v1 from {0} last join {1} ORDER BY {1}.c3 on {0}.c1={1}.c1 group by {0}.c1;
+    expect:
+      order: c1
+      columns: [ "c1 string","v1 bigint" ]
+      rows:
+        - [ "aa",26 ]
+        - [ "cc",151 ]
+  - id: 23
+    desc: lastjoin后group by, left key is match with left table index
+    mode: request-unsupport, cluster-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",21,31,1590738990000 ]
+          - [ "cc",41,51,1590738991000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,151,1590738992000 ]
+    sql: select {0}.c1,sum({1}.c3) as v1 from {0} last join {1} ORDER BY {1}.c3 on {0}.c1={1}.c1 group by {0}.c1;
+    expect:
+      order: c1
+      columns: [ "c1 string","v1 bigint" ]
+      rows:
+        - [ "aa",26 ]
+        - [ "cc",151 ]
+  - id: 24
+    desc: lastjoin后group by with left key and index key
+    mode: request-unsupport, cluster-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",21,31,1590738990000 ]
+          - [ "cc",41,51,1590738991000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,151,1590738992000 ]
+    sql: |
+      select {0}.c1,sum({1}.c3) as v1 from {0} last join {1} ORDER BY {1}.c3 on {0}.c1={1}.c1 and {0}.c2 =
+      {1}.c2 group by {0}.c1;
+    expect:
+      order: c1
+      columns: [ "c1 string","v1 bigint" ]
+      rows:
+        - [ "aa",13 ]
+        - [ "cc",151 ]

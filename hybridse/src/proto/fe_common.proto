@@ -102,6 +102,8 @@ enum StatusCode {
     kTableExists = 1207;
     // error with catalog, column already exist in the given table
     kColumnExists = 1208;
+    // error with column resolve with ambiguous columns
+    kColumnAmbiguous= 1209;
 
     kCodecError = 1300;
     kSchemaCodecError = 1301;

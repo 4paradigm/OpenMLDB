@@ -1,0 +1,7 @@
+# apiserver.conf
+--endpoint=127.0.0.1:8080
+--role=apiserver
+--nameserver=127.0.0.1:6527
+
+--openmldb_log_dir=./standalone_logs
+--log_level=info

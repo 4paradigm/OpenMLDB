@@ -16,11 +16,13 @@
 
 package com._4paradigm.openmldb.taskmanager.spark
 
-import com._4paradigm.openmldb.taskmanager.JobInfoManager
+import com._4paradigm.openmldb.taskmanager.{JobInfoManager, LogManager}
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.apache.spark.launcher.SparkLauncher
+
+import java.nio.file.Paths
 
 object SparkJobManager {
 
@@ -61,7 +63,6 @@ object SparkJobManager {
 
   def submitSparkJob(jobType: String, mainClass: String, args: List[String] = List(),
                      sparkConf: Map[String, String] = Map(), defaultDb: String = ""): JobInfo = {
-
     val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
 
     // Submit Spark application with SparkLauncher
@@ -75,6 +76,16 @@ object SparkJobManager {
     launcher.setConf("spark.yarn.appMasterEnv.LC_ALL", "en_US.UTF-8")
     launcher.setConf("spark.yarn.executorEnv.LANG", "en_US.UTF-8")
     launcher.setConf("spark.yarn.executorEnv.LC_ALL", "en_US.UTF-8")
+
+    // TODO: Support escape delimiter
+    // Set default Spark conf by TaskManager configuration file
+    val defaultSparkConfs = TaskManagerConfig.SPARK_DEFAULT_CONF.split(",")
+    defaultSparkConfs.map(sparkConf => {
+      if (sparkConf.nonEmpty) {
+        val kvList = sparkConf.split("=")
+        launcher.setConf(kvList(0), kvList(1))
+      }
+    })
 
     // Set ZooKeeper config for openmldb-batch jobs
     if (TaskManagerConfig.ZK_CLUSTER.nonEmpty && TaskManagerConfig.ZK_ROOT_PATH.nonEmpty) {
@@ -91,6 +102,13 @@ object SparkJobManager {
     }
     for ((k, v) <- sparkConf) {
       launcher.setConf(k, v)
+    }
+
+    if (TaskManagerConfig.JOB_LOG_PATH.nonEmpty) {
+      // Create local file and redirect the log of job into single file
+      val jobLogFile = LogManager.getJobLogFile(jobInfo.getId)
+      launcher.redirectOutput(jobLogFile)
+      launcher.redirectError(jobLogFile)
     }
 
     // Submit Spark application and watch state with custom listener

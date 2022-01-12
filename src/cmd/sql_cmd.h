@@ -908,14 +908,16 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             new_indexs.emplace_back(column_key);
         }
         if (!new_indexs.empty()) {
-            uint64_t record_cnt = 0;
-            for (int idx = 0; idx < it->second.table_partition_size(); idx++) {
-                record_cnt += it->second.table_partition(idx).record_cnt();
-            }
-            if (record_cnt > 0) {
-                return {base::ReturnCode::kError,
-                        "table " + kv.first +
-                            " has online data, cannot deploy. please drop this table and create a new one"};
+            if (cs->IsClusterMode()) {
+                uint64_t record_cnt = 0;
+                for (int idx = 0; idx < it->second.table_partition_size(); idx++) {
+                    record_cnt += it->second.table_partition(idx).record_cnt();
+                }
+                if (record_cnt > 0) {
+                    return {base::ReturnCode::kError,
+                            "table " + kv.first +
+                                " has online data, cannot deploy. please drop this table and create a new one"};
+                }
             }
             new_index_map.emplace(kv.first, std::move(new_indexs));
         }

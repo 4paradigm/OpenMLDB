@@ -223,6 +223,8 @@ endif()
 
 message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 
+add_subdirectory(monitoring)
+
 FILE(GLOB OPENMLDB_SCRIPTS "${CMAKE_SOURCE_DIR}/release/bin/*")
 FILE(GLOB OPENMLDB_CONFS "${CMAKE_SOURCE_DIR}/release/conf/*")
 FILE(GLOB OPENMLDB_TOOLS "${CMAKE_SOURCE_DIR}/tools/*")

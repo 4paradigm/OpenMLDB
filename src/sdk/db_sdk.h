@@ -118,6 +118,7 @@ class DBSDK {
     std::shared_ptr<hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db, const std::string& sp_name,
                                                                    std::string* msg);
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
+    virtual bool TriggerNotify() const = 0;
 
  protected:
     virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
@@ -151,6 +152,7 @@ class ClusterSDK : public DBSDK {
     ~ClusterSDK() override;
     bool Init() override;
     bool IsClusterMode() const override { return true; }
+    bool TriggerNotify() const override;
 
  protected:
     bool BuildCatalog() override;
@@ -182,6 +184,8 @@ class StandAloneSDK : public DBSDK {
     bool Init() override;
 
     bool IsClusterMode() const override { return false; }
+
+    bool TriggerNotify() const override { return false; }
 
  protected:
     // Before connecting to ns, we only have the host&port
