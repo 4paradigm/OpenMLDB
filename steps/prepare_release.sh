@@ -14,9 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# support version syntax is X.Y.Z.{pre-prelease-identifier}
-#  where {pre-prelease-identifier} could be
-#  - semVer: X.Y.Z
+# support version syntax is X.Y.Z[.{pre-prelease-identifier}] where it could be:
+#  - semVer: X.Y.Z    # final release
 #  - X.Y.Z.(a|aplha)N # alpha release
 #  - X.Y.Z.(b|beta)N  # beta release
 #  - X.Y.Z.(r|rc)N    # release candidate
