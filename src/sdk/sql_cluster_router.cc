@@ -635,7 +635,7 @@ std::vector<std::string> SQLClusterRouter::GetAllTables(){
     SQLClusterRouter::ShowDB(&dbs,status);
     if (dbs.empty()) {
         LOG(WARNING) << "There is currently no Database";
-        return all_table;
+        return;
     }else{
         std::vector<std::string> database_tables;
         for(auto iter = dbs.begin(); iter != dbs.end(); iter++){
