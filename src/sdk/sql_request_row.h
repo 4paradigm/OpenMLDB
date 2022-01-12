@@ -79,7 +79,6 @@ class SQLRequestRow {
     std::map<std::string, std::string> record_value_;
 };
 
-class ColumnIndicesSet;
 
 /**
  * SDK input interface for batch request, with common column encoding optimization.

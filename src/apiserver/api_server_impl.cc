@@ -269,15 +269,15 @@ void APIServerImpl::RegisterPut() {
 
 void APIServerImpl::RegisterExecDeployment() {
     provider_.post("/dbs/:db_name/deployments/:sp_name", std::bind(&APIServerImpl::ExecuteProcedure, this,
-                false, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 void APIServerImpl::RegisterExecSP() {
     provider_.post("/dbs/:db_name/procedures/:sp_name", std::bind(&APIServerImpl::ExecuteProcedure, this,
-                true, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param,
+void APIServerImpl::ExecuteProcedure(const InterfaceProvider::Params& param,
         const butil::IOBuf& req_body, JsonWriter& writer) {
     auto err = GeneralError();
     auto db_it = param.find("db_name");
@@ -315,12 +315,15 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
     const auto& schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl&>(sp_info->GetInputSchema());
     // Hard copy, and RequestRow needs shared schema
     auto input_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(schema_impl.GetSchema());
-    auto common_column_indices = std::make_shared<openmldb::sdk::ColumnIndicesSet>(input_schema);
+    auto column_indices = std::make_shared<openmldb::sdk::ColumnIndicesSet>(input_schema);
 
     auto expected_input_size = input_schema->GetColumnCnt();
 
+
+
     // TODO(hw): SQLRequestRowBatch should add common & non-common cols directly
-    auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(input_schema, common_column_indices);
+
+    auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(input_schema,column_indices);
     std::set<std::string> col_set;
     for (decltype(rows.Size()) i = 0; i < rows.Size(); ++i) {
         if (!rows[i].IsArray() || rows[i].Size() != expected_input_size) {
