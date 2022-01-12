@@ -62,16 +62,6 @@ The new API genDDL, which is used to generate DDLs according to a given SQL scri
 ### Acknowledgement
 We appreciate the contribution to this release from external contributors who are not from 4Paradigm's core OpenMLDB team, including [Kanekanekane](https://github.com/Kanekanekane), [shawn-happy](https://github.com/shawn-happy), [lotabout](https://github.com/lotabout), [Shouren](https://github.com/Shouren), [zoyopei](https://github.com/zoyopei), [huqianshan](https://github.com/huqianshan)
 
-## [Unreleased]
-
-### Feature
-- Support insert multiple rows into a table using a single SQL insert statement. [#398](https://github.com/4paradigm/OpenMLDB/issues/398)
-- Support aggregation function, e.g. `COUNT`, `SUM`, `MIN`, `MAX`, `AVG`, over the whole table [#219](https://github.com/4paradigm/OpenMLDB/issues/219)
-- Enhance plan optimization on `GROUP` and `FILTER` op [#350](https://github.com/4paradigm/OpenMLDB/pull/350)
-- Refactor status code and status macro. Save first message (root message) in `status.msg`. [#430](https://github.com/4paradigm/OpenMLDB/issues/430)
-
-### Bug Fix
-- Fix plan error triggered by optimize the same plan node repeatedly. [#437](https://github.com/4paradigm/OpenMLDB/issues/437)
 
 ## [0.2.3] - 2021-08-31
 ### Feature
@@ -123,7 +113,8 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
-[Unreleased]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.3...HEAD
+[0.4.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/4paradigm/OpenMLDB/compare/0.2.2...v0.2.3
 [0.2.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.0...0.2.2
 [0.2.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.1.5-pre...v0.2.0
