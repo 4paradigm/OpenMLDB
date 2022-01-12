@@ -30,7 +30,7 @@ MLOps provides a set of practices to develop, deploy, and maintain machine learn
 <p align="center">
  <img src="images/workflow.png" alt="image-20211103103052253" width=800 />
 </p>
-The figure above shows the workflow of FeatureOps based on OpenMLDB. From offline feature development to online serving, it consists of three steps only:
+The figure above shows the workflow of FeatureOps based on OpenMLDB. From offline feature development to online serving, it only consists of three steps:
 
 1. The offline development of feature extraction using SQL
 2. The deployment of SQL scripts with one click only, switching the system from the offline to online mode
@@ -40,7 +40,7 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From offlin
 
 **The Unified Online-Offline Execution Engine:** Offline and real-time online feature extraction use a unified execution engine, thus online-offline consistency is inherently guaranteed.
 
-**Using SQL for Development and Management**: Feature extraction script development, deployment, and maintenance are all based on SQL with great ease of use.
+**SQL-Centric Development and Management**: Feature extraction script development, deployment, and maintenance are all based on SQL with great ease of use.
 
 **Customized Optimization for Feature Extraction**: Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature processing. Online feature extraction provides tens of milliseconds latency under high throughput pressure, which fully meets the online performance requirements.
 
@@ -127,7 +127,7 @@ Let's clap hands for our community contributors :clap:
 
 - **[Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)** 
 
-- **GitHub Issues and Discussions**: If you are a serious developer, you are most welcome to join our discussion on GitHub. **GitHub Issues** are used to report bugs and collect new requirements. **GitHub Discussions** are mostly used by our project maintainers to publish and comment RFCs.
+- **[GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues)** and **[GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)**: If you are a serious developer, you are most welcome to join our discussion on GitHub. **GitHub Issues** are used to report bugs and collect new requirements. **GitHub Discussions** are mostly used by our project maintainers to publish and comment RFCs.
 
 - [**Blogs (Chinese)**](https://www.zhihu.com/column/c_1417199590352916480)
 
@@ -144,4 +144,4 @@ Let's clap hands for our community contributors :clap:
 - [MLOp Practice: Using OpenMLDB in the Real-Time Anti-Fraud Model for the Bank’s Online Transaction](https://towardsdatascience.com/practice-of-openmldbs-transaction-real-time-anti-fraud-model-in-the-bank-s-online-event-40ab41fec6d4)
 
 ## 13. [User List](https://github.com/4paradigm/OpenMLDB/discussions/707)
-We have built [a user list](https://github.com/4paradigm/OpenMLDB/discussions/707) to collect feedback from the community. We really appreciate it if you can provide your use cases, comments, or any feedback when using OpenMLDB. We want to hear from you! 
+We are building [a user list](https://github.com/4paradigm/OpenMLDB/discussions/707) to collect feedback from the community. We really appreciate it if you can provide your use cases, comments, or any feedback when using OpenMLDB. We want to hear from you! 
