@@ -47,6 +47,6 @@ public class FedbDeployConfig {
         return CONFIG.getProperty(version+"_zk_url", ZK_URL);
     }
     public static String getSparkUrl(String version){
-        return CONFIG.getProperty(version+"_spark_url", ZK_URL);
+        return CONFIG.getProperty(version+"_spark_url", SPARK_URL);
     }
 }
