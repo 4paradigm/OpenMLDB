@@ -71,6 +71,8 @@ class SQLRouter {
     virtual ~SQLRouter() {}
 
     virtual bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) = 0;
+    
+    virtual std::vector<std::string> GetAllTables() = 0;
 
     virtual bool CreateDB(const std::string& db, hybridse::sdk::Status* status) = 0;
 
