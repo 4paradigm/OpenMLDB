@@ -454,7 +454,9 @@ void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::Refre
                          ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (IsClusterMode()) {
-        RefreshSingleTable(request->tid());
+        if (RefreshSingleTable(request->tid())) {
+            PDLOG(INFO, "refresh success. tid %u", request->tid());
+        }
     }
 }
 

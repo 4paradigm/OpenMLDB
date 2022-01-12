@@ -221,6 +221,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Cache thirdparty
+        uses: actions/cache@v2
+        with:
+          path: |
+            .deps/
+            thirdsrc
+          key: ${{ runner.os }}-thirdparty-${{ hashFiles('third-party/**/CMakeLists.txt', 'third-party/**/*.cmake', 'third-party/**/*.sh') }}
+
       - uses: actions/setup-java@v2
         with:
           distribution: 'adopt'

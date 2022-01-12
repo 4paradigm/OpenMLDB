@@ -22,5 +22,6 @@ export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager"
 
 for COMPONENT in $COMPONENTS; do
   ./start.sh start "$COMPONENT"
+  sleep 1
 done
 echo "OpenMLDB start success"

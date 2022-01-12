@@ -39,7 +39,7 @@ table_schema = [
 	("trip_duration", "int"),
 ]
 
-url = "http://127.0.0.1:8080/dbs/demo_db/deployments/demo"
+url = ""
 
 def get_schema():
     dict_schema = {}
@@ -96,8 +96,10 @@ def make_app():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("endpoint",  help="specify the endpoint of apiserver")
     parser.add_argument("model_path",  help="specify the model path")
     args = parser.parse_args()
+    url = "http://%s/dbs/demo_db/deployments/demo" % args.endpoint
     bst = lgb.Booster(model_file=args.model_path)
     app = make_app()
     app.listen(8887)
