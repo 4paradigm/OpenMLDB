@@ -51,11 +51,11 @@ public class StandaloneTest extends BaseTest {
                     .basePath("/home/zhaowei01/fedb-auto-test/standalone")
                     .fedbPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
                     .nsNum(1).tabletNum(1)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10018"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10019"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10020"))
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10019"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10020"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10021"))
                     .host("172.24.4.55")
-                    .port(10018)
+                    .port(10019)
                     .build();
         }
         String caseEnv = System.getProperty("caseEnv");
