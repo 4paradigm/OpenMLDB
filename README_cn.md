@@ -42,7 +42,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 
 **以 SQL 为核心的开发和管理体验：** 低门槛且功能强大的数据库开发体验，全流程基于 SQL 进行特征计算脚本开发以及部署上线。
 
-**面向特征计算的定制化性能优化：** 离线特征计算使用[定制化的针对特征计算优化的 Spark 高性能版本](https://github.com/4paradigm/spark)；线上实时特征计算在高吞吐压力下的复杂查询提供几十毫秒量级的延迟，充分满足高并发、低延迟的性能需求。
+**面向特征计算的定制化性能优化：** 离线特征计算使用[面向特征计算优化的 OpenMLDB Spark 发行版](https://docs.openmldb.ai/v/0.4/content-2/openmldbspark_distribution)；线上实时特征计算在高吞吐压力下的复杂查询提供几十毫秒量级的延迟，充分满足高并发、低延迟的性能需求。
 
 **企业级特性：** 为大规模企业级应用而设计，整合诸多企业级特性，包括灾备恢复、高可用、可无缝扩缩容、可平滑升级、可监控、企业级异构内存架构支持等。
 
@@ -58,7 +58,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
    
 3. **OpenMLDB 是否就是一个 feature store？**
    
-   OpenMLDB 包含 feature store 的全部功能，并且提供更为完整的 FeatureOps 全栈方案。除了提供特征存储功能，还具有基于 SQL 的数据库开发体验、[针对特征计算优化的 Spark 版本](https://github.com/4paradigm/spark)，针对实时特征计算优化的索引结构，特征上线服务、企业级运维和管理等功能。此外，OpenMLDB 也被用作一个高性能的时序特征数据库。
+   OpenMLDB 包含 feature store 的全部功能，并且提供更为完整的 FeatureOps 全栈方案。除了提供特征存储功能，还具有基于 SQL 的数据库开发体验、[面向特征计算优化的 OpenMLDB Spark 发行版](https://docs.openmldb.ai/v/0.4/content-2/openmldbspark_distribution)，针对实时特征计算优化的索引结构，特征上线服务、企业级运维和管理等功能。此外，OpenMLDB 也被用作一个高性能的时序特征数据库。
    
 4. **OpenMLDB 为什么选择 SQL 作为开发语言？**
    
@@ -88,7 +88,7 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 
 ## 8. OpenMLDB 文档
 
-你可以找到我们完整的 OpenMLDB 使用文档：[docs.openmldb.ai](https://docs.openmldb.ai/) 
+你可以找到我们完整的 [OpenMLDB 使用文档](https://docs.openmldb.ai/)。
 
 
 ## 9. 开发计划
@@ -123,7 +123,7 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 - 网站：[https://openmldb.ai/](https://openmldb.ai) (即将上线)
 - **Email**: [contact@openmldb.ai](mailto:contact@openmldb.ai)
 - **[Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)**
-- **GitHub Issues 和 Discussions**: 如果你是一个严肃的开发者，我们非常欢迎加入我们 GitHub 上的开发者社区，近距离参与我们的开发迭代。GitHub Issues 主要用来搜集 bugs 以及反馈新特性需求；GitHub Discussions 主要用来给开发团队发布并且讨论 RFCs。
+- **[GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues) 和 [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)**: 如果你是一个严肃的开发者，我们非常欢迎加入我们 GitHub 上的开发者社区，近距离参与我们的开发迭代。GitHub Issues 主要用来搜集 bugs 以及反馈新特性需求；GitHub Discussions 主要用来给开发团队发布并且讨论 RFCs。
 - [**技术博客**](https://www.zhihu.com/column/c_1417199590352916480)
 - **微信交流群：**
   <img src="images/wechat.png" alt="img" width=120 />  

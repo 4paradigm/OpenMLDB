@@ -89,7 +89,7 @@ We are making efforts to build a list of real-world use cases based on OpenMLDB 
 
 ## 8. Documentation
 
-You can find our detailed documentation here: [docs.openmldb.ai](https://docs.openmldb.ai/) 
+You can find our detailed [OpenMLDB Documentation](https://docs.openmldb.ai/).
 
 ## 9. Roadmap
 
@@ -126,7 +126,7 @@ Let's clap hands for our community contributors :clap:
 
 - **[Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)** 
 
-- **[GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues)** and **[GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)**: If you are a serious developer, you are most welcome to join our discussion on GitHub. **[GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues)** are used to report bugs and collect new requirements. **[GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)** are mostly used by our project maintainers to publish and comment RFCs.
+- **[GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues)** and **[GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)**: If you are a serious developer, you are most welcome to join our discussion on GitHub. The GitHub Issues is used to report bugs and collect new requirements. The GitHub Discussions is mostly used by our project maintainers to publish and comment RFCs.
 
 - [**Blogs (Chinese)**](https://www.zhihu.com/column/c_1417199590352916480)
 
