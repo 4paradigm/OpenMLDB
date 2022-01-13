@@ -29,6 +29,8 @@ class TestOpenMLDBClient(unittest.TestCase):
     ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));"
     logging.info("test_basic ...")
     engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
+    self.check_sqlalchemy_table_api(engine)
+    
     connection = engine.connect()
     try:
       connection.execute("create database db_test;")
@@ -166,6 +168,18 @@ class TestOpenMLDBClient(unittest.TestCase):
         connection.execute(sql);
       except Exception as e:
         self.assertTrue(False)
+  
+  def check_sqlalchemy_table_api(self, engine):
+    from sqlalchemy import Table, Column, Integer, MetaData
+    try:
+      metadata = MetaData()
+      test_table = Table('test_table', metadata,
+                     Column('x', Integer),
+                     Column('y', Integer))
+      metadata.create_all(engine)
+      self.assertTrue(False)
+    except Exception as e:
+      pass
 
   def show_result_list(self, rs):
     logging.info("result size: %d", len(rs))
