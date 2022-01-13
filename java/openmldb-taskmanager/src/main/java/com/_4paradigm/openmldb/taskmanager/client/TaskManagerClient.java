@@ -123,7 +123,7 @@ public class TaskManagerClient {
      * @throws Exception
      */
     public String runBatchAndShow(String sql) throws Exception {
-        return runBatchAndShow(sql,new HashMap<String ,String>(),"");
+        return runBatchAndShow(sql, new HashMap<String, String>(), "");
     }
     /**
      * Run batch sql statements and display the results.
