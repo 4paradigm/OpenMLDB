@@ -70,7 +70,7 @@ public class TaskManagerClient {
     /**
      * Stop the job.
      *
-     * @param id job's id.
+     * @param id id of job.
      * @throws Exception
      */
     public String stopJob(int id) throws Exception {
@@ -123,8 +123,7 @@ public class TaskManagerClient {
      * @throws Exception
      */
     public String runBatchAndShow(String sql) throws Exception {
-        String Msg = runBatchAndShow(sql,new HashMap<String ,String>(),"");
-        return Msg;
+        return runBatchAndShow(sql,new HashMap<String ,String>(),"");
     }
     /**
      * Run batch sql statements and display the results.
@@ -150,7 +149,7 @@ public class TaskManagerClient {
     /**
      * Show the job rely on id.
      *
-     * @param id job's id.
+     * @param id id of job.
      * @return the JobInfo object.
      * @throws Exception
      */
@@ -171,8 +170,8 @@ public class TaskManagerClient {
      * @param sql query sql string.
      * @throws Exception
      */
-    public void importOnlineData(String sql) throws Exception {
-        importOnlineData(sql, new HashMap<String, String>(), "");
+    public String importOnlineData(String sql) throws Exception {
+        return importOnlineData(sql, new HashMap<String, String>(), "");
     }
     /**
      * Import online data.
@@ -202,8 +201,7 @@ public class TaskManagerClient {
      * @throws Exception
      */
     public String importOfflineData(String sql) throws Exception {
-        String Msg = importOfflineData(sql, new HashMap<String, String>(), "");
-        return Msg;
+        return importOfflineData(sql, new HashMap<String, String>(), "");
     }
 
     /**
@@ -253,8 +251,7 @@ public class TaskManagerClient {
      * @throws Exception
      */
     public String exportOfflineData(String sql) throws Exception {
-        String Msg = exportOfflineData(sql, new HashMap<String, String>(), "");
-        return Msg;
+        return exportOfflineData(sql, new HashMap<String, String>(), "");
     }
     /**
      * Export offline data.
