@@ -10,9 +10,9 @@
 <!--                    &lt;!&ndash;<include name="testInsert" />&ndash;&gt;-->
 <!--                &lt;!&ndash;</methods>&ndash;&gt;-->
 <!--            </class>-->
-            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.ExpressTest">
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.FZCaseTest">
             </class>
-            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.FunctionTest">
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.LastJoinTest">
             </class>
         </classes>
 <!--        <packages>-->
