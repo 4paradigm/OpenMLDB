@@ -20,6 +20,7 @@ sh openmldb-tablet-1/bin/start.sh stop tablet
 sh openmldb-tablet-2/bin/start.sh stop tablet
 sh openmldb-tablet-3/bin/start.sh stop tablet
 sh openmldb-apiserver-1/bin/start.sh stop apiserver
+sh openmldb-task_manager-1/bin/start.sh stop taskmanager
 sh zookeeper-3.4.14/bin/zkServer.sh stop
 
 sh openmldb-ns-1/bin/start.sh start nameserver
@@ -28,6 +29,7 @@ sh openmldb-tablet-1/bin/start.sh start tablet
 sh openmldb-tablet-2/bin/start.sh start tablet
 sh openmldb-tablet-3/bin/start.sh start tablet
 sh openmldb-apiserver-1/bin/start.sh start apiserver
+sh openmldb-task_manager-1/bin/start.sh start taskmanager
 sh zookeeper-3.4.14/bin/zkServer.sh start
 
 cp -r openmldb openmldb-ns-1/bin/
@@ -36,3 +38,4 @@ cp -r openmldb openmldb-tablet-1/bin/
 cp -r openmldb openmldb-tablet-2/bin/
 cp -r openmldb openmldb-tablet-3/bin/
 cp -r openmldb openmldb-apiserver-1/bin/
+cp -r openmldb openmldb-task_manager-1/bin/

@@ -132,10 +132,10 @@ public class FEDBDeploy {
             fedbInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
         }
 
-        for(int i=1;i<=1;i++) {
-            int task_manager_port = deployTaskManager(testPath,ip,i,zk_point);
-            fedbInfo.getTaskManagerEndpoints().add(ip+":"+task_manager_port);
-        }
+        // for(int i=1;i<=1;i++) {
+        //     int task_manager_port = deployTaskManager(testPath,ip,i,zk_point);
+        //     fedbInfo.getTaskManagerEndpoints().add(ip+":"+task_manager_port);
+        // }
         log.info("openmldb-info:"+fedbInfo);
         return fedbInfo;
     }
@@ -366,10 +366,7 @@ public class FEDBDeploy {
                     "sed -i 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties"
             );
-            // commands.forEach(ExecutorUtil::run);
-            for(String command:commands){
-                ExecutorUtil.run(command);
-            }
+            commands.forEach(ExecutorUtil::run);
             ExecutorUtil.run("sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
             if(used){
@@ -393,24 +390,24 @@ public class FEDBDeploy {
             String standaloneName = "/openmldb-standalone";
             List<String> commands = Lists.newArrayList(
                     "cp -r " + testPath + "/" + fedbName + " " + testPath + standaloneName,
-                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/nameserver.flags",
-                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/nameserver.flags",
-                    "sed -i 's#--endpoint=.*#--endpoint=" + nsEndpoint + "#' " + testPath + standaloneName + "/conf/nameserver.flags",
-                    "sed -i 's@#--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/nameserver.flags",
-                    "sed -i 's@--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/nameserver.flags",
-                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/tablet.flags",
-                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/tablet.flags",
-                    "sed -i 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/tablet.flags",
-                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' "+testPath+standaloneName+"/conf/apiserver.flags",
-                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/apiserver.flags",
-                    "sed -i 's#--endpoint=.*#--endpoint="+apiServerEndpoint+"#' "+testPath+standaloneName+"/conf/apiserver.flags",
-                    "sed -i 's#--nameserver=.*#--nameserver="+nsEndpoint+"#' "+testPath+standaloneName+"/conf/apiserver.flags"
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_nameserver.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint=" + nsEndpoint + "#' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i 's@#--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i 's@--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/standalone_tablet.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_tablet.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/standalone_tablet.flags",
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint="+apiServerEndpoint+"#' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
+                    "sed -i 's#--nameserver=.*#--nameserver="+nsEndpoint+"#' "+testPath+standaloneName+"/conf/standalone_apiserver.flags"
             );
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(fedbPath)){
                 FEDBCommandUtil.cpRtidb(testPath+standaloneName,fedbPath);
             }
-            ExecutorUtil.run("sh "+testPath+standaloneName+"/bin/start-all.sh");
+            ExecutorUtil.run("sh "+testPath+standaloneName+"/bin/start-standalone.sh");
             boolean nsOk = LinuxUtil.checkPortIsUsed(nsPort,3000,30);
             boolean tabletOk = LinuxUtil.checkPortIsUsed(tabletPort,3000,30);
             boolean apiServerOk = LinuxUtil.checkPortIsUsed(apiServerPort,3000,30);
