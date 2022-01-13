@@ -280,7 +280,7 @@ jobs:
           # so it is a bit tricky to compile and deploy that
           # firstly run `maven install` install things locally
           # then selectly `mvn deploy` for hybridse-native & openmldb-native
-          mvn --batch-mode install -DskipTests=true -Dscalatest.skip=true
+          mvn --batch-mode clean install -DskipTests=true -Dscalatest.skip=true
           mvn --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
@@ -306,7 +306,7 @@ jobs:
           # so it is a bit tricky to compile and deploy that
           # firstly run `maven install` install things locally
           # then selectly `mvn deploy` for hybridse-native & openmldb-native
-          mvn --batch-mode install -DskipTests=true -Dscalatest.skip=true
+          mvn --batch-mode clean install -DskipTests=true -Dscalatest.skip=true
           mvn --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
