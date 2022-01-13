@@ -315,7 +315,7 @@ void APIServerImpl::ExecuteProcedure(const InterfaceProvider::Params& param,
     const auto& schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl&>(sp_info->GetInputSchema());
     // Hard copy, and RequestRow needs shared schema
     auto input_schema = std::make_shared<::hybridse::sdk::SchemaImpl>(schema_impl.GetSchema());
-    auto column_indices = std::make_shared<openmldb::sdk::ColumnIndicesSet>(input_schema);
+    auto common_column_indices = std::make_shared<openmldb::sdk::ColumnIndicesSet>(input_schema);
 
     auto expected_input_size = input_schema->GetColumnCnt();
 
@@ -323,7 +323,7 @@ void APIServerImpl::ExecuteProcedure(const InterfaceProvider::Params& param,
 
     // TODO(hw): SQLRequestRowBatch should add common & non-common cols directly
 
-    auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(input_schema,column_indices);
+    auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(input_schema,common_column_indices);
     std::set<std::string> col_set;
     for (decltype(rows.Size()) i = 0; i < rows.Size(); ++i) {
         if (!rows[i].IsArray() || rows[i].Size() != expected_input_size) {
