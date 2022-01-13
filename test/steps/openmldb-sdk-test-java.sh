@@ -71,6 +71,7 @@ echo "ROOT_DIR:${ROOT_DIR}"
 source test/steps/read_properties.sh
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
+
     JAVA_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
     JAVA_NATIVE_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
     sh test/steps/build-java-sdk.sh
