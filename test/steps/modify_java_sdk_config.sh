@@ -28,9 +28,9 @@ cd test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
 # modify suite_xml
 sed -i "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${FEDB_SERVER_VERSION}\"/>#"  test_suite/"${CASE_XML}"
 sed -i "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\"${DEPLOY_MODE}\"/>#"  test_suite/"${CASE_XML}"
-if [[ "${BUILD_MODE}" == "SRC" ]]; then
-    sed -i "s#<parameter name=\"fedbPath\" value=\".*\"/>#<parameter name=\"fedbPath\" value=\"${ROOT_DIR}/build/bin/openmldb\"/>#" test_suite/"${CASE_XML}"
-fi
+#if [[ "${BUILD_MODE}" == "SRC" ]]; then
+#    sed -i "s#<parameter name=\"fedbPath\" value=\".*\"/>#<parameter name=\"fedbPath\" value=\"${ROOT_DIR}/build/bin/openmldb\"/>#" test_suite/"${CASE_XML}"
+#fi
 # modify pom
 sed -i "s#<openmldb.jdbc.version>.*</oopenmldb.jdbc.version>#<openmldb.jdbc.version>${FEDB_SDK_VERSION}</openmldb.jdbc.version>#" pom.xml
 sed -i "s#<openmldb.navtive.version>.*</openmldb.navtive.version>#<openmldb.navtive.version>${JAVA_NATIVE_VERSION}</openmldb.navtive.version>#" pom.xml

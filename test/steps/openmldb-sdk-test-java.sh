@@ -87,15 +87,15 @@ echo "JAVA_SDK_VERSION:${JAVA_SDK_VERSION}"
 echo "JAVA_NATIVE_VERSION:${JAVA_NATIVE_VERSION}"
 cat test/integration-test/openmldb-test-java/openmldb-sdk-test/src/main/resources/fedb_deploy.properties
 # install command tool
-#cd test/test-tool/command-tool || exit
-#mvn clean install -Dmaven.test.skip=true
-#cd "${ROOT_DIR}" || exit
-## modify config
-#sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "${BUILD_MODE}" "${OPENMLDB_SERVER_VERSION}" "${JAVA_NATIVE_VERSION}"
-## install jar
-#cd test/integration-test/openmldb-test-java || exit
-#mvn clean install -Dmaven.test.skip=true
-#cd "${ROOT_DIR}" || exit
-## run case
-#cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
-#mvn clean test -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}" -DfedbVersion="${DIFF_VERSIONS}"
+cd test/test-tool/command-tool || exit
+mvn clean install -Dmaven.test.skip=true
+cd "${ROOT_DIR}" || exit
+# modify config
+sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "${BUILD_MODE}" "${OPENMLDB_SERVER_VERSION}" "${JAVA_NATIVE_VERSION}"
+# install jar
+cd test/integration-test/openmldb-test-java || exit
+mvn clean install -Dmaven.test.skip=true
+cd "${ROOT_DIR}" || exit
+# run case
+cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
+mvn clean test -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}" -DfedbVersion="${DIFF_VERSIONS}"
