@@ -21,16 +21,6 @@ jobs:
       OS: linux
     steps:
       - uses: actions/checkout@v2
-      - name: configure
-        run: |
-          make configure CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
-
-      - name: build
-        run: |
-          make build
-          # GitHub runner disk space is limited
-          # delete thirdparty build directory($ROOT/.deps/) to save disk space
-          # make thirdpartybuild-clean
       - name: build jsdk and package
         run: |
           make configure

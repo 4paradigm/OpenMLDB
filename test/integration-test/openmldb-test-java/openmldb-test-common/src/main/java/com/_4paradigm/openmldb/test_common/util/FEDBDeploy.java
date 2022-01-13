@@ -33,25 +33,17 @@ import java.io.File;
 import java.util.List;
 
 @Slf4j
+@Setter
 public class FEDBDeploy {
-
     private String version;
     private String fedbUrl;
-    @Setter
     private String fedbName;
-    @Setter
     private String fedbPath;
-    @Setter
     private boolean useName;
-    @Setter
     private boolean isCluster = true;
-    @Setter
     private String sparkMaster = "local";
-    @Setter
     private String batchJobJarPath;
-    @Setter
     private String sparkYarnJars = "";
-    @Setter
     private String offlineDataPrefix = "file:///tmp/openmldb_offline_storage/";
     private String nameNodeUri = "172.27.12.215:8020";
 
@@ -131,20 +123,26 @@ public class FEDBDeploy {
             }
             fedbInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
         }
-
-        // for(int i=1;i<=1;i++) {
-        //     int task_manager_port = deployTaskManager(testPath,ip,i,zk_point);
-        //     fedbInfo.getTaskManagerEndpoints().add(ip+":"+task_manager_port);
-        // }
+        if(version.equals("tmp")||version.compareTo("0.4.0")>=0) {
+            for (int i = 1; i <= 1; i++) {
+                int task_manager_port = deployTaskManager(testPath, ip, i, zk_point);
+                fedbInfo.getTaskManagerEndpoints().add(ip + ":" + task_manager_port);
+            }
+        }
         log.info("openmldb-info:"+fedbInfo);
         return fedbInfo;
     }
 
     private void downloadFEDB(String testPath){
         try {
-            String command = "wget -P " + testPath + " -q " + fedbUrl;
-            String packageName = fedbUrl.substring(fedbUrl.lastIndexOf("/")+1);
+            String command;
+            if(fedbUrl.startsWith("http")) {
+                command = "wget -P " + testPath + " -q " + fedbUrl;
+            }else{
+                command = "cp -r " + fedbUrl +" "+ testPath;
+            }
             ExecutorUtil.run(command);
+            String packageName = fedbUrl.substring(fedbUrl.lastIndexOf("/") + 1);
             command = "ls " + testPath + " | grep "+packageName;
             List<String> result = ExecutorUtil.run(command);
             String tarName = result.get(0);

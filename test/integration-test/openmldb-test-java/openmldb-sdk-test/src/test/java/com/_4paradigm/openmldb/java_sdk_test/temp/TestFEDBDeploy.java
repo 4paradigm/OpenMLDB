@@ -74,4 +74,15 @@ public class TestFEDBDeploy {
         deploy.deployTaskManager("/home/zhaowei01/fedb-auto-test/tmp","172.24.4.55",1,"172.24.4.55:10000");
         // System.out.println(fedbInfo);
     }
+
+    @Test
+    public void testLocalDeploy(){
+        FEDBDeploy deploy = new FEDBDeploy("tmp");
+        deploy.setCluster(true);
+        deploy.setSparkMaster("local");
+        // deploy.setBatchJobJarPath("hdfs://172.27.128.215:8020/Users/tobe/openmldb-batchjob-0.4.0-SNAPSHOT.jar");
+        // deploy.setSparkYarnJars("hdfs://172.27.128.215:8020/Users/tobe/openmldb_040_jars/*");
+        FEDBInfo fedbInfo = deploy.deployFEDB(2, 3);
+        System.out.println(fedbInfo);
+    }
 }
