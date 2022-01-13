@@ -28,7 +28,7 @@ w2 as (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 
 **Start docker**
 ```
-docker run -it 4pdosc/openmldb:0.3.2 bash
+docker run -it 4pdosc/openmldb:0.4.0 bash
 ```
 **Initialize environment**
 ```bash
@@ -128,7 +128,7 @@ python3 predict.py
 ---------------predict trip_duration -------------
 848.014745715936 s
 ```
-:bulb: To read more details about the cluster mode, please refer to the [QuickStart (Cluster Mode)](https://github.com/4paradigm/OpenMLDB/blob/main/docs/en/cluster.md)
+:bulb: To read more details about the cluster mode, please refer to the [QuickStart (Cluster Mode)](https://docs.openmldb.ai/content-1/openmldb_quickstart)
 
 ## 3. Demo with The Standalone Mode
 
@@ -137,7 +137,7 @@ python3 predict.py
 **Start docker**
 
 ```bash
-docker run -it 4pdosc/openmldb:0.3.2 bash
+docker run -it 4pdosc/openmldb:0.4.0 bash
 ```
 **Initialize environment**
 
@@ -230,5 +230,5 @@ python3 predict.py
 880.3688347542294 s
 ```
 
-:bulb: To read more details about the standalone mode, please refer to the [QuickStart (Standalone Mode)](https://github.com/4paradigm/OpenMLDB/blob/main/docs/en/standalone.md)
+:bulb: To read more details about the standalone mode, please refer to the [QuickStart (Standalone Mode)](https://docs.openmldb.ai/content-1/openmldb_quickstart)
 
