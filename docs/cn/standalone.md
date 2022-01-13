@@ -11,7 +11,7 @@
 1. 拉取镜像（镜像下载大小大约 500 MB，解压后约 1.3 GB）和启动 docker 容器
 
    ```bash
-   docker run -it 4pdosc/openmldb:0.3.2 bash
+   docker run -it 4pdosc/openmldb:0.4.0 bash
    ```
 
    :bulb: **成功启动容器以后，以下命令均在容器内执行。**
@@ -19,7 +19,7 @@
 2. 下载样例数据
 
    ```bash
-   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/standalone/data/data.csv --output ./data/data.csv
+   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/quick_start/data/data.csv --output ./data/data.csv
    ```
 
 3. 启动 OpenMLDB 服务和 CLI
