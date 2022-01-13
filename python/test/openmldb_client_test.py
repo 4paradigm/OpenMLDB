@@ -29,7 +29,6 @@ class TestOpenMLDBClient(unittest.TestCase):
     ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));"
     logging.info("test_basic ...")
     engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
-    self.check_sqlalchemy_table_api(engine)
     
     connection = engine.connect()
     try:
@@ -42,7 +41,8 @@ class TestOpenMLDBClient(unittest.TestCase):
       pass
 
     time.sleep(2)
-
+    
+    self.check_sqlalchemy_table_api(engine)
     connection.execute(ddl)
     insert1 = "insert into tsql1010 values(1000, '2020-12-25', 'guangdon', '广州', 1);"
     insert2 = "insert into tsql1010 values(1001, '2020-12-26', 'hefei', ?, ?);" # anhui 2
