@@ -19,7 +19,7 @@ We first need to download the sample data set and start the OpenMLDB CLI. We str
 2. Download the sample data
 
    ```bash
-   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/standalone/data/data.csv --output ./data/data.csv
+   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/quick_start/data/data.csv --output ./data/data.csv
    ```
 
 3. Start the OpenMLDB service and CLI

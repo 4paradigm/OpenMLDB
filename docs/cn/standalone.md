@@ -19,7 +19,7 @@
 2. 下载样例数据
 
    ```bash
-   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/standalone/data/data.csv --output ./data/data.csv
+   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/quick_start/data/data.csv --output ./data/data.csv
    ```
 
 3. 启动 OpenMLDB 服务和 CLI
