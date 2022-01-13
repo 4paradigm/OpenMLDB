@@ -73,7 +73,7 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From offlin
 
 **Cluster and Standalone Versions**
 
-OpenMLDB has introduced two deployment versions, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone version running on a single node is ideal for small businesses and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to ==[this document (TBD)](das)==  for details. 
+OpenMLDB has introduced two deployment versions, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone version running on a single node is ideal for small businesses and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to [this document](https://docs.openmldb.ai/v/0.4/content-2/standalone_vs_cluster)  for details. 
 
 **Getting Started with OpenMLDB**
 
@@ -83,9 +83,9 @@ OpenMLDB has introduced two deployment versions, which are *cluster version* and
 
 We are making efforts to build a list of real-world use cases based on OpenMLDB to demonstrate how it can fit into your business. Please stay tuned.
 
-| Application                                  | Tools              | Brief Introduction                                           |
-| -------------------------------------------- | ------------------ | ------------------------------------------------------------ |
-| ==[New York City Taxi Trip Duration](demo)== | OpenMLDB, LightGBM | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
+| Application                                                  | Tools              | Brief Introduction                                           |
+| ------------------------------------------------------------ | ------------------ | ------------------------------------------------------------ |
+| [New York City Taxi Trip Duration](https://docs.openmldb.ai/v/0.4/content-3/taxi_tour_duration_prediction) | OpenMLDB, LightGBM | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
 
 ## 8. Documentation
 

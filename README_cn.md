@@ -30,9 +30,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 <p align="center">
  <img src="images/workflow_cn.png" alt="image-20211103103052252" width=800 />
 </p>
-
-
-上图显示了基于 OpenMLDB 的 FeatureOps 的基本使用流程，从特征开发到上线，只需要三个步骤：
+上图显示了基于 OpenMLDB 的 FeatureOps 的基本使用流程，从离线特征开发到服务上线，只需要三个步骤：
 
 1. 使用 SQL 进行线下特征计算脚本开发
 1. SQL 特征计算脚本一键部署上线，由线下模式切换为线上模式
@@ -74,7 +72,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 
 **集群版和单机版**
 
-OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（standalone vesion）。集群版适合于大规模数据的生产环境，提供了良好的可扩展性和高可用性；单机版适合于小数据场景或者试用目的，更加方便部署和使用。集群版和单机版在功能上完全一致，但是在某些具体功能上会有不同限制，==详细参阅此篇说明文档（TBD）==。
+OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（standalone vesion）。集群版适合于大规模数据的生产环境，提供了良好的可扩展性和高可用性；单机版适合于小数据场景或者试用目的，更加方便部署和使用。集群版和单机版在功能上完全一致，但是在某些具体功能上会有不同限制，详细参阅[此篇说明文档](https://docs.openmldb.ai/v/0.4/content-2/standalone_vs_cluster)。
 
 **准备开始体验 OpenMLDB**
 
@@ -84,9 +82,9 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 
 我们正在努力构建一个 OpenMLDB 用于实际案例的列表，为 OpenMLDB 如何在你的业务中发挥价值提供参考，请随时关注我们的列表更新。
 
-| 应用                                         | 所用工具           | 简介                                                         |
-| -------------------------------------------- | ------------------ | ------------------------------------------------------------ |
-| ==[New York City Taxi Trip Duration](demo)== | OpenMLDB, LightGBM | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
+| 应用                                                         | 所用工具           | 简介                                                         |
+| ------------------------------------------------------------ | ------------------ | ------------------------------------------------------------ |
+| [New York City Taxi Trip Duration](https://docs.openmldb.ai/v/0.4/content-3/taxi_tour_duration_prediction) | OpenMLDB, LightGBM | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
 
 ## 8. OpenMLDB 文档
 
