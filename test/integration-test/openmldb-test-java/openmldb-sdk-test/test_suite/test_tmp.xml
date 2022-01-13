@@ -10,9 +10,9 @@
 <!--                    &lt;!&ndash;<include name="testInsert" />&ndash;&gt;-->
 <!--                &lt;!&ndash;</methods>&ndash;&gt;-->
 <!--            </class>-->
-            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.BatchRequestTest">
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v030.DMLTest">
             </class>
-            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.WindowTest">
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v030.MultiDBTest">
             </class>
         </classes>
 <!--        <packages>-->
