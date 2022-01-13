@@ -11,7 +11,7 @@
 1. 拉取镜像（镜像下载大小大约 500 MB，解压后约 1.3 GB）和启动 docker 容器
 
    ```bash
-   docker run -it 4pdosc/openmldb:0.3.2 bash
+   docker run -it 4pdosc/openmldb:0.4.0 bash
    ```
 
    :bulb: **成功启动容器以后，以下命令均在容器内执行。**
