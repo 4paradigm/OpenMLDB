@@ -171,9 +171,8 @@ public class TaskManagerClient {
      * @param sql query sql string.
      * @throws Exception
      */
-    public String importOnlineData(String sql) throws Exception {
-        String Msg = importOnlineData(sql, new HashMap<String, String>(), "");
-        return Msg;
+    public void importOnlineData(String sql) throws Exception {
+        importOnlineData(sql, new HashMap<String, String>(), "");
     }
     /**
      * Import online data.
@@ -320,7 +319,7 @@ public class TaskManagerClient {
     }
     /**
      * Submit job to show batch version.
-     * @return job's id.
+     * @return id of job.
      * @throws Exception
      */
     public int showBatchVersion() throws Exception {
