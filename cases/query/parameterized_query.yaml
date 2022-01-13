@@ -153,7 +153,7 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
-      success: false
+      success: true
   - id: 2-2
     desc: 带参数的Where条件未命中索引-离线支持
     tags: ["TODO", "离线暂时不支持带参数查询"]
@@ -199,7 +199,7 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
-      success: false
+      success: true
   - id: 3-2
     desc: 带参数Where条件未命中索引示例2
     mode: rtidb-unsupport
