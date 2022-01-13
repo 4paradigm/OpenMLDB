@@ -16,6 +16,8 @@ public abstract class TaskManagerClientTest {
                 "into table test_taskmanager.t1 options(format='csv', foo='bar', header=false, mode='append');");
         client.showJobs();
         client.printJobs();
+        client.importOfflineData("load data infile 'file:///tmp/test.csv' into table test_taskmanager.t1 options(format='csv', foo='bar', header=false, mode='overwrite');");
+        client.exportOfflineData("select * from test_taskmanager.t1 into outfile 'file:///tmp/test_csv2' options(format='csv', foo='bar', mode='overwrite');");
         client.showBatchVersion();
         client.stop();
     }
