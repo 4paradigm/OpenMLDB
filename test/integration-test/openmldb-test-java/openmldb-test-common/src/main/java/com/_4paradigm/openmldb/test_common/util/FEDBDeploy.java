@@ -37,6 +37,7 @@ public class FEDBDeploy {
 
     private String version;
     private String fedbUrl;
+    @Setter
     private String fedbName;
     @Setter
     private String fedbPath;
@@ -354,19 +355,22 @@ public class FEDBDeploy {
             }
 
             List<String> commands = Lists.newArrayList(
-                    "sed -i 's#server.host=.*#server.host=" + ip + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's#server.port=.*#server.port=" + port + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's@zookeeper.root_path=.*@zookeeper.root_path=/openmldb@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's@spark.master=.*@spark.master=" + sparkMaster + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's@spark.home=.*@spark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's@batchjob.jar.path=.*@batchjob.jar.path=" + batchJobJarPath + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's@spark.yarn.jars=.*@spark.yarn.jars=" + sparkYarnJars + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties",
-                    "sed -i 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/taskmanager/conf/taskmanager.properties"
+                    "sed -i 's#server.host=.*#server.host=" + ip + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "sed -i 's#server.port=.*#server.port=" + port + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "sed -i 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "sed -i 's@zookeeper.root_path=.*@zookeeper.root_path=/openmldb@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@spark.master=.*@spark.master=" + sparkMaster + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@spark.home=.*@spark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@batchjob.jar.path=.*@batchjob.jar.path=" + batchJobJarPath + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@spark.yarn.jars=.*@spark.yarn.jars=" + sparkYarnJars + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties"
             );
-            commands.forEach(ExecutorUtil::run);
-            ExecutorUtil.run("nohup sh "+testPath+task_manager_name+"/taskmanager/bin/taskmanager.sh > "+testPath+task_manager_name+"/task_manager.log 2>&1 &");
+            // commands.forEach(ExecutorUtil::run);
+            for(String command:commands){
+                ExecutorUtil.run(command);
+            }
+            ExecutorUtil.run("sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
             if(used){
                 log.info("task manager部署成功，port："+port);

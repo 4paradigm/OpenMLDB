@@ -64,4 +64,14 @@ public class TestFEDBDeploy {
         FEDBInfo fedbInfo = deploy.deployFEDBByStandalone();
         System.out.println(fedbInfo);
     }
+
+    @Test
+    public void testTask(){
+        FEDBDeploy deploy = new FEDBDeploy("tmp");
+        deploy.setFedbName("openmldb_linux");
+        deploy.setCluster(true);
+        deploy.setSparkMaster("local");
+        deploy.deployTaskManager("/home/zhaowei01/fedb-auto-test/tmp","172.24.4.55",1,"172.24.4.55:10000");
+        // System.out.println(fedbInfo);
+    }
 }
