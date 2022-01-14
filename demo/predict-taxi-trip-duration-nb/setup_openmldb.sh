@@ -40,11 +40,9 @@ tar xzf openmldb.tar.gz -C "${WORKDIR}/openmldb" --strip-components 1
 # remove symbols and sections
 strip -s "${WORKDIR}/openmldb/bin/openmldb"
 
-tar xzf spark-3.0.0-bin-openmldbspark.tgz
-pushd spark-3.0.0-bin-openmldbspark/python/
-python3 setup.py install
-popd
+mkdir -p "${WORKDIR}/openmldb/spark-3.0.0-bin-openmldbspark"
+tar xzf spark-3.0.0-bin-openmldbspark.tgz -C "${WORKDIR}/openmldb/spark-3.0.0-bin-openmldbspark" --strip-components 1
+rm -rf "${WORKDIR}/openmldb/spark-3.0.0-bin-openmldbspark/python"
 
 rm -f ./*.tar.gz
 rm -f ./*.tgz
-rm -rf ./spark-3.0.0-bin-openmldbspark
