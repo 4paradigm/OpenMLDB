@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -72,7 +72,7 @@ public class TaskManagerClient {
      * @param id id of job.
      * @throws Exception
      */
-    public String stopJob(int id) throws Exception {
+    public void stopJob(int id) throws Exception {
         TaskManager.StopJobRequest request = TaskManager.StopJobRequest.newBuilder()
                 .setId(id)
                 .build();
@@ -82,27 +82,28 @@ public class TaskManagerClient {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
-        return response.getMsg();
     }
     /**
      * Run sql statements in batches without default_db.
      *
+     * @return id of job.
      * @param sql query sql string.
      * @param output_path output path.
      * @throws Exception
      */
-    public void runBatchSql(String sql, String output_path) throws Exception {
-        runBatchSql(sql, output_path, new HashMap<String, String>(), "");
+    public int runBatchSql(String sql, String output_path) throws Exception {
+        return runBatchSql(sql, output_path, new HashMap<String, String>(), "");
     }
     /**
      * Run sql statements in batches.
      *
+     * @return id of job.
      * @param sql query sql string.
      * @param output_path output path.
      * @param default_db default database.
      * @throws Exception
      */
-    public void runBatchSql(String sql, String output_path, HashMap<String, String> conf, String default_db) throws Exception {
+    public int runBatchSql(String sql, String output_path, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.RunBatchSqlRequest request = TaskManager.RunBatchSqlRequest.newBuilder()
                 .setSql(sql)
                 .setOutputPath(output_path)
@@ -114,25 +115,28 @@ public class TaskManagerClient {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
+        return response.getJob().getId();
     }
     /**
      * Run batch sql statements and display the results without default_db.
      *
+     * @return id of job.
      * @param sql query sql string.
      * @throws Exception
      */
-    public String runBatchAndShow(String sql) throws Exception {
+    public int runBatchAndShow(String sql) throws Exception {
         return runBatchAndShow(sql, new HashMap<String, String>(), "");
     }
     /**
      * Run batch sql statements and display the results.
      *
+     * @return id of job.
      * @param sql query sql string.
      * @param conf configure.
      * @param default_db default database.
      * @throws Exception
      */
-    public String runBatchAndShow(String sql, HashMap<String, String> conf, String default_db) throws Exception {
+    public int runBatchAndShow(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.RunBatchAndShowRequest request = TaskManager.RunBatchAndShowRequest.newBuilder()
                 .setSql(sql)
                 .putAllConf(conf)
@@ -143,7 +147,7 @@ public class TaskManagerClient {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
-        return response.getMsg();
+        return response.getJob().getId();
     }
     /**
      * Show the job rely on id.
@@ -166,21 +170,23 @@ public class TaskManagerClient {
     /**
      * Import online data without default_db.
      *
+     * @return id of job.
      * @param sql query sql string.
      * @throws Exception
      */
-    public String importOnlineData(String sql) throws Exception {
+    public int importOnlineData(String sql) throws Exception {
         return importOnlineData(sql, new HashMap<String, String>(), "");
     }
     /**
      * Import online data.
      *
+     * @return id of job.
      * @param sql query sql string
      * @param conf configure.
      * @param default_db default database.
      * @throws Exception
      */
-    public String importOnlineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
+    public int importOnlineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.ImportOnlineDataRequest request = TaskManager.ImportOnlineDataRequest.newBuilder()
                 .setSql(sql)
                 .putAllConf(conf)
@@ -191,27 +197,29 @@ public class TaskManagerClient {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
-        return response.getMsg();
+        return response.getJob().getId();
     }
     /**
      * Import offline data without default_db.
      *
+     * @return id of job.
      * @param sql query sql string.
      * @throws Exception
      */
-    public String importOfflineData(String sql) throws Exception {
+    public int importOfflineData(String sql) throws Exception {
         return importOfflineData(sql, new HashMap<String, String>(), "");
     }
 
     /**
      * Import offline data.
      *
+     * @return id of job.
      * @param sql query sql string
      * @param conf configure.
      * @param default_db default database.
      * @throws Exception
      */
-    public String importOfflineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
+    public int importOfflineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.ImportOfflineDataRequest request = TaskManager.ImportOfflineDataRequest.newBuilder()
                 .setSql(sql)
                 .putAllConf(conf)
@@ -222,7 +230,7 @@ public class TaskManagerClient {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
-        return response.getMsg();
+        return response.getJob().getId();
     }
     /**
      * Delete offline table.
@@ -246,21 +254,23 @@ public class TaskManagerClient {
     /**
      * Export offline data without default_db.
      *
+     * @return id of job.
      * @param sql query sql string
      * @throws Exception
      */
-    public String exportOfflineData(String sql) throws Exception {
+    public int exportOfflineData(String sql) throws Exception {
         return exportOfflineData(sql, new HashMap<String, String>(), "");
     }
     /**
      * Export offline data.
      *
+     * @return id of job.
      * @param sql query sql string.
      * @param conf configure.
      * @param default_db default database.
      * @throws Exception
      */
-    public String exportOfflineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
+    public int exportOfflineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.ExportOfflineDataRequest request = TaskManager.ExportOfflineDataRequest.newBuilder()
                 .setSql(sql)
                 .putAllConf(conf)
@@ -271,7 +281,7 @@ public class TaskManagerClient {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
-        return response.getMsg();
+        return response.getJob().getId();
     }
     /**
      * Show all the jobs.
@@ -315,6 +325,7 @@ public class TaskManagerClient {
     }
     /**
      * Submit job to show batch version.
+     *
      * @return id of job.
      * @throws Exception
      */
