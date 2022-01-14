@@ -634,15 +634,16 @@ std::vector<std::string> SQLClusterRouter::GetAllTables(hybridse::sdk::Status* s
     if (!ok) {
         return all_table;
     }
+//     TODO: support getting all table names in one RPC
     if (dbs.empty()) {
         LOG(WARNING) << "There is currently no Database";
         return all_table;
     } else {
         std::vector<std::string> database_tables;
-        for (auto iter = dbs.begin(); iter != dbs.end(); iter++) {
-            database_tables = SQLClusterRouter::GetTableNames(*iter);
-            for (auto iter2 = database_tables.begin(); iter2 != database_tables.end(); iter2++) {
-                all_table.push_back(*iter2);
+        for (auto db_name_iter = dbs.begin(); db_name_iter != dbs.end(); db_name_iter++) {
+            database_tables = SQLClusterRouter::GetTableNames(*db_name_iter);
+            for (auto table_name_iter = database_tables.begin(); table_name_iter != database_tables.end(); table_name_iter++) {
+                all_table.push_back(*table_name_iter);
             }
         }
         return all_table;
