@@ -104,10 +104,7 @@ class OpenMLDBDialect(default.DefaultDialect):
         return module
 
     def has_table(self, connection, table_name, schema=None):
-        if table_name in connection.connection.cursor().get_alltables():
-            return True
-        else:
-            return False
+        return table_name in connection.connection.cursor().get_all_tables()
     
     def create_connect_args(self, url, **kwargs):
         qargs = {}
