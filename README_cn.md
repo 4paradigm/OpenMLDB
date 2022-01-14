@@ -66,7 +66,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 
 ## 5. 编译和安装
 
-:point_right: [点击这里](docs/cn/compile.md)
+:point_right: [点击这里](https://docs.openmldb.ai/content-4)
 
 ## 6. QuickStart
 
