@@ -2,6 +2,8 @@
 
 ## [0.4.0] - 2022-01-14
 
+## [0.4.0] - 2022-01-14
+
 ### Highlights
 
 - The SQL-centric feature is enhanced for both standalone and cluster versions. Now you can enjoy the SQL-centric development and deployment experience seamlessly. (#991,#1034,#1071,#1064,#1061,#1049,#1045,#1038,#1034,#1029,#997,#996,#968,#946,#840,#830,#814,#776,#774,#764,#747,#740,#466,#481,#1033,#1027,#966,#951,#950,#932,#853,#835,#804,#800,#596,#595,#568,#873,#1025,#1021,#1019,#994,#991,#987,#912,#896,#894,#893,#873,#778,#777,#745,#737,#701,#570,#559,#558,#553 @tobegit3hub; #1030,#965,#933,#920,#829,#783,#754,#1005,#998 @vagetablechicken)
@@ -25,7 +27,7 @@
 - Support string delimiters and quotes (#668 @ZackeryWang)
 - Add a new `lru_cache` to support upsert (#795 @vagetablechicken)
 - Support adding index with any `ts_col` (#828 @dl239)
-- Improve the `ts` packing in `sql_insert_now` (#955,#938 @vagetablechicken)
+- Improve the `ts` packing in `sql_insert_now` (#944 ,#974 @keyu813)
 - Improve documentations (#952 #885 @mahengyang; #834 @Nicholas-SR; #792,#1058,#1002,#872,#836,#792 @lumianph; #844,#782 @jingchen2222; #1022,#805 @aceforeverd)
 - Other minor updates (#1073 @dl239)
 
