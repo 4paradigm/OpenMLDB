@@ -32,7 +32,6 @@ import java.util.List;
 /***
  * Java wrapper for TaskManager brpc client.
  */
-
 public class TaskManagerClient {
 
     private RpcClient rpcClient;
