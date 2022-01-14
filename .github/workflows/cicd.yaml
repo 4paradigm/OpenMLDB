@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: prepare
+      - name: prepare release
         run: |
           VERSION="snapshot"
           if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
@@ -143,6 +143,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: prepare release
+        if: github.event_name == 'push'
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=${VERSION#v}
+          ./java/prepare_release.sh "$VERSION"
+
       - name: build jsdk
         run: |
           make build
@@ -173,13 +180,6 @@ jobs:
           name: linux-ut-result-java-${{ github.sha }}
           path: |
             java/*/target/**/TEST-*.xml
-
-      - name: prepare deploy version
-        if: github.event_name == 'push'
-        run: |
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=${VERSION#v}
-          ./java/prepare_release.sh "$VERSION"
 
       - name: deploy
         if: github.event_name == 'push'
@@ -229,6 +229,13 @@ jobs:
             thirdsrc
           key: ${{ runner.os }}-thirdparty-${{ hashFiles('third-party/**/CMakeLists.txt', 'third-party/**/*.cmake', 'third-party/**/*.sh') }}
 
+      - name: prepare release
+        if: github.event_name == 'push'
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=${VERSION#v}
+          ./java/prepare_release.sh "$VERSION"
+
       - uses: actions/setup-java@v2
         with:
           distribution: 'adopt'
@@ -266,12 +273,6 @@ jobs:
       #     name: linux-ut-result-java-${{ github.sha }}
       #     path: |
       #       java/openmldb-jdbc/target/**/TEST-*.xml
-
-      - name: prepare deploy version
-        run: |
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=${VERSION#v}
-          VARIANT_TYPE=macos ./java/prepare_release.sh "$VERSION"
 
       - name: mvn deploy
         working-directory: java
