@@ -3,9 +3,8 @@ services:
   sut:
     build:
       context: .
+    volumes:
+      - ./test:/work/taxi-trip/test
     command: >
       bash -c "
-      ./init.sh && python3 import.py &&
-      python3 train.py ./fe.sql /tmp/model.txt &&
-      ./start_predict_server.sh ./fe.sql /tmp/model.txt &&
-      python3 predict.py"
+      ./init.sh && python3 test/import.py"
