@@ -7,4 +7,4 @@ services:
       - ./test:/work/taxi-trip/test
     command: >
       bash -c "
-      ./init.sh && python3 test/import.py
+      ./init.sh && python3 test/import.py"
