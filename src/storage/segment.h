@@ -161,7 +161,7 @@ class Segment {
 
     void BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t time, DataBlock* row);
 
-    void Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock* row);
+    void Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, DataBlock* row);
 
     // Get time data
     bool Get(const Slice& key, uint64_t time, DataBlock** block);

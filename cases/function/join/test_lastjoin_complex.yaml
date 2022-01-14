@@ -743,7 +743,7 @@ cases:
         - [5,"ee",24,null]
   - id: 13-1
     desc: t1 join (t2 join t3)-rtidb功能边界外的查询, join包含两张主表
-    mode: offline-unsupport
+    mode: request-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -780,7 +780,16 @@ cases:
       (select {1}.c1,{1}.c3,{2}.c7,{2}.c4 from {1} last join {2} order by {2}.c7 on {1}.c3={2}.c3) as t1
       order by t1.c7 on {0}.c1=t1.c1;
     expect:
-      success: false
+      success: true
+      order: id
+      columns: [ "id int", "c1 string", "c3 int", "c4 bigint"]
+      rows:
+        - [ 1, aa, 21, 34 ]
+        - [ 2, bb, NULL, NULL ]
+        - [ 3, cc, 21, 34 ]
+        - [ 4, dd, 21, 34 ]
+        - [ 5, ee, 24, NULL ]
+
   - id: 13-2
     desc: t1 join (t2 join t3)-key和ts不是来自同一个主表
     tags: ["TODO", "@zhaowei", "case构造不合理，需要构造(t1 join t2) join t3 - key 和 ts不来自同一个主表"]
@@ -913,7 +922,7 @@ cases:
       success: false
   - id: 17-1
     desc: 两个子查询lastjoin，order不是主表的ts-rtidb不支持
-    mode: offline-unsupport
+    mode: request-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -934,7 +943,11 @@ cases:
       ORDER BY t1.c4 on t2.c1=t1.c1
       ;
     expect:
-      success: false
+      success: true
+      columns: [ "id int", "c8 date", "c3 int", "c4 bigint" ]
+      rows:
+        - [ 1, 2020-05-01, 20, 30 ]
+
   - id: 17-2
     desc: 两个子查询lastjoin，order不是主表的ts-离线支持
     mode: rtidb-unsupport
@@ -961,31 +974,7 @@ cases:
       success: true
   - id: 18-1
     desc: 两个子查询lastjoin，拼接条件不是主表的索引-不带orderby-rtidb边界外
-    mode: offline-unsupport
-    inputs:
-      -
-        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-      -
-        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-    sql: |
-      select id,t2.c8,t2.c3,t1.c4
-      from
-      (select id,c1,c3,c4,c7,c8 from {0}) as t2
-      last join
-      (select c1,c4,c7,c8 from {1}) as t1
-      on t2.c8=t1.c8
-      ;
-    expect:
-      success: false
-  - id: 18-2
-    desc: 两个子查询lastjoin，拼接条件不是主表的索引-不带orderby-离线支持
-    mode: rtidb-unsupport
+    mode: request-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -1007,10 +996,41 @@ cases:
       ;
     expect:
       success: true
+      columns: [ "id int", "c8 date", "c3 int", "c4 bigint" ]
+      rows:
+        - [ 1, 2020-05-01, 20, 30 ]
+
+  - id: 18-2
+    desc: 两个子查询lastjoin，拼接条件不是主表的索引-不带orderby-离线支持
+    mode: request-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+    sql: |
+      select id,t2.c8,t2.c3,t1.c4
+      from
+      (select id,c1,c3,c4,c7,c8 from {0}) as t2
+      last join
+      (select c1,c4,c7,c8 from {1}) as t1
+      on t2.c8=t1.c8
+      ;
+    expect:
+      success: true
+      columns: [ "id int", "c8 date", "c3 int", "c4 bigint" ]
+      rows:
+        - [ 1, 2020-05-01, 20, 30 ]
+
   - id: 19-1
     desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-不带orderby
-    mode: rtidb-batch-unsupport,offline-unsupport
-    tags: ["offline-unsupport, @chendihao", "离线结果不对"]
+    mode: request-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -1025,7 +1045,7 @@ cases:
       select id,t2.c1,t2.c3,t1.c4, t2.w2_c3_sum, t1.w3_c4_sum
       from (select id,c1,c3,c4,c7,c8,sum({0}.c3) OVER w2 as w2_c3_sum from {0} WINDOW w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)) as t2
       last join (select c1,c4,c7,c8,sum({0}.c4) OVER w3 as w3_c4_sum from {0}  WINDOW w3 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 1 PRECEDING AND CURRENT ROW)) as t1
-      on t2.c8=t1.c8
+      on t2.c7=t1.c7
       ;
     expect:
       order: id
@@ -1037,8 +1057,8 @@ cases:
         - [4,"bb",23,33, 23, 33]
         - [5,"bb",24,34, 47, 67]
   - id: 20
-    desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-带orderby-rtidb模式不支持
-    mode: offline-unsupport
+    desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-带orderby
+    mode: request-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -1057,7 +1077,11 @@ cases:
       ORDER BY t1.c7 on t2.c8=t1.c8
       ;
     expect:
-      success: false
+      success: true
+      columns: [ "id int", "c1 string", "c3 int", "c4 bigint" ]
+      rows:
+        - [ 1, aa, 20, 30 ]
+
   - id: 21
     desc: lastjoin列名重复-窗口没有指定表名
     inputs:
@@ -1098,3 +1122,74 @@ cases:
         - [3,"aa",22,31,62]
         - [4,"bb",23,34,34]
         - [5,"bb",24,34,68]
+  - id: 22
+    desc: lastjoin后group by
+    mode: request-unsupport, cluster-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",21,31,1590738990000 ]
+          - [ "cc",41,51,1590738991000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,151,1590738992000 ]
+    sql: select {0}.c1,sum({1}.c3) as v1 from {0} last join {1} ORDER BY {1}.c3 on {0}.c1={1}.c1 group by {0}.c1;
+    expect:
+      order: c1
+      columns: [ "c1 string","v1 bigint" ]
+      rows:
+        - [ "aa",26 ]
+        - [ "cc",151 ]
+  - id: 23
+    desc: lastjoin后group by, left key is match with left table index
+    mode: request-unsupport, cluster-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",21,31,1590738990000 ]
+          - [ "cc",41,51,1590738991000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,151,1590738992000 ]
+    sql: select {0}.c1,sum({1}.c3) as v1 from {0} last join {1} ORDER BY {1}.c3 on {0}.c1={1}.c1 group by {0}.c1;
+    expect:
+      order: c1
+      columns: [ "c1 string","v1 bigint" ]
+      rows:
+        - [ "aa",26 ]
+        - [ "cc",151 ]
+  - id: 24
+    desc: lastjoin后group by with left key and index key
+    mode: request-unsupport, cluster-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",21,31,1590738990000 ]
+          - [ "cc",41,51,1590738991000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,151,1590738992000 ]
+    sql: |
+      select {0}.c1,sum({1}.c3) as v1 from {0} last join {1} ORDER BY {1}.c3 on {0}.c1={1}.c1 and {0}.c2 =
+      {1}.c2 group by {0}.c1;
+    expect:
+      order: c1
+      columns: [ "c1 string","v1 bigint" ]
+      rows:
+        - [ "aa",13 ]
+        - [ "cc",151 ]

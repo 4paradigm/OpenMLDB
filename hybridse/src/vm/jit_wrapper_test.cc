@@ -66,7 +66,6 @@ std::shared_ptr<SqlCompileInfo> CompileNotPerformanceSensitive(
     std::shared_ptr<SimpleCatalog> catalog) {
     base::Status status;
     BatchRunSession session;
-    session.SetPerformanceSensitive(false);
     Engine engine(catalog, options);
     if (!engine.Get(sql, "db", session, status)) {
         LOG(WARNING) << "Fail to compile sql";

@@ -35,6 +35,7 @@
 #include "storage/mem_table.h"
 #include "storage/segment.h"
 #include "storage/ticket.h"
+#include "test/util.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -170,7 +171,8 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         }
         PDLOG(INFO, "start follower");
     }
-
+    auto table_meta = ::openmldb::test::GetTableMeta({"card", "mcc", "value"});
+    ::openmldb::codec::SDKCodec sdk_codec(table_meta);
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:17527");
     std::string folder = "/tmp/" + GenRand() + "/";
@@ -187,7 +189,8 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         d2->set_key("merchant0");
         d2->set_idx(1);
         entry.set_ts(9527);
-        entry.set_value("value 1");
+        auto value = entry.mutable_value();
+        sdk_codec.EncodeRow({"card0", "merchant0", "value 1"}, value);
         ok = leader.AppendEntry(entry);
         ASSERT_TRUE(ok);
     }
@@ -201,7 +204,8 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         d2->set_key("merchant0");
         d2->set_idx(1);
         entry.set_ts(9526);
-        entry.set_value("value 2");
+        auto value = entry.mutable_value();
+        sdk_codec.EncodeRow({"card1", "merchant0", "value 2"}, value);
         ok = leader.AppendEntry(entry);
         ASSERT_TRUE(ok);
     }
@@ -212,7 +216,8 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         d1->set_key("card0");
         d1->set_idx(0);
         entry.set_ts(9525);
-        entry.set_value("value 3");
+        auto value = entry.mutable_value();
+        sdk_codec.EncodeRow({"card1", "null", "value 3"}, value);
         ok = leader.AppendEntry(entry);
         ASSERT_TRUE(ok);
     }
@@ -251,14 +256,18 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         ASSERT_TRUE(it->Valid());
         ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
-        ASSERT_EQ("value 1", value_str);
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value_str, &row);
+        ASSERT_EQ("value 1", row[2]);
         ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
-        ASSERT_EQ("value 3", value_str1);
+        row.clear();
+        sdk_codec.DecodeRow(value_str1, &row);
+        ASSERT_EQ("value 3", row[2]);
         ASSERT_EQ(9525, (signed)it->GetKey());
 
         it->Next();
@@ -272,14 +281,18 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         ASSERT_TRUE(it->Valid());
         ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
-        ASSERT_EQ("value 1", value_str);
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value_str, &row);
+        ASSERT_EQ("value 1", row[2]);
         ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
-        ASSERT_EQ("value 2", value_str1);
+        row.clear();
+        sdk_codec.DecodeRow(value_str1, &row);
+        ASSERT_EQ("value 2", row[2]);
         ASSERT_EQ(9526, (signed)it->GetKey());
 
         it->Next();
@@ -319,17 +332,17 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::openmldb::api::LogEntry entry;
-    entry.set_pk("test_pk");
-    entry.set_value("value1");
+    ::openmldb::test::AddDimension(0, "test_pk", &entry);
+    entry.set_value(::openmldb::test::EncodeKV("test_pk", "value1"));
     entry.set_ts(9527);
     ok = leader.AppendEntry(entry);
-    entry.set_value("value2");
+    entry.set_value(::openmldb::test::EncodeKV("test_pk", "value2"));
     entry.set_ts(9526);
     ok = leader.AppendEntry(entry);
-    entry.set_value("value3");
+    entry.set_value(::openmldb::test::EncodeKV("test_pk", "value3"));
     entry.set_ts(9525);
     ok = leader.AppendEntry(entry);
-    entry.set_value("value4");
+    entry.set_value(::openmldb::test::EncodeKV("test_pk", "value4"));
     entry.set_ts(9524);
     ok = leader.AppendEntry(entry);
     ASSERT_TRUE(ok);
@@ -382,8 +395,8 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     ASSERT_EQ(0, result);
     sleep(2);
     entry.Clear();
-    entry.set_pk("test_pk");
-    entry.set_value("value5");
+    ::openmldb::test::AddDimension(0, "test_pk", &entry);
+    entry.set_value(::openmldb::test::EncodeKV("test_pk", "value5"));
     entry.set_ts(9523);
     ok = leader.AppendEntry(entry);
     ASSERT_TRUE(ok);
@@ -401,28 +414,28 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         ASSERT_TRUE(it->Valid());
         ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
-        ASSERT_EQ("value1", value_str);
+        ASSERT_EQ("value1", ::openmldb::test::DecodeV(value_str));
         ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
-        ASSERT_EQ("value2", value_str1);
+        ASSERT_EQ("value2", ::openmldb::test::DecodeV(value_str1));
         ASSERT_EQ(9526, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str2(value.data(), value.size());
-        ASSERT_EQ("value3", value_str2);
+        ASSERT_EQ("value3", ::openmldb::test::DecodeV(value_str2));
         ASSERT_EQ(9525, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str3(value.data(), value.size());
-        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ("value4", ::openmldb::test::DecodeV(value_str3));
         ASSERT_EQ(9524, (signed)it->GetKey());
     }
     ASSERT_EQ(4, (signed)t9->GetRecordCnt());
@@ -435,28 +448,28 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         ASSERT_TRUE(it->Valid());
         ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
-        ASSERT_EQ("value1", value_str);
+        ASSERT_EQ("value1", ::openmldb::test::DecodeV(value_str));
         ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
-        ASSERT_EQ("value2", value_str1);
+        ASSERT_EQ("value2", ::openmldb::test::DecodeV(value_str1));
         ASSERT_EQ(9526, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str2(value.data(), value.size());
-        ASSERT_EQ("value3", value_str2);
+        ASSERT_EQ("value3", ::openmldb::test::DecodeV(value_str2));
         ASSERT_EQ(9525, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str3(value.data(), value.size());
-        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ("value4", ::openmldb::test::DecodeV(value_str3));
         ASSERT_EQ(9524, (signed)it->GetKey());
     }
 }
@@ -493,17 +506,17 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::openmldb::api::LogEntry entry;
-    entry.set_pk("test_pk");
-    entry.set_value("value1");
+    ::openmldb::test::AddDimension(0, "test_pk", &entry);
+    entry.set_value(::openmldb::test::EncodeKV("test_pk", "value1"));
     entry.set_ts(9527);
     ok = leader.AppendEntry(entry);
-    entry.set_value("value2");
+    entry.set_value(::openmldb::test::EncodeKV("test_pk", "value2"));
     entry.set_ts(9526);
     ok = leader.AppendEntry(entry);
-    entry.set_value("value3");
+    entry.set_value(::openmldb::test::EncodeKV("test_pk", "value3"));
     entry.set_ts(9525);
     ok = leader.AppendEntry(entry);
-    entry.set_value("value4");
+    entry.set_value(::openmldb::test::EncodeKV("test_pk", "value4"));
     entry.set_ts(9524);
     ok = leader.AppendEntry(entry);
     ASSERT_TRUE(ok);
@@ -557,8 +570,8 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     ASSERT_EQ(0, result);
     sleep(2);
     entry.Clear();
-    entry.set_pk("test_pk");
-    entry.set_value("value5");
+    ::openmldb::test::AddDimension(0, "test_pk", &entry);
+    entry.set_value(::openmldb::test::EncodeKV("test_pk", "value5"));
     entry.set_ts(9523);
     ok = leader.AppendEntry(entry);
     ASSERT_TRUE(ok);
@@ -576,28 +589,28 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
         ASSERT_TRUE(it->Valid());
         ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
-        ASSERT_EQ("value1", value_str);
+        ASSERT_EQ("value1", ::openmldb::test::DecodeV(value_str));
         ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
-        ASSERT_EQ("value2", value_str1);
+        ASSERT_EQ("value2", ::openmldb::test::DecodeV(value_str1));
         ASSERT_EQ(9526, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str2(value.data(), value.size());
-        ASSERT_EQ("value3", value_str2);
+        ASSERT_EQ("value3", ::openmldb::test::DecodeV(value_str2));
         ASSERT_EQ(9525, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str3(value.data(), value.size());
-        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ("value4", ::openmldb::test::DecodeV(value_str3));
         ASSERT_EQ(9524, (signed)it->GetKey());
     }
     ASSERT_EQ(5, (signed)t9->GetRecordCnt());
@@ -610,35 +623,35 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
         ASSERT_TRUE(it->Valid());
         ::openmldb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
-        ASSERT_EQ("value1", value_str);
+        ASSERT_EQ("value1", ::openmldb::test::DecodeV(value_str));
         ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
-        ASSERT_EQ("value2", value_str1);
+        ASSERT_EQ("value2", ::openmldb::test::DecodeV(value_str1));
         ASSERT_EQ(9526, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str2(value.data(), value.size());
-        ASSERT_EQ("value3", value_str2);
+        ASSERT_EQ("value3", ::openmldb::test::DecodeV(value_str2));
         ASSERT_EQ(9525, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str3(value.data(), value.size());
-        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ("value4", ::openmldb::test::DecodeV(value_str3));
         ASSERT_EQ(9524, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str4(value.data(), value.size());
-        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ("value4", ::openmldb::test::DecodeV(value_str3));
         ASSERT_EQ(9523, (signed)it->GetKey());
     }
 }

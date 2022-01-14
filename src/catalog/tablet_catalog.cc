@@ -23,9 +23,10 @@
 #include <utility>
 
 #include "catalog/distribute_iterator.h"
-#include "catalog/schema_adapter.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
+#include "schema/index_util.h"
+#include "schema/schema_adapter.h"
 
 DECLARE_bool(enable_localtablet);
 namespace openmldb {
@@ -54,7 +55,7 @@ TabletTableHandler::TabletTableHandler(const ::openmldb::nameserver::TableInfo& 
       local_tablet_(local_tablet) {}
 
 bool TabletTableHandler::Init(const ClientManager& client_manager) {
-    bool ok = SchemaAdapter::ConvertSchema(table_st_.GetColumns(), &schema_);
+    bool ok = schema::SchemaAdapter::ConvertSchema(table_st_.GetColumns(), &schema_);
     if (!ok) {
         LOG(WARNING) << "fail to covert schema to sql schema";
         return false;
@@ -82,7 +83,7 @@ bool TabletTableHandler::UpdateIndex(
         const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs) {
     index_list_.Clear();
     index_hint_.clear();
-    if (!SchemaAdapter::ConvertIndex(indexs, &index_list_)) {
+    if (!schema::IndexUtil::ConvertIndex(indexs, &index_list_)) {
         LOG(WARNING) << "fail to conver index to sql index";
         return false;
     }
@@ -215,6 +216,9 @@ void TabletTableHandler::Update(const ::openmldb::nameserver::TableInfo& meta, c
         }
         table_st_.SetPartition(partition_st);
         table_client_manager_->UpdatePartitionClientManager(partition_st, client_manager);
+    }
+    if (meta.column_key_size() != index_list_.size()) {
+        UpdateIndex(meta.column_key());
     }
 }
 

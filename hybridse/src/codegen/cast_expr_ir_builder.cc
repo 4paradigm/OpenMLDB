@@ -79,7 +79,13 @@ Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* type,
                "Safe cast fail: unsafe cast");
     Status status;
     if (value.IsConstNull()) {
-        *output = NativeValue::CreateNull(type);
+        if (TypeIRBuilder::IsStringPtr(type)) {
+            StringIRBuilder string_ir_builder(block_->getModule());
+            CHECK_STATUS(string_ir_builder.CreateNull(block_, output));
+            return base::Status::OK();
+        } else {
+            *output = NativeValue::CreateNull(type);
+        }
     } else if (TypeIRBuilder::IsTimestampPtr(type)) {
         TimestampIRBuilder timestamp_ir_builder(block_->getModule());
         CHECK_STATUS(timestamp_ir_builder.CastFrom(block_, value, output));
@@ -116,7 +122,13 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
                                      ::llvm::Type* type, NativeValue* output) {
     ::llvm::IRBuilder<> builder(block_);
     if (value.IsConstNull()) {
-        *output = NativeValue::CreateNull(type);
+        if (TypeIRBuilder::IsStringPtr(type)) {
+            StringIRBuilder string_ir_builder(block_->getModule());
+            CHECK_STATUS(string_ir_builder.CreateNull(block_, output));
+            return base::Status::OK();
+        } else {
+            *output = NativeValue::CreateNull(type);
+        }
     } else if (TypeIRBuilder::IsTimestampPtr(type)) {
         TimestampIRBuilder timestamp_ir_builder(block_->getModule());
         CHECK_STATUS(timestamp_ir_builder.CastFrom(block_, value, output));

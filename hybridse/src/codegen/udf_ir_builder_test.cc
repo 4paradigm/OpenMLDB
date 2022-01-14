@@ -617,6 +617,8 @@ TEST_F(UdfIRBuilderTest, upper_ucase) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", StringRef("SQL"), StringRef("Sql"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("SQL"), StringRef("Sql"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("!ABC?"), StringRef("!Abc?"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef(""), StringRef(""));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", StringRef(""), StringRef(""));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", nullptr, nullptr);
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", nullptr, nullptr);
 }
@@ -904,6 +906,73 @@ TEST_F(UdfIRBuilderTest, string_to_float_1) {
 TEST_F(UdfIRBuilderTest, string_to_float_2) {
     CheckUdf<Nullable<float>, Nullable<StringRef>>("float", nullptr,
                                                    codec::StringRef("abc"));
+}
+TEST_F(UdfIRBuilderTest, like_match) {
+    auto udf_name = "like_match";
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("a_b"), codec::StringRef("a%b%"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("a_b"), codec::StringRef("a%b%%"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, codec::StringRef("a_b"), codec::StringRef("a%b%%"), codec::StringRef("%"));
+
+    // target is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, nullptr, codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    // pattern is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, codec::StringRef("Mike"), nullptr, codec::StringRef("\\"));
+    // escape is null, disable escape
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, codec::StringRef("Mike"), codec::StringRef("Mi_e"), nullptr);
+
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, codec::StringRef("Mike"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("Mi_e"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("Mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
+}
+TEST_F(UdfIRBuilderTest, ilike_match) {
+    auto udf_name = "ilike_match";
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("a_b"), codec::StringRef("a%b%"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("a_b"), codec::StringRef("a%b%%"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, codec::StringRef("a_b"), codec::StringRef("a%b%%"), codec::StringRef("%"));
+
+    // target is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, nullptr, codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    // pattern is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, codec::StringRef("mike"), nullptr, codec::StringRef("\\"));
+    // escape is null, disable escape
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, codec::StringRef("mike"), codec::StringRef("Mi_e"), nullptr);
+
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, codec::StringRef("mike"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("mi_e"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, codec::StringRef("mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
+}
+TEST_F(UdfIRBuilderTest, reverse) {
+    auto udf_name = "reverse";
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("SQL"), StringRef("LQS"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("abc"), StringRef("cba"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("a"), StringRef("a"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("123456789"), StringRef("987654321"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(""), StringRef(""));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, nullptr, nullptr);
 }
 }  // namespace codegen
 }  // namespace hybridse

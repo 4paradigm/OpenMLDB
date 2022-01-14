@@ -237,7 +237,7 @@ cases:
         - [ "bb",21,32,1590738993000 ]
   - id: 12
     desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-不带orderby
-    mode: rtidb-batch-unsupport,offline-unsupport
+    mode: offline-unsupport
     tags: ["offline-unsupport, @chendihao", "离线结果不对"]
     inputs:
       -

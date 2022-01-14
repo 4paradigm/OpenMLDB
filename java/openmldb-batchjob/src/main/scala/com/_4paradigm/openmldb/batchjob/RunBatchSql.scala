@@ -30,8 +30,9 @@ object RunBatchSql {
   }
 
   def runBatchSql(sql: String, outputPath: String): Unit = {
-    val spark = new OpenmldbSession(SparkSession.builder().getOrCreate())
-    spark.sql(sql).getSparkDf.write.parquet(outputPath)
+    val sess = new OpenmldbSession(SparkSession.builder().getOrCreate())
+    sess.sql(sql).getSparkDf.write.parquet(outputPath)
+    sess.close()
   }
 
 }

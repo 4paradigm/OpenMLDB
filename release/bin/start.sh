@@ -1,6 +1,5 @@
-#! /bin/sh
-# start.sh
-#
+#! /bin/bash
+
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export COMPONENTS="tablet nameserver apiserver"
+set -e
+
+if [[ $OSTYPE == 'darwin'* ]]; then
+  MON_BINARY='./bin/mon_mac'
+else
+  MON_BINARY='./bin/mon'
+fi
+
+export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
 
 if [ $# -lt 2 ]; then
   echo "Usage: start.sh start/stop/restart <component>"
@@ -43,36 +50,40 @@ fi
 
 OPENMLDB_PID_FILE="./bin/$COMPONENT.pid"
 mkdir -p "$(dirname "$OPENMLDB_PID_FILE")"
-LOG_DIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+
+if [ "$COMPONENT" != "taskmanager" ]; then
+    LOG_DIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+else
+    LOG_DIR=$(grep job.log.path ./conf/"$COMPONENT".properties | awk -F '=' '{print $2}')
+fi
+
 [ -n "$LOG_DIR" ] || { echo "Invalid log dir"; exit 1; }
 mkdir -p "$LOG_DIR"
 case $OP in
     start)
         echo "Starting $COMPONENT ... "
         if [ -f "$OPENMLDB_PID_FILE" ]; then
-            if kill -0 "$(cat "$OPENMLDB_PID_FILE")" > /dev/null 2>&1; then
-                echo tablet already running as process "$(cat "$OPENMLDB_PID_FILE")".
+            if tr -d '\0' < "$OPENMLDB_PID_FILE" | xargs kill -0 > /dev/null 2>&1; then
+                echo tablet already running as process "$(tr -d '\0' < "$OPENMLDB_PID_FILE")".
                 exit 0
             fi
         fi
 
         # Ref https://github.com/tj/mon
-        if ./bin/mon "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$OPENMLDB_PID_FILE";
-        then
+        if [ "$COMPONENT" != "taskmanager" ]; then
+            $MON_BINARY "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$OPENMLDB_PID_FILE";
             sleep 1
-            echo STARTED
         else
-            echo SERVER DID NOT START
-            exit 1
+            $MON_BINARY "./bin/boot_taskmanager.sh" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$OPENMLDB_PID_FILE";
         fi
         ;;
     stop)
         echo "Stopping $COMPONENT ... "
         if [ ! -f "$OPENMLDB_PID_FILE" ]
         then
-             echo "no tablet to stop (could not find file $OPENMLDB_PID_FILE)"
+             echo "no $COMPONENT to stop (could not find file $OPENMLDB_PID_FILE)"
         else
-            kill "$(cat "$OPENMLDB_PID_FILE")"
+            tr -d '\0' < "$OPENMLDB_PID_FILE" | xargs kill
             rm "$OPENMLDB_PID_FILE"
             echo STOPPED
         fi

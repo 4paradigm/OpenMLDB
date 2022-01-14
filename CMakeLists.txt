@@ -19,6 +19,8 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
+
 project(openmldb)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
@@ -75,6 +77,7 @@ option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 option(SQL_PYSDK_ENABLE "Enable sql pysdk" OFF)
 option(SQL_JAVASDK_ENABLE "Enable sql javasdk" OFF)
 option(MAC_TABLET_ENABLE "Enable Table on Mac OS" ON)
+option(COVERAGE_ENABLE "Enable Coverage" OFF)
 message (STATUS "MAC_TABLET_ENABLE: ${MAC_TABLET_ENABLE}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 if (MAC_TABLET_ENABLE)
@@ -96,6 +99,22 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
     set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
+endif ()
+
+
+if (TESTING_ENABLE)
+    set(CTEST_OUTPUT_ON_FAILURE ON)
+    enable_testing()
+endif ()
+
+set(test_list "")
+if (COVERAGE_ENABLE)
+    if (NOT CMAKE_COMPILER_IS_GNUCXX)
+        message(FATAL_ERROR "Coverage is only supported on linux")
+    endif ()
+    find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
+    include(CodeCoverage)
+    APPEND_COVERAGE_COMPILER_FLAGS()
 endif ()
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
@@ -174,10 +193,6 @@ if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 
-if(POLICY CMP0086)
-  cmake_policy(SET CMP0086 NEW)
-endif()
-
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")
@@ -191,6 +206,15 @@ link_directories(${CMAKE_PREFIX_PATH}/lib ${CMAKE_PREFIX_PATH}/lib64)
 
 add_subdirectory(src)
 
+if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
+  # depends proto targets so java's coverage will work
+  set(coverage_deps openmldb_proto hybridse_proto ${test_list})
+  SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
+    EXECUTABLE ctest -j ${n_cores}
+    DEPENDENCIES ${test_list})
+endif ()
+
+
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   # CMAKE_INSTALL_PREFIX default to /usr/local on unix.
   # At current phase we'd like to change it to a customized directory by default
@@ -198,6 +222,8 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+
+add_subdirectory(monitoring)
 
 FILE(GLOB OPENMLDB_SCRIPTS "${CMAKE_SOURCE_DIR}/release/bin/*")
 FILE(GLOB OPENMLDB_CONFS "${CMAKE_SOURCE_DIR}/release/conf/*")

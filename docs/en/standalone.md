@@ -4,12 +4,14 @@ In this tutorial, we demonstrate a typical life-cycle of using OpenMDLB, includi
 
 ## 1. Preparation
 
+> :warning: Required docker engine version >= 18.03
+
 We first need to download the sample data set and start the OpenMLDB CLI. We strongly recommend to use our docker image for quick start:
 
 1. Pull the image (download size around 500 MB) and start the container 
 
    ```bash
-   docker run -it 4pdosc/openmldb:0.3.2 bash
+   docker run -it 4pdosc/openmldb:0.4.0 bash
    ```
 
    **:bulb: After starting the container successfully, the following commands are all executed in the container.**
@@ -17,7 +19,7 @@ We first need to download the sample data set and start the OpenMLDB CLI. We str
 2. Download the sample data
 
    ```bash
-   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/standalone/data/data.csv --output ./data/data.csv
+   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/quick_start/data/data.csv --output ./data/data.csv
    ```
 
 3. Start the OpenMLDB service and CLI
@@ -46,7 +48,6 @@ The `INDEX` function used in `CREATE TABLE` accepts two important parameters `ke
 
 - `key` specifies the index column. If it is not specified, OpenMLDB will use the first applicable column as the index column automatically. Necessary indexes will be built when deploying online SQL. 
 - `ts` specifies the ordered column, which is used by `ORDER BY`. Only the `timestamp` and `bigint` columns can be specified as `ts`. 
-- `ts` and `key` also determine whether certain SQL queries can be executed offline, please refer to [Introduction to OpenMLDB's Performance-Sensitive Mode](performance_sensitive_mode.md) for more details.
 
 ### 2.2. Data Import
 We import the sample data file (downloaded in [1. Preparation](#1-prepartition)) for feature extraction.

@@ -26,6 +26,7 @@
 #include "base/strings.h"
 #include "brpc/channel.h"
 #include "codec/flat_array.h"
+#include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
@@ -64,13 +65,11 @@ struct TestArgs {
     std::string pk;
     uint64_t ts;
     codec::ProjectList plist;
-    void* row_ptr;
-    uint32_t row_size;
-    void* out_ptr;
-    uint32_t out_size;
+    std::string input_row;
+    std::string output_row;
     Schema output_schema;
     ::openmldb::common::TTLSt ttl_desc;
-    TestArgs() : schema(), plist(), row_ptr(NULL), row_size(0), out_ptr(NULL), out_size(0), output_schema() {}
+    TestArgs() : schema(), plist(), output_schema() {}
     ~TestArgs() {}
 };
 
@@ -88,23 +87,10 @@ std::vector<TestArgs*> GenCommonCase() {
     std::vector<TestArgs*> args;
     {
         TestArgs* testargs = new TestArgs();
-
-        common::ColumnDesc* column1 = testargs->schema.Add();
-        column1->set_name("col1");
-        column1->set_data_type(type::kVarchar);
-
-        common::ColumnDesc* column2 = testargs->schema.Add();
-        column2->set_name("col2");
-        column2->set_data_type(type::kBigInt);
-
-        common::ColumnDesc* column3 = testargs->schema.Add();
-        column3->set_name("col3");
-        column3->set_data_type(type::kInt);
-
-        common::ColumnDesc* column4 = testargs->output_schema.Add();
-        column4->set_name("col2");
-        column4->set_data_type(type::kBigInt);
-
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col1", ::openmldb::type::kString);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col2", ::openmldb::type::kBigInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col3", ::openmldb::type::kInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->output_schema.Add(), "col2", ::openmldb::type::kBigInt);
         testargs->ckey.set_index_name("col1");
         testargs->ckey.add_col_name("col1");
         testargs->ckey.set_ts_name("col2");
@@ -115,43 +101,20 @@ std::vector<TestArgs*> GenCommonCase() {
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
+        codec::RowCodec::EncodeRow({"hello", "1000", "32"}, testargs->schema, 1, testargs->input_row);
+        codec::RowCodec::EncodeRow({"1000"}, testargs->output_schema, 1, testargs->output_row);
 
-        codec::RowBuilder input_rb(testargs->schema);
-        uint32_t input_row_size = input_rb.CalTotalLength(testargs->pk.size());
-        void* input_ptr = ::malloc(input_row_size);
-        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
-        input_rb.AppendString(testargs->pk.c_str(), testargs->pk.size());
-        input_rb.AppendInt64(testargs->ts);
-        int32_t i = 32;
-        input_rb.AppendInt32(i);
-
-        codec::RowBuilder output_rb(testargs->output_schema);
-        uint32_t output_row_size = output_rb.CalTotalLength(0);
-        void* output_ptr = ::malloc(output_row_size);
-        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
-        output_rb.AppendInt64(testargs->ts);
         uint32_t* idx = testargs->plist.Add();
         *idx = 1;
-        testargs->row_ptr = input_ptr;
-        testargs->row_size = input_row_size;
-        testargs->out_ptr = output_ptr;
-        testargs->out_size = output_row_size;
         args.push_back(testargs);
     }
     {
         TestArgs* testargs = new TestArgs();
-        common::ColumnDesc* column1 = testargs->schema.Add();
-        column1->set_name("col1");
-        column1->set_data_type(type::kSmallInt);
-        common::ColumnDesc* column2 = testargs->schema.Add();
-        column2->set_name("col2");
-        column2->set_data_type(type::kInt);
-        common::ColumnDesc* column3 = testargs->schema.Add();
-        column3->set_name("col3");
-        column3->set_data_type(type::kBigInt);
-        common::ColumnDesc* column4 = testargs->schema.Add();
-        column4->set_name("col4");
-        column4->set_data_type(type::kVarchar);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col1", ::openmldb::type::kSmallInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col2", ::openmldb::type::kInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col3", ::openmldb::type::kBigInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col4", ::openmldb::type::kVarchar);
+        codec::SchemaCodec::SetColumnDesc(testargs->output_schema.Add(), "col4", ::openmldb::type::kVarchar);
 
         testargs->ckey.set_index_name("col4");
         testargs->ckey.add_col_name("col4");
@@ -163,50 +126,22 @@ std::vector<TestArgs*> GenCommonCase() {
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
+        codec::RowCodec::EncodeRow({"1", "2", "1000", "hello"}, testargs->schema, 1, testargs->input_row);
+        codec::RowCodec::EncodeRow({"hello"}, testargs->output_schema, 1, testargs->output_row);
 
-        common::ColumnDesc* column5 = testargs->output_schema.Add();
-        column5->set_name("col4");
-        column5->set_data_type(type::kVarchar);
-
-        codec::RowBuilder input_rb(testargs->schema);
-        uint32_t input_row_size = input_rb.CalTotalLength(testargs->pk.size());
-        void* input_ptr = ::malloc(input_row_size);
-        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
-        int16_t c1 = 1;
-        input_rb.AppendInt16(c1);
-        int32_t c2 = 2;
-        input_rb.AppendInt32(c2);
-        input_rb.AppendInt64(testargs->ts);
-        input_rb.AppendString(testargs->pk.c_str(), testargs->pk.size());
-        codec::RowBuilder output_rb(testargs->output_schema);
-        uint32_t output_row_size = output_rb.CalTotalLength(testargs->pk.size());
-        void* output_ptr = ::malloc(output_row_size);
-        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
-        output_rb.AppendString(testargs->pk.c_str(), testargs->pk.size());
         uint32_t* idx = testargs->plist.Add();
         *idx = 3;
-        testargs->row_ptr = input_ptr;
-        testargs->row_size = input_row_size;
-        testargs->out_ptr = output_ptr;
-        testargs->out_size = output_row_size;
         args.push_back(testargs);
     }
 
     {
         TestArgs* testargs = new TestArgs();
-        common::ColumnDesc* column1 = testargs->schema.Add();
-        column1->set_name("col1");
-        column1->set_data_type(type::kSmallInt);
-        common::ColumnDesc* column2 = testargs->schema.Add();
-        column2->set_name("col2");
-        column2->set_data_type(type::kInt);
-        common::ColumnDesc* column3 = testargs->schema.Add();
-        column3->set_name("col3");
-        column3->set_data_type(type::kBigInt);
-
-        common::ColumnDesc* column4 = testargs->schema.Add();
-        column4->set_name("col4");
-        column4->set_data_type(type::kVarchar);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col1", ::openmldb::type::kSmallInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col2", ::openmldb::type::kInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col3", ::openmldb::type::kBigInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col4", ::openmldb::type::kVarchar);
+        codec::SchemaCodec::SetColumnDesc(testargs->output_schema.Add(), "col4", ::openmldb::type::kVarchar);
+        codec::SchemaCodec::SetColumnDesc(testargs->output_schema.Add(), "col3", ::openmldb::type::kBigInt);
 
         testargs->ckey.set_index_name("col4");
         testargs->ckey.add_col_name("col4");
@@ -218,58 +153,25 @@ std::vector<TestArgs*> GenCommonCase() {
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
+        codec::RowCodec::EncodeRow({"1", "2", "1000", "hello"}, testargs->schema, 1, testargs->input_row);
+        std::vector<std::string> values = {"hello", "1000"};
+        codec::RowCodec::EncodeRow(values, testargs->output_schema, 1, testargs->output_row);
 
-        common::ColumnDesc* column5 = testargs->output_schema.Add();
-        column5->set_name("col4");
-        column5->set_data_type(type::kVarchar);
-
-        common::ColumnDesc* column6 = testargs->output_schema.Add();
-        column6->set_name("col3");
-        column6->set_data_type(type::kBigInt);
-
-        codec::RowBuilder input_rb(testargs->schema);
-        uint32_t input_row_size = input_rb.CalTotalLength(testargs->pk.size());
-        void* input_ptr = ::malloc(input_row_size);
-        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
-        int16_t c1 = 1;
-        input_rb.AppendInt16(c1);
-        int32_t c2 = 2;
-        input_rb.AppendInt32(c2);
-        input_rb.AppendInt64(testargs->ts);
-        input_rb.AppendString(testargs->pk.c_str(), testargs->pk.size());
-
-        codec::RowBuilder output_rb(testargs->output_schema);
-        uint32_t output_row_size = output_rb.CalTotalLength(testargs->pk.size());
-        void* output_ptr = ::malloc(output_row_size);
-        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
-        output_rb.AppendString(testargs->pk.c_str(), testargs->pk.size());
-        output_rb.AppendInt64(testargs->ts);
         uint32_t* idx = testargs->plist.Add();
         *idx = 3;
         uint32_t* idx2 = testargs->plist.Add();
         *idx2 = 2;
-        testargs->row_ptr = input_ptr;
-        testargs->row_size = input_row_size;
-        testargs->out_ptr = output_ptr;
-        testargs->out_size = output_row_size;
         args.push_back(testargs);
     }
     // add null
     {
         TestArgs* testargs = new TestArgs();
-        common::ColumnDesc* column1 = testargs->schema.Add();
-        column1->set_name("col1");
-        column1->set_data_type(type::kSmallInt);
-        common::ColumnDesc* column2 = testargs->schema.Add();
-        column2->set_name("col2");
-        column2->set_data_type(type::kInt);
-        common::ColumnDesc* column3 = testargs->schema.Add();
-        column3->set_name("col3");
-        column3->set_data_type(type::kBigInt);
-
-        common::ColumnDesc* column4 = testargs->schema.Add();
-        column4->set_name("col4");
-        column4->set_data_type(type::kVarchar);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col1", ::openmldb::type::kSmallInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col2", ::openmldb::type::kInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col3", ::openmldb::type::kBigInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col4", ::openmldb::type::kVarchar);
+        codec::SchemaCodec::SetColumnDesc(testargs->output_schema.Add(), "col4", ::openmldb::type::kVarchar);
+        codec::SchemaCodec::SetColumnDesc(testargs->output_schema.Add(), "col2", ::openmldb::type::kInt);
 
         testargs->ckey.set_index_name("col4");
         testargs->ckey.add_col_name("col4");
@@ -281,54 +183,25 @@ std::vector<TestArgs*> GenCommonCase() {
 
         testargs->pk = "hello";
         testargs->ts = 1000l;
+        codec::RowCodec::EncodeRow({"1", "null", "1000", "hello"}, testargs->schema, 1, testargs->input_row);
+        std::vector<std::string> values = {"hello", "null"};
+        codec::RowCodec::EncodeRow(values, testargs->output_schema, 1, testargs->output_row);
 
-        common::ColumnDesc* column5 = testargs->output_schema.Add();
-        column5->set_name("col4");
-        column5->set_data_type(type::kVarchar);
-
-        common::ColumnDesc* column6 = testargs->output_schema.Add();
-        column6->set_name("col3");
-        column6->set_data_type(type::kBigInt);
-
-        codec::RowBuilder input_rb(testargs->schema);
-        uint32_t input_row_size = input_rb.CalTotalLength(testargs->pk.size());
-        void* input_ptr = ::malloc(input_row_size);
-        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
-        int16_t c1 = 1;
-        input_rb.AppendInt16(c1);
-        int32_t c2 = 2;
-        input_rb.AppendInt32(c2);
-        input_rb.AppendNULL();
-        input_rb.AppendString(testargs->pk.c_str(), testargs->pk.size());
-
-        codec::RowBuilder output_rb(testargs->output_schema);
-        uint32_t output_row_size = output_rb.CalTotalLength(testargs->pk.size());
-        void* output_ptr = ::malloc(output_row_size);
-        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
-        output_rb.AppendString(testargs->pk.c_str(), testargs->pk.size());
-        output_rb.AppendNULL();
         uint32_t* idx = testargs->plist.Add();
         *idx = 3;
         uint32_t* idx2 = testargs->plist.Add();
-        *idx2 = 2;
-        testargs->row_ptr = input_ptr;
-        testargs->row_size = input_row_size;
-        testargs->out_ptr = output_ptr;
-        testargs->out_size = output_row_size;
+        *idx2 = 1;
         args.push_back(testargs);
     }
     // add null str
     {
         TestArgs* testargs = new TestArgs();
-        common::ColumnDesc* column1 = testargs->schema.Add();
-        column1->set_name("col1");
-        column1->set_data_type(type::kSmallInt);
-        common::ColumnDesc* column2 = testargs->schema.Add();
-        column2->set_name("col2");
-        column2->set_data_type(type::kInt);
-        common::ColumnDesc* column3 = testargs->schema.Add();
-        column3->set_name("col3");
-        column3->set_data_type(type::kBigInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col1", ::openmldb::type::kSmallInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col2", ::openmldb::type::kVarchar);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col3", ::openmldb::type::kBigInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->schema.Add(), "col4", ::openmldb::type::kVarchar);
+        codec::SchemaCodec::SetColumnDesc(testargs->output_schema.Add(), "col3", ::openmldb::type::kBigInt);
+        codec::SchemaCodec::SetColumnDesc(testargs->output_schema.Add(), "col2", ::openmldb::type::kVarchar);
 
         testargs->ckey.set_index_name("col4");
         testargs->ckey.add_col_name("col4");
@@ -339,44 +212,14 @@ std::vector<TestArgs*> GenCommonCase() {
         ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
         testargs->pk = "hello";
         testargs->ts = 1000l;
+        codec::RowCodec::EncodeRow({"1", "null", "1000", "hello"}, testargs->schema, 1, testargs->input_row);
+        std::vector<std::string> values = {"1000", "null"};
+        codec::RowCodec::EncodeRow(values, testargs->output_schema, 1, testargs->output_row);
 
-        common::ColumnDesc* column4 = testargs->schema.Add();
-        column4->set_name("col4");
-        column4->set_data_type(type::kVarchar);
-
-        common::ColumnDesc* column5 = testargs->output_schema.Add();
-        column5->set_name("col4");
-        column5->set_data_type(type::kVarchar);
-
-        common::ColumnDesc* column6 = testargs->output_schema.Add();
-        column6->set_name("col3");
-        column6->set_data_type(type::kBigInt);
-
-        codec::RowBuilder input_rb(testargs->schema);
-        uint32_t input_row_size = input_rb.CalTotalLength(0);
-        void* input_ptr = ::malloc(input_row_size);
-        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
-        int16_t c1 = 1;
-        input_rb.AppendInt16(c1);
-        int32_t c2 = 2;
-        input_rb.AppendInt32(c2);
-        input_rb.AppendInt64(testargs->ts);
-        input_rb.AppendNULL();
-
-        codec::RowBuilder output_rb(testargs->output_schema);
-        uint32_t output_row_size = output_rb.CalTotalLength(0);
-        void* output_ptr = ::malloc(output_row_size);
-        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
-        output_rb.AppendNULL();
-        output_rb.AppendInt64(testargs->ts);
         uint32_t* idx = testargs->plist.Add();
-        *idx = 3;
+        *idx = 2;
         uint32_t* idx2 = testargs->plist.Add();
-        *idx2 = 2;
-        testargs->row_ptr = input_ptr;
-        testargs->row_size = input_row_size;
-        testargs->out_ptr = output_ptr;
-        testargs->out_size = output_row_size;
+        *idx2 = 1;
         args.push_back(testargs);
     }
     return args;
@@ -513,10 +356,7 @@ TEST_P(TabletProjectTest, get_case) {
         dim->set_idx(0);
         std::string key = args->pk;
         dim->set_key(key);
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
-        ts->set_ts(args->ts);
-        request.set_value(reinterpret_cast<char*>(args->row_ptr), args->row_size);
+        request.set_value(args->input_row);
         ::openmldb::api::PutResponse response;
         tablet_.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -533,11 +373,11 @@ TEST_P(TabletProjectTest, get_case) {
         ::openmldb::api::GetResponse srp;
         tablet_.Get(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(srp.value().size(), args->out_size);
+        ASSERT_EQ(srp.value().size(), args->output_row.size());
         codec::RowView left(args->output_schema);
         left.Reset(reinterpret_cast<const int8_t*>(srp.value().c_str()), srp.value().size());
         codec::RowView right(args->output_schema);
-        right.Reset(reinterpret_cast<int8_t*>(args->out_ptr), args->out_size);
+        right.Reset(reinterpret_cast<int8_t*>(args->output_row.data()), args->output_row.size());
         CompareRow(&left, &right, args->output_schema);
     }
 }
@@ -578,10 +418,7 @@ TEST_P(TabletProjectTest, sql_case) {
         dim->set_idx(0);
         std::string key = args->pk;
         dim->set_key(key);
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
-        ts->set_ts(args->ts);
-        request.set_value(reinterpret_cast<char*>(args->row_ptr), args->row_size);
+        request.set_value(args->input_row);
         ::openmldb::api::PutResponse response;
         tablet_.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -636,10 +473,7 @@ TEST_P(TabletProjectTest, scan_case) {
         dim->set_idx(0);
         std::string key = args->pk;
         dim->set_key(key);
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
-        ts->set_ts(args->ts);
-        request.set_value(reinterpret_cast<char*>(args->row_ptr), args->row_size);
+        request.set_value(args->input_row);
         ::openmldb::api::PutResponse response;
         tablet_.Put(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
@@ -660,11 +494,11 @@ TEST_P(TabletProjectTest, scan_case) {
         ASSERT_EQ(1, (int64_t)srp.count());
         ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
-        ASSERT_EQ(kv_it->GetValue().size(), args->out_size);
+        ASSERT_EQ(kv_it->GetValue().size(), args->output_row.size());
         codec::RowView left(args->output_schema);
         left.Reset(reinterpret_cast<const int8_t*>(kv_it->GetValue().data()), kv_it->GetValue().size());
         codec::RowView right(args->output_schema);
-        right.Reset(reinterpret_cast<int8_t*>(args->out_ptr), args->out_size);
+        right.Reset(reinterpret_cast<int8_t*>(args->output_row.data()), args->output_row.size());
         CompareRow(&left, &right, args->output_schema);
     }
 }

@@ -22,6 +22,7 @@ import com._4paradigm.hybridse.sdk.JitManager
 import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper}
 import com._4paradigm.openmldb.batch.OpenmldbBatchConfig
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.Row
@@ -203,6 +204,7 @@ object WindowSampleSupport {
 
     private val jit = {
       val buffer = config.moduleNoneBroadcast.getBuffer
+      SqlClusterExecutor.initJavaSdkLibrary(sqlConfig.openmldbJsdkLibraryPath)
       JitManager.initJitModule(config.moduleTag, buffer)
       JitManager.getJit(config.moduleTag)
     }

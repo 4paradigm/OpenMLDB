@@ -26,6 +26,7 @@
 #include "base/strings.h"
 #include "codec/flat_array.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
@@ -77,21 +78,13 @@ void CreateBaseTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
     table_meta->set_seg_cnt(8);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta->set_key_entry_max_height(8);
-    ::openmldb::common::ColumnDesc* desc = table_meta->add_column_desc();
-    desc->set_name("card");
-    desc->set_data_type(::openmldb::type::kString);
-    desc = table_meta->add_column_desc();
-    desc->set_name("mcc");
-    desc->set_data_type(::openmldb::type::kString);
-    desc = table_meta->add_column_desc();
-    desc->set_name("price");
-    desc->set_data_type(::openmldb::type::kBigInt);
-    desc = table_meta->add_column_desc();
-    desc->set_name("ts1");
-    desc->set_data_type(::openmldb::type::kBigInt);
-    desc = table_meta->add_column_desc();
-    desc->set_name("ts2");
-    desc->set_data_type(::openmldb::type::kBigInt);
+    table_meta->set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "mcc", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "price", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "value", ::openmldb::type::kString);
     ::openmldb::common::ColumnKey* column_key = table_meta->add_column_key();
     column_key->set_index_name("card");
     column_key->set_ts_name("ts1");
@@ -104,9 +97,10 @@ void CreateBaseTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
     MockClosure closure;
     tablet.CreateTable(NULL, &crequest, &cresponse, &closure);
     ASSERT_EQ(0, cresponse.code());
-
+    ::openmldb::codec::SDKCodec sdk_codec(*table_meta);
     for (int i = 0; i < 1000; i++) {
         ::openmldb::api::PutRequest request;
+        request.set_format_version(1);
         request.set_tid(tid);
         request.set_pid(pid);
         ::openmldb::api::Dimension* dim = request.add_dimensions();
@@ -117,15 +111,11 @@ void CreateBaseTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
         dim->set_idx(1);
         std::string k2 = "mcc" + std::to_string(i % 100);
         dim->set_key(k2);
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
         uint64_t time = start_ts + i;
-        ts->set_ts(time);
-        ts = request.add_ts_dimensions();
-        ts->set_idx(1);
-        ts->set_ts(time);
-        std::string value = "value" + std::to_string(i);
-        request.set_value(value);
+        auto value = request.mutable_value();
+        std::vector<std::string> row = {k1, k2, "11", std::to_string(time), std::to_string(time),
+            "value" + std::to_string(i)};
+        sdk_codec.EncodeRow(row, value);
         ::openmldb::api::PutResponse response;
         MockClosure closure;
         tablet.Put(NULL, &request, &response, &closure);
@@ -141,7 +131,12 @@ void CreateBaseTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
             ASSERT_EQ(0, response.code());
-            ASSERT_EQ(value.c_str(), response.value());
+            std::vector<std::string> result;
+            sdk_codec.DecodeRow(response.value(), &result);
+            ASSERT_EQ(row.size(), result.size());
+            for (size_t idx = 0; idx < row.size(); idx++) {
+                ASSERT_EQ(row.at(idx), result.at(idx));
+            }
         }
 
         {
@@ -155,7 +150,12 @@ void CreateBaseTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
             ASSERT_EQ(0, response.code());
-            ASSERT_EQ(value.c_str(), response.value());
+            std::vector<std::string> result;
+            sdk_codec.DecodeRow(response.value(), &result);
+            ASSERT_EQ(row.size(), result.size());
+            for (size_t idx = 0; idx < row.size(); idx++) {
+                ASSERT_EQ(row.at(idx), result.at(idx));
+            }
         }
     }
     ::openmldb::api::DropTableRequest dr;
@@ -208,21 +208,13 @@ void CreateAdvanceTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
     table_meta->set_seg_cnt(8);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta->set_key_entry_max_height(8);
-    ::openmldb::common::ColumnDesc* desc = table_meta->add_column_desc();
-    desc->set_name("card");
-    desc->set_data_type(::openmldb::type::kString);
-    desc = table_meta->add_column_desc();
-    desc->set_name("mcc");
-    desc->set_data_type(::openmldb::type::kString);
-    desc = table_meta->add_column_desc();
-    desc->set_name("price");
-    desc->set_data_type(::openmldb::type::kBigInt);
-    desc = table_meta->add_column_desc();
-    desc->set_name("ts1");
-    desc->set_data_type(::openmldb::type::kBigInt);
-    desc = table_meta->add_column_desc();
-    desc->set_name("ts2");
-    desc->set_data_type(::openmldb::type::kBigInt);
+    table_meta->set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "mcc", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "price", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "value", ::openmldb::type::kString);
     auto column_key = table_meta->add_column_key();
     column_key->set_index_name("card");
     column_key->set_ts_name("ts1");
@@ -244,10 +236,12 @@ void CreateAdvanceTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
     int count1 = 0;
     int count2 = 0;
     uint64_t time = 0;
+    ::openmldb::codec::SDKCodec sdk_codec(*table_meta);
     for (int i = 0; i < 1000; i++) {
         uint64_t expire_time_ts1 = ::baidu::common::timer::get_micros() / 1000 - abs_ttl * (60 * 1000);
         uint64_t expire_time_ts2 = ::baidu::common::timer::get_micros() / 1000 - col_abs_ttl * (60 * 1000);
         ::openmldb::api::PutRequest request;
+        request.set_format_version(1);
         request.set_tid(tid);
         request.set_pid(pid);
         ::openmldb::api::Dimension* dim = request.add_dimensions();
@@ -258,15 +252,11 @@ void CreateAdvanceTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
         dim->set_idx(1);
         std::string k2 = "mcc" + std::to_string(i % 100);
         dim->set_key(k2);
-        ::openmldb::api::TSDimension* ts = request.add_ts_dimensions();
-        ts->set_idx(0);
         time = start_ts + i * (60 * 1000);
-        ts->set_ts(time);
-        ts = request.add_ts_dimensions();
-        ts->set_idx(1);
-        ts->set_ts(time);
-        std::string value = "value" + std::to_string(i);
-        request.set_value(value);
+        auto value = request.mutable_value();
+        std::vector<std::string> row = {k1, k2, "11", std::to_string(time), std::to_string(time),
+            "value" + std::to_string(i)};
+        sdk_codec.EncodeRow(row, value);
         ::openmldb::api::PutResponse response;
         MockClosure closure;
         tablet.Put(NULL, &request, &response, &closure);
@@ -286,7 +276,12 @@ void CreateAdvanceTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
             } else {
                 ++count1;
                 ASSERT_EQ(0, response.code());
-                ASSERT_EQ(value.c_str(), response.value());
+                std::vector<std::string> result;
+                sdk_codec.DecodeRow(response.value(), &result);
+                ASSERT_EQ(row.size(), result.size());
+                for (size_t idx = 0; idx < row.size(); idx++) {
+                    ASSERT_EQ(row.at(idx), result.at(idx));
+                }
             }
         }
 
@@ -305,7 +300,12 @@ void CreateAdvanceTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
             } else {
                 ++count2;
                 ASSERT_EQ(0, response.code());
-                ASSERT_EQ(value.c_str(), response.value());
+                std::vector<std::string> result;
+                sdk_codec.DecodeRow(response.value(), &result);
+                ASSERT_EQ(row.size(), result.size());
+                for (size_t idx = 0; idx < row.size(); idx++) {
+                    ASSERT_EQ(row.at(idx), result.at(idx));
+                }
             }
         }
     }

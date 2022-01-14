@@ -26,7 +26,7 @@ namespace vm {
 class Router {
  public:
     Router() : main_db_(), main_table_(), router_col_() {}
-    ~Router() {}
+    virtual ~Router() {}
     void SetMainDb(const std::string& main_db) {
         main_db_ = main_db;
     }

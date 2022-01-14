@@ -104,6 +104,11 @@
       ```
     
   - 注意， SQL 函数返回值将对内置函数的实现和注册方式产生较大的影响，我们将在后续分别讨论，详情参见[3. SQL函数开发模版](#3.-SQL函数开发模版)。
+  
+- 参数Nullable的处理方式：
+
+  - 一般地，OpenMLDB对所有built-in function采取统一的NULL参数处理方式。即任意一个参数为NULL时，返回直接返回NULL。
+  - 但需要对NULL参数做特殊处理，那么可以将参数配置为`Nullable<ArgType>`，然后在C++ built-in function中将使用ArgType对应的C++类型和`bool*`来表达这个参数。详情参见[3. SQL函数开发模版](#3.-SQL函数开发模版)。
 
 #### 2.1.5 内存管理
 
@@ -437,6 +442,55 @@ RegisterExternal("my_func")
         .args<Arg1, Arg2, ...>(static_cast<R (*)(Arg1, Arg2, ...)>(v1::func))
   			.return_by_arg(true)
   			.returns<Nullable<Ret>>()
+        .doc(R"(
+            documenting my_func
+        )");
+```
+
+### 3.4 SQL函数参数是Nullable
+
+OpenMLDB对函数的NULL参数有默认的处理机制。即，任意一个参数为NULL时，函数返回NULL。但如果开发者想要在函数中获得参数是否为NULL并特别处理NULL参数时，我们需要把参数NULL的信息传递到函数中去。
+
+一般地做法是将这个参数配置为`Nullable`，并且在C++函数的对应参数后面加一个`bool`参数才存放参数值是否为空的信息。
+
+具体地，我们可以将函数设计为如下的样子：
+
+```c++
+# hybridse/src/udf/udf.h
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      // we are going to handle null arg2 in the function
+      Ret func(Arg1 arg1 Arg2 arg2, bool is_arg2_null, ...);
+    }
+  }
+}
+
+```
+
+```c++
+# hybridse/src/udf/udf.cc
+namespace hybridse {
+  namespace udf {
+    namespace v1 {
+      Ret func(Arg1 arg1, Arg2 arg2, bool is_arg2_null, ...) {
+        // ...
+        // if is_arg1_null
+        // 	return Ret(0)
+        // else 
+        // 	compute and return result
+      }
+    } 
+  } 
+} 
+```
+
+同时，在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)中注册和配置函数：
+
+```c++
+# hybridse/src/udf/default_udf_library.cc
+RegisterExternal("my_func")
+        .args<Arg1, Nulable<Arg2>, ...>(static_cast<R (*)(Arg1, Arg2, bool, ...)>(v1::func))()
         .doc(R"(
             documenting my_func
         )");

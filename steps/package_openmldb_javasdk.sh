@@ -19,12 +19,9 @@ set -e
 pushd "$(dirname "$0")/.."
 
 VERSION=$1
-cmake -H. -Bbuild -DSQL_JAVASDK_ENABLE=ON
-cmake --build build --target sql_jsdk -- -j4
-
-mkdir -p java/openmldb-native/src/main/resources/
-test -f build/src/sdk/libsql_jsdk.dylib && cp build/src/sdk/libsql_jsdk.dylib  java/openmldb-native/src/main/resources/
-test -f build/src/sdk/libsql_jsdk.so && cp build/src/sdk/libsql_jsdk.so  java/openmldb-native/src/main/resources/
+make configure SQL_JAVASDK_ENABLE=ON
+# the cp_native_so will do the copy so job
+cmake --build build --target cp_native_so -- -j4
 
 pushd java/
 BASE_PATTERN="^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*"

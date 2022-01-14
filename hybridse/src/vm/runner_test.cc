@@ -81,7 +81,6 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     sql_context.sql = sql;
     sql_context.db = "db";
     sql_context.engine_mode = engine_mode;
-    sql_context.is_performance_sensitive = false;
     sql_context.is_cluster_optimized = false;
     sql_context.parameter_types = parameter_types;
     base::Status compile_status;
@@ -122,23 +121,64 @@ TEST_P(RunnerTest, request_mode_test) {
     hybridse::type::TableDef table_def6;
 
     BuildTableDef(table_def);
+    table_def.set_name("t1");
+    {
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+    }
+    {
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index0");
+        index->add_first_keys("col0");
+        index->set_second_key("col5");
+    }
+    {
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
+    }
+    {
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index2");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+    }
+
     BuildTableDef(table_def2);
     BuildTableDef(table_def3);
     BuildTableDef(table_def4);
     BuildTableDef(table_def5);
     BuildTableDef(table_def6);
-
-    table_def.set_name("t1");
     table_def2.set_name("t2");
+    {
+        ::hybridse::type::IndexDef* index = table_def2.add_indexes();
+        index->set_name("index1_t2");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
+    }
+    {
+        ::hybridse::type::IndexDef* index = table_def2.add_indexes();
+        index->set_name("index2_t2");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+    }
     table_def3.set_name("t3");
+    table_def2.set_name("t2");
+    {
+        ::hybridse::type::IndexDef* index = table_def3.add_indexes();
+        index->set_name("index1_t3");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
+    }
     table_def4.set_name("t4");
     table_def5.set_name("t5");
     table_def6.set_name("t6");
-    ::hybridse::type::IndexDef* index = table_def.add_indexes();
-    index->set_name("index12");
-    index->add_first_keys("col1");
-    index->add_first_keys("col2");
-    index->set_second_key("col5");
+
+
 
     hybridse::type::Database db;
     db.set_name("db");
@@ -148,16 +188,29 @@ TEST_P(RunnerTest, request_mode_test) {
     AddTable(db, table_def4);
     AddTable(db, table_def5);
     AddTable(db, table_def6);
+
     {
         hybridse::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tb");
+        {
+            ::hybridse::type::IndexDef* index = table_def.add_indexes();
+            index->set_name("index1_tb");
+            index->add_first_keys("c1");
+            index->set_second_key("c5");
+        }
         AddTable(db, table_def);
     }
     {
         hybridse::type::TableDef table_def;
         BuildTableA(table_def);
         table_def.set_name("tc");
+        {
+            ::hybridse::type::IndexDef* index = table_def.add_indexes();
+            index->set_name("index1_tc");
+            index->add_first_keys("c1");
+            index->set_second_key("c5");
+        }
         AddTable(db, table_def);
     }
     auto catalog = BuildSimpleCatalog(db);
@@ -168,6 +221,12 @@ TEST_P(RunnerTest, request_mode_test) {
         BuildTableDef(table_def);
         table_def.set_catalog("db2");
         table_def.set_name("table2");
+        {
+            ::hybridse::type::IndexDef* index = table_def.add_indexes();
+            index->set_name("index2_table2");
+            index->add_first_keys("col2");
+            index->set_second_key("col5");
+        }
         AddTable(db2, table_def);
     }
     catalog->AddDatabase(db2);
@@ -296,7 +355,6 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     sql_context.sql = sqlstr;
     sql_context.db = "db";
     sql_context.engine_mode = kBatchMode;
-    sql_context.is_performance_sensitive = false;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);

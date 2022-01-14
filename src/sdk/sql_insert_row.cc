@@ -84,13 +84,7 @@ bool SQLInsertRow::Init(int str_length) {
 
 void SQLInsertRow::PackDimension(const std::string& val) { raw_dimensions_[rb_.GetAppendPos()] = val; }
 
-bool SQLInsertRow::PackTs(uint64_t ts) {
-    if (ts_set_.count(rb_.GetAppendPos())) {
-        ts_.push_back(ts);
-        return true;
-    }
-    return false;
-}
+
 
 const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& SQLInsertRow::GetDimensions() {
     if (!dimensions_.empty()) {
@@ -186,7 +180,6 @@ bool SQLInsertRow::AppendInt64(int64_t val) {
     if (IsDimension()) {
         PackDimension(std::to_string(val));
     }
-    PackTs(val);
     if (rb_.AppendInt64(val)) {
         return MakeDefault();
     }
@@ -197,7 +190,6 @@ bool SQLInsertRow::AppendTimestamp(int64_t val) {
     if (IsDimension()) {
         PackDimension(std::to_string(val));
     }
-    PackTs(val);
     if (rb_.AppendTimestamp(val)) {
         return MakeDefault();
     }

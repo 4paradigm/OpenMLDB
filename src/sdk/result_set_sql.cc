@@ -21,10 +21,10 @@
 #include <utility>
 
 #include "base/status.h"
-#include "catalog/schema_adapter.h"
 #include "catalog/sdk_catalog.h"
 #include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
+#include "schema/schema_adapter.h"
 
 namespace openmldb {
 namespace sdk {
@@ -76,7 +76,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
     auto sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
     if (projection.size() > 0) {
         ::hybridse::vm::Schema schema;
-        bool ok = ::openmldb::catalog::SchemaAdapter::SubSchema(sdk_table_handler->GetSchema(), projection, &schema);
+        bool ok = ::openmldb::schema::SchemaAdapter::SubSchema(sdk_table_handler->GetSchema(), projection, &schema);
         if (!ok) {
             status->code = -1;
             status->msg = "fail to get sub schema";

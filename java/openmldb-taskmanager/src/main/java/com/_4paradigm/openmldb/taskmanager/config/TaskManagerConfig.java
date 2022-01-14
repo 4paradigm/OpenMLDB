@@ -16,9 +16,14 @@
 
 package com._4paradigm.openmldb.taskmanager.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.io.File;
 import java.util.Properties;
 
 public class TaskManagerConfig {
+    private static Logger logger = LoggerFactory.getLogger(TaskManagerConfig.class);
+
     public static String HOST = "127.0.0.1";
     public static int PORT = 9902;
     public static int WORKER_THREAD = 4;
@@ -32,12 +37,15 @@ public class TaskManagerConfig {
     public static int ZK_BASE_SLEEP_TIME;
     public static int ZK_MAX_CONNECT_WAIT_TIME;
     public static int ZK_MAX_RETRIES;
-    public static String HIVE_METASTORE_ENDPOINT;
+    public static String OFFLINE_DATA_PREFIX;
     public static String SPARK_MASTER;
     public static String BATCHJOB_JAR_PATH;
     public static String SPARK_YARN_JARS;
     public static String SPARK_HOME;
     public static int PREFETCH_JOBID_NUM;
+    public static String NAMENODE_URI;
+    public static String JOB_LOG_PATH;
+    public static String SPARK_DEFAULT_CONF;
 
     static {
         try {
@@ -48,22 +56,42 @@ public class TaskManagerConfig {
             WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "4"));
             IO_THREAD = Integer.parseInt(prop.getProperty("server.io_threads", "4"));
             ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
-            ZK_CLUSTER = prop.getProperty("zookeeper.cluster");
-            ZK_ROOT_PATH = prop.getProperty("zookeeper.root_path");
+            ZK_CLUSTER = prop.getProperty("zookeeper.cluster", "");
+            ZK_ROOT_PATH = prop.getProperty("zookeeper.root_path", "");
             ZK_TASKMANAGER_PATH = ZK_ROOT_PATH + "/taskmanager";
             ZK_MAX_JOB_ID_PATH = ZK_TASKMANAGER_PATH + "/max_job_id";
             ZK_CONNECTION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.connection_timeout", "5000"));
             ZK_BASE_SLEEP_TIME = Integer.parseInt(prop.getProperty("zookeeper.base_sleep_time", "1000"));
             ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries", "10"));
             ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
-            HIVE_METASTORE_ENDPOINT = prop.getProperty("hive.metastore.endpoint");
+            OFFLINE_DATA_PREFIX = prop.getProperty("offline.data.prefix");
             SPARK_MASTER = prop.getProperty("spark.master", "yarn");
             BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
             SPARK_HOME = prop.getProperty("spark.home");
-            PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.job.num", "10"));
+            PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.jobid.num", "10"));
+            NAMENODE_URI = prop.getProperty("namenode.uri", "");
+            JOB_LOG_PATH = prop.getProperty("job.log.path", "../log/");
+            SPARK_DEFAULT_CONF = prop.getProperty("spark.default.conf", "");
+
+            if (!JOB_LOG_PATH.isEmpty()) {
+                createJobLogPath(JOB_LOG_PATH);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
+    static void createJobLogPath(String logPath) throws Exception {
+        File directory = new File(String.valueOf(logPath));
+        if (!directory.exists()) {
+            logger.info("The log path of job does not exist: " + logPath);
+            boolean created = directory.mkdirs();
+            logger.info("Try to create log path and get result: " + created);
+        } else {
+            logger.debug("The log path of job already exists: " + logPath);
+        }
+    }
+
+
 }

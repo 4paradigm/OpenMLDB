@@ -27,6 +27,7 @@
 #include "brpc/server.h"
 #include "gflags/gflags.h"
 #include "nameserver/name_server_impl.h"
+#include "codec/sdk_codec.h"
 #include "tablet/tablet_impl.h"
 
 DECLARE_string(endpoint);
@@ -35,6 +36,8 @@ DECLARE_string(zk_cluster);
 
 namespace openmldb {
 namespace test {
+
+using ::openmldb::codec::SchemaCodec;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -55,6 +58,66 @@ void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLT
     ttl_st->set_abs_ttl(abs_ttl);
     ttl_st->set_lat_ttl(lat_ttl);
     ttl_st->set_ttl_type(ttl_type);
+}
+
+void SetDimension(uint32_t id, const std::string& key, openmldb::api::Dimension* dim) {
+    dim->set_idx(id);
+    dim->set_key(key);
+}
+
+void AddDimension(uint32_t id, const std::string& key, ::openmldb::api::LogEntry* entry) {
+    SetDimension(id, key, entry->add_dimensions());
+}
+
+std::string EncodeKV(const std::string& key, const std::string& value) {
+    ::openmldb::api::TableMeta meta;
+    meta.set_format_version(1);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "key", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "value", ::openmldb::type::kString);
+    ::openmldb::codec::SDKCodec sdk_codec(meta);
+    std::string result;
+    std::vector<std::string> row = {key, value};
+    sdk_codec.EncodeRow(row, &result);
+    return result;
+}
+
+std::string DecodeV(const std::string& value) {
+    ::openmldb::api::TableMeta meta;
+    meta.set_format_version(1);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "key", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "value", ::openmldb::type::kString);
+    ::openmldb::codec::SDKCodec sdk_codec(meta);
+    std::vector<std::string> row;
+    sdk_codec.DecodeRow(value, &row);
+    return row[1];
+}
+
+::openmldb::api::TableMeta GetTableMeta(const std::vector<std::string>& fields) {
+    ::openmldb::api::TableMeta meta;
+    meta.set_format_version(1);
+    for (const auto& field : fields) {
+        SchemaCodec::SetColumnDesc(meta.add_column_desc(), field, ::openmldb::type::kString);
+    }
+    return meta;
+}
+
+::openmldb::api::LogEntry PackKVEntry(uint64_t offset, const std::string& key,
+        const std::string& value, uint64_t ts, uint64_t term) {
+    auto meta = GetTableMeta({"key", "value"});
+    SchemaCodec::SetIndex(meta.add_column_key(), "key1", "key", "", ::openmldb::type::kAbsoluteTime, 10, 0);
+    ::openmldb::codec::SDKCodec sdk_codec(meta);
+    std::string result;
+    std::vector<std::string> row = {key, value};
+    sdk_codec.EncodeRow(row, &result);
+    ::openmldb::api::LogEntry entry;
+    entry.set_log_index(offset);
+    entry.set_value(result);
+    auto dimension = entry.add_dimensions();
+    dimension->set_key(key);
+    dimension->set_idx(0);
+    entry.set_ts(ts);
+    entry.set_term(term);
+    return entry;
 }
 
 bool StartNS(const std::string& endpoint, brpc::Server* server) {

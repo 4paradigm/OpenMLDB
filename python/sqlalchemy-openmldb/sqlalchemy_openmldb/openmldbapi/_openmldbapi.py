@@ -18,9 +18,11 @@ import logging
 from . import driver
 import re
 
+# Globals
 apilevel = '2.0'
 paramstyle = 'qmark'
 threadsafety = 3
+
 
 class Type(object):
     Bool = driver.sql_router_sdk.kTypeBool
@@ -54,7 +56,7 @@ dropTable = re.compile("^drop\s+table", re.I)
 dropProduce = re.compile("^drop\s+procedure", re.I)
 
 
-
+# Exceptions module
 class Error(Exception):
 
     def __init__(self, message):
@@ -111,6 +113,7 @@ class NotSupportedError(DatabaseError):
     def __init__(self, message):
         self.message = message
 
+
 class CursorClosedException(Error):
 
     def __init__(self, message):
@@ -118,6 +121,7 @@ class CursorClosedException(Error):
 
     def __str__(self):
         return repr(self.message)
+
 class ConnectionClosedException(Error):
 
     def __init__(self, message):
@@ -125,12 +129,15 @@ class ConnectionClosedException(Error):
 
     def __str__(self):
         return repr(self.message)
+
+
 class Cursor(object):
 
     def __init__(self, db, zk, zkPath, conn):
 
-        self.arraysize = 1
         self.description = None
+        self.rowcount = -1
+        self.arraysize = 1
         self.connection = conn
         self.db = db
         self.zk = zk
@@ -139,7 +146,6 @@ class Cursor(object):
         self._resultSet = None
         self._resultSetMetadata = None
         self._resultSetStatus = None
-        self.rowcount = -1
         self._resultSet = None
 
     def connected(func):
@@ -195,16 +201,6 @@ class Cursor(object):
             raise DatabaseError("execute select fail")
         self._pre_process_result(rs)
         return self
-
-
-    @connected
-    def getdesc(self):
-        return "openmldb cursor"
-
-    def checkCmd(cmd: str) -> bool:
-        if cmd.find("select cast") == 0:
-            return False
-        return True
 
     def execute(self, operation, parameters=()):
         command = operation.strip(' \t\n\r') if operation else None
@@ -308,20 +304,7 @@ class Cursor(object):
 
     @connected
     def executemany(self, operation, parameters=()):
-        pass
-
-    @staticmethod
-    def substitute_in_query(string_query, parameters):
-        query = string_query
-        return query
-
-    @staticmethod
-    def parse_column_types(metadata):
-        names = []
-        types = []
-        for row in metadata:
-            names.append(row["column"])
-            types.append(row["row"].lower())
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def fetchone(self):
         if self._resultSet is None: return "call fetchone"
@@ -342,30 +325,53 @@ class Cursor(object):
 
     @connected
     def fetchmany(self, size=None):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def nextset(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def setinputsizes(self, size):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def setoutputsize(self, size, columns=()):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
         
     @connected
     def fetchall(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
+
+
+    @staticmethod
+    def substitute_in_query(string_query, parameters):
+        query = string_query
+        return query
+
+    @staticmethod
+    def parse_column_types(metadata):
+        names = []
+        types = []
+        for row in metadata:
+            names.append(row["column"])
+            types.append(row["row"].lower())
+
+    @connected
+    def getdesc(self):
+        return "openmldb cursor"
+
+    def checkCmd(cmd: str) -> bool:
+        if cmd.find("select cast") == 0:
+            return False
+        return True
 
     @connected
     def get_query_metadata(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def get_default_plugin(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def __iter__(self):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def batch_row_request(self, sql, commonCol, parameters):
         ok, rs = self.connection._sdk.doBatchRowRequest(self.db, sql, commonCol, parameters)
@@ -384,6 +390,8 @@ class Cursor(object):
             raise DatabaseError("execute select fail {}".format(rs))
         self._pre_process_result(rs)
         return self
+
+
 
 class Connection(object):
 
@@ -410,21 +418,15 @@ class Connection(object):
 
 
     def execute(self):
-        pass
-
-    def close(self):
-        pass
-
-    def cursor(self):
-        return Cursor(self._db, self._zk, self._zkPath, self)
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @connected
     def _cursor_execute(self, cursor, statement, parameters):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @connected
     def do_rollback(self, dbapi_connection):
-        pass
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @connected
     def rollback(self):
@@ -438,5 +440,13 @@ class Connection(object):
         """
         pass
 
+    def close(self):
+        raise NotSupportedError("Unsupported in OpenMLDB")
+
+    def cursor(self):
+        return Cursor(self._db, self._zk, self._zkPath, self)
+
+
+# Constructor for creating connection to db
 def connect(db, zk, zkPath):
     return Connection(db, zk, zkPath)

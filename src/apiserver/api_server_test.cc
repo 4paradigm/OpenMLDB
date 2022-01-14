@@ -570,7 +570,7 @@ TEST_F(APIServerTest, no_common_not_first_string) {
 
     // create table
     std::string ddl =
-        "create table trans(id int,\n"
+        "create table trans1(id int,\n"
         "                   c1 string,\n"
         "                   c3 int,\n"
         "                   c4 bigint,\n"
@@ -580,18 +580,18 @@ TEST_F(APIServerTest, no_common_not_first_string) {
         "                   c8 date,\n"
         "                   index(key=c1, ts=c7));";
     hybridse::sdk::Status status;
-    env->cluster_remote->ExecuteDDL(env->db, "drop table trans;", &status);
+    env->cluster_remote->ExecuteDDL(env->db, "drop table trans1;", &status);
     ASSERT_TRUE(env->cluster_sdk->Refresh());
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
 
     ASSERT_TRUE(env->cluster_sdk->Refresh());
     // insert
-    std::string insert_sql = "insert into trans values(11,\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    std::string insert_sql = "insert into trans1 values(11,\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
     ASSERT_TRUE(env->cluster_remote->ExecuteInsert(env->db, insert_sql, &status));
     // create procedure
     std::string sp_name = "sp1";
-    std::string sql = "SELECT id, c1, sum(c4) OVER (w1) AS w1_c4_sum FROM trans "
-        "WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 "
+    std::string sql = "SELECT id, c1, sum(c4) OVER (w1) AS w1_c4_sum FROM trans1 "
+        "WINDOW w1 AS (PARTITION BY trans1.c1 ORDER BY trans1.c7 "
         "ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);";
 
     std::string sp_ddl =
@@ -649,7 +649,7 @@ TEST_F(APIServerTest, no_common_not_first_string) {
     // drop procedure and table
     std::string drop_sp_sql = "drop procedure " + sp_name + ";";
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, drop_sp_sql, &status));
-    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table trans;", &status));
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table trans1;", &status));
 }
 
 TEST_F(APIServerTest, getDBs) {

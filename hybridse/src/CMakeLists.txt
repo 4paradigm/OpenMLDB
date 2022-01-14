@@ -113,3 +113,6 @@ target_link_libraries(export_udf_info hybridse_core ${ZETASQL_LIBS})
 # simple engine demo
 add_executable(simple_engine_demo cmd/simple_engine_demo.cc)
 target_link_libraries(simple_engine_demo hybridse_core ${ZETASQL_LIBS} ${GTEST_LIBRARIES})
+
+# test_list is defined in `OpenMLDB/CMakeLists.txt` first, propagate it to parent scope or test_list is only in the this scope
+set(test_list ${test_list} PARENT_SCOPE)

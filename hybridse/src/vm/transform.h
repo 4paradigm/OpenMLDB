@@ -101,11 +101,10 @@ class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog, const codec::Schema* parameter_types,
-                         ::llvm::Module* module, const udf::UdfLibrary* library);
-    BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
-                         const std::shared_ptr<Catalog>& catalog, const codec::Schema* parameter_types,
-                         ::llvm::Module* module, const udf::UdfLibrary* library, bool performance_sensitive,
-                         bool cluster_optimized_mode, bool enable_expr_opt, bool enable_window_parallelization);
+                         ::llvm::Module* module, const udf::UdfLibrary* library,
+                         bool cluster_optimized_mode = false, bool enable_expr_opt = false,
+                         bool enable_window_parallelization = true,
+                         bool enable_window_column_pruning = false);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
 
@@ -146,10 +145,8 @@ class BatchModeTransformer {
     Status ValidateWindowIndexOptimization(const WindowOp& window,
                                            PhysicalOpNode* in);
     Status ValidateJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
-    Status ValidateRequestJoinIndexOptimization(const Join& join,
-                                                PhysicalOpNode* in);
+    Status ValidateRequestJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
     Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
-    Status ValidateNotAggregationOverTable(PhysicalOpNode* physical_plan);
     Status ValidateOnlyFullGroupBy(const node::ProjectListNode* project_list, const node::ExprListNode* group_keys,
                                    const SchemasContext* schemas_ctx);
     PhysicalPlanContext* GetPlanContext() { return &plan_ctx_; }
@@ -166,8 +163,6 @@ class BatchModeTransformer {
                                      PhysicalOpNode** output);
     virtual Status TransformJoinOp(const node::JoinPlanNode* node,
                                    PhysicalOpNode** output);
-    virtual Status TransformUnionOp(const node::UnionPlanNode* node,
-                                    PhysicalOpNode** output);
     virtual Status TransformGroupOp(const node::GroupPlanNode* node,
                                     PhysicalOpNode** output);
     virtual Status TransformSortOp(const node::SortPlanNode* node,
@@ -181,6 +176,9 @@ class BatchModeTransformer {
     virtual Status TransformDistinctOp(const node::DistinctPlanNode* node,
                                        PhysicalOpNode** output);
     virtual Status TransformDeleteOp(const node::DeletePlanNode* node, PhysicalOpNode** output);
+
+    virtual Status TransformSelectIntoOp(const node::SelectIntoPlanNode* node, PhysicalOpNode* child,
+                                         PhysicalOpNode** output);
 
     virtual Status TransformLoadDataOp(const node::LoadDataPlanNode* node,
                                        PhysicalOpNode** output);
@@ -251,22 +249,22 @@ class BatchModeTransformer {
     // window partition and order should be optimized under
     // `index_opt_strict_mode_` join key should be optimized under
     // `index_opt_strict_mode_`
-    bool performance_sensitive_mode_;
     bool cluster_optimized_mode_;
     bool enable_batch_window_parallelization_;
+    bool enable_batch_window_column_pruning_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     const udf::UdfLibrary* library_;
     PhysicalPlanContext plan_ctx_;
 };
-
 class RequestModeTransformer : public BatchModeTransformer {
  public:
     RequestModeTransformer(node::NodeManager* node_manager, const std::string& db,
                            const std::shared_ptr<Catalog>& catalog, const codec::Schema* parameter_types,
                            ::llvm::Module* module, udf::UdfLibrary* library,
-                           const std::set<size_t>& common_column_indices, const bool performance_sensitive,
-                           const bool cluster_optimized, const bool enable_batch_request_opt, bool enable_expr_opt);
+                           const std::set<size_t>& common_column_indices,
+                           const bool cluster_optimized, const bool enable_batch_request_opt, bool enable_expr_opt,
+                           bool performance_sensitive = true);
     virtual ~RequestModeTransformer();
 
     const Schema& request_schema() const { return request_schema_; }
@@ -276,8 +274,8 @@ class RequestModeTransformer : public BatchModeTransformer {
         return batch_request_info_;
     }
     Status ValidatePlan(PhysicalOpNode* in) override;
-    Status ValidatePrimaryPath(PhysicalOpNode* in,
-                               PhysicalOpNode** primary_source);
+    Status ValidateRequestTable(PhysicalOpNode* in,
+                               PhysicalOpNode** request_table);
 
  protected:
     void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
@@ -289,11 +287,13 @@ class RequestModeTransformer : public BatchModeTransformer {
     Status TransformJoinOp(const node::JoinPlanNode* node,
                                    PhysicalOpNode** output) override;
     Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output) override;
+    Status TransformGroupOp(const node::GroupPlanNode* node, PhysicalOpNode** output) override;
 
     Status TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) override;
 
  private:
     bool enable_batch_request_opt_;
+    bool performance_sensitive_;
     vm::Schema request_schema_;
     std::string request_name_ = "";
     std::string request_db_name_ = "";

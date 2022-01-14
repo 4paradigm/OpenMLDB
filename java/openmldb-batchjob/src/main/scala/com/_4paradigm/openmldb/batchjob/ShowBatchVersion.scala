@@ -22,8 +22,9 @@ import org.apache.spark.sql.SparkSession
 object ShowBatchVersion {
 
   def main(args: Array[String]): Unit = {
-    val spark = new OpenmldbSession(SparkSession.builder().getOrCreate())
-    println(s"OpenMLDB Batch version: ${spark.version}")
+    val sess = new OpenmldbSession(SparkSession.builder().getOrCreate())
+    println(s"OpenMLDB Batch version: ${sess.version}")
+    sess.close()
   }
 
 }

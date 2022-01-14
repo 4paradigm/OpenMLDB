@@ -19,13 +19,14 @@ import com._4paradigm.openmldb.proto.Type.DataType;
 import com._4paradigm.openmldb.proto.Common.ColumnDesc;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 
 public class CodecUtil {
-    public static final Charset CHARSET = Charset.forName("utf-8");
+    public static final Charset CHARSET = StandardCharsets.UTF_8;
     public static final int VERSION_LENGTH = 2;
     public static final int SIZE_LENGTH = 4;
     public static final int HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;

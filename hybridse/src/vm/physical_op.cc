@@ -26,6 +26,20 @@ namespace vm {
 using hybridse::base::Status;
 
 const char INDENT[] = "  ";
+
+void printOptionsMap(std::ostream &output, const node::OptionsMap* value, const std::string_view item_name) {
+    output << ", " << item_name << "=";
+    if (value == nullptr || value->empty()) {
+        output << "<nil>";
+    } else {
+        output << "(";
+        for (auto it = value->begin(); it != value->end(); ++it) {
+            output << it->first << ":" << it->second->GetExprString() << ",";
+        }
+        output << ")";
+    }
+}
+
 void PhysicalOpNode::Print(std::ostream& output, const std::string& tab) const {
     output << tab << PhysicalOpTypeName(type_);
 }
@@ -1241,6 +1255,31 @@ Status PhysicalRequestJoinNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
+Status PhysicalSelectIntoNode::InitSchema(PhysicalPlanContext* ctx) { return Status::OK(); }
+Status PhysicalSelectIntoNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                               PhysicalOpNode** out) {
+    return {common::kPlanError, "no children"};
+}
+
+void PhysicalSelectIntoNode::Print(std::ostream& output, const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(" << "out_file=" << OutFile();
+
+    if (options_) {
+        printOptionsMap(output, options_.get(), "options");
+    }
+    if (config_options_) {
+        printOptionsMap(output, config_options_.get(), "config_options");
+    }
+    output << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
+PhysicalSelectIntoNode* PhysicalSelectIntoNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalSelectIntoNode*>(node);
+}
+
 Status PhysicalLoadDataNode::InitSchema(PhysicalPlanContext* ctx) { return Status::OK(); }
 Status PhysicalLoadDataNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
                                              PhysicalOpNode** out) {
@@ -1253,25 +1292,17 @@ void PhysicalLoadDataNode::Print(std::ostream& output, const std::string& tab) c
            << "file=" << File() << ", db=" << Db() << ", table=" << Table();
 
     if (options_) {
-        output << ", options=";
-        if (options_->empty()) {
-            output << "<nil>";
-        } else {
-            auto it = options_->begin();
-            output << "(" << it->first << ":" << it->second->GetExprString();
-            it++;
-            for (; it != options_->end(); ++it) {
-                output << ", " << it->first << ":" << it->second->GetExprString();
-            }
-            output << ")";
-        }
+        printOptionsMap(output, options_.get(), "options");
+    }
+    if (config_options_) {
+        printOptionsMap(output, config_options_.get(), "config_options");
     }
     output << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
 
-void PhysicalDeleteNode::Print(std::ostream &output, const std::string &tab) const {
+void PhysicalDeleteNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(target=" << node::DeleteTargetString(GetTarget()) << ", job_id=" << GetJobId() << ")";
 }

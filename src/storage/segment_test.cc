@@ -149,30 +149,26 @@ TEST_F(SegmentTest, GetCount) {
     std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
     Segment segment1(8, ts_idx_vec);
     Slice pk1("pk");
-    ::openmldb::api::LogEntry logEntry;
+    std::map<int32_t, uint64_t> ts_map;
     for (int i = 0; i < 6; i++) {
-        ::openmldb::api::TSDimension* ts = logEntry.add_ts_dimensions();
-        ts->set_ts(1100 + i);
-        ts->set_idx(i);
+        ts_map.emplace(i, 1100 + i);
     }
     DataBlock db(1, "test1", 5);
-    segment1.Put(pk1, logEntry.ts_dimensions(), &db);
+    segment1.Put(pk1, ts_map, &db);
     ASSERT_EQ(-1, segment1.GetCount(pk1, 0, count));
     ASSERT_EQ(0, segment1.GetCount(pk1, 1, count));
     ASSERT_EQ(1, (int64_t)count);
     ASSERT_EQ(0, segment1.GetCount(pk1, 3, count));
     ASSERT_EQ(1, (int64_t)count);
 
-    logEntry.Clear();
+    ts_map.clear();
     for (int i = 0; i < 6; i++) {
         if (i == 3) {
             continue;
         }
-        ::openmldb::api::TSDimension* ts = logEntry.add_ts_dimensions();
-        ts->set_ts(1200 + i);
-        ts->set_idx(i);
+        ts_map.emplace(i, 1200 + i);
     }
-    segment1.Put(pk1, logEntry.ts_dimensions(), &db);
+    segment1.Put(pk1, ts_map, &db);
     ASSERT_EQ(0, segment1.GetCount(pk1, 1, count));
     ASSERT_EQ(2, (int64_t)count);
     ASSERT_EQ(0, segment1.GetCount(pk1, 3, count));
@@ -393,14 +389,12 @@ TEST_F(SegmentTest, PutAndGetTS) {
     std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
     Segment segment(8, ts_idx_vec);
     Slice pk("pk");
-    ::openmldb::api::LogEntry logEntry;
+    std::map<int32_t, uint64_t> ts_map;
     for (int i = 0; i < 6; i++) {
-        ::openmldb::api::TSDimension* ts = logEntry.add_ts_dimensions();
-        ts->set_ts(1100 + i);
-        ts->set_idx(i);
+        ts_map.emplace(i, 1100 + i);
     }
     DataBlock db(1, "test1", 5);
-    segment.Put(pk, logEntry.ts_dimensions(), &db);
+    segment.Put(pk, ts_map, &db);
     DataBlock* result = NULL;
     bool ret = segment.Get(pk, 0, 1101, &result);
     ASSERT_FALSE(ret);

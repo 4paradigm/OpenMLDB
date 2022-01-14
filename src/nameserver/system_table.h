@@ -47,7 +47,7 @@ class SystemTable {
         table_info->set_partition_num(1);
         switch (table_type) {
             case SystemTableType::kJobInfo: {
-                SetColumnDesc("id", openmldb::type::DataType::kBigInt, table_info->add_column_desc());
+                SetColumnDesc("id", openmldb::type::DataType::kInt, table_info->add_column_desc());
                 SetColumnDesc("job_type", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("state", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("start_time", openmldb::type::DataType::kTimestamp, table_info->add_column_desc());

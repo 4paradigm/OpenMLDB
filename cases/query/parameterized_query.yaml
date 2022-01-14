@@ -135,7 +135,7 @@ cases:
   - id: 2-1
     desc: 带参数的Where条件未命中索引
     mode: request-unsupport, offline-unsupport
-    tags: ["在线不支持，离线可以支持，暂时不跑离线测试"]
+    tags: ["暂时不跑离线测试"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=? and col1 > ?;
@@ -154,10 +154,16 @@ cases:
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
       success: true
+      columns: ["col0 string", "col1 int", "col2 smallint", "col3 float", "col4 double", "col5 bigint", "col6 string"]
+      order: col1
+      rows:
+      - [ 1, 3, 55, 3.300000, 33.300000, 1, 333 ]
+      - [ 1, 4, 55, 4.400000, 44.400000, 2, 4444 ]
+      - [ 2, 5, 55, 5.500000, 55.500000, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ]
+
   - id: 2-2
     desc: 带参数的Where条件未命中索引-离线支持
-    tags: ["TODO", "离线暂时不支持带参数查询"]
-    mode: rtidb-unsupport
+    mode: request-unsupport, offline-unsupport
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=? and col1 < ?;
@@ -199,7 +205,10 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
-      success: true
+      columns: [ "col0 string", "col1 int", "col2 smallint", "col3 float", "col4 double", "col5 bigint", "col6 string" ]
+      order: col1
+      rows:
+
   - id: 3-2
     desc: 带参数Where条件未命中索引示例2
     mode: rtidb-unsupport

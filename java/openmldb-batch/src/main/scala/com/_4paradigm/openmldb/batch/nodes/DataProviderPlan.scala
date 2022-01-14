@@ -25,8 +25,10 @@ object DataProviderPlan {
 
   def gen(ctx: PlanContext, node: PhysicalDataProviderNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val tableName = node.GetName()
-    val df = ctx.getDataFrame(tableName).getOrElse {
-      throw new HybridSeException(s"Input table $tableName not found")
+    val dbName = node.GetDb()
+
+    val df = ctx.getDataFrame(dbName, tableName).getOrElse {
+      throw new HybridSeException(s"Input table $tableName from database $dbName not found")
     }
 
     // If limit has been set

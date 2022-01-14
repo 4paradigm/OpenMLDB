@@ -59,7 +59,7 @@ bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
         }
         return true;
     } else {
-        if (false == ApplyLimitCnt(node->producers()[0], limit_cnt)) {
+        if (!ApplyLimitCnt(node->producers()[0], limit_cnt)) {
             if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
                 node->SetLimitCnt(limit_cnt);
                 return true;

@@ -33,19 +33,20 @@ std::string YamlTypeName(type::Type type) { return hybridse::sqlcase::SqlCase::T
 // 打印符合yaml测试框架格式的预期结果
 void PrintYamlResult(const vm::Schema& schema, const std::vector<Row>& rows) {
     std::ostringstream oss;
-    oss << "- schema: ";
+    oss << "columns: [";
     for (int i = 0; i < schema.size(); i++) {
         auto col = schema.Get(i);
-        oss << col.name() << ":" << YamlTypeName(col.type());
+        oss << "\"" << col.name() << " " << YamlTypeName(col.type()) << "\"";
         if (i + 1 != schema.size()) {
             oss << ", ";
         }
     }
-    oss << "\n- rows:\n";
+    oss << " ]\n";
+    oss << "\nrows:\n";
     RowView row_view(schema);
     for (auto row : rows) {
         row_view.Reset(row.buf());
-        oss << "- [";
+        oss << " - [";
         for (int idx = 0; idx < schema.size(); idx++) {
             std::string str = row_view.GetAsString(idx);
             oss << str;
@@ -504,6 +505,8 @@ void EngineTestRunner::RunBenchmark(size_t iters) {
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(EngineTest);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BatchRequestEngineTest);
 
+INSTANTIATE_TEST_SUITE_P(EngineTestBug, EngineTest,
+                         testing::ValuesIn(sqlcase::InitCases("/cases/debug/bug.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineFailQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/fail_query.yaml")));
 
@@ -534,7 +537,6 @@ INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, EngineTest,
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/last_join_window_query.yaml")));
-
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/window_query.yaml")));
 

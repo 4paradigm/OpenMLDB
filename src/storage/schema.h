@@ -31,6 +31,8 @@
 namespace openmldb::storage {
 
 static constexpr uint32_t MAX_INDEX_NUM = 200;
+static constexpr uint32_t DEFUALT_TS_COL_ID = UINT32_MAX;
+static constexpr const char* DEFUALT_TS_COL_NAME = "default_ts";
 
 enum TTLType { kAbsoluteTime = 1, kRelativeTime = 2, kLatestTime = 3, kAbsAndLat = 4, kAbsOrLat = 5 };
 
@@ -149,13 +151,10 @@ enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
 class ColumnDef {
  public:
     ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null);
-    ColumnDef(const std::string& name, uint32_t id, ::openmldb::type::DataType type, bool not_null, int ts_idx);
     inline uint32_t GetId() const { return id_; }
     inline const std::string& GetName() const { return name_; }
     inline ::openmldb::type::DataType GetType() const { return type_; }
     inline bool NotNull() const { return not_null_; }
-    void SetTsIdx(int32_t ts_idx) { ts_idx_ = ts_idx; }
-    inline int32_t GetTsIdx() const { return ts_idx_; }
 
     static bool CheckTsType(::openmldb::type::DataType type) {
         if (type == ::openmldb::type::kBigInt || type == ::openmldb::type::kTimestamp) {
@@ -164,12 +163,13 @@ class ColumnDef {
         return false;
     }
 
+    inline bool IsAutoGenTs() const { return id_ == DEFUALT_TS_COL_ID; }
+
  private:
     std::string name_;
     uint32_t id_;
     ::openmldb::type::DataType type_;
     bool not_null_;
-    int32_t ts_idx_;
 };
 
 class TableColumn {
@@ -221,11 +221,11 @@ class IndexDef {
 
 class InnerIndexSt {
  public:
-    InnerIndexSt(uint32_t id, const std::vector<std::shared_ptr<IndexDef>>& index) : id_(id), index_(index), ts_() {
+    InnerIndexSt(uint32_t id, const std::vector<std::shared_ptr<IndexDef>>& index) : id_(id), index_(index) {
         for (const auto& cur_index : index) {
             auto ts_col = cur_index->GetTsColumn();
-            if (ts_col && ts_col->GetTsIdx() >= 0) {
-                ts_.push_back(ts_col->GetTsIdx());
+            if (ts_col) {
+                ts_.push_back(ts_col->GetId());
             }
         }
     }
@@ -245,7 +245,7 @@ bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b);
 class TableIndex {
  public:
     TableIndex();
-    int ParseFromMeta(const ::openmldb::api::TableMeta& table_meta, std::map<std::string, uint8_t>* ts_mapping);
+    int ParseFromMeta(const ::openmldb::api::TableMeta& table_meta);
     void ReSet();
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx);
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
@@ -259,24 +259,20 @@ class TableIndex {
     int32_t GetMaxIndexId() const;
     bool HasAutoGen();
     std::shared_ptr<IndexDef> GetPkIndex();
-    const std::shared_ptr<IndexDef> GetIndexByCombineStr(const std::string& combine_str);
     bool IsColName(const std::string& name);
-    bool IsUniqueColName(const std::string& name);
     int32_t GetInnerIndexPos(uint32_t column_key_pos) const;
     void SetInnerIndexPos(uint32_t column_key_pos, uint32_t inner_pos);
     void AddInnerIndex(const std::shared_ptr<InnerIndexSt>& inner_index);
 
  private:
-    void FillIndexVal(const ::openmldb::api::TableMeta& table_meta, uint32_t ts_num);
+    void FillIndexVal(const ::openmldb::api::TableMeta& table_meta);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
     std::shared_ptr<std::vector<std::shared_ptr<InnerIndexSt>>> inner_indexs_;
     std::vector<std::shared_ptr<std::atomic<int32_t>>> column_key_2_inner_index_;
     std::shared_ptr<IndexDef> pk_index_;
-    std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<IndexDef>>> combine_col_name_map_;
     std::shared_ptr<std::vector<std::string>> col_name_vec_;
-    std::shared_ptr<std::vector<std::string>> unique_col_name_vec_;
 };
 
 class PartitionSt {

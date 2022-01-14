@@ -17,6 +17,8 @@
 # init_env.sh
 set -eE -x
 
+echo -e "${RED}this script is deprecated, please run 'make thirdparty' in top directory instead${NC}"
+
 pushd "$(dirname "$0")/.."
 
 GREEN='\033[0;32m'

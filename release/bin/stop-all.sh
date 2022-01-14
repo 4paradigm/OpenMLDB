@@ -1,6 +1,5 @@
-#! /bin/sh
-# stop-all.sh
-#
+#! /bin/bash
+
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,16 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export COMPONENTS="tablet nameserver apiserver"
-BASEDIR="$(dirname "$( cd "$( dirname "$0"  )" && pwd )")"
+set -e
+
+cd "$(dirname "$0")"
+
+export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager"
+
 for COMPONENT in $COMPONENTS; do
-    PID_FILE="$BASEDIR/bin/$COMPONENT.pid"
-    if [ ! -f "$PID_FILE" ]
-    then
-         echo "no $COMPONENT to stop (could not find file $PID_FILE)"
-    else
-        kill "$(cat "$PID_FILE")"
-        rm "$PID_FILE"
-    fi
+  ./start.sh stop "$COMPONENT"
 done
 echo "OpenMLDB stopped"

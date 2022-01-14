@@ -30,7 +30,6 @@
 
 #include "base/hash.h"
 #include "base/strings.h"
-#include "catalog/schema_adapter.h"
 #include "glog/logging.h"
 
 namespace openmldb::sdk {
@@ -92,6 +91,11 @@ void ClusterSDK::WatchNotify() {
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
 }
 
+bool ClusterSDK::TriggerNotify() const {
+    LOG(INFO) << "Trigger table notify node";
+    return zk_client_->Increment(notify_path_);
+}
+
 bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint) {
     std::string ns_node = options_.zk_path + "/leader";
     std::vector<std::string> children;
@@ -111,6 +115,20 @@ bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint)
     if (!GetRealEndpointFromZk(*endpoint, real_endpoint)) {
         return false;
     }
+    return true;
+}
+
+bool ClusterSDK::GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) {
+    std::string real_path = options_.zk_path + "/taskmanager/leader";
+
+    if (!zk_client_->GetNodeValue(real_path, *endpoint)) {
+        LOG(WARNING) << "fail to get zk value with path " << real_path;
+        return false;
+    }
+    DLOG(INFO) << "leader path " << real_path << " with value " << endpoint;
+
+    // TODO: Maybe allow users to set backup TaskManager endpoint
+    *real_endpoint = "";
     return true;
 }
 

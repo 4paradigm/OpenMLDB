@@ -89,3 +89,5 @@ target_link_libraries(toydb toydb_lib toydb_sdk hybridse_sdk hybridse_core hybri
 # engine execution
 add_executable(toydb_run_engine cmd/toydb_run_engine.cc)
 target_link_libraries(toydb_run_engine toydb_lib toydb_sdk toydb_flags hybridse_flags hybridse_test_base gtest sqlite3)
+
+set(test_list ${test_list} PARENT_SCOPE)

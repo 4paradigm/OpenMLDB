@@ -16,11 +16,13 @@
 
 package com._4paradigm.openmldb.batch.utils
 
-import com._4paradigm.hybridse.sdk.HybridSeException
+import com._4paradigm.hybridse.sdk.{HybridSeException, UnsupportedHybridSeException}
+import com._4paradigm.openmldb.proto.Type
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{DataType, DateType, IntegerType, LongType, ShortType, TimestampType}
-
-import scala.collection.mutable
+import org.apache.spark.sql.types.{
+  BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
+  ShortType, StringType, TimestampType
+}
 
 object SparkRowUtil {
 
@@ -35,4 +37,21 @@ object SparkRowUtil {
         throw new HybridSeException(s"Illegal window key type: $sparkType")
     }
   }
+
+  def protoTypeToScalaType(dataType: Type.DataType): DataType = {
+    dataType match {
+      case Type.DataType.kBool => BooleanType
+      case Type.DataType.kSmallInt => ShortType
+      case Type.DataType.kBigInt => LongType
+      case Type.DataType.kInt => IntegerType
+      case Type.DataType.kFloat => FloatType
+      case Type.DataType.kDouble => DoubleType
+      case Type.DataType.kDate => DateType
+      // In online storage, timestamp format is int64. But in offline storage, we use the spark sql timestamp type
+      // (DateTime)
+      case Type.DataType.kTimestamp => TimestampType
+      case Type.DataType.kVarchar | Type.DataType.kString => StringType
+    }
+  }
+
 }

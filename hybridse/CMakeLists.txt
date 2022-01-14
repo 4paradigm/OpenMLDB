@@ -34,8 +34,6 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules")
-
 project(hybridse)
 
 set(HYBRIDSE_VERSION_MAJOR 0)
@@ -46,9 +44,7 @@ option(TESTING_ENABLE "Enable Test" ON)
 option(HYBRIDSE_TESTING_ENABLE "Enable Hybridse Test" ON)
 option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
-option(COVERAGE_ENABLE "Enable Coverage" OFF)
 option(PYSDK_ENABLE "Enable pysdk" ON)
-option(JAVASDK_ENABLE "Enable javasdk" ON)
 option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
@@ -127,13 +123,8 @@ if (DEFINED ENV{CI})
 endif()
 
 if (TESTING_ENABLE)
+    set(CTEST_OUTPUT_ON_FAILURE ON)
     enable_testing()
-endif ()
-if (COVERAGE_ENABLE)
-    if (CMAKE_COMPILER_IS_GNUCXX)
-        include(CodeCoverage)
-        APPEND_COVERAGE_COMPILER_FLAGS()
-    endif ()
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -219,7 +210,7 @@ if (PYSDK_ENABLE)
 endif ()
 # Find java
 
-if (JAVASDK_ENABLE)
+if (SQL_JAVASDK_ENABLE)
     find_package(Java COMPONENTS Development REQUIRED)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
 
@@ -228,15 +219,14 @@ if (JAVASDK_ENABLE)
     # Find maven
     find_program(MAVEN_EXECUTABLE mvn)
 endif ()
+
 add_subdirectory(src)
 #TODO add flag
 if (EXAMPLES_ENABLE)
     add_subdirectory(examples)
 endif ()
-if (COVERAGE_ENABLE)
-    if (CMAKE_COMPILER_IS_GNUCXX)
-        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
-                EXECUTABLE ctest -j ${n_cores}
-                DEPENDENCIES ${test_list})
-    endif ()
-endif ()
+
+if (CMAKE_PROJECT_NAME STREQUAL "openmldb")
+  # propagate test_list to upper scope
+  set(test_list ${test_list} PARENT_SCOPE)
+endif()

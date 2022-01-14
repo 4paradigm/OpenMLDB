@@ -17,7 +17,6 @@
 #include "catalog/sdk_catalog.h"
 
 #include "base/fe_status.h"
-#include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/fe_common.pb.h"
@@ -25,6 +24,9 @@
 
 namespace openmldb {
 namespace catalog {
+
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 
 class SDKCatalogTest : public ::testing::Test {};
 

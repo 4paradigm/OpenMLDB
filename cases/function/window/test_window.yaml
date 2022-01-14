@@ -635,7 +635,6 @@ cases:
   -
     id: 22
     desc: 两个窗口相同的pk,不同的ts,相同的聚合函数
-    mode: rtidb-batch-unsupport
     tags: ["TODO","@chenjing by@zhaowei","sql执行失败","http://jira.4paradigm.com/browse/FEX-924"]
     inputs:
       -
@@ -665,7 +664,6 @@ cases:
   -
     id: 23
     desc: 两个窗口不同的pk,相同的ts,相同的聚合函数
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -694,7 +692,6 @@ cases:
   -
     id: 24
     desc: 两个窗口不同的pk,相同的ts,相同的聚合函数,一个窗口两个pk
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -723,7 +720,6 @@ cases:
   -
     id: 25
     desc: 两个窗口不同的pk,不同的ts,相同的聚合函数
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -752,7 +748,6 @@ cases:
   -
     id: 26
     desc: 两个窗口不同的ts,一个都在窗口内，一个都不进入窗口
-    mode: rtidb-batch-unsupport
     tags: ["TODO","@chenjing by@zhaowei","sql执行失败,应该和 22 case是一个问题"]
     inputs:
       -
@@ -930,7 +925,7 @@ cases:
     id: 31
     desc: 多个窗口-rows
     mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败"]
+    tags: ["cluster-执行失败", "@chenjing batch online fix for multi window with union", "@tobe batch offline fix"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

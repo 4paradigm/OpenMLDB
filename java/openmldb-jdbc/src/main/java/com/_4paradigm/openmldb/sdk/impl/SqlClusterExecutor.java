@@ -43,22 +43,24 @@ import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SqlClusterExecutor implements SqlExecutor {
-    static {
-        String libname = "sql_jsdk";
-        LibraryLoader.loadLibrary(libname);
-    }
-
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
+
+    private static final AtomicBoolean initialized = new AtomicBoolean(false);;
     private SQLRouter sqlRouter;
 
-    public SqlClusterExecutor(SdkOption option) throws SqlException {
+    public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
+        initJavaSdkLibrary(libraryPath);
+
         SQLRouterOptions sqlOpt = new SQLRouterOptions();
         sqlOpt.setSession_timeout(option.getSessionTimeout());
         sqlOpt.setZk_cluster(option.getZkCluster());
@@ -69,6 +71,21 @@ public class SqlClusterExecutor implements SqlExecutor {
         sqlOpt.delete();
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
+        }
+    }
+
+    public SqlClusterExecutor(SdkOption option) throws SqlException {
+        this(option, "sql_jsdk");
+    }
+
+    synchronized public static void initJavaSdkLibrary(String libraryPath) {
+        if (!initialized.get()) {
+            if (libraryPath == null || libraryPath.isEmpty()) {
+                LibraryLoader.loadLibrary("sql_jsdk");
+            } else {
+                LibraryLoader.loadLibrary(libraryPath);
+            }
+            initialized.set(true);
         }
     }
 
@@ -256,7 +273,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return spInfo;
     }
 
-    static private TableColumnDescPairVector convertSchema(Map<String, Schema> tables) throws SQLException {
+    private static TableColumnDescPairVector convertSchema(Map<String, Schema> tables) throws SQLException {
         TableColumnDescPairVector result = new TableColumnDescPairVector();
         for (Map.Entry<String, Schema> entry : tables.entrySet()) {
             String table = entry.getKey();
@@ -273,8 +290,10 @@ public class SqlClusterExecutor implements SqlExecutor {
         return result;
     }
 
-    static public List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
+    public static List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
+        SqlClusterExecutor.initJavaSdkLibrary("");
+
         if (null == tableSchema || tableSchema.isEmpty()) {
             throw new SQLException("input schema is null or empty");
         }
@@ -291,7 +310,9 @@ public class SqlClusterExecutor implements SqlExecutor {
         return results;
     }
 
-    static public Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+    public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+        SqlClusterExecutor.initJavaSdkLibrary("");
+
         if (null == tableSchema || tableSchema.isEmpty()) {
             throw new SQLException("input schema is null or empty");
         }
@@ -354,10 +375,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (!ok) {
             logger.error("showDatabases fail: {}", status.getMsg());
         } else {
-            for (int i=0; i < dbs.size(); ++i) {
-                databases.add(dbs.get(i));
-
-            }
+            databases.addAll(dbs);
         }
 
         status.delete();
@@ -366,19 +384,21 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     public List<String> getTableNames(String db) {
-        List<String> tableNames = new ArrayList<>();
         VectorString names = sqlRouter.GetTableNames(db);
-        for (int i=0; i < names.size(); ++i) {
-            tableNames.add(names.get(i));
-        }
+        List<String> tableNames = new ArrayList<>(names);
         names.delete();
-
         return tableNames;
     }
 
     public NS.TableInfo getTableInfo(String db, String table) {
-        NS.TableInfo tableInfo = sqlRouter.GetTableInfo(db, table);
-        return tableInfo;
+        return sqlRouter.GetTableInfo(db, table);
     }
 
+    public boolean updateOfflineTableInfo(NS.TableInfo info) {
+        return sqlRouter.UpdateOfflineTableInfo(info);
+    }
+
+    public boolean refreshCatalog() {
+        return sqlRouter.RefreshCatalog();
+    }
 }

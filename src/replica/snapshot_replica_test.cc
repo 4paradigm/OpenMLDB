@@ -35,6 +35,7 @@
 #include "storage/table.h"
 #include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -132,15 +133,14 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
                            0, ::openmldb::type::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    ret = client.Put(tid, pid, "testkey", cur_time, "value1");
+    ret = client.Put(tid, pid, "testkey", cur_time, ::openmldb::test::EncodeKV("testkey", "value1"));
     ASSERT_TRUE(ret);
 
     uint32_t count = 0;
     while (count < 10) {
         count++;
-        char key[100];
-        snprintf(key, sizeof(key), "test%u", count);
-        client.Put(tid, pid, key, cur_time, key);
+        std::string key = "test" + std::to_string(count);
+        client.Put(tid, pid, key, cur_time, ::openmldb::test::EncodeKV(key, key));
     }
 
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
@@ -179,7 +179,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     ASSERT_EQ(1, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
 
-    ret = client.Put(tid, pid, "newkey", cur_time, "value2");
+    ret = client.Put(tid, pid, "newkey", cur_time, ::openmldb::test::EncodeKV("newkey", "value2"));
     ASSERT_TRUE(ret);
     sleep(2);
     sr.set_pk("newkey");
@@ -225,6 +225,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     ::openmldb::client::TabletClient client(leader_point, "");
     client.Init();
     ::openmldb::api::TableMeta table_meta;
+    table_meta.set_format_version(1);
     table_meta.set_name("test");
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
@@ -267,9 +268,13 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     std::vector<std::pair<std::string, uint32_t>> dimensions;
     dimensions.push_back(std::make_pair("card0", 0));
     dimensions.push_back(std::make_pair("mcc0", 1));
-    std::vector<uint64_t> ts_dimensions = {cur_time, cur_time - 100};
-    ret = client.Put(tid, pid, dimensions, ts_dimensions, "value0");
+    ::openmldb::codec::SDKCodec sdk_codec(table_meta);
+    std::vector<std::string> row = {"card0", "mcc0", "1.3", std::to_string(cur_time), std::to_string(cur_time - 100)};
+    std::string value;
+    sdk_codec.EncodeRow(row, &value);
+    ret = client.Put(tid, pid, cur_time, value, dimensions);
     ASSERT_TRUE(ret);
+
 
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     FLAGS_endpoint = "127.0.0.1:18530";

@@ -108,7 +108,7 @@ cases:
         +-node[CMD]
           +-cmd_type: drop procedure
           +-args: [sp1]
-  - id: 14
+  - id: 14-1
     desc: DROP TABLE
     sql: DROP TABLE t1;
     expect:
@@ -116,7 +116,15 @@ cases:
         +-node[CMD]
           +-cmd_type: drop table
           +-args: [t1]
-  - id: 15
+  - id: 14-2
+    desc: DROP DB.TABLE
+    sql: DROP TABLE db1.t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop table
+          +-args: [db1, t1]
+  - id: 15-1
     desc: DROP INDEX
     sql: DROP INDEX t1.index1
     expect:
@@ -124,6 +132,14 @@ cases:
         +-node[CMD]
           +-cmd_type: drop index
           +-args: [t1, index1]
+  - id: 15-2
+    desc: DROP INDEX
+    sql: DROP INDEX db1.t1.index1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop index
+          +-args: [db1, t1, index1]
   - id: 16
     desc: USE DATABASE
     sql: USE db1
@@ -233,8 +249,9 @@ cases:
           +-db: <nil>
           +-table: t1
           +-options: <nil>
+          +-config_options: <nil>
   - id: load_data_infile_2
-    sql: LOAD DATA INFILE 'data.csv' INTO TABLE db0.t1 OPTIONS (charset = 'utf-8');
+    sql: LOAD DATA INFILE 'data.csv' INTO TABLE db0.t1 OPTIONS (charset = 'utf-8') CONFIG ( job = 'online' );
     expect:
       node_tree_str: |
         +-node[kLoadDataStmt]
@@ -242,9 +259,14 @@ cases:
           +-db: db0
           +-table: t1
           +-options:
-            +-charset:
+          |  +-charset:
+          |    +-expr[primary]
+          |      +-value: utf-8
+          |      +-type: string
+          +-config_options:
+            +-job:
               +-expr[primary]
-                +-value: utf-8
+                +-value: online
                 +-type: string
   - id: select_into_outfile_1
     sql: SELECT col1 FROM t1 WHERE col1 > 10 INTO OUTFILE 'data.csv';
@@ -285,8 +307,9 @@ cases:
           |    |      +-alias: <nil>
           |    +-window_list: []
           +-options: <nil>
+          +-config_options: <nil>
   - id: select_into_outfile_2
-    sql: SELECT col1 FROM t1 WHERE col1 <= 10 INTO OUTFILE 'data.csv' OPTIONS ( delimit = ',' );
+    sql: SELECT col1 FROM t1 WHERE col1 <= 10 INTO OUTFILE 'data.csv' OPTIONS ( delimit = ',' ) CONFIG ( job = 'spark' );
     expect:
       node_tree_str: |
         +-node[kSelectIntoStmt]
@@ -324,20 +347,15 @@ cases:
           |    |      +-alias: <nil>
           |    +-window_list: []
           +-options:
-            +-delimit:
+          |  +-delimit:
+          |    +-expr[primary]
+          |      +-value: ,
+          |      +-type: string
+          +-config_options:
+            +-job:
               +-expr[primary]
-                +-value: ,
+                +-value: spark
                 +-type: string
-  - id: set_select_mode
-    sql: SET SELECT_MODE = 'TRINO';
-    expect:
-      node_tree_str: |
-        +-node[kSetStmt]
-          +-key: SELECT_MODE
-          +-value:
-            +-expr[primary]
-              +-value: TRINO
-              +-type: string
   - id: set_select_mode_2
     desc: unsupport syntax
     sql: SET SELECT_MODE = 1 + 2;
@@ -379,3 +397,60 @@ cases:
         +-node[kDeleteStmt]
           +-target: JOB
           +-job_id: 12
+  - id: set global system variable
+    sql: SET @@global.sys_var1 = 'xxxx';
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-scope: GlobalSystemVariable
+          +-key: sys_var1
+          +-value:
+            +-expr[primary]
+              +-value: xxxx
+              +-type: string
+
+  - id: set session system variable
+    sql: SET @@session.sess_var1 = 'yyyy';
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-scope: SessionSystemVariable
+          +-key: sess_var1
+          +-value:
+            +-expr[primary]
+              +-value: yyyy
+              +-type: string
+
+
+  - id: set session system variable 2
+    sql: SET @@sess_var1 = 'yyyy';
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-scope: SessionSystemVariable
+          +-key: sess_var1
+          +-value:
+            +-expr[primary]
+              +-value: yyyy
+              +-type: string
+  - id: show_variables
+    sql: SHOW VARIABLES;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show session variables
+          +-args: []
+  - id: show_session_variables
+    sql: SHOW SESSION VARIABLES;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show session variables
+          +-args: []
+  - id: show_global_variables
+    sql: SHOW GLOBAL VARIABLES;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show global variables
+          +-args: []

@@ -17,7 +17,11 @@ set -eE
 set -o nounset
 
 GREEN='\033[0;32m'
+RED='\033[0;31m'
 NC='\033[0m'
+
+echo -e "${RED}this script is deprecated, please run 'make thirdparty' in top directory instead${NC}"
+
 fetch() {
     if [ $# -ne 2 ]; then
         echo "usage: fetch url output_file"

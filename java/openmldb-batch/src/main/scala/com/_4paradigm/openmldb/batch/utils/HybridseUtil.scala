@@ -18,17 +18,21 @@ package com._4paradigm.openmldb.batch.utils
 
 import java.util
 import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, TableDef, Type}
-import com._4paradigm.hybridse.vm.PhysicalOpNode
-import com._4paradigm.hybridse.node.{DataType => InnerDataType}
-import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
-  ShortType, StringType, StructField, StructType, TimestampType}
+import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
+import com._4paradigm.hybridse.node.{ConstNode, DataType => InnerDataType}
+import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
+import org.apache.spark.sql.types.{
+  BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
+  ShortType, StringType, StructField, StructType, TimestampType
+}
 import org.apache.spark.sql.{DataFrame, Row}
+
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
+import scala.reflect.{ClassTag, classTag}
 
 
 object HybridseUtil {
-
   def getOutputSchemaSlices(node: PhysicalOpNode): Array[StructType] = {
     (0 until node.GetOutputSchemaSourceSize().toInt).map(i => {
       val columnDefs = node.GetOutputSchemaSource(i).GetSchema()
@@ -56,7 +60,7 @@ object HybridseUtil {
     dataFrame.schema.foreach(field => {
       tblBulder.addColumns(ColumnDef.newBuilder()
         .setName(field.name)
-        .setIsNotNull(! field.nullable)
+        .setIsNotNull(!field.nullable)
         .setType(getHybridseType(field.dataType))
         .build()
       )
@@ -159,4 +163,84 @@ object HybridseUtil {
     }
   }
 
+  def parseOption(node: ConstNode, default: String, f: (ConstNode, String) => String): String = {
+    f(node, default)
+  }
+
+  def getBoolOrDefault(node: ConstNode, default: String): String = {
+    if (node != null) {
+      node.GetBool().toString
+    } else {
+      default
+    }
+  }
+
+  def updateOptionsMap(options: mutable.Map[String, String], node: ConstNode, name: String, getValue: ConstNode =>
+    String): Unit = {
+    if (node != null) {
+      options += (name -> getValue(node))
+    }
+  }
+
+  def getStringOrDefault(node: ConstNode, default: String): String = {
+    if (node != null) {
+      node.GetStr()
+    } else {
+      default
+    }
+  }
+
+  def getBool(node: ConstNode): String = {
+    node.GetBool().toString
+  }
+
+  def getStr(node: ConstNode): String = {
+    node.GetStr()
+  }
+
+  def getOptionFromNode[T](node: T, name: String): ConstNode = {
+    node match {
+      case node1: PhysicalSelectIntoNode => node1.GetOption(name)
+      case node1: PhysicalLoadDataNode => node1.GetOption(name)
+      case _ => throw new UnsupportedHybridSeException(s"${node.getClass} doesn't support GetOption method")
+    }
+  }
+
+  def parseOptions[T](node: T): (String, Map[String, String], String, Option[Boolean]) = {
+    // load data: read format, select into: write format
+    val format = parseOption(getOptionFromNode(node, "format"), "csv", getStringOrDefault).toLowerCase
+    require(format.equals("csv") || format.equals("parquet"))
+
+    // load data: read options, select into: write options
+    val options: mutable.Map[String, String] = mutable.Map()
+    // default values:
+    // delimiter -> sep: ,
+    // header: true(different with spark)
+    // null_value -> nullValue: null(different with spark)
+    // quote: '\0'(means no quote, the same with spark quote "empty string")
+    options += ("header" -> "true")
+    options += ("nullValue" -> "null")
+    updateOptionsMap(options, getOptionFromNode(node, "delimiter"), "sep", getStr)
+    updateOptionsMap(options, getOptionFromNode(node, "header"), "header", getBool)
+    updateOptionsMap(options, getOptionFromNode(node, "null_value"), "nullValue", getStr)
+    updateOptionsMap(options, getOptionFromNode(node, "quote"), "quote", getStr)
+
+    // load data: write mode(load data may write to offline storage or online storage, needs mode too)
+    // select into: write mode
+    val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", HybridseUtil
+      .getStringOrDefault).toLowerCase
+    val mode = modeStr match {
+      case "error_if_exists" => "errorifexists"
+      // append/overwrite, stay the same
+      case "append" | "overwrite" => modeStr
+      case others: Any => throw new UnsupportedHybridSeException(s"unsupported write mode $others")
+    }
+
+    // only for PhysicalLoadDataNode
+    var deepCopy: Option[Boolean] = None
+    if (node.isInstanceOf[PhysicalLoadDataNode]) {
+      deepCopy = Option(parseOption(getOptionFromNode(node, "deep_copy"), "true", getBoolOrDefault).toBoolean)
+    }
+    (format, options.toMap, mode, deepCopy)
+  }
 }

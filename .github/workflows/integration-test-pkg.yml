@@ -37,7 +37,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
@@ -58,7 +58,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
@@ -79,7 +79,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
@@ -100,7 +100,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
@@ -121,7 +121,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'standalone-cli' || github.event.inputs.EXEC_TEST_TYPE == 'cli' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
@@ -142,7 +142,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'standalone-cli' || github.event.inputs.EXEC_TEST_TYPE == 'cli' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
@@ -163,7 +163,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'python' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
@@ -200,7 +200,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'python' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
@@ -221,7 +221,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'apiserver' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:
@@ -242,7 +242,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'batch' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.0
+      image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       OS: linux
     steps:

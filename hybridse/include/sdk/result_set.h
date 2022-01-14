@@ -48,7 +48,7 @@ class ResultSet {
         return val;
     }
 
-    const bool GetAsString(uint32_t idx, std::string& val) {
+    const bool GetAsString(uint32_t idx, std::string& val) {  // NOLINT
         if (nullptr == GetSchema()) {
             return false;
         }

@@ -39,11 +39,11 @@ using hybridse::base::Status;
 struct SqlContext {
     // mode: batch|request|batch request
     ::hybridse::vm::EngineMode engine_mode;
-    bool is_performance_sensitive = false;
     bool is_cluster_optimized = false;
     bool is_batch_request_optimized = false;
     bool enable_expr_optimize = false;
-    bool enable_batch_window_parallelization = false;
+    bool enable_batch_window_parallelization = true;
+    bool enable_window_column_pruning = false;
 
     // the sql content
     std::string sql;
@@ -63,6 +63,7 @@ struct SqlContext {
     std::string request_name;
     Schema parameter_types;
     uint32_t row_size;
+    uint32_t limit_cnt = 0;
     std::string ir;
     std::string logical_plan_str;
     std::string physical_plan_str;
@@ -173,8 +174,8 @@ class SqlCompiler {
         PhysicalOpNode** output);
     Status BuildRequestModePhysicalPlan(
         SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-        ::llvm::Module* llvm_module, udf::UdfLibrary* library,
-        PhysicalOpNode** output);
+        const bool enable_request_performance_sensitive,
+        ::llvm::Module* llvm_module, udf::UdfLibrary* library, PhysicalOpNode** output);
     Status BuildBatchRequestModePhysicalPlan(
         SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
         ::llvm::Module* llvm_module, udf::UdfLibrary* library,

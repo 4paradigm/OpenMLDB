@@ -22,7 +22,6 @@
         <scala.binary.version>2.12</scala.binary.version>
         <spark.version>3.1.2</spark.version>
         <hadoop.version>2.8.5</hadoop.version>
-        <openmldb-common.version>0.4.0-SNAPSHOT</openmldb-common.version>
     </properties>
 
     <dependencies>
@@ -70,7 +69,7 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>3.11.0</version>
+            <version>3.16.1</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -99,13 +98,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- OpenMLDB -->
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-common</artifactId>
-            <version>${openmldb-common.version}</version>
-        </dependency>
-
         <!-- Hadoop -->
         <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -117,11 +109,15 @@
             <artifactId>hadoop-yarn-client</artifactId>
             <version>${hadoop.version}</version>
         </dependency>
-
         <dependency>
-            <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-core</artifactId>
-            <version>0.12.0</version>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>${hadoop.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
+            <version>${hadoop.version}</version>
         </dependency>
 
         <!-- Spark -->
@@ -148,11 +144,23 @@
             <version>13.0.0</version>
         </dependency>
 
-        <!-- OpenMLDB client -->
+        <!-- OpenMLDB -->
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
-            <version>0.3.1-allinone</version>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-common</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-batchjob</artifactId>
+            <version>${project.parent.version}</version>
         </dependency>
 
     </dependencies>
@@ -222,10 +230,15 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+            </plugin>
 
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.2.0</version>
                 <executions>
                     <execution>
                         <id>add-source</id>
@@ -278,7 +291,7 @@
                     <includeConfigurationDirectoryInClasspath>true</includeConfigurationDirectoryInClasspath>
                     <repositoryLayout>flat</repositoryLayout>
                     <repositoryName>lib</repositoryName>
-                    <assembleDirectory>${project.build.directory}/${project.name}-${project.version}</assembleDirectory>
+                    <assembleDirectory>${project.build.directory}/${project.name}-binary</assembleDirectory>
                     <binFileExtensions>
                         <unix>.sh</unix>
                     </binFileExtensions>

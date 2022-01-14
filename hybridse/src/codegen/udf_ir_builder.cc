@@ -53,6 +53,7 @@ Status UdfIRBuilder::BuildCall(
 
     switch (fn->GetType()) {
         case node::kExternalFnDef: {
+            // Handler built-in function
             auto node = dynamic_cast<const node::ExternalFnDefNode*>(fn);
             return BuildExternCall(node, arg_types, args, output);
         }

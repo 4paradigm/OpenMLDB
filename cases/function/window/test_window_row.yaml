@@ -294,7 +294,6 @@ cases:
   -
     id: 10
     desc: 多个window指定相同的pk
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -321,7 +320,6 @@ cases:
   -
     id: 11
     desc: 多个window指定相不同的pk
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -348,7 +346,6 @@ cases:
   -
     id: 12
     desc: 多个windowpk是table.column模式
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -375,7 +372,7 @@ cases:
   -
     id: 13-1
     desc: 多个window指定不同的ts, 数据时间乱序插入，batch模式预期
-    mode: request-unsupport, rtidb-batch-unsupport
+    mode: request-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -429,7 +426,6 @@ cases:
   -
     id: 13-3
     desc: 多个window指定不同的ts, 数据按时间顺序插入
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -456,7 +452,6 @@ cases:
   -
     id: 14
     desc: 两个window其中两个pk为索引列
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -483,7 +478,6 @@ cases:
   -
     id: 15
     desc: 两个window其中一个pk和两个pk
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

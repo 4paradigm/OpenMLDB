@@ -419,3 +419,47 @@ cases:
         rows:
           - [true]
 
+  - id: like_udf_const_null_string
+    desc: like match null(string)
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+    sql: |
+      select col1,
+      like_match(col2, 'M_\\ke')  as defalt_escape,
+      like_match(col2, 'M_\\ke', "\\")  as back_slash_escape,
+      like_match(col2, 'M_\\ke', "")  as empty_escape,
+      like_match(col2, 'M_\\ke', string(null)) as null_escape,
+      like_match(col2, string(null), '%') as null_pattern,
+      like_match(string(null), 'm_k', '%')  as null_target from t1;
+    expect:
+      columns: [ "col1:int", "defalt_escape:bool", "back_slash_escape:bool", "empty_escape:bool", "null_escape:bool",
+                 "null_pattern:bool", "null_target:bool" ]
+      order: col1
+      rows:
+        - [1, true, true, false, null, null, null]
+  - id: ilike_udf_const_null_string
+    desc: ilike match null(string)
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "Mike"]
+    sql: |
+      select col1,
+      ilike_match(col2, 'm_\\ke')  as defalt_escape,
+      ilike_match(col2, 'm_\\ke', "\\")  as back_slash_escape,
+      ilike_match(col2, 'm_\\ke', "")  as empty_escape,
+      ilike_match(col2, 'm_\\ke', string(null)) as null_escape,
+      ilike_match(col2, string(null), '%') as null_pattern,
+      ilike_match(string(null), 'm_k', '%')  as null_target from t1;
+    expect:
+      columns: [ "col1:int", "defalt_escape:bool", "back_slash_escape:bool", "empty_escape:bool", "null_escape:bool",
+                 "null_pattern:bool", "null_target:bool" ]
+      order: col1
+      rows:
+        - [1, true, true, false, null, null, null]

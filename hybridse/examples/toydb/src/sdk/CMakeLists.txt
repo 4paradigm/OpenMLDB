@@ -38,8 +38,8 @@ target_link_libraries(toydb_sdk ${SDK_DEPS_LIBS})
 
 # toydb sdk testcases
 if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
-	set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-    foreach(TEST_SCRIPT ${SDK_TEST_FILE_LIST}) 
+    set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+    foreach(TEST_SCRIPT ${SDK_TEST_FILE_LIST})
         file(RELATIVE_PATH RELATIVE_TEST_PATH ${TEST_CPP_SOURCE_DIR} ${TEST_SCRIPT})
         get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
         get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
@@ -49,11 +49,12 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
                 ${PROJECT_SOURCE_DIR}/src/testing/engine_test_base.cc)
 
         add_test(${TEST_TARGET_NAME}
-            ${TEST_TARGET_NAME}
+            ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
             --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
         target_link_libraries(${TEST_TARGET_NAME} gtest toydb_sdk toydb_flags toydb_lib zetasql)
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    set(test_list ${test_list} PARENT_SCOPE)
 endif()
 

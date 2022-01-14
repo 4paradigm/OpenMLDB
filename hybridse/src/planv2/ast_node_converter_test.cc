@@ -36,6 +36,7 @@ class ASTNodeConverterTest : public ::testing::TestWithParam<sqlcase::SqlCase> {
  protected:
     node::NodeManager* manager_;
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ASTNodeConverterTest);
 TEST_F(ASTNodeConverterTest, UnSupportBinaryOp) {
     zetasql::ASTNullLiteral null1;
     zetasql::ASTNullLiteral null2;
@@ -757,6 +758,37 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
         SHOW create procedure ab.cd.name;
     )sql",
                      common::kSqlAstError, "Invalid target name: ab.cd.name");
+
+    // Non-support local variable
+    expect_converted(R"sql(
+        SET local_var = 'xxxx'
+    )sql",
+                     common::kSqlAstError,
+                     "Un-support statement type: SingleAssignment");
+
+    // Non-support parameter variable currently
+    expect_converted(R"sql(
+        SET @user_var = 'xxxx'
+    )sql",
+                     common::kSqlAstError,
+                     "Un-support statement type: ParameterAssignment");
+
+    expect_converted(R"sql(
+        SET @@level1.level2.var = 'xxxx'
+    )sql",
+                     common::kSqlAstError,
+                     "Non-support system variable with more than 2 path levels. Try @@global.var_name or "
+                     "@@session.var_name or @@var_name");
+    expect_converted(R"sql(
+        SET @@unknow.var = 'xxxx'
+    )sql",
+                     common::kSqlAstError,
+                     "Non-support system variable under unknow scope, try @@global or @@session scope");
+    expect_converted(R"sql(
+        SHOW GLOBAL VARIABLES LIKE 'execute%'
+    )sql",
+                     common::kSqlAstError,
+                     "Non-support LIKE in show statement");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {

@@ -580,6 +580,7 @@ bool NsClient::UpdateTableAliveStatus(const std::string& endpoint, std::string& 
     request.set_endpoint(endpoint);
     request.set_name(name);
     request.set_is_alive(is_alive);
+    request.set_db(GetDb());
     if (pid < UINT32_MAX) {
         request.set_pid(pid);
     }
@@ -597,6 +598,7 @@ bool NsClient::UpdateTTL(const std::string& name, const ::openmldb::type::TTLTyp
     ::openmldb::nameserver::UpdateTTLRequest request;
     ::openmldb::nameserver::UpdateTTLResponse response;
     request.set_name(name);
+    request.set_db(GetDb());
     ::openmldb::common::TTLSt* ttl_desc = request.mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
@@ -867,6 +869,27 @@ bool NsClient::AddIndex(const std::string& table_name, const ::openmldb::common:
     return false;
 }
 
+base::Status NsClient::AddMultiIndex(const std::string& table_name,
+        const std::vector<::openmldb::common::ColumnKey>& column_keys) {
+    ::openmldb::nameserver::AddIndexRequest request;
+    ::openmldb::nameserver::GeneralResponse response;
+    if (column_keys.empty()) {
+        return {base::ReturnCode::kError, "no column key"};
+    } else {
+        for (const auto& column_key : column_keys) {
+            request.add_column_keys()->CopyFrom(column_key);
+        }
+    }
+    request.set_name(table_name);
+    request.set_db(GetDb());
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::AddIndex, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        return {};
+    }
+    return {base::ReturnCode::kError, response.msg()};
+}
+
 bool NsClient::DeleteIndex(const std::string& db, const std::string& table_name, const std::string& idx_name,
                            std::string& msg) {
     ::openmldb::nameserver::DeleteIndexRequest request;
@@ -935,6 +958,17 @@ bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_n
         }
         return true;
     }
+    return false;
+}
+
+bool NsClient::UpdateOfflineTableInfo(const nameserver::TableInfo& table_info) {
+    nameserver::GeneralResponse response;
+    bool ok = client_.SendRequest(&nameserver::NameServer_Stub::UpdateOfflineTableInfo, &table_info, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    LOG(WARNING) << "update offline table info failed: " << response.msg();
     return false;
 }
 

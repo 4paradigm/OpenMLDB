@@ -1,7 +1,6 @@
 db: bank
 cases:
   - desc: bank test
-    mode: rtidb-batch-unsupport
     id: 0
     inputs:
       - columns: [ reqId string, eventTime timestamp, main_id string, new_user_id string,

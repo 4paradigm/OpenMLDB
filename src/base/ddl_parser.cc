@@ -167,7 +167,7 @@ class GroupAndSortOptimizedParser {
 };
 
 IndexMap DDLParser::ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db) {
-    hybridse::vm::RequestRunSession session;
+    hybridse::vm::MockRequestRunSession session;
     return ExtractIndexes(sql, db, &session);
 }
 
@@ -196,7 +196,7 @@ IndexMap DDLParser::ExtractIndexesForBatch(const std::string& sql, const ::hybri
 }
 
 std::string DDLParser::Explain(const std::string& sql, const ::hybridse::type::Database& db) {
-    hybridse::vm::RequestRunSession session;
+    hybridse::vm::MockRequestRunSession session;
     if (!GetPlan(sql, db, &session)) {
         LOG(ERROR) << "sql get plan failed";
         return {};
@@ -223,7 +223,7 @@ IndexMap DDLParser::ExtractIndexes(const std::string& sql, const hybridse::type:
 
 std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(const std::string& sql,
                                                                   const hybridse::type::Database& db) {
-    hybridse::vm::RequestRunSession session;
+    hybridse::vm::MockRequestRunSession session;
     if (!GetPlan(sql, db, &session)) {
         LOG(ERROR) << "sql get plan failed";
         return {};
@@ -257,7 +257,6 @@ bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& 
     ::hybridse::vm::EngineOptions options;
     options.SetKeepIr(true);
     options.SetCompileOnly(true);
-    session->SetPerformanceSensitive(false);
     auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
 
     ::hybridse::base::Status status;

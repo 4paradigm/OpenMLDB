@@ -63,11 +63,14 @@ Table::Table(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, b
         ::openmldb::common::TTLSt* cur_ttl = index->mutable_ttl();
         cur_ttl->CopyFrom(ttl_st);
     }
+    AddVersionSchema(*table_meta_);
 }
 
 void Table::AddVersionSchema(const ::openmldb::api::TableMeta& table_meta) {
     auto new_versions = std::make_shared<std::map<int32_t, std::shared_ptr<Schema>>>();
     new_versions->insert(std::make_pair(1, std::make_shared<Schema>(table_meta.column_desc())));
+    auto version_decoder = std::make_shared<std::map<int32_t, std::shared_ptr<codec::RowView>>>();
+    version_decoder->emplace(1, std::make_shared<codec::RowView>(*(new_versions->begin()->second)));
     for (const auto& ver : table_meta.schema_versions()) {
         int remain_size = ver.field_count() - table_meta.column_desc_size();
         if (remain_size < 0) {
@@ -83,9 +86,11 @@ void Table::AddVersionSchema(const ::openmldb::api::TableMeta& table_meta) {
             openmldb::common::ColumnDesc* col = new_schema->Add();
             col->CopyFrom(table_meta.added_column_desc(i));
         }
-        new_versions->insert(std::make_pair(ver.id(), new_schema));
+        new_versions->emplace(ver.id(), new_schema);
+        version_decoder->emplace(ver.id(), std::make_shared<codec::RowView>(*new_schema));
     }
     std::atomic_store_explicit(&version_schema_, new_versions, std::memory_order_relaxed);
+    std::atomic_store_explicit(&version_decoder_, version_decoder, std::memory_order_relaxed);
 }
 
 void Table::SetTableMeta(::openmldb::api::TableMeta& table_meta) {  // NOLINT
@@ -95,8 +100,7 @@ void Table::SetTableMeta(::openmldb::api::TableMeta& table_meta) {  // NOLINT
 }
 
 int Table::InitColumnDesc() {
-    ts_mapping_.clear();
-    if (table_index_.ParseFromMeta(*table_meta_, &ts_mapping_) < 0) {
+    if (table_index_.ParseFromMeta(*table_meta_) < 0) {
         DLOG(WARNING) << "parse meta failed";
         return -1;
     }

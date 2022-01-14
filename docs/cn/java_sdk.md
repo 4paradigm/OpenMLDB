@@ -16,15 +16,20 @@
 
 添加如下依赖配置, 其中 version 配置 java sdk 版本
 
-```
+```xml
 <dependency>
-        <groupId>com.4paradigm.openmldb</groupId>
-        <artifactId>openmldb-jdbc</artifactId>
-        <version>0.2.2</version>
+    <groupId>com.4paradigm.openmldb</groupId>
+    <artifactId>openmldb-jdbc</artifactId>
+    <version>0.3.2</version>
+</dependency>
+<dependency>
+    <groupId>com.4paradigm.openmldb</groupId>
+    <artifactId>openmldb-native</artifactId>
+    <version>0.3.2</version>
 </dependency>
 ```
 
-注意: 由于 java sdk 中包含了 OpenMLDB 编译的 C++ 静态库, 默认是 linux 静态库, macOS 上需将上述 version 改成 `0.2.2-macos`。也可以将 version 改成 `0.2.2-allinone`, 它既包含 Linux 也包含 macOS
+注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库, 默认是 linux 静态库, macOS 上需将上述 openmldb-native 的 version 改成 `0.3.2-macos`, openmldb-jdbc 的版本保持不变。
 
 ## java使用demo
 

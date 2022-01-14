@@ -19,8 +19,8 @@
 
 #include "benchmark/benchmark.h"
 #include "boost/algorithm/string.hpp"
-#include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
+#include "schema/schema_adapter.h"
 #include "sdk/base.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/mini_cluster_bm.h"
@@ -73,7 +73,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     ok = ns_client->CreateTable(table_info, error);
 
     ::hybridse::vm::Schema fe_schema;
-    ::openmldb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc(), &fe_schema);
+    ::openmldb::schema::SchemaAdapter::ConvertSchema(table_info.column_desc(), &fe_schema);
     ::hybridse::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
     uint64_t ts = 1589780888000l;

@@ -49,7 +49,7 @@ if(TESTING_ENABLE)
     target_link_libraries(mini_cluster_request_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 endif()
 
-set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${ZETASQL_LIBS})
+set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${ZETASQL_LIBS})
 
 if(SQL_PYSDK_ENABLE)
     find_package(Python3 COMPONENTS Interpreter Development)
@@ -98,24 +98,45 @@ if(SQL_PYSDK_ENABLE)
     search_python_module(setuptools)
     search_python_module(wheel)
 
-    add_custom_target(sqlalchemy_openmldb DEPENDS sql_router_sdk
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/__init__.py
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/saopenmldb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/saopenmldb.py
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/__init__.py
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/driver.py
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
-        COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
-        COMMAND strip ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_sql_router_sdk.so
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
-        COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-        COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel
-        BYPRODUCTS
-          python/sqlalchemy-openmldb
-          python/build
-          python/dist
-          python/sqlalchemy-openmldb.egg-info
-    )
+    if(APPLE)
+        add_custom_target(sqlalchemy_openmldb DEPENDS sql_router_sdk
+                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/__init__.py
+                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/saopenmldb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/saopenmldb.py
+                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py
+                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/__init__.py
+                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/driver.py
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
+                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
+                # Do not strip library for MacOS, refer to https://github.com/4paradigm/OpenMLDB/issues/905
+                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
+                COMMAND ${CMAKE_COMMAND} -E remove_directory dist
+                COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name macosx_10_15_x86_64
+                BYPRODUCTS
+                python/sqlalchemy-openmldb
+                python/build
+                python/dist
+                python/sqlalchemy-openmldb.egg-info
+                )
+    else()
+        add_custom_target(sqlalchemy_openmldb DEPENDS sql_router_sdk
+            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/__init__.py
+            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/saopenmldb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/saopenmldb.py
+            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py
+            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/__init__.py
+            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/driver.py
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
+            COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
+            COMMAND strip ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_sql_router_sdk.so
+            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
+            COMMAND ${CMAKE_COMMAND} -E remove_directory dist
+            COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name manylinux1_x86_64
+            BYPRODUCTS
+              python/sqlalchemy-openmldb
+              python/build
+              python/dist
+              python/sqlalchemy-openmldb.egg-info
+        )
+    endif()
 endif()
 
 if(SQL_JAVASDK_ENABLE)
@@ -134,7 +155,13 @@ if(SQL_JAVASDK_ENABLE)
             SOURCES sql_router_sdk.i)
     target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
     target_compile_options(sql_jsdk PRIVATE -w)
-    target_link_libraries(sql_jsdk PRIVATE ${SDK_LIBS} boost_filesystem)
+
+    add_dependencies(sql_jsdk hybridse_jsdk_core_static)
+    if(APPLE)
+        target_link_libraries(sql_jsdk PRIVATE "-Wl,-force_load $<TARGET_FILE:hybridse_jsdk_core_static>" ${SDK_LIBS} boost_filesystem)
+    else()
+        target_link_libraries(sql_jsdk PRIVATE "-Wl,--whole-archive $<TARGET_FILE:hybridse_jsdk_core_static> -Wl,--no-whole-archive" ${SDK_LIBS} boost_filesystem)
+    endif()
 
     if(APPLE)
       set_target_properties(sql_jsdk PROPERTIES
@@ -143,15 +170,31 @@ if(SQL_JAVASDK_ENABLE)
         LINK_FLAGS "-flat_namespace -undefined suppress")
     endif()
 
-    add_custom_command(OUTPUT
-          cp_sql_resource
-          COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_SOURCE_DIR}/java/openmldb-native/src/main/resources
-          COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_jsdk> ${PROJECT_SOURCE_DIR}/java/openmldb-native/src/main/resources/)
+    # this target ensure cpp compiled libraries were copied into java project:
+    # 1. cp sql_jsdk into openmldb-native
+    # 2. cp hybridse jsdk into hybridse-native (inside dependency cp_hybridse_native_so)
+    add_custom_target(cp_native_so ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_SOURCE_DIR}/java/openmldb-native/src/main/resources
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_jsdk> ${PROJECT_SOURCE_DIR}/java/openmldb-native/src/main/resources/
+        COMMENT "copy generated native library to java project")
+    add_dependencies(cp_native_so cp_hybridse_native_so)
+
     add_custom_target(sql_javasdk_package ALL
-      DEPENDS
-        sql_jsdk
-        cp_sql_resource
-        COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true ${MAVEN_FLAGS}
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
-    )
+        COMMAND ${MAVEN_EXECUTABLE} clean package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java)
+    add_dependencies(sql_javasdk_package cp_native_so)
+
+    # Install TaskManager binary and libraries
+    FILE(GLOB TASKMANAGER_BIN "${PROJECT_SOURCE_DIR}/java/openmldb-taskmanager/target/openmldb-taskmanager-binary/bin/*")
+    FILE(GLOB TASKMANAGER_CONF "${PROJECT_SOURCE_DIR}/java/openmldb-taskmanager/target/openmldb-taskmanager-binary/conf/*")
+    FILE(GLOB TASKMANAGER_LIB "${PROJECT_SOURCE_DIR}/java/openmldb-taskmanager/target/openmldb-taskmanager-binary/lib/*")
+    install(FILES ${TASKMANAGER_BIN}
+            DESTINATION taskmanager/bin/
+            PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+    install(FILES ${TASKMANAGER_CONF}
+            DESTINATION taskmanager/conf/
+            PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
+    install(FILES ${TASKMANAGER_LIB}
+            DESTINATION taskmanager/lib/
+            PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
 endif()

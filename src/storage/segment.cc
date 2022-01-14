@@ -224,30 +224,23 @@ void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t 
     }
 }
 
-void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock* row) {
-    uint32_t ts_size = ts_dimension.size();
+void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, DataBlock* row) {
+    uint32_t ts_size = ts_map.size();
     if (ts_size == 0) {
         return;
     }
     if (ts_cnt_ == 1) {
-        if (ts_size == 1) {
-            Put(key, ts_dimension.begin()->ts(), row);
-        } else if (!ts_idx_map_.empty()) {
-            for (const auto& cur_ts : ts_dimension) {
-                auto pos = ts_idx_map_.find(cur_ts.idx());
-                if (pos != ts_idx_map_.end()) {
-                    Put(key, cur_ts.ts(), row);
-                    break;
-                }
-            }
+        auto pos = ts_map.find(ts_idx_map_.begin()->first);
+        if (pos != ts_map.end()) {
+            Put(key, pos->second, row);
         }
         return;
     }
     void* entry_arr = NULL;
     std::lock_guard<std::mutex> lock(mu_);
-    for (const auto& cur_ts : ts_dimension) {
+    for (const auto& kv : ts_map) {
         uint32_t byte_size = 0;
-        auto pos = ts_idx_map_.find(cur_ts.idx());
+        auto pos = ts_idx_map_.find(kv.first);
         if (pos == ts_idx_map_.end()) {
             continue;
         }
@@ -268,7 +261,7 @@ void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock*
             }
         }
         uint8_t height = ((KeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
-            cur_ts.ts(), row);
+            kv.second, row);
         ((KeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
             1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);

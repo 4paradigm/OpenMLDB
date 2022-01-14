@@ -20,7 +20,6 @@
 #include <stdio.h>
 
 #include "boost/algorithm/string.hpp"
-#include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "sdk/base.h"
 #include "sdk/sql_router.h"

@@ -30,8 +30,9 @@ object ImportOfflineData {
   }
 
   def importOfflineData(sql: String): Unit = {
-    val spark = new OpenmldbSession(SparkSession.builder().getOrCreate())
-    spark.sql(sql)
+    val sess = new OpenmldbSession(SparkSession.builder().getOrCreate())
+    sess.sql(sql)
+    sess.close()
   }
 
 }

@@ -4,12 +4,14 @@
 
 ## 1. 准备工作
 
+> :warning: docker engine版本需求 >= 18.03
+
 本教程均基于 OpenMLDB CLI 进行开发和部署，因此首先需要下载样例数据并且启动 OpenMLDB CLI。我们推荐使用准备好的 docker 镜像来快速体验使用：
 
 1. 拉取镜像（镜像下载大小大约 500 MB，解压后约 1.3 GB）和启动 docker 容器
 
    ```bash
-   docker run -it 4pdosc/openmldb:0.3.2 bash
+   docker run -it 4pdosc/openmldb:0.4.0 bash
    ```
 
    :bulb: **成功启动容器以后，以下命令均在容器内执行。**
@@ -17,7 +19,7 @@
 2. 下载样例数据
 
    ```bash
-   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/standalone/data/data.csv --output ./data/data.csv
+   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/quick_start/data/data.csv --output ./data/data.csv
    ```
 
 3. 启动 OpenMLDB 服务和 CLI
@@ -48,7 +50,6 @@
 
 - `key` 代表了索引列。如果创建表的时候不确定，也可以不进行指定，系统将默认使用第一个符合条件的列作为索引列。在部署上线的过程中，OpenMLDB 将会根据实际使用的 SQL 脚本，自动进行优化和创建所需要的索引。
 - `ts` 列是指定的有序列，并且用来作为 `ORDER BY` 的列。只有 `timestamp` 或者 `bigint` 类型的列才能作为 `ts` 列。
-- `ts` 和 `key` 也影响在离线模式下某些没有命中索引的 SQL 是否可以执行，该话题和性能敏感模式有关，详情参考：[OpenMLDB 性能敏感模式说明](performance_sensitive_mode.md) 。
 
 ### 2.2. 导入数据
  导入之前下载的样例数据（在 [1. 准备工作](#1-准备工作) 中已经下载）作为离线数据，用于特征计算。

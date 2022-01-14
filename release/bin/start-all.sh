@@ -1,6 +1,5 @@
-#! /bin/sh
-# start-all.sh
-#
+#! /bin/bash
+
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,39 +15,13 @@
 # limitations under the License.
 
 set -e
-export COMPONENTS="tablet nameserver apiserver"
-BASEDIR="$(dirname "$( cd "$( dirname "$0"  )" && pwd )")"
-OS="$(uname -a | awk '{print $1}' | tr '[:upper:]' '[:lower:]')"
-cd "$BASEDIR"
+
+cd "$(dirname "$0")"
+
+export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager"
+
 for COMPONENT in $COMPONENTS; do
-    PID_FILE="./bin/$COMPONENT.pid"
-    mkdir -p "$(dirname "$PID_FILE")"
-    LOG_DIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
-    [ -n "$LOG_DIR" ] || { echo "Invalid log dir"; exit 1; }
-    mkdir -p "$LOG_DIR"
-    if [ -f "$PID_FILE" ]; then
-        if kill -0 "$(cat "$PID_FILE")" > /dev/null 2>&1; then
-            echo "$COMPONENT already running as process $(cat "$PID_FILE")"
-            exit 0
-        fi
-    fi
-    if [ "$OS" = 'darwin' ]; then
-        nohup ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true > /dev/null 2>&1 &
-        sleep 1
-        if kill -0 $! > /dev/null 2>&1; then
-            echo $! > "$PID_FILE"
-        else
-            echo "$COMPONENT start failed"
-            exit 1
-        fi
-    else
-        if ./bin/mon "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$PID_FILE";
-        then
-            sleep 1
-        else
-            echo "$COMPONENT start failed"
-            exit 1
-        fi
-    fi
+  ./start.sh start "$COMPONENT"
+  sleep 1
 done
 echo "OpenMLDB start success"

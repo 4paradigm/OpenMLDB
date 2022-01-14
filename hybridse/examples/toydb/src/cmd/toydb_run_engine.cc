@@ -26,10 +26,6 @@ DEFINE_bool(
     "Specify whether perform batch request optimization in batch request mode");
 DEFINE_bool(enable_expr_opt, true,
             "Specify whether do expression optimization");
-DEFINE_bool(enable_perf_sensitive, true, "enable performance sensitive mode");
-DEFINE_bool(
-    enable_batch_window_parallelization, false,
-    "Specify whether enable window parallelization in spark batch mode");
 DEFINE_int32(run_iters, 0, "Measure the approximate run time if specified");
 DEFINE_int32(case_id, -1, "Specify the case id to run and skip others");
 
@@ -55,7 +51,6 @@ int DoRunEngine(const SqlCase& sql_case, const EngineOptions& options,
         runner = std::make_shared<ToydbBatchRequestEngineTestRunner>(
             sql_case, options, sql_case.batch_request().common_column_indices_);
     }
-    runner->GetSession()->SetPerformanceSensitive(FLAGS_enable_perf_sensitive);
     if (FLAGS_run_iters > 0) {
         runner->RunBenchmark(FLAGS_run_iters);
     } else {
@@ -74,9 +69,6 @@ int RunSingle(const std::string& yaml_path) {
     options.SetClusterOptimized(FLAGS_cluster_mode == "cluster");
     options.SetBatchRequestOptimized(FLAGS_enable_batch_request_opt);
     options.SetEnableExprOptimize(FLAGS_enable_expr_opt);
-    options.SetEnableBatchWindowParallelization(
-        FLAGS_enable_batch_window_parallelization);
-
     JitOptions& jit_options = options.jit_options();
     jit_options.SetEnableMcjit(FLAGS_enable_mcjit);
     jit_options.SetEnableVtune(FLAGS_enable_vtune);

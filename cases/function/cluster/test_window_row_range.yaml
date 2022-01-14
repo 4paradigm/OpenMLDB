@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 db: test_zw
 debugs: []
 cases:
@@ -108,7 +107,6 @@ cases:
   -
     id: 2
     desc: 2 window,pk不同
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c7 timestamp"]
@@ -139,7 +137,6 @@ cases:
   -
     id: 3
     desc: 3 window,pk不同
-    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string", "c2 string", "c3 int","c4 bigint","c7 timestamp"]

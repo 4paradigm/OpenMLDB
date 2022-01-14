@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-import com._4paradigm.openmldb.sdk.SdkOption
-import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
-import org.apache.spark.sql.SparkSession
-import org.scalatest.FunSuite
-
 import java.lang.Thread.currentThread
 
-class TestWrite extends FunSuite {
+import com._4paradigm.openmldb.sdk.SdkOption
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
+import org.apache.spark.sql.{AnalysisException, SparkSession}
+import org.scalatest.FunSuite
 
+class TestWrite extends FunSuite {
   test("Test write a local file to openmldb") {
     val sess = SparkSession.builder().master("local[*]").getOrCreate()
     val readFilePath = currentThread.getContextClassLoader.getResource("test.csv")
@@ -35,12 +34,10 @@ class TestWrite extends FunSuite {
     df.show()
     // check if nullValue option works
     val nullRow = df.collect()(1)
-    print(nullRow)
-    var i = 0
+    println(nullRow)
     for (i <- 0 until nullRow.length) {
       assert(nullRow.isNullAt(i))
     }
-
 
     val zkCluster = "127.0.0.1:6181"
     val zkPath = "/onebox"
@@ -54,7 +51,8 @@ class TestWrite extends FunSuite {
     option.setZkPath(zkPath)
     val executor = new SqlClusterExecutor(option)
     executor.createDB(db)
-    executor.executeDDL(db, "create table " + table + "(c1 bool, c2 smallint, c3 int, c4 bigint, c5 float, c6 double," +
+    executor.executeDDL(db, s"drop table $table")
+    executor.executeDDL(db, s"create table $table(c1 bool, c2 smallint, c3 int, c4 bigint, c5 float, c6 double," +
       "c7 string, c8 date, c9 timestamp, c10_str string);")
 
     // batch write can't use ErrorIfExists
@@ -62,5 +60,17 @@ class TestWrite extends FunSuite {
       //      .format("com._4paradigm.openmldb.spark.OpenmldbSource")
       .format("openmldb")
       .options(options).mode("append").save()
+
+    // If no schema, it determines the columns as string types. And the DataFrameWriter can't do smart type conversion
+    val df1 = sess.read.option("header", "true").option("nullValue", "null")
+      // spark timestampFormat is DateTime, so in test.csv, the value of c9 can't be long int.
+      .csv(readFilePath.toString)
+    try {
+      df1.write.format("openmldb").options(options).mode("append").save()
+      fail("unreachable")
+    } catch {
+      case e: AnalysisException => println(s"catch $e")
+      case e: Any => fail(s"shouldn't catch $e")
+    }
   }
 }

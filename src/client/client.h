@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "brpc/channel.h"
-#include "proto/nl_tablet.pb.h"
 #include "rpc/rpc_client.h"
 
 using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;

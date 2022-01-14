@@ -18,6 +18,8 @@ package com._4paradigm.openmldb.sdk;
 
 import com._4paradigm.openmldb.*;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
+import com._4paradigm.openmldb.proto.NS;
+
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
@@ -35,7 +37,9 @@ public interface SqlExecutor {
     boolean executeInsert(String db, String sql, SQLInsertRow row);
 
     boolean executeInsert(String db, String sql, SQLInsertRows rows);
+
     TableReader getTableReader();
+
     java.sql.ResultSet executeSQL(String db, String sql);
 
     SQLInsertRow getInsertRow(String db, String sql);
@@ -47,6 +51,7 @@ public interface SqlExecutor {
     PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException;
 
     PreparedStatement getRequestPreparedStmt(String db, String sql) throws SQLException;
+
     PreparedStatement getPreparedStatement(String db, String sql) throws SQLException;
 
     PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
@@ -61,6 +66,8 @@ public interface SqlExecutor {
     Schema getTableSchema(String dbName, String tableName) throws SQLException;
 
     ProcedureInfo showProcedure(String dbName, String proName) throws SQLException;
+
+    NS.TableInfo getTableInfo(String db, String table) throws SQLException;
 
     void close();
 }

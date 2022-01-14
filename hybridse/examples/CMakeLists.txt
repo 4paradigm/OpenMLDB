@@ -16,3 +16,4 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src
         ${PROJECT_SOURCE_DIR}/examples)
 add_subdirectory(toydb)
+set(test_list ${test_list} PARENT_SCOPE)
