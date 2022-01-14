@@ -25,7 +25,7 @@
 - Support string delimiters and quotes (#668 @ZackeryWang)
 - Add a new `lru_cache` to support upsert (#795 @vagetablechicken)
 - Support adding index with any `ts_col` (#828 @dl239)
-- Improve the `ts` packing in `sql_insert_now` (#955,#938 @vagetablechicken)
+- Improve the `ts` packing in `sql_insert_now` (#944 ,#974 @keyu813)
 - Improve documentations (#952 #885 @mahengyang; #834 @Nicholas-SR; #792,#1058,#1002,#872,#836,#792 @lumianph; #844,#782 @jingchen2222; #1022,#805 @aceforeverd)
 - Other minor updates (#1073 @dl239)
 
@@ -34,8 +34,6 @@
 #847, #831, #647, #934, #953, #1015, #982, #927, #994, #1008, #1028, #1019, #779, #855, #350, #631, #1074, #1073, #1081
 
 @nautaa, @Nicholas-SR, @aceforeverd, @dl239, @jingchen2222, @tobegit3hub, @keyu813
-
-
 
 ## [0.3.0] - 2021-11-05
 
