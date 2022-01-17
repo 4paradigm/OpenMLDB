@@ -350,7 +350,7 @@ void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
         type_name = "Deployment";
     }
     std::string sql = sp_info.GetSql();
-    if(sp_info.GetType() == hybridse::sdk::kReqDeployment) {
+    if (sp_info.GetType() == hybridse::sdk::kReqDeployment) {
         // replace the sql "CREATE PROCEDURE" with "Deploy"
         sql.replace(0,16,"Deploy");
     }
