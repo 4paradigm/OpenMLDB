@@ -216,8 +216,6 @@ if (SQL_JAVASDK_ENABLE)
 
     find_package(JNI REQUIRED)
     message(STATUS "Found JNI: ${JNI_FOUND}")
-    # Find maven
-    find_program(MAVEN_EXECUTABLE mvn)
 endif ()
 
 add_subdirectory(src)

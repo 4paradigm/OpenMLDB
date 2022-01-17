@@ -145,8 +145,7 @@ if(SQL_JAVASDK_ENABLE)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
     find_package(JNI REQUIRED)
     message(STATUS "Found JNI: ${JNI_FOUND}")
-    # Find maven
-    find_program(MAVEN_EXECUTABLE mvn)
+
     set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -package com._4paradigm.openmldb)
     swig_add_library(sql_jsdk
             TYPE SHARED
@@ -180,7 +179,7 @@ if(SQL_JAVASDK_ENABLE)
     add_dependencies(cp_native_so cp_hybridse_native_so)
 
     add_custom_target(sql_javasdk_package ALL
-        COMMAND ${MAVEN_EXECUTABLE} clean package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
+        COMMAND ./mvnw clean package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java)
     add_dependencies(sql_javasdk_package cp_native_so)
 
