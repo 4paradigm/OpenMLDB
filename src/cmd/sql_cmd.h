@@ -836,7 +836,7 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
         return {base::ReturnCode::kError, "unsupport multi database"};
     }
     std::stringstream str_stream;
-    str_stream << "CREATE PROCEDURE" << deploy_node->Name() << " (";
+    str_stream << "CREATE PROCEDURE " << deploy_node->Name() << " (";
     for (int idx = 0; idx < input_schema->size(); idx++) {
         const auto& col = input_schema->Get(idx);
         auto it = codec::DATA_TYPE_STR_MAP.find(col.data_type());
