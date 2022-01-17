@@ -86,9 +86,9 @@ public class TaskManagerClient {
     /**
      * Run sql statements in batches without default_db.
      *
-     * @return id of job.
      * @param sql query sql string.
      * @param output_path output path.
+     * @return id of job.
      * @throws Exception
      */
     public int runBatchSql(String sql, String output_path) throws Exception {
@@ -97,10 +97,10 @@ public class TaskManagerClient {
     /**
      * Run sql statements in batches.
      *
-     * @return id of job.
      * @param sql query sql string.
      * @param output_path output path.
      * @param default_db default database.
+     * @return id of job.
      * @throws Exception
      */
     public int runBatchSql(String sql, String output_path, HashMap<String, String> conf, String default_db) throws Exception {
@@ -120,8 +120,8 @@ public class TaskManagerClient {
     /**
      * Run batch sql statements and display the results without default_db.
      *
-     * @return id of job.
      * @param sql query sql string.
+     * @return id of job.
      * @throws Exception
      */
     public int runBatchAndShow(String sql) throws Exception {
@@ -130,10 +130,10 @@ public class TaskManagerClient {
     /**
      * Run batch sql statements and display the results.
      *
-     * @return id of job.
      * @param sql query sql string.
      * @param conf configure.
      * @param default_db default database.
+     * @return id of job.
      * @throws Exception
      */
     public int runBatchAndShow(String sql, HashMap<String, String> conf, String default_db) throws Exception {
@@ -170,8 +170,8 @@ public class TaskManagerClient {
     /**
      * Import online data without default_db.
      *
-     * @return id of job.
      * @param sql query sql string.
+     * @return id of job.
      * @throws Exception
      */
     public int importOnlineData(String sql) throws Exception {
@@ -180,10 +180,10 @@ public class TaskManagerClient {
     /**
      * Import online data.
      *
-     * @return id of job.
-     * @param sql query sql string
+     * @param sql query sql string.
      * @param conf configure.
      * @param default_db default database.
+     * @return id of job.
      * @throws Exception
      */
     public int importOnlineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
@@ -202,21 +202,20 @@ public class TaskManagerClient {
     /**
      * Import offline data without default_db.
      *
-     * @return id of job.
      * @param sql query sql string.
+     * @return id of job.
      * @throws Exception
      */
     public int importOfflineData(String sql) throws Exception {
         return importOfflineData(sql, new HashMap<String, String>(), "");
     }
-
     /**
      * Import offline data.
      *
-     * @return id of job.
-     * @param sql query sql string
+     * @param sql query sql string.
      * @param conf configure.
      * @param default_db default database.
+     * @return id of job.
      * @throws Exception
      */
     public int importOfflineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
@@ -235,8 +234,8 @@ public class TaskManagerClient {
     /**
      * Delete offline table.
      *
-     * @param db database name
-     * @param table table name
+     * @param db database name.
+     * @param table table name.
      * @throws Exception
      */
     public String dropOfflineTable(String db, String table) throws Exception {
@@ -254,8 +253,8 @@ public class TaskManagerClient {
     /**
      * Export offline data without default_db.
      *
+     * @param sql query sql string.
      * @return id of job.
-     * @param sql query sql string
      * @throws Exception
      */
     public int exportOfflineData(String sql) throws Exception {
@@ -264,10 +263,10 @@ public class TaskManagerClient {
     /**
      * Export offline data.
      *
-     * @return id of job.
      * @param sql query sql string.
      * @param conf configure.
      * @param default_db default database.
+     * @return id of job.
      * @throws Exception
      */
     public int exportOfflineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
