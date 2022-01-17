@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: prepare
+      - name: prepare release
         run: |
           VERSION="snapshot"
           if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
@@ -43,7 +43,7 @@ jobs:
             VERSION=${VERSION#v}
             bash steps/prepare_release.sh "$VERSION"
           fi
-          echo "OPENMLDB_PREFIX=openmldb-$VERSION" >> $GITHUB_ENV
+          echo "OPENMLDB_PREFIX=openmldb-$VERSION-linux" >> $GITHUB_ENV
 
       - name: enable java on release
         if: github.event_name == 'push'
@@ -143,6 +143,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: prepare release
+        if: github.event_name == 'push'
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=${VERSION#v}
+          ./java/prepare_release.sh "$VERSION"
+
       - name: build jsdk
         run: |
           make build
@@ -173,13 +180,6 @@ jobs:
           name: linux-ut-result-java-${{ github.sha }}
           path: |
             java/*/target/**/TEST-*.xml
-
-      - name: prepare deploy version
-        if: github.event_name == 'push'
-        run: |
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=${VERSION#v}
-          ./java/prepare_release.sh "$VERSION"
 
       - name: deploy
         if: github.event_name == 'push'
@@ -229,6 +229,13 @@ jobs:
             thirdsrc
           key: ${{ runner.os }}-thirdparty-${{ hashFiles('third-party/**/CMakeLists.txt', 'third-party/**/*.cmake', 'third-party/**/*.sh') }}
 
+      - name: prepare release
+        if: github.event_name == 'push'
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=${VERSION#v}
+          ./java/prepare_release.sh "$VERSION"
+
       - uses: actions/setup-java@v2
         with:
           distribution: 'adopt'
@@ -267,12 +274,6 @@ jobs:
       #     path: |
       #       java/openmldb-jdbc/target/**/TEST-*.xml
 
-      - name: prepare deploy version
-        run: |
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=${VERSION#v}
-          VARIANT_TYPE=macos ./java/prepare_release.sh "$VERSION"
-
       - name: mvn deploy
         working-directory: java
         run: |
@@ -280,7 +281,7 @@ jobs:
           # so it is a bit tricky to compile and deploy that
           # firstly run `maven install` install things locally
           # then selectly `mvn deploy` for hybridse-native & openmldb-native
-          mvn --batch-mode install -DskipTests=true -Dscalatest.skip=true
+          mvn --batch-mode clean install -DskipTests=true -Dscalatest.skip=true
           mvn --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
@@ -306,7 +307,7 @@ jobs:
           # so it is a bit tricky to compile and deploy that
           # firstly run `maven install` install things locally
           # then selectly `mvn deploy` for hybridse-native & openmldb-native
-          mvn --batch-mode install -DskipTests=true -Dscalatest.skip=true
+          mvn --batch-mode clean install -DskipTests=true -Dscalatest.skip=true
           mvn --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
