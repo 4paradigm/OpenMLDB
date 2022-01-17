@@ -1057,6 +1057,16 @@ bool SqlCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
     } else {
         expect->success_ = true;
     }
+    if (schema_data["code"]) {
+        expect->code_ = schema_data["code"].as<int>();
+    } else {
+        expect->code_ = -1;
+    }
+    if (schema_data["msg"]) {
+        expect->msg_ = schema_data["msg"].as<std::string>();
+    } else {
+        expect->msg_ = "";
+    }
     if (schema_data["common_column_indices"]) {
         auto data = schema_data["common_column_indices"];
         std::vector<std::string> idxs;

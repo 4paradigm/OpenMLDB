@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # Copyright 2021 4Paradigm
 #
@@ -14,11 +14,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Usage:
+#  ./prepare_release.sh ${version-number}
 #
-# prepare_release.sh
+# Requirements:
+# - sed
+# - java & maven
 #
+# supported {version-number} syntax is X.Y.Z[.{pre-prelease-identifier}] where it could be:
+#  - semVer: X.Y.Z    # final release
+#  - X.Y.Z.(a|alpha)N # alpha release
+#  - X.Y.Z.(b|beta)N  # beta release
+#  - X.Y.Z.(r|rc)N    # release candidate
+#  NOTE: other version like 'X.Y.Z-rc1' may not work, don't use
 
-set -ex
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+set -eE
 
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)
@@ -27,9 +41,9 @@ cmake_file="$ROOT/CMakeLists.txt"
 VERSION=$1
 # shellcheck disable=SC2206
 ARR=(${VERSION//./ })
-echo "${ARR[*]}"
-if [ "${#ARR[*]}" != 3 ]; then
-    echo "invalid version"
+echo "splited version components: ${ARR[*]}"
+if [[ "${#ARR[*]}" -lt 3 ]]; then
+    echo -e "${RED}inputed version should have at least three number${NC}"
     exit 1
 fi
 
@@ -42,5 +56,19 @@ sed -i"" -e "s/OPENMLDB_VERSION_MAJOR .*/OPENMLDB_VERSION_MAJOR ${MAJOR})/g" "${
 sed -i"" -e "s/OPENMLDB_VERSION_MINOR .*/OPENMLDB_VERSION_MINOR ${MINOR})/g" "${cmake_file}"
 sed -i"" -e "s/OPENMLDB_VERSION_BUG .*/OPENMLDB_VERSION_BUG ${BUG})/g" "${cmake_file}"
 
+# tweak java sdk version
+pushd java/
+./prepare_release.sh "$VERSION"
+popd
+
+# tweak python sdk version
+PY_VERSION=$VERSION
+if [[ ${#ARR[@]} -gt 3 ]]; then
+    # has {pre-prelease-identifier}
+    # refer: https://www.python.org/dev/peps/pep-0440/#pre-releases
+    PY_VERSION="${ARR[0]}.${ARR[1]}.${ARR[2]}${ARR[3]}"
+fi
+
 # version in python sdk
-sed -i"" -e "s/version=.*/version='$VERSION',/g" python/sqlalchemy-openmldb/setup.py
+echo -e "${GREEN}setting py version to $PY_VERSION${NC}"
+sed -i"" -e "s/version=.*/version='$PY_VERSION',/g" python/sqlalchemy-openmldb/setup.py

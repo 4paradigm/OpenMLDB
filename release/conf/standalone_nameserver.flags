@@ -6,10 +6,4 @@
 --openmldb_log_dir=./standalone_logs
 --log_level=info
 
---auto_failover=true
-
---zk_session_timeout=10000
-
---tablet_heartbeat_timeout=60000
-
---system_table_replica_num=2
+--system_table_replica_num=1

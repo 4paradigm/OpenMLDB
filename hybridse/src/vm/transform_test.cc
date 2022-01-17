@@ -61,6 +61,7 @@ using hybridse::sqlcase::SqlCase;
 const std::vector<std::string> FILTERS({"physical-plan-unsupport",
                                         "zetasql-unsupport",
                                         "logical-plan-unsupport",
+                                        "batch-unsupport",
                                         "parser-unsupport"});
 
 class TransformTest : public ::testing::TestWithParam<SqlCase> {
@@ -527,6 +528,84 @@ TEST_F(TransformTest, PhysicalPlanFailOnOnlyFullGroupBy) {
         catalog, "SELECT col1, SUM(col3) from t1 GROUP BY col1 HAVING col2 > 0;", kBatchMode, common::kPlanError,
         "Having clause is not in GROUP BY clause and contains nonaggregated column 'db.t1.col2' which is not "
         "functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by");
+}
+
+// OpenMLDB column resolve failure check
+TEST_F(TransformTest, PhysicalColumnResolveFailTest) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col1 as c1, col3 from t1) as tt;",
+        kBatchMode, common::kOk,
+        "ok");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col1 as c1, col3 from t1) as tt;",
+        kRequestMode, common::kOk,
+        "ok");
+
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from t1;",
+        kBatchMode, common::kColumnNotFound,
+        "Fail to find column c1");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from t1;",
+        kRequestMode, common::kColumnNotFound,
+        "Fail to find column c1");
+
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col2 as c1, col3 from t1) as tt;",
+        kBatchMode, common::kColumnAmbiguous,
+        "Ambiguous column name c1");
+    PhysicalPlanFailCheck(
+        catalog,
+        "select c1 from (select col1 as c1, col2 as c1, col3 from t1) as tt;",
+        kRequestMode, common::kColumnAmbiguous,
+        "Ambiguous column name c1");
+
+    PhysicalPlanFailCheck(
+        catalog,
+        R"sql(select * from
+              (
+                SELECT col1 as id, col1 as id, sum(col2) OVER w1 as w1_col2_sum,
+                FROM t1
+                WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)
+              ) as out0
+              LAST JOIN
+              (
+                SELECT col1 as id, sum(col2) OVER w2 as w2_col2_sum
+                FROM t1
+                WINDOW w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)
+              ) as out1
+              ON out0.id = out1.id;)sql",
+        kBatchMode, common::kOk, "ok");
+
+    PhysicalPlanFailCheck(
+        catalog,
+        R"sql(select * from
+              (
+                SELECT col1 as id, col2 as id, sum(col2) OVER w1 as w1_col2_sum,
+                FROM t1
+                WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW)
+              ) as out0
+              LAST JOIN
+              (
+                SELECT col1 as id, sum(col2) OVER w2 as w2_col2_sum
+                FROM t1
+                WINDOW w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW)
+              ) as out1 ON out0.id = out1.id;)sql",
+        kBatchMode, common::kColumnAmbiguous,
+        "Ambiguous column name .out0.id");
 }
 
 TEST_F(TransformTest, TransfromConditionsTest) {

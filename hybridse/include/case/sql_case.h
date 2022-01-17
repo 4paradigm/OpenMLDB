@@ -56,6 +56,8 @@ class SqlCase {
         // SqlNode's TreeString output
         std::string node_tree_str_;
         bool success_ = true;
+        int code_ = -1;
+        std::string msg_;
     };
     SqlCase() {}
     virtual ~SqlCase() {}

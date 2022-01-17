@@ -15,27 +15,42 @@
 # limitations under the License.
 
 import lightgbm as lgb
+import pandas as pd
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import GridSearchCV
-from pyspark.sql import SparkSession
 from sklearn.model_selection import train_test_split
 import argparse
+import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument("sql_file", help="specify the sql file")
-parser.add_argument("model_path",  help="specify the model path")
+parser.add_argument("feature_path", help="specify the feature path")
+parser.add_argument("model_path", help="specify the model path")
 args = parser.parse_args()
 
-with open(args.sql_file, "r") as fd:
-    sql = fd.read()
+feature_path = args.feature_path
+# merge file
+if os.path.isdir(feature_path):
+    path_list = os.listdir(feature_path)
+    new_file = "/tmp/merged_feature.csv"
+    with open(new_file, 'w') as wf:
+        has_write_header = False
+        for filename in path_list:
+            if filename == "_SUCCESS" or filename.startswith('.'):
+                continue
+            with open(os.path.join(feature_path, filename), 'r') as f:
+                first_line = True
+                for line in f.readlines():
+                    if first_line is True:
+                        first_line = False
+                        if has_write_header is False:
+                            has_write_header = True
+                        else:
+                            continue
+                    wf.writelines(line)
+    feature_path = new_file
 
 # run batch sql and get instances
-spark = SparkSession.builder.appName("OpenMLDB Demo").getOrCreate()
-parquet_train = "file:////work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet"
-train = spark.read.parquet(parquet_train)
-train.createOrReplaceTempView("t1")
-train_df = spark.sql(sql)
-df = train_df.toPandas()
+df = pd.read_csv(feature_path);
 train_set, predict_set = train_test_split(df, test_size=0.2)
 y_train = train_set['trip_duration']
 x_train = train_set.drop(columns=['trip_duration'])
