@@ -12,6 +12,7 @@ public abstract class TaskManagerClientTest {
         TaskManagerClient client = new TaskManagerClient("127.0.0.1:9995");
         client.printJobs();
         client.showJobs();
+        client.dropOfflineTable("db_name","table_name");
         client.importOnlineData("load data infile 'file:///tmp/test.csv' " +
                 "into table test_taskmanager.t1 options(format='csv', foo='bar', header=false, mode='append');");
         client.showJobs();
