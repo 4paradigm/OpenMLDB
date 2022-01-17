@@ -238,7 +238,7 @@ public class TaskManagerClient {
      * @param table table name.
      * @throws Exception
      */
-    public String dropOfflineTable(String db, String table) throws Exception {
+    public void dropOfflineTable(String db, String table) throws Exception {
         TaskManager.DropOfflineTableRequest request = TaskManager.DropOfflineTableRequest.newBuilder()
                 .setDb(db)
                 .setTable(table)
@@ -248,7 +248,6 @@ public class TaskManagerClient {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
-        return response.getMsg();
     }
     /**
      * Export offline data without default_db.
