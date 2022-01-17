@@ -27,7 +27,6 @@
 
 #include "base/texttable.h"
 #include "cmd/sdk_iterator.h"
-#include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"

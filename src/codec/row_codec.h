@@ -25,7 +25,6 @@
 #include "base/glog_wapper.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/container/deque.hpp"
-#include "codec/flat_array.h"
 #include "codec/schema_codec.h"
 #include "storage/segment.h"
 
@@ -141,79 +140,6 @@ class RowCodec {
         return ::openmldb::base::Status(0, "ok");
     }
 
-    static ::openmldb::base::Status EncodeRow(const std::vector<std::string>& input_value,
-                                                 const std::vector<::openmldb::codec::ColumnDesc>& columns,
-                                                 int modify_times, std::string* row) {
-        if (input_value.size() != columns.size()) {
-            return ::openmldb::base::Status(-1, "input error");
-        }
-        uint16_t cnt = (uint16_t)input_value.size();
-        ::openmldb::codec::FlatArrayCodec codec(row, cnt, modify_times);
-        for (uint32_t i = 0; i < input_value.size(); i++) {
-            bool codec_ok = false;
-            try {
-                if (columns[i].type == ::openmldb::codec::ColType::kInt32) {
-                    codec_ok = codec.Append(boost::lexical_cast<int32_t>(input_value[i]));
-                } else if (columns[i].type == ::openmldb::codec::ColType::kInt64) {
-                    codec_ok = codec.Append(boost::lexical_cast<int64_t>(input_value[i]));
-                } else if (columns[i].type == ::openmldb::codec::ColType::kUInt32) {
-                    if (!boost::algorithm::starts_with(input_value[i], "-")) {
-                        codec_ok = codec.Append(boost::lexical_cast<uint32_t>(input_value[i]));
-                    }
-                } else if (columns[i].type == ::openmldb::codec::ColType::kUInt64) {
-                    if (!boost::algorithm::starts_with(input_value[i], "-")) {
-                        codec_ok = codec.Append(boost::lexical_cast<uint64_t>(input_value[i]));
-                    }
-                } else if (columns[i].type == ::openmldb::codec::ColType::kFloat) {
-                    codec_ok = codec.Append(boost::lexical_cast<float>(input_value[i]));
-                } else if (columns[i].type == ::openmldb::codec::ColType::kDouble) {
-                    codec_ok = codec.Append(boost::lexical_cast<double>(input_value[i]));
-                } else if (columns[i].type == ::openmldb::codec::ColType::kString) {
-                    codec_ok = codec.Append(input_value[i]);
-                } else if (columns[i].type == ::openmldb::codec::ColType::kTimestamp) {
-                    codec_ok = codec.AppendTimestamp(boost::lexical_cast<uint64_t>(input_value[i]));
-                } else if (columns[i].type == ::openmldb::codec::ColType::kDate) {
-                    std::string date = input_value[i] + " 00:00:00";
-                    tm tm_s;
-                    time_t time;
-                    char buf[20] = {0};
-                    strcpy(buf, date.c_str());  // NOLINT
-                    char* result = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_s);
-                    if (result == NULL) {
-                        return ::openmldb::base::Status(-1, "date format error");
-                    }
-                    tm_s.tm_isdst = -1;
-                    time = mktime(&tm_s) * 1000;
-                    codec_ok = codec.AppendDate(uint64_t(time));
-                } else if (columns[i].type == ::openmldb::codec::ColType::kInt16) {
-                    codec_ok = codec.Append(boost::lexical_cast<int16_t>(input_value[i]));
-                } else if (columns[i].type == ::openmldb::codec::ColType::kUInt16) {
-                    codec_ok = codec.Append(boost::lexical_cast<uint16_t>(input_value[i]));
-                } else if (columns[i].type == ::openmldb::codec::ColType::kBool) {
-                    bool value = false;
-                    std::string raw_value = input_value[i];
-                    std::transform(raw_value.begin(), raw_value.end(), raw_value.begin(), ::tolower);
-                    if (raw_value == "true") {
-                        value = true;
-                    } else if (raw_value == "false") {
-                        value = false;
-                    } else {
-                        return ::openmldb::base::Status(-1, "bool format error");
-                    }
-                    codec_ok = codec.Append(value);
-                } else {
-                    codec_ok = codec.AppendNull();
-                }
-            } catch (std::exception const& e) {
-                return ::openmldb::base::Status(-1, e.what());
-            }
-            if (!codec_ok) {
-                return ::openmldb::base::Status(-1, "encode failed");
-            }
-        }
-        codec.Build();
-        return ::openmldb::base::Status(0, "ok");
-    }
 
     static bool DecodeRow(const Schema& schema,  // NOLINT
                           const ::openmldb::base::Slice& value,
@@ -256,86 +182,6 @@ class RowCodec {
         return true;
     }
 
-    static bool DecodeRow(uint32_t base_schema_size, const ::openmldb::base::Slice& value,
-                          std::vector<std::string>* vrow) {
-        return DecodeRow(base_schema_size, base_schema_size, value, vrow);
-    }
-
-    static bool DecodeRow(uint32_t base_schema_size, uint32_t get_row_num, const ::openmldb::base::Slice& value,
-                          std::vector<std::string>* vrow) {
-        openmldb::codec::FlatArrayIterator fit(value.data(), value.size(), base_schema_size);
-        while (get_row_num > 0) {
-            std::string col;
-            if (!fit.Valid()) {
-                get_row_num--;
-                vrow->emplace_back("");
-                continue;
-            }
-            ColType type = fit.GetType();
-            if (fit.IsNULL()) {
-                col = NONETOKEN;
-            } else if (type == ::openmldb::codec::ColType::kString ||
-                       type == ::openmldb::codec::ColType::kEmptyString) {
-                fit.GetString(&col);
-            } else if (type == ::openmldb::codec::ColType::kUInt16) {
-                uint16_t uint16_col = 0;
-                fit.GetUInt16(&uint16_col);
-                col = boost::lexical_cast<std::string>(uint16_col);
-            } else if (type == ::openmldb::codec::ColType::kInt16) {
-                int16_t int16_col = 0;
-                fit.GetInt16(&int16_col);
-                col = boost::lexical_cast<std::string>(int16_col);
-            } else if (type == ::openmldb::codec::ColType::kInt32) {
-                int32_t int32_col = 0;
-                fit.GetInt32(&int32_col);
-                col = boost::lexical_cast<std::string>(int32_col);
-            } else if (type == ::openmldb::codec::ColType::kInt64) {
-                int64_t int64_col = 0;
-                fit.GetInt64(&int64_col);
-                col = boost::lexical_cast<std::string>(int64_col);
-            } else if (type == ::openmldb::codec::ColType::kUInt32) {
-                uint32_t uint32_col = 0;
-                fit.GetUInt32(&uint32_col);
-                col = boost::lexical_cast<std::string>(uint32_col);
-            } else if (type == ::openmldb::codec::ColType::kUInt64) {
-                uint64_t uint64_col = 0;
-                fit.GetUInt64(&uint64_col);
-                col = boost::lexical_cast<std::string>(uint64_col);
-            } else if (type == ::openmldb::codec::ColType::kDouble) {
-                double double_col = 0.0;
-                fit.GetDouble(&double_col);
-                col = boost::lexical_cast<std::string>(double_col);
-            } else if (type == ::openmldb::codec::ColType::kFloat) {
-                float float_col = 0.0f;
-                fit.GetFloat(&float_col);
-                col = boost::lexical_cast<std::string>(float_col);
-            } else if (type == ::openmldb::codec::ColType::kTimestamp) {
-                uint64_t ts = 0;
-                fit.GetTimestamp(&ts);
-                col = boost::lexical_cast<std::string>(ts);
-            } else if (type == ::openmldb::codec::ColType::kDate) {
-                uint64_t dt = 0;
-                fit.GetDate(&dt);
-                time_t rawtime = (time_t)dt / 1000;
-                tm* timeinfo = localtime(&rawtime);  // NOLINT
-                char buf[20];
-                strftime(buf, 20, "%Y-%m-%d", timeinfo);
-                col.assign(buf);
-            } else if (type == ::openmldb::codec::ColType::kBool) {
-                bool value = false;
-                fit.GetBool(&value);
-                if (value) {
-                    col = "true";
-                } else {
-                    col = "false";
-                }
-            }
-            get_row_num--;
-            fit.Next();
-            vrow->emplace_back(std::move(col));
-        }
-        return true;
-    }
 };
 __attribute__((unused)) static bool DecodeRows(const std::string& data, uint32_t count, const Schema& schema,
                                                std::vector<std::vector<std::string>>* row_vec) {
