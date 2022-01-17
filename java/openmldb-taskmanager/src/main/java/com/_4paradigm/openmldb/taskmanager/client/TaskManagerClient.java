@@ -87,26 +87,26 @@ public class TaskManagerClient {
      * Run sql statements in batches without default_db.
      *
      * @param sql query sql string.
-     * @param output_path output path.
+     * @param outputPath output path.
      * @return id of job.
      * @throws Exception
      */
-    public int runBatchSql(String sql, String output_path) throws Exception {
-        return runBatchSql(sql, output_path, new HashMap<String, String>(), "");
+    public int runBatchSql(String sql, String outputPath) throws Exception {
+        return runBatchSql(sql, outputPath, new HashMap<String, String>(), "");
     }
     /**
      * Run sql statements in batches.
      *
      * @param sql query sql string.
-     * @param output_path output path.
+     * @param outputPath output path.
      * @param default_db default database.
      * @return id of job.
      * @throws Exception
      */
-    public int runBatchSql(String sql, String output_path, HashMap<String, String> conf, String default_db) throws Exception {
+    public int runBatchSql(String sql, String outputPath, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.RunBatchSqlRequest request = TaskManager.RunBatchSqlRequest.newBuilder()
                 .setSql(sql)
-                .setOutputPath(output_path)
+                .setOutputPath(outputPath)
                 .putAllConf(conf)
                 .setDefaultDb(default_db)
                 .build();
