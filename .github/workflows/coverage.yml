@@ -48,6 +48,7 @@ jobs:
       - name: start service
         run: |
           sh steps/ut_zookeeper.sh start
+          sh steps/download_openmldb_spark.sh $SPARK_HOME
           cd onebox
           bash start_onebox.sh
 
