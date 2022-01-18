@@ -116,6 +116,7 @@ jobs:
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'cp_native_so openmldb'
       MAVEN_OPTS: -Duser.home=/github/home
+      SPARK_HOME: /tmp/spark/
     steps:
       - uses: actions/checkout@v2
 
@@ -166,6 +167,7 @@ jobs:
       - name: start services
         run: |
           sh steps/ut_zookeeper.sh start
+          sh steps/download_openmldb_spark.sh $SPARK_HOME
           cd onebox && sh start_onebox.sh && cd - || exit
 
       - name: run java modules smoke test
