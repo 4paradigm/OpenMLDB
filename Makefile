@@ -15,7 +15,7 @@
 MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR  := $(dir $(MAKEFILE_PATH))
 # Disable parallel build, or system freezing may happen: #882
-NPROC ?= 1
+NPROC ?= 8
 
 CMAKE_PRG ?= $(shell (command -v cmake3 || echo cmake))
 CMAKE_BUILD_TYPE ?= RelWithDebInfo
@@ -49,9 +49,6 @@ endif
 
 # Extra cmake flags for HybridSE
 HYBRIDSE_CMAKE_FLAGS := $(CMAKE_FLAGS)
-ifdef PYSDK_ENABLE
-    HYBRIDSE_CMAKE_FLAGS += -DPYSDK_ENABLE=$(PYSDK_ENABLE)
-endif
 ifdef HYBRIDSE_TESTING_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DHYBRIDSE_TESTING_ENABLE=$(HYBRIDSE_TESTING_ENABLE)
 endif
