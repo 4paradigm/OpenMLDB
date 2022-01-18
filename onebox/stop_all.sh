@@ -18,4 +18,3 @@ set -x -e
 
 ps -ef | grep openmldb | grep onebox | awk '{print $2}' | while read line; do kill -9 $line; done
 
-ps -ef | grep taskmanager | grep -v "grep" | awk '{print $2}' | while read line; do kill -9 $line; done
