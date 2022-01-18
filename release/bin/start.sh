@@ -83,7 +83,10 @@ case $OP in
         then
              echo "no $COMPONENT to stop (could not find file $OPENMLDB_PID_FILE)"
         else
-            tr -d '\0' < "$OPENMLDB_PID_FILE" | xargs kill
+            PID=`tr -d '\0' < "$OPENMLDB_PID_FILE"`
+            if kill -0 $PID > /dev/null 2>&1; then
+                kill $PID
+            fi
             rm "$OPENMLDB_PID_FILE"
             echo STOPPED
         fi
