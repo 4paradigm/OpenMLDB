@@ -33,7 +33,7 @@ public class TestTaskManagerClient {
         server = new TaskManagerServer();
         Thread serverThread = new Thread() {
             public void run(){
-                server.startBrpcServer();
+                server.start();
             }
         };
         serverThread.start();
