@@ -81,8 +81,9 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          check_name: Java SDK Test Cluster0 SRC Report
-          comment_title: Java SDK Test Cluster0 SRC Report
+          comment_mode: "create new"
+          check_name: "Java SDK Test Cluster0 SRC Report"
+          comment_title: "Java SDK Test Cluster0 SRC Report"
 
 #  java-sdk-test-cluster-1:
 #    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
