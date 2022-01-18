@@ -627,28 +627,9 @@ bool SQLClusterRouter::ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Stat
 }
 
 // get all table names in all DB
-std::vector<std::string> SQLClusterRouter::GetAllTables(hybridse::sdk::Status* status){
-
-    std::vector<std::string> dbs;
-    std::vector<std::string> all_table;
-    bool ok = SQLClusterRouter::ShowDB(&dbs, status);
-    if (!ok) {
-        return all_table;
-    }
-    if (dbs.empty()) {
-        LOG(WARNING) << "There is currently no Database";
-        return all_table;
-    } else {
-        std::vector<std::string> database_tables;
-        for (auto db_name_iter = dbs.begin(); db_name_iter != dbs.end(); db_name_iter++) {
-            database_tables = SQLClusterRouter::GetTableNames(*db_name_iter);
-            for (auto table_name_iter = database_tables.begin(); table_name_iter != database_tables.end(); table_name_iter++) {
-                all_table.push_back(*table_name_iter);
-            }
-        }
-        return all_table;
-    }
-} 
+std::vector<std::string> SQLClusterRouter::GetAllTables() {
+    return cluster_sdk_->GetAllTables();
+}
  
 bool SQLClusterRouter::CreateDB(const std::string& db, hybridse::sdk::Status* status) {
     if (status == NULL) {
