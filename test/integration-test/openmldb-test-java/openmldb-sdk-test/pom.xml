@@ -16,8 +16,8 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <openmldb.jdbc.version>0.3.2</openmldb.jdbc.version>
-        <openmldb.navtive.version>0.3.2</openmldb.navtive.version>
+        <openmldb.jdbc.version>0.4.0</openmldb.jdbc.version>
+        <openmldb.navtive.version>0.4.0</openmldb.navtive.version>
 
         <suiteXmlFile>test_suite/test_all.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>

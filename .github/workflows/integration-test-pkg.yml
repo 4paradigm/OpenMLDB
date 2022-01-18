@@ -6,23 +6,23 @@ on:
       JAVA_SDK_VERSION:
         description: 'java sdk version'
         required: true
-        default: '0.3.0'
+        default: '0.4.0'
       OPENMLDB_SERVER_VERSION:
         description: 'openmldb server version'
         required: true
-        default: '0.3.0'
+        default: '0.4.0'
       PYTHON_SDK_VERSION:
         description: 'python sdk version'
         required: true
-        default: '0.3.0'
+        default: '0.4.0'
       BATCH_VERSION:
         description: 'batch version'
         required: true
-        default: '0.3.0-allinone-SNAPSHOT'
+        default: '0.4.0-allinone'
       DIFF_VERSIONS:
         description: 'diff versions'
         required: false
-        default: '0.2.3'
+        default: '0.3.0'
       EXEC_TEST_TYPE:
         description: 'Which tests need to be executed? The options are all, python, java, batch, cli, standalone-cli and apiserver'
         required: true
@@ -51,6 +51,8 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          comment_mode: "create new"
+          deduplicate_classes_by_file_name: true
           check_name: Java SDK Test Standalone0 PKG Report
           comment_title: Java SDK Test Standalone0 PKG Report
 
@@ -93,6 +95,7 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          comment_mode: "create new"
           check_name: Java SDK Test Cluster0 PKG Report
           comment_title: Java SDK Test Cluster0 PKG Report
 
