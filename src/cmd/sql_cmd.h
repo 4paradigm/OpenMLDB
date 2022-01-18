@@ -46,6 +46,7 @@
 #include "sdk/node_adapter.h"
 #include "sdk/sql_cluster_router.h"
 #include "version.h"  // NOLINT
+#include "boost/regex.hpp"
 
 DEFINE_string(database, "", "Set database");
 DECLARE_string(zk_cluster);
@@ -351,8 +352,10 @@ void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
     }
     std::string sql = sp_info.GetSql();
     if (sp_info.GetType() == hybridse::sdk::kReqDeployment) {
-        // replace the sql "CREATE PROCEDURE" with "DEPLOY"
-        sql.replace(0u, 16u, "DEPLOY");
+        std::string pattern_sp = "CREATE PROCEDURE";
+        sql = boost::regex_replace(sql, boost::regex(pattern_sp), "DEPLOY");
+        std::string pattern_blank = "(.*)(\\(.*\\) )(BEGIN )(.*)( END;)";
+        sql = boost::regex_replace(sql, boost::regex(pattern_blank), "$1$4");
     }
     PrintItemTable(std::cout, {"DB", type_name}, {vec});
     std::vector<std::string> items{sql};
