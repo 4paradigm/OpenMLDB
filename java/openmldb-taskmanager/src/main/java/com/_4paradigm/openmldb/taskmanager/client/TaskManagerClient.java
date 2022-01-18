@@ -60,12 +60,21 @@ public class TaskManagerClient {
         taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
         RpcContext.getContext().setLogId(1234L);
     }
+
     /**
-     * Stop the brpc client.
+     * Stop the client.
      */
     public void stop() {
         rpcClient.stop();
     }
+
+    /**
+     * Close the client.
+     */
+    public void close() {
+        stop();
+    }
+
     /**
      * Stop the job.
      *
@@ -337,4 +346,22 @@ public class TaskManagerClient {
         }
         return response.getJob().getId();
     }
+
+    /**
+     * Submit job to show batch version.
+     *
+     * @throws Exception
+     */
+    public String getJobLog(int id) throws Exception {
+        TaskManager.GetJobLogRequest request = TaskManager.GetJobLogRequest.newBuilder()
+                .setId(id)
+                .build();
+        TaskManager.GetJobLogResponse response = taskManagerInterface.GetJobLog(request);
+        if (response.getCode() != 0) {
+            String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
+            throw new Exception(errorMessage);
+        }
+        return response.getLog();
+    }
+
 }
