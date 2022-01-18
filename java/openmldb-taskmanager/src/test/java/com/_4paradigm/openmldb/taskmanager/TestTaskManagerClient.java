@@ -18,9 +18,11 @@ package com._4paradigm.openmldb.taskmanager;
 
 import com._4paradigm.openmldb.taskmanager.client.TaskManagerClient;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeClass;
 
+@Ignore
 public class TestTaskManagerClient {
 
     TaskManagerClient client;
@@ -58,16 +60,17 @@ public class TestTaskManagerClient {
             e.printStackTrace();
             assert(false);
         }
-
-        /*
-        client.dropOfflineTable("db_name","table_name");
-        client.importOnlineData("load data infile 'file:///tmp/test.csv' " +
-                "into table test_taskmanager.t1 options(format='csv', foo='bar', header=false, mode='append');");
-        client.showJobs();
-        client.printJobs();
-        client.importOfflineData("load data infile 'file:///tmp/test.csv' into table test_taskmanager.t1 options(format='csv', foo='bar', header=false, mode='overwrite');");
-        client.exportOfflineData("select * from test_taskmanager.t1 into outfile 'file:///tmp/test_csv2' options(format='csv', foo='bar', mode='overwrite');");
-        client.showBatchVersion();
-        */
     }
+
+    @Test
+    public void testShowBatchVersion() {
+        try {
+            int id = client.showBatchVersion();
+            assert(id > 0);
+        } catch (Exception e) {
+            e.printStackTrace();
+            assert(false);
+        }
+    }
+
 }
