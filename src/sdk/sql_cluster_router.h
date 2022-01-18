@@ -120,7 +120,7 @@ class SQLClusterRouter : public SQLRouter {
 
     bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
     
-    std::vector<std::string> GetAllTables(hybridse::sdk::Status* status) override;
+    std::vector<std::string> GetAllTables() override;
 
     bool ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) override;
 
