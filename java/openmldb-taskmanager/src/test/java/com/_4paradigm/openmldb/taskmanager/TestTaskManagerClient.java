@@ -16,36 +16,43 @@
 
 package com._4paradigm.openmldb.taskmanager;
 
+import com._4paradigm.openmldb.proto.TaskManager;
 import com._4paradigm.openmldb.taskmanager.client.TaskManagerClient;
+import com._4paradigm.openmldb.taskmanager.server.TaskManagerServer;
 import org.testng.annotations.AfterClass;
-import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeClass;
+import java.util.List;
 
-@Ignore
 public class TestTaskManagerClient {
-
+    TaskManagerServer server;
     TaskManagerClient client;
 
     @BeforeClass
     public void setUp() {
-        if (client == null) {
-            client = new TaskManagerClient("127.0.0.1:9902");
-        }
+        server = new TaskManagerServer();
+        Thread serverThread = new Thread() {
+            public void run(){
+                server.startBrpcServer();
+            }
+        };
+        serverThread.start();
+        client = new TaskManagerClient("127.0.0.1:9902");
     }
 
     @AfterClass
     public void tearDownAfterClass() {
-        if (client != null) {
-            client.close();
-        }
+        client.close();
         client = null;
+        server.shutdown();
+        server = null;
     }
 
     @Test
     public void testShowJobs() {
         try {
-            client.showJobs();
+            List<TaskManager.JobInfo> jobInfos = client.showJobs();
+            assert(jobInfos != null);
         } catch (Exception e) {
             e.printStackTrace();
             assert(false);
@@ -65,6 +72,7 @@ public class TestTaskManagerClient {
     @Test
     public void testShowBatchVersion() {
         try {
+            // TODO: Set path of batchjob jar and check if job changes to FINISH
             int id = client.showBatchVersion();
             assert(id > 0);
         } catch (Exception e) {
