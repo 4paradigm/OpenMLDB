@@ -63,11 +63,7 @@ class Driver(object):
     def getAllTables(self):
         if not self.sdk:
             raise Exception("please init driver first")
-        status = sql_router_sdk.Status()
-        all_tables = self.sdk.GetAllTables(status)
-        if status.code != 0:
-            raise Exception(status.msg)
-        return all_tables
+        return self.sdk.GetAllTables()
 
     def executeDDL(self, db, ddl):
         if not self.sdk:
