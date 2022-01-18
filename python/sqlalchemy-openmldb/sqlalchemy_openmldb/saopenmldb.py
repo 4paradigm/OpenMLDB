@@ -103,6 +103,11 @@ class OpenMLDBDialect(default.DefaultDialect):
         from sqlalchemy_openmldb import openmldbapi as module
         return module
 
+    def has_table(self, connection, table_name, schema=None):
+        if schema is not None:
+            raise Exception("schema unsupported in OpenMLDB")
+        return table_name in connection.connection.cursor().get_all_tables()
+    
     def create_connect_args(self, url, **kwargs):
         qargs = {}
         self._db = url.database
