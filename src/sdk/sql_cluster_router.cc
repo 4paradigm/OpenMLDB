@@ -625,7 +625,8 @@ bool SQLClusterRouter::ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Stat
     }
     return true;
 }
- 
+
+// get all table names in all DB
 std::vector<std::string> SQLClusterRouter::GetAllTables(hybridse::sdk::Status* status){
 
     std::vector<std::string> dbs;
@@ -634,7 +635,6 @@ std::vector<std::string> SQLClusterRouter::GetAllTables(hybridse::sdk::Status* s
     if (!ok) {
         return all_table;
     }
-//     TODO: support getting all table names in one RPC
     if (dbs.empty()) {
         LOG(WARNING) << "There is currently no Database";
         return all_table;
