@@ -351,8 +351,8 @@ void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
     }
     std::string sql = sp_info.GetSql();
     if (sp_info.GetType() == hybridse::sdk::kReqDeployment) {
-        // replace the sql "CREATE PROCEDURE" with "Deploy"
-        sql.replace(0,16,"Deploy");
+        // replace the sql "CREATE PROCEDURE" with "DEPLOY"
+        sql.replace(0,16,"DEPLOY");
     }
     PrintItemTable(std::cout, {"DB", type_name}, {vec});
     std::vector<std::string> items{sql};
