@@ -38,18 +38,6 @@ target_link_libraries(hybridse_sdk ${SDK_DEPS_LIBS})
 
 set_property(SOURCE hybridse_interface_core.i PROPERTY CPLUSPLUS ON)
 
-if(PYSDK_ENABLE)
-set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
-swig_add_library(hybridse_pysdk
-        TYPE SHARED
-        LANGUAGE python
-        OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/hybridse/
-        SOURCES hybridse_interface_core.i)
-target_include_directories(hybridse_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(hybridse_pysdk ${SDK_DEPS_LIBS})
-set_property(SOURCE hybridse_interface_core.i PROPERTY SWIG_FLAGS ${CUR_SWIG_FLAGS})
-endif()
-
 set(sdk_core_deps_libs
 		hybridse_core hybridse_flags ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${COMMON_LIBS} )
 set_property(SOURCE hybridse_interface_core.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
@@ -84,99 +72,4 @@ if(SQL_JAVASDK_ENABLE)
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hybridse_jsdk_core> ${CMAKE_SOURCE_DIR}/java/hybridse-native/src/main/resources/
     COMMENT "copy hybridse native so")
   add_dependencies(cp_hybridse_native_so hybridse_proto_java)
-endif()
-
-if(PYSDK_ENABLE)
-if(APPLE)
-  	set_target_properties(hybridse_pysdk PROPERTIES
-           SUFFIX ".so")
-  	set_property(TARGET hybridse_pysdk APPEND PROPERTY
-    			 LINK_FLAGS "-flat_namespace -undefined suppress")
-endif()
-
-#######################
-## Python Packaging  ##
-#######################
-# To use a cmake generator expression (aka $<>), it must be processed at build time
-# i.e. inside a add_custom_command()
-# This command will depend on TARGET(s) in cmake generator expression
-add_custom_command(OUTPUT
-	python/setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "from setuptools import find_packages, setup" > setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.dist import Distribution" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "class BinaryDistribution(Distribution):" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  def is_pure(self):" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "    return False" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  def has_ext_modules(self):" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "    return True" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.command.install import install" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "class InstallPlatlib(install):" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "    def finalize_options(self):" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "        install.finalize_options(self)" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  name='${PROJECT_NAME}'," >> setup.py
-    COMMAND ${CMAKE_COMMAND} -E echo "  version='${HYBRIDSE_VERSION_MAJOR}.${HYBRIDSE_VERSION_MINOR}.${HYBRIDSE_VERSION_BUG}'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
-    COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'hybridse':['$<TARGET_FILE_NAME:hybridse_pysdk>']," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: POSIX :: Linux'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: MacOS :: MacOS X'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: C++'" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  ]," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo ")" >> setup.py
-	COMMENT "Generate setup.py at build time (to use generator expression)"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/python
-	VERBATIM)
-
-# Find if python module MODULE_NAME is available,
-# if not install it to the Python user install directory.
-function(search_python_module MODULE_NAME)
-	execute_process(
-		COMMAND ${PYTHON_EXECUTABLE} -c "import ${MODULE_NAME}; print(${MODULE_NAME}.__version__)"
-		RESULT_VARIABLE _RESULT
-		OUTPUT_VARIABLE MODULE_VERSION
-		ERROR_QUIET
-		OUTPUT_STRIP_TRAILING_WHITESPACE
-		)
-	if(${_RESULT} STREQUAL "0")
-		message(STATUS "Found python module: ${MODULE_NAME} (found version \"${MODULE_VERSION}\")")
-	else()
-		message(WARNING "Can't find python module \"${MODULE_NAME}\", user install it using pip...")
-		execute_process(
-			COMMAND ${PYTHON_EXECUTABLE} -m pip install --upgrade --user ${MODULE_NAME}
-			OUTPUT_STRIP_TRAILING_WHITESPACE
-			)
-	endif()
-endfunction()
-# Look for required python modules
-search_python_module(setuptools)
-search_python_module(wheel)
-
-add_custom_target(python_package ALL
-	DEPENDS python/setup.py
-	COMMAND ${CMAKE_COMMAND} -E make_directory hybridse
-	COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py.in hybridse/__init__.py
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hybridse_pysdk> hybridse/
-	COMMAND ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-	BYPRODUCTS
-	  python/${PROJECT_NAME}
-	  python/build
-	  python/dist
-	  python/${PROJECT_NAME}.egg-info
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/python
-	)
-
 endif()
