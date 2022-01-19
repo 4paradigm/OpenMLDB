@@ -67,6 +67,8 @@ if(SQL_PYSDK_ENABLE)
             SOURCES sql_router_sdk.i)
     target_include_directories(sql_router_sdk PRIVATE ${Python3_INCLUDE_DIRS})
     target_link_libraries(sql_router_sdk ${SDK_LIBS})
+
+    # Python in MacOS does not support load dylib file
     if(APPLE)
       set_target_properties(sql_router_sdk PROPERTIES
                SUFFIX ".so")
@@ -99,43 +101,29 @@ if(SQL_PYSDK_ENABLE)
     search_python_module(wheel)
 
     if(APPLE)
-        add_custom_target(sqlalchemy_openmldb DEPENDS sql_router_sdk
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/__init__.py
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/saopenmldb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/saopenmldb.py
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/__init__.py
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/driver.py
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
-                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
+        add_custom_target(cp_python_sdk_so ALL
+                DEPENDS sql_router_sdk
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_native/
                 # Do not strip library for MacOS, refer to https://github.com/4paradigm/OpenMLDB/issues/905
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
-                COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-                COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name macosx_10_15_x86_64
+                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${PROJECT_SOURCE_DIR}/python/openmldb_native/
+                COMMENT "copy generated native library and sql_router_sdk python file to python project"
+                COMMAND cd ${PROJECT_SOURCE_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name macosx_10_15_x86_64
                 BYPRODUCTS
-                python/sqlalchemy-openmldb
+                    python/build
+                    python/dist
+                    python/sqlalchemy-openmldb.egg-info)
+    else()
+        add_custom_target(cp_python_sdk_so ALL
+                DEPENDS sql_router_sdk
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_native/
+                COMMAND strip ${PROJECT_SOURCE_DIR}/python/openmldb_native/_sql_router_sdk.so
+                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${PROJECT_SOURCE_DIR}/python/openmldb_native/
+                COMMENT "copy generated native library and sql_router_sdk python file to python project"
+                COMMAND cd ${PROJECT_SOURCE_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name manylinux1_x86_64
+                BYPRODUCTS
                 python/build
                 python/dist
-                python/sqlalchemy-openmldb.egg-info
-                )
-    else()
-        add_custom_target(sqlalchemy_openmldb DEPENDS sql_router_sdk
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/__init__.py
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/saopenmldb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/saopenmldb.py
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/__init__.py
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/driver.py
-            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
-            COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
-            COMMAND strip ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_sql_router_sdk.so
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
-            COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-            COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name manylinux1_x86_64
-            BYPRODUCTS
-              python/sqlalchemy-openmldb
-              python/build
-              python/dist
-              python/sqlalchemy-openmldb.egg-info
-        )
+                python/sqlalchemy-openmldb.egg-info)
     endif()
 endif()
 

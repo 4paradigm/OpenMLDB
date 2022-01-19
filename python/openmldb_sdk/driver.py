@@ -14,12 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+sys.path.append("../")
 
 import logging
-from . import sql_router_sdk
+from openmldb_native import sql_router_sdk
 from datetime import date
 from datetime import datetime
 logger = logging.getLogger("openmldb_driver")
+
 class DriverOptions(object):
     def __init__(self, zk_cluster, zk_path, session_timeout = 3000):
         self.zk_cluster = zk_cluster
@@ -59,7 +62,7 @@ class Driver(object):
             return True, "ok"
         else:
             return False, status.msg
-        
+
     def getAllTables(self):
         if not self.sdk:
             raise Exception("please init driver first")
