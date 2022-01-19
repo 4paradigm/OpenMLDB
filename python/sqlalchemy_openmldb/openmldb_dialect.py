@@ -91,7 +91,7 @@ class OpenMLDBIdentifierPreparer(compiler.IdentifierPreparer):
 
 class OpenmldbDialect(default.DefaultDialect):
     
-    name = "openmldb_dialet"
+    name = "openmldb_dialect"
     driver = 'rest'
     dbapi = ""
     poolclass = pool.SingletonThreadPool

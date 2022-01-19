@@ -258,7 +258,7 @@ class Cursor(object):
                         if isinstance(parameters[name], str):
                             strSize += len(parameters[name])
                         else:
-                            raise DatabaseError("{} value tpye is not str".format(name))
+                            raise DatabaseError("{} value type is not str".format(name))
                     else:
                         # The parameters is neither tuple or dict
                         raise DatabaseError("Parameters type {} does not support: {}, should be tuple or dict".
