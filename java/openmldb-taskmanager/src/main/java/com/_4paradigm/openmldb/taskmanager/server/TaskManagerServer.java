@@ -31,6 +31,8 @@ import java.io.IOException;
 public class TaskManagerServer {
     private static final Log logger = LogFactory.getLog(TaskManagerServer.class);
 
+    private RpcServer rpcServer;
+
     public void start() {
         try {
             FailoverWatcher failoverWatcher = new FailoverWatcher();
@@ -55,7 +57,7 @@ public class TaskManagerServer {
             options.setSendBufferSize(64 * 1024 * 1024);
             options.setIoThreadNum(TaskManagerConfig.WORKER_THREAD);
             options.setWorkThreadNum(TaskManagerConfig.IO_THREAD);
-            final RpcServer rpcServer = new RpcServer(TaskManagerConfig.PORT, options);
+            rpcServer = new RpcServer(TaskManagerConfig.PORT, options);
             rpcServer.registerService(new TaskManagerImpl());
             rpcServer.start();
             log.info("Start TaskManager on {} with worker thread number {}", TaskManagerConfig.PORT, TaskManagerConfig.WORKER_THREAD);
@@ -71,6 +73,11 @@ public class TaskManagerServer {
             e.printStackTrace();
             log.error("Fail to start TaskManager, " + e.getMessage());
         }
+    }
+
+    public void shutdown() {
+        rpcServer.shutdown();
+        rpcServer = null;
     }
 
     public static void main(String[] args) {

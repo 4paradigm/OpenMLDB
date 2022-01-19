@@ -625,6 +625,12 @@ bool SQLClusterRouter::ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Stat
     }
     return true;
 }
+
+// get all table names in all DB
+std::vector<std::string> SQLClusterRouter::GetAllTables() {
+    return cluster_sdk_->GetAllTables();
+}
+ 
 bool SQLClusterRouter::CreateDB(const std::string& db, hybridse::sdk::Status* status) {
     if (status == NULL) {
         return false;
