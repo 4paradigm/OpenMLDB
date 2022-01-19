@@ -603,6 +603,7 @@ cases:
   -
     id: 24
     desc: 表有数据，deploy创建新索引
+    tags: ["TODO","cicd大概率失败，@denglong，https://github.com/4paradigm/OpenMLDB/issues/1116"]
     mode: standalone-unsupport
     inputs:
       -
