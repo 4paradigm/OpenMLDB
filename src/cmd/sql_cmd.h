@@ -346,17 +346,18 @@ void PrintProcedureSchema(const std::string& head, const ::hybridse::sdk::Schema
 
 void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
     std::vector<std::string> vec{sp_info.GetDbName(), sp_info.GetSpName()};
+
     std::string type_name = "SP";
+    std::string sql = sp_info.GetSql();
+
     if (sp_info.GetType() == hybridse::sdk::kReqDeployment) {
         type_name = "Deployment";
-    }
-    std::string sql = sp_info.GetSql();
-    if (sp_info.GetType() == hybridse::sdk::kReqDeployment) {
         std::string pattern_sp = "CREATE PROCEDURE";
         sql = boost::regex_replace(sql, boost::regex(pattern_sp), "DEPLOY");
         std::string pattern_blank = "(.*)(\\(.*\\) )(BEGIN )(.*)( END;)";
         sql = boost::regex_replace(sql, boost::regex(pattern_blank), "$1$4");
     }
+    
     PrintItemTable(std::cout, {"DB", type_name}, {vec});
     std::vector<std::string> items{sql};
     PrintItemTable(std::cout, {"SQL"}, {items}, true);
