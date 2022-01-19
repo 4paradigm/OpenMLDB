@@ -24,6 +24,7 @@ jobs:
       SQL_JAVASDK_ENABLE: ON
       TESTING_ENABLE: ON
       NPROC: 8
+      SPARK_HOME: /tmp/spark/
     steps:
       - uses: actions/checkout@v2
         with:
