@@ -117,7 +117,12 @@ object LoadDataPlan {
 
         // do deep copy
         require(inputFile != writePath, "read and write paths shouldn't be the same, it may clean data in the path")
-        val df = spark.read.options(options).format(format).load(inputFile)
+        var struct = new StructType
+        info.getColumnDescList.forEach(
+          col => struct = struct.add(col.getName, SparkRowUtil.protoTypeToScalaType(col.getDataType), !col.getNotNull)
+        )
+        logger.info("read schema: {}", struct)
+        val df = spark.read.options(options).format(format).schema(struct).load(inputFile)
         if (logger.isDebugEnabled()) {
           logger.debug("read dataframe count: {}", df.count())
           df.show(10)
