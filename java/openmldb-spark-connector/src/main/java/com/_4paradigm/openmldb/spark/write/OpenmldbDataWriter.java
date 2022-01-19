@@ -22,7 +22,6 @@ import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import com.google.common.base.Preconditions;
-import jdk.nashorn.internal.objects.annotations.Where;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.write.DataWriter;
 import org.apache.spark.sql.connector.write.WriterCommitMessage;
