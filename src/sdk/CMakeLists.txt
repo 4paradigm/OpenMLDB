@@ -115,17 +115,15 @@ if(SQL_PYSDK_ENABLE)
     else()
         add_custom_target(cp_python_sdk_so ALL
                 DEPENDS sql_router_sdk
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/
-                COMMAND strip ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/_sql_router_sdk.so
-                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_native/
+                COMMAND strip ${PROJECT_SOURCE_DIR}/python/openmldb_native/_sql_router_sdk.so
+                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${PROJECT_SOURCE_DIR}/python/openmldb_native/
                 COMMENT "copy generated native library and sql_router_sdk python file to python project"
-                COMMAND cd ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name manylinux1_x86_64
+                COMMAND cd ${PROJECT_SOURCE_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name manylinux1_x86_64
                 BYPRODUCTS
-                    python/sqlalchemy-openmldb
-                    python/build
-                    python/dist
-                    python/sqlalchemy-openmldb.egg-info)
-
+                python/build
+                python/dist
+                python/sqlalchemy-openmldb.egg-info)
     endif()
 endif()
 
