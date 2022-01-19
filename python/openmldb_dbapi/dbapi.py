@@ -138,7 +138,6 @@ class ConnectionClosedException(Error):
 class Cursor(object):
 
     def __init__(self, db, zk, zkPath, conn):
-
         self.description = None
         self.rowcount = -1
         self.arraysize = 1
@@ -151,6 +150,7 @@ class Cursor(object):
         self._resultSetMetadata = None
         self._resultSetStatus = None
         self._resultSet = None
+        self.lastrowid = None
 
     def connected(func):
         def func_wrapper(self, *args, **kwargs):
@@ -237,20 +237,33 @@ class Cursor(object):
                 for i in range(len(holdIdxs)):
                     idx = holdIdxs[i]
                     name = schema.GetColumnName(idx)
-                    if name not in parameters:
-                        return False, "col {} data not given".format(name)
-                    if parameters[name] is None:
-                        if schema.IsColumnNotNull(idx):
-                            raise DatabaseError("column seq {} not allow null".format(idx))
-                        else:
+
+                    # Check parameters type, like tuple or dict
+                    if type(parameters) is tuple:
+                        if isinstance(parameters[i], str):
+                            strSize += len(parameters[i])
+
+                    elif type(parameters) is dict:
+                        if name not in parameters:
+                            raise DatabaseError("col {} data not given".format(name))
+
+                        if parameters[name] is None:
+                            if schema.IsColumnNotNull(idx):
+                                raise DatabaseError("column seq {} not allow null".format(idx))
+                            else:
+                                continue
+                        colType = schema.GetColumnType(idx)
+                        if colType != sql_router_sdk.kTypeString:
                             continue
-                    colType = schema.GetColumnType(idx)
-                    if colType != sql_router_sdk.kTypeString:
-                        continue
-                    if isinstance(parameters[name], str):
-                        strSize += len(parameters[name])
+                        if isinstance(parameters[name], str):
+                            strSize += len(parameters[name])
+                        else:
+                            raise DatabaseError("{} value tpye is not str".format(name))
                     else:
-                        raise DatabaseError("{} value tpye is not str".format(name))
+                        # The parameters is neither tuple or dict
+                        raise DatabaseError("Parameters type {} does not support: {}, should be tuple or dict".
+                                            format(type(parameters), parameters))
+
                 builder.Init(strSize)
                 appendMap = {
                     sql_router_sdk.kTypeBool: builder.AppendBool,
@@ -263,17 +276,26 @@ class Cursor(object):
                     # TODO: align python and java date process, 1900 problem
                     sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and builder.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
                     sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
-                    }
+                }
                 for i in range(len(holdIdxs)):
                     idx = holdIdxs[i]
                     name = schema.GetColumnName(idx)
-                    if parameters[name] is None:
-                        builder.AppendNULL()
-                        continue
                     colType = schema.GetColumnType(idx)
-                    ok = appendMap[colType](parameters[name])
-                    if not ok:
-                        raise DatabaseError("erred at append data seq {}".format(i));
+
+                    if type(parameters) is tuple:
+                        ok = appendMap[colType](parameters[i])
+                        if not ok:
+                            raise DatabaseError("error at append data seq {}".format(i))
+                    elif type(parameters) is dict:
+                        if parameters[name] is None:
+                            builder.AppendNULL()
+                            continue
+                        ok = appendMap[colType](parameters[name])
+                        if not ok:
+                            raise DatabaseError("error at append data seq {}".format(i))
+                    else:
+                        raise DatabaseError("error at append data seq {} for unsupported type".format(i))
+
                 ok, error = self.connection._sdk.executeInsert(self.db, command, builder)
             else:
                 ok, error = self.connection._sdk.executeInsert(self.db, command)
@@ -347,7 +369,6 @@ class Cursor(object):
     def fetchall(self):
         raise NotSupportedError("Unsupported in OpenMLDB")
 
-
     @staticmethod
     def substitute_in_query(string_query, parameters):
         query = string_query
@@ -397,8 +418,6 @@ class Cursor(object):
             raise DatabaseError("execute select fail {}".format(rs))
         self._pre_process_result(rs)
         return self
-
-
 
 class Connection(object):
 
