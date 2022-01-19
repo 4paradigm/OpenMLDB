@@ -59,11 +59,6 @@ class Driver(object):
             return True, "ok"
         else:
             return False, status.msg
-        
-    def getAllTables(self):
-        if not self.sdk:
-            raise Exception("please init driver first")
-        return self.sdk.GetAllTables()
 
     def executeDDL(self, db, ddl):
         if not self.sdk:
