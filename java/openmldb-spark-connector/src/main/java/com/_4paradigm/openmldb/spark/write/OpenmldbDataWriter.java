@@ -110,7 +110,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
                     preparedStatement.setString(i + 1, record.getString(i));
                     break;
                 case Types.DATE:
-                    preparedStatement.setDate(i + 1, new Date(record.getInt(i)));
+                    preparedStatement.setDate(i + 1, new Date(record.getInt(i)*86400000l));
                     break;
                 case Types.TIMESTAMP:
                     // record.getLong(spark sql TimestampType) gets us timestamp, and sql timestamp unit is ms
