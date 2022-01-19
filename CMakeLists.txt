@@ -128,7 +128,8 @@ endif()
 
 add_subdirectory(hybridse)
 
-set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags boost_filesystem boost_date_time boost_regex)
+find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
+set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags ${Boost_LIBRARIES})
 set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -166,7 +167,17 @@ list(
         absl::time
         absl::status)
 
-list(APPEND ICU_LIBS icui18n icuio icuuc icudata)
+find_package(ICU COMPONENTS i18n io uc data)
+if (NOT ICU_FOUND)
+    message(STATUS "ICU package Not Found")
+    find_library(ICU_I18N icui18n)
+    find_library(ICU_IO icuio)
+    find_library(ICU_UC icuuc)
+    find_library(ICU_DATA icudata)
+    set(ICU_LIBRARIES ${ICU_I18N} ${ICU_IO} ${ICU_UC} ${ICU_DATA})
+endif ()
+message(STATUS "Found ICU Libraries: ${ICU_LIBRARIES}")
+
 list(APPEND file_based_test_driver_LIBS
         alternations
         test_case_options
@@ -183,7 +194,7 @@ set(ZETASQL_LIBS
         ${file_based_test_driver_LIBS}
         ${ABSL_LIBS}
         re2
-        ${ICU_LIBS}
+        ${ICU_LIBRARIES}
         date_proto
         timeofday_proto
         latlng_proto

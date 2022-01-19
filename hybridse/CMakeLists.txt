@@ -95,7 +95,7 @@ set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog unwind z snappy ssl crypto dl)
+    set(COMMON_LIBS ${Boost_LIBRARIES} leveldb protobuf glog unwind z snappy ssl crypto dl)
     set(BRPC_LIBS brpc ${COMMON_LIBS})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
@@ -109,7 +109,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
-    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog  z snappy ssl crypto dl)
+    set(COMMON_LIBS ${Boost_LIBRARIES} leveldb protobuf glog z snappy ssl crypto dl)
     set(BRPC_LIBS brpc ${COMMON_LIBS})
 endif ()
 
@@ -191,12 +191,22 @@ list(
         absl::status
 )
 
-list(APPEND ICU_LIBS icui18n icuio icuuc icudata)
+find_package(ICU COMPONENTS i18n io uc data)
+if (NOT ICU_FOUND)
+    message(STATUS "ICU package Not Found")
+    find_library(ICU_I18N icui18n)
+    find_library(ICU_IO icuio)
+    find_library(ICU_UC icuuc)
+    find_library(ICU_DATA icudata)
+    set(ICU_LIBRARIES ${ICU_I18N} ${ICU_IO} ${ICU_UC} ${ICU_DATA})
+endif ()
+message(STATUS "Found ICU Libraries: ${ICU_LIBRARIES}")
+
 set(ZETASQL_LIBS
         zetasql
         ${ABSL_LIBS}
         re2
-        ${ICU_LIBS}
+        ${ICU_LIBRARIES}
     )
 if (PYSDK_ENABLE)
     set(Python_ADDITIONAL_VERSIONS "3.8;3.7;3.6;3.5;2.7" CACHE STRING "Python to use for binding")
