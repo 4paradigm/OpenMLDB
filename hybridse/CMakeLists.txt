@@ -44,7 +44,6 @@ option(TESTING_ENABLE "Enable Test" ON)
 option(HYBRIDSE_TESTING_ENABLE "Enable Hybridse Test" ON)
 option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
-option(PYSDK_ENABLE "Enable pysdk" ON)
 option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
@@ -208,18 +207,8 @@ set(ZETASQL_LIBS
         re2
         ${ICU_LIBRARIES}
     )
-if (PYSDK_ENABLE)
-    set(Python_ADDITIONAL_VERSIONS "3.8;3.7;3.6;3.5;2.7" CACHE STRING "Python to use for binding")
-    find_package(PythonInterp REQUIRED)
-    message(STATUS "Found Python: ${PYTHON_EXECUTABLE} (found version \"${PYTHON_VERSION_STRING}\")")
-    # Find Python Library
-    # Force PythonLibs to find the same version than the python interpreter (or nothing).
-    set(Python_ADDITIONAL_VERSIONS "${PYTHON_VERSION_STRING}")
-    find_package(PythonLibs REQUIRED)
-    message(STATUS "Found Python Include: ${PYTHON_INCLUDE_DIRS} (found version \"${PYTHONLIBS_VERSION_STRING}\")")
-endif ()
-# Find java
 
+# Find java
 if (SQL_JAVASDK_ENABLE)
     find_package(Java COMPONENTS Development REQUIRED)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
