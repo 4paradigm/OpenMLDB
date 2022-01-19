@@ -322,7 +322,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       SQL_PYSDK_ENABLE: ON
-      OPENMLDB_BUILD_TARGET: 'sqlalchemy_openmldb openmldb'
+      OPENMLDB_BUILD_TARGET: 'cp_python_sdk_so openmldb'
     steps:
       - uses: actions/checkout@v2
 
