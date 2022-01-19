@@ -14,8 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+sys.path.append("../")
+
 import logging
-from . import driver
+from openmldb_sdk import driver
+from openmldb_native import sql_router_sdk
 import re
 
 # Globals
@@ -25,26 +29,26 @@ threadsafety = 3
 
 
 class Type(object):
-    Bool = driver.sql_router_sdk.kTypeBool
-    Int16 = driver.sql_router_sdk.kTypeInt16
-    Int32 = driver.sql_router_sdk.kTypeInt32
-    Int64 = driver.sql_router_sdk.kTypeInt64
-    Float = driver.sql_router_sdk.kTypeFloat
-    Double = driver.sql_router_sdk.kTypeDouble
-    Date = driver.sql_router_sdk.kTypeDate
-    String = driver.sql_router_sdk.kTypeString
-    Timestamp = driver.sql_router_sdk.kTypeTimestamp
+    Bool = sql_router_sdk.kTypeBool
+    Int16 = sql_router_sdk.kTypeInt16
+    Int32 = sql_router_sdk.kTypeInt32
+    Int64 = sql_router_sdk.kTypeInt64
+    Float = sql_router_sdk.kTypeFloat
+    Double = sql_router_sdk.kTypeDouble
+    Date = sql_router_sdk.kTypeDate
+    String = sql_router_sdk.kTypeString
+    Timestamp = sql_router_sdk.kTypeTimestamp
 
 fetype_to_py = {
-    driver.sql_router_sdk.kTypeBool: Type.Bool,
-    driver.sql_router_sdk.kTypeInt16: Type.Int16,
-    driver.sql_router_sdk.kTypeInt32: Type.Int32,
-    driver.sql_router_sdk.kTypeInt64: Type.Int64,
-    driver.sql_router_sdk.kTypeFloat: Type.Float,
-    driver.sql_router_sdk.kTypeDouble: Type.Double,
-    driver.sql_router_sdk.kTypeDate: Type.Date,
-    driver.sql_router_sdk.kTypeString: Type.String,
-    driver.sql_router_sdk.kTypeTimestamp: Type.Timestamp,
+    sql_router_sdk.kTypeBool: Type.Bool,
+    sql_router_sdk.kTypeInt16: Type.Int16,
+    sql_router_sdk.kTypeInt32: Type.Int32,
+    sql_router_sdk.kTypeInt64: Type.Int64,
+    sql_router_sdk.kTypeFloat: Type.Float,
+    sql_router_sdk.kTypeDouble: Type.Double,
+    sql_router_sdk.kTypeDate: Type.Date,
+    sql_router_sdk.kTypeString: Type.String,
+    sql_router_sdk.kTypeTimestamp: Type.Timestamp,
 }
 
 createTableRE = re.compile("^create\s+table", re.I)
@@ -170,15 +174,15 @@ class Cursor(object):
         self._resultSet = rs
         self.__schema = rs.GetSchema()
         self.__getMap = {
-          driver.sql_router_sdk.kTypeBool: self._resultSet.GetBoolUnsafe,
-          driver.sql_router_sdk.kTypeInt16: self._resultSet.GetInt16Unsafe,
-          driver.sql_router_sdk.kTypeInt32: self._resultSet.GetInt32Unsafe,
-          driver.sql_router_sdk.kTypeInt64: self._resultSet.GetInt64Unsafe,
-          driver.sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
-          driver.sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
-          driver.sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
-          driver.sql_router_sdk.kTypeDate: self._resultSet.GetAsStringUnsafe,
-          driver.sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
+          sql_router_sdk.kTypeBool: self._resultSet.GetBoolUnsafe,
+          sql_router_sdk.kTypeInt16: self._resultSet.GetInt16Unsafe,
+          sql_router_sdk.kTypeInt32: self._resultSet.GetInt32Unsafe,
+          sql_router_sdk.kTypeInt64: self._resultSet.GetInt64Unsafe,
+          sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
+          sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
+          sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
+          sql_router_sdk.kTypeDate: self._resultSet.GetAsStringUnsafe,
+          sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
         }
         self.description = [
             (
@@ -241,7 +245,7 @@ class Cursor(object):
                         else:
                             continue
                     colType = schema.GetColumnType(idx)
-                    if colType != driver.sql_router_sdk.kTypeString:
+                    if colType != sql_router_sdk.kTypeString:
                         continue
                     if isinstance(parameters[name], str):
                         strSize += len(parameters[name])
@@ -249,16 +253,16 @@ class Cursor(object):
                         raise DatabaseError("{} value tpye is not str".format(name))
                 builder.Init(strSize)
                 appendMap = {
-                    driver.sql_router_sdk.kTypeBool: builder.AppendBool,
-                    driver.sql_router_sdk.kTypeInt16: builder.AppendInt16,
-                    driver.sql_router_sdk.kTypeInt32: builder.AppendInt32,
-                    driver.sql_router_sdk.kTypeInt64: builder.AppendInt64,
-                    driver.sql_router_sdk.kTypeFloat: builder.AppendFloat,
-                    driver.sql_router_sdk.kTypeDouble: builder.AppendDouble,
-                    driver.sql_router_sdk.kTypeString: builder.AppendString,
+                    sql_router_sdk.kTypeBool: builder.AppendBool,
+                    sql_router_sdk.kTypeInt16: builder.AppendInt16,
+                    sql_router_sdk.kTypeInt32: builder.AppendInt32,
+                    sql_router_sdk.kTypeInt64: builder.AppendInt64,
+                    sql_router_sdk.kTypeFloat: builder.AppendFloat,
+                    sql_router_sdk.kTypeDouble: builder.AppendDouble,
+                    sql_router_sdk.kTypeString: builder.AppendString,
                     # TODO: align python and java date process, 1900 problem
-                    driver.sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and builder.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
-                    driver.sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
+                    sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and builder.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+                    sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
                     }
                 for i in range(len(holdIdxs)):
                     idx = holdIdxs[i]

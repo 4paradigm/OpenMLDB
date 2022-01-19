@@ -68,7 +68,7 @@ if(SQL_PYSDK_ENABLE)
     target_include_directories(sql_router_sdk PRIVATE ${Python3_INCLUDE_DIRS})
     target_link_libraries(sql_router_sdk ${SDK_LIBS})
 
-    # TDOO: Python in MacOS does not support load dylib file
+    # Python in MacOS does not support load dylib file
     if(APPLE)
       set_target_properties(sql_router_sdk PROPERTIES
                SUFFIX ".so")
@@ -103,13 +103,12 @@ if(SQL_PYSDK_ENABLE)
     if(APPLE)
         add_custom_target(cp_python_sdk_so ALL
                 DEPENDS sql_router_sdk
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_native/
                 # Do not strip library for MacOS, refer to https://github.com/4paradigm/OpenMLDB/issues/905
-                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/
+                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${PROJECT_SOURCE_DIR}/python/openmldb_native/
                 COMMENT "copy generated native library and sql_router_sdk python file to python project"
-                COMMAND cd ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name macosx_10_15_x86_64
+                COMMAND cd ${PROJECT_SOURCE_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name macosx_10_15_x86_64
                 BYPRODUCTS
-                    python/sqlalchemy-openmldb
                     python/build
                     python/dist
                     python/sqlalchemy-openmldb.egg-info)
