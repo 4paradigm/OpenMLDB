@@ -3467,14 +3467,6 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::openmldb::clie
             } else {
                 value.assign(it->GetValue().data(), it->GetValue().size());
             }
-            if (table_meta.added_column_desc_size() == 0) {
-                ::openmldb::codec::RowCodec::DecodeRow(
-                    columns.size(), ::openmldb::base::Slice(value), &row);
-            } else {
-                ::openmldb::codec::RowCodec::DecodeRow(
-                    columns.size() - table_meta.added_column_desc_size(),
-                    columns.size(), ::openmldb::base::Slice(value), &row);
-            }
         }
         tp.AddRow(row);
         index++;
@@ -3780,14 +3772,6 @@ void HandleClientSGet(const std::vector<std::string>& parts, ::openmldb::client:
     row.clear();
     row.push_back("1");
     row.push_back(std::to_string(ts));
-    if (table_meta.added_column_desc_size() == 0) {
-        ::openmldb::codec::RowCodec::DecodeRow(raw.size(),
-                                            ::openmldb::base::Slice(value), &row);
-    } else {
-        ::openmldb::codec::RowCodec::DecodeRow(
-            raw.size() - table_meta.added_column_desc_size(), raw.size(),
-            ::openmldb::base::Slice(value), &row);
-    }
     tp.AddRow(row);
     tp.Print(true);*/
 }

@@ -8846,6 +8846,7 @@ base::Status NameServerImpl::AddMultiIndexs(const std::string& db, const std::st
         indexs.push_back(column_keys.Get(idx));
     }
     uint32_t tid = table_info->tid();
+    std::set<std::string> endpoint_set;
     for (const auto& part : table_info->table_partition()) {
         uint32_t pid = part.pid();
         for (const auto& meta : part.partition_meta()) {
@@ -8863,17 +8864,33 @@ base::Status NameServerImpl::AddMultiIndexs(const std::string& db, const std::st
                     " endpoint " << meta.endpoint();
                 return status;
             }
+            endpoint_set.insert(meta.endpoint());
         }
     }
-    std::lock_guard<std::mutex> lock(mu_);
     table_info.reset();
-    if (!GetTableInfoUnlock(name, db, &table_info)) {
-        return {ReturnCode::kTableIsNotExist, "table is not exist!"};
-    }
-    for (int idx = 0; idx < column_keys.size(); idx++) {
-        table_info->add_column_key()->CopyFrom(column_keys.Get(idx));
+    std::vector<std::shared_ptr<TabletClient>> tb_client_vec;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!GetTableInfoUnlock(name, db, &table_info)) {
+            return {ReturnCode::kTableIsNotExist, "table is not exist!"};
+        }
+        for (int idx = 0; idx < column_keys.size(); idx++) {
+            table_info->add_column_key()->CopyFrom(column_keys.Get(idx));
+        }
+        for (auto& kv : tablets_) {
+            if (!kv.second->Health()) {
+                LOG(WARNING) << "endpoint [" << kv.first << "] is offline";
+                continue;
+            }
+            if (endpoint_set.count(kv.first) == 0) {
+                tb_client_vec.push_back(kv.second->client_);
+            }
+        }
     }
     UpdateZkTableNode(table_info);
+    for (const auto& tablet_client : tb_client_vec) {
+        tablet_client->Refresh(tid);
+    }
     PDLOG(INFO, "add index ok. table[%s] index num[%d]", name.c_str(), column_keys.size());
     return {};
 }

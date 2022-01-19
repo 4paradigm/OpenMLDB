@@ -24,6 +24,7 @@ jobs:
       SQL_JAVASDK_ENABLE: ON
       TESTING_ENABLE: ON
       NPROC: 8
+      SPARK_HOME: /tmp/spark/
     steps:
       - uses: actions/checkout@v2
         with:
@@ -48,6 +49,7 @@ jobs:
       - name: start service
         run: |
           sh steps/ut_zookeeper.sh start
+          sh steps/download_openmldb_spark.sh $SPARK_HOME
           cd onebox
           bash start_onebox.sh
 

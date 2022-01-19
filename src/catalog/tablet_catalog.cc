@@ -217,6 +217,9 @@ void TabletTableHandler::Update(const ::openmldb::nameserver::TableInfo& meta, c
         table_st_.SetPartition(partition_st);
         table_client_manager_->UpdatePartitionClientManager(partition_st, client_manager);
     }
+    if (meta.column_key_size() != index_list_.size()) {
+        UpdateIndex(meta.column_key());
+    }
 }
 
 std::shared_ptr<::hybridse::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
