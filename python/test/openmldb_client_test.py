@@ -323,16 +323,10 @@ class TestSqlalchemyAPI:
     def setup_class(self):
         self.engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
         self.connection = self.engine.connect()
-
-    def test_create_table_object(self):
-        try:
-            self.metadata = MetaData()
-            self.test_table = Table('test_table', self.metadata,
-                                            Column('x', String),
-                                            Column('y', Integer))
-        except Exception as e:
-            logging.warning("error occured {}".format(e))
-            assert False
+        self.metadata = MetaData()
+        self.test_table = Table('test_table', self.metadata,
+                                          Column('x', String),
+                                          Column('y', Integer))
 
     def test_create_table(self):
         try:
