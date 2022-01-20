@@ -783,6 +783,9 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(const std::string& db, c
             }
             cache = std::make_shared<SQLCache>(schema, parameter_schema, explain.router, explain.limit_cnt);
             SetCache(db, sql, engine_mode, cache);
+        } else {
+            LOG(WARNING) << vm_status.msg;
+            return {};
         }
     }
     return cache;
