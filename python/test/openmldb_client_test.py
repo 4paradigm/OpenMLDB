@@ -315,7 +315,7 @@ class TestOpenMLDBClient(unittest.TestCase):
       ]
     self.check_result(rs, expectRows)
 
-# test sqlalchemy Table-object-based API of pytest style
+# test sqlalchemy Table-object-based API in pytest style
 class TestSqlalchemyAPI:
 
     def setup_module(self):
