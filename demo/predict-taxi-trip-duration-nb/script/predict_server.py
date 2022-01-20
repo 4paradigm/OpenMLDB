@@ -20,13 +20,10 @@ import tornado.ioloop
 import json
 import lightgbm as lgb
 import sqlalchemy as db
+import requests
 import argparse
 
-sql = ""
 bst = None
-
-engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:2181&zkPath=/openmldb')
-connection = engine.connect()
 
 table_schema = [
 	("id", "string"),
@@ -41,6 +38,8 @@ table_schema = [
 	("store_and_fwd_flag", "string"),
 	("trip_duration", "int"),
 ]
+
+url = ""
 
 def get_schema():
     dict_schema = {}
@@ -64,15 +63,19 @@ class PredictHandler(tornado.web.RequestHandler):
     def post(self):
         row = json.loads(self.request.body)
         data = {}
+        data["input"] = []
+        row_data = []
         for i in table_schema:
             if i[1] == "string":
-                data[i[0]] = row.get(i[0], "")
+                row_data.append(row.get(i[0], ""))
             elif i[1] == "int" or i[1] == "double" or i[1] == "timestamp" or i[1] == "bigint":
-                data[i[0]] = row.get(i[0], 0)
+                row_data.append(row.get(i[0], 0))
             else:
-                data[i[0]] = None
-        rs = connection.execute(sql, data)
-        for r in rs:
+                row_data.append(None)
+        data["input"].append(row_data)       
+        rs = requests.post(url, json=data)
+        result = json.loads(rs.text)
+        for r in result["data"]["data"]:
             ins = build_feature(r)
             self.write("----------------ins---------------\n")
             self.write(str(ins) + "\n")
@@ -93,11 +96,10 @@ def make_app():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("sql_file", help="specify the sql file")
+    parser.add_argument("endpoint",  help="specify the endpoint of apiserver")
     parser.add_argument("model_path",  help="specify the model path")
     args = parser.parse_args()
-    with open(args.sql_file, "r") as fd:
-      sql = fd.read()
+    url = "http://%s/dbs/demo_db/deployments/demo" % args.endpoint
     bst = lgb.Booster(model_file=args.model_path)
     app = make_app()
     app.listen(8887)

@@ -29,6 +29,7 @@ class TestOpenMLDBClient(unittest.TestCase):
     ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));"
     logging.info("test_basic ...")
     engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
+    
     connection = engine.connect()
     try:
       connection.execute("create database db_test;")
@@ -40,8 +41,9 @@ class TestOpenMLDBClient(unittest.TestCase):
       pass
 
     time.sleep(2)
-
+    
     connection.execute(ddl)
+    self.check_has_table(connection)
     insert1 = "insert into tsql1010 values(1000, '2020-12-25', 'guangdon', '广州', 1);"
     insert2 = "insert into tsql1010 values(1001, '2020-12-26', 'hefei', ?, ?);" # anhui 2
     insert3 = "insert into tsql1010 values(1002, '2020-12-27', ?, ?, 3);" # fujian fuzhou
@@ -166,6 +168,17 @@ class TestOpenMLDBClient(unittest.TestCase):
         connection.execute(sql);
       except Exception as e:
         self.assertTrue(False)
+ 
+  def check_has_table(self, connection):
+    try:
+      if not connection.dialect.has_table(connection, 'tsql1010', schema=None):
+        logging.info('check table name that already exists')
+        self.assertTrue(False)
+      if connection.dialect.has_table(connection, 'testsql1', schema=None):
+        logging.info('check new table name')
+        self.assertTrue(False)
+    except:
+      pass
 
   def show_result_list(self, rs):
     logging.info("result size: %d", len(rs))

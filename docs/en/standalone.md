@@ -11,7 +11,7 @@ We first need to download the sample data set and start the OpenMLDB CLI. We str
 1. Pull the image (download size around 500 MB) and start the container 
 
    ```bash
-   docker run -it 4pdosc/openmldb:0.3.2 bash
+   docker run -it 4pdosc/openmldb:0.4.0 bash
    ```
 
    **:bulb: After starting the container successfully, the following commands are all executed in the container.**
@@ -19,7 +19,7 @@ We first need to download the sample data set and start the OpenMLDB CLI. We str
 2. Download the sample data
 
    ```bash
-   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/standalone/data/data.csv --output ./data/data.csv
+   curl https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/quick_start/data/data.csv --output ./data/data.csv
    ```
 
 3. Start the OpenMLDB service and CLI

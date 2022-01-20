@@ -35,7 +35,7 @@ sleep 5
 pgrep -f openmldb
 echo "ROOT_DIR:${ROOT_DIR}"
 
-cd "${ROOT_DIR}"/build/python/dist/
+cd "${ROOT_DIR}"/python/dist/
 whl_name=$(ls openmldb*.whl)
 echo "whl_name:${whl_name}"
 python3 -m pip install "${whl_name}" -i https://pypi.tuna.tsinghua.edu.cn/simple
@@ -43,6 +43,5 @@ python3 -m pip install "${whl_name}" -i https://pypi.tuna.tsinghua.edu.cn/simple
 # needs: easy_install nose (sqlalchemy is openmldb required)
 cd "${ROOT_DIR}"/python/test
 nosetests --with-xunit
-
 cd "${ROOT_DIR}"/onebox && sh stop_all.sh && cd "$ROOT_DIR"
 cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop && cd "$ROOT_DIR"

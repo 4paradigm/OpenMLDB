@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: prepare
+      - name: prepare release
         run: |
           VERSION="snapshot"
           if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
@@ -43,7 +43,7 @@ jobs:
             VERSION=${VERSION#v}
             bash steps/prepare_release.sh "$VERSION"
           fi
-          echo "OPENMLDB_PREFIX=openmldb-$VERSION" >> $GITHUB_ENV
+          echo "OPENMLDB_PREFIX=openmldb-$VERSION-linux" >> $GITHUB_ENV
 
       - name: enable java on release
         if: github.event_name == 'push'
@@ -116,6 +116,7 @@ jobs:
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'cp_native_so openmldb'
       MAVEN_OPTS: -Duser.home=/github/home
+      SPARK_HOME: /tmp/spark/
     steps:
       - uses: actions/checkout@v2
 
@@ -143,6 +144,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: prepare release
+        if: github.event_name == 'push'
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=${VERSION#v}
+          ./java/prepare_release.sh "$VERSION"
+
       - name: build jsdk
         run: |
           make build
@@ -159,12 +167,13 @@ jobs:
       - name: start services
         run: |
           sh steps/ut_zookeeper.sh start
+          sh steps/download_openmldb_spark.sh $SPARK_HOME
           cd onebox && sh start_onebox.sh && cd - || exit
 
       - name: run java modules smoke test
         working-directory: java
         run: |
-          mvn --batch-mode test
+          ./mvnw --batch-mode test
 
       - name: upload java ut results
         if: always()
@@ -174,18 +183,11 @@ jobs:
           path: |
             java/*/target/**/TEST-*.xml
 
-      - name: prepare deploy version
-        if: github.event_name == 'push'
-        run: |
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=${VERSION#v}
-          ./java/prepare_release.sh "$VERSION"
-
       - name: deploy
         if: github.event_name == 'push'
         working-directory: java
         run: |
-          mvn --batch-mode deploy -DskipTests=true -Dscalatest.skip=true
+          ./mvnw --batch-mode deploy -DskipTests=true -Dscalatest.skip=true
         env:
           MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
@@ -229,6 +231,13 @@ jobs:
             thirdsrc
           key: ${{ runner.os }}-thirdparty-${{ hashFiles('third-party/**/CMakeLists.txt', 'third-party/**/*.cmake', 'third-party/**/*.sh') }}
 
+      - name: prepare release
+        if: github.event_name == 'push'
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=${VERSION#v}
+          ./java/prepare_release.sh "$VERSION"
+
       - uses: actions/setup-java@v2
         with:
           distribution: 'adopt'
@@ -267,12 +276,6 @@ jobs:
       #     path: |
       #       java/openmldb-jdbc/target/**/TEST-*.xml
 
-      - name: prepare deploy version
-        run: |
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          VERSION=${VERSION#v}
-          VARIANT_TYPE=macos ./java/prepare_release.sh "$VERSION"
-
       - name: mvn deploy
         working-directory: java
         run: |
@@ -280,8 +283,8 @@ jobs:
           # so it is a bit tricky to compile and deploy that
           # firstly run `maven install` install things locally
           # then selectly `mvn deploy` for hybridse-native & openmldb-native
-          mvn --batch-mode install -DskipTests=true -Dscalatest.skip=true
-          mvn --batch-mode -pl hybridse-native,openmldb-native deploy
+          ./mvnw --batch-mode clean install -DskipTests=true -Dscalatest.skip=true
+          ./mvnw --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
@@ -306,8 +309,8 @@ jobs:
           # so it is a bit tricky to compile and deploy that
           # firstly run `maven install` install things locally
           # then selectly `mvn deploy` for hybridse-native & openmldb-native
-          mvn --batch-mode install -DskipTests=true -Dscalatest.skip=true
-          mvn --batch-mode -pl hybridse-native,openmldb-native deploy
+          ./mvnw --batch-mode clean install -DskipTests=true -Dscalatest.skip=true
+          ./mvnw --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
@@ -319,7 +322,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
       SQL_PYSDK_ENABLE: ON
-      OPENMLDB_BUILD_TARGET: 'sqlalchemy_openmldb openmldb'
+      OPENMLDB_BUILD_TARGET: 'cp_python_sdk_so openmldb'
     steps:
       - uses: actions/checkout@v2
 

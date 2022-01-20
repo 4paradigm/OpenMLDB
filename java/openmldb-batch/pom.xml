@@ -7,7 +7,7 @@
 	<parent>
 		<artifactId>openmldb-parent</artifactId>
 		<groupId>com.4paradigm.openmldb</groupId>
-		<version>0.4.0-SNAPSHOT</version>
+		<version>0.5.0-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>openmldb-batch</artifactId>
@@ -38,8 +38,7 @@
 		<hadoop.version>2.7.4</hadoop.version>
 		<spark.version>3.0.0</spark.version>
 		<spark.dependencyScope>provided</spark.dependencyScope>
-		<default.project.version>0.3.2</default.project.version>
-		<default.hybridse.sdk.version>0.4.0</default.hybridse.sdk.version>
+		<default.project.version>0.4.0</default.project.version>
 	</properties>
 
 	<profiles>
@@ -50,37 +49,22 @@
 			</activation>
 			<properties>
 				<revision>${default.project.version}-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-SNAPSHOT</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>macos</id>
 			<properties>
 				<revision>${default.project.version}-macos-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-macos-SNAPSHOT</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>allinone</id>
 			<properties>
 				<revision>${default.project.version}-allinone-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-allinone-SNAPSHOT</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 	</profiles>
 	<dependencies>
-		<dependency>
-			<groupId>com.4paradigm.openmldb</groupId>
-			<artifactId>hybridse-native</artifactId>
-			<version>${variant.native.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.4paradigm.openmldb</groupId>
-			<artifactId>hybridse-sdk</artifactId>
-			<version>${project.parent.version}</version>
-		</dependency>
-
 		<dependency>
 			<groupId>org.scala-lang</groupId>
 			<artifactId>scala-library</artifactId>
@@ -163,10 +147,29 @@
 		</dependency>
 
         <!-- OpenMLDB -->
+	    <dependency>
+		    <groupId>com.4paradigm.openmldb</groupId>
+		    <artifactId>hybridse-sdk</artifactId>
+		    <version>${project.parent.version}</version>
+	    </dependency>
+
+		<dependency>
+			<groupId>com.4paradigm.openmldb</groupId>
+			<artifactId>openmldb-native</artifactId>
+			<version>${project.parent.version}</version>
+			<scope>provided</scope>
+		</dependency>
+
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
             <version>${project.parent.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>com.4paradigm.openmldb</groupId>
+					<artifactId>openmldb-native</artifactId>
+				</exclusion>
+			</exclusions>
         </dependency>
 
         <dependency>

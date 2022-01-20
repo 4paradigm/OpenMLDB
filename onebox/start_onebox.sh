@@ -89,30 +89,6 @@ test -d recycle_bin3 && rm -rf recycle_bin3
                    --zk_cluster=${ZK_CLUSTER}\
                    --zk_root_path=/onebox > ns3.log 2>&1 &
 
-# start TaskManager if exists
-if [ -d "./java/openmldb-taskmanager/target/openmldb-taskmanager-binary/bin/" ]
-then
-  # Change to binary directory
-  pushd ./java/openmldb-taskmanager/target/openmldb-taskmanager-binary/bin > /dev/null
-
-
-  # Update config
-  if [[ $OSTYPE == 'darwin'* ]]; then
-    sed -i '' 's/zookeeper.cluster=0.0.0.0:2181/zookeeper.cluster=0.0.0.0:6181/g' ../conf/taskmanager.properties
-    sed -i '' 's/zookeeper.root_path=\/openmldb/zookeeper.root_path=\/onebox/g' ../conf/taskmanager.properties
-    sed -i '' 's/openmldb-batchjob-0.4.0-SNAPSHOT.jar/openmldb-batchjob-0.4.0-SNAPSHOT.jar/g' ../conf/taskmanager.properties
-  else
-    sed -i 's/zookeeper.cluster=0.0.0.0:2181/zookeeper.cluster=0.0.0.0:6181/g' ../conf/taskmanager.properties
-    sed -i 's/zookeeper.root_path=\/openmldb/zookeeper.root_path=\/onebox/g' ../conf/taskmanager.properties
-    sed -i 's/openmldb-batchjob-0.4.0-SNAPSHOT.jar/openmldb-batchjob-0.4.0-SNAPSHOT.jar/g' ../conf/taskmanager.properties
-  fi
-
-  # Start taskmanager
-  sh ./taskmanager.sh 2>&1 &
-
-  popd > /dev/null
-fi
-
 sleep 3
 
 echo "start all ok"
