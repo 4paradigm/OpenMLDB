@@ -94,7 +94,7 @@ coverage-cpp: coverage-configure
 
 coverage-java: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target cp_native_so -- -j$(NPROC)
-	cd java && mvn --batch-mode prepare-package
+	cd java && ./mvnw --batch-mode prepare-package
 
 coverage-configure:
 	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
@@ -190,7 +190,7 @@ lint: cpplint shlint javalint pylint
 format: javafmt shfmt cppfmt pyfmt configfmt
 
 javafmt:
-	@cd java && mvn -pl hybridse-sdk spotless:apply
+	@cd java && ./mvnw -pl hybridse-sdk spotless:apply
 
 shfmt:
 	@if command -v shfmt; then\
@@ -258,7 +258,7 @@ shlint:
 	    fi
 
 javalint:
-	@cd java && mvn -pl hybridse-sdk -Dplugin.violationSeverity=warning checkstyle:check
+	@cd java && ./mvnw -pl hybridse-sdk -Dplugin.violationSeverity=warning checkstyle:check
 
 pylint:
 	@if command -v pylint; then \

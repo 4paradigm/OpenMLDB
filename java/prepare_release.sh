@@ -49,6 +49,10 @@ fi
 
 cd "$(dirname "$0")"
 
+ROOT=$(pwd)
+
+MAVEN_EXE=${ROOT}/mvnw
+
 if [[ -n $CI ]]; then
   MAVEN_FLAGS='--batch-mode'
 fi
@@ -60,7 +64,7 @@ VERSION=$1
 if [[ $VERSION = 'main' ]]; then
   echo -e "${GREEN}not release from a tag push, $0 will get versions from code${NC}"
   # get version number from code
-  VERSION=$(mvn $MAVEN_FLAGS help:evaluate -Dexpression=project.version -q -DforceStdout)
+  VERSION=$($MAVEN_EXE $MAVEN_FLAGS help:evaluate -Dexpression=project.version -q -DforceStdout)
 fi
 # rm semVer number from VERSION of 3 numbers MAJOR.MINOR.PATCH
 #  0.1.2 -> ''
@@ -108,7 +112,7 @@ fi
 
 echo -e "${GREEN}setting project version to: $JAVA_VERSION, setting hybridse-native & openmldb-native to $VARIANT_VERSION${NC}"
 
-mvn $MAVEN_FLAGS versions:set -DnewVersion="$JAVA_VERSION"
+$MAVEN_EXE $MAVEN_FLAGS versions:set -DnewVersion="$JAVA_VERSION"
 
 # those module has macOS variant so do not inherit number from openmldb-parent
-mvn $MAVEN_FLAGS versions:set-property -Dproperty="variant.native.version" -DnewVersion="$VARIANT_VERSION"
+$MAVEN_EXE $MAVEN_FLAGS versions:set-property -Dproperty="variant.native.version" -DnewVersion="$VARIANT_VERSION"
