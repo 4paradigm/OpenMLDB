@@ -122,12 +122,23 @@ THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
 THIRD_PARTY_DIR ?= $(THIRD_PARTY_BUILD_DIR)/usr
 
 # trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr.
-#  we check this by asserting if the environment variable 'THIRD_PARTY_DIR' is defined to '/deps/usr', if true, thirdparty download is skipped
-#  since zetasql update more frequently than others, download zetasql won't skipped
+#  we check this by asserting if the environment variable '$THIRD_PARTY_DIR' is defined to '/deps/usr',
+#  if true, thirdparty download is skipped
+# zetasql check separately since it update more frequently:
+#   it will updated if the variable '$ZETASQL_VERSION' (defined in docker) equal to current code
 thirdparty-fast:
-	if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
+	@if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
 	    echo "fullly setup thirdparty"; \
 	    $(MAKE) thirdparty; \
+	elif [ -n "$(ZETASQL_VERSION)" ]; then \
+	    NEW_ZETASQL_VERSION=$( grep 'set(ZETASQL_VERSION' FetchZetasql.cmake | sed 's/set(ZETASQL_VERSION[[:space:]]*//g') | sed -E 's/[[:space:]]|)//g'; \
+	    if [ "$NEW_ZETASQL_VERSION" != "$(ZETASQL_VERSION)" ] ; then \
+		echo "update thirdparty/zetasql only"; \
+		$(MAKE) thirdparty-configure; \
+		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+	    else \
+		echo "zetasql already setup with version: $(ZETASQL_VERSION)"; \
+	    fi; \
 	else \
 	    echo "setup thirdparty/zetasql only"; \
 	    $(MAKE) thirdparty-configure; \
