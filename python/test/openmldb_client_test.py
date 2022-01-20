@@ -350,10 +350,10 @@ class TestSqlalchemyAPI:
     def test_select(self):
         try:
             for row in self.connection.execute(select([self.test_table])):
-                if 'first' not in row:
+                if 'first' not in list(row):
                     logging.warning("Insert failed, 'first' not in the row")
                     assert False
-                elif 100 not in row:
+                elif 100 not in list(row):
                     logging.warning("Insert failed, 100 not in the row")
                     assert False
         except Exception as e:
