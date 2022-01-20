@@ -320,7 +320,7 @@ class TestOpenMLDBClient(unittest.TestCase):
 # test sqlalchemy Table-object-based API in pytest style
 class TestSqlalchemyAPI:
 
-    def setup_module(self):
+    def setup_class(self):
         self.engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
         self.connection = self.engine.connect()
 
@@ -361,7 +361,7 @@ class TestSqlalchemyAPI:
         except Exception as e:
             pass
 
-    def teardown_module(self):
+    def teardown_class(self):
         self.connection.close()
 
 
