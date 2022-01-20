@@ -1021,7 +1021,7 @@ public class FesqlUtil {
                                                                List<Object> objects) throws SQLException {
         boolean success = setRequestData(requestPs, objects);
         if (success) {
-            QueryFuture future = requestPs.executeQueryAsync(100, TimeUnit.MILLISECONDS);
+            QueryFuture future = requestPs.executeQueryAsync(1000, TimeUnit.MILLISECONDS);
             ResultSet sqlResultSet = null;
             try {
                 sqlResultSet = future.get();
@@ -1104,6 +1104,7 @@ public class FesqlUtil {
         int columnType = rs.getMetaData().getColumnType(index + 1);
         if (rs.getNString(index + 1) == null) {
             logger.info("rs is null");
+            System.out.println(rs.getNString(index + 1));
             return null;
         }
         if (columnType == Types.BOOLEAN) {
