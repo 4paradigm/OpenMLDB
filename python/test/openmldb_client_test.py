@@ -314,10 +314,54 @@ class TestOpenMLDBClient(unittest.TestCase):
       (1008, '2021-01-02', 'province3', 'city9', 9, 1590738998000),
       ]
     self.check_result(rs, expectRows)
- 
 
+# test sqlalchemy Table-object-based API
+class TestSqlalchemyAPI:
+
+    def setup_module(self):
+        self.engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
+        self.connection = self.engine.connect()
+
+    def test_create_table_object(self):
+        try:
+            self.metadata = MetaData()
+            self.test_table = Table('test_table', self.metadata,
+                                            Column('x', String),
+                                            Column('y', Integer))
+        except Exception as e:
+            logging.warning("error occured {}".format(e))
+            assert False
+
+    def test_create_table(self):
+        try:
+            self.metadata.create_all(self.engine)
+            if not self.connection.dialect.has_table('test_table'):
+                assert False
+        except Exception as e:
+            pass
+
+    def test_insert(self):
+        try:
+            self.connection.execute(self.test_table.insert().values(x='first', y=100))
+        except Exception as e:
+            logging.warning("error occured {}".format(e))
+            assert False
+
+    def test_select(self):
+        try:
+            for row in self.connection.execute(select([self.test_table])):
+                if 'first' not in row:
+                    logging.warning("Insert failed, 'first' not in the row")
+                    assert False
+                elif 100 not in row:
+                    logging.warning("Insert failed, 100 not in the row")
+                    assert False
+        except Exception as e:
+            pass
+
+    def teardown_module(self):
+        self.connection.close()
 
 
 if __name__ == '__main__':
     unittest.main()
-
