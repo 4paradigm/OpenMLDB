@@ -339,7 +339,7 @@ jobs:
 
       - name: prepare python deps
         run: |
-          python3 -m easy_install nose pip
+          python3 -m easy_install pytest pip
           pip install setuptools wheel twine
           yum install -y net-tools
 
@@ -353,7 +353,7 @@ jobs:
         with:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
-            python/test/nosetests.xml
+            python/test/pytest.xml
 
       - name: upload to pypi
         if: >
