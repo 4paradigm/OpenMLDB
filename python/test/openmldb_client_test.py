@@ -21,6 +21,8 @@ from datetime import date
 from datetime import datetime
 
 import sqlalchemy as db
+from sqlalchemy import Table, Column, Integer, String, MetaData
+from sqlalchemy.sql import select
 
 logging.basicConfig(level=logging.WARNING)
 class TestOpenMLDBClient(unittest.TestCase):
