@@ -689,7 +689,7 @@ JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s) {  // NOLINT
     ar.EndArray();
 
     // data-common_cols_data : only procedure will return common_cols_data
-    if (s.sp_info->GetType() == hybqridse::sdk::kReqProcedure) {
+    if (s.sp_info->GetType() == hybridse::sdk::kReqProcedure) {
         ar.Member("common_cols_data");
         rs->Reset();
         if (rs->Next()) {
