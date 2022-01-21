@@ -125,7 +125,7 @@ THIRD_PARTY_DIR ?= $(THIRD_PARTY_BUILD_DIR)/usr
 #  we check this by asserting if the environment variable '$THIRD_PARTY_DIR' is defined to '/deps/usr',
 #  if true, thirdparty download is skipped
 # zetasql check separately since it update more frequently:
-#   it will updated if the variable '$ZETASQL_VERSION' (defined in docker) equal to current code
+#  it will updated if the variable '$ZETASQL_VERSION' (defined in docker) not equal to that defined in current code
 override GREP_PATTERN = "set(ZETASQL_VERSION"
 thirdparty-fast:
 	@if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
