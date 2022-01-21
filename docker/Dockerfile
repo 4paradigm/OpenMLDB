@@ -32,7 +32,7 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
     mkdir -p /deps/src && \
     tar xzf zookeeper.tar.gz -C /deps/src && \
-    /setup_deps.sh "${TARGETARCH}" && \
+    /setup_deps.sh -a "${TARGETARCH}" -z ${ZETASQL_VERSION} && \
     rm /setup_deps.sh && \
     rm ./*.tar.gz
 
