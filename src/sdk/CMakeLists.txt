@@ -101,30 +101,23 @@ if(SQL_PYSDK_ENABLE)
     search_python_module(wheel)
 
     if(APPLE)
-        add_custom_target(cp_python_sdk_so ALL
-                DEPENDS sql_router_sdk
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_native/
-                # Do not strip library for MacOS, refer to https://github.com/4paradigm/OpenMLDB/issues/905
-                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${PROJECT_SOURCE_DIR}/python/openmldb_native/
-                COMMENT "copy generated native library and sql_router_sdk python file to python project"
-                COMMAND cd ${PROJECT_SOURCE_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name macosx_10_15_x86_64
-                BYPRODUCTS
-                    python/build
-                    python/dist
-                    python/sqlalchemy-openmldb.egg-info)
+        add_custom_target(strip_python_so ALL DEPENDS sql_router_sdk
+                COMMAND echo "Do not strip library for MacOS, refer to https://github.com/4paradigm/OpenMLDB/issues/905")
     else()
-        add_custom_target(cp_python_sdk_so ALL
-                DEPENDS sql_router_sdk
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_native/
-                COMMAND strip ${PROJECT_SOURCE_DIR}/python/openmldb_native/_sql_router_sdk.so
-                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${PROJECT_SOURCE_DIR}/python/openmldb_native/
-                COMMENT "copy generated native library and sql_router_sdk python file to python project"
-                COMMAND cd ${PROJECT_SOURCE_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name manylinux1_x86_64
-                BYPRODUCTS
+        add_custom_target(strip_python_so ALL DEPENDS sql_router_sdk
+            COMMAND strip ${PROJECT_SOURCE_DIR}/python/openmldb_native/_sql_router_sdk.so)
+    endif()
+
+    add_custom_target(cp_python_sdk_so ALL DEPENDS strip_python_so
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_native/
+            COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${PROJECT_SOURCE_DIR}/python/openmldb_native/
+            COMMENT "copy generated native library and sql_router_sdk python file to python project"
+            COMMAND cd ${PROJECT_SOURCE_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name macosx_10_15_x86_64
+            BYPRODUCTS
                 python/build
                 python/dist
                 python/sqlalchemy-openmldb.egg-info)
-    endif()
+
 endif()
 
 if(SQL_JAVASDK_ENABLE)
