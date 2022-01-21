@@ -14,11 +14,21 @@
 
 set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
 set(ZETASQL_VERSION 0.2.6)
-set(ZETASQL_TAG 4b69a81ab5479477dc56b38c3237d830510592a9) # the commit hash for v0.2.6
+set(ZETASQL_TAG b08253b635bebfee9ee85aea16b281a831de5165) # the commit hash for v0.2.6
 
 function(init_zetasql_urls)
   if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     get_linux_lsb_release_information()
+
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+      # there is experimental build for centos7 on aarch64, for others zetasql need compile from source
+      if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
+        set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-aarch64-centos.tar.gz" PARENT_SCOPE)
+        set(ZETASQL_HASH d504ade9973f28507154aa88bf0565939fbf14b4114040f4133c217cdebc93ed PARENT_SCOPE)
+      else()
+        message(FATAL_ERROR "no pre-compiled zetasql on arm based system except centos7, please compile zetasql with '-DBUILD_BUNDLED_ZETASQL=ON'")
+      endif()
+    endif()
 
     if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz" PARENT_SCOPE)
@@ -27,7 +37,7 @@ function(init_zetasql_urls)
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-ubuntu.tar.gz" PARENT_SCOPE)
       set(ZETASQL_HASH de7fe11ceef1b767cbd22c6cda571b8c19cb3305a74f9a97b77805a859147c56 PARENT_SCOPE)
     else()
-      message(FATAL_ERROR "no pre-compiled thirdparty for your operation system, try compile thirdparty from source with '-DBUILD_BUNDLED=ON'")
+      message(FATAL_ERROR "no pre-compiled zetasql for ${LSB_RELEASE_ID_SHORT}, try compile zetasql from source with '-DBUILD_BUNDLED_ZETASQL=ON'")
     endif()
   elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz" PARENT_SCOPE)
@@ -55,7 +65,7 @@ if (NOT BUILD_BUNDLED_ZETASQL)
     BUILD_COMMAND ""
     INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
 else()
-  find_program(BAZEL_EXE NAMES bazel REQUIRED DOC "Compile zetasql require bazel")
+  find_program(BAZEL_EXE NAMES bazel REQUIRED DOC "Compile zetasql require bazel or bazelisk")
   find_program(PYTHON_EXE NAMES python REQUIRED DOC "Compile zetasql require python")
   message(STATUS "Compile zetasql from source: ${ZETASQL_HOME}@${ZETASQL_TAG}")
   ExternalProject_Add(zetasql
