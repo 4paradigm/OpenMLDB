@@ -111,11 +111,17 @@ cases:
     FROM (select uid, std_ts, col1, purchase_type from t1) as t1_select WINDOW
     w2 as (
       UNION (select t2_uid as uid, t2_time as std_ts, t2_col1 as col1, t2_purchase_type as purchase_type from t2) as
-    t2_select PARTITION BY uid ORDER BY std_ts ROWS_RANGE BETWEEN 1d preceding and current row)
+    t2_select PARTITION BY uid ORDER BY std_ts ROWS_RANGE BETWEEN 1d preceding and current row INSTANCE_NOT_IN_WINDOW)
     ) as out2 ON out1_uid = out2_uid LAST JOIN t2 ON out1_uid = t2.t2_uid;
 
   expect:
     success: true
+    columns: ["out1_uid int", "time_diff bigint", "last_label int", "w1_top1_ratio double", "cum_count bigint", "w1_n_purchase_type bigint", "w1_max_col1 double", "w1_min_col1 double", "w1_sum_col1 double", "w1_avg_col1 double", "year int", "month int", "day int", "hour int", "weekofyear int", "dayofweek int", "is_weekend bool", "quarter int", "out2_uid int", "w2_time_diff bigint", "w2_n_purchase_type bigint", "w2_max_col1 double", "w2_min_col1 double", "w2_sum_col1 double", "w2_avg_col1 double", "w2_visa_cnt bigint", "w2_cash_cnt bigint", "t2_uid int", "t2_time timestamp", "t2_col1 double", "t2_purchase_type string"]
+    rows:
+      - [ 1, 0, NULL, 1.000000, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 2021, 1, 6, 8, 1, 4, false, 1, 1, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 1, 0, 1, 1609894002000, 2.000000, CASH ]
+      - [ 1, 1609894000000, 1, 0.500000, 1, 1, 1.000000, 1.000000, 2.000000, 1.000000, 2021, 1, 6, 8, 1, 4, false, 1, 1, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 1, 0, 1, 1609894002000, 2.000000, CASH ]
+      - [ 1, 1609894001000, 0, 0.66666666666666663, 2, 2, 1.000000, 1.000000, 3.000000, 1.000000, 2021, 1, 6, 8, 1, 4, false, 1, 1, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 1, 0, 1, 1609894002000, 2.000000, CASH ]
+
 
 
 
