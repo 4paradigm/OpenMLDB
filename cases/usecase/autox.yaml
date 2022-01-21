@@ -18,6 +18,7 @@ cases:
   desc: autox test
   inputs:
     - columns: [
+        id int,
         uid int,
         iid int,
         label int,
@@ -31,9 +32,9 @@ cases:
       name: t1
       indexs: ["index1:uid:std_ts"]
       rows:
-        - [1, 10, 1, 1609894000000, 1.0, "VISA", "1", "1,2,3,4", "a:1, b:2, c:3"]
-        - [1, 20, 0, 1609894001000, 1.0, "VISA", "1", "5,6,7,8", "d:1, e:2, f:3"]
-        - [1, 20, 0, 1609894002000, 1.0, "CASH", "1", "1,3,5,7", "g:1, h:2, i:3"]
+        - [1, 1, 10, 1, 1609894000000, 1.0, "VISA", "1", "1,2,3,4", "a:1, b:2, c:3"]
+        - [2, 1, 20, 0, 1609894002000, 1.0, "VISA", "1", "5,6,7,8", "d:1, e:2, f:3"]
+        - [3, 1, 20, 0, 1609894004000, 1.0, "CASH", "1", "1,3,5,7", "g:1, h:2, i:3"]
     - columns: [
         t2_uid int,
         t2_time timestamp,
@@ -43,19 +44,21 @@ cases:
       name: t2
       indexs: [ "index1:t2_uid:t2_time" ]
       rows:
-        - [ 1, 1609894000000, 2.0, "VISA"]
         - [ 1, 1609894001000, 2.0, "VISA"]
-        - [ 1, 1609894002000, 2.0, "CASH"]
+        - [ 1, 1609894003000, 2.0, "VISA"]
+        - [ 1, 1609894005000, 2.0, "CASH"]
+
   sql: |
     SELECT * FROM
     (
     SELECT
+    id as out1_id,
     uid as out1_uid,
     -- timediff
     case when
        !isnull(lag(std_ts, 1) over w1)
     then
-       bigint(lag(std_ts, 1) over w1)
+       bigint(std_ts) - bigint(lag(std_ts, 1) over w1)
     else 0L end as time_diff,
 
     -- last label
@@ -90,12 +93,13 @@ cases:
     (
     -- 1:M 副表聚合特征
     SELECT
+    id as out2_id,
     uid as out2_uid,
     -- timediff: 计算副表时间列差值的统计信息
     case when
        !isnull(lag(std_ts, 1) over w2)
     then
-       bigint(lag(std_ts, 1) over w2)
+       bigint(std_ts) - bigint(lag(std_ts, 1) over w2)
     else 0L end as w2_time_diff,
     -- 副表聚合特征,类别变量
     distinct_count(purchase_type) over w2 as w2_n_purchase_type,
@@ -108,21 +112,24 @@ cases:
     -- equal_count特征
     count_where(purchase_type, purchase_type='VISA') over w2 as w2_visa_cnt,
     count_where(purchase_type, purchase_type='CASH') over w2 as w2_cash_cnt
-    FROM (select uid, std_ts, col1, purchase_type from t1) as t1_select WINDOW
+    FROM (select id, uid, std_ts, col1, purchase_type from t1) as t1_select WINDOW
     w2 as (
-      UNION (select t2_uid as uid, t2_time as std_ts, t2_col1 as col1, t2_purchase_type as purchase_type from t2) as
-    t2_select PARTITION BY uid ORDER BY std_ts ROWS_RANGE BETWEEN 1d preceding and current row INSTANCE_NOT_IN_WINDOW)
-    ) as out2 ON out1_uid = out2_uid LAST JOIN t2 ON out1_uid = t2.t2_uid;
+      UNION (select 0 as id, t2_uid as uid, t2_time as std_ts, t2_col1 as col1, t2_purchase_type as purchase_type from
+    t2) as
+    t2_select PARTITION BY uid ORDER BY std_ts ROWS_RANGE BETWEEN 1d preceding and current row
+    INSTANCE_NOT_IN_WINDOW)
+    ) as out2 ON out1.out1_id = out2.out2_id LAST JOIN t2 ON out1_uid = t2.t2_uid;
 
   expect:
     success: true
-    columns: ["out1_uid int", "time_diff bigint", "last_label int", "w1_top1_ratio double", "cum_count bigint", "w1_n_purchase_type bigint", "w1_max_col1 double", "w1_min_col1 double", "w1_sum_col1 double", "w1_avg_col1 double", "year int", "month int", "day int", "hour int", "weekofyear int", "dayofweek int", "is_weekend bool", "quarter int", "out2_uid int", "w2_time_diff bigint", "w2_n_purchase_type bigint", "w2_max_col1 double", "w2_min_col1 double", "w2_sum_col1 double", "w2_avg_col1 double", "w2_visa_cnt bigint", "w2_cash_cnt bigint", "t2_uid int", "t2_time timestamp", "t2_col1 double", "t2_purchase_type string"]
+    columns: ["out1_id int", "out1_uid int", "time_diff bigint", "last_label int", "w1_top1_ratio double", "cum_count bigint", "w1_n_purchase_type bigint", "w1_max_col1 double", "w1_min_col1 double", "w1_sum_col1 double", "w1_avg_col1 double", "year int", "month int", "day int", "hour int", "weekofyear int", "dayofweek int", "is_weekend bool", "quarter int",
+              "out2_id int", "out2_uid int", "w2_time_diff bigint", "w2_n_purchase_type bigint", "w2_max_col1 double",
+              "w2_min_col1 double", "w2_sum_col1 double", "w2_avg_col1 double", "w2_visa_cnt bigint", "w2_cash_cnt bigint", "t2_uid int", "t2_time timestamp", "t2_col1 double", "t2_purchase_type string"]
     rows:
-      - [ 1, 0, NULL, 1.000000, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 2021, 1, 6, 8, 1, 4, false, 1, 1, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 1, 0, 1, 1609894002000, 2.000000, CASH ]
-      - [ 1, 1609894000000, 1, 0.500000, 1, 1, 1.000000, 1.000000, 2.000000, 1.000000, 2021, 1, 6, 8, 1, 4, false, 1, 1, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 1, 0, 1, 1609894002000, 2.000000, CASH ]
-      - [ 1, 1609894001000, 0, 0.66666666666666663, 2, 2, 1.000000, 1.000000, 3.000000, 1.000000, 2021, 1, 6, 8, 1, 4, false, 1, 1, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 1, 0, 1, 1609894002000, 2.000000, CASH ]
-
-
-
+      - [ 1, 1, 0, NULL, 1.000000, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 2021, 1, 6, 8, 1, 4, false, 1, 1, 1, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 1, 0, 1, 1609894005000, 2.000000, CASH ]
+      - [ 2, 1, 2000, 1, 0.500000, 1, 1, 1.000000, 1.000000, 2.000000, 1.000000, 2021, 1, 6, 8, 1, 4, false, 1, 2, 1, 1000, 1, 2.000000, 1.000000, 3.000000, 1.500000, 2, 0, 1, 1609894005000, 2.000000, CASH ]
+      - [ 3, 1, 2000, 0, 0.66666666666666663, 2, 2, 1.000000, 1.000000, 3.000000, 1.000000, 2021, 1, 6, 8, 1, 4,
+          false, 1, 3, 1, 1000, 2, 2.000000, 1.000000, 5.000000, 1.6666666666666667, 2, 1, 1, 1609894005000, 2.000000,
+          CASH ]
 
 
