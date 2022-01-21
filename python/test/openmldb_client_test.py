@@ -345,7 +345,7 @@ class TestSqlalchemyAPI:
              assert 100 in list(row)
 
     def teardown_class(self):
-        self.connection.execute(self.test_table.delete())
+        self.connection.execute("drop table test_table;")
         self.connection.close()
 
 
