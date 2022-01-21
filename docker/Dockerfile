@@ -26,15 +26,15 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     yum install -y devtoolset-8 rh-git227 devtoolset-8-libasan-devel flex doxygen java-1.8.0-openjdk-devel rh-python38-python-devel rh-python38-python-wheel && \
     curl -Lo lcov-1.15-1.noarch.rpm https://github.com/linux-test-project/lcov/releases/download/v1.15/lcov-1.15-1.noarch.rpm && \
     yum localinstall -y lcov-1.15-1.noarch.rpm && \
-    yum clean all && rm lcov-1.15-1.noarch.rpm && \
+    yum clean all && rm -v lcov-1.15-1.noarch.rpm && \
     curl -Lo apache-maven-3.6.3-bin.tar.gz https://mirrors.ocf.berkeley.edu/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz && \
     tar xzf apache-maven-3.6.3-bin.tar.gz -C /usr/local --strip-components=1 && \
     curl -Lo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
     mkdir -p /deps/src && \
     tar xzf zookeeper.tar.gz -C /deps/src && \
+    rm -v ./*.tar.gz && \
     /setup_deps.sh -a "$TARGETARCH" -z "$ZETASQL_VERSION" && \
-    rm /setup_deps.sh && \
-    rm ./*.tar.gz
+    rm -v /setup_deps.sh
 
 ENV THIRD_PARTY_DIR=/deps/usr
 ENV THIRD_PARTY_SRC_DIR=/deps/src
