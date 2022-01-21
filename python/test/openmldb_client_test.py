@@ -327,35 +327,27 @@ class TestSqlalchemyAPI:
         self.test_table = Table('test_table', self.metadata,
                                           Column('x', String),
                                           Column('y', Integer))
-
+        self.metadata.create_all(self.engine)
+        
     def test_create_table(self):
-        try:
-            self.metadata.create_all(self.engine)
-            if not self.connection.dialect.has_table('test_table'):
-                assert False
-        except Exception as e:
-            pass
+        assert self.connection.dialect.has_table('test_table'):
 
     def test_insert(self):
         try:
             self.connection.execute(self.test_table.insert().values(x='first', y=100))
         except Exception as e:
-            logging.warning("error occured {}".format(e))
+            # insert failed
             assert False
 
     def test_select(self):
-        try:
-            for row in self.connection.execute(select([self.test_table])):
-                if 'first' not in list(row):
-                    logging.warning("Insert failed, 'first' not in the row")
-                    assert False
-                elif 100 not in list(row):
-                    logging.warning("Insert failed, 100 not in the row")
-                    assert False
-        except Exception as e:
-            pass
+          for row in self.connection.execute(select([self.test_table])):
+             if 'first' in list(row):
+                assert 100 in list(row)
+            else:
+                assert False
 
     def teardown_class(self):
+        self.connection.execute(self.test_table.delete())
         self.connection.close()
 
 
