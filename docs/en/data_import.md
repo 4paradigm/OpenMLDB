@@ -10,7 +10,7 @@ The `bulk load` mode is more efficient and is available for multiple local files
 ## Bulk Load
 
 `bulk load` can be used for large-scale data importing, and it's fast.
-But be careful, you have to make sure the target table emptly before the data is loaded, and don't do some read or write operation during data importing.
+But be careful, you have to make sure the target table empty before the data is loaded, and don't do some read or write operation during data importing.
 
 ### Bulk Load Process
 
@@ -23,7 +23,7 @@ Thirdly, binlog is written for synchronizing replica data.
 
 `bulk load` makes the data inserting process executing first. Then the importer generates all the segments, and sends to the loader directly. The loader can rebuild all the segments in linear time and complete the whole data importing process.
 
-We call the data `data region` and binlog is part of `data region`. And multiple segment are called `index region`. `data region` is sent in batches during the importer scans data source. `index region` is sent after all data are processed, and it may be sent in batches if the size exceeds the limit of the loader's rpc. When the last `index region` part is sent, the whole imporing process completes.
+We call the data `data region` and binlog is part of `data region`. And multiple segment are called `index region`. `data region` is sent in batches during the importer scans data source. `index region` is sent after all data are processed, and it may be sent in batches if the size exceeds the limit of the loader's rpc. When the last `index region` part is sent, the whole importing process completes.
 
 ### Bulk Load Usage
 
@@ -77,12 +77,12 @@ But be careful, importing data into a non-empty table will decrease the import e
 Currently, import tool can only be executed in standalone mode. Large scale data will occupy more resource, so some operations can become time-consuming.
 
 If oom triggers, you have to increase the `-Xmx` value. 
-If rpc send fails, you have to increase `rpc_write_timeout` value, and if rpc respond timeout, please increate `rpc_read_timeout` value properly.
+If rpc send fails, you have to increase `rpc_write_timeout` value, and if rpc respond timeout, please increase `rpc_read_timeout` value properly.
 
 #### Error Handling
 
 Importing process fails when `bulk load success` not printed by the importer, or when the importer quit or when failed message is printed by the importer.
 
-Because of the complexity of importing failure, the correct way to handle the eror is to drop the table with failure message and rebuild table, and then import again.
+Because of the complexity of importing failure, the correct way to handle the erorr is to drop the table with failure message and rebuild table, and then import again.
 
 You can use the import tool with configuration `-f` and then with configuration `--created_ddl` to generate the `create table statement`, and then run a new importing job.
