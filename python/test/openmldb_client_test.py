@@ -330,7 +330,7 @@ class TestSqlalchemyAPI:
         self.metadata.create_all(self.engine)
         
     def test_create_table(self):
-        assert self.connection.dialect.has_table('test_table')
+        assert self.connection.dialect.has_table(self.connection,'test_table')
 
     def test_insert(self):
         try:
