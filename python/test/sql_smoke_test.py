@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-
 from openmldb_sdk import sdk as sdk_module
 import case_conf
 import time
