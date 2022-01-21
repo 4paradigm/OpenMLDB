@@ -126,21 +126,22 @@ THIRD_PARTY_DIR ?= $(THIRD_PARTY_BUILD_DIR)/usr
 #  if true, thirdparty download is skipped
 # zetasql check separately since it update more frequently:
 #   it will updated if the variable '$ZETASQL_VERSION' (defined in docker) equal to current code
+override GREP_PATTERN = "set(ZETASQL_VERSION"
 thirdparty-fast:
 	@if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
-	    echo "fullly setup thirdparty"; \
+	    echo "[deps]: install thirdparty and zetasql"; \
 	    $(MAKE) thirdparty; \
 	elif [ -n "$(ZETASQL_VERSION)" ]; then \
-	    NEW_ZETASQL_VERSION=$( grep 'set(ZETASQL_VERSION' FetchZetasql.cmake | sed 's/set(ZETASQL_VERSION[[:space:]]*//g') | sed -E 's/[[:space:]]|)//g'; \
-	    if [ "$NEW_ZETASQL_VERSION" != "$(ZETASQL_VERSION)" ] ; then \
-		echo "update thirdparty/zetasql only"; \
+	    new_zetasql_version=$(shell grep $(GREP_PATTERN) third-party/cmake/FetchZetasql.cmake | sed 's/[^0-9.]*\([0-9.]*\).*/\1/'); \
+	    if [ "$$new_zetasql_version" != "$(ZETASQL_VERSION)" ] ; then \
+		echo "[deps]: thirdparty up-to-date. reinstall zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
 		$(MAKE) thirdparty-configure; \
 		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
 	    else \
-		echo "zetasql already setup with version: $(ZETASQL_VERSION)"; \
+		echo "[deps]: all up-to-date. zetasql already installed with version: $(ZETASQL_VERSION)"; \
 	    fi; \
 	else \
-	    echo "setup thirdparty/zetasql only"; \
+	    echo "[deps]: install zetasql only"; \
 	    $(MAKE) thirdparty-configure; \
 	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
 	fi

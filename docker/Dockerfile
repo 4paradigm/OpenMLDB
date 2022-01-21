@@ -32,7 +32,7 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     curl -SLo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.2/thirdparty-2021-12-10-linux-gnu-x86_64-centos.tar.gz && \
     mkdir -p /deps/usr && \
     tar xzf thirdparty.tar.gz -C /deps/usr --strip-components=1 && \
-    curl -SLo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64.tar.gz" && \
+    curl -SLo zetasql.tar.gz https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64.tar.gz && \
     tar xzf zetasql.tar.gz -C /deps/usr --strip-components=1 && \
     curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
     mkdir -p /deps/src && \
