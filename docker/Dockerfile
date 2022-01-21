@@ -19,7 +19,7 @@ ARG ZETASQL_VERSION=0.2.6
 
 LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
 
-COPY setup_cmake.sh /
+COPY setup_deps.sh /
 # hadolint ignore=DL3031,DL3033
 RUN yum update -y && yum install -y centos-release-scl epel-release && \
     yum install -y devtoolset-8 rh-git227 devtoolset-8-libasan-devel flex doxygen \
@@ -29,16 +29,11 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     yum clean all && rm lcov-1.15-1.noarch.rpm && \
     curl -SLo apache-maven-3.6.3-bin.tar.gz https://mirrors.ocf.berkeley.edu/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz && \
     tar xzf apache-maven-3.6.3-bin.tar.gz -C /usr/local --strip-components=1 && \
-    curl -SLo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.2/thirdparty-2021-12-10-linux-gnu-x86_64-centos.tar.gz && \
-    mkdir -p /deps/usr && \
-    tar xzf thirdparty.tar.gz -C /deps/usr --strip-components=1 && \
-    curl -SLo zetasql.tar.gz https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64.tar.gz && \
-    tar xzf zetasql.tar.gz -C /deps/usr --strip-components=1 && \
     curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
     mkdir -p /deps/src && \
     tar xzf zookeeper.tar.gz -C /deps/src && \
-    /setup_cmake.sh "${TARGETARCH}" && \
-    rm /setup_cmake.sh && \
+    /setup_deps.sh "${TARGETARCH}" && \
+    rm /setup_deps.sh && \
     rm ./*.tar.gz
 
 ENV THIRD_PARTY_DIR=/deps/usr
