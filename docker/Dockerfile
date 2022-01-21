@@ -16,6 +16,7 @@
 FROM centos:7
 
 ARG ZETASQL_VERSION=0.2.6
+ARG TARGETARCH
 
 LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
 
@@ -32,7 +33,7 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
     mkdir -p /deps/src && \
     tar xzf zookeeper.tar.gz -C /deps/src && \
-    /setup_deps.sh -a "${TARGETARCH}" -z ${ZETASQL_VERSION} && \
+    /setup_deps.sh -a "$TARGETARCH" -z "$ZETASQL_VERSION" && \
     rm /setup_deps.sh && \
     rm ./*.tar.gz
 
@@ -41,7 +42,7 @@ ENV THIRD_PARTY_SRC_DIR=/deps/src
 ENV PATH=/opt/rh/rh-git227/root/usr/bin:/opt/rh/rh-python38/root/usr/local/bin:/opt/rh/rh-python38/root/usr/bin:/opt/rh/devtoolset-8/root/usr/bin:/deps/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV LD_LIBRARY_PATH=/deps/usr/lib:/deps/usr/lib64:/opt/rh/httpd24/root/usr/lib64:/opt/rh/rh-python38/root/usr/lib64:/opt/rh/devtoolset-8/root/usr/lib64:/opt/rh/devtoolset-8/root/usr/lib:/opt/rh/devtoolset-8/root/usr/lib64/dyninst
 ENV LANG=en_US.UTF-8
-ENV ZETASQL_VERSION=${ZETASQL_VERSION}
+ENV ZETASQL_VERSION=$ZETASQL_VERSION
 
 WORKDIR /root
 
