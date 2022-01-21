@@ -23,14 +23,13 @@ LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
 COPY setup_deps.sh /
 # hadolint ignore=DL3031,DL3033
 RUN yum update -y && yum install -y centos-release-scl epel-release && \
-    yum install -y devtoolset-8 rh-git227 devtoolset-8-libasan-devel flex doxygen \
-    java-1.8.0-openjdk-devel rh-python38-python-devel rh-python38-python-wheel && \
-    curl -SLo lcov-1.15-1.noarch.rpm https://github.com/linux-test-project/lcov/releases/download/v1.15/lcov-1.15-1.noarch.rpm && \
+    yum install -y devtoolset-8 rh-git227 devtoolset-8-libasan-devel flex doxygen java-1.8.0-openjdk-devel rh-python38-python-devel rh-python38-python-wheel && \
+    curl -Lo lcov-1.15-1.noarch.rpm https://github.com/linux-test-project/lcov/releases/download/v1.15/lcov-1.15-1.noarch.rpm && \
     yum localinstall -y lcov-1.15-1.noarch.rpm && \
     yum clean all && rm lcov-1.15-1.noarch.rpm && \
-    curl -SLo apache-maven-3.6.3-bin.tar.gz https://mirrors.ocf.berkeley.edu/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz && \
+    curl -Lo apache-maven-3.6.3-bin.tar.gz https://mirrors.ocf.berkeley.edu/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz && \
     tar xzf apache-maven-3.6.3-bin.tar.gz -C /usr/local --strip-components=1 && \
-    curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
+    curl -Lo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
     mkdir -p /deps/src && \
     tar xzf zookeeper.tar.gz -C /deps/src && \
     /setup_deps.sh -a "$TARGETARCH" -z "$ZETASQL_VERSION" && \

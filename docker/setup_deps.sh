@@ -70,18 +70,18 @@ else
 fi
 
 
-curl -SLo cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v3.21.0/cmake-3.21.0-linux-"$ARCH".tar.gz
+curl -Lo cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v3.21.0/cmake-3.21.0-linux-"$ARCH".tar.gz
 tar xzf cmake.tar.gz -C /usr/local/ --strip-components=1
 rm cmake.tar.gz
 
 mkdir -p /deps/usr
 
 if [[ "$ARCH" = "x86_64" ]]; then
-    curl -SLo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.3/thirdparty-2021-12-28-linux-gnu-x86_64-centos.tar.gz
-    curl -SLo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz"
+    curl -Lo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.3/thirdparty-2021-12-28-linux-gnu-x86_64-centos.tar.gz
+    curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz"
 elif [[ "$ARCH" = "aarch64" ]]; then
-    curl -SLo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz
-    curl -SLo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-aarch64-centos.tar.gz"
+    curl -Lo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz
+    curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-aarch64-centos.tar.gz"
 else
     echo "no pre-compiled deps for arch=$ARCH"
     exit 1
