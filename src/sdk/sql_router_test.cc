@@ -359,7 +359,7 @@ TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
 
     std::string select = "select * from " + name + ";";
     auto rs = router->ExecuteSQL(db, select, &status);
-    ASSERT_FALSE(rs == nullptr);
+    ASSERT_FALSE(rs == nullptr) << status.msg << "\n" << status.trace;
 
     ASSERT_EQ(2, rs->Size());
     ASSERT_TRUE(rs->Next());
