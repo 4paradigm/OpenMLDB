@@ -341,10 +341,8 @@ class TestSqlalchemyAPI:
 
     def test_select(self):
           for row in self.connection.execute(select([self.test_table])):
-             if 'first' in list(row):
-                assert 100 in list(row)
-            else:
-                assert False
+             assert 'first' in list(row)
+             assert 100 in list(row)
 
     def teardown_class(self):
         self.connection.execute(self.test_table.delete())
