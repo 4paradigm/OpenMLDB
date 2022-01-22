@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths:
+      - .github/workflows/hybridse-ci.yml
+      - cases/**/*
+      - hybridse/**/*
   pull_request:
     paths:
       - .github/workflows/hybridse-ci.yml
