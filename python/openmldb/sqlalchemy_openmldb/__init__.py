@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import openmldb_dialect
+from .openmldb_dialect import *
