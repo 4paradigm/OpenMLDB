@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import sql_router_sdk
+from .sql_router_sdk import *
