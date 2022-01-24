@@ -21,6 +21,8 @@ from datetime import date
 from datetime import datetime
 
 import sqlalchemy as db
+from sqlalchemy import Table, Column, Integer, String, MetaData
+from sqlalchemy.sql import select
 
 logging.basicConfig(level=logging.WARNING)
 class TestOpenMLDBClient(unittest.TestCase):
@@ -314,10 +316,38 @@ class TestOpenMLDBClient(unittest.TestCase):
       (1008, '2021-01-02', 'province3', 'city9', 9, 1590738998000),
       ]
     self.check_result(rs, expectRows)
- 
 
+# test sqlalchemy Table-object-based API in pytest style
+class TestSqlalchemyAPI:
+
+    def setup_class(self):
+        self.engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
+        self.connection = self.engine.connect()
+        self.metadata = MetaData()
+        self.test_table = Table('test_table', self.metadata,
+                                          Column('x', String),
+                                          Column('y', Integer))
+        self.metadata.create_all(self.engine)
+        
+    def test_create_table(self):
+        assert self.connection.dialect.has_table(self.connection,'test_table')
+
+    def test_insert(self):
+        try:
+            self.connection.execute(self.test_table.insert().values(x='first', y=100))
+        except Exception as e:
+            # insert failed
+            assert False
+
+    def test_select(self):
+          for row in self.connection.execute(select([self.test_table])):
+             assert 'first' in list(row)
+             assert 100 in list(row)
+
+    def teardown_class(self):
+        self.connection.execute("drop table test_table;")
+        self.connection.close()
 
 
 if __name__ == '__main__':
     unittest.main()
-
