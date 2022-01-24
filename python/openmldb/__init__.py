@@ -15,6 +15,6 @@
 # limitations under the License.
 
 from . import openmldb_dbapi
-# from . import openmldb_sdk
-# from . import openmldb_native
-# from . import sqlalchemy_openmldb
+from . import openmldb_sdk
+from . import openmldb_native
+from . import sqlalchemy_openmldb
