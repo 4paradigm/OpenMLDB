@@ -21,15 +21,15 @@ import logging
 from openmldb_native import sql_router_sdk
 from datetime import date
 from datetime import datetime
-logger = logging.getLogger("openmldb_driver")
+logger = logging.getLogger("openmldb_sdk")
 
-class DriverOptions(object):
+class OpenmldbSdkOptions(object):
     def __init__(self, zk_cluster, zk_path, session_timeout = 3000):
         self.zk_cluster = zk_cluster
         self.zk_path = zk_path
         self.session_timeout = session_timeout
 
-class Driver(object):
+class OpenmldbSdk(object):
     def __init__(self, options):
         self.options = options
         self.sdk = None
@@ -40,14 +40,14 @@ class Driver(object):
         options.zk_path = self.options.zk_path
         self.sdk = sql_router_sdk.NewClusterSQLRouter(options)
         if not self.sdk:
-            logger.error("fail to init openmldb driver with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+            logger.error("fail to init openmldb sdk with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
             return False
-        logger.info("init openmldb driver done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+        logger.info("init openmldb sdk done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
         return True
 
     def createDB(self, db):
         if not self.sdk:
-            return False, "please init driver first"
+            return False, "please init sdk first"
         status = sql_router_sdk.Status()
         if self.sdk.CreateDB(db, status):
             return True, ""
@@ -56,7 +56,7 @@ class Driver(object):
 
     def dropDB(self, db):
         if not self.sdk:
-            return False, "please init driver first"
+            return False, "please init sdk first"
         status = sql_router_sdk.Status()
         if self.sdk.DropDB(db, status):
             return True, "ok"
@@ -65,12 +65,12 @@ class Driver(object):
 
     def getAllTables(self):
         if not self.sdk:
-            raise Exception("please init driver first")
+            raise Exception("please init sdk first")
         return self.sdk.GetAllTables()
 
     def executeDDL(self, db, ddl):
         if not self.sdk:
-            return False, "please init driver first"
+            return False, "please init sdk first"
         status = sql_router_sdk.Status()
         if not self.sdk.ExecuteDDL(db, ddl, status):
             return False, status.msg
@@ -112,7 +112,7 @@ class Driver(object):
 
     def getInsertBuilder(self, db, sql):
         if not self.sdk:
-            return False, "please init driver first"
+            return False, "please init sdk first"
         status = sql_router_sdk.Status()
         row_builder = self.sdk.GetInsertRow(db, sql, status)
         if status.code != 0:
@@ -121,7 +121,7 @@ class Driver(object):
     
     def getInsertBatchBuilder(self, db, sql):
         if not self.sdk:
-            return False, "please init driver first"
+            return False, "please init sdk first"
         status = sql_router_sdk.Status()
         rows_builder = self.sdk.GetInsertRows(db, sql, status)
         if status.code != 0:
@@ -130,7 +130,7 @@ class Driver(object):
 
     def executeInsert(self, db, sql, row_builder = None):
         if not self.sdk:
-            return False, "please init driver first"
+            return False, "please init sdk first"
         status = sql_router_sdk.Status()
         if row_builder is not None:
             if self.sdk.ExecuteInsert(db, sql, row_builder, status):
@@ -145,7 +145,7 @@ class Driver(object):
 
     def getRequestBuilder(self, db, sql):
         if not self.sdk:
-            return False, "please init driver first"
+            return False, "please init sdk first"
         status = sql_router_sdk.Status()
         row_builder = self.sdk.GetRequestRow(db, sql, status)
         if status.code != 0:
@@ -178,7 +178,7 @@ class Driver(object):
 
     def executeQuery(self, db, sql, row_builder = None):
         if not self.sdk:
-            return False, "please init driver first"
+            return False, "please init sdk first"
 
         status = sql_router_sdk.Status()
         if row_builder is not None:
@@ -192,7 +192,7 @@ class Driver(object):
 
     def executeQueryParameterized(self, db, sql, row_builder):
         if not self.sdk:
-            return False, "please init driver first"
+            return False, "please init sdk first"
 
         if not row_builder:
             return False, "pealse init parameter row"

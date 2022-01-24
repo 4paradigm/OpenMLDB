@@ -94,7 +94,7 @@ coverage-cpp: coverage-configure
 
 coverage-java: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target cp_native_so -- -j$(NPROC)
-	cd java && mvn --batch-mode prepare-package
+	cd java && ./mvnw --batch-mode prepare-package
 
 coverage-configure:
 	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
@@ -122,14 +122,26 @@ THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
 THIRD_PARTY_DIR ?= $(THIRD_PARTY_BUILD_DIR)/usr
 
 # trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr.
-#  we check this by asserting if the environment variable 'THIRD_PARTY_DIR' is defined to '/deps/usr', if true, thirdparty download is skipped
-#  since zetasql update more frequently than others, download zetasql won't skipped
+#  we check this by asserting if the environment variable '$THIRD_PARTY_DIR' is defined to '/deps/usr',
+#  if true, thirdparty download is skipped
+# zetasql check separately since it update more frequently:
+#  it will updated if the variable '$ZETASQL_VERSION' (defined in docker) not equal to that defined in current code
+override GREP_PATTERN = "set(ZETASQL_VERSION"
 thirdparty-fast:
-	if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
-	    echo "fullly setup thirdparty"; \
+	@if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
+	    echo "[deps]: install thirdparty and zetasql"; \
 	    $(MAKE) thirdparty; \
+	elif [ -n "$(ZETASQL_VERSION)" ]; then \
+	    new_zetasql_version=$(shell grep $(GREP_PATTERN) third-party/cmake/FetchZetasql.cmake | sed 's/[^0-9.]*\([0-9.]*\).*/\1/'); \
+	    if [ "$$new_zetasql_version" != "$(ZETASQL_VERSION)" ] ; then \
+		echo "[deps]: thirdparty up-to-date. reinstall zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
+		$(MAKE) thirdparty-configure; \
+		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+	    else \
+		echo "[deps]: all up-to-date. zetasql already installed with version: $(ZETASQL_VERSION)"; \
+	    fi; \
 	else \
-	    echo "setup thirdparty/zetasql only"; \
+	    echo "[deps]: install zetasql only"; \
 	    $(MAKE) thirdparty-configure; \
 	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
 	fi
@@ -190,7 +202,7 @@ lint: cpplint shlint javalint pylint
 format: javafmt shfmt cppfmt pyfmt configfmt
 
 javafmt:
-	@cd java && mvn -pl hybridse-sdk spotless:apply
+	@cd java && ./mvnw -pl hybridse-sdk spotless:apply
 
 shfmt:
 	@if command -v shfmt; then\
@@ -258,7 +270,7 @@ shlint:
 	    fi
 
 javalint:
-	@cd java && mvn -pl hybridse-sdk -Dplugin.violationSeverity=warning checkstyle:check
+	@cd java && ./mvnw -pl hybridse-sdk -Dplugin.violationSeverity=warning checkstyle:check
 
 pylint:
 	@if command -v pylint; then \

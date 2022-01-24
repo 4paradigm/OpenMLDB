@@ -18,7 +18,7 @@ import sys
 sys.path.append("../")
 
 import logging
-from openmldb_sdk import driver
+from openmldb_sdk import sdk as sdk_module
 from openmldb_native import sql_router_sdk
 import re
 
@@ -426,8 +426,8 @@ class Connection(object):
         self._db = db
         self._zk = zk
         self._zkPath = zkPath
-        options = driver.DriverOptions(zk, zkPath)
-        sdk = driver.Driver(options)
+        options = sdk_module.OpenmldbSdkOptions(zk, zkPath)
+        sdk = sdk_module.OpenmldbSdk(options)
         ok = sdk.init()
         if not ok:
             raise Exception("init openmldb sdk erred")

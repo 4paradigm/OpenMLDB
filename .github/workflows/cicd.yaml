@@ -173,7 +173,7 @@ jobs:
       - name: run java modules smoke test
         working-directory: java
         run: |
-          mvn --batch-mode test
+          ./mvnw --batch-mode test
 
       - name: upload java ut results
         if: always()
@@ -187,7 +187,7 @@ jobs:
         if: github.event_name == 'push'
         working-directory: java
         run: |
-          mvn --batch-mode deploy -DskipTests=true -Dscalatest.skip=true
+          ./mvnw --batch-mode deploy -DskipTests=true -Dscalatest.skip=true
         env:
           MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
@@ -283,8 +283,8 @@ jobs:
           # so it is a bit tricky to compile and deploy that
           # firstly run `maven install` install things locally
           # then selectly `mvn deploy` for hybridse-native & openmldb-native
-          mvn --batch-mode clean install -DskipTests=true -Dscalatest.skip=true
-          mvn --batch-mode -pl hybridse-native,openmldb-native deploy
+          ./mvnw --batch-mode clean install -DskipTests=true -Dscalatest.skip=true
+          ./mvnw --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
@@ -309,8 +309,8 @@ jobs:
           # so it is a bit tricky to compile and deploy that
           # firstly run `maven install` install things locally
           # then selectly `mvn deploy` for hybridse-native & openmldb-native
-          mvn --batch-mode clean install -DskipTests=true -Dscalatest.skip=true
-          mvn --batch-mode -pl hybridse-native,openmldb-native deploy
+          ./mvnw --batch-mode clean install -DskipTests=true -Dscalatest.skip=true
+          ./mvnw --batch-mode -pl hybridse-native,openmldb-native deploy
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
