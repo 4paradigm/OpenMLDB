@@ -17,7 +17,7 @@
 import sys
 sys.path.append("../")
 
-from ..sdk import sdk as sdk_module
+from sdk import sdk as sdk_module
 import case_conf
 import time
 
