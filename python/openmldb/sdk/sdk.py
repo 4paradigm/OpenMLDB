@@ -18,7 +18,7 @@ import sys
 sys.path.append("../")
 
 import logging
-from ..native import sql_router_sdk
+from native import sql_router_sdk
 from datetime import date
 from datetime import datetime
 logger = logging.getLogger("openmldb_sdk")
