@@ -18,8 +18,8 @@ import sys
 sys.path.append("../")
 
 import logging
-from ..sdk import sdk as sdk_module
-from ..native import sql_router_sdk
+from sdk import sdk as sdk_module
+from native import sql_router_sdk
 import re
 
 # Globals
