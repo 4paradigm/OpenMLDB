@@ -117,9 +117,9 @@ if(SQL_PYSDK_ENABLE)
             COMMENT "copy generated native library and sql_router_sdk python file to python project"
             COMMAND cd ${PROJECT_SOURCE_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name ${PYTHON_PLATFORM}
             BYPRODUCTS
-                python/openmldb/build
-                python/openmldb/dist
-                python/openmldb/sqlalchemy-openmldb.egg-info)
+                python/build
+                python/dist
+                python/sqlalchemy-openmldb.egg-info)
 
 endif()
 
