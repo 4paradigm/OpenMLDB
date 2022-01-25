@@ -103,7 +103,7 @@ class OpenmldbDialect(default.DefaultDialect):
 
     @classmethod
     def dbapi(cls):
-        from openmldb_dbapi import dbapi as module
+        from dbapi import dbapi as module
         return module
 
     def has_table(self, connection, table_name, schema=None):
