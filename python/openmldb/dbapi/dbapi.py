@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+sys.path.append("../")
+
 import logging
 from ..sdk import sdk as sdk_module
 from ..native import sql_router_sdk
