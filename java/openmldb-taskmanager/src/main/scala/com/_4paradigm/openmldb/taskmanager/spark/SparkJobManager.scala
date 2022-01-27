@@ -22,8 +22,6 @@ import com._4paradigm.openmldb.taskmanager.dao.JobInfo
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.apache.spark.launcher.SparkLauncher
 
-import java.nio.file.Paths
-
 object SparkJobManager {
 
   /**
@@ -49,7 +47,6 @@ object SparkJobManager {
       case "yarn" => {
         launcher.setMaster("yarn")
           .setDeployMode("cluster")
-          .setConf("spark.yarn.maxAppAttempts", "1")
       }
       case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
     }
@@ -76,6 +73,15 @@ object SparkJobManager {
     launcher.setConf("spark.yarn.appMasterEnv.LC_ALL", "en_US.UTF-8")
     launcher.setConf("spark.yarn.executorEnv.LANG", "en_US.UTF-8")
     launcher.setConf("spark.yarn.executorEnv.LC_ALL", "en_US.UTF-8")
+
+    if (TaskManagerConfig.SPARK_EVENTLOG_DIR.nonEmpty) {
+      launcher.setConf("spark.eventLog.enabled", "true")
+      launcher.setConf("spark.eventLog.dir", TaskManagerConfig.SPARK_EVENTLOG_DIR)
+    }
+
+    if (TaskManagerConfig.SPARK_YARN_MAXAPPATTEMPTS != null) {
+      launcher.setConf("spark.yarn.maxAppAttempts", TaskManagerConfig.SPARK_YARN_MAXAPPATTEMPTS.toString)
+    }
 
     // TODO: Support escape delimiter
     // Set default Spark conf by TaskManager configuration file

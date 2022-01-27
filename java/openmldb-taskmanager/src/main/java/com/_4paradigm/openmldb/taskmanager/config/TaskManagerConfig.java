@@ -46,6 +46,8 @@ public class TaskManagerConfig {
     public static String NAMENODE_URI;
     public static String JOB_LOG_PATH;
     public static String SPARK_DEFAULT_CONF;
+    public static String SPARK_EVENTLOG_DIR;
+    public static int SPARK_YARN_MAXAPPATTEMPTS;
 
     static {
         try {
@@ -73,6 +75,8 @@ public class TaskManagerConfig {
             NAMENODE_URI = prop.getProperty("namenode.uri", "");
             JOB_LOG_PATH = prop.getProperty("job.log.path", "../log/");
             SPARK_DEFAULT_CONF = prop.getProperty("spark.default.conf", "");
+            SPARK_EVENTLOG_DIR = prop.getProperty("spark.eventLog.dir", "");
+            SPARK_YARN_MAXAPPATTEMPTS = Integer.parseInt(prop.getProperty("spark.yarn.maxAppAttempts", "1"));
 
             if (!JOB_LOG_PATH.isEmpty()) {
                 createJobLogPath(JOB_LOG_PATH);
