@@ -36,6 +36,7 @@ public class TaskManagerClient {
 
     private RpcClient rpcClient;
     private TaskManagerInterface taskManagerInterface;
+//    private RpcClient rpcClient;
 
     /**
      * Constructor of TaskManager client.
