@@ -17,7 +17,9 @@
 package com._4paradigm.openmldb.taskmanager.client;
 
 import com._4paradigm.openmldb.proto.TaskManager;
+import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
+import com._4paradigm.openmldb.taskmanager.zk.HostPort;
 import com.baidu.brpc.RpcContext;
 import com.baidu.brpc.client.BrpcProxy;
 import com.baidu.brpc.client.RpcClient;
@@ -25,6 +27,13 @@ import com.baidu.brpc.client.RpcClientOptions;
 import com.baidu.brpc.interceptor.Interceptor;
 import com.baidu.brpc.loadbalance.LoadBalanceStrategy;
 import com.baidu.brpc.protocol.Options;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.zookeeper.data.Stat;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -51,26 +60,13 @@ public class TaskManagerClient {
                 .retryPolicy(new ExponentialBackoffRetry(1000, 10))   //重试策略
                 .build();//
         zkClient.start();
-
         try {
             Stat stat = zkClient.checkExists().forPath(masterZnode);
             if (stat != null) {  //The original master exists and is directly connected to it.
                 byte[] bytes = zkClient.getData().forPath(masterZnode);
                 if (new String(bytes) != null && hostPort.getHostPort().equals(new String(bytes))) {
                     String endpoint = hostPort.getHostPort();
-                    RpcClientOptions clientOption = new RpcClientOptions();
-                    clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
-                    clientOption.setWriteTimeoutMillis(1000);
-                    clientOption.setReadTimeoutMillis(50000);
-                    clientOption.setMaxTotalConnections(1000);
-                    clientOption.setMinIdleConnections(10);
-                    clientOption.setLoadBalanceType(LoadBalanceStrategy.LOAD_BALANCE_FAIR);
-                    clientOption.setCompressType(Options.CompressType.COMPRESS_TYPE_NONE);
-                    String serviceUrl = "list://" + endpoint;
-                    List<Interceptor> interceptors = new ArrayList<Interceptor>();
-                    rpcClient = new RpcClient(serviceUrl, clientOption, interceptors);
-                    taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
-                    RpcContext.getContext().setLogId(1234L);
+                    init(endpoint);
                     msg = ("Current master has this master's address, " + hostPort.getHostPort());
                     LOG.info(msg);
                 }
@@ -80,6 +76,22 @@ public class TaskManagerClient {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    public void init (String endpoint){
+        RpcClientOptions clientOption = new RpcClientOptions();
+        clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
+        clientOption.setWriteTimeoutMillis(1000);
+        clientOption.setReadTimeoutMillis(50000);
+        clientOption.setMaxTotalConnections(1000);
+        clientOption.setMinIdleConnections(10);
+        clientOption.setLoadBalanceType(LoadBalanceStrategy.LOAD_BALANCE_FAIR);
+        clientOption.setCompressType(Options.CompressType.COMPRESS_TYPE_NONE);
+
+        String serviceUrl = "list://" + endpoint;
+        List<Interceptor> interceptors = new ArrayList<Interceptor>();
+        rpcClient = new RpcClient(serviceUrl, clientOption, interceptors);
+        taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
+        RpcContext.getContext().setLogId(1234L);
     }
     /**
      * Constructor of TaskManager client.
