@@ -353,7 +353,7 @@ jobs:
         with:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
-            python/test/pytest.xml
+            python/openmldb/test/pytest.xml
 
       - name: upload to pypi
         if: >
