@@ -17,7 +17,11 @@
 package com._4paradigm.openmldb.taskmanager.client;
 
 import com._4paradigm.openmldb.proto.TaskManager;
+import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
+import com._4paradigm.openmldb.taskmanager.zk.FailoverWatcher;
+import com._4paradigm.openmldb.taskmanager.zk.HostPort;
+import com._4paradigm.openmldb.taskmanager.zk.ZooKeeperUtil;
 import com.baidu.brpc.RpcContext;
 import com.baidu.brpc.client.BrpcProxy;
 import com.baidu.brpc.client.RpcClient;
@@ -25,6 +29,9 @@ import com.baidu.brpc.client.RpcClientOptions;
 import com.baidu.brpc.interceptor.Interceptor;
 import com.baidu.brpc.loadbalance.LoadBalanceStrategy;
 import com.baidu.brpc.protocol.Options;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,7 +43,66 @@ public class TaskManagerClient {
 
     private RpcClient rpcClient;
     private TaskManagerInterface taskManagerInterface;
+    private String baseZnode;
+    private String masterZnode;
+    private HostPort hostPort;
+    String msg;
+    private static final Log LOG = LogFactory.getLog(TaskManagerClient.class);
 
+    public TaskManagerClient(String zkCluster, String zkPath) {
+        if (zkPath == null || zkPath.length() == 0) {
+            LOG.info("Zookeeper address is wrong, please check the configuration");
+        }
+        baseZnode = zkPath + "/taskmanager";
+        masterZnode = baseZnode + "/leader";
+        String serverHost = TaskManagerConfig.HOST;
+        int serverPort = TaskManagerConfig.PORT;
+        hostPort = new HostPort(serverHost, serverPort);
+        while (true) {
+            try {
+                FailoverWatcher failoverWatcher = new FailoverWatcher();
+                byte[] bytes = ZooKeeperUtil.getDataAndWatch(failoverWatcher, masterZnode);
+                if (ZooKeeperUtil.watchAndCheckExists(failoverWatcher, masterZnode)) {
+                    //The original master exists and is directly connected to it.
+                    if (new String(bytes) != null && hostPort.getHostPort().equals(new String(bytes))) {
+                        String endpoint = hostPort.getHostPort();
+                        RpcClientOptions clientOption = new RpcClientOptions();
+                        clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
+                        clientOption.setWriteTimeoutMillis(1000);
+                        clientOption.setReadTimeoutMillis(50000);
+                        clientOption.setMaxTotalConnections(1000);
+                        clientOption.setMinIdleConnections(10);
+                        clientOption.setLoadBalanceType(LoadBalanceStrategy.LOAD_BALANCE_FAIR);
+                        clientOption.setCompressType(Options.CompressType.COMPRESS_TYPE_NONE);
+                        String serviceUrl = "list://" + endpoint;
+                        List<Interceptor> interceptors = new ArrayList<Interceptor>();
+                        rpcClient = new RpcClient(serviceUrl, clientOption, interceptors);
+                        taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
+                        RpcContext.getContext().setLogId(1234L);
+
+                        msg = ("Current master has this master's address, " + hostPort.getHostPort());
+                        LOG.info(msg);
+                        break;
+                    } else {
+                        //we start the server with the different ip_port stored in master znode. Deleting node.
+                        ZooKeeperUtil.deleteNode(failoverWatcher, masterZnode);
+                        msg = ("Deleting node, new master has" + hostPort.getHostPort());
+                    }
+                } else {
+                    try {  //creat a new master node
+                        ZooKeeperUtil.createEphemeralNodeAndWatch(failoverWatcher, masterZnode, hostPort.getHostPort()
+                                .getBytes());
+                        msg = hostPort.getHostPort() + " waiting to become the next active master";
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                LOG.info(msg);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
     /**
      * Constructor of TaskManager client.
      *
@@ -362,6 +428,16 @@ public class TaskManagerClient {
             throw new Exception(errorMessage);
         }
         return response.getLog();
+    }
+
+    public static void main(String[] args) {
+        TaskManagerClient client = new TaskManagerClient("127.0.0.1:6181","/openmldb_cluster_2");
+//        TaskManagerClient client = new TaskManagerClient("127.0.0.1:9902");
+        try{
+            client.printJobs();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
 }
