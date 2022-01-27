@@ -36,8 +36,51 @@ public class TaskManagerClient {
 
     private RpcClient rpcClient;
     private TaskManagerInterface taskManagerInterface;
-//    private RpcClient rpcClient;
 
+    public TaskManagerClient(String zkCluster, String zkPath) {
+        Log LOG = LogFactory.getLog(TaskManagerClient.class);
+        if (zkCluster == null || zkCluster.length() == 0 || zkPath == null || zkPath.length() == 0) {
+            LOG.info("Zookeeper address is wrong, please check the configuration");
+        }
+        String masterZnode = zkPath + "/taskmanager" + "/leader";
+        String msg;
+        HostPort hostPort = new HostPort(TaskManagerConfig.HOST, TaskManagerConfig.PORT);
+        CuratorFramework zkClient = CuratorFrameworkFactory.builder() //
+                .connectString(zkCluster)   //连接地址
+                .sessionTimeoutMs(10000)    //超时时间
+                .retryPolicy(new ExponentialBackoffRetry(1000, 10))   //重试策略
+                .build();//
+        zkClient.start();
+
+        try {
+            Stat stat = zkClient.checkExists().forPath(masterZnode);
+            if (stat != null) {  //The original master exists and is directly connected to it.
+                byte[] bytes = zkClient.getData().forPath(masterZnode);
+                if (new String(bytes) != null && hostPort.getHostPort().equals(new String(bytes))) {
+                    String endpoint = hostPort.getHostPort();
+                    RpcClientOptions clientOption = new RpcClientOptions();
+                    clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
+                    clientOption.setWriteTimeoutMillis(1000);
+                    clientOption.setReadTimeoutMillis(50000);
+                    clientOption.setMaxTotalConnections(1000);
+                    clientOption.setMinIdleConnections(10);
+                    clientOption.setLoadBalanceType(LoadBalanceStrategy.LOAD_BALANCE_FAIR);
+                    clientOption.setCompressType(Options.CompressType.COMPRESS_TYPE_NONE);
+                    String serviceUrl = "list://" + endpoint;
+                    List<Interceptor> interceptors = new ArrayList<Interceptor>();
+                    rpcClient = new RpcClient(serviceUrl, clientOption, interceptors);
+                    taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
+                    RpcContext.getContext().setLogId(1234L);
+                    msg = ("Current master has this master's address, " + hostPort.getHostPort());
+                    LOG.info(msg);
+                }
+            } else {  // we just read the node.
+                zkClient.getData().forPath(masterZnode);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     /**
      * Constructor of TaskManager client.
      *
