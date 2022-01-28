@@ -55,9 +55,9 @@ public class TaskManagerClient {
         String msg;
         HostPort hostPort = new HostPort(TaskManagerConfig.HOST, TaskManagerConfig.PORT);
         CuratorFramework zkClient = CuratorFrameworkFactory.builder() //
-                .connectString(zkCluster)   //连接地址
-                .sessionTimeoutMs(10000)    //超时时间
-                .retryPolicy(new ExponentialBackoffRetry(1000, 10))   //重试策略
+                .connectString(zkCluster)   //connection address
+                .sessionTimeoutMs(10000)    //overtime time
+                .retryPolicy(new ExponentialBackoffRetry(1000, 10))   //retry strategy
                 .build();//
         zkClient.start();
         try {
@@ -66,18 +66,21 @@ public class TaskManagerClient {
                 byte[] bytes = zkClient.getData().forPath(masterZnode);
                 if (new String(bytes) != null && hostPort.getHostPort().equals(new String(bytes))) {
                     String endpoint = hostPort.getHostPort();
-                    init(endpoint);
+                    rpcConnect(endpoint);
                     msg = ("Current master has this master's address, " + hostPort.getHostPort());
                     LOG.info(msg);
                 }
             } else {  // we just read the node.
                 zkClient.getData().forPath(masterZnode);
+                msg = ("taskmanager has not started yet, connection failed");
+                LOG.info(msg);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-    public void init (String endpoint){
+
+    public void rpcConnect(String endpoint) {
         RpcClientOptions clientOption = new RpcClientOptions();
         clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
         clientOption.setWriteTimeoutMillis(1000);
