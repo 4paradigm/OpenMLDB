@@ -25,6 +25,7 @@
 #include "json2pb/rapidjson.h"
 #include "sdk/mini_cluster.h"
 
+
 namespace openmldb::apiserver {
 
 class APIServerTestEnv : public testing::Environment {
@@ -556,7 +557,7 @@ TEST_F(APIServerTest, no_common) {
         ASSERT_STREQ("ok", document["msg"].GetString());
         ASSERT_TRUE(document["data"].FindMember("schema") == document["data"].MemberEnd());
         ASSERT_EQ(2, document["data"]["data"].Size());
-        ASSERT_TRUE(document["data"].FindMember("common_cols_data") == document["data"].MemberEnd());
+        ASSERT_EQ(0, document["data"]["common_cols_data"].Size());
     }
 
     // drop procedure and table
