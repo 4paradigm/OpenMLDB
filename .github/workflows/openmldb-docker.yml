@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - .github/workflows/openmldb-docker.yml
+      - demo/predict-taxi-trip-duration-nb/**/*
     tags:
       - v*
   pull_request:
