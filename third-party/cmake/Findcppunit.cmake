@@ -34,13 +34,19 @@ find_library(CPPUNIT_LIBRARY_RELEASE
 	NAMES
 	cppunit
 	HINTS
-	"${CPPUNIT_ROOT_DIR}")
+	"${CPPUNIT_ROOT_DIR}"
+    PATH_SUFFIXES
+    lib/
+    lib64/)
 
 find_library(CPPUNIT_LIBRARY_DEBUG
 	NAMES
 	cppunitd
 	HINTS
-	"${CPPUNIT_ROOT_DIR}")
+	"${CPPUNIT_ROOT_DIR}"
+    PATH_SUFFIXES
+    lib/
+    lib64/)
 
 include(SelectLibraryConfigurations)
 select_library_configurations(CPPUNIT)
