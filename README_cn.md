@@ -84,7 +84,7 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 
 | 应用                                                         | 所用工具           | 简介                                                         |
 | ------------------------------------------------------------ | ------------------ | ------------------------------------------------------------ |
-| [New York City Taxi Trip Duration](https://docs.openmldb.ai/v/0.4/content-3/taxi_tour_duration_prediction) | OpenMLDB, LightGBM | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
+| [New York City Taxi Trip Duration](https://docs.openmldb.ai/use_case/taxi_tour_duration_prediction) | OpenMLDB, LightGBM | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
 
 ## 8. OpenMLDB 文档
 
