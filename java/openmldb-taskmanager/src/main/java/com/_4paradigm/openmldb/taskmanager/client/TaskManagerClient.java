@@ -25,6 +25,15 @@ import com.baidu.brpc.client.RpcClientOptions;
 import com.baidu.brpc.interceptor.Interceptor;
 import com.baidu.brpc.loadbalance.LoadBalanceStrategy;
 import com.baidu.brpc.protocol.Options;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.recipes.cache.NodeCache;
+import org.apache.curator.framework.recipes.cache.NodeCacheListener;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.zookeeper.data.Stat;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,10 +44,73 @@ import java.util.List;
 public class TaskManagerClient {
 
     private RpcClient rpcClient;
+    private CuratorFramework zkClient;
     private TaskManagerInterface taskManagerInterface;
-//    private RpcClient rpcClient;
-    //    private RpcClient rpcClient;
+    private static final Log logger = LogFactory.getLog(TaskManagerClient.class);
 
+    public TaskManagerClient(String zkCluster, String zkPath) throws Exception {
+        if (zkCluster == null || zkCluster.length() == 0 || zkPath == null || zkPath.length() == 0) {
+            logger.info("Zookeeper address is wrong, please check the configuration");
+        }
+        String masterZnode = zkPath + "/taskmanager" + "/leader";
+
+        zkClient = CuratorFrameworkFactory.builder()
+                .connectString(zkCluster)
+                .sessionTimeoutMs(10000)
+                .retryPolicy(new ExponentialBackoffRetry(1000, 10))
+                .build();
+        zkClient.start();
+        Stat stat = zkClient.checkExists().forPath(masterZnode);
+        if (stat != null) {  // The original master exists and is directly connected to it.
+            String endpoint = new String(zkClient.getData().forPath(masterZnode));
+            watch(zkClient, masterZnode);
+            this.rpcConnect(endpoint);
+        } else {
+            throw new Exception("TaskManager has not started yet, connection failed");
+        }
+    }
+    /**
+     * Create a data change listener event for this node.
+     *
+     * @param curator the zkClient.
+     * @param path the path of zkNode.
+     */
+    public static void watch(CuratorFramework curator, String path) throws Exception {
+        final NodeCache nodeCache = new NodeCache(curator, path, false);
+        nodeCache.getListenable().addListener(new NodeCacheListener() {
+            @Override
+            public void nodeChanged() throws Exception {
+                System.out.println("The content of the node was changed or deleted, please try to reconnect");
+                System.exit(0);
+            }
+        });
+        nodeCache.start(true);
+    }
+    /**
+     * Constructor of TaskManager client.
+     *
+     * @param endpoint the endpoint of TaskManager server, for example "127.0.0.1:9902".
+     */
+    public void rpcConnect(String endpoint) {
+
+        RpcClientOptions clientOption = new RpcClientOptions();
+        clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
+        clientOption.setWriteTimeoutMillis(1000);
+        clientOption.setReadTimeoutMillis(50000);
+        clientOption.setMaxTotalConnections(1000);
+        clientOption.setMinIdleConnections(10);
+        clientOption.setLoadBalanceType(LoadBalanceStrategy.LOAD_BALANCE_FAIR);
+        clientOption.setCompressType(Options.CompressType.COMPRESS_TYPE_NONE);
+
+        String serviceUrl = "list://" + endpoint;
+        List<Interceptor> interceptors = new ArrayList<Interceptor>();
+        if (rpcClient != null) {
+            this.stop();
+        }
+        rpcClient = new RpcClient(serviceUrl, clientOption, interceptors);
+        taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
+        RpcContext.getContext().setLogId(1234L);
+    }
     /**
      * Constructor of TaskManager client.
      *
