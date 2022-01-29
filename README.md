@@ -85,7 +85,7 @@ We are making efforts to build a list of real-world use cases based on OpenMLDB 
 
 | Application                                                  | Tools              | Brief Introduction                                           |
 | ------------------------------------------------------------ | ------------------ | ------------------------------------------------------------ |
-| [New York City Taxi Trip Duration](https://docs.openmldb.ai/v/0.4/content-3/taxi_tour_duration_prediction) | OpenMLDB, LightGBM | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
+| [New York City Taxi Trip Duration](https://docs.openmldb.ai/use_case/taxi_tour_duration_prediction) | OpenMLDB, LightGBM | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
 
 ## 8. Documentation
 
