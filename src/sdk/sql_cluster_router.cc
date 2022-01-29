@@ -1377,6 +1377,18 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     }
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db_name);
+
+    if (!cluster_sdk_->IsClusterMode()) {
+        if (create_node->GetReplicaNum() != 1) {
+            return base::Status(base::ReturnCode::kSQLCmdRunError, 
+            "ERROR: Fail to create table with the replica configuration in standalone DB");
+        }
+        if (!create_node->GetDistributionList().empty()) {
+            return base::Status(base::ReturnCode::kSQLCmdRunError,
+            "ERROR: Fail to create table with the distribution configuration in standalone DB");
+        }
+    }
+
     hybridse::base::Status sql_status;
     ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
     if (sql_status.code != 0) {
