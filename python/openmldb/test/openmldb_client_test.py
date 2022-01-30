@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import openmldb
 import unittest
 import logging
 import time
@@ -362,10 +362,6 @@ class TestOpenmldbDBAPI:
             raise Exception(e)
 
     def test_create_database(self):
-        try:
-            self.cursor.execute("create database db_test;")
-        except Exception as e:
-            assert False
         with pytest.raises(Exception):
             assert self.execute("create database ")
 
