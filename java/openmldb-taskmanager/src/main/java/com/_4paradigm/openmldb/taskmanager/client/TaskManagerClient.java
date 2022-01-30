@@ -140,6 +140,7 @@ public class TaskManagerClient {
      */
     public void stop() {
         rpcClient.stop();
+        zkClient.close();
     }
 
     /**
