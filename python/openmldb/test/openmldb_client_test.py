@@ -362,10 +362,6 @@ class TestOpenmldbDBAPI:
         except Exception as e:
             raise Exception(e)
 
-    def test_create_database(self):
-        with pytest.raises(Exception):
-            assert self.execute("create database ")
-
     def test_create_table(self):
         self.cursor.execute('create table new_table (x string, y int);')
         assert "new_table" in self.cursor.get_all_tables()
@@ -404,7 +400,6 @@ class TestOpenmldbDBAPI:
 
     def teardown_class(self):
         self.cursor.close()
-
 
 if __name__ == '__main__':
     unittest.main()
