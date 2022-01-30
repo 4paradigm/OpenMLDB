@@ -348,6 +348,66 @@ class TestSqlalchemyAPI:
         self.connection.execute("drop table test_table;")
         self.connection.close()
 
+class TestOpenmldbDBAPI:
+
+    def setup_class(self):
+        self.db = openmldb.dbapi.connect('db_test','127.0.0.1:6181','/onebox')
+        self.cursor = self.db.cursor()
+
+    def execute(self,sql):
+        try:
+            self.cursor.execute(sql)
+            return 'ok'
+        except Exception as e:
+            raise Exception(e)
+
+    def test_create_database(self):
+        try:
+            self.cursor.execute("create database db_test;")
+        except Exception as e:
+            assert False
+        with pytest.raises(Exception):
+            assert self.execute("create database ")
+
+    def test_create_table(self):
+        self.cursor.execute('create table new_table (x string, y int);')
+        assert "new_table" in self.cursor.get_all_tables()
+        with pytest.raises(Exception):
+            assert self.execute("create table ")
+
+    def test_insert(self):
+        try:
+            self.cursor.execute("insert into new_table values('first', 100);")
+        except Exception as e:
+            assert False
+        result = self.cursor.execute("select * from new_table;").fetchone()
+        assert 'first' in result
+        assert 100 in result
+
+        with pytest.raises(Exception):
+            assert self.execute("insert into new_table values(100, 'first');")
+        with pytest.raises(Exception):
+            assert self.execute("insert into new_table values({'x':100, 'y':'first'});")
+
+    def test_select_conditioned(self):
+        self.cursor.execute("insert into new_table values('second', 200);")
+        result = self.cursor.execute("select * from new_table where x = 'second';").fetchone()
+        assert 'second' in result
+        assert 200 in result
+
+    def test_drop_table(self):
+        try:
+            self.cursor.execute("drop table new_table;")
+        except Exception as e:
+            assert False
+        assert "new_table" not in self.cursor.get_all_tables()
+
+        with pytest.raises(Exception):
+            assert self.execute("drop table new_table;")
+
+    def teardown_class(self):
+        self.cursor.close()
+
 
 if __name__ == '__main__':
     unittest.main()
