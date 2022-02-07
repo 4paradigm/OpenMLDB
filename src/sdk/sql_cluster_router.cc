@@ -627,10 +627,8 @@ bool SQLClusterRouter::ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Stat
 }
 
 // get all table names in all DB
-std::vector<std::string> SQLClusterRouter::GetAllTables() {
-    return cluster_sdk_->GetAllTables();
-}
- 
+std::vector<std::string> SQLClusterRouter::GetAllTables() { return cluster_sdk_->GetAllTables(); }
+
 bool SQLClusterRouter::CreateDB(const std::string& db, hybridse::sdk::Status* status) {
     if (status == NULL) {
         return false;
@@ -1380,12 +1378,12 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
 
     if (!cluster_sdk_->IsClusterMode()) {
         if (create_node->GetReplicaNum() != 1) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError, 
-            "ERROR: Fail to create table with the replica configuration in standalone DB");
+            return base::Status(base::ReturnCode::kSQLCmdRunError,
+                                "ERROR: Fail to create table with the replica configuration in standalone DB");
         }
         if (!create_node->GetDistributionList().empty()) {
             return base::Status(base::ReturnCode::kSQLCmdRunError,
-            "ERROR: Fail to create table with the distribution configuration in standalone DB");
+                                "ERROR: Fail to create table with the distribution configuration in standalone DB");
         }
     }
 
@@ -1717,9 +1715,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     return taskmanager_client_ptr->ExportOfflineData(sql, config, default_db, job_info);
 }
 
-bool SQLClusterRouter::NotifyTableChange() {
-    return cluster_sdk_->TriggerNotify();
-}
+bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(); }
 
 }  // namespace sdk
 }  // namespace openmldb
