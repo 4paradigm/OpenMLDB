@@ -89,7 +89,12 @@ We are making efforts to build a list of real-world use cases based on OpenMLDB 
 
 ## 8. Documentation
 
-You can find our detailed [OpenMLDB Documentation](https://docs.openmldb.ai/).
+We have released the Chinese version of the full documentation, you can find them here:
+
+- The main site: [https://docs.openmldb.ai/](https://docs.openmldb.ai/)
+- The mirror site in China: [http://docs-cn.openmldb.ai/](http://docs-cn.openmldb.ai/)
+
+We are working on the English documentation, and it will be released very soon.
 
 ## 9. Roadmap
 
