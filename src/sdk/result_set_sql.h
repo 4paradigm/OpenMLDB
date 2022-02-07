@@ -189,8 +189,8 @@ class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
         int total_size = 0;
         for (size_t i = 0 ; i < result_set_list_.size(); i++) {
             total_size += result_set_list_[i]->Size();
-            if (limit_cnt_ > 0 && total_size > limit_cnt_) {
-                return limit_cnt_;
+            if (limit_cnt_ > 0 && total_size > static_cast<int32_t>(limit_cnt_)) {
+                return static_cast<int32_t>(limit_cnt_);
             }
         }
         return total_size;
