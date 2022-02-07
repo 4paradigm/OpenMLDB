@@ -112,11 +112,6 @@ class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
         if (result_set_list_.empty()) {
             return false;
         }
-        for (size_t i = 0; i < result_set_list_.size(); i++) {
-            if (!result_set_list_[i]->Init()) {
-                return false;
-            }
-        }
         result_set_idx_ = 0;
         result_idx_ = 0;
         result_set_base_ = result_set_list_[0];
