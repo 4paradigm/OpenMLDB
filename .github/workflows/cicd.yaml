@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - docs/
+      - demo/
+      - image/
+      - release/
+      - tools/
     tags:
       - v*
   pull_request:
@@ -353,7 +359,7 @@ jobs:
         with:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
-            python/test/pytest.xml
+            python/openmldb/test/pytest.xml
 
       - name: upload to pypi
         if: >

@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - docs/
+      - demo/
+      - release/
+      - image/
+      - tools/
   pull_request:
     paths-ignore:
       - docs/

@@ -156,7 +156,7 @@
 		<dependency>
 			<groupId>com.4paradigm.openmldb</groupId>
 			<artifactId>openmldb-native</artifactId>
-			<version>${project.parent.version}</version>
+			<version>${variant.native.version}</version>
 			<scope>provided</scope>
 		</dependency>
 

@@ -13,14 +13,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+# fmt:off
+import os
 import sys
-sys.path.append("../")
-
+sys.path.append(os.path.dirname(__file__) + "/..")
 import logging
-from openmldb_native import sql_router_sdk
+from native import sql_router_sdk
 from datetime import date
 from datetime import datetime
+# fmt:on
 logger = logging.getLogger("openmldb_sdk")
 
 class OpenmldbSdkOptions(object):
