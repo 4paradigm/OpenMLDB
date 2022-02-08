@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.1] - 2022-02-08
+
+### Features
+- Improve cli error message and support 'enable_trace' system variables (#1129 @jingchen2222)
+
+### Bug Fixes
+- CLI will coredump when fail to connect nameserver (#1166 @keyu813)
+- Java sdk has memory leak (#1148 @dl239)
+- Start component failed if pid file is exist(#1108 @dl239)
+- Date type value is incorrect when load data into online table (#1103 @yabg-shuai666)
+- The data imported to offline storage with csv file is not correct (#1100 @yabg-shuai666)
+
 ## [0.4.0] - 2022-01-14
 
 ### Highlights
