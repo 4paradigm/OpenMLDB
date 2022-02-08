@@ -2173,7 +2173,8 @@ class CreateIndexNode : public SqlNode {
  public:
     explicit CreateIndexNode(const std::string &index_name, const std::string &db_name,
                              const std::string &table_name, ColumnIndexNode *index)
-        : SqlNode(kCreateIndexStmt, 0, 0), index_name_(index_name), db_name_(db_name), table_name_(table_name), index_(index) {}
+        : SqlNode(kCreateIndexStmt, 0, 0), index_name_(index_name),
+          db_name_(db_name), table_name_(table_name), index_(index) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const std::string index_name_;

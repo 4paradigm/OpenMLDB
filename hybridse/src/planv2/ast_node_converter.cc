@@ -1858,7 +1858,8 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
     if (names.size() == 2) {
         db_name = names[0];
     }
-    *output = dynamic_cast<node::InsertStmt*>(node_manager->MakeInsertTableNode(db_name, table_name, column_list, rows));
+    *output =
+        dynamic_cast<node::InsertStmt*>(node_manager->MakeInsertTableNode(db_name, table_name, column_list, rows));
     return base::Status::OK();
 }
 base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::NodeManager* node_manager,

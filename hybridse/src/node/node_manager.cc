@@ -817,8 +817,8 @@ AllNode *NodeManager::MakeAllNode(const std::string &relation_name, const std::s
     return RegisterNode(new AllNode(relation_name, db_name));
 }
 
-SqlNode *NodeManager::MakeInsertTableNode(const std::string &db_name, const std::string &table_name, const ExprListNode *columns_expr,
-                                          const ExprListNode *values) {
+SqlNode *NodeManager::MakeInsertTableNode(const std::string &db_name, const std::string &table_name,
+                                          const ExprListNode *columns_expr, const ExprListNode *values) {
     if (nullptr == columns_expr) {
         InsertStmt *node_ptr = new InsertStmt(db_name, table_name, values->children_);
         return RegisterNode(node_ptr);

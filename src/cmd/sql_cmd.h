@@ -575,7 +575,6 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                 std::cout << "ERROR: Please enter database first" << std::endl;
                 return;
             }
-            
             std::string table_name = cmd_node->GetArgs().back();
             if (!CheckAnswerIfInteractive("table", table_name)) {
                 return;
