@@ -9,7 +9,7 @@
 - CLI coredumps when it fails to connect to a nameserver. (#1166 @keyu813)
 - Java SDK has the issue of memory leaks. (#1148 @dl239)
 - The startup fails if a pid file exists. (#1108 @dl239)
-- The date type value is incorrect when loading data into an online table. (#1103 @yabg-shuai666)
+- There are incorrect values for the column with the date type when loading data into an online table. (#1103 @yabg-shuai666)
 - Offline data import for the CSV format may cause incorrect results. (#1100 @yabg-shuai666)
 
 ## [0.4.0] - 2022-01-14
