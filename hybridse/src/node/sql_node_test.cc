@@ -308,7 +308,7 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     value_expr_list->PushBack(value4);
     ExprListNode *insert_values = node_manager_->MakeExprList();
     insert_values->PushBack(value_expr_list);
-    SqlNode *node_ptr = node_manager_->MakeInsertTableNode("t1", column_expr_list, insert_values);
+    SqlNode *node_ptr = node_manager_->MakeInsertTableNode("", "t1", column_expr_list, insert_values);
 
     ASSERT_EQ(kInsertStmt, node_ptr->GetType());
     InsertStmt *insert_stmt = dynamic_cast<InsertStmt *>(node_ptr);
@@ -685,7 +685,7 @@ TEST_F(SqlNodeTest, CreateIndexNodeTest) {
     ASSERT_EQ(std::vector<std::string>({"index1:col4:col5"}), indexes);
 
     CreateIndexNode *create_index_node =
-        dynamic_cast<node::CreateIndexNode *>(node_manager_->MakeCreateIndexNode("index1", "t1", index_node));
+        dynamic_cast<node::CreateIndexNode *>(node_manager_->MakeCreateIndexNode("index1", "", "t1", index_node));
 
     ASSERT_TRUE(nullptr != create_index_node);
     std::ostringstream oss;

@@ -1816,18 +1816,22 @@ class ColumnDefNode : public SqlNode {
 
 class InsertStmt : public SqlNode {
  public:
-    InsertStmt(const std::string &table_name, const std::vector<std::string> &columns,
+    InsertStmt(const std::string &db_name,
+               const std::string &table_name,
+               const std::vector<std::string> &columns,
                const std::vector<ExprNode *> &values)
         : SqlNode(kInsertStmt, 0, 0),
+          db_name_(db_name),
           table_name_(table_name),
           columns_(columns),
           values_(values),
           is_all_(columns.empty()) {}
 
-    InsertStmt(const std::string &table_name, const std::vector<ExprNode *> &values)
-        : SqlNode(kInsertStmt, 0, 0), table_name_(table_name), values_(values), is_all_(true) {}
+    InsertStmt(const std::string &db_name, const std::string &table_name, const std::vector<ExprNode *> &values)
+        : SqlNode(kInsertStmt, 0, 0), db_name_(db_name), table_name_(table_name), values_(values), is_all_(true) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
+    const std::string db_name_;
     const std::string table_name_;
     const std::vector<std::string> columns_;
     const std::vector<ExprNode *> values_;
@@ -2167,11 +2171,13 @@ class SetNode : public SqlNode {
 
 class CreateIndexNode : public SqlNode {
  public:
-    explicit CreateIndexNode(const std::string &index_name, const std::string &table_name, ColumnIndexNode *index)
-        : SqlNode(kCreateIndexStmt, 0, 0), index_name_(index_name), table_name_(table_name), index_(index) {}
+    explicit CreateIndexNode(const std::string &index_name, const std::string &db_name,
+                             const std::string &table_name, ColumnIndexNode *index)
+        : SqlNode(kCreateIndexStmt, 0, 0), index_name_(index_name), db_name_(db_name), table_name_(table_name), index_(index) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const std::string index_name_;
+    const std::string db_name_;
     const std::string table_name_;
     node::ColumnIndexNode *index_;
 };

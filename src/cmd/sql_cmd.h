@@ -357,7 +357,7 @@ void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
         std::string pattern_blank = "(.*)(\\(.*\\) )(BEGIN )(.*)( END;)";
         sql = boost::regex_replace(sql, boost::regex(pattern_blank), "$1$4");
     }
-    
+
     PrintItemTable(std::cout, {"DB", type_name}, {vec});
     std::vector<std::string> items{sql};
     PrintItemTable(std::cout, {"SQL"}, {items}, true);
@@ -485,7 +485,6 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             }
             return;
         }
-
         case hybridse::node::kCmdShowTables: {
             if (db.empty()) {
                 std::cout << "ERROR: please enter database first" << std::endl;
@@ -500,16 +499,25 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             PrintItemTable(std::cout, {"Tables"}, {table_names}, true);
             return;
         }
-
         case hybridse::node::kCmdDescTable: {
-            if (db.empty()) {
+            std::string db_name;
+            if (cmd_node->GetArgs().size() == 2) {
+                db_name = cmd_node->GetArgs()[0];
+            } else if (cmd_node->GetArgs().size() == 1) {
+                db_name = db;
+            } else {
+                std::cout << "ERROR: Invalid CmdDescTable Args size" << std::endl;
+                return;
+            }
+            if (db_name.empty()) {
                 std::cout << "ERROR: Please enter database first" << std::endl;
                 return;
             }
-            // TODO(denglong): Should support table name with database name
-            auto table = cs->GetTableInfo(db, cmd_node->GetArgs()[0]);
+
+            std::string table_name = cmd_node->GetArgs().back();
+            auto table = cs->GetTableInfo(db_name, table_name);
             if (table == nullptr) {
-                std::cerr << "table " << cmd_node->GetArgs()[0] << " does not exist" << std::endl;
+                std::cerr << "table " << table_name << " does not exist" << std::endl;
                 return;
             }
 
@@ -520,7 +528,6 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             }
             break;
         }
-
         case hybridse::node::kCmdCreateDatabase: {
             std::string name = cmd_node->GetArgs()[0];
             std::string error;
@@ -555,17 +562,27 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             break;
         }
         case hybridse::node::kCmdDropTable: {
-            if (db.empty()) {
+            std::string db_name;
+            if (cmd_node->GetArgs().size() == 2) {
+                db_name = cmd_node->GetArgs()[0];
+            } else if (cmd_node->GetArgs().size() == 1) {
+                db_name = db;
+            } else {
+                std::cout << "ERROR: Invalid CmdDropTable Args size" << std::endl;
+                return;
+            }
+            if (db_name.empty()) {
                 std::cout << "ERROR: Please enter database first" << std::endl;
                 return;
             }
-            std::string name = cmd_node->GetArgs()[0];
-            if (!CheckAnswerIfInteractive("table", name)) {
+            
+            std::string table_name = cmd_node->GetArgs().back();
+            if (!CheckAnswerIfInteractive("table", table_name)) {
                 return;
             }
 
             hybridse::sdk::Status status;
-            bool ok = sr->DropTable(db, name, &status);
+            bool ok = sr->DropTable(db_name, table_name, &status);
 
             if (ok) {
                 std::cout << "SUCCEED: Drop successfully" << std::endl;
@@ -576,13 +593,28 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             break;
         }
         case hybridse::node::kCmdDropIndex: {
-            std::string index_name = cmd_node->GetArgs()[0];
-            std::string table_name = cmd_node->GetArgs()[1];
+            std::string db_name;
+            std::string table_name;
+            std::string index_name = cmd_node->GetArgs().back();
+            if (cmd_node->GetArgs().size() == 3) {
+                db_name = cmd_node->GetArgs()[0];
+                table_name = cmd_node->GetArgs()[1];
+            } else if (cmd_node->GetArgs().size() == 2) {
+                db_name = db;
+                table_name = cmd_node->GetArgs()[0];
+            } else {
+                std::cout << "ERROR: Invalid CmdDropIndex Args size" << std::endl;
+                return;
+            }
+            if (db_name.empty()) {
+                std::cout << "ERROR: Please enter database first" << std::endl;
+                return;
+            }
             if (!CheckAnswerIfInteractive("index", index_name + " on " + table_name)) {
                 return;
             }
             std::string error;
-            bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DeleteIndex(table_name, index_name, error));
+            bool ok = (ns = GetAndCheckNSClient(&error)) && (ns->DeleteIndex(db_name, table_name, index_name, error));
             if (ok) {
                 std::cout << "SUCCEED: Drop index successfully" << std::endl;
             } else {
@@ -1250,10 +1282,6 @@ void HandleSQL(const std::string& sql) {
             return;
         }
         case hybridse::node::kPlanTypeCreateIndex: {
-            if (db.empty()) {
-                std::cout << "ERROR: Please use database first" << std::endl;
-                return;
-            }
             auto* create_index_node = dynamic_cast<hybridse::node::CreateIndexPlanNode*>(node);
             HandleCreateIndex(create_index_node->create_index_node_);
             return;
@@ -1266,11 +1294,6 @@ void HandleSQL(const std::string& sql) {
                 return;
             }
 
-            // TODO(denglong): Should support table name with database name
-            if (db.empty()) {
-                std::cout << "ERROR: Please use database first" << std::endl;
-                return;
-            }
             ::hybridse::sdk::Status status;
             bool ok = sr->ExecuteInsert(db, sql, &status);
             if (!ok) {

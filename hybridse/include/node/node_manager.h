@@ -142,7 +142,8 @@ class NodeManager {
     FrameNode *MergeFrameNode(const FrameNode *frame1, const FrameNode *frame2);
     SqlNode *MakeLimitNode(int count);
 
-    SqlNode *MakeInsertTableNode(const std::string &table_name,
+    SqlNode *MakeInsertTableNode(const std::string &db_name,
+                                 const std::string &table_name,
                                  const ExprListNode *column_names,
                                  const ExprListNode *values);
     SqlNode *MakeCreateTableNode(bool op_if_not_exist,
@@ -253,6 +254,7 @@ class NodeManager {
     SqlNode *MakeCmdNode(node::CmdType cmd_type, const std::string &index_name,
                          const std::string &table_name);
     SqlNode *MakeCreateIndexNode(const std::string &index_name,
+                                 const std::string &db_name,
                                  const std::string &table_name,
                                  ColumnIndexNode *index);
 

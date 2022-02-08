@@ -640,7 +640,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             std::vector<std::string> names;
             CHECK_STATUS(AstPathExpressionToStringList(describe_statement->name(), names))
             *output =
-                dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDescTable, names.back()));
+                dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDescTable, names));
             break;
         }
         case zetasql::AST_DROP_STATEMENT: {
@@ -1851,8 +1851,14 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
     }
 
     std::string table_name = "";
-    CHECK_STATUS(AstPathExpressionToString(root->GetTargetPathForNonNested().value(), &table_name));
-    *output = dynamic_cast<node::InsertStmt*>(node_manager->MakeInsertTableNode(table_name, column_list, rows));
+    std::string db_name = "";
+    std::vector<std::string> names;
+    CHECK_STATUS(AstPathExpressionToStringList(root->GetTargetPathForNonNested().value(), names));
+    table_name = names.back();
+    if (names.size() == 2) {
+        db_name = names[0];
+    }
+    *output = dynamic_cast<node::InsertStmt*>(node_manager->MakeInsertTableNode(db_name, table_name, column_list, rows));
     return base::Status::OK();
 }
 base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::NodeManager* node_manager,
@@ -1925,6 +1931,12 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
     CHECK_STATUS(AstPathExpressionToStringList(root->table_name(), table_path));
     CHECK_TRUE(table_path.size() >= 1 && table_path.size() <= 2, common::kSqlAstError,
                "can't crete index with invalid table path")
+    std::string db_name = "";
+    std::string table_name = "";
+    table_name = table_path.back();
+    if (table_path.size() == 2) {
+        db_name = table_path[0];
+    }
 
     CHECK_TRUE(nullptr != root->index_item_list(), common::kSqlAstError, "can't create index with empty index items");
 
@@ -1954,7 +1966,7 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
     node::ColumnIndexNode* column_index_node =
         static_cast<node::ColumnIndexNode*>(node_manager->MakeColumnIndexNode(index_node_list));
     *output = dynamic_cast<node::CreateIndexNode*>(
-        node_manager->MakeCreateIndexNode(index_name, table_path.back(), column_index_node));
+        node_manager->MakeCreateIndexNode(index_name, db_name, table_name, column_index_node));
     return base::Status::OK();
 }
 

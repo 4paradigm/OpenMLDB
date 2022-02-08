@@ -300,9 +300,19 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
         status->msg = "insert stmt is null";
         return false;
     }
-    *table_info = cluster_sdk_->GetTableInfo(db, insert_stmt->table_name_);
+    std::string db_name;
+    if (!insert_stmt->db_name_.empty()) {
+        db_name = insert_stmt->db_name_;
+    } else {
+        db_name = db;
+    }
+    if (db_name.empty()) {
+        status->msg = "Please enter database first";
+        return false;
+    }
+    *table_info = cluster_sdk_->GetTableInfo(db_name, insert_stmt->table_name_);
     if (!(*table_info)) {
-        status->msg = "table with name " + insert_stmt->table_name_ + " in db " + db + " does not exist";
+        status->msg = "table with name " + insert_stmt->table_name_ + " in db " + db_name + " does not exist";
         LOG(WARNING) << status->msg;
         return false;
     }
@@ -1070,7 +1080,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
 
     std::shared_ptr<::hybridse::sdk::Schema> schema = ::openmldb::sdk::ConvertToSchema(table_info);
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
-    bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
+    bool ret = cluster_sdk_->GetTablet(table_info->db(), table_info->name(), &tablets);
     if (!ret || tablets.empty()) {
         status->msg = "Fail to execute insert statement: fail to get " + table_info->name() + " tablet";
         LOG(WARNING) << status->msg;
