@@ -1406,7 +1406,15 @@ void Shell() {
         std::cout << "v" << VERSION << std::endl;
     }
 
-    std::string ns_endpoint = cs->GetNsClient()->GetEndpoint();
+    std::string ns_endpoint;
+    auto ns_client = cs->GetNsClient();
+    if (!ns_client) {
+        LOG(WARNING) << "fail to connect nameserver";
+        return;
+    } else {
+        ns_endpoint = ns_client->GetEndpoint();
+    }
+
     std::string display_prefix = ns_endpoint + "/" + db + "> ";
     std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
