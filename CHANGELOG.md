@@ -11,7 +11,7 @@
 - The startup fails if a pid file exists. (#1108 @dl239)
 - There are incorrect values for the column with the date type when loading data into an online table. (#1103 @yabg-shuai666)
 - Offline data import for the CSV format may cause incorrect results. (#1100 @yabg-shuai666)
-- 'Offline path' may not displayed after importing offline data. (#1172 @vagetablechicken)
+- 'Offline path' cannot be displayed after importing offline data. (#1172 @vagetablechicken)
 
 ## [0.4.0] - 2022-01-14
 
