@@ -688,17 +688,19 @@ JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s) {  // NOLINT
     }
     ar.EndArray();
 
-    // data-common_cols_data
-    ar.Member("common_cols_data");
-    rs->Reset();
-    if (rs->Next()) {
-        ar.StartArray();
-        for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
-            if (schema.IsConstant(i)) {
-                WriteValue(ar, rs, i);
+    // data-common_cols_data : only Procedure will return common_cols_data
+    if (s.sp_info->GetType() == hybridse::sdk::kReqProcedure) {
+        ar.Member("common_cols_data");
+        rs->Reset();
+        if (rs->Next()) {
+            ar.StartArray();
+            for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
+                if (schema.IsConstant(i)) {
+                    WriteValue(ar, rs, i);
+                }
             }
+            ar.EndArray();  // one row end
         }
-        ar.EndArray();  // one row end
     }
 
     ar.EndObject();  // end data

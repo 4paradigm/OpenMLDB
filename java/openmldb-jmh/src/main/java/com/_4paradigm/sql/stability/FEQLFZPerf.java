@@ -370,19 +370,6 @@ public class FEQLFZPerf {
             }
             PreparedStatement ps = null;
             ResultSet resultSet = null;
-            try {
-                if (cnt % 10000 == 0) {
-                    logger.info("Process " + cnt + "......");
-                }
-                cnt++;
-                ps = getPreparedStatement(mode, isProcedure);
-                resultSet = ps.executeQuery();
-                getData(resultSet);
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                close(ps, resultSet);
-            }
             if (isProcedure) {
                 try {
                     ps = null;
@@ -398,6 +385,17 @@ public class FEQLFZPerf {
                 } finally {
                     close(ps, resultSet);
                 }
+            } else {
+                try {
+                    ps = getPreparedStatement(mode, isProcedure);
+                    resultSet = ps.executeQuery();
+                    getData(resultSet);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    close(ps, resultSet);
+                }
+
             }
             try {
                 String strLimit = String.valueOf(curRandom.nextInt(10000) + 1);

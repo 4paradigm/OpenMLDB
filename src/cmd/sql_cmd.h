@@ -79,7 +79,10 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::DBSDK* cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
 using VariableMap = std::map<std::string, std::string>;
-VariableMap session_variables = {VariableMap::value_type("execute_mode", "online")};
+VariableMap session_variables = {
+    VariableMap::value_type("execute_mode", "online"),
+    VariableMap::value_type("enable_trace", "false")
+};
 
 bool IsOnlineMode() {
     auto execute_mode = session_variables["execute_mode"];
@@ -92,7 +95,17 @@ bool IsOnlineMode() {
         return true;
     }
 }
-
+bool IsEnableTrace() {
+    auto enable_trace = session_variables["enable_trace"];
+    if (enable_trace == "true") {
+        return true;
+    } else if (enable_trace == "false") {
+        return false;
+    } else {
+        std::cout << "ERROR: unknown enable_trace value " << enable_trace << ", use true|false" << std::endl;
+        return true;
+    }
+}
 void SaveResultSet(::hybridse::sdk::ResultSet* result_set, const std::string& file_path,
                    const std::shared_ptr<hybridse::node::OptionsMap>& options_map, ::openmldb::base::Status* status) {
     if (!result_set) {
@@ -805,7 +818,11 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
     hybridse::vm::ExplainOutput explain_output;
     hybridse::base::Status sql_status;
     if (!cs->GetEngine()->Explain(select_sql, db, hybridse::vm::kMockRequestMode, &explain_output, &sql_status)) {
-        return {base::ReturnCode::kError, sql_status.msg};
+        if (IsEnableTrace()) {
+            return {base::ReturnCode::kError, sql_status.str()};
+        } else {
+            return {base::ReturnCode::kError, sql_status.msg};
+        }
     }
     // pack ProcedureInfo
     ::openmldb::api::ProcedureInfo sp_info;
@@ -1274,7 +1291,10 @@ void HandleSQL(const std::string& sql) {
             ::hybridse::sdk::Status status;
             bool ok = sr->ExecuteInsert(db, sql, &status);
             if (!ok) {
-                std::cout << "ERROR: Failed to execute insert" << std::endl;
+                std::cout << "ERROR: Failed to execute insert: " << status.msg << std::endl;
+                if (IsEnableTrace()) {
+                    std::cout << status.trace << std::endl;
+                }
             } else {
                 std::cout << "SUCCEED: Insert successfully" << std::endl;
             }
@@ -1297,6 +1317,9 @@ void HandleSQL(const std::string& sql) {
                 auto rs = sr->ExecuteSQL(db, sql, &status);
                 if (!rs) {
                     std::cout << "ERROR: " << status.msg << std::endl;
+                    if (IsEnableTrace()) {
+                        std::cout << status.trace << std::endl;
+                    }
                 } else {
                     PrintResultSet(std::cout, rs.get());
                 }
@@ -1322,7 +1345,10 @@ void HandleSQL(const std::string& sql) {
                 ::hybridse::sdk::Status sdk_status;
                 auto rs = sr->ExecuteSQL(db, query_sql, &sdk_status);
                 if (!rs) {
-                    std::cout << "ERROR: Failed to execute query(" << sdk_status.msg << ")" << std::endl;
+                    std::cout << "ERROR: Failed to execute SELECT INTO: " << sdk_status.msg << ")" << std::endl;
+                    if (IsEnableTrace()) {
+                        std::cout << sdk_status.trace << std::endl;
+                    }
                     return;
                 }
                 const std::string& file_path = select_into_plan_node->OutFile();
@@ -1406,7 +1432,15 @@ void Shell() {
         std::cout << "v" << VERSION << std::endl;
     }
 
-    std::string ns_endpoint = cs->GetNsClient()->GetEndpoint();
+    std::string ns_endpoint;
+    auto ns_client = cs->GetNsClient();
+    if (!ns_client) {
+        LOG(WARNING) << "fail to connect nameserver";
+        return;
+    } else {
+        ns_endpoint = ns_client->GetEndpoint();
+    }
+
     std::string display_prefix = ns_endpoint + "/" + db + "> ";
     std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;

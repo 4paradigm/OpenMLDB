@@ -10227,7 +10227,7 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
         }
         // update in this
         table_infos[table_name] = new_info;
-        DCHECK(IsClusterMode()) << "offline storage should only be supported in cluster mode";
+        NotifyTableChanged();
     }
     LOG(INFO) << "[" << db_name << "." << table_name << "] update offline table info succeed";
 }

@@ -38,7 +38,7 @@ public class TableInfo {
         if (ddl.contains("replicanum=")) {
             this.ddl = ddl + ", partitionnum=" + BenchmarkConfig.PARTITION_NUM + ";";
         } else {
-            this.ddl = ddl + "partitionnum=" + BenchmarkConfig.PARTITION_NUM + ";";
+            this.ddl = ddl + " OPTIONS(partitionnum=" + BenchmarkConfig.PARTITION_NUM + ");";
         }
         String[] arr = ddl.split("index\\(")[0].split("\\(");
         name = arr[0].split(" ")[2].replaceAll("`", "");

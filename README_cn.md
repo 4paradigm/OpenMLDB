@@ -88,7 +88,10 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 
 ## 8. OpenMLDB 文档
 
-你可以找到我们完整的 [OpenMLDB 使用文档](https://docs.openmldb.ai/)。
+我们已经发布了完整的产品文档，你可以在以下地址找到：
+
+- 主力站点：[https://docs.openmldb.ai/](https://docs.openmldb.ai/)
+- 中国境内镜像：[http://docs-cn.openmldb.ai/](http://docs-cn.openmldb.ai/)
 
 
 ## 9. 开发计划

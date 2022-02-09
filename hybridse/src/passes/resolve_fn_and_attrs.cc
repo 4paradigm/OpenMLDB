@@ -100,7 +100,7 @@ Status ResolveFnAndAttrs::VisitLambda(
 
     node::ExprNode* new_body = nullptr;
     CHECK_STATUS(VisitExpr(lambda->body(), &new_body),
-                 "Resolve lambda body failed for\n", lambda->GetTreeString());
+                 "Resolve lambda body failed for\n", lambda->GetFlatString());
     lambda->SetBody(new_body);
 
     *output = lambda;
@@ -261,7 +261,7 @@ Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
         node::ExprNode* old_child = expr->GetChild(i);
         node::ExprNode* new_child = nullptr;
         CHECK_STATUS(VisitExpr(old_child, &new_child), "Visit ", i,
-                     "th child failed of\n", old_child->GetTreeString());
+                     "th child failed of\n", old_child->GetFlatString());
         if (new_child != nullptr && new_child != expr->GetChild(i)) {
             expr->SetChild(i, new_child);
         }
