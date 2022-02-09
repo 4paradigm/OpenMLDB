@@ -242,7 +242,7 @@ jobs:
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=${VERSION#v}
-          ./java/prepare_release.sh "$VERSION"
+          VARIANT_TYPE=macos ./java/prepare_release.sh "$VERSION"
 
       - uses: actions/setup-java@v2
         with:
