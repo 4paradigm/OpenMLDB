@@ -25,6 +25,7 @@
 #include "json2pb/rapidjson.h"
 #include "sdk/mini_cluster.h"
 
+
 namespace openmldb::apiserver {
 
 class APIServerTestEnv : public testing::Environment {

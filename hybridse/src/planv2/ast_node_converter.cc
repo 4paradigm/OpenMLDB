@@ -349,9 +349,10 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             CHECK_STATUS(ConvertExprNode(analytic_function_call->function(), node_manager, &function_call));
             CHECK_STATUS(ConvertWindowSpecification(analytic_function_call->window_spec(), node_manager, &over_winodw))
 
-            if (nullptr != function_call) {
-                dynamic_cast<node::CallExprNode*>(function_call)->SetOver(over_winodw);
-            }
+            CHECK_TRUE(nullptr != function_call, common::kSqlAstError, "Invalid function call null expr")
+            CHECK_TRUE(node::kExprCall == function_call->GetExprType(), common::kSqlAstError, "Non-support function "
+                       "expression in function call", node::ExprTypeName(function_call->GetExprType()));
+            dynamic_cast<node::CallExprNode*>(function_call)->SetOver(over_winodw);
             *output = function_call;
             return base::Status::OK();
         }
