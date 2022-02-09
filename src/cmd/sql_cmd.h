@@ -517,7 +517,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             std::string table_name = cmd_node->GetArgs().back();
             auto table = cs->GetTableInfo(db_name, table_name);
             if (table == nullptr) {
-                std::cerr << "table " << table_name << " does not exist" << std::endl;
+                std::cerr << "table " << db_name << "." << table_name << " does not exist" << std::endl;
                 return;
             }
 

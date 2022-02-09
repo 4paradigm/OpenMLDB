@@ -133,6 +133,22 @@ TEST_F(SQLRouterTest, create_and_drop_table_test) {
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
 
+    // test stmt with db name prefix
+    ddl = "create table " + db + "." + name + "(col1 string, col2 bigint, index(key=col1, ts=col2));";
+    insert = "insert into " + db + "." + name + " values('hello', 1590);";
+    select = "select * from " + db + "." + name + ";";
+    ok = router->ExecuteDDL("", ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    ok = router->ExecuteInsert("", insert, &status);
+
+    rs = router->ExecuteSQL(db, select, &status);
+    ASSERT_TRUE(rs != nullptr);
+    ASSERT_EQ(1, rs->Size());
+    ok = router->ExecuteDDL("", "drop table " + db + "." + name + ";", &status);
+    ASSERT_TRUE(ok);
+
     std::string ddl_fake = "create table " + name +
                            "("
                            "col1 int, col2 bigint,"
