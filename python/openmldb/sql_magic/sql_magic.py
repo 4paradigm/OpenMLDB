@@ -17,6 +17,7 @@ from __future__ import print_function
 from IPython.core.magic import (Magics, magics_class, line_magic,
                                 cell_magic, line_cell_magic)
 import re
+
 @magics_class
 class SqlMagic(Magics):
 
