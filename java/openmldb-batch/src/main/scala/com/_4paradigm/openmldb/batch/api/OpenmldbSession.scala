@@ -18,9 +18,8 @@ package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
-import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.commons.io.IOUtils
-import org.apache.spark.SparkConf
+import org.apache.spark.{SPARK_VERSION, SparkConf}
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
@@ -196,10 +195,9 @@ class OpenmldbSession {
     val stream = this.getClass.getClassLoader.getResourceAsStream("openmldb_git.properties")
     if (stream == null) {
       logger.error("OpenMLDB git properties is missing")
-      s"${sparkSession.version}"
+      SPARK_VERSION
     } else {
-      val gitInfo = IOUtils.toString(stream, "UTF-8")
-      s"${sparkSession.version}\n$gitInfo"
+      s"$SPARK_VERSION\n${IOUtils.toString(stream, "UTF-8")}"
     }
   }
 
