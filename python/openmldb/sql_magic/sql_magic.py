@@ -25,11 +25,7 @@ class SqlMagic(Magics):
         self.db = db
         self.cursor = db.cursor()
         self.selectRE = re.compile("^select", re.I)
-        self.createTableRE = re.compile("^create\s+table", re.I)
-        self.createDBRE = re.compile("^create\s+database", re.I)
-        self.insertRE = re.compile("^insert", re.I)
-        self.dropTable = re.compile("^drop\s+table", re.I)
-
+        
     @line_cell_magic
     def sql(self, line, cell=None):
         if cell is None:
