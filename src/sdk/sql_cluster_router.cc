@@ -1379,11 +1379,11 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     if (!cluster_sdk_->IsClusterMode()) {
         if (create_node->GetReplicaNum() != 1) {
             return base::Status(base::ReturnCode::kSQLCmdRunError,
-                                "ERROR: Fail to create table with the replica configuration in standalone DB");
+                                "Fail to create table with the replica configuration in standalone mode");
         }
         if (!create_node->GetDistributionList().empty()) {
             return base::Status(base::ReturnCode::kSQLCmdRunError,
-                                "ERROR: Fail to create table with the distribution configuration in standalone DB");
+                                "Fail to create table with the distribution configuration in standalone mode");
         }
     }
 
