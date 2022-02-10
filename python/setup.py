@@ -35,7 +35,7 @@ setup(
     packages=find_packages(),
     entry_points={
         'sqlalchemy.dialects': [
-            'openmldb = sqlalchemy_openmldb.openmldb_dialect:OpenmldbDialect',
+            'openmldb = openmldb.sqlalchemy_openmldb.openmldb_dialect:OpenmldbDialect',
         ],
     },
     zip_safe=False,
