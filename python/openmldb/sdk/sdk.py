@@ -46,6 +46,20 @@ class OpenmldbSdk(object):
         logger.info("init openmldb sdk done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
         return True
 
+    def getDatabases(self):
+        if not self.sdk:
+            return False, "please init sdk first"
+
+        dbs = sql_router_sdk.VectorString()
+        status = sql_router_sdk.Status()
+        self.sdk.ShowDB(dbs, status)
+        if status.code !=0:
+            return False
+        output_dbs = []
+        for i in range(dbs.size()):
+            output_dbs.append(dbs[i])
+        return output_dbs
+
     def createDB(self, db):
         if not self.sdk:
             return False, "please init sdk first"

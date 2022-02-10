@@ -336,6 +336,9 @@ class Cursor(object):
     def get_all_tables(self):
         return self.connection._sdk.getAllTables()
 
+    def get_databases(self):
+        return self.connection._sdk.getDatabases()
+
     def fetchone(self):
 
         if self._resultSet is None: return "call fetchone"
