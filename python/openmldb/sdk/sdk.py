@@ -417,3 +417,23 @@ class OpenmldbSdk(object):
         if status.code != 0:
             return False, status.msg
         return True, rs
+
+
+class TypeUtil(object):
+
+    # Convert int type to string type
+    @staticmethod
+    def intTypeToStr(intType):
+        # The map of type with number and type with readable string
+        typeMap = {
+            sql_router_sdk.kTypeBool: "bool",
+            sql_router_sdk.kTypeInt16: "int16",
+            sql_router_sdk.kTypeInt32: "int32",
+            sql_router_sdk.kTypeInt64: "int64",
+            sql_router_sdk.kTypeFloat: "float",
+            sql_router_sdk.kTypeDouble: "double",
+            sql_router_sdk.kTypeString: "string",
+            sql_router_sdk.kTypeDate: "date",
+            sql_router_sdk.kTypeTimestamp: "timestamp"
+        }
+        return typeMap[intType]
