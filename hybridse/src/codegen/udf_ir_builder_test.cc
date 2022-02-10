@@ -628,9 +628,9 @@ TEST_F(UdfIRBuilderTest, lower_lcase) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lcase", StringRef("sql"), StringRef("SQl"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lcase", StringRef("!abc?"), StringRef("!Abc?"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lcase", StringRef(""), StringRef(""));
-    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lpper", StringRef(""), StringRef(""));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lower", StringRef(""), StringRef(""));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lcase", nullptr, nullptr);
-    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lpper", nullptr, nullptr);
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lower", nullptr, nullptr);
 }
 
 TEST_F(UdfIRBuilderTest, concat_str_udf_test) {
