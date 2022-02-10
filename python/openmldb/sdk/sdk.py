@@ -78,6 +78,11 @@ class OpenmldbSdk(object):
         else:
             return False, status.msg
 
+    def getTables(self, db):
+        if not self.sdk:
+            raise Exception("please init sdk first")
+        return self.sdk.GetTableNames(db)
+
     def getAllTables(self):
         if not self.sdk:
             raise Exception("please init sdk first")

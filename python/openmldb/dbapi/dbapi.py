@@ -332,7 +332,10 @@ class Cursor(object):
     @connected
     def executemany(self, operation, parameters=()):
         raise NotSupportedError("Unsupported in OpenMLDB")
-        
+
+    def get_tables(self, db):
+        return self.connection._sdk.getTables(db)
+
     def get_all_tables(self):
         return self.connection._sdk.getAllTables()
 
