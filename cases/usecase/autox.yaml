@@ -1,0 +1,135 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: autox
+cases:
+- id: 0
+  desc: autox test
+  inputs:
+    - columns: [
+        id int,
+        uid int,
+        iid int,
+        label int,
+        std_ts timestamp,
+        col1 double,
+        purchase_type string,
+        a string,
+        b string,
+        kvcol string
+       ]
+      name: t1
+      indexs: ["index1:uid:std_ts"]
+      rows:
+        - [1, 1, 10, 1, 1609894000000, 1.0, "VISA", "1", "1,2,3,4", "a:1, b:2, c:3"]
+        - [2, 1, 20, 0, 1609894002000, 1.0, "VISA", "1", "5,6,7,8", "d:1, e:2, f:3"]
+        - [3, 1, 20, 0, 1609894004000, 1.0, "CASH", "1", "1,3,5,7", "g:1, h:2, i:3"]
+    - columns: [
+        t2_uid int,
+        t2_time timestamp,
+        t2_col1 double,
+        t2_purchase_type string,
+        ]
+      name: t2
+      indexs: [ "index1:t2_uid:t2_time" ]
+      rows:
+        - [ 1, 1609894001000, 2.0, "VISA"]
+        - [ 1, 1609894003000, 2.0, "VISA"]
+        - [ 1, 1609894005000, 2.0, "CASH"]
+
+  sql: |
+    SELECT * FROM
+    (
+    SELECT
+    id as out1_id,
+    uid as out1_uid,
+    -- timediff
+    case when
+       !isnull(lag(std_ts, 1) over w1)
+    then
+       bigint(std_ts) - bigint(lag(std_ts, 1) over w1)
+    else 0L end as time_diff,
+
+    -- last label
+    lag(label, 1) over w1 as last_label,
+
+    -- top_ratio特征：对uid聚合，求窗口内iid count最大的count数占窗口的比例
+    fz_top1_ratio(iid) over w1 as w1_top1_ratio,
+
+    -- cum_count：当前样本 是 窗口内 第几条消费
+    count(uid) over w1 - 1 as cum_count,
+
+    -- 窗口内聚合特征,类别变量
+    distinct_count(purchase_type) over w1 as w1_n_purchase_type,
+    -- window内的统计特征,连续型别变量
+    max(col1) over w1 as w1_max_col1,
+    min(col1) over w1 as w1_min_col1,
+    sum(col1) over w1 as w1_sum_col1,
+    avg(col1) over w1 as w1_avg_col1,
+
+    -- time 特征
+    year(std_ts) as year,
+    month(std_ts) as month,
+    day(std_ts) as day,
+    hour(std_ts) as hour,
+    weekofyear(std_ts) as weekofyear,
+    dayofweek(std_ts) as dayofweek,
+    dayofweek(std_ts) = 7 OR dayofweek(std_ts) = 1 as is_weekend,
+    int(month(std_ts) / 3)+1 as quarter
+    FROM t1 WINDOW
+    w1 as (PARTITION BY uid ORDER BY std_ts ROWS_RANGE BETWEEN 1h preceding and current row)
+    ) as out1 LAST JOIN
+    (
+    -- 1:M 副表聚合特征
+    SELECT
+    id as out2_id,
+    uid as out2_uid,
+    -- timediff: 计算副表时间列差值的统计信息
+    case when
+       !isnull(lag(std_ts, 1) over w2)
+    then
+       bigint(std_ts) - bigint(lag(std_ts, 1) over w2)
+    else 0L end as w2_time_diff,
+    -- 副表聚合特征,类别变量
+    distinct_count(purchase_type) over w2 as w2_n_purchase_type,
+    -- 副表内的统计特征,连续型别变量
+    max(col1) over w2 as w2_max_col1,
+    min(col1) over w2 as w2_min_col1,
+    sum(col1) over w2 as w2_sum_col1,
+    avg(col1) over w2 as w2_avg_col1,
+
+    -- equal_count特征
+    count_where(purchase_type, purchase_type='VISA') over w2 as w2_visa_cnt,
+    count_where(purchase_type, purchase_type='CASH') over w2 as w2_cash_cnt
+    FROM (select id, uid, std_ts, col1, purchase_type from t1) as t1_select WINDOW
+    w2 as (
+      UNION (select 0 as id, t2_uid as uid, t2_time as std_ts, t2_col1 as col1, t2_purchase_type as purchase_type from
+    t2) as
+    t2_select PARTITION BY uid ORDER BY std_ts ROWS_RANGE BETWEEN 1d preceding and current row
+    INSTANCE_NOT_IN_WINDOW)
+    ) as out2 ON out1.out1_id = out2.out2_id LAST JOIN t2 ON out1_uid = t2.t2_uid;
+
+  expect:
+    success: true
+    columns: ["out1_id int", "out1_uid int", "time_diff bigint", "last_label int", "w1_top1_ratio double", "cum_count bigint", "w1_n_purchase_type bigint", "w1_max_col1 double", "w1_min_col1 double", "w1_sum_col1 double", "w1_avg_col1 double", "year int", "month int", "day int", "hour int", "weekofyear int", "dayofweek int", "is_weekend bool", "quarter int",
+              "out2_id int", "out2_uid int", "w2_time_diff bigint", "w2_n_purchase_type bigint", "w2_max_col1 double",
+              "w2_min_col1 double", "w2_sum_col1 double", "w2_avg_col1 double", "w2_visa_cnt bigint", "w2_cash_cnt bigint", "t2_uid int", "t2_time timestamp", "t2_col1 double", "t2_purchase_type string"]
+    rows:
+      - [ 1, 1, 0, NULL, 1.000000, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 2021, 1, 6, 8, 1, 4, false, 1, 1, 1, 0, 1, 1.000000, 1.000000, 1.000000, 1.000000, 1, 0, 1, 1609894005000, 2.000000, CASH ]
+      - [ 2, 1, 2000, 1, 0.500000, 1, 1, 1.000000, 1.000000, 2.000000, 1.000000, 2021, 1, 6, 8, 1, 4, false, 1, 2, 1, 1000, 1, 2.000000, 1.000000, 3.000000, 1.500000, 2, 0, 1, 1609894005000, 2.000000, CASH ]
+      - [ 3, 1, 2000, 0, 0.66666666666666663, 2, 2, 1.000000, 1.000000, 3.000000, 1.000000, 2021, 1, 6, 8, 1, 4,
+          false, 1, 3, 1, 1000, 2, 2.000000, 1.000000, 5.000000, 1.6666666666666667, 2, 1, 1, 1609894005000, 2.000000,
+          CASH ]
+
+

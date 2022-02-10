@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.1] - 2022-02-09
+
+### Features
+- Improve CLI error messages and support the 'enable_trace' system variable (#1129 @jingchen2222)
+
+### Bug Fixes
+- CLI coredumps when it fails to connect to a nameserver. (#1166 @keyu813)
+- Java SDK has the issue of memory leaks. (#1148 @dl239)
+- The startup fails if a pid file exists. (#1108 @dl239)
+- There are incorrect values for the column with the date type when loading data into an online table. (#1103 @yabg-shuai666)
+- Offline data import for the CSV format may cause incorrect results. (#1100 @yabg-shuai666)
+- 'Offline path' cannot be displayed after importing offline data. (#1172 @vagetablechicken)
+
 ## [0.4.0] - 2022-01-14
 
 ### Highlights
