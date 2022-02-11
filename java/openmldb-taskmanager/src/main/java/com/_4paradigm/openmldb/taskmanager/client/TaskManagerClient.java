@@ -91,7 +91,7 @@ public class TaskManagerClient {
                     String serviceUrl = "list://" + endpoint;
                     List<Interceptor> interceptors = new ArrayList<Interceptor>();
                     rpcClient = new RpcClient(serviceUrl, TaskManagerClient.clientOption, interceptors);
-                    taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
+                    TaskManagerClient.taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
                     RpcContext.getContext().setLogId(1234L);
                 } else {
                     System.out.println("The content of the node was deleted, please try to reconnect");
@@ -133,8 +133,7 @@ public class TaskManagerClient {
      */
     public TaskManagerClient(String endpoint) {
 
-
-        RpcClientOptions clientOption = new RpcClientOptions();
+        clientOption = new RpcClientOptions();
         clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
         clientOption.setWriteTimeoutMillis(1000);
         clientOption.setReadTimeoutMillis(50000);
