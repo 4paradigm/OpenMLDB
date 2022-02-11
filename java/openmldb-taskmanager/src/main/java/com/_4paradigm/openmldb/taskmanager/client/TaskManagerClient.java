@@ -43,16 +43,17 @@ import java.util.List;
  */
 public class TaskManagerClient {
 
-    private RpcClient rpcClient;
+    private static RpcClient rpcClient;
+    private static RpcClientOptions clientOption;
     private CuratorFramework zkClient;
-    private TaskManagerInterface taskManagerInterface;
+    private static TaskManagerInterface taskManagerInterface;
     private static final Log logger = LogFactory.getLog(TaskManagerClient.class);
 
     public TaskManagerClient(String zkCluster, String zkPath) throws Exception {
-        if (zkCluster == null || zkCluster.length() == 0 || zkPath == null || zkPath.length() == 0) {
+        if (zkCluster == null || zkPath == null) {
             logger.info("Zookeeper address is wrong, please check the configuration");
         }
-        String masterZnode = zkPath + "/taskmanager" + "/leader";
+        String masterZnode = zkPath + "/taskmanager/leader";
 
         zkClient = CuratorFrameworkFactory.builder()
                 .connectString(zkCluster)
@@ -69,6 +70,7 @@ public class TaskManagerClient {
             throw new Exception("TaskManager has not started yet, connection failed");
         }
     }
+
     /**
      * Create a data change listener event for this node.
      *
@@ -80,12 +82,25 @@ public class TaskManagerClient {
         nodeCache.getListenable().addListener(new NodeCacheListener() {
             @Override
             public void nodeChanged() throws Exception {
-                System.out.println("The content of the node was changed or deleted, please try to reconnect");
-                System.exit(0);
+                String endpoint = new String(nodeCache.getCurrentData().getData());
+                if (endpoint != null) {
+                    System.out.println("The content of the node was changed, try to reconnect");
+                    RpcClient rpcClient = TaskManagerClient.rpcClient;
+                    rpcClient.stop();
+
+                    String serviceUrl = "list://" + endpoint;
+                    List<Interceptor> interceptors = new ArrayList<Interceptor>();
+                    rpcClient = new RpcClient(serviceUrl, TaskManagerClient.clientOption, interceptors);
+                    taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
+                    RpcContext.getContext().setLogId(1234L);
+                } else {
+                    System.out.println("The content of the node was deleted, please try to reconnect");
+                }
             }
         });
         nodeCache.start(true);
     }
+    
     /**
      * Constructor of TaskManager client.
      *
