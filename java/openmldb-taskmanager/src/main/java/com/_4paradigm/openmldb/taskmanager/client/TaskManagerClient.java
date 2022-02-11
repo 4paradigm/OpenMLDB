@@ -43,10 +43,10 @@ import java.util.List;
  */
 public class TaskManagerClient {
 
-    private static RpcClient rpcClient;
-    private static RpcClientOptions clientOption;
+    private RpcClient rpcClient;
+    private RpcClientOptions clientOption;
     private CuratorFramework zkClient;
-    private static TaskManagerInterface taskManagerInterface;
+    private TaskManagerInterface taskManagerInterface;
     private static final Log logger = LogFactory.getLog(TaskManagerClient.class);
 
     public TaskManagerClient(String zkCluster, String zkPath) throws Exception {
@@ -64,7 +64,7 @@ public class TaskManagerClient {
         Stat stat = zkClient.checkExists().forPath(masterZnode);
         if (stat != null) {  // The original master exists and is directly connected to it.
             String endpoint = new String(zkClient.getData().forPath(masterZnode));
-            watch(zkClient, masterZnode);
+            watch(zkClient, masterZnode, rpcClient, clientOption);
             this.rpcConnect(endpoint);
         } else {
             throw new Exception("TaskManager has not started yet, connection failed");
@@ -77,30 +77,39 @@ public class TaskManagerClient {
      * @param curator the zkClient.
      * @param path the path of zkNode.
      */
-    public static void watch(CuratorFramework curator, String path) throws Exception {
+    public void watch(CuratorFramework curator, String path, RpcClient rpcClients, RpcClientOptions clientOption) throws Exception {
         final NodeCache nodeCache = new NodeCache(curator, path, false);
-        nodeCache.getListenable().addListener(new NodeCacheListener() {
+        class NodeListener implements NodeCacheListener {
+            RpcClient rpcClients;
+            RpcClientOptions clientOption;
+
+            public NodeListener(RpcClient rpcClients, RpcClientOptions clientOption) {
+                this.rpcClients = rpcClients;
+                this.clientOption = clientOption;
+            }
+
             @Override
             public void nodeChanged() throws Exception {
                 String endpoint = new String(nodeCache.getCurrentData().getData());
                 if (endpoint != null) {
+                    rpcClient.stop();
                     System.out.println("The content of the node was changed, try to reconnect");
-                    RpcClient rpcClient = TaskManagerClient.rpcClient;
                     rpcClient.stop();
 
                     String serviceUrl = "list://" + endpoint;
-                    List<Interceptor> interceptors = new ArrayList<Interceptor>();
-                    rpcClient = new RpcClient(serviceUrl, TaskManagerClient.clientOption, interceptors);
-                    TaskManagerClient.taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
+                    rpcClient = new RpcClient(serviceUrl, clientOption, new ArrayList<Interceptor>());
+                    taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
                     RpcContext.getContext().setLogId(1234L);
                 } else {
                     System.out.println("The content of the node was deleted, please try to reconnect");
+                    close();
                 }
             }
-        });
+        }
+        nodeCache.getListenable().addListener(new NodeListener(rpcClients, clientOption));
         nodeCache.start(true);
     }
-    
+
     /**
      * Constructor of TaskManager client.
      *
@@ -126,6 +135,7 @@ public class TaskManagerClient {
         taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
         RpcContext.getContext().setLogId(1234L);
     }
+
     /**
      * Constructor of TaskManager client.
      *
