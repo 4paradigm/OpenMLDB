@@ -38,6 +38,7 @@ jobs:
       SQL_PYSDK_ENABLE: OFF
       TESTING_ENABLE: ON
       NPROC: 8
+      CTEST_PARALLEL_LEVEL: 8 # parallel test level for ctest (make test)
     steps:
       - uses: actions/checkout@v2
 
