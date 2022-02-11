@@ -108,7 +108,7 @@ public class TaskManagerClient {
      */
     public void rpcConnect(String endpoint) {
 
-        RpcClientOptions clientOption = new RpcClientOptions();
+        clientOption = new RpcClientOptions();
         clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
         clientOption.setWriteTimeoutMillis(1000);
         clientOption.setReadTimeoutMillis(50000);
