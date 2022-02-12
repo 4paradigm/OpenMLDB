@@ -49,7 +49,92 @@ public class TaskManagerClient {
     private TaskManagerInterface taskManagerInterface;
     private static final Log logger = LogFactory.getLog(TaskManagerClient.class);
 
-    
+    public TaskManagerClient(String zkCluster, String zkPath) throws Exception {
+        if (zkCluster == null || zkPath == null) {
+            logger.info("Zookeeper address is wrong, please check the configuration");
+        }
+        String masterZnode = zkPath + "/taskmanager/leader";
+
+        zkClient = CuratorFrameworkFactory.builder()
+                .connectString(zkCluster)
+                .sessionTimeoutMs(10000)
+                .retryPolicy(new ExponentialBackoffRetry(1000, 10))
+                .build();
+        zkClient.start();
+        Stat stat = zkClient.checkExists().forPath(masterZnode);
+        if (stat != null) {  // The original master exists and is directly connected to it.
+            String endpoint = new String(zkClient.getData().forPath(masterZnode));
+            this.rpcConnect(endpoint);
+            watch(zkClient, masterZnode, rpcClient, clientOption);
+        } else {
+            throw new Exception("TaskManager has not started yet, connection failed");
+        }
+    }
+
+    /**
+     * Create a data change listener event for this node.
+     *
+     * @param curator the zkClient.
+     * @param path the path of zkNode.
+     */
+    public void watch(CuratorFramework curator, String path, RpcClient rpcClients, RpcClientOptions clientOption) throws Exception {
+        final NodeCache nodeCache = new NodeCache(curator, path, false);
+        class NodeListener implements NodeCacheListener {
+            RpcClient rpcClients;
+            RpcClientOptions clientOption;
+
+            public NodeListener(RpcClient rpcClients, RpcClientOptions clientOption) {
+                this.rpcClients = rpcClients;
+                this.clientOption = clientOption;
+            }
+
+            @Override
+            public void nodeChanged() throws Exception {
+                String endpoint = new String(nodeCache.getCurrentData().getData());
+                if (endpoint != null) {
+                    rpcClient.stop();
+                    logger.info("The content of the node was changed, try to reconnect");
+                    rpcClient.stop();
+
+                    String serviceUrl = "list://" + endpoint;
+                    rpcClient = new RpcClient(serviceUrl, clientOption, new ArrayList<Interceptor>());
+                    taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
+                    RpcContext.getContext().setLogId(1234L);
+                } else {
+                    logger.info("The content of the node was deleted, please try to reconnect");
+                    close();
+                }
+            }
+        }
+        nodeCache.getListenable().addListener(new NodeListener(rpcClients, clientOption));
+        nodeCache.start(true);
+    }
+
+    /**
+     * Constructor of TaskManager client.
+     *
+     * @param endpoint the endpoint of TaskManager server, for example "127.0.0.1:9902".
+     */
+    public void rpcConnect(String endpoint) {
+
+        clientOption = new RpcClientOptions();
+        clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
+        clientOption.setWriteTimeoutMillis(1000);
+        clientOption.setReadTimeoutMillis(50000);
+        clientOption.setMaxTotalConnections(1000);
+        clientOption.setMinIdleConnections(10);
+        clientOption.setLoadBalanceType(LoadBalanceStrategy.LOAD_BALANCE_FAIR);
+        clientOption.setCompressType(Options.CompressType.COMPRESS_TYPE_NONE);
+
+        String serviceUrl = "list://" + endpoint;
+        List<Interceptor> interceptors = new ArrayList<Interceptor>();
+        if (rpcClient != null) {
+            this.stop();
+        }
+        rpcClient = new RpcClient(serviceUrl, clientOption, interceptors);
+        taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
+        RpcContext.getContext().setLogId(1234L);
+    }
 
     /**
      * Constructor of TaskManager client.
