@@ -93,7 +93,7 @@ public class TaskManagerClient {
                 String endpoint = new String(nodeCache.getCurrentData().getData());
                 if (endpoint != null) {
                     rpcClient.stop();
-                    System.out.println("The content of the node was changed, try to reconnect");
+                    logger.info("The content of the node was changed, try to reconnect");
                     rpcClient.stop();
 
                     String serviceUrl = "list://" + endpoint;
@@ -101,7 +101,7 @@ public class TaskManagerClient {
                     taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
                     RpcContext.getContext().setLogId(1234L);
                 } else {
-                    System.out.println("The content of the node was deleted, please try to reconnect");
+                    logger.info("The content of the node was deleted, please try to reconnect");
                     close();
                 }
             }
