@@ -343,9 +343,14 @@ class Cursor(object):
         return self.connection._sdk.getDatabases()
 
     def fetchone(self):
-        if self._resultSet is None: raise Exception("query data failed")
+
+        if self._resultSet is None: return "call fetchone"
         ok = self._resultSet.Next()
         if not ok:
+            self.rowcount = -1
+            self._resultSet = None
+            self.__schema = None
+            self.__getMap = None
             return None
         values = []
         for i in range(self.__schema.GetColumnCnt()):
@@ -357,26 +362,7 @@ class Cursor(object):
 
     @connected
     def fetchmany(self, size=None):
-        if self._resultSet is None: raise Exception("query data failed")
-        if size == None:
-            size = self.arraysize
-        elif size < 0 :
-            raise Exception(f"Given size should greater than zero")
-            
-        values = []
-        row_count = 0
-        for k in range(size):
-             ok = self._resultSet.Next()
-             if not ok:
-                 break
-             row = []
-             for i in range(self.__schema.GetColumnCnt()):
-                 if self._resultSet.IsNULL(i):
-                     row.append(None)
-                 else:
-                     row.append(self.__getMap[self.__schema.GetColumnType(i)](i))
-             values.append(tuple(row))
-        return values
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     def nextset(self):
         raise NotSupportedError("Unsupported in OpenMLDB")
@@ -389,21 +375,7 @@ class Cursor(object):
         
     @connected
     def fetchall(self):
-        if self._resultSet is None: raise Exception("query data failed")
-        values = []
-        row_count = 0
-        for k in range(self.rowcount):
-             ok = self._resultSet.Next()
-             if not ok:
-                 break
-             row = []
-             for i in range(self.__schema.GetColumnCnt()):
-                 if self._resultSet.IsNULL(i):
-                     row.append(None)
-                 else:
-                     row.append(self.__getMap[self.__schema.GetColumnType(i)](i))
-             values.append(tuple(row))
-        return values
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @staticmethod
     def substitute_in_query(string_query, parameters):
