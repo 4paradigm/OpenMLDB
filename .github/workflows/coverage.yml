@@ -25,7 +25,7 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
-      CTEST_PARALLEL_LEVEL: 2 # parallel test level for ctest (make test)
+      CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
       CMAKE_BUILD_TYPE: Debug
       SQL_PYSDK_ENABLE: OFF
       SQL_JAVASDK_ENABLE: ON
