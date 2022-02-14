@@ -39,7 +39,7 @@ class SqlMagic(Magics):
         else:
             self.cursor.execute(sqlText)
 
-def register():
+def register(db):
     ip = get_ipython()
     magics = SqlMagic(ip,db)
     ip.register_magics(magics)
