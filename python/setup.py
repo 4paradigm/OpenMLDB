@@ -28,7 +28,8 @@ setup(
         'Programming Language :: Python :: 3',
         ],
     install_requires=[
-        "sqlalchemy < 1.4.0"
+        "sqlalchemy < 1.4.0",
+        "IPython == 8.0.1"
     ],
     include_package_data=True,
     package_data = {'':['*.so']},
