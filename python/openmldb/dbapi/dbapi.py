@@ -356,11 +356,9 @@ class Cursor(object):
         return tuple(values)
 
     @connected
-    def fetchmany(self, size=None):
+    def fetchmany(self, size=self.arraysize):
         if self._resultSet is None: raise Exception("query data failed")
-        if size is None:
-            size = self.arraysize
-        elif size < 0:
+        if size < 0:
             raise Exception(f"Given size should greater than zero")
         values = []
         for k in range(size):
@@ -387,21 +385,8 @@ class Cursor(object):
         
     @connected
     def fetchall(self):
-        if self._resultSet is None: raise Exception("query data failed")
-        values = []
-        for k in range(self.rowcount):
-            ok = self._resultSet.Next()
-            if not ok:
-                break
-            row = []
-            for i in range(self.__schema.GetColumnCnt()):
-                if self._resultSet.IsNULL(i):
-                    row.append(None)
-                else:
-                    row.append(self.__getMap[self.__schema.GetColumnType(i)](i))
-            values.append(tuple(row))
-        return values
-
+        return self.fetchmany(size=self.rowcount)
+    
     @staticmethod
     def substitute_in_query(string_query, parameters):
         query = string_query
