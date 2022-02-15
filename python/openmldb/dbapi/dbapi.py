@@ -356,9 +356,11 @@ class Cursor(object):
         return tuple(values)
 
     @connected
-    def fetchmany(self, size=self.arraysize):
+    def fetchmany(self, size=None):
         if self._resultSet is None: raise Exception("query data failed")
-        if size < 0:
+        if size is None:
+            size = self.arraysize
+        elif size < 0:
             raise Exception(f"Given size should greater than zero")
         values = []
         for k in range(size):
