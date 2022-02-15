@@ -4,14 +4,14 @@
     <test name="fesql-v1-test">
         <parameter name="env" value="qa"/>
         <parameter name="version" value="tmp"/>
-<!--        <packages>-->
-<!--            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v230"/>-->
-<!--            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v030"/>-->
-<!--            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v040"/>-->
-<!--        </packages>-->
-        <classes>
-            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.LastJoinTest" />
-        </classes>
+        <packages>
+            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v230"/>
+            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v030"/>
+            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v040"/>
+        </packages>
+<!--        <classes>-->
+<!--            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.LastJoinTest" />-->
+<!--        </classes>-->
     </test>
     <listeners>
         <listener class-name="com._4paradigm.openmldb.java_sdk_test.report.AddAttachmentListener" />

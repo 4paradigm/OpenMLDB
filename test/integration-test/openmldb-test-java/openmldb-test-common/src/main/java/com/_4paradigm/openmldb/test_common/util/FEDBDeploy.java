@@ -47,6 +47,8 @@ public class FEDBDeploy {
     private String offlineDataPrefix = "file:///tmp/openmldb_offline_storage/";
     private String nameNodeUri = "172.27.12.215:8020";
 
+    public static final int SLEEP_TIME = 10*1000;
+
     public FEDBDeploy(String version){
         this.version = version;
         this.fedbUrl = FedbDeployConfig.getUrl(version);
@@ -99,6 +101,7 @@ public class FEDBDeploy {
                 tablet_port = deployTablet(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getTabletEndpoints().add(ip+":"+tablet_port);
+            FedbTool.sleep(SLEEP_TIME);
         }
         for(int i=1;i<=ns;i++){
             int ns_port;
@@ -110,6 +113,7 @@ public class FEDBDeploy {
                 ns_port = deployNS(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getNsEndpoints().add(ip+":"+ns_port);
+            FedbTool.sleep(SLEEP_TIME);
         }
 
         for(int i=1;i<=1;i++) {
@@ -122,6 +126,7 @@ public class FEDBDeploy {
                 apiserver_port = deployApiserver(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
+            FedbTool.sleep(SLEEP_TIME);
         }
         if(version.equals("tmp")||version.compareTo("0.4.0")>=0) {
             for (int i = 1; i <= 1; i++) {
