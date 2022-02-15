@@ -215,7 +215,7 @@ class TestOpenMLDBClient(unittest.TestCase):
   def check_fetchall(self,connection, expect_row):
     result = connection.execute("select * from tsql1010;")
     result = sorted(result.fetchall(), key=lambda x: x[0])
-    self.assertTrue(result.fetchall() == expect_row)
+    self.assertTrue(result == expect_row)
                     
   def test_parameterized_query(self):
     logging.info("test_parameterized_query...")
