@@ -437,6 +437,18 @@ class OpenmldbSdk(object):
             return False, status.msg
         return True, rs
 
+    def getJobLog(self, id):
+        if not self.sdk:
+            return False, "please init sdk first"
+
+        status = sql_router_sdk.Status()
+
+        log = self.sdk.GetJobLog(id, status)
+        if status.code !=0:
+            # TODO: Throw exception if get failure status
+            return ""
+
+        return log
 
 class TypeUtil(object):
 

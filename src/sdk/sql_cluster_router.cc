@@ -1741,6 +1741,22 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     return taskmanager_client_ptr->ExportOfflineData(sql, config, default_db, job_info);
 }
 
+std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* status) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        status->code = -1;
+        status->msg = "Fail to get TaskManager client";
+        return "";
+    }
+
+    // TODO: Need to pass ::openmldb::base::Status* for TaskManagerClient
+    auto openmldbStatus =  std::make_shared<::openmldb::base::Status>();
+    auto log = taskmanager_client_ptr->GetJobLog(id, openmldbStatus.get());
+    status->code = openmldbStatus->code;
+    status->msg = openmldbStatus->msg;
+    return log;
+}
+
 bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(); }
 
 }  // namespace sdk

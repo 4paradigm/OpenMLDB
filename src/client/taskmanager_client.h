@@ -64,6 +64,8 @@ class TaskManagerClient : public Client {
 
     ::openmldb::base::Status DropOfflineTable(const std::string& db, const std::string& table);
 
+    std::string GetJobLog(const int id, ::openmldb::base::Status* status);
+
  private:
     ::openmldb::RpcClient<::openmldb::taskmanager::TaskManagerServer_Stub> client_;
 };
