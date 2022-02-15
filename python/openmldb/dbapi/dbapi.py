@@ -343,7 +343,7 @@ class Cursor(object):
         return self.connection._sdk.getDatabases()
 
     def fetchone(self):
-        if self._resultSet is None: raise Exception("query data failed")
+        if self._resultSet is None: raise DatabaseError("query data failed")
         ok = self._resultSet.Next()
         if not ok:
             return None
@@ -357,7 +357,7 @@ class Cursor(object):
 
     @connected
     def fetchmany(self, size=None):
-        if self._resultSet is None: raise Exception("query data failed")
+        if self._resultSet is None: raise DatabaseError("query data failed")
         if size is None:
             size = self.arraysize
         elif size < 0:
