@@ -857,7 +857,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 SELECT LCASE('SQl') as str1;
                 --output "sql"
             @endcode
-            @since 0.4.0)");
+            @since 0.5.0)");
     RegisterExternal("reverse")
         .args<codec::StringRef>(
             reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::reverse)))
