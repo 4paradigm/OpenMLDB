@@ -96,6 +96,7 @@ jobs:
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
+            build/**/*.xml
             reports/*.xml
 
       - name: install

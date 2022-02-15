@@ -24,7 +24,6 @@ THIRDSRC=${THIRD_PARTY_SRC_DIR:-thirdsrc}
 
 # shellcheck disable=SC2039
 ulimit -c unlimited
-test -d reports && rm -rf reports
 mkdir -p reports
 cp steps/zoo.cfg "$THIRDSRC/zookeeper-3.4.14/conf"
 cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh start && cd "$WORK_DIR" || exit

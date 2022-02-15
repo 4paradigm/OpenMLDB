@@ -67,7 +67,7 @@ jobs:
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v2
         with:
-          files: build/coverage.info,java/**/target/site/jacoco/jacoco.xml
+          files: build/coverage.info,java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
           name: coverage
           fail_ci_if_error: true
           verbose: true
