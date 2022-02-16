@@ -19,10 +19,14 @@ package com._4paradigm.openmldb.batch
 import java.util.Properties
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
-import com._4paradigm.openmldb.proto.NS
+import com._4paradigm.openmldb.batch.nodes.LoadDataPlan.autoLoad
+import com._4paradigm.openmldb.proto.{Common, NS, Type}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
+import org.scalatest.Matchers
 
-class TestLoadDataPlan extends SparkTestSuite {
+import scala.language.postfixOps
+
+class TestLoadDataPlan extends SparkTestSuite with Matchers {
   var openmldbSession: OpenmldbSession = _
   var openmldbConnector: SqlClusterExecutor = _
   val db = "batch_test"
@@ -72,6 +76,26 @@ class TestLoadDataPlan extends SparkTestSuite {
     } catch {
       case e: IllegalArgumentException => println("It should catch this: " + e.toString)
     }
+  }
+
+  test("Test Load Type Timestamp") {
+    val col = Common.ColumnDesc.newBuilder().setName("ts").setDataType(Type.DataType.kTimestamp).build()
+    val cols = new java.util.ArrayList[Common.ColumnDesc]
+    cols.add(col)
+
+    val testFile = "file://" + getClass.getResource("/load_data_test_src/sql_timestamp.csv").getPath
+    val df = autoLoad(cols, getSparkSession.read.format("csv").option("header", "true").option("nullValue", "null"),
+      testFile)
+    df.show()
+    val l = df.select("ts").rdd.map(r => r(0)).collect.toList
+    l.toString() should equal ("List(null, 1970-01-01 00:00:00.0, null, null, 2022-02-01 09:00:00.0)")
+
+    val testFile2 = "file://" + getClass.getResource("/load_data_test_src/long_timestamp.csv").getPath
+    val df2 = autoLoad(cols, getSparkSession.read.format("csv").option("header", "true").option("nullValue", "null"),
+      testFile2)
+    df2.show()
+    val l2 = df2.select("ts").rdd.map(r => r(0)).collect.toList
+    l2.toString() should equal("List(null, null, 2022-02-01 09:00:00.0, null)" )
   }
 
   ignore("Test Load to Openmldb Offline Storage") {
