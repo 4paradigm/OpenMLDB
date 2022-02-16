@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2021 4Paradigm
 #
@@ -13,15 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 # fmt:off
 import os
 import sys
-sys.path.append(os.path.dirname(__file__) + "/..")
 import logging
 from native import sql_router_sdk
 from datetime import date
 from datetime import datetime
+from prettytable import PrettyTable
 # fmt:on
+sys.path.append(os.path.dirname(__file__) + "/..")
 logger = logging.getLogger("openmldb_sdk")
 
 class OpenmldbSdkOptions(object):
@@ -449,6 +450,13 @@ class OpenmldbSdk(object):
             return ""
 
         return log
+
+    @staticmethod
+    def print_table(schema, rows):
+        t = PrettyTable(schema)
+        for row in rows:
+            t.add_row(row)
+        print(t)
 
 class TypeUtil(object):
 
