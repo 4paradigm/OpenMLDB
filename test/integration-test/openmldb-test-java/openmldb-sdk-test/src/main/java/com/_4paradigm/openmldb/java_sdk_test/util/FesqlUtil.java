@@ -1104,7 +1104,6 @@ public class FesqlUtil {
         int columnType = rs.getMetaData().getColumnType(index + 1);
         if (rs.getNString(index + 1) == null) {
             logger.info("rs is null");
-            System.out.println(rs.getNString(index + 1));
             return null;
         }
         if (columnType == Types.BOOLEAN) {
