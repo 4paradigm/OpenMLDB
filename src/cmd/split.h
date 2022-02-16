@@ -134,8 +134,8 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
         // and is not proceeded by whitespace or quote) then we are about
         // to eliminate the last column (which is empty). This would be
         // incorrect.
-        const bool need_another_column = (line + delimiter_len == end_of_line);
-        DCHECK(!need_another_column || memcmp(line, delimiter, delimiter_len) == 0);
+        const bool need_another_column =
+            (line + delimiter_len == end_of_line) && (memcmp(line, delimiter, delimiter_len) == 0);
 
         *end = '\0';
         cols->push_back(start);
