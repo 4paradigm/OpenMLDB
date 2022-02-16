@@ -32,7 +32,7 @@ class SplitTest : public ::testing::Test {
     ~SplitTest() {}
 };
 
-TEST_F(SplitTest, split_line) {
+TEST_F(SplitTest, SplitLine) {
     std::vector<std::string> cols;
     openmldb::cmd::SplitLineWithDelimiterForStrings(" --- --- ---", "---", &cols, '\0');
     ASSERT_EQ(cols.size(), 4);

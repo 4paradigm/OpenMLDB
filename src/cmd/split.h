@@ -97,7 +97,7 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
     char* end_of_line = line + strlen(line);
     char* end;
     char* start;
-    int delimiter_len = strlen(delimiter);
+    size_t delimiter_len = strlen(delimiter);
 
     for (; line < end_of_line; line += delimiter_len) {
         // Skip leading whitespace, unless said whitespace is the part of delimiter.
@@ -138,7 +138,6 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
         // incorrect.
         const bool need_another_column = (line + delimiter_len == end_of_line);
         if (need_another_column) {
-            DCHECK_EQ(memcmp(line, delimiter, delimiter_len), 0);
             cols->push_back(end);
         }
         DCHECK(*line == '\0' || memcmp(line, delimiter, delimiter_len) == 0);
