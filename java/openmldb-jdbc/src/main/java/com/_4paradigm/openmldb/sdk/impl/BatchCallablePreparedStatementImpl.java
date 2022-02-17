@@ -43,6 +43,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     @Override
     public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
+        checkExecutorClosed();
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
@@ -65,6 +66,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     @Override
     public QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
         checkClosed();
+        checkExecutorClosed();
         Status status = new Status();
         com._4paradigm.openmldb.QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
         if (status.getCode() != 0 || queryFuture == null) {
