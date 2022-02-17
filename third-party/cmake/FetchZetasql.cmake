@@ -14,7 +14,7 @@
 
 set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
 set(ZETASQL_VERSION 0.2.6)
-set(ZETASQL_TAG b08253b635bebfee9ee85aea16b281a831de5165) # the commit hash for v0.2.6
+set(ZETASQL_TAG 3963378fff58870ca3800144006de56792a7d86e) # the commit hash for v0.2.6
 
 function(init_zetasql_urls)
   if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
