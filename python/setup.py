@@ -29,7 +29,8 @@ setup(
         ],
     install_requires=[
         "sqlalchemy < 1.4.0",
-        "IPython"
+        "IPython",
+        "pytest"
     ],
     include_package_data=True,
     package_data = {'':['*.so']},
