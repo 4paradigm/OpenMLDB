@@ -249,6 +249,8 @@ class SQLClusterRouter : public SQLRouter {
                                                const std::string& default_db,
                                                ::openmldb::taskmanager::JobInfo& job_info) override;
 
+    std::string GetJobLog(const int id, hybridse::sdk::Status* status) override;
+
     bool NotifyTableChange() override;
 
  private:

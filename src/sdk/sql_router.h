@@ -181,6 +181,8 @@ class SQLRouter {
                                                        const std::string& default_db,
                                                        ::openmldb::taskmanager::JobInfo& job_info) = 0;
 
+    virtual std::string GetJobLog(const int id, hybridse::sdk::Status* status) = 0;
+
     virtual bool NotifyTableChange() = 0;
 };
 

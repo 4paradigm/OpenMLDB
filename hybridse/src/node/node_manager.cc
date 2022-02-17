@@ -745,9 +745,11 @@ SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::string &arg
     node_ptr->AddArg(arg2);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name, const std::string &table_name,
+SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name,
+                                          const std::string &db_name,
+                                          const std::string &table_name,
                                           ColumnIndexNode *index) {
-    CreateIndexNode *node_ptr = new CreateIndexNode(index_name, table_name, index);
+    CreateIndexNode *node_ptr = new CreateIndexNode(index_name, db_name, table_name, index);
     return RegisterNode(node_ptr);
 }
 
@@ -815,10 +817,10 @@ AllNode *NodeManager::MakeAllNode(const std::string &relation_name, const std::s
     return RegisterNode(new AllNode(relation_name, db_name));
 }
 
-SqlNode *NodeManager::MakeInsertTableNode(const std::string &table_name, const ExprListNode *columns_expr,
-                                          const ExprListNode *values) {
+SqlNode *NodeManager::MakeInsertTableNode(const std::string &db_name, const std::string &table_name,
+                                          const ExprListNode *columns_expr, const ExprListNode *values) {
     if (nullptr == columns_expr) {
-        InsertStmt *node_ptr = new InsertStmt(table_name, values->children_);
+        InsertStmt *node_ptr = new InsertStmt(db_name, table_name, values->children_);
         return RegisterNode(node_ptr);
     } else {
         std::vector<std::string> column_names;
@@ -835,7 +837,7 @@ SqlNode *NodeManager::MakeInsertTableNode(const std::string &table_name, const E
                 }
             }
         }
-        InsertStmt *node_ptr = new InsertStmt(table_name, column_names, values->children_);
+        InsertStmt *node_ptr = new InsertStmt(db_name, table_name, column_names, values->children_);
         return RegisterNode(node_ptr);
     }
 }

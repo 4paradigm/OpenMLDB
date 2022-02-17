@@ -37,7 +37,7 @@ cases:
     desc: CREATE GROUP
     mode: zetasql-unsupport
     sql: CREATE GROUP group1;
-  - id: 4
+  - id: 4-1
     desc: DESC table
     sql: DESC t1;
     expect:
@@ -45,6 +45,14 @@ cases:
         +-node[CMD]
           +-cmd_type: desc table
           +-args: [t1]
+  - id: 4-2
+    desc: DESC table with db name prefix
+    sql: DESC db1.t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: desc table
+          +-args: [db1, t1]
   - id: 5
     desc: SHOW TABLE
     sql: SHOW TABLES;

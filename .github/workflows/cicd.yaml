@@ -38,7 +38,7 @@ jobs:
       SQL_PYSDK_ENABLE: OFF
       TESTING_ENABLE: ON
       NPROC: 8
-      CTEST_PARALLEL_LEVEL: 8 # parallel test level for ctest (make test)
+      CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
     steps:
       - uses: actions/checkout@v2
 
@@ -96,6 +96,7 @@ jobs:
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
+            build/**/*.xml
             reports/*.xml
 
       - name: install

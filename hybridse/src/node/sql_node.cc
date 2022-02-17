@@ -1327,7 +1327,7 @@ void CreateIndexNode::Print(std::ostream &output, const std::string &org_tab) co
     output << "\n";
     PrintValue(output, tab, index_name_, "index_name", false);
     output << "\n";
-    PrintValue(output, tab, table_name_, "table_name", false);
+    PrintValue(output, tab, db_name_.empty() ? table_name_ : db_name_ + "." + table_name_, "table_name", false);
     output << "\n";
     PrintSqlNode(output, tab, index_, "index", true);
 }
@@ -1396,7 +1396,7 @@ void InsertStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, table_name_, "table_name", false);
+    PrintValue(output, tab, db_name_.empty() ? table_name_ : db_name_ + "." + table_name_, "table_name", false);
     output << "\n";
     if (is_all_) {
         PrintValue(output, tab, "all", "columns", false);
