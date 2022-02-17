@@ -622,6 +622,7 @@ bool NameServerImpl::Recover() {
         }
         RecoverOfflineTablet();
     }
+    UpdateRealEpMapToTablet(false);
     if (FLAGS_use_name) {
         UpdateRemoteRealEpMap();
     }
@@ -1137,7 +1138,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         }
     }
     thread_pool_.AddTask(boost::bind(&NameServerImpl::DistributeTabletMode, this));
-    thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateRealEpMapToTablet, this));
+    thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateRealEpMapToTablet, this, true));
 }
 
 void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_flag) {
@@ -9651,8 +9652,8 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller, const SetSdkEndpo
     response->set_msg("ok");
 }
 
-void NameServerImpl::UpdateRealEpMapToTablet() {
-    if (!running_.load(std::memory_order_acquire)) {
+void NameServerImpl::UpdateRealEpMapToTablet(bool check_running) {
+    if (check_running && !running_.load(std::memory_order_acquire)) {
         return;
     }
     decltype(tablets_) tmp_tablets;
@@ -9727,7 +9728,7 @@ void NameServerImpl::UpdateRemoteRealEpMap() {
             remote_real_ep_map_.swap(tmp_map);
         }
         if (old_map != tmp_map) {
-            thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateRealEpMapToTablet, this));
+            thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateRealEpMapToTablet, this, true));
         }
     } while (false);
     task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval,
