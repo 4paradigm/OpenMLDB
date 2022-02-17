@@ -1,6 +1,7 @@
 package com._4paradigm.openmldb.taskmanager.util
 
 import java.io.File
+import java.io.IOException
 
 object BatchJobUtil {
 
@@ -14,7 +15,7 @@ object BatchJobUtil {
     if (jarPath == null) {
       jarPath = findBatchJobJar("./openmldb-batchjob/target/")
       if (jarPath == null) {
-        throw new Exception("Fail to find default batch job jar")
+        throw new IOException("Fail to find default batch job jar")
       }
     }
 
