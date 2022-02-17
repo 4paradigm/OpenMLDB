@@ -43,3 +43,4 @@ def register(db):
     ip = get_ipython()
     magics = SqlMagic(ip,db)
     ip.register_magics(magics)
+    return ip
