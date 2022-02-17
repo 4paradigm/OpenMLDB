@@ -843,6 +843,21 @@ void DefaultUdfLibrary::InitStringUdf() {
                 --output "SQL"
             @endcode
             @since 0.4.0)");
+    RegisterExternal("lcase")
+        .args<codec::StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::lcase)))
+        .return_by_arg(true)
+        .returns<Nullable<codec::StringRef>>()
+        .doc(R"(
+            @brief Convert all the characters to lowercase. Note that characters with values > 127 are simply returned.
+
+            Example:
+
+            @code{.sql}
+                SELECT LCASE('SQl') as str1;
+                --output "sql"
+            @endcode
+            @since 0.5.0)");
     RegisterExternal("reverse")
         .args<codec::StringRef>(
             reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::reverse)))
@@ -858,6 +873,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 --output "cba"
             @endcode
             @since 0.4.0)");
+    RegisterAlias("lower", "lcase");
     RegisterAlias("upper", "ucase");
 }
 
