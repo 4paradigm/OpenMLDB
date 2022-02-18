@@ -169,7 +169,7 @@ jobs:
         run: |
           make thirdparty
           mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) cp_python_sdk_so openmldb && cd ../
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "0"
       - name: upload test results
@@ -209,7 +209,7 @@ jobs:
         run: |
           make thirdparty
           mkdir -p build
-          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) sqlalchemy_openmldb openmldb && cd ../
+          source /root/.bashrc && cd build && cmake -DSQL_PYSDK_ENABLE=ON -DSQL_JAVASDK_ENABLE=OFF -DTESTING_ENABLE=OFF .. && make -j$(nproc) cp_python_sdk_so openmldb && cd ../
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "1,2,3,4,5"
       - name: upload test results

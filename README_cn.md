@@ -15,7 +15,7 @@
 
 **[English version](./README.md) | 中文版**
 
-### OpenMLDB 是一个开源机器学习数据库，提供企业级 FeatureOps 全栈解决方案。
+### OpenMLDB 是一个开源机器学习数据库，提供生产级数据及特征开发全栈 FeatureOps 解决方案。
 
 ## 1. 设计理念
 
@@ -23,9 +23,9 @@
 
 OpenMLDB 致力于闭环解决 AI 工程化落地的数据治理难题，并且已经在上百个企业级人工智能场景中得到落地。OpenMLDB 优先开源了特征数据治理能力，依托 SQL 的开发能力，为企业提供全栈功能的，低门槛特征数据计算和管理平台。
 
-## 2. 企业级 FeatureOps 全栈解决方案
+## 2. 生产级 FeatureOps 全栈解决方案
 
-MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的关键一环，FeatureOps 负责特征计算和供给，衔接 DataOps 和 ModelOps。一个完整的可高效工程化落地的 FeatureOps 解决方案需要覆盖特征工程的各个方面，包括功能需求（如特征存储、特征计算、特征上线、特征共享、特征服务等）和产品级需求（如低延迟、高并发、灾备、高可用、扩缩容、平滑升级、可监控等）。OpenMLDB 提供一套企业级全栈 FeatureOps 解决方案，以及低门槛的基于 SQL 的开发和管理体验，让特征工程开发回归于本质：专注于高质量的特征计算脚本开发，不再被工程化效率落地所羁绊。
+MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的关键一环，FeatureOps 负责特征计算和供给，衔接 DataOps 和 ModelOps。一个完整的可高效工程化落地的 FeatureOps 解决方案需要覆盖特征工程的各个方面，包括功能需求（如特征存储、特征计算、特征上线、特征共享、特征服务等）和产品级需求（如低延迟、高并发、灾备、高可用、扩缩容、平滑升级、可监控等）。OpenMLDB 提供一套生产级全栈 FeatureOps 解决方案，以及低门槛的基于 SQL 的开发和管理体验，让特征工程开发回归于本质：专注于高质量的特征计算脚本开发，不再被工程化效率落地所羁绊。
 
 <p align="center">
  <img src="images/workflow_cn.png" alt="image-20211103103052252" width=800 />
@@ -44,7 +44,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 
 **面向特征计算的定制化性能优化：** 离线特征计算使用[面向特征计算优化的 OpenMLDB Spark 发行版](https://docs.openmldb.ai/v/0.4/content-2/openmldbspark_distribution)；线上实时特征计算在高吞吐压力下的复杂查询提供几十毫秒量级的延迟，充分满足高并发、低延迟的性能需求。
 
-**企业级特性：** 为大规模企业级应用而设计，整合诸多企业级特性，包括灾备恢复、高可用、可无缝扩缩容、可平滑升级、可监控、企业级异构内存架构支持等。
+**生产级特性：** 为大规模企业应用而设计，不断完善诸多生产级特性，包括灾备恢复、高可用、可无缝扩缩容、可平滑升级、可监控、异构内存架构支持等。
 
 ## 4. FAQ
 
@@ -58,7 +58,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
    
 3. **OpenMLDB 是否就是一个 feature store？**
    
-   OpenMLDB 包含 feature store 的全部功能，并且提供更为完整的 FeatureOps 全栈方案。除了提供特征存储功能，还具有基于 SQL 的数据库开发体验、[面向特征计算优化的 OpenMLDB Spark 发行版](https://docs.openmldb.ai/v/0.4/content-2/openmldbspark_distribution)，针对实时特征计算优化的索引结构，特征上线服务、企业级运维和管理等功能。此外，OpenMLDB 也被用作一个高性能的时序特征数据库。
+   OpenMLDB 包含 feature store 的全部功能，并且提供更为完整的 FeatureOps 全栈方案。除了提供特征存储功能，还具有基于 SQL 的数据库开发体验、[面向特征计算优化的 OpenMLDB Spark 发行版](https://docs.openmldb.ai/v/0.4/content-2/openmldbspark_distribution)，针对实时特征计算优化的索引结构，特征上线服务、生产级运维和管理等功能。此外，OpenMLDB 也被用作一个高性能的时序特征数据库。
    
 4. **OpenMLDB 为什么选择 SQL 作为开发语言？**
    
@@ -84,11 +84,14 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 
 | 应用                                                         | 所用工具           | 简介                                                         |
 | ------------------------------------------------------------ | ------------------ | ------------------------------------------------------------ |
-| [New York City Taxi Trip Duration](https://docs.openmldb.ai/v/0.4/content-3/taxi_tour_duration_prediction) | OpenMLDB, LightGBM | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
+| [New York City Taxi Trip Duration](https://docs.openmldb.ai/use_case/taxi_tour_duration_prediction) | OpenMLDB, LightGBM | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
 
 ## 8. OpenMLDB 文档
 
-你可以找到我们完整的 [OpenMLDB 使用文档](https://docs.openmldb.ai/)。
+我们已经发布了完整的产品文档，你可以在以下地址找到：
+
+- 主力站点：[https://docs.openmldb.ai/](https://docs.openmldb.ai/)
+- 中国境内镜像：[http://docs-cn.openmldb.ai/](http://docs-cn.openmldb.ai/)
 
 
 ## 9. 开发计划

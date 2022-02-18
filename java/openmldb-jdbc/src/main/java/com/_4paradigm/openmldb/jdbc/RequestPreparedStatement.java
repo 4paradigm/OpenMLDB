@@ -74,6 +74,12 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
         }
     }
 
+    protected void checkExecutorClosed() throws SQLException {
+        if (router == null) {
+            throw new SQLException("Executor close");
+        }
+    }
+
     void checkIdx(int i) throws SQLException {
         checkClosed();
         checkNull();
@@ -94,6 +100,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     @Override
     public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
+        checkExecutorClosed();
         dataBuild();
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLRequest(db, currentSql, currentRow, status);

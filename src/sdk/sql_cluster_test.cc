@@ -398,7 +398,8 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         request_row->AppendInt64(3);
         ASSERT_TRUE(request_row->Build());
         auto sql_cluster_router = std::dynamic_pointer_cast<SQLClusterRouter>(router);
-        auto client = sql_cluster_router->GetTabletClient(db, sql, hybridse::vm::kRequestMode, request_row);
+        hybridse::sdk::Status sdk_status;
+        auto client = sql_cluster_router->GetTabletClient(db, sql, hybridse::vm::kRequestMode, request_row, sdk_status);
         int pid = ::openmldb::base::hash64(pk) % 2;
         ASSERT_EQ(client->GetEndpoint(), tables[0].table_partition(pid).partition_meta(0).endpoint());
     }

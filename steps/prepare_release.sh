@@ -71,4 +71,4 @@ fi
 
 # version in python sdk
 echo -e "${GREEN}setting py version to $PY_VERSION${NC}"
-sed -i"" -e "s/version=.*/version='$PY_VERSION',/g" python/sqlalchemy-openmldb/setup.py
+sed -i"" -e "s/version=.*/version='$PY_VERSION',/g" python/setup.py

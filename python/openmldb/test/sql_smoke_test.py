@@ -13,16 +13,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from sqlalchemy_openmldb.openmldbapi import driver
+# fmt:off
+import os
+import sys
+sys.path.append(os.path.dirname(__file__) + "/..")
+from sdk import sdk as sdk_module
 import case_conf
 import time
+# fmt:on
 
 def test_smoke():
     print("hello")
-    options = driver.DriverOptions(case_conf.FEDB_ZK_CLUSTER,
-            case_conf.FEDB_ZK_PATH)
-    sdk = driver.Driver(options)
+    options = sdk_module.OpenmldbSdkOptions(case_conf.FEDB_ZK_CLUSTER,
+                                   case_conf.FEDB_ZK_PATH)
+    sdk = sdk_module.OpenmldbSdk(options)
     assert sdk.init()
     db_name = "pydb" + str(time.time_ns()%100000)
     table_name = "pytable" + str(time.time_ns()%100000)

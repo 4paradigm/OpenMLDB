@@ -190,16 +190,19 @@ class SQLClusterRouter : public SQLRouter {
 
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const std::string& db, const std::string& sql,
                                                                       const ::hybridse::vm::EngineMode engine_mode,
-                                                                      const std::shared_ptr<SQLRequestRow>& row);
+                                                                      const std::shared_ptr<SQLRequestRow>& row,
+                                                                      hybridse::sdk::Status& status); // NOLINT
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(
         const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
-        const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<SQLRequestRow>& parameter_row);
+        const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<SQLRequestRow>& parameter_row,
+        hybridse::sdk::Status& status); // NOLINT
     std::shared_ptr<SQLCache> GetSQLCache(
         const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
-        const std::shared_ptr<SQLRequestRow>& parameter_row);
+        const std::shared_ptr<SQLRequestRow>& parameter_row, hybridse::sdk::Status& status); // NOLINT
     bool GetTabletClientsForClusterOnlineBatchQuery(
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter_row,
-        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients); //NOLINT
+        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients,
+        hybridse::sdk::Status& status); //NOLINT
 
     std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
                                                           const std::string& table_name) override;
@@ -245,6 +248,8 @@ class SQLClusterRouter : public SQLRouter {
                                                const std::map<std::string, std::string>& config,
                                                const std::string& default_db,
                                                ::openmldb::taskmanager::JobInfo& job_info) override;
+
+    std::string GetJobLog(const int id, hybridse::sdk::Status* status) override;
 
     bool NotifyTableChange() override;
 

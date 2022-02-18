@@ -13,7 +13,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import openmldb
+import pytest
 import unittest
 import logging
 import time
@@ -21,6 +22,8 @@ from datetime import date
 from datetime import datetime
 
 import sqlalchemy as db
+from sqlalchemy import Table, Column, Integer, String, MetaData
+from sqlalchemy.sql import select
 
 logging.basicConfig(level=logging.WARNING)
 class TestOpenMLDBClient(unittest.TestCase):
@@ -56,7 +59,6 @@ class TestOpenMLDBClient(unittest.TestCase):
     connection.execute(insert5, ({"col2":"2020-12-29"}));
     
     self.check_fetchmany(connection)
-    self.check_fetchall(connection)
     self.check_exectute_many(connection,insert4)
 
     data = {1000 : [1000, '2020-12-25', 'guangdon', '广州', 1],
@@ -85,6 +87,7 @@ class TestOpenMLDBClient(unittest.TestCase):
         (1003, '2020-12-28', 'jiangxi', 'nanchang', 4),
         (1004, '2020-12-29', 'hubei', 'wuhan', 5),
     ]
+    self.check_fetchall(connection, expectRows)
     self.check_result(rs, expectRows, 0);
     # test condition select
     rs = connection.execute("select * from tsql1010 where col3 = 'hefei';");
@@ -204,21 +207,16 @@ class TestOpenMLDBClient(unittest.TestCase):
       pass
 
   def check_fetchmany(self,connection):
-    try:
-      result = connection.execute("select * from tsql1010;")
-      print(result.fetchmany(size=2))
-      self.assertTrue(False)
-    except Exception as e:
-      pass
+    result = connection.execute("select * from tsql1010;")
+    self.assertTrue(result.fetchmany() == [(1002, '2020-12-27', 'fujian', 'fuzhou', 3)])
+    self.assertTrue(result.fetchmany(size=2) == [(1001, '2020-12-26', 'hefei', 'anhui', 2),(1000, '2020-12-25', 'guangdon', '广州', 1)])
+    self.assertTrue(result.fetchmany(size=4) == [(1004, '2020-12-29', 'hubei', 'wuhan', 5),(1003, '2020-12-28', 'jiangxi', 'nanchang', 4)])
       
-  def check_fetchall(self,connection):
-    try:
-      result = connection.execute("select * from tsql1010;")
-      print(result.fetchall())
-      self.assertTrue(False)
-    except Exception as e:
-      pass
-
+  def check_fetchall(self,connection, expect_row):
+    result = connection.execute("select * from tsql1010;")
+    result = sorted(result.fetchall(), key=lambda x: x[0])
+    self.assertTrue(result == expect_row)
+                    
   def test_parameterized_query(self):
     logging.info("test_parameterized_query...")
     engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
@@ -314,10 +312,89 @@ class TestOpenMLDBClient(unittest.TestCase):
       (1008, '2021-01-02', 'province3', 'city9', 9, 1590738998000),
       ]
     self.check_result(rs, expectRows)
- 
 
+# test sqlalchemy Table-object-based API in pytest style
+class TestSqlalchemyAPI:
 
+    def setup_class(self):
+        self.engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
+        self.connection = self.engine.connect()
+        self.metadata = MetaData()
+        self.test_table = Table('test_table', self.metadata,
+                                          Column('x', String),
+                                          Column('y', Integer))
+        self.metadata.create_all(self.engine)
+        
+    def test_create_table(self):
+        assert self.connection.dialect.has_table(self.connection,'test_table')
+
+    def test_insert(self):
+        try:
+            self.connection.execute(self.test_table.insert().values(x='first', y=100))
+        except Exception as e:
+            # insert failed
+            assert False
+
+    def test_select(self):
+          for row in self.connection.execute(select([self.test_table])):
+             assert 'first' in list(row)
+             assert 100 in list(row)
+
+    def teardown_class(self):
+        self.connection.execute("drop table test_table;")
+        self.connection.close()
+
+class TestOpenmldbDBAPI:
+
+    def setup_class(self):
+        self.db = openmldb.dbapi.connect('db_test','127.0.0.1:6181','/onebox')
+        self.cursor = self.db.cursor()
+
+    def execute(self,sql):
+        try:
+            self.cursor.execute(sql)
+            return 'ok'
+        except Exception as e:
+            raise Exception(e)
+
+    def test_create_table(self):
+        self.cursor.execute('create table new_table (x string, y int);')
+        assert "new_table" in self.cursor.get_all_tables()
+        with pytest.raises(Exception):
+            assert self.execute("create table ")
+
+    def test_insert(self):
+        try:
+            self.cursor.execute("insert into new_table values('first', 100);")
+        except Exception as e:
+            assert False
+        result = self.cursor.execute("select * from new_table;").fetchone()
+        assert 'first' in result
+        assert 100 in result
+
+        with pytest.raises(Exception):
+            assert self.execute("insert into new_table values(100, 'first');")
+        with pytest.raises(Exception):
+            assert self.execute("insert into new_table values({'x':100, 'y':'first'});")
+
+    def test_select_conditioned(self):
+        self.cursor.execute("insert into new_table values('second', 200);")
+        result = self.cursor.execute("select * from new_table where x = 'second';").fetchone()
+        assert 'second' in result
+        assert 200 in result
+
+    def test_drop_table(self):
+        try:
+            self.cursor.execute("drop table new_table;")
+        except Exception as e:
+            assert False
+        assert "new_table" not in self.cursor.get_all_tables()
+
+        with pytest.raises(Exception):
+            assert self.execute("drop table new_table;")
+
+    def teardown_class(self):
+        self.cursor.close()
 
 if __name__ == '__main__':
     unittest.main()
-

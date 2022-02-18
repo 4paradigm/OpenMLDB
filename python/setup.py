@@ -22,20 +22,22 @@ setup(
     author='OpenMLDB Team',
     author_email=' ',
     url='https://github.com/4paradigm/OpenMLDB',
-    description='openmldb python sdk',
+    description='OpenMLDB Python SDK',
     license="copyright 4paradigm.com",
     classifiers=[
         'Programming Language :: Python :: 3',
         ],
     install_requires=[
-        "sqlalchemy < 1.4.0"
+        "sqlalchemy < 1.4.0",
+        "IPython",
+        "pytest"
     ],
     include_package_data=True,
     package_data = {'':['*.so']},
     packages=find_packages(),
     entry_points={
         'sqlalchemy.dialects': [
-            'openmldb = sqlalchemy_openmldb.saopenmldb:OpenMLDBDialect',
+            'openmldb = openmldb.sqlalchemy_openmldb.openmldb_dialect:OpenmldbDialect',
         ],
     },
     zip_safe=False,

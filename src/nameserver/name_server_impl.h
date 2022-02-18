@@ -720,7 +720,7 @@ class NameServerImpl : public NameServer {
         const std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>& table_info_map,
         const std::unordered_map<std::string, ::openmldb::api::TableStatus>& pos_response);
 
-    void UpdateRealEpMapToTablet();
+    void UpdateRealEpMapToTablet(bool check_running);
 
     void UpdateRemoteRealEpMap();
 

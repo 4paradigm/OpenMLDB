@@ -13,10 +13,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+# fmt:off
+import sys
+import os
+sys.path.append(os.path.dirname(__file__) + "/..")
 import logging
-from . import driver
+from sdk import sdk as sdk_module
+from sdk.sdk import TypeUtil
+from native import sql_router_sdk
 import re
+# fmt:on
 
 # Globals
 apilevel = '2.0'
@@ -25,26 +31,26 @@ threadsafety = 3
 
 
 class Type(object):
-    Bool = driver.sql_router_sdk.kTypeBool
-    Int16 = driver.sql_router_sdk.kTypeInt16
-    Int32 = driver.sql_router_sdk.kTypeInt32
-    Int64 = driver.sql_router_sdk.kTypeInt64
-    Float = driver.sql_router_sdk.kTypeFloat
-    Double = driver.sql_router_sdk.kTypeDouble
-    Date = driver.sql_router_sdk.kTypeDate
-    String = driver.sql_router_sdk.kTypeString
-    Timestamp = driver.sql_router_sdk.kTypeTimestamp
+    Bool = sql_router_sdk.kTypeBool
+    Int16 = sql_router_sdk.kTypeInt16
+    Int32 = sql_router_sdk.kTypeInt32
+    Int64 = sql_router_sdk.kTypeInt64
+    Float = sql_router_sdk.kTypeFloat
+    Double = sql_router_sdk.kTypeDouble
+    Date = sql_router_sdk.kTypeDate
+    String = sql_router_sdk.kTypeString
+    Timestamp = sql_router_sdk.kTypeTimestamp
 
 fetype_to_py = {
-    driver.sql_router_sdk.kTypeBool: Type.Bool,
-    driver.sql_router_sdk.kTypeInt16: Type.Int16,
-    driver.sql_router_sdk.kTypeInt32: Type.Int32,
-    driver.sql_router_sdk.kTypeInt64: Type.Int64,
-    driver.sql_router_sdk.kTypeFloat: Type.Float,
-    driver.sql_router_sdk.kTypeDouble: Type.Double,
-    driver.sql_router_sdk.kTypeDate: Type.Date,
-    driver.sql_router_sdk.kTypeString: Type.String,
-    driver.sql_router_sdk.kTypeTimestamp: Type.Timestamp,
+    sql_router_sdk.kTypeBool: Type.Bool,
+    sql_router_sdk.kTypeInt16: Type.Int16,
+    sql_router_sdk.kTypeInt32: Type.Int32,
+    sql_router_sdk.kTypeInt64: Type.Int64,
+    sql_router_sdk.kTypeFloat: Type.Float,
+    sql_router_sdk.kTypeDouble: Type.Double,
+    sql_router_sdk.kTypeDate: Type.Date,
+    sql_router_sdk.kTypeString: Type.String,
+    sql_router_sdk.kTypeTimestamp: Type.Timestamp,
 }
 
 createTableRE = re.compile("^create\s+table", re.I)
@@ -134,7 +140,6 @@ class ConnectionClosedException(Error):
 class Cursor(object):
 
     def __init__(self, db, zk, zkPath, conn):
-
         self.description = None
         self.rowcount = -1
         self.arraysize = 1
@@ -146,7 +151,7 @@ class Cursor(object):
         self._resultSet = None
         self._resultSetMetadata = None
         self._resultSetStatus = None
-        self._resultSet = None
+        self.lastrowid = None
 
     def connected(func):
         def func_wrapper(self, *args, **kwargs):
@@ -170,15 +175,15 @@ class Cursor(object):
         self._resultSet = rs
         self.__schema = rs.GetSchema()
         self.__getMap = {
-          driver.sql_router_sdk.kTypeBool: self._resultSet.GetBoolUnsafe,
-          driver.sql_router_sdk.kTypeInt16: self._resultSet.GetInt16Unsafe,
-          driver.sql_router_sdk.kTypeInt32: self._resultSet.GetInt32Unsafe,
-          driver.sql_router_sdk.kTypeInt64: self._resultSet.GetInt64Unsafe,
-          driver.sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
-          driver.sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
-          driver.sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
-          driver.sql_router_sdk.kTypeDate: self._resultSet.GetAsStringUnsafe,
-          driver.sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
+          sql_router_sdk.kTypeBool: self._resultSet.GetBoolUnsafe,
+          sql_router_sdk.kTypeInt16: self._resultSet.GetInt16Unsafe,
+          sql_router_sdk.kTypeInt32: self._resultSet.GetInt32Unsafe,
+          sql_router_sdk.kTypeInt64: self._resultSet.GetInt64Unsafe,
+          sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
+          sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
+          sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
+          sql_router_sdk.kTypeDate: self._resultSet.GetAsStringUnsafe,
+          sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
         }
         self.description = [
             (
@@ -233,43 +238,65 @@ class Cursor(object):
                 for i in range(len(holdIdxs)):
                     idx = holdIdxs[i]
                     name = schema.GetColumnName(idx)
-                    if name not in parameters:
-                        return False, "col {} data not given".format(name)
-                    if parameters[name] is None:
-                        if schema.IsColumnNotNull(idx):
-                            raise DatabaseError("column seq {} not allow null".format(idx))
-                        else:
+
+                    # Check parameters type, like tuple or dict
+                    if type(parameters) is tuple:
+                        if isinstance(parameters[i], str):
+                            strSize += len(parameters[i])
+
+                    elif type(parameters) is dict:
+                        if name not in parameters:
+                            raise DatabaseError("col {} data not given".format(name))
+
+                        if parameters[name] is None:
+                            if schema.IsColumnNotNull(idx):
+                                raise DatabaseError("column seq {} not allow null".format(idx))
+                            else:
+                                continue
+                        colType = schema.GetColumnType(idx)
+                        if colType != sql_router_sdk.kTypeString:
                             continue
-                    colType = schema.GetColumnType(idx)
-                    if colType != driver.sql_router_sdk.kTypeString:
-                        continue
-                    if isinstance(parameters[name], str):
-                        strSize += len(parameters[name])
+                        if isinstance(parameters[name], str):
+                            strSize += len(parameters[name])
+                        else:
+                            raise DatabaseError("{} value type is not str".format(name))
                     else:
-                        raise DatabaseError("{} value tpye is not str".format(name))
+                        # The parameters is neither tuple or dict
+                        raise DatabaseError("Parameters type {} does not support: {}, should be tuple or dict".
+                                            format(type(parameters), parameters))
+
                 builder.Init(strSize)
                 appendMap = {
-                    driver.sql_router_sdk.kTypeBool: builder.AppendBool,
-                    driver.sql_router_sdk.kTypeInt16: builder.AppendInt16,
-                    driver.sql_router_sdk.kTypeInt32: builder.AppendInt32,
-                    driver.sql_router_sdk.kTypeInt64: builder.AppendInt64,
-                    driver.sql_router_sdk.kTypeFloat: builder.AppendFloat,
-                    driver.sql_router_sdk.kTypeDouble: builder.AppendDouble,
-                    driver.sql_router_sdk.kTypeString: builder.AppendString,
+                    sql_router_sdk.kTypeBool: builder.AppendBool,
+                    sql_router_sdk.kTypeInt16: builder.AppendInt16,
+                    sql_router_sdk.kTypeInt32: builder.AppendInt32,
+                    sql_router_sdk.kTypeInt64: builder.AppendInt64,
+                    sql_router_sdk.kTypeFloat: builder.AppendFloat,
+                    sql_router_sdk.kTypeDouble: builder.AppendDouble,
+                    sql_router_sdk.kTypeString: builder.AppendString,
                     # TODO: align python and java date process, 1900 problem
-                    driver.sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and builder.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
-                    driver.sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
-                    }
+                    sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and builder.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+                    sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
+                }
                 for i in range(len(holdIdxs)):
                     idx = holdIdxs[i]
                     name = schema.GetColumnName(idx)
-                    if parameters[name] is None:
-                        builder.AppendNULL()
-                        continue
                     colType = schema.GetColumnType(idx)
-                    ok = appendMap[colType](parameters[name])
-                    if not ok:
-                        raise DatabaseError("erred at append data seq {}".format(i));
+
+                    if type(parameters) is tuple:
+                        ok = appendMap[colType](parameters[i])
+                        if not ok:
+                            raise DatabaseError("error at append data seq {}".format(i))
+                    elif type(parameters) is dict:
+                        if parameters[name] is None:
+                            builder.AppendNULL()
+                            continue
+                        ok = appendMap[colType](parameters[name])
+                        if not ok:
+                            raise DatabaseError("error at append data seq {}".format(i))
+                    else:
+                        raise DatabaseError("error at append data seq {} for unsupported type".format(i))
+
                 ok, error = self.connection._sdk.executeInsert(self.db, command, builder)
             else:
                 ok, error = self.connection._sdk.executeInsert(self.db, command)
@@ -305,18 +332,20 @@ class Cursor(object):
     @connected
     def executemany(self, operation, parameters=()):
         raise NotSupportedError("Unsupported in OpenMLDB")
-        
+
+    def get_tables(self, db):
+        return self.connection._sdk.getTables(db)
+
     def get_all_tables(self):
         return self.connection._sdk.getAllTables()
 
+    def get_databases(self):
+        return self.connection._sdk.getDatabases()
+
     def fetchone(self):
-        if self._resultSet is None: return "call fetchone"
+        if self._resultSet is None: raise DatabaseError("query data failed")
         ok = self._resultSet.Next()
         if not ok:
-            self.rowcount = -1
-            self._resultSet = None
-            self.__schema = None
-            self.__getMap = None
             return None
         values = []
         for i in range(self.__schema.GetColumnCnt()):
@@ -328,7 +357,24 @@ class Cursor(object):
 
     @connected
     def fetchmany(self, size=None):
-        raise NotSupportedError("Unsupported in OpenMLDB")
+        if self._resultSet is None: raise DatabaseError("query data failed")
+        if size is None:
+            size = self.arraysize
+        elif size < 0:
+            raise Exception(f"Given size should greater than zero")
+        values = []
+        for k in range(size):
+            ok = self._resultSet.Next()
+            if not ok:
+                break
+            row = []
+            for i in range(self.__schema.GetColumnCnt()):
+                if self._resultSet.IsNULL(i):
+                    row.append(None)
+                else:
+                    row.append(self.__getMap[self.__schema.GetColumnType(i)](i))
+            values.append(tuple(row))
+        return values
 
     def nextset(self):
         raise NotSupportedError("Unsupported in OpenMLDB")
@@ -341,9 +387,8 @@ class Cursor(object):
         
     @connected
     def fetchall(self):
-        raise NotSupportedError("Unsupported in OpenMLDB")
-
-
+        return self.fetchmany(size=self.rowcount)
+    
     @staticmethod
     def substitute_in_query(string_query, parameters):
         query = string_query
@@ -394,7 +439,20 @@ class Cursor(object):
         self._pre_process_result(rs)
         return self
 
+    def get_resultset_schema(self):
+        # Return the readable schema list like [{'name': 'col1', 'type': 'int64'}, {'name': 'col2', 'type': 'date'}]
 
+        c_schema = self._resultSet.GetSchema()
+        col_num = c_schema.GetColumnCnt()
+
+        outputSchemaList = []
+        for i in range(col_num):
+            col_name = c_schema.GetColumnName(i)
+            col_type = c_schema.GetColumnType(i)
+            col_type_str = TypeUtil.intTypeToStr(col_type)
+            outputSchemaList.append({"name": col_name, "type": col_type_str})
+
+        return outputSchemaList
 
 class Connection(object):
 
@@ -403,8 +461,8 @@ class Connection(object):
         self._db = db
         self._zk = zk
         self._zkPath = zkPath
-        options = driver.DriverOptions(zk, zkPath)
-        sdk = driver.Driver(options)
+        options = sdk_module.OpenmldbSdkOptions(zk, zkPath)
+        sdk = sdk_module.OpenmldbSdk(options)
         ok = sdk.init()
         if not ok:
             raise Exception("init openmldb sdk erred")
@@ -448,7 +506,6 @@ class Connection(object):
 
     def cursor(self):
         return Cursor(self._db, self._zk, self._zkPath, self)
-
 
 # Constructor for creating connection to db
 def connect(db, zk, zkPath):

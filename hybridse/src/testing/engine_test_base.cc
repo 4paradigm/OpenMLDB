@@ -648,6 +648,10 @@ INSTANTIATE_TEST_SUITE_P(EngineTestSparkJD, EngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineTestSparkCredit, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/function/spark/test_credit.yaml")));
 
+// AUTOX
+INSTANTIATE_TEST_SUITE_P(EngineTestAutoXSQLFunction, EngineTest,
+                         testing::ValuesIn(sqlcase::InitCases("/cases/usecase/autox.yaml")));
+
 INSTANTIATE_TEST_SUITE_P(BatchRequestEngineTest, BatchRequestEngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/function/test_batch_request.yaml")));
 }  // namespace vm

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,20 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-"""
-"""
-
-import hybridse
-
-dbms_endpoint="127.0.0.1:9211"
-
-def exec_query(dbms, db, sql):
-    if not dbms:
-        return False, None, None
-    status = hybridse.Status();
-    rs = dbms.ExecuteQuery(db, sql, status)
-    if status.code == 0:
-        return True, None, rs
-    return False, status.msg, None
-
+from .sql_router_sdk import *

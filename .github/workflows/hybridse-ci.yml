@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths:
+      - .github/workflows/hybridse-ci.yml
+      - cases/**/*
+      - hybridse/**/*
   pull_request:
     paths:
       - .github/workflows/hybridse-ci.yml
@@ -13,6 +17,7 @@ on:
 
 env:
   HYBRIDSE_PATH: hybridse
+  CTEST_PARALLEL_LEVEL: 2 # parallel test level for ctest (make test)
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
 
 jobs:
@@ -51,6 +56,7 @@ jobs:
       OS: darwin
       ARCH: x86_64
       NPROC: 3
+      CTEST_PARALLEL_LEVEL: 3 # parallel test level for ctest (make test)
     steps:
       - uses: actions/checkout@v2
 

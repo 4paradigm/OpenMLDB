@@ -13,10 +13,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+# fmt:off
+import os
+import sys
+sys.path.append(os.path.dirname(__file__) + "/..")
 from sqlalchemy.engine import default
 from sqlalchemy import pool
 from sqlalchemy.sql import compiler
+# fmt:on
 
 try:
     from sqlalchemy.sql.compiler import SQLCompiler
@@ -86,9 +90,9 @@ class OpenMLDBIdentifierPreparer(compiler.IdentifierPreparer):
     def format_drill_table(self, schema, isFile=True):
         pass
 
-class OpenMLDBDialect(default.DefaultDialect):
+class OpenmldbDialect(default.DefaultDialect):
     
-    name = "openmldbapi"
+    name = "openmldb_dialect"
     driver = 'rest'
     dbapi = ""
     poolclass = pool.SingletonThreadPool
@@ -100,7 +104,7 @@ class OpenMLDBDialect(default.DefaultDialect):
 
     @classmethod
     def dbapi(cls):
-        from sqlalchemy_openmldb import openmldbapi as module
+        from dbapi import dbapi as module
         return module
 
     def has_table(self, connection, table_name, schema=None):

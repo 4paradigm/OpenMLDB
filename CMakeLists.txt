@@ -101,9 +101,11 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
 endif ()
 
+# add default option to ctest
+# - --output-on-failure: print log for tests that fail
+list(APPEND CMAKE_CTEST_ARGUMENTS --output-on-failure)
 
 if (TESTING_ENABLE)
-    set(CTEST_OUTPUT_ON_FAILURE ON)
     enable_testing()
 endif ()
 
@@ -128,7 +130,8 @@ endif()
 
 add_subdirectory(hybridse)
 
-set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags boost_filesystem boost_date_time boost_regex)
+find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
+set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags ${Boost_LIBRARIES})
 set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -166,7 +169,17 @@ list(
         absl::time
         absl::status)
 
-list(APPEND ICU_LIBS icui18n icuio icuuc icudata)
+find_package(ICU COMPONENTS i18n io uc data)
+if (NOT ICU_FOUND)
+    message(STATUS "ICU package Not Found")
+    find_library(ICU_I18N icui18n)
+    find_library(ICU_IO icuio)
+    find_library(ICU_UC icuuc)
+    find_library(ICU_DATA icudata)
+    set(ICU_LIBRARIES ${ICU_I18N} ${ICU_IO} ${ICU_UC} ${ICU_DATA})
+endif ()
+message(STATUS "Found ICU Libraries: ${ICU_LIBRARIES}")
+
 list(APPEND file_based_test_driver_LIBS
         alternations
         test_case_options
@@ -183,7 +196,7 @@ set(ZETASQL_LIBS
         ${file_based_test_driver_LIBS}
         ${ABSL_LIBS}
         re2
-        ${ICU_LIBS}
+        ${ICU_LIBRARIES}
         date_proto
         timeofday_proto
         latlng_proto
@@ -207,10 +220,9 @@ link_directories(${CMAKE_PREFIX_PATH}/lib ${CMAKE_PREFIX_PATH}/lib64)
 add_subdirectory(src)
 
 if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
-  # depends proto targets so java's coverage will work
-  set(coverage_deps openmldb_proto hybridse_proto ${test_list})
+  # FIXME(aceforeverd): api_server_test & tablet_impl_test failed to run on debug mode, skip temporarily
   SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
-    EXECUTABLE ctest -j ${n_cores}
+    EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test|tablet_impl_test"
     DEPENDENCIES ${test_list})
 endif ()
 

@@ -5,6 +5,11 @@ on:
     branches:
       - main
 
+    paths:
+      - .github/workflows/hybridsql-docker.yml
+      - docker/Dockerfile
+      - docker/**/*.sh
+
     tags:
       - docker-*
 
@@ -92,7 +97,7 @@ jobs:
         with:
           context: docker
           push: ${{ env.PUSH }}
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.GHCR_TAG }}
             ${{ env.DOCKERHUB_TAG }}
