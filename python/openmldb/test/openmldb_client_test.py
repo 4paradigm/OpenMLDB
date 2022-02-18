@@ -353,7 +353,7 @@ class TestOpenmldbDBAPI:
     def execute(self,sql):
         try:
             self.cursor.execute(sql)
-            return 'ok'
+            return True
         except Exception as e:
             raise Exception(e)
 
@@ -405,7 +405,7 @@ class TestSQLMagicOpenMLDB:
     def execute(self,magic_name,sql):
         try:
             self.ip.run_line_magic(magic_name,sql)
-            return 'ok'
+            return True
         except Exception as e:
             raise Exception(e)
 
