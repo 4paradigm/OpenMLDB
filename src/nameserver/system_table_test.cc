@@ -60,9 +60,14 @@ TEST_F(SystemTableTest, SystemTable) {
     ns_client.Init();
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
-    ASSERT_TRUE(ns_client.ShowTable("", INTERNAL_DB, false, tables, msg));
+    ASSERT_TRUE(ns_client.ShowTable(JOB_INFO_NAME, INTERNAL_DB, false, tables, msg));
     ASSERT_EQ(1, tables.size());
     ASSERT_STREQ("JOB_INFO", tables[0].name().c_str());
+    tables.clear();
+
+    ASSERT_TRUE(ns_client.ShowTable(PRE_AGG_META_NAME, INTERNAL_DB, false, tables, msg));
+    ASSERT_EQ(1, tables.size());
+    ASSERT_STREQ("PRE_AGG_META_INFO", tables[0].name().c_str());
 }
 
 }  // namespace nameserver
