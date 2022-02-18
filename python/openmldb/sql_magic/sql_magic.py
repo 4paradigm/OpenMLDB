@@ -16,7 +16,6 @@
 from __future__ import print_function
 from IPython.core.magic import (Magics, magics_class, line_magic,
                                 cell_magic, line_cell_magic)
-from IPython.testing.globalipapp import get_ipython
 import re
 
 @magics_class
@@ -40,8 +39,14 @@ class SqlMagic(Magics):
         else:
             self.cursor.execute(sqlText)
 
-def register(db):
-    ip = get_ipython()
-    magics = SqlMagic(ip,db)
-    ip.register_magics(magics)
-    return ip
+def register(db, test=False):
+    if test:
+        from IPython.testing.globalipapp import get_ipython
+        ip = get_ipython()
+        magics = SqlMagic(ip,db)
+        ip.register_magics(magics)
+        return ip
+    else:
+        ip = get_ipython()
+        magics = SqlMagic(ip,db)
+        ip.register_magics(magics)
