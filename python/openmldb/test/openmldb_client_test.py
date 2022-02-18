@@ -400,7 +400,7 @@ class TestSQLMagicOpenMLDB:
 
     def setup_class(self):
         self.db = openmldb.dbapi.connect('db_test', '127.0.0.1:6181', '/onebox')
-        self.ip = openmldb.sql_magic.register(self.db)
+        self.ip = openmldb.sql_magic.register(self.db,test=True)
 
     def execute(self,magic_name,sql):
         try:
