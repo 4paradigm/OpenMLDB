@@ -56,6 +56,7 @@ public class TaskManagerConfig {
     public static String OFFLINE_DATA_PREFIX;
     public static String NAMENODE_URI;
     public static String BATCHJOB_JAR_PATH;
+    public static String HADOOP_CONF_DIR;
 
     public static void parse() throws IOException, NumberFormatException, ConfigException {
         Properties prop = new Properties();
@@ -110,11 +111,14 @@ public class TaskManagerConfig {
             try {
                 if(System.getenv("SPARK_HOME") == null) {
                     throw new ConfigException("spark.home", "should set config 'spark.home' or environment variable 'SPARK_HOME'");
+                } else {
+                    SPARK_HOME = System.getenv("SPARK_HOME");
                 }
             } catch (Exception e) {
                 throw new ConfigException("spark.home", "should set environment variable 'SPARK_HOME' if 'spark.home' is null");
             }
         }
+        // TODO: Check if we can get spark-submit
 
         PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.jobid.num", "1"));
         if (PREFETCH_JOBID_NUM < 1) {
@@ -189,6 +193,21 @@ public class TaskManagerConfig {
                 throw new ConfigException("batchjob.jar.path", "config is null and fail to load default openmldb-batchjob jar");
             }
         }
+
+        HADOOP_CONF_DIR = prop.getProperty("hadoop.conf.dir", "");
+        if (HADOOP_CONF_DIR.isEmpty()) {
+            try {
+                if(System.getenv("HADOOP_CONF_DIR") == null) {
+                    throw new ConfigException("hadoop.conf.dir", "should set config 'hadoop.conf.dir' or environment variable 'HADOOP_CONF_DIR'");
+                } else {
+                    HADOOP_CONF_DIR = System.getenv("HADOOP_CONF_DIR");
+                }
+            } catch (Exception e) {
+                throw new ConfigException("hadoop.conf.dir", "should set environment variable 'HADOOP_CONF_DIR' if 'hadoop.conf.dir' is null");
+            }
+        }
+        // TODO: Check if we can get core-site.xml
+
     }
 
 }
