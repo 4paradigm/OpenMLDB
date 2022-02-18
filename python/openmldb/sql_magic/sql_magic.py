@@ -16,6 +16,7 @@
 from __future__ import print_function
 from IPython.core.magic import (Magics, magics_class, line_magic,
                                 cell_magic, line_cell_magic)
+from IPython.testing.globalipapp import get_ipython
 import re
 
 @magics_class
