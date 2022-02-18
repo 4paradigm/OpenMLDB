@@ -402,14 +402,14 @@ class TestSQLMagicOpenMLDB:
         self.db = openmldb.dbapi.connect('db_test', '127.0.0.1:6181', '/onebox')
         self.ip = openmldb.sql_magic.register(self.db)
 
-    def execute(self,magic_name,line):
+    def execute(self,magic_name,sql):
         try:
-            self.ip.run_line_magic(magic_name,line)
+            self.ip.run_line_magic(magic_name,sql)
             return 'ok'
         except Exception as e:
             raise Exception(e)
 
-    def test_magic_create_table(self):
+    def test_create_table(self):
         try:
             self.ip.run_cell_magic('sql','', "create table magic_table (x string, y int);")
         except Exception as e:
@@ -419,7 +419,7 @@ class TestSQLMagicOpenMLDB:
         with pytest.raises(Exception):
             assert self.execute('sql', "create table magic_table;")
 
-    def test_magic_insert(self):
+    def test_insert(self):
         try:
             self.ip.run_line_magic('sql', "insert into magic_table values('first', 100);")
         except Exception as e:
@@ -431,13 +431,13 @@ class TestSQLMagicOpenMLDB:
         with pytest.raises(Exception):
             assert self.execute('sql', "insert into magic_table values({x: 'first', y:100});")
 
-    def test_magic_select(self):
+    def test_select(self):
         try:
             self.ip.run_line_magic('sql', "select * from magic_table;")
         except Exception as e:
             assert False
     
-    def test_magic_drop(self):
+    def test_drop(self):
         try:
             self.ip.run_line_magic('sql', "drop table magic_table;")
         except Exception as e:
