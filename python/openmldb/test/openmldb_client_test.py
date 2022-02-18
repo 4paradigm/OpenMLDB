@@ -395,6 +395,55 @@ class TestOpenmldbDBAPI:
 
     def teardown_class(self):
         self.cursor.close()
+        
+class TestSQLMagicOpenMLDB:
 
+    def setup_class(self):
+        self.db = openmldb.dbapi.connect('db_test', '127.0.0.1:6181', '/onebox')
+        self.ip = openmldb.sql_magic.register(self.db)
+
+    def execute(self,magic_name,line):
+        try:
+            self.ip.run_line_magic(magic_name,line)
+            return 'ok'
+        except Exception as e:
+            raise Exception(e)
+
+    def test_magic_create_table(self):
+        try:
+            self.ip.run_cell_magic('sql','', "create table magic_table (x string, y int);")
+        except Exception as e:
+            assert False
+        assert "magic_table" in self.db.cursor().get_all_tables()
+
+        with pytest.raises(Exception):
+            assert self.execute('sql', "create table magic_table;")
+
+    def test_magic_insert(self):
+        try:
+            self.ip.run_line_magic('sql', "insert into magic_table values('first', 100);")
+        except Exception as e:
+            assert False
+
+        with pytest.raises(Exception):
+            assert self.execute('sql', "insert into magic_table values(200, 'second');")
+
+        with pytest.raises(Exception):
+            assert self.execute('sql', "insert into magic_table values({x: 'first', y:100});")
+
+    def test_magic_select(self):
+        try:
+            self.ip.run_line_magic('sql', "select * from magic_table;")
+        except Exception as e:
+            assert False
+    
+    def test_magic_drop(self):
+        try:
+            self.ip.run_line_magic('sql', "drop table magic_table;")
+        except Exception as e:
+            assert False
+            
+        assert "magic_table" not in self.db.cursor().get_all_tables()
+            
 if __name__ == '__main__':
     unittest.main()
