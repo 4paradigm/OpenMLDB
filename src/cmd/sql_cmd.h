@@ -151,6 +151,18 @@ void Shell() {
                 continue;
             }
         }
+        if (buffer.find_last_of(';') != std::string::npos && buffer.back() != ';') {
+            std::string::size_type last_semicolon = buffer.find_last_of(';');
+            std::string::size_type buffer_size = buffer.size();
+            std::string after_semicolon_sql = buffer.substr(last_semicolon + 1, buffer_size);
+            boost::trim(after_semicolon_sql);
+            if (after_semicolon_sql.empty()) {
+                buffer = buffer.substr(0, last_semicolon + 1);
+            } else {
+                std::cout << "There should be no characters after the last semicolon in sql" << std::endl;
+                continue;
+            }
+        }
         sql.append(buffer);
         if (sql.length() == 4 || sql.length() == 5) {
             if (absl::EqualsIgnoreCase(sql, "quit;") || absl::EqualsIgnoreCase(sql, "exit;") ||
