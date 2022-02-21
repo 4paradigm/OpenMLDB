@@ -14,8 +14,8 @@
 
 db: test_zw
 cases:
-  -
-    id: 0
+  # 0
+  - id: 0
     desc: window名不存在
     inputs:
       -
@@ -29,5 +29,23 @@ cases:
           - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
     sql: |
       SELECT id, c1, c3, sum(c4) OVER w2 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+
+    # 1
+  - id: un-support const node
+    desc: select interval literal as project output
+    mode: request-unsupport
+    sql: |
+      SELECT 1s;
+    expect:
+      success: false
+
+    # 2
+  - id: un-support interval literal inside expr
+    desc: select interval literal as project output
+    mode: request-unsupport
+    sql: |
+      SELECT 100 + 1s;
     expect:
       success: false
