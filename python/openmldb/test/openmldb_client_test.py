@@ -355,7 +355,7 @@ class TestOpenmldbDBAPI:
             self.cursor.execute(sql)
             return True
         except Exception as e:
-            raise Exception(e)
+            return
 
     def test_create_table(self):
         self.cursor.execute('create table new_table (x string, y int);')
