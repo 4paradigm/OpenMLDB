@@ -83,9 +83,9 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
       planCtx.setModuleBuffer(irBuffer)
 
       val root = engine.getPlan
-      logger.info("Get HybridSE physical plan: ")
 
       if (config.printPhysicalPlan) {
+        logger.info("Get HybridSE physical plan: ")
         root.Print()
       }
 
