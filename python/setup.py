@@ -30,6 +30,7 @@ setup(
     install_requires=[
         "sqlalchemy < 1.4.0",
         "IPython",
+        "prettytable",
         "pytest"
     ],
     include_package_data=True,
