@@ -888,25 +888,23 @@ ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
             return nm->MakeConstNode(GetSmallInt());
         case DataType::kInt32:
             return nm->MakeConstNode(GetInt());
-        case DataType::kInt64:
-            return nm->MakeConstNode(GetLong());
         case DataType::kFloat:
             return nm->MakeConstNode(GetFloat());
         case DataType::kDouble:
             return nm->MakeConstNode(GetDouble());
         case DataType::kVarchar:
             return nm->MakeConstNode(std::string(GetStr()));
+
+        case DataType::kInt64:
         case DataType::kDate:
-            return nm->MakeConstNode(GetLong(), GetDataType());
         case DataType::kTimestamp:
-            return nm->MakeConstNode(GetLong(), GetDataType());
-        case DataType::kNull:
-            return nm->MakeConstNode();
         case DataType::kDay:
         case DataType::kHour:
         case DataType::kMinute:
         case DataType::kSecond:
             return nm->MakeConstNode(GetLong(), GetDataType());
+        case DataType::kNull:
+            return nm->MakeConstNode();
 
         case DataType::kList:
         case DataType::kIterator:
