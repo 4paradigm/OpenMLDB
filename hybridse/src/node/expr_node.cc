@@ -916,7 +916,7 @@ ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
         case DataType::kPlaceholder:
         case DataType::kVoid: {
             LOG(WARNING) << "Fail to copy primary expr of type " << node::DataTypeName(GetDataType());
-            return nm->MakeConstNode();
+            return nm->MakeConstNode(GetDataType());
         }
     }
 }

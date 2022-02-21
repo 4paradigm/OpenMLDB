@@ -133,4 +133,4 @@ cases:
     expect:
       columns: ['c1 bool', 'c2 int16', 'c3 int', 'c4 double', 'c5 string', 'c6 date', 'c7 timestamp' ]
       rows:
-        - [ true, 3, 13, 10.0, 'a string', '2020-05-22', '2020-05-22 10:43:40' ]
+        - [ true, 3, 13, 10.0, 'a string', '2020-05-22', 1590115420000 ]
