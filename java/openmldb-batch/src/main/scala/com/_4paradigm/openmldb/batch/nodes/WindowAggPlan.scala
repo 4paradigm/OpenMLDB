@@ -436,6 +436,13 @@ object WindowAggPlan {
     }
   }
 
-  def isValidOrder(key: Long): Boolean = key >= 0
+  def isValidOrder(key: Long): Boolean = {
+    // TODO: Ignore the null value, maybe handle null in the future
+    if (key == null) {
+      false
+    } else {
+      key >= 0
+    }
+  }
 
 }
