@@ -407,7 +407,7 @@ class TestSQLMagicOpenMLDB:
             self.ip.run_line_magic(magic_name,sql)
             return True
         except Exception as e:
-            raise Exception(e)
+            return
 
     def test_create_table(self):
         try:
