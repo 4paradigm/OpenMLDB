@@ -19,80 +19,52 @@
 #include <memory>
 #include <vector>
 
-#include "vm/engine.h"
 #include "gflags/gflags.h"
+#include "gtest/gtest-param-test.h"
 #include "gtest/gtest.h"
+#include "vm/engine.h"
 
 namespace openmldb {
 namespace cmd {
 
-class SplitTest : public ::testing::Test {
+struct SplitTestCase {
+    std::vector<std::string> expect;
+    std::string input;
+    std::string delimit;
+    char enclosed;
+};
+
+class SplitTest : public ::testing::TestWithParam<SplitTestCase> {
  public:
     SplitTest() {}
     ~SplitTest() {}
 };
 
-TEST_F(SplitTest, SplitLine) {
-    std::vector<std::string> cols;
-    openmldb::cmd::SplitLineWithDelimiterForStrings(" --- --- ---", "---", &cols, '\0');
-    ASSERT_EQ(cols.size(), 4);
-    for (auto& line : cols) {
-        ASSERT_EQ(strcmp(line.c_str(), ""), 0);
+static const std::vector<SplitTestCase> cases = {
+    { {"abc", ""}, "abc,", ",", '"'},
+    { {"abc", ""}, "abc  ,", ",", '"'},
+    { { "", "", "", "" }, " --- --- ---", "---", '\0' },
+    { { "- -", "ab", "c b", "" }, "- - ---ab---c b---", "---", '\0' },
+    { { " + + ", "+ +", "c b" }, "\" + + \"---+ +---c b", "---", '"' },
+    { { "\" + + \"", "+ +", "c b" }, "\" + + \"---+ +---c b", "---", '\0' },
+    { { "_", "ab", "cd" }, " _ --- ab --- cd", "---", '\0' },
+    { { "ab", "cd", "ef" }, "ab cd ef", " ", '\0' },
+    { { "ab", "", "cd", "", "ef" }, "ab  cd  ef", " ", '\0' },
+    { { "ab ", "cd", "", "ef" }, "\"ab \" cd  ef", " ", '"' },
+};
+
+INSTANTIATE_TEST_SUITE_P(SplitLine, SplitTest, testing::ValuesIn(cases));
+
+TEST_P(SplitTest, SplitLineWithDelimiterForStrings) {
+    auto& c = GetParam();
+    std::vector<std::string> splited;
+    SplitLineWithDelimiterForStrings(c.input, c.delimit, &splited, c.enclosed);
+
+    ASSERT_EQ(c.expect.size(), splited.size()) << "splited list size not match";
+
+    for (int i = 0; i < c.expect.size(); i++) {
+        EXPECT_STREQ(c.expect[i].c_str(), splited[i].c_str());
     }
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("- - ---ab---c b---", "---", &cols, '\0');
-    ASSERT_EQ(cols.size(), 4);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "- -"), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "ab"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "c b"), 0);
-    ASSERT_EQ(strcmp(cols[3].c_str(), ""), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("\" + + \"---+ +---c b", "---", &cols, '"');
-    ASSERT_EQ(cols.size(), 3);
-    ASSERT_EQ(strcmp(cols[0].c_str(), " + + "), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "+ +"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "c b"), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("\" + + \"---+ +---c b", "---", &cols, '\0');
-    ASSERT_EQ(cols.size(), 3);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "\" + + \""), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "+ +"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "c b"), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings(" _ --- ab --- cd", "---", &cols, '\0');
-    ASSERT_EQ(cols.size(), 3);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "_"), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "ab"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "cd"), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("ab cd ef", " ", &cols, '\0');
-    ASSERT_EQ(cols.size(), 3);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "ab"), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "cd"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "ef"), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("ab  cd  ef", " ", &cols, '\0');
-    ASSERT_EQ(cols.size(), 5);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "ab"), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), ""), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), "cd"), 0);
-    ASSERT_EQ(strcmp(cols[3].c_str(), ""), 0);
-    ASSERT_EQ(strcmp(cols[4].c_str(), "ef"), 0);
-    cols.clear();
-
-    openmldb::cmd::SplitLineWithDelimiterForStrings("\"ab \" cd  ef", " ", &cols, '"');
-    ASSERT_EQ(cols.size(), 4);
-    ASSERT_EQ(strcmp(cols[0].c_str(), "ab "), 0);
-    ASSERT_EQ(strcmp(cols[1].c_str(), "cd"), 0);
-    ASSERT_EQ(strcmp(cols[2].c_str(), ""), 0);
-    ASSERT_EQ(strcmp(cols[3].c_str(), "ef"), 0);
-    cols.clear();
 }
 
 }  // namespace cmd

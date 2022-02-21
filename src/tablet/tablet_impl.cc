@@ -4711,6 +4711,9 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
     }
     std::atomic_store_explicit(&real_ep_map_, tmp_real_ep_map, std::memory_order_release);
     DLOG(INFO) << "real_ep_map size is " << tmp_real_ep_map->size();
+    for (const auto& kv : *tmp_real_ep_map) {
+        LOG(INFO) << "update real endpoint: " << kv.first << " : " << kv.second;
+    }
     catalog_->UpdateClient(*tmp_real_ep_map);
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");

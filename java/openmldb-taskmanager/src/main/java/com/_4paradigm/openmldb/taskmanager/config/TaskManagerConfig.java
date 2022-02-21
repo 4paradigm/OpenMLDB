@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.taskmanager.config;
 
+import com._4paradigm.openmldb.taskmanager.util.BatchJobUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
@@ -68,7 +69,10 @@ public class TaskManagerConfig {
             ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
             OFFLINE_DATA_PREFIX = prop.getProperty("offline.data.prefix");
             SPARK_MASTER = prop.getProperty("spark.master", "yarn");
-            BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path");
+            BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path", "");
+            if (BATCHJOB_JAR_PATH.isEmpty()) {
+                BATCHJOB_JAR_PATH = BatchJobUtil.findLocalBatchJobJar();
+            }
             SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars");
             SPARK_HOME = prop.getProperty("spark.home");
             PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.jobid.num", "10"));

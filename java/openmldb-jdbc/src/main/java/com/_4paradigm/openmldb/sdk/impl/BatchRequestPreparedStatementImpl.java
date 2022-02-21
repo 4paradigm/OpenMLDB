@@ -50,6 +50,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
     @Override
     public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
+        checkExecutorClosed();
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
