@@ -60,7 +60,8 @@ public class TaskManagerServer {
             rpcServer = new RpcServer(TaskManagerConfig.PORT, options);
             rpcServer.registerService(new TaskManagerImpl());
             rpcServer.start();
-            log.info("Start TaskManager on {} with worker thread number {}", TaskManagerConfig.PORT, TaskManagerConfig.WORKER_THREAD);
+            log.info("Start TaskManager on {} with worker thread number {}", TaskManagerConfig.PORT,
+                    TaskManagerConfig.WORKER_THREAD);
 
             // make server keep running
             synchronized (TaskManagerServer.class) {
