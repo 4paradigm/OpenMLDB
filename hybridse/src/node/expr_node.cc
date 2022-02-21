@@ -881,30 +881,43 @@ ParameterExpr *ParameterExpr::ShadowCopy(NodeManager *nm) const {
     return nm->MakeParameterExpr(position());
 }
 ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
-    switch (this->GetDataType()) {
-        case node::kBool:
+    switch (GetDataType()) {
+        case DataType::kBool:
             return nm->MakeConstNode(GetBool());
-        case node::kInt16:
+        case DataType::kInt16:
             return nm->MakeConstNode(GetSmallInt());
-        case node::kInt32:
+        case DataType::kInt32:
             return nm->MakeConstNode(GetInt());
-        case node::kInt64:
+        case DataType::kInt64:
             return nm->MakeConstNode(GetLong());
-        case node::kFloat:
+        case DataType::kFloat:
             return nm->MakeConstNode(GetFloat());
-        case node::kDouble:
+        case DataType::kDouble:
             return nm->MakeConstNode(GetDouble());
-        case node::kVarchar:
+        case DataType::kVarchar:
             return nm->MakeConstNode(std::string(GetStr()));
-        case node::kDate:
+        case DataType::kDate:
             return nm->MakeConstNode(GetLong(), GetDataType());
-        case node::kTimestamp:
+        case DataType::kTimestamp:
             return nm->MakeConstNode(GetLong(), GetDataType());
-        case node::kNull:
+        case DataType::kNull:
             return nm->MakeConstNode();
-        default: {
-            LOG(WARNING) << "Fail to copy primary expr of type " +
-                                node::DataTypeName(GetDataType());
+        case DataType::kDay:
+        case DataType::kHour:
+        case DataType::kMinute:
+        case DataType::kSecond:
+            return nm->MakeConstNode(GetLong(), GetDataType());
+
+        case DataType::kList:
+        case DataType::kIterator:
+        case DataType::kMap:
+        case DataType::kRow:
+        case DataType::kInt8Ptr:
+        case DataType::kTuple:
+        case DataType::kOpaque:
+        case DataType::kPlaceholder:
+        case DataType::kVoid: {
+            LOG(WARNING) << "Fail to copy primary expr of type " << node::DataTypeName(GetDataType());
             return nm->MakeConstNode();
         }
     }

@@ -899,9 +899,9 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
                            ColumnProjects* output) {
     for (auto plan_node : projects) {
         auto pp_node = dynamic_cast<node::ProjectNode*>(plan_node);
-        CHECK_TRUE(pp_node != nullptr, kPlanError);
+        CHECK_TRUE(pp_node != nullptr, kPlanError, "project node is null");
         auto expr = pp_node->GetExpression();
-        CHECK_TRUE(expr != nullptr, kPlanError);
+        CHECK_TRUE(expr != nullptr, kPlanError, "expr in project node is null");
         if (expr->GetExprType() == node::kExprAll) {
             // expand *
             for (size_t slice = 0; slice < schemas_ctx->GetSchemaSourceSize();
@@ -1681,6 +1681,9 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
                 std::set<PhysicalOpNode*> node_visited_dict;
                 CHECK_STATUS(InitFnInfo(optimized_physical_plan, &node_visited_dict),
                              "Fail to generate functions for physical plan");
+
+                // assert un-supported output column type
+
                 *output = optimized_physical_plan;
                 break;
             }

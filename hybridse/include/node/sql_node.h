@@ -857,7 +857,9 @@ class ConstNode : public ExprNode {
         }
     }
 
-    ConstNode(int64_t val, DataType time_type) : ExprNode(kExprPrimary), data_type_(time_type) { val_.vlong = val; }
+    explicit ConstNode(int64_t val, DataType time_type) : ExprNode(kExprPrimary), data_type_(time_type) {
+        val_.vlong = val;
+    }
 
     ~ConstNode() {
         if (data_type_ == hybridse::node::kVarchar) {
