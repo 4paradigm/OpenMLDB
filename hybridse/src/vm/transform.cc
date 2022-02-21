@@ -1681,9 +1681,6 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
                 std::set<PhysicalOpNode*> node_visited_dict;
                 CHECK_STATUS(InitFnInfo(optimized_physical_plan, &node_visited_dict),
                              "Fail to generate functions for physical plan");
-
-                // assert un-supported output column type
-
                 *output = optimized_physical_plan;
                 break;
             }
