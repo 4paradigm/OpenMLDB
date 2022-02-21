@@ -69,7 +69,8 @@ object JobInfoManager {
   def getAllJobs(): List[JobInfo] = {
     val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME"
     val rs = sqlExecutor.executeSQL(INTERNAL_DB_NAME, sql)
-    resultSetToJobs(rs)
+    // TODO: Reorder in output, use orderby desc if SQL supported
+    resultSetToJobs(rs).sortWith(_.getId > _.getId)
   }
 
   def getUnfinishedJobs(): List[JobInfo] = {
@@ -88,7 +89,7 @@ object JobInfoManager {
       }
     }
 
-    jobs.toList
+    jobs.toList.sortWith(_.getId > _.getId)
   }
 
   def stopJob(jobId: Int): JobInfo = {

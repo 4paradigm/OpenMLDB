@@ -25,6 +25,7 @@ import org.testng.annotations.Test;
 import org.testng.annotations.BeforeClass;
 import java.util.List;
 
+@Ignore
 public class TestTaskManagerClient {
     TaskManagerServer server;
     TaskManagerClient client;
