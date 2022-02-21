@@ -52,11 +52,9 @@ object JobInfoManager {
     val initialState = "Submitted"
     val parameter = if (args != null && args.length>0) args.mkString(",") else ""
     val cluster = sparkConf.getOrElse("spark.master", TaskManagerConfig.SPARK_MASTER)
-    // TODO: Require endTime is not null for insert sql
-    val defaultEndTime = startTime
 
     // TODO: Parse if run in yarn or local
-    val jobInfo = new JobInfo(jobId, jobType, initialState, startTime, defaultEndTime, parameter, cluster, "", "")
+    val jobInfo = new JobInfo(jobId, jobType, initialState, startTime, null, parameter, cluster, "", "")
     jobInfo.sync()
     jobInfo
   }

@@ -48,7 +48,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             builder.setState(job.getState());
         }
         if (job.getStartTime() != null) {
-            builder.setEndTime(job.getStartTime().getTime());
+            builder.setStartTime(job.getStartTime().getTime());
         }
         if (job.getEndTime() != null) {
             builder.setEndTime(job.getEndTime().getTime());
