@@ -30,6 +30,8 @@ enum TableMode {
     kTableFollower = 2;
 }
 
+
+
 enum TableState {
     kTableUndefined = 0;
     kTableNormal = 1;
@@ -310,6 +312,10 @@ message TableMeta {
     optional string db = 14 [default = ""];
     repeated common.VersionPair schema_versions = 15;
     repeated common.TablePartition table_partition = 16;
+    optional openmldb.common.StorageMode storage_mode = 17 [default = kMemory];
+    optional openmldb.type.TTLType ttl_type = 18 [default = kAbsoluteTime, deprecated = true];
+
+
 }
 
 message CreateTableRequest {
