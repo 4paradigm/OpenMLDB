@@ -57,9 +57,14 @@ class OpenmldbSession {
     this.setDefaultSparkConfig()
 
     if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkRootPath.nonEmpty) {
-      openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster, this.config.openmldbZkRootPath,
-        config.openmldbJsdkLibraryPath)
-      registerOpenmldbOfflineTable(openmldbCatalogService)
+      try {
+        openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster,
+          this.config.openmldbZkRootPath, config.openmldbJsdkLibraryPath)
+        registerOpenmldbOfflineTable(openmldbCatalogService)
+      } catch {
+        case e: Exception => logger.warn("Fail to connect OpenMLDB cluster and register tables, " + e.getMessage)
+      }
+
     }
   }
 
