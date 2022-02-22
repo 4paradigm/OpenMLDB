@@ -478,7 +478,8 @@ class DeployPlanNode : public LeafPlanNode {
  public:
     explicit DeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
                             const std::shared_ptr<OptionsMap> options, bool if_not_exist)
-        : LeafPlanNode(kPlanTypeDeploy), name_(name), stmt_(stmt), stmt_str_(stmt_str), options_(options), if_not_exist_(if_not_exist) {}
+        : LeafPlanNode(kPlanTypeDeploy), name_(name), stmt_(stmt), stmt_str_(stmt_str),
+        options_(options), if_not_exist_(if_not_exist) {}
     ~DeployPlanNode() {}
 
     const std::string& Name() const { return name_; }
