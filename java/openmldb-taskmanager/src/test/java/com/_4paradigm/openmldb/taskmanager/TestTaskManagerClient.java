@@ -20,10 +20,12 @@ import com._4paradigm.openmldb.proto.TaskManager;
 import com._4paradigm.openmldb.taskmanager.client.TaskManagerClient;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerServer;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeClass;
 import java.util.List;
 
+@Ignore
 public class TestTaskManagerClient {
     TaskManagerServer server;
     TaskManagerClient client;
@@ -69,7 +71,7 @@ public class TestTaskManagerClient {
         }
     }
 
-    @Test
+    @Ignore
     public void testShowBatchVersion() {
         try {
             // TODO: Set path of batchjob jar and check if job changes to FINISH

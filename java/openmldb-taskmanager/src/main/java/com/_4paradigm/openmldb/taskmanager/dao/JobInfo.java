@@ -128,8 +128,10 @@ public class JobInfo {
 
     @Override
     public String toString() {
-        return String.format("id: %d, jobType: %s, state: %s, parameter: %s, cluster: %s, applicationId: %s, error: %s",
-                id, jobType, state, parameter, cluster, applicationId, error);
+        return String.format("id: %d, jobType: %s, state: %s, startTime: %s, endTime: %s parameter: %s, cluster: %s," +
+                        " applicationId: %s, error: %s",
+                id, jobType, state, startTime.toString(), endTime == null ? "": endTime.toString(), parameter, cluster,
+                applicationId, error);
     }
 
     public boolean isFinished() {

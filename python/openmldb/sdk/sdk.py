@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2021 4Paradigm
 #
@@ -13,15 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 # fmt:off
 import os
 import sys
-sys.path.append(os.path.dirname(__file__) + "/..")
 import logging
 from native import sql_router_sdk
 from datetime import date
 from datetime import datetime
+from prettytable import PrettyTable
 # fmt:on
+sys.path.append(os.path.dirname(__file__) + "/..")
 logger = logging.getLogger("openmldb_sdk")
 
 class OpenmldbSdkOptions(object):
@@ -46,6 +47,20 @@ class OpenmldbSdk(object):
         logger.info("init openmldb sdk done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
         return True
 
+    def getDatabases(self):
+        if not self.sdk:
+            return False, "please init sdk first"
+
+        dbs = sql_router_sdk.VectorString()
+        status = sql_router_sdk.Status()
+        self.sdk.ShowDB(dbs, status)
+        if status.code !=0:
+            return False
+        output_dbs = []
+        for i in range(dbs.size()):
+            output_dbs.append(dbs[i])
+        return output_dbs
+
     def createDB(self, db):
         if not self.sdk:
             return False, "please init sdk first"
@@ -63,6 +78,11 @@ class OpenmldbSdk(object):
             return True, "ok"
         else:
             return False, status.msg
+
+    def getTables(self, db):
+        if not self.sdk:
+            raise Exception("please init sdk first")
+        return self.sdk.GetTableNames(db)
 
     def getAllTables(self):
         if not self.sdk:
@@ -417,3 +437,42 @@ class OpenmldbSdk(object):
         if status.code != 0:
             return False, status.msg
         return True, rs
+
+    def getJobLog(self, id):
+        if not self.sdk:
+            return False, "please init sdk first"
+
+        status = sql_router_sdk.Status()
+
+        log = self.sdk.GetJobLog(id, status)
+        if status.code !=0:
+            # TODO: Throw exception if get failure status
+            return ""
+
+        return log
+
+    @staticmethod
+    def print_table(schema, rows):
+        t = PrettyTable(schema)
+        for row in rows:
+            t.add_row(row)
+        print(t)
+
+class TypeUtil(object):
+
+    # Convert int type to string type
+    @staticmethod
+    def intTypeToStr(intType):
+        # The map of type with number and type with readable string
+        typeMap = {
+            sql_router_sdk.kTypeBool: "bool",
+            sql_router_sdk.kTypeInt16: "int16",
+            sql_router_sdk.kTypeInt32: "int32",
+            sql_router_sdk.kTypeInt64: "int64",
+            sql_router_sdk.kTypeFloat: "float",
+            sql_router_sdk.kTypeDouble: "double",
+            sql_router_sdk.kTypeString: "string",
+            sql_router_sdk.kTypeDate: "date",
+            sql_router_sdk.kTypeTimestamp: "timestamp"
+        }
+        return typeMap[intType]

@@ -11,7 +11,7 @@ We first need to download the sample data set and start the OpenMLDB CLI. We str
 1. Pull the image (download size around 500 MB) and start the container 
 
    ```bash
-   docker run -it 4pdosc/openmldb:0.4.0 bash
+   docker run -it 4pdosc/openmldb:0.4.1 bash
    ```
 
    **:bulb: After starting the container successfully, the following commands are all executed in the container.**
@@ -97,7 +97,7 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 ```
 The expected return of the above request is shown below (the return features are packed in the field `data`):
 ```json
-{"code":0,"msg":"ok","data":{"data":[["aaa",11,22]],"common_cols_data":[]}}
+{"code":0,"msg":"ok","data":{"data":[["aaa",11,22]]}}
 ```
 
 ## 3. Demo

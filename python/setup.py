@@ -28,14 +28,17 @@ setup(
         'Programming Language :: Python :: 3',
         ],
     install_requires=[
-        "sqlalchemy < 1.4.0"
+        "sqlalchemy < 1.4.0",
+        "IPython",
+        "prettytable",
+        "pytest"
     ],
     include_package_data=True,
     package_data = {'':['*.so']},
     packages=find_packages(),
     entry_points={
         'sqlalchemy.dialects': [
-            'openmldb = sqlalchemy_openmldb.openmldb_dialect:OpenmldbDialect',
+            'openmldb = openmldb.sqlalchemy_openmldb.openmldb_dialect:OpenmldbDialect',
         ],
     },
     zip_safe=False,

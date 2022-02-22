@@ -41,13 +41,12 @@ object SparkJobManager {
     }
 
     TaskManagerConfig.SPARK_MASTER.toLowerCase match {
-      case "local" => {
+      case "local" =>
         launcher.setMaster("local")
-      }
-      case "yarn" => {
-        launcher.setMaster("yarn")
-          .setDeployMode("cluster")
-      }
+      case "yarn" | "yarn-cluster" =>
+        launcher.setMaster("yarn").setDeployMode("cluster")
+      case "yarn-client" =>
+        launcher.setMaster("yarn").setDeployMode("client")
       case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
     }
 

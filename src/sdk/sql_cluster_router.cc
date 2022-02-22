@@ -300,9 +300,19 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
         status->msg = "insert stmt is null";
         return false;
     }
-    *table_info = cluster_sdk_->GetTableInfo(db, insert_stmt->table_name_);
+    std::string db_name;
+    if (!insert_stmt->db_name_.empty()) {
+        db_name = insert_stmt->db_name_;
+    } else {
+        db_name = db;
+    }
+    if (db_name.empty()) {
+        status->msg = "Please enter database first";
+        return false;
+    }
+    *table_info = cluster_sdk_->GetTableInfo(db_name, insert_stmt->table_name_);
     if (!(*table_info)) {
-        status->msg = "table with name " + insert_stmt->table_name_ + " in db " + db + " does not exist";
+        status->msg = "table with name " + insert_stmt->table_name_ + " in db " + db_name + " does not exist";
         LOG(WARNING) << status->msg;
         return false;
     }
@@ -627,10 +637,8 @@ bool SQLClusterRouter::ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Stat
 }
 
 // get all table names in all DB
-std::vector<std::string> SQLClusterRouter::GetAllTables() {
-    return cluster_sdk_->GetAllTables();
-}
- 
+std::vector<std::string> SQLClusterRouter::GetAllTables() { return cluster_sdk_->GetAllTables(); }
+
 bool SQLClusterRouter::CreateDB(const std::string& db, hybridse::sdk::Status* status) {
     if (status == NULL) {
         return false;
@@ -1095,7 +1103,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
 
     std::shared_ptr<::hybridse::sdk::Schema> schema = ::openmldb::sdk::ConvertToSchema(table_info);
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
-    bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
+    bool ret = cluster_sdk_->GetTablet(table_info->db(), table_info->name(), &tablets);
     if (!ret || tablets.empty()) {
         status->msg = "Fail to execute insert statement: fail to get " + table_info->name() + " tablet";
         LOG(WARNING) << status->msg;
@@ -1403,6 +1411,18 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     }
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db_name);
+
+    if (!cluster_sdk_->IsClusterMode()) {
+        if (create_node->GetReplicaNum() != 1) {
+            return base::Status(base::ReturnCode::kSQLCmdRunError,
+                                "Fail to create table with the replica configuration in standalone mode");
+        }
+        if (!create_node->GetDistributionList().empty()) {
+            return base::Status(base::ReturnCode::kSQLCmdRunError,
+                                "Fail to create table with the distribution configuration in standalone mode");
+        }
+    }
+
     hybridse::base::Status sql_status;
     ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
     if (sql_status.code != 0) {
@@ -1731,9 +1751,23 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     return taskmanager_client_ptr->ExportOfflineData(sql, config, default_db, job_info);
 }
 
-bool SQLClusterRouter::NotifyTableChange() {
-    return cluster_sdk_->TriggerNotify();
+std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* status) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        status->code = -1;
+        status->msg = "Fail to get TaskManager client";
+        return "";
+    }
+
+    // TODO: Need to pass ::openmldb::base::Status* for TaskManagerClient
+    auto openmldbStatus =  std::make_shared<::openmldb::base::Status>();
+    auto log = taskmanager_client_ptr->GetJobLog(id, openmldbStatus.get());
+    status->code = openmldbStatus->code;
+    status->msg = openmldbStatus->msg;
+    return log;
 }
+
+bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(); }
 
 }  // namespace sdk
 }  // namespace openmldb

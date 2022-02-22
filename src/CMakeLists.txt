@@ -47,10 +47,9 @@ function(compile_test DIR)
     ${ZETASQL_LIBS}
     ${BRPC_LIBS})
     file(GLOB_RECURSE SRC_FILES ${DIR}/*.cc)
-    set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
     foreach(SRC_FILE ${SRC_FILES})
         if (SRC_FILE MATCHES ".*_test.cc")
-            file(RELATIVE_PATH RELATIVE_TEST_PATH ${TEST_CPP_SOURCE_DIR} ${SRC_FILE})
+            file(RELATIVE_PATH RELATIVE_TEST_PATH ${CMAKE_CURRENT_SOURCE_DIR} ${SRC_FILE})
             get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
             get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
             add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:openmldb_proto>)
@@ -60,6 +59,12 @@ function(compile_test DIR)
             else()
                 target_link_libraries(${TEST_TARGET_NAME} ${TEST_LIBS} gtest)
             endif()
+            set_target_properties(${TEST_TARGET_NAME}
+                PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR})
+            add_test(${TEST_TARGET_NAME}
+                ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
+                --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
         endif()
     endforeach()
     set(test_list ${test_list} PARENT_SCOPE)
