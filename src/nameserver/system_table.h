@@ -81,7 +81,7 @@ class SystemTable {
                 auto ttl = index->mutable_ttl();
                 ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
                 ttl->set_abs_ttl(0);
-                
+
                 auto index2 = table_info->add_column_key();
                 index2->set_index_name("unique_key");
                 index2->add_col_name("base_db");
@@ -90,7 +90,6 @@ class SystemTable {
                 index2->add_col_name("aggr_col");
                 index2->add_col_name("partition_cols");
                 index2->add_col_name("order_by_col");
-                index2->add_col_name("bucket_size");
                 ttl = index2->mutable_ttl();
                 ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
                 ttl->set_abs_ttl(0);
