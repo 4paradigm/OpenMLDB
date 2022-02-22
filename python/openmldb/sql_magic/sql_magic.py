@@ -46,11 +46,7 @@ class SqlMagic(Magics):
 def register(db, test=False):
     if test:
         from IPython.testing.globalipapp import get_ipython
-        ip = get_ipython()
-        magics = SqlMagic(ip,db)
-        ip.register_magics(magics)
-        return ip
-    else:
-        ip = get_ipython()
-        magics = SqlMagic(ip,db)
-        ip.register_magics(magics)
+    ip = get_ipython()
+    magics = SqlMagic(ip,db)
+    ip.register_magics(magics)
+    return ip
