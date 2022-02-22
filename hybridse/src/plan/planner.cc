@@ -315,7 +315,7 @@ base::Status Planner::CreateWindowPlanNode(const node::WindowDefNode *w_ptr, nod
 
 base::Status Planner::CreateDeployPlanNode(const node::DeployNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create deploy plan with null node");
-    *output = node_manager_->MakeDeployPlanNode(root->Name(), root->Stmt(), root->StmtStr(), root->IsIfNotExists());
+    *output = node_manager_->MakeDeployPlanNode(root->Name(), root->Stmt(), root->StmtStr(), root->Options(), root->IsIfNotExists());
     return base::Status::OK();
 }
 

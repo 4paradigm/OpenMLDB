@@ -753,15 +753,16 @@ SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name,
     return RegisterNode(node_ptr);
 }
 
-DeployNode *NodeManager::MakeDeployStmt(const std::string &name, const SqlNode *stmt,
-                                     const std::string& stmt_str, bool if_not_exist) {
-    DeployNode *node = new DeployNode(name, stmt, stmt_str, if_not_exist);
+DeployNode *NodeManager::MakeDeployStmt(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
+                                        const std::shared_ptr<OptionsMap> options, bool if_not_exist) {
+    DeployNode *node = new DeployNode(name, stmt, stmt_str, options, if_not_exist);
     return RegisterNode(node);
 }
 
 DeployPlanNode *NodeManager::MakeDeployPlanNode(const std::string &name, const SqlNode *stmt,
-                                                const std::string& stmt_str, bool if_not_exist) {
-    DeployPlanNode *node = new DeployPlanNode(name, stmt, stmt_str, if_not_exist);
+                                                const std::string &stmt_str, const std::shared_ptr<OptionsMap> options,
+                                                bool if_not_exist) {
+    DeployPlanNode *node = new DeployPlanNode(name, stmt, stmt_str, options, if_not_exist);
     return RegisterNode(node);
 }
 DeleteNode* NodeManager::MakeDeleteNode(DeleteTarget target, std::string_view job_id) {
