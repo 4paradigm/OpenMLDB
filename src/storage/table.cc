@@ -21,6 +21,8 @@
 
 #include "base/glog_wapper.h"
 #include "codec/schema_codec.h"
+#include "storage/mem_table.h"
+#include "storage/disk_table.h"
 
 namespace openmldb {
 namespace storage {
@@ -65,6 +67,26 @@ Table::Table(::openmldb::common::StorageMode storage_mode, const std::string& na
         cur_ttl->CopyFrom(ttl_st);
     }
     AddVersionSchema(*table_meta_);
+}
+
+Table* Table::CreateTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
+              const std::map<std::string, uint32_t>& mapping, uint64_t ttl,
+              ::openmldb::type::TTLType ttl_type,
+              const std::string& db_root_path,
+              ::openmldb::common::StorageMode storage_mode) {
+    if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+        return new MemTable(name, id, pid, seg_cnt, mapping, ttl, ttl_type);
+    } else {
+        return new DiskTable(name, id, pid, mapping, ttl, ttl_type, storage_mode, db_root_path);
+    }
+}
+
+Table* Table::CreateTable(const ::openmldb::api::TableMeta& table_meta, const std::string& db_root_path) {
+    if (table_meta.storage_mode() == ::openmldb::common::StorageMode::kMemory) {
+        return new MemTable(table_meta);
+    } else {
+        return new DiskTable(table_meta, db_root_path);
+    }
 }
 
 void Table::AddVersionSchema(const ::openmldb::api::TableMeta& table_meta) {

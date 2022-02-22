@@ -236,6 +236,7 @@ bool DiskTable::Put(uint64_t time, const std::string& value,
     Dimensions::const_iterator it = dimensions.begin();
     for (; it != dimensions.end(); ++it) {
         std::shared_ptr<IndexDef> index_def = GetIndex(it->idx());
+        int32_t inner_pos = table_index_.GetInnerIndexPos(it->idx());
         if (!index_def) {
             PDLOG(
                 WARNING,
@@ -243,9 +244,16 @@ bool DiskTable::Put(uint64_t time, const std::string& value,
                 it->key().c_str(), it->idx(), id_, pid_);
             return false;
         }
-        std::string combine_key = CombineKeyTs(it->key(), time);
+        auto inner_index = table_index_.GetInnerIndex(inner_pos);
+        auto ts_col = index_def->GetTsColumn();
+        std::string combine_key;
+        if (inner_index->GetIndex().size() > 1 && ts_col) {
+            combine_key = CombineKeyTs(it->key(), time, ts_col->GetId());
+        } else {
+            combine_key = CombineKeyTs(it->key(), time);
+        }
         rocksdb::Slice spk = rocksdb::Slice(combine_key);
-        batch.Put(cf_hs_[it->idx() + 1], spk, value);
+        batch.Put(cf_hs_[inner_pos + 1], spk, value);
     }
     s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
@@ -293,14 +301,14 @@ bool DiskTable::Put(uint64_t time, const std::string& value,
 //             uint64_t ts = 0;
 //             bool has_found_ts = false;
 //             for (auto it = ts_dimemsions.begin(); it != ts_dimemsions.end(); it++) {
-//                 if (static_cast<int>(it->idx()) == ts_col->GetTsIdx()) {
+//                 if (static_cast<int>(it->idx()) == ts_col->GetId()) {
 //                     has_found_ts = true;
 //                     ts = it->ts();
 //                     break;
 //                 }
 //             }
 //             if (!has_found_ts) {
-//                 DEBUGLOG("cannot find ts col %d. tid %u pid %u", ts_col->GetTsIdx(), id_, pid_);
+//                 DEBUGLOG("cannot find ts col %d. tid %u pid %u", ts_col->GetId(), id_, pid_);
 //                 continue;
 //             }
 //             if (index_def->IsReady()) {
@@ -308,7 +316,7 @@ bool DiskTable::Put(uint64_t time, const std::string& value,
 //                 if (indexs.size() == 1) {
 //                     combine_key = CombineKeyTs(kv.second, ts);
 //                 } else {
-//                    combine_key = CombineKeyTs(kv.second, ts, (uint8_t)ts_col->GetTsIdx());
+//                    combine_key = CombineKeyTs(kv.second, ts, (uint8_t)ts_col->GetId());
 //                 }
 //                 batch.Put(cf_hs_[inner_index->GetId() + 1], rocksdb::Slice(combine_key), value);
 //             }
@@ -360,20 +368,20 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
     }
 }
 
-bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
-                    uint32_t ts_idx, std::string& value) {
-    Ticket ticket;
-    auto it = NewIterator(idx, ts_idx, pk, ticket);
-    it->Seek(ts);
-    if ((it->Valid()) && (it->GetKey() == ts)) {
-        value = it->GetValue().ToString();
-        delete it;
-        return true;
-    } else {
-        delete it;
-        return false;
-    }
-}
+// bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
+//                     uint32_t ts_idx, std::string& value) {
+//     Ticket ticket;
+//     auto it = NewIterator(idx, ts_idx, pk, ticket);
+//     it->Seek(ts);
+//     if ((it->Valid()) && (it->GetKey() == ts)) {
+//         value = it->GetValue().ToString();
+//         delete it;
+//         return true;
+//     } else {
+//         delete it;
+//         return false;
+//     }
+// }
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
                     std::string& value) {
@@ -616,43 +624,49 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk,
     }
     uint32_t inner_pos = index_def->GetInnerPos();
     auto inner_index = table_index_.GetInnerIndex(inner_pos);
-    if (inner_index && inner_index->GetIndex().size() > 1) {
-        auto ts_col = index_def->GetTsColumn();
-        if (!ts_col) {
-            return NULL;
-        }
-        return NewIterator(idx, ts_col->GetId(), pk, ticket);
-    }
+    // if (inner_index && inner_index->GetIndex().size() > 1) {
+    //     auto ts_col = index_def->GetTsColumn();
+    //     if (!ts_col) {
+    //         return NULL;
+    //     }
+    //     return NewIterator(idx, ts_col->GetId(), pk, ticket);
+    // }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+    if (inner_index && inner_index->GetIndex().size() > 1) {
+        auto ts_col = index_def->GetTsColumn();
+        if (ts_col) {
+            return new DiskTableIterator(db_, it, snapshot, pk, ts_col->GetId());
+        }
+    }
     return new DiskTableIterator(db_, it, snapshot, pk);
 }
 
-TableIterator* DiskTable::NewIterator(uint32_t idx, int32_t ts_idx,
-                                      const std::string& pk, Ticket& ticket) {
-    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx, ts_idx);
-    if (!index_def) {
-        PDLOG(WARNING, "index %u not found in table, tid %u pid %u", idx, id_,
-              pid_);
-        return NULL;
-    }
-    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
-    ro.snapshot = snapshot;
-    ro.prefix_same_as_start = true;
-    ro.pin_data = true;
-    uint32_t inner_pos = index_def->GetInnerPos();
-    auto inner_index = table_index_.GetInnerIndex(inner_pos);
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
-    if (inner_index && inner_index->GetIndex().size() > 1) {
-        return new DiskTableIterator(db_, it, snapshot, pk, ts_idx);
-    }
-    return new DiskTableIterator(db_, it, snapshot, pk);
-}
+// TableIterator* DiskTable::NewIterator(uint32_t idx, int32_t ts_idx,
+//                                       const std::string& pk, Ticket& ticket) {
+//     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx, ts_idx);
+//     if (!index_def) {
+//         PDLOG(WARNING, "index %u not found in table, tid %u pid %u", idx, id_,
+//               pid_);
+//         return NULL;
+//     }
+//     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+//     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+//     ro.snapshot = snapshot;
+//     ro.prefix_same_as_start = true;
+//     ro.pin_data = true;
+//     uint32_t inner_pos = index_def->GetInnerPos();
+//     auto inner_index = table_index_.GetInnerIndex(inner_pos);
+//     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+//     if (inner_index && inner_index->GetIndex().size() > 1) {
+//         return new DiskTableIterator(db_, it, snapshot, pk, ts_idx);
+//     }
+//     return new DiskTableIterator(db_, it, snapshot, pk);
+// }
 
 TableIterator* DiskTable::NewTraverseIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
@@ -661,13 +675,13 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index) {
     }
     uint32_t inner_pos = index_def->GetInnerPos();
     auto inner_index = table_index_.GetInnerIndex(inner_pos);
-    if (inner_index && inner_index->GetIndex().size() > 1) {
-        auto ts_col = index_def->GetTsColumn();
-        if (!ts_col) {
-            return NULL;
-        }
-        return NewTraverseIterator(index, ts_col->GetId());
-    }
+    // if (inner_index && inner_index->GetIndex().size() > 1) {
+    //     auto ts_col = index_def->GetTsColumn();
+    //     if (!ts_col) {
+    //         return NULL;
+    //     }
+    //     return NewTraverseIterator(index, ts_col->GetId());
+    // }
     auto ttl = index_def->GetTTL();
     uint64_t expire_time = GetExpireTime(*ttl);
     uint64_t expire_cnt = ttl->lat_ttl;
@@ -677,39 +691,46 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index) {
     // ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+    if (inner_index && inner_index->GetIndex().size() > 1) {
+        auto ts_col = index_def->GetTsColumn();
+        if (ts_col) {
+            return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_,
+                                                expire_time, expire_cnt, ts_col->GetId());
+        }
+    }
     return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_,
                                          expire_time, expire_cnt);
 }
 
-TableIterator* DiskTable::NewTraverseIterator(uint32_t index,
-                                              uint32_t ts_index) {
-    if (ts_index < 0) {
-        return NULL;
-    }
-    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index, ts_index);
-    if (!index_def) {
-        PDLOG(WARNING, "index %u not found in table tid %u pid %u", index, id_,
-              pid_);
-        return NULL;
-    }
-    uint32_t inner_pos = index_def->GetInnerPos();
-    auto ttl = index_def->GetTTL();
-    uint64_t expire_time = GetExpireTime(*ttl);
-    uint64_t expire_cnt = ttl->lat_ttl;
-    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
-    ro.snapshot = snapshot;
-    // ro.prefix_same_as_start = true;
-    ro.pin_data = true;
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
-    auto inner_index = table_index_.GetInnerIndex(inner_pos);
-    if (inner_index && inner_index->GetIndex().size() > 1) {
-        return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_,
-                                             expire_time, expire_cnt, ts_index);
-    }
-    return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_,
-                                         expire_time, expire_cnt);
-}
+// TableIterator* DiskTable::NewTraverseIterator(uint32_t index,
+//                                               uint32_t ts_index) {
+//     if (ts_index < 0) {
+//         return NULL;
+//     }
+//     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index, ts_index);
+//     if (!index_def) {
+//         PDLOG(WARNING, "index %u not found in table tid %u pid %u", index, id_,
+//               pid_);
+//         return NULL;
+//     }
+//     uint32_t inner_pos = index_def->GetInnerPos();
+//     auto ttl = index_def->GetTTL();
+//     uint64_t expire_time = GetExpireTime(*ttl);
+//     uint64_t expire_cnt = ttl->lat_ttl;
+//     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+//     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+//     ro.snapshot = snapshot;
+//     // ro.prefix_same_as_start = true;
+//     ro.pin_data = true;
+//     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+//     auto inner_index = table_index_.GetInnerIndex(inner_pos);
+//     if (inner_index && inner_index->GetIndex().size() > 1) {
+//         return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_,
+//                                              expire_time, expire_cnt, ts_index);
+//     }
+//     return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_,
+//                                          expire_time, expire_cnt);
+// }
 
 DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it,
                                      const rocksdb::Snapshot* snapshot,
@@ -814,6 +835,21 @@ void DiskTableTraverseIterator::Next() {
         std::string last_pk = pk_;
         uint8_t cur_ts_idx = UINT8_MAX;
         traverse_cnt_++;
+        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+        if (last_pk == pk_) {
+            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                traverse_cnt_--;
+                continue;
+            }
+            record_idx_++;
+        } else {
+            record_idx_ = 0;
+            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                traverse_cnt_--;
+                continue;
+            }
+            record_idx_ = 1;
+        }
         if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             if (has_ts_idx_) {
                 uint64_t ts = 0;
@@ -824,19 +860,6 @@ void DiskTableTraverseIterator::Next() {
                 }
             }
             break;
-        }
-        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
-        if (last_pk == pk_) {
-            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                continue;
-            }
-            record_idx_++;
-        } else {
-            record_idx_ = 0;
-            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                continue;
-            }
-            record_idx_ = 1;
         }
         if (IsExpired()) {
             NextPK();
@@ -1021,6 +1044,36 @@ void DiskTableTraverseIterator::NextPK() {
             it_->Next();
         }
     }
+}
+
+bool DiskTable::DeleteIndex(const std::string& idx_name) {
+    // TODO(litongxin)
+    return true;
+}
+
+uint64_t DiskTable::GetRecordIdxCnt() {
+    // TODO(litongxin)
+    return 0;
+}
+
+bool DiskTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
+    // TODO(litongxin)
+    return true;
+}
+
+uint64_t DiskTable::GetRecordPkCnt() {
+    // TODO(litongxin)
+    return 0;
+}
+
+uint64_t DiskTable::GetRecordIdxByteSize() {
+    // TODO(litongxin)
+    return 0;
+}
+
+uint64_t DiskTable::Release() {
+    // TODO(litongxin)
+    return 0;
 }
 
 }  // namespace storage
