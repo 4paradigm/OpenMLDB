@@ -25,6 +25,7 @@ import org.scalatest.FunSuite
 import java.sql.{Date, Timestamp}
 
 class TestSparkRowUtil extends FunSuite {
+
   test("Test getLongFromIndex") {
     val shortRow = Row.apply(1.toShort)
     assert(getLongFromIndex(0, ShortType, shortRow) == 1L)
@@ -43,7 +44,17 @@ class TestSparkRowUtil extends FunSuite {
     val dateRow = Row.apply(date)
     assert(getLongFromIndex(0, DateType, dateRow) == date.getTime)
 
+    // Test for unsupported type
     val byteRow = Row.apply(1.toByte)
     assertThrows[HybridSeException](getLongFromIndex(0, ByteType, byteRow))
+
+    // Test if data is null
+    val nullRow = Row.apply(null)
+    assert(getLongFromIndex(0, ShortType, nullRow) == null)
+    assert(getLongFromIndex(0, IntegerType, nullRow) == null)
+    assert(getLongFromIndex(0, LongType, nullRow) == null)
+    assert(getLongFromIndex(0, TimestampType, nullRow) == null)
+    assert(getLongFromIndex(0, DateType, nullRow) == null)
   }
+
 }
