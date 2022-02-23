@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.2] - 2022-02-28
+
+### Features
+- Detect incorrect sql. (#1208 @aceforeverd)
+- Openmldb batch do not crash when connect openmldb fail. (#1264 @tobegit3hub)
+- Support yarn-client mode in TaskManager. (#1017 @tobegit3hub)
+- Check for taskmanager config. (#1262 @tobegit3hub)
+- Reorder the list of tasks. (#1256 @tobegit3hub)
+- Taskmanager will find the local batchjob jar if not configured. (#1250 @tobegit3hub)
+- Support long ts type in csv loading. (#1237 @vagetablechicken)
+- Support `fetchmany` and `fetchall` in Python SDK. (#1215 @HuilinWu2)
+- Support getting log of TaskManager jobs from SDK and APIs. (#1213 @tobegit3hub)
+- support getting result set schema for Python SDK. (#1194 @tobegit3hub)
+- Add `lower` and `lcase` UDF functions. (#1192 @Liu-2001)
+- Support sql_magic in notebook with Python SDK. (#1149 @HuilinWu2)
+
+### Bug Fixes
+- Offline load job run failed when timestamp value is null (#1263 @tobegit3hub)
+- Start time is zero for TaskManager jobs. (#1189 @tobegit3hub)
+- Lastjoin other table may execute failed in cluster mode. (#1184 @dl239)
+
 ## [0.4.1] - 2022-02-09
 
 ### Features
