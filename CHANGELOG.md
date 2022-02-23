@@ -4,8 +4,8 @@
 
 ### Features
 - Detect incorrect sql. (#1208 @aceforeverd)
-- Openmldb batch do not crash when connect openmldb fail. (#1264 @tobegit3hub)
-- Support yarn-client mode in TaskManager. (#1017 @tobegit3hub)
+- Openmldb batch do not crash when connect OpenMLDB failed. (#1264 @tobegit3hub)
+- Support Yarn-client mode in TaskManager. (#1017 @tobegit3hub)
 - Check for taskmanager config. (#1262 @tobegit3hub)
 - Reorder the list of tasks. (#1256 @tobegit3hub)
 - Taskmanager will find the local batchjob jar if not configured. (#1250 @tobegit3hub)
@@ -17,7 +17,7 @@
 - Support sql_magic in notebook with Python SDK. (#1149 @HuilinWu2)
 
 ### Bug Fixes
-- Offline load job run failed when timestamp value is null (#1263 @tobegit3hub)
+- Offline loading job run failed when timestamp value is null. (#1263 @tobegit3hub)
 - Start time is zero for TaskManager jobs. (#1189 @tobegit3hub)
 - Lastjoin other table may execute failed in cluster mode. (#1184 @dl239)
 
