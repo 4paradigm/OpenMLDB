@@ -19,7 +19,8 @@ package com._4paradigm.openmldb.batch.utils
 import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.utils.SparkRowUtil.getLongFromIndex
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{ByteType, DateType, IntegerType, LongType, ShortType, StringType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{ByteType, DateType, IntegerType, LongType, ShortType, StringType, StructField,
+  StructType, TimestampType}
 import org.scalatest.FunSuite
 
 import java.sql.{Date, Timestamp}
