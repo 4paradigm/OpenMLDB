@@ -3,23 +3,25 @@
 ## [0.4.2] - 2022-02-28
 
 ### Features
-- Detect incorrect sql. (#1208 @aceforeverd)
-- Openmldb batch do not crash when connect OpenMLDB failed. (#1264 @tobegit3hub)
-- Support Yarn-client mode in TaskManager. (#1017 @tobegit3hub)
-- Check for taskmanager config. (#1262 @tobegit3hub)
-- Reorder the list of tasks. (#1256 @tobegit3hub)
-- Taskmanager will find the local batchjob jar if not configured. (#1250 @tobegit3hub)
-- Support long ts type in csv loading. (#1237 @vagetablechicken)
-- Support `fetchmany` and `fetchall` in Python SDK. (#1215 @HuilinWu2)
-- Support getting log of TaskManager jobs from SDK and APIs. (#1213 @tobegit3hub)
-- support getting result set schema for Python SDK. (#1194 @tobegit3hub)
-- Add `lower` and `lcase` UDF functions. (#1192 @Liu-2001)
-- Support sql_magic in notebook with Python SDK. (#1149 @HuilinWu2)
+- Support timestamps in `long int` when importing a csv file (#1237 @vagetablechicken)
+- Add new UDF functions of `lower` and `lcase` (#1192 @Liu-2001)
+- Enhancements for the Python SDK:
+  - Support `fetchmany` and `fetchall` in Python SDK (#1215 @HuilinWu2)
+  - Support fetching logs of TaskManager jobs in Python SDK and APIs (#1214 @tobegit3hub)
+  - Support fetching the schema of result sets in Python SDK (#1194 @tobegit3hub)
+  - Support the SQL magic function in Jupyter Notebook when using the Python SDK. (#1164 @HuilinWu2)
+- Enhancements for the TaskManager:
+  - Taskmanager can find the local batchjob jar if the path is not configured. (#1250 @tobegit3hub)
+  - Support the Yarn-client mode in TaskManager (#1265 @tobegit3hub)
+  - Support correctness checking for TaskManager's configuration (#1262 @tobegit3hub)
+  - Support reordering for the task list (#1256 @tobegit3hub)
+- Offline queries that do not execute on tables will run successfully even when the connection fails. (#1264 @tobegit3hub) 
 
 ### Bug Fixes
-- Offline loading job run failed when timestamp value is null. (#1263 @tobegit3hub)
-- Start time is zero for TaskManager jobs. (#1189 @tobegit3hub)
-- Lastjoin other table may execute failed in cluster mode. (#1184 @dl239)
+- Offline data import fails when the timestamp value is `null`. (#1263 @tobegit3hub)
+- Start time of TaskManager jobs in CLI is null. (#1272 @tobegit3hub)
+- LAST JOIN may fail in the cluster version under certain circumstances. (#1184 @dl239)
+- Invalid SQL may run successfully. (#1208 @aceforeverd)
 
 ## [0.4.1] - 2022-02-09
 
@@ -145,6 +147,8 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.4.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/4paradigm/OpenMLDB/compare/0.2.2...v0.2.3
