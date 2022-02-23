@@ -54,6 +54,8 @@ class SchemaAdapter {
 
     static base::Status CheckTableMeta(const ::openmldb::nameserver::TableInfo& table_info);
 
+    static PBSchema BuildSchema(const std::vector<std::string>& fields);
+
  private:
     static bool ConvertColumn(const hybridse::type::ColumnDef& sql_column, openmldb::common::ColumnDesc* column);
 };

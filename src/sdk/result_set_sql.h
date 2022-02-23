@@ -36,6 +36,9 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
     ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
                  const std::shared_ptr<brpc::Controller>& cntl);
 
+    ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt, 
+                 const std::shared_ptr<butil::IOBuf>& io_buf);
+
     ~ResultSetSQL();
 
     static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
@@ -46,6 +49,10 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
         const std::shared_ptr<::openmldb::api::ScanResponse>& response,
         const ::google::protobuf::RepeatedField<uint32_t>& projection, const std::shared_ptr<brpc::Controller>& cntl,
         std::shared_ptr<::hybridse::vm::TableHandler> table_handler, ::hybridse::sdk::Status* status);
+
+    static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
+        const std::vector<std::string>& fields, const std::vector<std::vector<std::string>>& records,
+        ::hybridse::sdk::Status* status);
 
     bool Init();
 
@@ -89,6 +96,7 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
     uint32_t buf_size_;
     std::shared_ptr<brpc::Controller> cntl_;
     ResultSetBase* result_set_base_;
+    std::shared_ptr<butil::IOBuf> io_buf_;
 };
 
 class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {

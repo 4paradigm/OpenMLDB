@@ -31,7 +31,6 @@
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "base/linenoise.h"
-#include "base/texttable.h"
 #include "boost/regex.hpp"
 #include "client/taskmanager_client.h"
 #include "cmd/display.h"
@@ -221,163 +220,6 @@ void PrintResultSet(std::ostream& stream, ::hybridse::sdk::ResultSet* result_set
     stream << result_set->Size() << " rows in set" << std::endl;
 }
 
-void PrintTableIndex(std::ostream& stream, const ::hybridse::vm::IndexList& index_list) {
-    ::hybridse::base::TextTable t('-', ' ', ' ');
-    t.add("#");
-    t.add("name");
-    t.add("keys");
-    t.add("ts");
-    t.add("ttl");
-    t.add("ttl_type");
-    t.end_of_row();
-    for (int i = 0; i < index_list.size(); i++) {
-        const ::hybridse::type::IndexDef& index = index_list.Get(i);
-        t.add(std::to_string(i + 1));
-        t.add(index.name());
-        t.add(index.first_keys(0));
-        const std::string& ts_name = index.second_key();
-        if (ts_name.empty()) {
-            t.add("-");
-        } else {
-            t.add(index.second_key());
-        }
-        std::ostringstream oss;
-        for (int ttl_idx = 0; ttl_idx < index.ttl_size(); ttl_idx++) {
-            oss << index.ttl(ttl_idx);
-            if (ttl_idx != index.ttl_size() - 1) {
-                oss << "m,";
-            }
-        }
-        t.add(oss.str());
-        if (index.ttl_type() == ::hybridse::type::kTTLTimeLive) {
-            t.add("kAbsolute");
-        } else if (index.ttl_type() == ::hybridse::type::kTTLCountLive) {
-            t.add("kLatest");
-        } else if (index.ttl_type() == ::hybridse::type::kTTLTimeLiveAndCountLive) {
-            t.add("kAbsAndLat");
-        } else {
-            t.add("kAbsOrLat");
-        }
-        t.end_of_row();
-    }
-    stream << t;
-}
-
-void PrintTableSchema(std::ostream& stream, const ::hybridse::vm::Schema& schema) {
-    if (schema.empty()) {
-        stream << "Empty set" << std::endl;
-        return;
-    }
-
-    ::hybridse::base::TextTable t('-', ' ', ' ');
-    t.add("#");
-    t.add("Field");
-    t.add("Type");
-    t.add("Null");
-    t.end_of_row();
-
-    for (auto i = 0; i < schema.size(); i++) {
-        const auto& column = schema.Get(i);
-        t.add(std::to_string(i + 1));
-        t.add(column.name());
-        t.add(::hybridse::type::Type_Name(column.type()));
-        t.add(column.is_not_null() ? "NO" : "YES");
-        t.end_of_row();
-    }
-    stream << t;
-}
-
-void PrintItemTable(std::ostream& stream, const std::vector<std::string>& head,
-                    const std::vector<std::vector<std::string>>& items, bool transpose) {
-    if (items.empty()) {
-        stream << "Empty set" << std::endl;
-        return;
-    }
-    DLOG(INFO) << "table size " << items.size() << "-" << items[0].size();
-    DCHECK(transpose ? (head.size() == items.size()) : (head.size() == items[0].size()));
-    ::hybridse::base::TextTable t('-', ' ', ' ');
-    std::for_each(head.begin(), head.end(), [&t](auto& item) { t.add(item); });
-    t.end_of_row();
-    if (transpose) {
-        // flip along the major diagonal (top left to bottom right)
-        for (size_t i = 0; i < items[0].size(); ++i) {
-            // print the i column
-            std::for_each(items.begin(), items.end(), [&t, &i](auto& row) { t.add(row[i]); });
-            t.end_of_row();
-        }
-    } else {
-        for (const auto& line : items) {
-            std::for_each(line.begin(), line.end(), [&t](auto& item) { t.add(item); });
-            t.end_of_row();
-        }
-    }
-
-    stream << t;
-    auto items_size = transpose ? items[0].size() : items.size();
-    if (items_size > 1) {
-        stream << items_size << " rows in set" << std::endl;
-    } else {
-        stream << items_size << " row in set" << std::endl;
-    }
-}
-
-void PrintItemTable(std::ostream& stream, const std::vector<std::string>& head,
-                    const std::vector<std::vector<std::string>>& items) {
-    PrintItemTable(stream, head, items, false);
-}
-
-void PrintProcedureSchema(const std::string& head, const ::hybridse::sdk::Schema& sdk_schema, std::ostream& stream) {
-    try {
-        const auto& schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl&>(sdk_schema);
-        auto& schema = schema_impl.GetSchema();
-        if (schema.empty()) {
-            stream << "Empty set" << std::endl;
-            return;
-        }
-        stream << "# " << head << std::endl;
-
-        ::hybridse::base::TextTable t('-', ' ', ' ');
-        t.add("#");
-        t.add("Field");
-        t.add("Type");
-        t.add("IsConstant");
-        t.end_of_row();
-
-        for (auto i = 0; i < schema.size(); i++) {
-            const auto& column = schema.Get(i);
-            t.add(std::to_string(i + 1));
-            t.add(column.name());
-            t.add(::hybridse::type::Type_Name(column.type()));
-            t.add(column.is_constant() ? "YES" : "NO");
-            t.end_of_row();
-        }
-        stream << t << std::endl;
-    } catch (std::bad_cast&) {
-        return;
-    }
-}
-
-void PrintProcedureInfo(const hybridse::sdk::ProcedureInfo& sp_info) {
-    std::vector<std::string> vec{sp_info.GetDbName(), sp_info.GetSpName()};
-
-    std::string type_name = "SP";
-    std::string sql = sp_info.GetSql();
-
-    if (sp_info.GetType() == hybridse::sdk::kReqDeployment) {
-        type_name = "Deployment";
-        std::string pattern_sp = "CREATE PROCEDURE";
-        sql = boost::regex_replace(sql, boost::regex(pattern_sp), "DEPLOY");
-        std::string pattern_blank = "(.*)(\\(.*\\) )(BEGIN )(.*)( END;)";
-        sql = boost::regex_replace(sql, boost::regex(pattern_blank), "$1$4");
-    }
-
-    PrintItemTable(std::cout, {"DB", type_name}, {vec});
-    std::vector<std::string> items{sql};
-    PrintItemTable(std::cout, {"SQL"}, {items}, true);
-    PrintProcedureSchema("Input Schema", sp_info.GetInputSchema(), std::cout);
-    PrintProcedureSchema("Output Schema", sp_info.GetOutputSchema(), std::cout);
-}
-
 std::shared_ptr<client::NsClient> GetAndCheckNSClient(std::string* error) {
     DCHECK(error);
     auto ns_client = cs->GetNsClient();
@@ -421,69 +263,6 @@ bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& n
     return true;
 }
 
-void PrintJobInfos(std::ostream& stream, const std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
-    ::hybridse::base::TextTable t('-', ' ', ' ');
-
-    t.add("id");
-    t.add("job_type");
-    t.add("state");
-    t.add("start_time");
-    t.add("end_time");
-    t.add("parameter");
-    t.add("cluster");
-    t.add("application_id");
-    t.add("error");
-
-    t.end_of_row();
-
-    for (auto& job_info : job_infos) {
-        // request.add_endpoint_group(endpoint);
-        t.add(std::to_string(job_info.id()));
-        t.add(job_info.job_type());
-        t.add(job_info.state());
-        t.add(std::to_string(job_info.start_time()));
-        t.add(std::to_string(job_info.end_time()));
-        t.add(job_info.parameter());
-        t.add(job_info.cluster());
-        t.add(job_info.application_id());
-        t.add(job_info.error());
-        t.end_of_row();
-    }
-
-    stream << t << std::endl;
-    stream << job_infos.size() << " jobs in set" << std::endl;
-}
-
-void PrintOfflineTableInfo(std::ostream& stream, const ::openmldb::nameserver::OfflineTableInfo& offline_table_info) {
-    ::hybridse::base::TextTable t('-', ' ', ' ');
-
-    t.add("Offline path");
-    t.add("Format");
-    t.add("Deep copy");
-    t.add("Options");
-    t.end_of_row();
-
-    auto& options = offline_table_info.options();
-    std::string optionStr;
-    bool first = true;
-    for (auto& pair : options) {
-        if (first) {
-            optionStr += pair.first + ":" + pair.second;
-            first = false;
-        } else {
-            optionStr += ", " + pair.first + ":" + pair.second;
-        }
-    }
-
-    t.add(offline_table_info.path());
-    t.add(offline_table_info.format());
-    t.add(offline_table_info.deep_copy() ? "true" : "false");
-    t.add(optionStr);
-    t.end_of_row();
-
-    stream << t << std::endl;
-}
-
 void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
     std::shared_ptr<client::NsClient> ns;
     switch (cmd_node->GetCmdType()) {
@@ -492,7 +271,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             std::vector<std::string> dbs;
             auto ok = (ns = GetAndCheckNSClient(&error)) && (ns->ShowDatabase(&dbs, error));
             if (ok) {
-                PrintItemTable(std::cout, {"Databases"}, {dbs}, true);
+                PrintItemTable({"Databases"}, {dbs}, true, std::cout);
             } else {
                 std::cout << error << std::endl;
             }
@@ -510,7 +289,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             for (; it != tables.end(); ++it) {
                 table_names.push_back((*it)->name());
             }
-            PrintItemTable(std::cout, {"Tables"}, {table_names}, true);
+            PrintItemTable({"Tables"}, {table_names}, true, std::cout);
             return;
         }
 
@@ -525,11 +304,10 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                 std::cerr << "table " << cmd_node->GetArgs()[0] << " does not exist" << std::endl;
                 return;
             }
-
-            PrintSchema(table->column_desc());
-            PrintColumnKey(table->column_key());
+            PrintSchema(table->column_desc(), std::cout);
+            PrintColumnKey(table->column_key(), std::cout);
             if (table->has_offline_table_info()) {
-                PrintOfflineTableInfo(std::cout, table->offline_table_info());
+                PrintOfflineTableInfo(table->offline_table_info(), std::cout);
             }
             break;
         }
@@ -618,7 +396,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                 std::cout << "ERROR: Failed to show procedure, " << error << std::endl;
                 return;
             }
-            PrintProcedureInfo(*sp_info);
+            PrintProcedureInfo(*sp_info, std::cout);
             break;
         }
         case hybridse::node::kCmdShowProcedures: {
@@ -629,7 +407,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             for (auto& sp_info : sp_infos) {
                 lines.push_back({sp_info->GetDbName(), sp_info->GetSpName()});
             }
-            PrintItemTable(std::cout, {"DB", "SP"}, lines);
+            PrintItemTable({"DB", "SP"}, lines, std::cout);
             break;
         }
         case hybridse::node::kCmdDropSp: {
@@ -665,7 +443,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                 std::cout << (sp ? "not a deployment" : "not found") << std::endl;
                 return;
             }
-            PrintProcedureInfo(*sp);
+            PrintProcedureInfo(*sp, std::cout);
             break;
         }
         case hybridse::node::kCmdShowDeployments: {
@@ -687,7 +465,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
                     lines.push_back({sp_info.db_name(), sp_info.sp_name()});
                 }
             }
-            PrintItemTable(std::cout, {"DB", "Deployment"}, lines);
+            PrintItemTable({"DB", "Deployment"}, lines, std::cout);
             break;
         }
         case hybridse::node::kCmdDropDeployment: {
@@ -719,7 +497,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             for (auto& pair : session_variables) {
                 items.push_back({pair.first, pair.second});
             }
-            PrintItemTable(std::cout, {"Variable_name", "Value"}, items);
+            PrintItemTable({"Variable_name", "Value"}, items, std::cout);
             break;
         }
         case hybridse::node::kCmdShowGlobalVariables: {
@@ -732,7 +510,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
         case hybridse::node::kCmdShowJobs: {
             std::vector<::openmldb::taskmanager::JobInfo> job_infos;
             sr->ShowJobs(false, job_infos);
-            PrintJobInfos(std::cout, job_infos);
+            PrintJobInfos(job_infos, std::cout);
             break;
         }
         case hybridse::node::kCmdShowJob: {
@@ -752,7 +530,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             if (job_info.id() > 0) {
                 job_infos.push_back(job_info);
             }
-            PrintJobInfos(std::cout, job_infos);
+            PrintJobInfos(job_infos, std::cout);
             break;
         }
         case hybridse::node::kCmdStopJob: {
@@ -771,7 +549,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode* cmd_node) {
             if (job_info.id() > 0) {
                 job_infos.push_back(job_info);
             }
-            PrintJobInfos(std::cout, job_infos);
+            PrintJobInfos(job_infos, std::cout);
             break;
         }
         default: {
@@ -1333,7 +1111,7 @@ void HandleSQL(const std::string& sql) {
                 if (status.OK() && job_info.id() > 0) {
                     job_infos.push_back(job_info);
                 }
-                PrintJobInfos(std::cout, job_infos);
+                PrintJobInfos(job_infos, std::cout);
             }
             return;
         }
@@ -1359,7 +1137,7 @@ void HandleSQL(const std::string& sql) {
                 std::map<std::string, std::string> config;
                 status = sr->ExportOfflineData(sql, config, db, job_info);
                 if (status.OK() && job_info.id() > 0) {
-                    PrintJobInfos(std::cout, {job_info});
+                    PrintJobInfos({job_info}, std::cout);
                 }
             }
 
@@ -1400,7 +1178,7 @@ void HandleSQL(const std::string& sql) {
                 if (status.OK() && job_info.id() > 0) {
                     job_infos.push_back(job_info);
                 }
-                PrintJobInfos(std::cout, job_infos);
+                PrintJobInfos(job_infos, std::cout);
             } else {
                 // Handle in standalone mode
                 std::string error;

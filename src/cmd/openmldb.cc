@@ -1100,9 +1100,9 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::openmldb:
         return;
     }
 
-    ::openmldb::cmd::PrintSchema(tables[0].column_desc(), tables[0].added_column_desc());
+    ::openmldb::cmd::PrintSchema(tables[0].column_desc(), tables[0].added_column_desc(), std::cout);
     printf("\n#ColumnKey\n");
-    ::openmldb::cmd::PrintColumnKey(tables[0].column_key());
+    ::openmldb::cmd::PrintColumnKey(tables[0].column_key(), std::cout);
 }
 
 void HandleNSDelete(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
@@ -3648,9 +3648,9 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::openmldb::c
         return;
     }
     if (table_meta.column_desc_size() > 0) {
-        ::openmldb::cmd::PrintSchema(table_meta.column_desc(), table_meta.added_column_desc());
+        ::openmldb::cmd::PrintSchema(table_meta.column_desc(), table_meta.added_column_desc(), std::cout);
         printf("\n#ColumnKey\n");
-        ::openmldb::cmd::PrintColumnKey(table_meta.column_key());
+        ::openmldb::cmd::PrintColumnKey(table_meta.column_key(), std::cout);
     } else {
         std::cout << "No schema for table" << std::endl;
     }

@@ -22,6 +22,7 @@
 
 #include "boost/none.hpp"
 #include "brpc/channel.h"
+#include "cmd/display.h"
 #include "common/timer.h"
 #include "glog/logging.h"
 #include "plan/plan_api.h"
@@ -35,6 +36,7 @@
 #include "sdk/result_set_sql.h"
 
 DECLARE_int32(request_timeout_ms);
+DECLARE_bool(interactive);
 
 namespace openmldb {
 namespace sdk {
@@ -191,6 +193,8 @@ bool SQLClusterRouter::Init() {
             return false;
         }
     }
+    session_variables_.emplace("execute_mode", "online");
+    session_variables_.emplace("enable_trace", "false");
     return true;
 }
 
@@ -574,7 +578,6 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
     if (!ns_ptr) {
         status->code = -1;
         status->msg = "no nameserver exist";
-        LOG(WARNING) << status->msg;
         return false;
     }
     // TODO(wangtaize) update ns client to thread safe
@@ -598,7 +601,7 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
     } else if (node->GetType() == hybridse::node::kPlanTypeCreate) {
         ret = HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), db, ns_ptr);
     } else {
-        ret = HandleSQLCmd(dynamic_cast<hybridse::node::CmdPlanNode*>(node), db, ns_ptr);
+        HandleSQLCmd(dynamic_cast<hybridse::node::CmdPlanNode*>(node), db, status);
     }
     if (!ret.OK()) {
         status->msg = "fail to execute sql " + sql + " for error " + ret.msg;
@@ -686,7 +689,6 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     if (db.empty() || table.empty()) {
         status->msg = "db name(" + db + ") or table name(" + table + ") is invalid";
         status->code = -2;
-        LOG(WARNING) << status->msg;
         return false;
     }
 
@@ -694,7 +696,6 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     if (!RefreshCatalog()) {
         status->msg = "Fail to refresh catalog";
         status->code = -1;
-        LOG(WARNING) << status->msg;
         return false;
     }
 
@@ -705,7 +706,6 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         if (!taskmanager_client_ptr) {
             status->msg = "no TaskManager exist";
             status->code = -1;
-            LOG(WARNING) << status->msg;
             return false;
         }
 
@@ -713,7 +713,6 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         if (rpcStatus.code != 0) {
             status->msg = rpcStatus.msg;
             status->code = rpcStatus.code;
-            LOG(WARNING) << status->msg;
             return false;
         }
     }
@@ -722,7 +721,6 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     if (!ns_ptr) {
         status->msg = "no nameserver exist";
         status->code = -2;
-        LOG(WARNING) << status->msg;
         return false;
     }
     std::string err;
@@ -731,10 +729,8 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     if (!ok) {
         status->msg = "fail to drop db " + db + " for error " + err;
         status->code = -2;
-        LOG(WARNING) << status->msg;
         return false;
     }
-
     return true;
 }
 
@@ -1345,47 +1341,314 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(co
     return sp_info;
 }
 
-base::Status SQLClusterRouter::HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
-                                            std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
-    if (cmd_node == nullptr || ns_ptr == nullptr) {
-        return {base::ReturnCode::kSQLCmdRunError, "null pointer"};
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
+        const hybridse::node::CmdPlanNode* cmd_node,
+        const std::string& db, ::hybridse::sdk::Status* status) {
+    if (cmd_node == nullptr || status == nullptr) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "null pointer"};
+        return {};
+    }
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "no nameserver exist"};
+        return {};
     }
     bool ret = true;
     std::string msg;
     switch (cmd_node->GetCmdType()) {
-        case hybridse::node::kCmdDropTable: {
-            hybridse::sdk::Status status;
-            if (cmd_node->GetArgs().size() == 2) {
-                ret = this->DropTable(cmd_node->GetArgs()[0], cmd_node->GetArgs()[1], &status);
-            } else if (cmd_node->GetArgs().size() == 1) {
-                ret = this->DropTable(db, cmd_node->GetArgs()[0], &status);
+        case hybridse::node::kCmdShowDatabases: {
+            std::vector<std::string> dbs;
+            auto ok = ns_ptr->ShowDatabase(&dbs, msg);
+            if (ok) {
+                return ResultSetSQL::MakeResultSet({"Databases"}, {dbs}, status);
             } else {
-                return {base::ReturnCode::kSQLCmdRunError, "Invalid Cmd Args size"};
+                *status = {::hybridse::common::StatusCode::kCmdError, msg};
             }
-            msg = status.msg;
+            return {};
+        }
+
+        case hybridse::node::kCmdShowTables: {
+            if (db.empty()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "please enter database first"};
+                return {};
+            }
+            auto tables = cluster_sdk_->GetTables(db);
+            std::vector<std::string> table_names;
+            auto it = tables.begin();
+            for (; it != tables.end(); ++it) {
+                table_names.push_back((*it)->name());
+            }
+            return ResultSetSQL::MakeResultSet({"Tables"}, {table_names}, status);
+        }
+
+        case hybridse::node::kCmdDescTable: {
+            if (db.empty()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "please enter database first"};
+                return {};
+            }
+            // TODO(denglong): Should support table name with database name
+            auto table_name = cmd_node->GetArgs()[0];
+            auto table = cluster_sdk_->GetTableInfo(db, table_name);
+            if (table == nullptr) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "table " + table_name + " does not exist"};
+                return {};
+            }
+            std::vector<std::vector<std::string>> result;
+            std::stringstream ss;
+            ::openmldb::cmd::PrintSchema(table->column_desc(), ss);
+            std::vector<std::string> vec = {ss.str()};
+            result.emplace_back(std::move(vec));
+            ss.str("");
+            ::openmldb::cmd::PrintColumnKey(table->column_key(), ss);
+            std::vector<std::string> vec1 = {ss.str()};
+            result.emplace_back(std::move(vec1));
+            if (table->has_offline_table_info()) {
+                ss.str("");
+                ::openmldb::cmd::PrintOfflineTableInfo(table->offline_table_info(), ss);
+                std::vector<std::string> vec2 = {ss.str()};
+                result.emplace_back(std::move(vec2));
+            }
             break;
         }
-        case hybridse::node::kCmdDropIndex: {
-            if (cmd_node->GetArgs().size() == 3) {
-                ret = ns_ptr->DeleteIndex(cmd_node->GetArgs()[0], cmd_node->GetArgs()[1], cmd_node->GetArgs()[2], msg);
-            } else if (cmd_node->GetArgs().size() == 2) {
-                ret = ns_ptr->DeleteIndex(db, cmd_node->GetArgs()[1], cmd_node->GetArgs()[2], msg);
+
+        case hybridse::node::kCmdCreateDatabase: {
+            std::string name = cmd_node->GetArgs()[0];
+            if (ns_ptr->CreateDatabase(name, msg)) {
+                *status = {};
             } else {
-                return {base::ReturnCode::kSQLCmdRunError, "Invalid Cmd Args size"};
+                *status = {::hybridse::common::StatusCode::kCmdError, "Create database failed for " + msg};
             }
-            break;
+            return {};
+        }
+        case hybridse::node::kCmdUseDatabase: {
+            std::string name = cmd_node->GetArgs()[0];
+            if (ns_ptr->Use(name, msg)) {
+                db_ = name;
+                *status = {::hybridse::common::kOk, "Database changed"};
+            } else {
+                *status = {::hybridse::common::StatusCode::kCmdError, "Create database failed for " + msg};
+            }
+            return {};
+        }
+        case hybridse::node::kCmdDropDatabase: {
+            std::string name = cmd_node->GetArgs()[0];
+            if (ns_ptr->DropDatabase(name, msg)) {
+                *status = {};
+            } else {
+                *status = {::hybridse::common::StatusCode::kCmdError, msg};
+            }
+            return {};
+        }
+        case hybridse::node::kCmdShowCreateSp: {
+            auto& args = cmd_node->GetArgs();
+            std::string db_name, sp_name;
+            if (!ParseNamesFromArgs(db, args, &db_name, &sp_name).IsOK()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, msg};
+                return {};
+            }
+            std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cluster_sdk_->GetProcedureInfo(db_name, sp_name, &msg);
+            if (!sp_info) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "Failed to show procedure, " + msg};
+                return {};
+            }
+            // PrintProcedureInfo(*sp_info);
+            *status = {};
+            return {};
+        }
+        case hybridse::node::kCmdShowProcedures: {
+            std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos = cluster_sdk_->GetProcedureInfo(&msg);
+            std::vector<std::vector<std::string>> lines;
+            lines.reserve(sp_infos.size());
+            for (auto& sp_info : sp_infos) {
+                lines.push_back({sp_info->GetDbName(), sp_info->GetSpName()});
+            }
+            return ResultSetSQL::MakeResultSet({"DB", "SP"}, lines, status);
         }
         case hybridse::node::kCmdDropSp: {
-            const std::string& sp_name = cmd_node->GetArgs()[0];
-            ret = ns_ptr->DropProcedure(db, sp_name, msg);
+            if (db.empty()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "please enter database first"};
+                return {};
+            }
+            std::string sp_name = cmd_node->GetArgs()[0];
+            if (!CheckAnswerIfInteractive("procedure", sp_name)) {
+                return {};
+            }
+            if (ns_ptr->DropProcedure(db, sp_name, msg)) {
+                *status = {};
+            } else {
+                *status = {::hybridse::common::StatusCode::kCmdError, "Failed to drop, " + msg};
+            }
+            return {};
+        }
+        case hybridse::node::kCmdShowDeployment: {
+            std::string db_name, deploy_name;
+            auto& args = cmd_node->GetArgs();
+            if (!ParseNamesFromArgs(db, args, &db_name, &deploy_name).IsOK()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, msg};
+                return {};
+            }
+            std::vector<api::ProcedureInfo> sps;
+            auto sp = cluster_sdk_->GetProcedureInfo(db_name, deploy_name, &msg);
+            // check if deployment
+            if (!sp || sp->GetType() != hybridse::sdk::kReqDeployment) {
+                *status = {::hybridse::common::StatusCode::kCmdError, sp ? "not a deployment" : "not found"};
+                return {};
+            }
+            std::stringstream ss;
+            ::openmldb::cmd::PrintProcedureInfo(*sp, ss);
+            return {};
+        }
+        case hybridse::node::kCmdShowDeployments: {
+            if (db.empty()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "please enter database first"};
+                return {};
+            }
+            // ns client get all procedures of one db
+            std::vector<api::ProcedureInfo> sps;
+            if (!ns_ptr->ShowProcedure(db, "", &sps, &msg)) {
+                *status = {::hybridse::common::StatusCode::kCmdError, msg};
+                return {};
+            }
+            std::vector<std::vector<std::string>> lines;
+            for (auto& sp_info : sps) {
+                if (sp_info.type() == type::kReqDeployment) {
+                    lines.push_back({sp_info.db_name(), sp_info.sp_name()});
+                }
+            }
+            return ResultSetSQL::MakeResultSet({"DB", "Deployment"}, lines, status);
+        }
+        case hybridse::node::kCmdDropDeployment: {
+            if (db.empty()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "please enter database first"};
+                return {};
+            }
+            std::string deploy_name = cmd_node->GetArgs()[0];
+            // check if deployment, avoid deleting the normal procedure
+            auto sp = cluster_sdk_->GetProcedureInfo(db, deploy_name, &msg);
+            if (!sp || sp->GetType() != hybridse::sdk::kReqDeployment) {
+                *status = {::hybridse::common::StatusCode::kCmdError, sp ? "not a deployment" : "not found"};
+                return {};
+            }
+            if (!CheckAnswerIfInteractive("deployment", deploy_name)) {
+                return {};
+            }
+            if (ns_ptr->DropProcedure(db, deploy_name, msg)) {
+                *status = {};
+            } else {
+                *status = {::hybridse::common::StatusCode::kCmdError, "Failed to drop. error: " + msg};
+            }
+            return {};
+        }
+        case hybridse::node::kCmdShowSessionVariables: {
+            std::vector<std::vector<std::string>> items;
+            for (auto& pair : session_variables_) {
+                std::vector<std::string> vec = {pair.first, pair.second};
+                items.emplace_back(std::move(vec));
+            }
+            return ResultSetSQL::MakeResultSet({"Variable_name", "Value"}, items, status);
+        }
+        case hybridse::node::kCmdShowGlobalVariables: {
+            *status = {::hybridse::common::StatusCode::kCmdError, "global variable is unsupported now"};
+            return {};
+        }
+        case hybridse::node::kCmdExit: {
+            exit(0);
+        }
+        case hybridse::node::kCmdShowJobs: {
+            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+            ShowJobs(false, job_infos);
+            std::stringstream ss;
+            ::openmldb::cmd::PrintJobInfos(job_infos, ss);
             break;
         }
-        default: {
-            return {base::ReturnCode::kSQLCmdRunError, "fail to execute script with unsupported type"};
+        case hybridse::node::kCmdShowJob: {
+            int job_id;
+            try {
+                // Check argument type
+                job_id = std::stoi(cmd_node->GetArgs()[0]);
+            } catch (...) {
+                *status = {::hybridse::common::StatusCode::kCmdError,
+                    "Failed to parse job id: " + cmd_node->GetArgs()[0]};
+                return {};
+            }
+
+            ::openmldb::taskmanager::JobInfo job_info;
+            ShowJob(job_id, job_info);
+            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+
+            if (job_info.id() > 0) {
+                job_infos.push_back(job_info);
+            }
+            std::stringstream ss;
+            ::openmldb::cmd::PrintJobInfos(job_infos, ss);
+            return {};
         }
-    }
-    if (!ret) {
-        return {base::ReturnCode::kSQLCmdRunError, msg};
+        case hybridse::node::kCmdStopJob: {
+            int job_id;
+            try {
+                job_id = std::stoi(cmd_node->GetArgs()[0]);
+            } catch (...) {
+                *status = {::hybridse::common::StatusCode::kCmdError,
+                    "Failed to parse job id: " + cmd_node->GetArgs()[0]};
+                return {};
+            }
+
+            ::openmldb::taskmanager::JobInfo job_info;
+            StopJob(job_id, job_info);
+
+            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+            if (job_info.id() > 0) {
+                job_infos.push_back(job_info);
+            }
+            std::stringstream ss;
+            ::openmldb::cmd::PrintJobInfos(job_infos, ss);
+            return {};
+        }
+        case hybridse::node::kCmdDropTable: {
+            *status = {};
+            std::string db_name = db;
+            std::string table_name;
+            if (cmd_node->GetArgs().size() == 2) {
+                db_name = cmd_node->GetArgs()[0];
+                table_name = cmd_node->GetArgs()[1];
+            } else if (cmd_node->GetArgs().size() == 1) {
+                table_name = cmd_node->GetArgs()[0];
+            } else {
+                *status = {::hybridse::common::StatusCode::kCmdError, "Invalid Cmd Args size"};
+            }
+            if (!CheckAnswerIfInteractive("table", table_name)) {
+                return {};
+            }
+            if (DropTable(db_name, table_name, status)) {
+                RefreshCatalog();
+            }
+            return {};
+        }
+        case hybridse::node::kCmdDropIndex: {
+            std::string db_name = db;
+            std::string table_name;
+            std::string index_name;
+            if (cmd_node->GetArgs().size() == 3) {
+                db_name = cmd_node->GetArgs()[0];
+                table_name = cmd_node->GetArgs()[1];
+                index_name = cmd_node->GetArgs()[2];
+            } else if (cmd_node->GetArgs().size() == 2) {
+                table_name = cmd_node->GetArgs()[0];
+                index_name = cmd_node->GetArgs()[1];
+            } else {
+                *status = {::hybridse::common::StatusCode::kCmdError, "Invalid Cmd Args size"};
+                return {};
+            }
+            if (!CheckAnswerIfInteractive("index", index_name + " on " + table_name)) {
+                return {};
+            }
+            ret = ns_ptr->DeleteIndex(db, table_name, index_name, msg);
+            ret == true ? *status = {} : *status = {::hybridse::common::StatusCode::kCmdError, msg};
+            return {};
+        }
+        default: {
+            *status = {::hybridse::common::StatusCode::kCmdError, "fail to execute script with unsupported type"};
+        }
     }
     return {};
 }
@@ -1742,6 +2005,283 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
 }
 
 bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(); }
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQL(const std::string& sql,
+        hybridse::sdk::Status* status) {
+    hybridse::node::NodeManager node_manager;
+    hybridse::node::PlanNodeList plan_trees;
+    hybridse::base::Status sql_status;
+    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
+
+    if (sql_status.code != 0) {
+        *status = {::hybridse::common::StatusCode::kCmdError, sql_status.msg};
+        return {};
+    }
+    hybridse::node::PlanNode* node = plan_trees[0];
+    switch (node->GetType()) {
+        case hybridse::node::kPlanTypeCmd: {
+            return HandleSQLCmd(dynamic_cast<hybridse::node::CmdPlanNode*>(node), db_, status);
+        }
+        case hybridse::node::kPlanTypeExplain: {
+            /*std::string empty;
+            std::string mu_script = sql;
+            mu_script.replace(0u, 7u, empty);
+            ::hybridse::sdk::Status status;
+            auto info = sr->Explain(db, mu_script, &status);
+            if (!info) {
+                std::cout << "ERROR: Failed to get explain info" << std::endl;
+                return {};
+            }
+            std::cout << info->GetPhysicalPlan() << std::endl;*/
+            return {};
+        }
+        case hybridse::node::kPlanTypeCreate: {
+            /*auto create_node = dynamic_cast<hybridse::node::CreatePlanNode*>(node);
+            auto status = sr->HandleSQLCreateTable(create_node, db, cs->GetNsClient());
+            if (status.OK()) {
+                sr->RefreshCatalog();
+                std::cout << "SUCCEED: Create successfully" << std::endl;
+            } else {
+                std::cout << "ERROR: " << status.msg << std::endl;
+            }*/
+            return {};
+        }
+        case hybridse::node::kPlanTypeCreateSp: {
+            /*if (db.empty()) {
+                std::cout << "ERROR: Please use database first" << std::endl;
+                return;
+            }
+            auto create_node = dynamic_cast<hybridse::node::CreateProcedurePlanNode*>(node);
+            auto status = sr->HandleSQLCreateProcedure(create_node, db, sql, cs->GetNsClient());
+            if (status.OK()) {
+                sr->RefreshCatalog();
+                std::cout << "SUCCEED: Create successfully" << std::endl;
+            } else {
+                std::cout << "ERROR: " << status.msg << std::endl;
+            }*/
+            return {};
+        }
+        case hybridse::node::kPlanTypeCreateIndex: {
+            /*if (db.empty()) {
+                std::cout << "ERROR: Please use database first" << std::endl;
+                return;
+            }
+            auto* create_index_node = dynamic_cast<hybridse::node::CreateIndexPlanNode*>(node);
+            HandleCreateIndex(create_index_node->create_index_node_);*/
+            return {};
+        }
+        case hybridse::node::kPlanTypeInsert: {
+            /*if (!IsOnlineMode()) {
+                // Not support for inserting into offline storage
+                std::cout << "ERROR: Can not insert in offline mode, please set @@SESSION.execute_mode='online'"
+                          << std::endl;
+                return;
+            }
+
+            // TODO(denglong): Should support table name with database name
+            if (db.empty()) {
+                std::cout << "ERROR: Please use database first" << std::endl;
+                return;
+            }
+            ::hybridse::sdk::Status status;
+            bool ok = sr->ExecuteInsert(db, sql, &status);
+            if (!ok) {
+                std::cout << "ERROR: Failed to execute insert: " << status.msg << std::endl;
+                if (IsEnableTrace()) {
+                    std::cout << status.trace << std::endl;
+                }
+            } else {
+                std::cout << "SUCCEED: Insert successfully" << std::endl;
+            }*/
+            return {};
+        }
+        case hybridse::node::kPlanTypeDeploy: {
+            //*status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
+            return {};
+        }
+        case hybridse::node::kPlanTypeFuncDef:
+        case hybridse::node::kPlanTypeQuery: {
+            /*if (IsOnlineMode()) {
+                // Run online query
+                ::hybridse::sdk::Status status;
+                auto rs = sr->ExecuteSQL(db, sql, &status);
+                if (!rs) {
+                    std::cout << "ERROR: " << status.msg << std::endl;
+                    if (IsEnableTrace()) {
+                        std::cout << status.trace << std::endl;
+                    }
+                } else {
+                    PrintResultSet(std::cout, rs.get());
+                }
+            } else {
+                // Run offline query
+                ::openmldb::taskmanager::JobInfo job_info;
+                std::map<std::string, std::string> config;
+                auto status = sr->ExecuteOfflineQuery(sql, config, db, job_info);
+
+                std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+                if (status.OK() && job_info.id() > 0) {
+                    job_infos.push_back(job_info);
+                }
+                PrintJobInfos(std::cout, job_infos);
+            }*/
+            return {};
+        }
+        case hybridse::node::kPlanTypeSelectInto: {
+            /*if (IsOnlineMode()) {
+                auto* select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode*>(node);
+                const std::string& query_sql = select_into_plan_node->QueryStr();
+                ::hybridse::sdk::Status sdk_status;
+                auto rs = sr->ExecuteSQL(db, query_sql, &sdk_status);
+                if (!rs) {
+                    std::cout << "ERROR: Failed to execute SELECT INTO: " << sdk_status.msg << ")" << std::endl;
+                    if (IsEnableTrace()) {
+                        std::cout << sdk_status.trace << std::endl;
+                    }
+                    return {};
+                }
+                const std::string& file_path = select_into_plan_node->OutFile();
+                const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
+                SaveResultSet(rs.get(), file_path, options_map, &status);
+            } else {
+                ::openmldb::taskmanager::JobInfo job_info;
+                std::map<std::string, std::string> config;
+                status = sr->ExportOfflineData(sql, config, db, job_info);
+                if (status.OK() && job_info.id() > 0) {
+                    PrintJobInfos(std::cout, {job_info});
+                }
+            }
+
+            if (!status.OK()) {
+                std::cout << "ERROR: Failed to select into " << std::endl;
+            }
+            std::cout << status.GetMsg() << "(" << status.GetCode() << ")" << std::endl;*/
+            return {};
+        }
+        case hybridse::node::kPlanTypeSet: {
+            // HandleSet(dynamic_cast<hybridse::node::SetPlanNode*>(node));
+            return {};
+        }
+        case hybridse::node::kPlanTypeLoadData: {
+            /*auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
+
+            // Check if passes db or uses default db
+            if (plan->Db().empty() && db.empty()) {
+                std::cout << "ERROR: no db in sql and no default db" << std::endl;
+                return {};
+            }
+
+            if (cs->IsClusterMode()) {
+                // Handle in cluster mode
+                ::openmldb::taskmanager::JobInfo job_info;
+                std::map<std::string, std::string> config;
+
+                ::openmldb::base::Status status;
+                if (IsOnlineMode()) {
+                    // Handle in online mode
+                    status = sr->ImportOnlineData(sql, config, db, job_info);
+                } else {
+                    // Handle in offline mode
+                    status = sr->ImportOfflineData(sql, config, db, job_info);
+                }
+
+                std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+                if (status.OK() && job_info.id() > 0) {
+                    job_infos.push_back(job_info);
+                }
+                PrintJobInfos(std::cout, job_infos);
+            } else {
+                // Handle in standalone mode
+                std::string error;
+                if (!HandleLoadDataInfile(plan->Db(), plan->Table(), plan->File(), plan->Options(), &error)) {
+                    std::cout << "ERROR: Load data failed. " << error << std::endl;
+                    return {};
+                }
+            }*/
+            return {};
+        }
+        case hybridse::node::kPlanTypeDelete: {
+            std::cout << "ERROR: delete is not supported yet" << std::endl;
+            return {};
+        }
+        default: {
+            std::cout << "ERROR: Unsupported command" << std::endl;
+            return {};
+        }
+    }
+}
+
+bool SQLClusterRouter::IsOnlineMode() const {
+    auto it = session_variables_.find("execute_mode");
+    if (it != session_variables_.end() && it->second == "online") {
+        return true;
+    }
+    return false;
+}
+bool SQLClusterRouter::IsEnableTrace() const {
+    auto it = session_variables_.find("enable_trace");
+    if (it != session_variables_.end() && it->second == "true") {
+        return true;
+    }
+    return false;
+}
+
+::hybridse::sdk::Status SQLClusterRouter::SetVariable(hybridse::node::SetPlanNode* node) {
+    if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
+        return {::hybridse::common::StatusCode::kCmdError, "global system variable is unsupported"};
+    }
+    std::string key = node->Key();
+    std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+    auto it = session_variables_.find(node->Key());
+    if (it == session_variables_.end()) {
+        return {::hybridse::common::StatusCode::kCmdError, "no session variable " + key};
+    }
+    std::string value = node->Value()->GetExprString();
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+    if (key == "execute_mode") {
+        if (value != "online" && value != "offline") {
+            return {::hybridse::common::StatusCode::kCmdError, "the value of execute_mode must be online|offline"};
+        }
+    } else if (key == "enable_trace") {
+        if (value != "true" && value != "false") {
+            return {::hybridse::common::StatusCode::kCmdError, "the value of enable_trace must be true|false"};
+        }
+    }
+    session_variables_[key] = value;
+    return {};
+}
+
+::hybridse::sdk::Status SQLClusterRouter::ParseNamesFromArgs(const std::string& db, const std::vector<std::string>& args,
+        std::string* db_name, std::string* sp_name) {
+    if (args.size() == 1) {
+        // only sp name, no db_name
+        if (db.empty()) {
+            return {::hybridse::common::StatusCode::kCmdError, "Please enter database first"};
+        }
+        *db_name = db;
+        *sp_name = args[0];
+    } else if (args.size() == 2) {
+        *db_name = args[0];
+        *sp_name = args[1];
+    } else {
+        return {::hybridse::common::StatusCode::kCmdError, "Invalid args"};
+    }
+    return {};
+}
+
+bool SQLClusterRouter::CheckAnswerIfInteractive(const std::string& drop_type, const std::string& name) {
+    if (FLAGS_interactive) {
+        printf("Drop %s %s? yes/no\n", drop_type.c_str(), name.c_str());
+        std::string input;
+        std::cin >> input;
+        std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+        if (input != "yes") {
+            printf("'Drop %s' cmd is canceled!\n", name.c_str());
+            return false;
+        }
+    }
+    return true;
+}
 
 }  // namespace sdk
 }  // namespace openmldb
