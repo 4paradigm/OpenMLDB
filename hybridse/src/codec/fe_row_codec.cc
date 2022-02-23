@@ -893,6 +893,11 @@ RowFormat::RowFormat(const hybridse::codec::Schema* schema)
             next_str_pos_.insert(
                 std::make_pair(string_field_cnt, string_field_cnt));
             string_field_cnt += 1;
+
+            if (FLAGS_enable_spark_unsaferow_format) {
+                // For UnsafeRowOpt, the offset should be added for string and non-string columns
+                offset += 8;
+            }
         } else {
             auto TYPE_SIZE_MAP = codec::GetTypeSizeMap();
             auto it = TYPE_SIZE_MAP.find(column.type());
