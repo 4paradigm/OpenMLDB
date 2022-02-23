@@ -1568,6 +1568,7 @@ TEST_F(PlannerV2Test, DeployPlanNodeTest) {
     EXPECT_STREQ(R"sql(+-[kPlanTypeDeploy]
   +-if_not_exists: true
   +-name: foo
+  +-options: <nil>
   +-stmt:
     +-node[kQuery]: kQuerySelect
       +-distinct_opt: false
@@ -1597,6 +1598,54 @@ TEST_F(PlannerV2Test, DeployPlanNodeTest) {
 FROM
   t1
 )sql", deploy_stmt->StmtStr().c_str());
+}
+
+TEST_F(PlannerV2Test, DeployPlanNodeWithOptionsTest) {
+    const std::string sql = "DEPLOY IF NOT EXISTS foo OPTIONS(long_windows='w1:100s') SELECT col1 from t1;";
+    node::PlanNodeList plan_trees;
+    base::Status status;
+    NodeManager nm;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
+    ASSERT_EQ(1, plan_trees.size());
+    EXPECT_STREQ(R"sql(+-[kPlanTypeDeploy]
+  +-if_not_exists: true
+  +-name: foo
+  +-options:
+  |  +-long_windows:
+  |    +-expr[primary]
+  |      +-value: w1:100s
+  |      +-type: string
+  +-stmt:
+    +-node[kQuery]: kQuerySelect
+      +-distinct_opt: false
+      +-where_expr: null
+      +-group_expr_list: null
+      +-having_expr: null
+      +-order_expr_list: null
+      +-limit: null
+      +-select_list[list]:
+      |  +-0:
+      |    +-node[kResTarget]
+      |      +-val:
+      |      |  +-expr[column ref]
+      |      |    +-relation_name: <nil>
+      |      |    +-column_name: col1
+      |      +-name: <nil>
+      +-tableref_list[list]:
+      |  +-0:
+      |    +-node[kTableRef]: kTable
+      |      +-table: t1
+      |      +-alias: <nil>
+      +-window_list: [])sql",
+                 plan_trees.front()->GetTreeString().c_str());
+    auto deploy_stmt = dynamic_cast<node::DeployPlanNode *>(plan_trees.front());
+    ASSERT_TRUE(deploy_stmt != nullptr);
+    EXPECT_STREQ(R"sql(SELECT
+  col1
+FROM
+  t1
+)sql",
+                 deploy_stmt->StmtStr().c_str());
 }
 
 TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
