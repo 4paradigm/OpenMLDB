@@ -421,7 +421,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
 
     virtual void PrintSchema() const;
 
-    virtual std::string SchemaToString(const std::string &tab = "") const;
+    virtual std::string SchemaToString(const std::string &tab) const;
 
     const std::vector<PhysicalOpNode *> &GetProducers() const {
         return producers_;
