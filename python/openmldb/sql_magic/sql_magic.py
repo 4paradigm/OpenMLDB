@@ -42,8 +42,11 @@ class SqlMagic(Magics):
         else:
             self.cursor.execute(sqlText)
             print("Success to execute sql")
-
-def register(db):
-    ipython = get_ipython()
-    sql_magic = SqlMagic(ipython, db)
-    ipython.register_magics(sql_magic)
+            
+def register(db, test=False):
+    if test:
+        from IPython.testing.globalipapp import get_ipython
+    ip = get_ipython()
+    magics = SqlMagic(ip,db)
+    ip.register_magics(magics)
+    return ip
