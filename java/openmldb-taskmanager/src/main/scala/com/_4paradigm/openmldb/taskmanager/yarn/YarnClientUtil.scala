@@ -1,5 +1,6 @@
 package com._4paradigm.openmldb.taskmanager.yarn
 
+import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.yarn.api.records.{ApplicationId, ApplicationReport, YarnApplicationState}
@@ -24,13 +25,10 @@ object YarnClientUtil {
   }
 
   def createYarnClient(): YarnClient = {
-    // TODO: Read yarn config from environment
-    val confPath = Thread.currentThread.getContextClassLoader.getResource("").getPath + File.separator + "conf"
     val configuration = new Configuration()
-    System.out.println(confPath + File.separator + "core-site.xml");
-    configuration.addResource(new Path(confPath + File.separator + "core-site.xml"));
-    configuration.addResource(new Path(confPath + File.separator + "hdfs-site.xml"));
-    configuration.addResource(new Path(confPath + File.separator + "yarn-site.xml"));
+    configuration.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR + File.separator + "core-site.xml"));
+    configuration.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR + File.separator + "hdfs-site.xml"));
+    configuration.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR + File.separator + "yarn-site.xml"));
 
     // Create yarn client
     val yarnClient = YarnClient.createYarnClient()

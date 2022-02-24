@@ -26,15 +26,19 @@ import org.apache.spark.sql.types.{
 
 object SparkRowUtil {
 
-  def getLongFromIndex(keyIdx: Int, sparkType: DataType, row: Row): Long = {
-    sparkType match {
-      case ShortType => row.getShort(keyIdx).toLong
-      case IntegerType => row.getInt(keyIdx).toLong
-      case LongType => row.getLong(keyIdx)
-      case TimestampType => row.getTimestamp(keyIdx).getTime
-      case DateType => row.getDate(keyIdx).getTime
-      case _ =>
-        throw new HybridSeException(s"Illegal window key type: $sparkType")
+  def getLongFromIndex(keyIdx: Int, sparkType: DataType, row: Row): java.lang.Long = {
+    if (row.isNullAt(keyIdx)) {
+      null
+    } else {
+      sparkType match {
+        case ShortType => row.getShort(keyIdx).toLong
+        case IntegerType => row.getInt(keyIdx).toLong
+        case LongType => row.getLong(keyIdx)
+        case TimestampType => row.getTimestamp(keyIdx).getTime
+        case DateType => row.getDate(keyIdx).getTime
+        case _ =>
+          throw new HybridSeException(s"Illegal window key type: $sparkType")
+      }
     }
   }
 

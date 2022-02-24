@@ -845,3 +845,21 @@ cases:
           +-replica_num: 1
           +-partition_num: 1
           +-distribution_list: []
+  - id: 29
+    desc: create index with db name prefix
+    sql: |
+      CREATE INDEX index1 ON db1.t1 (col1, col2) OPTIONS (ts=col3, ttl=30d, ttl_type=absolute);
+    expect:
+      node_tree_str: |
+        +-node[kCreateIndexStmt]
+          +-index_name: index1
+          +-table_name: db1.t1
+          +-index:
+            +-node[kColumnIndex]
+              +-keys: [col1, col2]
+              +-ts_col: col3
+              +-abs_ttl: 2592000000
+              +-lat_ttl: -2
+              +-ttl_type: absolute
+              +-version_column: <nil>
+              +-version_count: 0

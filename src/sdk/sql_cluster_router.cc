@@ -304,9 +304,19 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
         status->msg = "insert stmt is null";
         return false;
     }
-    *table_info = cluster_sdk_->GetTableInfo(db, insert_stmt->table_name_);
+    std::string db_name;
+    if (!insert_stmt->db_name_.empty()) {
+        db_name = insert_stmt->db_name_;
+    } else {
+        db_name = db;
+    }
+    if (db_name.empty()) {
+        status->msg = "Please enter database first";
+        return false;
+    }
+    *table_info = cluster_sdk_->GetTableInfo(db_name, insert_stmt->table_name_);
     if (!(*table_info)) {
-        status->msg = "table with name " + insert_stmt->table_name_ + " in db " + db + " does not exist";
+        status->msg = "table with name " + insert_stmt->table_name_ + " in db " + db_name + " does not exist";
         LOG(WARNING) << status->msg;
         return false;
     }
@@ -1089,7 +1099,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
 
     std::shared_ptr<::hybridse::sdk::Schema> schema = ::openmldb::sdk::ConvertToSchema(table_info);
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
-    bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
+    bool ret = cluster_sdk_->GetTablet(table_info->db(), table_info->name(), &tablets);
     if (!ret || tablets.empty()) {
         status->msg = "Fail to execute insert statement: fail to get " + table_info->name() + " tablet";
         LOG(WARNING) << status->msg;
@@ -2002,6 +2012,22 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
         return {-1, "Fail to get TaskManager client"};
     }
     return taskmanager_client_ptr->ExportOfflineData(sql, config, default_db, job_info);
+}
+
+std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* status) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        status->code = -1;
+        status->msg = "Fail to get TaskManager client";
+        return "";
+    }
+
+    // TODO: Need to pass ::openmldb::base::Status* for TaskManagerClient
+    auto openmldbStatus =  std::make_shared<::openmldb::base::Status>();
+    auto log = taskmanager_client_ptr->GetJobLog(id, openmldbStatus.get());
+    status->code = openmldbStatus->code;
+    status->msg = openmldbStatus->msg;
+    return log;
 }
 
 bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(); }

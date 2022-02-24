@@ -38,6 +38,7 @@ jobs:
       SQL_PYSDK_ENABLE: OFF
       TESTING_ENABLE: ON
       NPROC: 8
+      CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
     steps:
       - uses: actions/checkout@v2
 
@@ -95,6 +96,7 @@ jobs:
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
+            build/**/*.xml
             reports/*.xml
 
       - name: install
@@ -242,7 +244,7 @@ jobs:
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=${VERSION#v}
-          ./java/prepare_release.sh "$VERSION"
+          VARIANT_TYPE=macos ./java/prepare_release.sh "$VERSION"
 
       - uses: actions/setup-java@v2
         with:
@@ -345,7 +347,7 @@ jobs:
 
       - name: prepare python deps
         run: |
-          python3 -m easy_install pytest pip
+          python3 -m easy_install pip
           pip install setuptools wheel twine
           yum install -y net-tools
 

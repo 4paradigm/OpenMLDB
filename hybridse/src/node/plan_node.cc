@@ -710,6 +710,8 @@ void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {
     output << "\n";
     PrintValue(output, new_tab, Name(), "name", false);
     output << "\n";
+    PrintValue(output, new_tab, Options().get(), "options", false);
+    output << "\n";
     PrintSqlNode(output, new_tab, Stmt(), "stmt", true);
 }
 

@@ -19,6 +19,7 @@ import os
 sys.path.append(os.path.dirname(__file__) + "/..")
 import logging
 from sdk import sdk as sdk_module
+from sdk.sdk import TypeUtil
 from native import sql_router_sdk
 import re
 # fmt:on
@@ -150,7 +151,6 @@ class Cursor(object):
         self._resultSet = None
         self._resultSetMetadata = None
         self._resultSetStatus = None
-        self._resultSet = None
         self.lastrowid = None
 
     def connected(func):
@@ -332,18 +332,20 @@ class Cursor(object):
     @connected
     def executemany(self, operation, parameters=()):
         raise NotSupportedError("Unsupported in OpenMLDB")
-        
+
+    def get_tables(self, db):
+        return self.connection._sdk.getTables(db)
+
     def get_all_tables(self):
         return self.connection._sdk.getAllTables()
 
+    def get_databases(self):
+        return self.connection._sdk.getDatabases()
+
     def fetchone(self):
-        if self._resultSet is None: return "call fetchone"
+        if self._resultSet is None: raise DatabaseError("query data failed")
         ok = self._resultSet.Next()
         if not ok:
-            self.rowcount = -1
-            self._resultSet = None
-            self.__schema = None
-            self.__getMap = None
             return None
         values = []
         for i in range(self.__schema.GetColumnCnt()):
@@ -355,7 +357,24 @@ class Cursor(object):
 
     @connected
     def fetchmany(self, size=None):
-        raise NotSupportedError("Unsupported in OpenMLDB")
+        if self._resultSet is None: raise DatabaseError("query data failed")
+        if size is None:
+            size = self.arraysize
+        elif size < 0:
+            raise Exception(f"Given size should greater than zero")
+        values = []
+        for k in range(size):
+            ok = self._resultSet.Next()
+            if not ok:
+                break
+            row = []
+            for i in range(self.__schema.GetColumnCnt()):
+                if self._resultSet.IsNULL(i):
+                    row.append(None)
+                else:
+                    row.append(self.__getMap[self.__schema.GetColumnType(i)](i))
+            values.append(tuple(row))
+        return values
 
     def nextset(self):
         raise NotSupportedError("Unsupported in OpenMLDB")
@@ -368,8 +387,8 @@ class Cursor(object):
         
     @connected
     def fetchall(self):
-        raise NotSupportedError("Unsupported in OpenMLDB")
-
+        return self.fetchmany(size=self.rowcount)
+    
     @staticmethod
     def substitute_in_query(string_query, parameters):
         query = string_query
@@ -419,6 +438,21 @@ class Cursor(object):
             raise DatabaseError("execute select fail {}".format(rs))
         self._pre_process_result(rs)
         return self
+
+    def get_resultset_schema(self):
+        # Return the readable schema list like [{'name': 'col1', 'type': 'int64'}, {'name': 'col2', 'type': 'date'}]
+
+        c_schema = self._resultSet.GetSchema()
+        col_num = c_schema.GetColumnCnt()
+
+        outputSchemaList = []
+        for i in range(col_num):
+            col_name = c_schema.GetColumnName(i)
+            col_type = c_schema.GetColumnType(i)
+            col_type_str = TypeUtil.intTypeToStr(col_type)
+            outputSchemaList.append({"name": col_name, "type": col_type_str})
+
+        return outputSchemaList
 
 class Connection(object):
 
@@ -472,7 +506,6 @@ class Connection(object):
 
     def cursor(self):
         return Cursor(self._db, self._zk, self._zkPath, self)
-
 
 # Constructor for creating connection to db
 def connect(db, zk, zkPath):

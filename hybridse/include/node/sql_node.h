@@ -857,7 +857,9 @@ class ConstNode : public ExprNode {
         }
     }
 
-    ConstNode(int64_t val, DataType time_type) : ExprNode(kExprPrimary), data_type_(time_type) { val_.vlong = val; }
+    explicit ConstNode(int64_t val, DataType time_type) : ExprNode(kExprPrimary), data_type_(time_type) {
+        val_.vlong = val;
+    }
 
     ~ConstNode() {
         if (data_type_ == hybridse::node::kVarchar) {
@@ -1816,18 +1818,22 @@ class ColumnDefNode : public SqlNode {
 
 class InsertStmt : public SqlNode {
  public:
-    InsertStmt(const std::string &table_name, const std::vector<std::string> &columns,
+    InsertStmt(const std::string &db_name,
+               const std::string &table_name,
+               const std::vector<std::string> &columns,
                const std::vector<ExprNode *> &values)
         : SqlNode(kInsertStmt, 0, 0),
+          db_name_(db_name),
           table_name_(table_name),
           columns_(columns),
           values_(values),
           is_all_(columns.empty()) {}
 
-    InsertStmt(const std::string &table_name, const std::vector<ExprNode *> &values)
-        : SqlNode(kInsertStmt, 0, 0), table_name_(table_name), values_(values), is_all_(true) {}
+    InsertStmt(const std::string &db_name, const std::string &table_name, const std::vector<ExprNode *> &values)
+        : SqlNode(kInsertStmt, 0, 0), db_name_(db_name), table_name_(table_name), values_(values), is_all_(true) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
+    const std::string db_name_;
     const std::string table_name_;
     const std::vector<std::string> columns_;
     const std::vector<ExprNode *> values_;
@@ -2167,11 +2173,14 @@ class SetNode : public SqlNode {
 
 class CreateIndexNode : public SqlNode {
  public:
-    explicit CreateIndexNode(const std::string &index_name, const std::string &table_name, ColumnIndexNode *index)
-        : SqlNode(kCreateIndexStmt, 0, 0), index_name_(index_name), table_name_(table_name), index_(index) {}
+    explicit CreateIndexNode(const std::string &index_name, const std::string &db_name,
+                             const std::string &table_name, ColumnIndexNode *index)
+        : SqlNode(kCreateIndexStmt, 0, 0), index_name_(index_name),
+          db_name_(db_name), table_name_(table_name), index_(index) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const std::string index_name_;
+    const std::string db_name_;
     const std::string table_name_;
     node::ColumnIndexNode *index_;
 };
@@ -2188,14 +2197,17 @@ class ExplainNode : public SqlNode {
 
 class DeployNode : public SqlNode {
  public:
-    explicit DeployNode(const std::string& name, const SqlNode* stmt, const std::string& stmt_str, bool if_not_exists)
-        : SqlNode(kDeployStmt, 0, 0), name_(name), stmt_(stmt), stmt_str_(stmt_str), if_not_exists_(if_not_exists) {}
+    explicit DeployNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
+                        const std::shared_ptr<OptionsMap> options, bool if_not_exists)
+        : SqlNode(kDeployStmt, 0, 0), name_(name), stmt_(stmt), stmt_str_(stmt_str),
+        options_(options), if_not_exists_(if_not_exists) {}
     ~DeployNode() {}
 
     const std::string& Name() const { return name_; }
     const SqlNode* Stmt() const { return stmt_; }
     const bool IsIfNotExists() const { return if_not_exists_; }
     const std::string& StmtStr() const { return stmt_str_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
 
     void Print(std::ostream& output, const std::string& tab) const override;
 
@@ -2204,6 +2216,7 @@ class DeployNode : public SqlNode {
     const SqlNode* stmt_ = nullptr;
     const std::string stmt_str_;
     const bool if_not_exists_ = false;
+    const std::shared_ptr<OptionsMap> options_;
 };
 
 class FnParaNode : public FnNode {

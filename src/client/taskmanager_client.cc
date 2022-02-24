@@ -205,5 +205,28 @@ namespace client {
     }
 }
 
+std::string TaskManagerClient::GetJobLog(const int id, ::openmldb::base::Status* status) {
+    ::openmldb::taskmanager::GetJobLogRequest request;
+    ::openmldb::taskmanager::GetJobLogResponse response;
+
+    request.set_id(id);
+
+    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::GetJobLog, &request,
+                                  &response, FLAGS_request_timeout_ms, 1);
+
+    if (ok) {
+        status->code = response.code();
+        status->msg = response.msg();
+        if (response.code() == 0) {
+            if (response.has_log()) {
+                return response.log();
+            }
+        }
+    }
+    status->code = -1;
+    status->msg = "Fail to request TaskManager server";
+    return "";
+}
+
 }  // namespace client
 }  // namespace openmldb

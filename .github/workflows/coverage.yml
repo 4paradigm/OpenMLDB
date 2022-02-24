@@ -25,6 +25,7 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:0.4.1
     env:
+      CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
       CMAKE_BUILD_TYPE: Debug
       SQL_PYSDK_ENABLE: OFF
       SQL_JAVASDK_ENABLE: ON
@@ -66,7 +67,7 @@ jobs:
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v2
         with:
-          files: build/coverage.info,java/**/target/site/jacoco/jacoco.xml
+          files: build/coverage.info,java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
           name: coverage
           fail_ci_if_error: true
           verbose: true

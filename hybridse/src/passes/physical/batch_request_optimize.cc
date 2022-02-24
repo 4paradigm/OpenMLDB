@@ -341,7 +341,7 @@ Status CommonColumnOptimize::ProcessSimpleProject(
             CHECK_STATUS(
                 UpdateProjectExpr(ctx, expr, input_op, new_id_map, &new_expr),
                 "Fail to resolve expr ", expr->GetExprString(),
-                " on project input:\n", new_input->SchemaToString());
+                " on project input:\n", new_input->SchemaToString(""));
             expr = new_expr;
         }
 
@@ -461,7 +461,7 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
             CHECK_STATUS(
                 UpdateProjectExpr(ctx, expr, input_op, new_id_map, &new_expr),
                 "Fail to resolve expr ", expr->GetExprString(),
-                " on project input:\n", new_input->SchemaToString());
+                " on project input:\n", new_input->SchemaToString(""));
             expr = new_expr;
         }
 
@@ -758,7 +758,7 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
             CHECK_STATUS(
                 UpdateProjectExpr(ctx, expr, input, new_id_map, &new_expr),
                 "Fail to resolve expr ", expr->GetExprString(),
-                " on project input:\n", new_union->SchemaToString());
+                " on project input:\n", new_union->SchemaToString(""));
             expr = new_expr;
         }
         bool expr_is_common =

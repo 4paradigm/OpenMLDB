@@ -24,7 +24,6 @@ import com.baidu.brpc.server.RpcServer;
 import com.baidu.brpc.server.RpcServerOptions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import java.io.IOException;
 
 @Slf4j
@@ -60,7 +59,8 @@ public class TaskManagerServer {
             rpcServer = new RpcServer(TaskManagerConfig.PORT, options);
             rpcServer.registerService(new TaskManagerImpl());
             rpcServer.start();
-            log.info("Start TaskManager on {} with worker thread number {}", TaskManagerConfig.PORT, TaskManagerConfig.WORKER_THREAD);
+            log.info("Start TaskManager on {} with worker thread number {}", TaskManagerConfig.PORT,
+                    TaskManagerConfig.WORKER_THREAD);
 
             // make server keep running
             synchronized (TaskManagerServer.class) {
@@ -81,6 +81,13 @@ public class TaskManagerServer {
     }
 
     public static void main(String[] args) {
+        try {
+            TaskManagerConfig.parse();
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            logger.error("Fail to parse config file or validate configurations, exit now");
+            return;
+        }
         TaskManagerServer server = new TaskManagerServer();
         server.start();
     }

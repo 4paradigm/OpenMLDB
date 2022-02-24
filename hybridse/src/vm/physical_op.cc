@@ -1025,7 +1025,7 @@ Status PhysicalPartitionProviderNode::WithNewChildren(node::NodeManager* nm,
     return Status::OK();
 }
 
-void PhysicalOpNode::PrintSchema() const { std::cout << SchemaToString() << std::endl; }
+void PhysicalOpNode::PrintSchema() const { std::cout << SchemaToString("") << std::endl; }
 
 std::string PhysicalOpNode::SchemaToString(const std::string& tab) const {
     std::stringstream ss;

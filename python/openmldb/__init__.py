@@ -17,3 +17,4 @@ from . import dbapi
 from . import sdk
 from . import native
 from . import sqlalchemy_openmldb
+from . import sql_magic

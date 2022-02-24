@@ -37,7 +37,7 @@ cases:
     desc: CREATE GROUP
     mode: zetasql-unsupport
     sql: CREATE GROUP group1;
-  - id: 4
+  - id: 4-1
     desc: DESC table
     sql: DESC t1;
     expect:
@@ -45,6 +45,14 @@ cases:
         +-node[CMD]
           +-cmd_type: desc table
           +-args: [t1]
+  - id: 4-2
+    desc: DESC table with db name prefix
+    sql: DESC db1.t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: desc table
+          +-args: [db1, t1]
   - id: 5
     desc: SHOW TABLE
     sql: SHOW TABLES;
@@ -188,6 +196,7 @@ cases:
         +-node[kDeployStmt]
           +-if_not_exists: false
           +-name: foo
+          +-options: <nil>
           +-stmt:
             +-node[kQuery]: kQuerySelect
               +-distinct_opt: false
@@ -218,6 +227,42 @@ cases:
         +-node[kDeployStmt]
           +-if_not_exists: true
           +-name: foo2
+          +-options: <nil>
+          +-stmt:
+            +-node[kQuery]: kQuerySelect
+              +-distinct_opt: false
+              +-where_expr: null
+              +-group_expr_list: null
+              +-having_expr: null
+              +-order_expr_list: null
+              +-limit: null
+              +-select_list[list]:
+              |  +-0:
+              |    +-node[kResTarget]
+              |      +-val:
+              |      |  +-expr[column ref]
+              |      |    +-relation_name: <nil>
+              |      |    +-column_name: col1
+              |      +-name: <nil>
+              +-tableref_list[list]:
+              |  +-0:
+              |    +-node[kTableRef]: kTable
+              |      +-table: t1
+              |      +-alias: <nil>
+              +-window_list: []
+  - id: deploy_stmt_options
+    desc: deploy query task if not exists
+    sql: DEPLOY IF NOT EXISTS foo_op OPTIONS(long_windows="w1:100") SELECT col1 from t1;
+    expect:
+      node_tree_str: |
+        +-node[kDeployStmt]
+          +-if_not_exists: true
+          +-name: foo_op
+          +-options:
+          |  +-long_windows:
+          |    +-expr[primary]
+          |      +-value: w1:100
+          |      +-type: string
           +-stmt:
             +-node[kQuery]: kQuerySelect
               +-distinct_opt: false
