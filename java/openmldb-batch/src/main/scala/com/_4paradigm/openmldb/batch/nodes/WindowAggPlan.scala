@@ -279,9 +279,6 @@ object WindowAggPlan {
       val skewGroups = config.groupIdxs :+ config.partIdIdx
       computer.resetGroupKeyComparator(skewGroups)
     }
-    if (sqlConfig.print) {
-      logger.info(s"windowAggIter mode: ${sqlConfig.enableWindowSkewOpt}")
-    }
 
     val resIter = if (sqlConfig.enableWindowSkewOpt) {
       limitInputIter.flatMap(zippedRow => {
@@ -340,9 +337,6 @@ object WindowAggPlan {
     if (config.partIdIdx != 0) {
       val skewGroups = config.groupIdxs :+ config.partIdIdx
       computer.resetGroupKeyComparator(skewGroups)
-    }
-    if (sqlConfig.print) {
-      logger.info(s"windowAggIter mode: ${sqlConfig.enableWindowSkewOpt}")
     }
 
     val resIter = if (sqlConfig.enableWindowSkewOpt) {

@@ -29,7 +29,7 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "spark.sql.session.timeZone")
   var timeZone = "Asia/Shanghai"
 
-  // test mode 用于测试的时候验证相关问题
+  // test mode
   @ConfigOption(name = "openmldb.test.tiny", doc = "控制读取表的数据条数，默认读全量数据")
   var tinyData: Long = -1
 
@@ -41,6 +41,10 @@ class OpenmldbBatchConfig extends Serializable {
 
   @ConfigOption(name = "openmldb.test.print", doc = "执行过程中允许打印数据")
   var print: Boolean = false
+
+  // Debug options
+  @ConfigOption(name = "openmldb.debug.show_node_df", doc = "Use Spark DataFrame.show() for each physical nodes")
+  var debugShowNodeDf: Boolean = false
 
   // Window skew optimization
   @ConfigOption(name = "openmldb.window.skew.opt", doc = "Enable window skew optimization or not")
@@ -66,7 +70,6 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "openmldb.window.skew.opt.config", doc = "The skew config for window skew optimization")
   var windowSkewOptConfig: String = ""
 
-  // 慢速执行模式
   @ConfigOption(name = "openmldb.slowRunCacheDir", doc =
     """
       | Slow run mode cache directory path. If specified, run OpenMLDB plan with slow mode.

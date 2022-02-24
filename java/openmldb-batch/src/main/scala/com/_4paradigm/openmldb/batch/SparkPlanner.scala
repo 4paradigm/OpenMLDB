@@ -273,9 +273,12 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
     // Set the output to context cache
     ctx.putPlanResult(root.GetNodeId(), outputSpatkInstance)
 
+    if (config.debugShowNodeDf) {
+      logger.warn(s"Debug and print DataFrame of nodeId: ${root.GetNodeId()}, nodeType: ${root.GetTypeName()}")
+      outputSpatkInstance.getDf().show()
+    }
     outputSpatkInstance
   }
-
 
   /**
    * Run plan slowly by storing and loading each intermediate result from external data path.
