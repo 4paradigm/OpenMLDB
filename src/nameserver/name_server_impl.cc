@@ -5445,7 +5445,7 @@ void NameServerImpl::OnLocked() {
     if (!Recover()) {
         PDLOG(WARNING, "recover failed");
     }
-    if (IsClusterMode() && (db_table_info_.empty() || db_table_info_[INTERNAL_DB].empty())) {
+    if (IsClusterMode() && (db_table_info_.empty() || db_table_info_[INTERNAL_DB].empty() || db_table_info_[INFORMATION_SCHEMA_DB].empty())) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
             LOG(FATAL) << "tablet num " << tablets_.size() << " is less then system table replica num "
                        << FLAGS_system_table_replica_num;
@@ -5456,6 +5456,11 @@ void NameServerImpl::OnLocked() {
             LOG(FATAL) << "create internal database failed";
             exit(1);
         }
+        status = CreateDatabase(INFORMATION_SCHEMA_DB);
+        if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+            LOG(FATAL) << "create information schema database failed";
+            exit(1);
+        }        
         if (FLAGS_system_table_replica_num > 0 && !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
             LOG(FATAL) << "create system table" << JOB_INFO_NAME << "failed";
             exit(1);
@@ -5463,6 +5468,10 @@ void NameServerImpl::OnLocked() {
         if (FLAGS_system_table_replica_num > 0 &&
             !CreateSystemTable(PRE_AGG_META_NAME, SystemTableType::KPreAggMetaInfo).OK()) {
             LOG(FATAL) << "create system table" << PRE_AGG_META_NAME << "failed";
+            exit(1);
+        }
+        if (FLAGS_system_table_replica_num > 0 && !CreateSystemTable(GLOBAL_VARIABLE_NAME, SystemTableType::kGlobalVariable).OK()) {
+            LOG(FATAL) << "create system table" << GLOBAL_VARIABLE_NAME << "failed";
             exit(1);
         }
     }

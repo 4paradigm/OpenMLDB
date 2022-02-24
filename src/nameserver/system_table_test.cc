@@ -72,6 +72,20 @@ TEST_F(SystemTableTest, SystemTable) {
     ASSERT_TRUE(ns_client.ShowTable(PRE_AGG_META_NAME, INTERNAL_DB, false, tables, msg));
     ASSERT_EQ(1, tables.size());
     ASSERT_STREQ("PRE_AGG_META_INFO", tables[0].name().c_str());
+
+    ASSERT_TRUE(ns_client.ShowTable("", INFORMATION_SCHEMA_DB, false, tables, msg));
+    ASSERT_EQ(1, tables.size());
+    tables.clear();
+
+    ASSERT_TRUE(ns_client.ShowTable(GLOBAL_VARIABLE_NAME, INFORMATION_SCHEMA_DB, false, tables, msg));
+    ASSERT_EQ(1, tables.size());
+    ASSERT_STREQ("GLOBAL_VARIABLE", tables[0].name().c_str());
+
+
+
+
+
+
 }
 
 }  // namespace nameserver
