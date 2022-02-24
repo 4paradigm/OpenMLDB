@@ -32,6 +32,15 @@ std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options) 
     return router;
 }
 
+std::shared_ptr<SQLRouter> NewStandaloneSQLRouter(const StandaloneOptions& options) {
+    auto router = std::make_shared<SQLClusterRouter>(options);
+    if (!router->Init()) {
+        LOG(WARNING) << "Fail to init standalone sql router";
+        return {};
+    }
+    return router;
+}
+
 // To avoid using protobuf message in swig, we use normal type in GenDDL/OutputSchema parameters,
 // so we should convert schema format here
 std::map<std::string, std::vector<openmldb::common::ColumnDesc>> convertSchema(
