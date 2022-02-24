@@ -1371,7 +1371,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
             std::vector<std::string> dbs;
             auto ok = ns_ptr->ShowDatabase(&dbs, msg);
             if (ok) {
-                return ResultSetSQL::MakeResultSet({"Databases"}, {dbs}, status);
+                std::vector<std::vector<std::string>> values;;
+                for (const auto& val : dbs) {
+                    std::vector<std::string> vec = {val};
+                    values.emplace_back(std::move(vec));
+                }
+                return ResultSetSQL::MakeResultSet({"Databases"}, values, status);
             } else {
                 *status = {::hybridse::common::StatusCode::kCmdError, msg};
             }
@@ -1507,7 +1512,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
             }
             std::stringstream ss;
             ::openmldb::cmd::PrintProcedureInfo(*sp, ss);
-            return {};
+            std::vector<std::vector<std::string>> result;
+            std::vector<std::string> vec = {ss.str()};
+            result.emplace_back(std::move(vec));
+            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
         }
         case hybridse::node::kCmdShowDeployments: {
             if (db.empty()) {
@@ -1570,7 +1578,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
             ShowJobs(false, job_infos);
             std::stringstream ss;
             ::openmldb::cmd::PrintJobInfos(job_infos, ss);
-            break;
+            std::vector<std::vector<std::string>> result;
+            std::vector<std::string> vec = {ss.str()};
+            result.emplace_back(std::move(vec));
+            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
         }
         case hybridse::node::kCmdShowJob: {
             int job_id;
@@ -1592,7 +1603,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
             }
             std::stringstream ss;
             ::openmldb::cmd::PrintJobInfos(job_infos, ss);
-            return {};
+            std::vector<std::vector<std::string>> result;
+            std::vector<std::string> vec = {ss.str()};
+            result.emplace_back(std::move(vec));
+            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
         }
         case hybridse::node::kCmdStopJob: {
             int job_id;
@@ -1613,7 +1627,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
             }
             std::stringstream ss;
             ::openmldb::cmd::PrintJobInfos(job_infos, ss);
-            return {};
+            std::vector<std::vector<std::string>> result;
+            std::vector<std::string> vec = {ss.str()};
+            result.emplace_back(std::move(vec));
+            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
         }
         case hybridse::node::kCmdDropTable: {
             *status = {};
