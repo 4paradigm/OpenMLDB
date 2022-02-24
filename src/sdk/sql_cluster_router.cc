@@ -16,6 +16,7 @@
 
 #include "sdk/sql_cluster_router.h"
 
+#include <algorithm>
 #include <fstream>
 #include <memory>
 #include <string>
@@ -1456,7 +1457,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
                 *status = {::hybridse::common::StatusCode::kCmdError, msg};
                 return {};
             }
-            std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cluster_sdk_->GetProcedureInfo(db_name, sp_name, &msg);
+            auto sp_info = cluster_sdk_->GetProcedureInfo(db_name, sp_name, &msg);
             if (!sp_info) {
                 *status = {::hybridse::common::StatusCode::kCmdError, "Failed to show procedure, " + msg};
                 return {};
@@ -2289,7 +2290,8 @@ bool SQLClusterRouter::IsEnableTrace() const {
     return {};
 }
 
-::hybridse::sdk::Status SQLClusterRouter::ParseNamesFromArgs(const std::string& db, const std::vector<std::string>& args,
+::hybridse::sdk::Status SQLClusterRouter::ParseNamesFromArgs(const std::string& db,
+        const std::vector<std::string>& args,
         std::string* db_name, std::string* sp_name) {
     if (args.size() == 1) {
         // only sp name, no db_name
@@ -2570,7 +2572,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
     }
 
     std::set<std::pair<std::string, std::string>> table_pair;
-    if (!cluster_sdk_->GetEngine()->GetDependentTables(select_sql, db, ::hybridse::vm::kBatchMode, &table_pair, sql_status)) {
+    if (!cluster_sdk_->GetEngine()->GetDependentTables(select_sql, db,
+                ::hybridse::vm::kBatchMode, &table_pair, sql_status)) {
         return {::hybridse::common::StatusCode::kCmdError, "get dependent table failed"};
     }
     std::set<std::string> db_set;

@@ -17,6 +17,8 @@
 #ifndef SRC_SCHEMA_SCHEMA_ADAPTER_H_
 #define SRC_SCHEMA_SCHEMA_ADAPTER_H_
 
+#include <string>
+#include <vector>
 #include "base/status.h"
 #include "catalog/base.h"
 #include "node/node_enum.h"

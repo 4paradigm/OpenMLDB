@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/status.h"
 #include "catalog/sdk_catalog.h"

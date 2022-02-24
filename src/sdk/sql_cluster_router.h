@@ -121,7 +121,7 @@ class SQLClusterRouter : public SQLRouter {
     bool DropTable(const std::string& db, const std::string& table, hybridse::sdk::Status* status);
 
     bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
-    
+
     std::vector<std::string> GetAllTables() override;
 
     bool ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) override;
@@ -207,7 +207,7 @@ class SQLClusterRouter : public SQLRouter {
         const std::shared_ptr<SQLRequestRow>& parameter_row, hybridse::sdk::Status& status); // NOLINT
     bool GetTabletClientsForClusterOnlineBatchQuery(
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter_row,
-        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients,
+        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients, //NOLINT
         hybridse::sdk::Status& status); //NOLINT
 
     std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,

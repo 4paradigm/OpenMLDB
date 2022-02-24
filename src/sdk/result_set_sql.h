@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
@@ -36,7 +37,7 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
     ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
                  const std::shared_ptr<brpc::Controller>& cntl);
 
-    ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt, 
+    ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt,
                  const std::shared_ptr<butil::IOBuf>& io_buf);
 
     ~ResultSetSQL();
@@ -101,14 +102,15 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
 
 class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
  public:
-    MultipleResultSetSQL(const std::vector<std::shared_ptr<ResultSetSQL>>& result_set_list, const int limit_cnt = 0)
+    explicit MultipleResultSetSQL(const std::vector<std::shared_ptr<ResultSetSQL>>& result_set_list,
+            const int limit_cnt = 0)
         : result_set_list_(result_set_list), result_set_idx_(0), limit_cnt_(limit_cnt), result_idx_(0) {}
     ~MultipleResultSetSQL() {}
 
     static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
-        const std::vector<std::shared_ptr<ResultSetSQL>>& result_set_list, const int limit_cnt, ::hybridse::sdk::Status* status) {
-        std::shared_ptr<::openmldb::sdk::MultipleResultSetSQL> rs =
-            std::make_shared<openmldb::sdk::MultipleResultSetSQL>(result_set_list, limit_cnt);
+        const std::vector<std::shared_ptr<ResultSetSQL>>& result_set_list,
+        const int limit_cnt, ::hybridse::sdk::Status* status) {
+        auto rs = std::make_shared<openmldb::sdk::MultipleResultSetSQL>(result_set_list, limit_cnt);
         if (!rs->Init()) {
             status->code = -1;
             status->msg = "request error, MultipleResultSetSQL init failed";

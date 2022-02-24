@@ -181,7 +181,6 @@ class RowCodec {
         }
         return true;
     }
-
 };
 __attribute__((unused)) static bool DecodeRows(const std::string& data, uint32_t count, const Schema& schema,
                                                std::vector<std::vector<std::string>>* row_vec) {
