@@ -195,7 +195,7 @@ public class TaskManagerConfig {
         }
 
         HADOOP_CONF_DIR = prop.getProperty("hadoop.conf.dir", "");
-        if (HADOOP_CONF_DIR.isEmpty()) {
+        if (isYarn && HADOOP_CONF_DIR.isEmpty()) {
             try {
                 if(System.getenv("HADOOP_CONF_DIR") == null) {
                     throw new ConfigException("hadoop.conf.dir", "should set config 'hadoop.conf.dir' or environment variable 'HADOOP_CONF_DIR'");
@@ -207,7 +207,6 @@ public class TaskManagerConfig {
             }
         }
         // TODO: Check if we can get core-site.xml
-
     }
 
 }
