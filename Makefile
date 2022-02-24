@@ -118,6 +118,7 @@ configure: thirdparty-fast
 
 openmldb-clean:
 	rm -rf "$(OPENMLDB_BUILD_DIR)"
+	@cd java && ./mvnw clean
 
 THIRD_PARTY_BUILD_DIR ?= $(MAKEFILE_DIR)/.deps
 THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc

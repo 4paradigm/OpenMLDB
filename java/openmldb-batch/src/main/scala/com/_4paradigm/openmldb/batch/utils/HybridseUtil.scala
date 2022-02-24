@@ -26,10 +26,8 @@ import org.apache.spark.sql.types.{
   ShortType, StringType, StructField, StructType, TimestampType
 }
 import org.apache.spark.sql.{DataFrame, Row}
-
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
-import scala.reflect.{ClassTag, classTag}
 
 
 object HybridseUtil {
@@ -99,6 +97,23 @@ object HybridseUtil {
       case Type.kTimestamp => TimestampType
       case _ => throw new IllegalArgumentException(
         s"HybridSE type $dtype not supported")
+    }
+  }
+
+  def protoTypeToSparkType(dtype: com._4paradigm.openmldb.proto.Type.DataType): DataType = {
+    dtype match {
+      case com._4paradigm.openmldb.proto.Type.DataType.kSmallInt => ShortType
+      case com._4paradigm.openmldb.proto.Type.DataType.kInt => IntegerType
+      case com._4paradigm.openmldb.proto.Type.DataType.kBigInt => LongType
+      case com._4paradigm.openmldb.proto.Type.DataType.kFloat => FloatType
+      case com._4paradigm.openmldb.proto.Type.DataType.kDouble => DoubleType
+      case com._4paradigm.openmldb.proto.Type.DataType.kBool => BooleanType
+      case com._4paradigm.openmldb.proto.Type.DataType.kString => StringType
+      case com._4paradigm.openmldb.proto.Type.DataType.kVarchar => StringType
+      case com._4paradigm.openmldb.proto.Type.DataType.kDate => DateType
+      case com._4paradigm.openmldb.proto.Type.DataType.kTimestamp => TimestampType
+      case _ => throw new IllegalArgumentException(
+        s"HybridSE proto data type $dtype not supported")
     }
   }
 

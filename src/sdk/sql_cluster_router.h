@@ -108,6 +108,7 @@ struct SQLCache {
 class SQLClusterRouter : public SQLRouter {
  public:
     explicit SQLClusterRouter(const SQLRouterOptions& options);
+    explicit SQLClusterRouter(const StandaloneOptions& options);
     explicit SQLClusterRouter(DBSDK* sdk);
 
     ~SQLClusterRouter() override;
@@ -326,7 +327,9 @@ class SQLClusterRouter : public SQLRouter {
  private:
     std::string db_;
     std::map<std::string, std::string> session_variables_;
+    bool is_cluster_mode_;
     SQLRouterOptions options_;
+    StandaloneOptions standalone_options_;
     DBSDK* cluster_sdk_;
     std::map<std::string,
              std::map<hybridse::vm::EngineMode,
