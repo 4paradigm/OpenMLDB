@@ -1349,6 +1349,8 @@ void DeployNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, name_, "name", false);
     output << "\n";
+    PrintValue(output, tab, Options().get(), "options", false);
+    output << "\n";
     PrintSqlNode(output, tab, stmt_, "stmt", true);
 }
 

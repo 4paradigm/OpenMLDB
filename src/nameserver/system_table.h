@@ -31,9 +31,11 @@ namespace nameserver {
 
 constexpr const char* INTERNAL_DB = "__INTERNAL_DB";
 constexpr const char* JOB_INFO_NAME = "JOB_INFO";
+constexpr const char* PRE_AGG_META_NAME = "PRE_AGG_META_INFO";
 
 enum class SystemTableType {
     kJobInfo = 1,
+    KPreAggMetaInfo = 2,
 };
 
 class SystemTable {
@@ -62,6 +64,35 @@ class SystemTable {
                 auto ttl = index->mutable_ttl();
                 ttl->set_ttl_type(::openmldb::type::kLatestTime);
                 ttl->set_lat_ttl(1);
+                break;
+            }
+            case SystemTableType::KPreAggMetaInfo: {
+                SetColumnDesc("aggr_table", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("base_db", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("base_table", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("aggr_func", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("aggr_col", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("partition_cols", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("order_by_col", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("bucket_size", openmldb::type::DataType::kString, table_info->add_column_desc());
+                auto index = table_info->add_column_key();
+                index->set_index_name("aggr_table");
+                index->add_col_name("aggr_table");
+                auto ttl = index->mutable_ttl();
+                ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
+                ttl->set_abs_ttl(0);
+
+                auto index2 = table_info->add_column_key();
+                index2->set_index_name("unique_key");
+                index2->add_col_name("base_db");
+                index2->add_col_name("base_table");
+                index2->add_col_name("aggr_func");
+                index2->add_col_name("aggr_col");
+                index2->add_col_name("partition_cols");
+                index2->add_col_name("order_by_col");
+                ttl = index2->mutable_ttl();
+                ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
+                ttl->set_abs_ttl(0);
                 break;
             }
             default:

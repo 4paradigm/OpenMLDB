@@ -5457,7 +5457,12 @@ void NameServerImpl::OnLocked() {
             exit(1);
         }
         if (FLAGS_system_table_replica_num > 0 && !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
-            LOG(FATAL) << "create system table failed";
+            LOG(FATAL) << "create system table" << JOB_INFO_NAME << "failed";
+            exit(1);
+        }
+        if (FLAGS_system_table_replica_num > 0 &&
+            !CreateSystemTable(PRE_AGG_META_NAME, SystemTableType::KPreAggMetaInfo).OK()) {
+            LOG(FATAL) << "create system table" << PRE_AGG_META_NAME << "failed";
             exit(1);
         }
     }

@@ -752,8 +752,14 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             CHECK_TRUE(ast_deploy_stmt != nullptr, common::kSqlAstError, "not an ASTDeployStatement");
             node::SqlNode* deploy_stmt = nullptr;
             CHECK_STATUS(ConvertStatement(ast_deploy_stmt->stmt(), node_manager, &deploy_stmt));
+
+            auto options = std::make_shared<node::OptionsMap>();
+            if (ast_deploy_stmt->options_list() != nullptr) {
+                CHECK_STATUS(ConvertAstOptionsListToMap(ast_deploy_stmt->options_list(), node_manager, options));
+            }
             *output = node_manager->MakeDeployStmt(ast_deploy_stmt->name()->GetAsString(), deploy_stmt,
-                                                   ast_deploy_stmt->UnparseStmt(), ast_deploy_stmt->is_if_not_exists());
+                                                   ast_deploy_stmt->UnparseStmt(), options,
+                                                   ast_deploy_stmt->is_if_not_exists());
             break;
         }
         case zetasql::AST_SELECT_INTO_STATEMENT: {
