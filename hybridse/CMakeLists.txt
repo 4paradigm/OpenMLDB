@@ -210,6 +210,10 @@ set(ZETASQL_LIBS
 
 # Find java
 if (SQL_JAVASDK_ENABLE)
+    set(JAVA_HOME "/Library/Java/JavaVirtualMachines/jdk1.8.0_321.jdk/Contents/Home")
+    set(JAVA_INCLUDE_PATH "$ENV{JAVA_HOME}/include")
+    set(JAVA_INCLUDE_PATH2 "$ENV{JAVA_HOME}/include/darwin")
+    set(JAVA_AWT_INCLUDE_PATH "$ENV{JAVA_HOME}/include")
     find_package(Java COMPONENTS Development REQUIRED)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
 

@@ -17,8 +17,8 @@
 package com._4paradigm.openmldb.jdbc;
 
 public class TestConfig {
-    public static String ZK_CLUSTER="127.0.0.1:6181";
-    public static String ZK_PATH="/onebox";
+    public static String ZK_CLUSTER="172.24.4.55:12200";
+    public static String ZK_PATH="/openmldb";
 
 
 }

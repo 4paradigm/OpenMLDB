@@ -20,7 +20,7 @@
 ### Bug Fixes
 - Offline data import fails when the timestamp value is `null`. (#1263 @tobegit3hub)
 - Start time of TaskManager jobs in CLI is null. (#1272 @tobegit3hub)
-- LAST JOIN may fail in the cluster version under certain circumstances. (#1184 @dl239)
+- LAST JOIN may fail in the cluster version under certain circumstances. (#1226 @dl239)
 - Invalid SQL may run successfully. (#1208 @aceforeverd)
 
 ## [0.4.1] - 2022-02-09
