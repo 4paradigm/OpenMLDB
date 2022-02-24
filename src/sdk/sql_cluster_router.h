@@ -38,6 +38,8 @@ namespace sdk {
 
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtidbSchema;
 
+constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
+
 static std::shared_ptr<::hybridse::sdk::Schema> ConvertToSchema(
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info) {
     ::hybridse::vm::Schema schema;
@@ -261,6 +263,7 @@ class SQLClusterRouter : public SQLRouter {
     bool IsEnableTrace() const;
 
     std::string GetDatabase();
+    void SetDatabase(const std::string& db);
 
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
@@ -306,7 +309,6 @@ class SQLClusterRouter : public SQLRouter {
 
     bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& name);
 
-    void SetDatabase(const std::string& db);
     ::openmldb::base::Status SaveResultSet(const std::string& file_path,
             const std::shared_ptr<hybridse::node::OptionsMap>& options_map,
             ::hybridse::sdk::ResultSet* result_set);

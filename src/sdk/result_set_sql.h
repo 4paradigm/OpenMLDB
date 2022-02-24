@@ -56,39 +56,39 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
 
     bool Init();
 
-    bool Reset() { return result_set_base_->Reset(); }
+    bool Reset() override { return result_set_base_->Reset(); }
 
-    bool Next() { return result_set_base_->Next(); }
+    bool Next() override { return result_set_base_->Next(); }
 
-    bool IsNULL(int index) { return result_set_base_->IsNULL(index); }
+    bool IsNULL(int index) override { return result_set_base_->IsNULL(index); }
 
-    bool GetString(uint32_t index, std::string* str) { return result_set_base_->GetString(index, str); }
+    bool GetString(uint32_t index, std::string* str) override { return result_set_base_->GetString(index, str); }
 
-    bool GetBool(uint32_t index, bool* result) { return result_set_base_->GetBool(index, result); }
+    bool GetBool(uint32_t index, bool* result) override { return result_set_base_->GetBool(index, result); }
 
-    bool GetChar(uint32_t index, char* result) { return result_set_base_->GetChar(index, result); }
+    bool GetChar(uint32_t index, char* result) override { return result_set_base_->GetChar(index, result); }
 
-    bool GetInt16(uint32_t index, int16_t* result) { return result_set_base_->GetInt16(index, result); }
+    bool GetInt16(uint32_t index, int16_t* result) override { return result_set_base_->GetInt16(index, result); }
 
-    bool GetInt32(uint32_t index, int32_t* result) { return result_set_base_->GetInt32(index, result); }
+    bool GetInt32(uint32_t index, int32_t* result) override { return result_set_base_->GetInt32(index, result); }
 
-    bool GetInt64(uint32_t index, int64_t* result) { return result_set_base_->GetInt64(index, result); }
+    bool GetInt64(uint32_t index, int64_t* result) override { return result_set_base_->GetInt64(index, result); }
 
-    bool GetFloat(uint32_t index, float* result) { return result_set_base_->GetFloat(index, result); }
+    bool GetFloat(uint32_t index, float* result) override { return result_set_base_->GetFloat(index, result); }
 
-    bool GetDouble(uint32_t index, double* result) { return result_set_base_->GetDouble(index, result); }
+    bool GetDouble(uint32_t index, double* result) override { return result_set_base_->GetDouble(index, result); }
 
-    bool GetDate(uint32_t index, int32_t* date) { return result_set_base_->GetDate(index, date); }
+    bool GetDate(uint32_t index, int32_t* date) override { return result_set_base_->GetDate(index, date); }
 
-    bool GetDate(uint32_t index, int32_t* year, int32_t* month, int32_t* day) {
+    bool GetDate(uint32_t index, int32_t* year, int32_t* month, int32_t* day) override {
         return result_set_base_->GetDate(index, year, month, day);
     }
 
-    bool GetTime(uint32_t index, int64_t* mills) { return result_set_base_->GetTime(index, mills); }
+    bool GetTime(uint32_t index, int64_t* mills) override { return result_set_base_->GetTime(index, mills); }
 
-    const ::hybridse::sdk::Schema* GetSchema() { return result_set_base_->GetSchema(); }
+    const ::hybridse::sdk::Schema* GetSchema() override { return result_set_base_->GetSchema(); }
 
-    int32_t Size() { return result_set_base_->Size(); }
+    int32_t Size() override { return result_set_base_->Size(); }
 
  private:
     ::hybridse::vm::Schema schema_;

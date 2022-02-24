@@ -742,7 +742,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
 
     bool ok = ns_ptr->DropTable(db, table, err);
     if (!ok) {
-        status->msg = "fail to drop db " + db + " for error " + err;
+        status->msg = "fail to drop, " + err;
         status->code = -2;
         return false;
     }
@@ -1383,12 +1383,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
                 return {};
             }
             auto tables = cluster_sdk_->GetTables(db);
-            std::vector<std::string> table_names;
-            auto it = tables.begin();
-            for (; it != tables.end(); ++it) {
-                table_names.push_back((*it)->name());
+            std::vector<std::vector<std::string>> values;;
+            for (auto it = tables.begin(); it != tables.end(); ++it) {
+                std::vector<std::string> vec = {(*it)->name()};
+                values.emplace_back(std::move(vec));
             }
-            return ResultSetSQL::MakeResultSet({"Tables"}, {table_names}, status);
+            return ResultSetSQL::MakeResultSet({"Tables"}, values, status);
         }
 
         case hybridse::node::kCmdDescTable: {
@@ -1418,7 +1418,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
                 std::vector<std::string> vec2 = {ss.str()};
                 result.emplace_back(std::move(vec2));
             }
-            break;
+            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
         }
 
         case hybridse::node::kCmdCreateDatabase: {
@@ -2068,7 +2068,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQL(const std:
             }
             *status = {};
             std::vector<std::string> value = {info->GetPhysicalPlan()};
-            return ResultSetSQL::MakeResultSet({"StringValue"}, {value}, status);
+            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
         }
         case hybridse::node::kPlanTypeCreate: {
             auto create_node = dynamic_cast<hybridse::node::CreatePlanNode*>(node);
@@ -2158,7 +2158,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQL(const std:
                         std::stringstream ss;
                         ::openmldb::cmd::PrintJobInfos({job_info}, ss);
                         std::vector<std::string> value = {ss.str()};
-                        return ResultSetSQL::MakeResultSet({"StringValue"}, {value}, status);
+                        return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
                     }
                 } else {
                    *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
@@ -2192,7 +2192,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQL(const std:
                         std::stringstream ss;
                         ::openmldb::cmd::PrintJobInfos({job_info}, ss);
                         std::vector<std::string> value = {ss.str()};
-                        return ResultSetSQL::MakeResultSet({"StringValue"}, {value}, status);
+                        return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
                     }
                 } else {
                     *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
@@ -2229,7 +2229,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQL(const std:
                     ::openmldb::cmd::PrintJobInfos({job_info}, ss);
                     std::vector<std::string> value = {ss.str()};
                     *status = {};
-                    return ResultSetSQL::MakeResultSet({"StringValue"}, {value}, status);
+                    return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
                 }
             } else {
                 // Handle in standalone mode
