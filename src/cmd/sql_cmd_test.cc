@@ -27,7 +27,7 @@
 #include "sdk/sql_router.h"
 #include "vm/catalog.h"
 
-DEFINE_bool(interactive, true, "Set interactive");
+DECLARE_bool(interactive);
 DEFINE_string(cmd, "", "Set cmd");
 DECLARE_string(host);
 DECLARE_int32(port);

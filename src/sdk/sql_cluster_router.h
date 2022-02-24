@@ -260,6 +260,8 @@ class SQLClusterRouter : public SQLRouter {
     bool IsOnlineMode() const;
     bool IsEnableTrace() const;
 
+    std::string GetDatabase();
+
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 
@@ -303,6 +305,21 @@ class SQLClusterRouter : public SQLRouter {
             std::string* db_name, std::string* sp_name);
 
     bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& name);
+
+    void SetDatabase(const std::string& db);
+    ::openmldb::base::Status SaveResultSet(const std::string& file_path,
+            const std::shared_ptr<hybridse::node::OptionsMap>& options_map,
+            ::hybridse::sdk::ResultSet* result_set);
+
+    hybridse::sdk::Status HandleLoadDataInfile(const std::string& database,
+            const std::string& table, const std::string& file_path,
+            const std::shared_ptr<hybridse::node::OptionsMap>& options);
+
+    hybridse::sdk::Status InsertOneRow(const std::string& database,
+            const std::string& insert_placeholder, const std::vector<int>& str_col_idx,
+            const std::string& null_value, const std::vector<std::string>& cols);
+
+    hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
 
  private:
     std::string db_;

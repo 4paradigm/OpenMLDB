@@ -70,7 +70,7 @@ DECLARE_int32(get_concurrency_limit);
 DEFINE_string(role, "",
               "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
 DEFINE_string(cmd, "", "Set the command");
-DEFINE_bool(interactive, true, "Set the interactive");
+DECLARE_bool(interactive);
 
 DECLARE_string(openmldb_log_dir);
 DEFINE_string(log_level, "debug", "Set the log level, eg: debug or info");

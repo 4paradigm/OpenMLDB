@@ -2200,7 +2200,7 @@ class DeployNode : public SqlNode {
     explicit DeployNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
                         const std::shared_ptr<OptionsMap> options, bool if_not_exists)
         : SqlNode(kDeployStmt, 0, 0), name_(name), stmt_(stmt), stmt_str_(stmt_str),
-        options_(options), if_not_exists_(if_not_exists) {}
+        if_not_exists_(if_not_exists), options_(options) {}
     ~DeployNode() {}
 
     const std::string& Name() const { return name_; }
