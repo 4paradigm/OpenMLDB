@@ -171,24 +171,36 @@ class BatchQueryFutureImpl : public QueryFuture {
 };
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
-    : options_(options), cluster_sdk_(nullptr), mu_(), rand_(::baidu::common::timer::now_time()) {}
+    : options_(options), is_cluster_mode_(true), cluster_sdk_(nullptr), mu_(), rand_(::baidu::common::timer::now_time()) {}
+
+SQLClusterRouter::SQLClusterRouter(const StandaloneOptions& options)
+    : standalone_options_(options), is_cluster_mode_(false), cluster_sdk_(nullptr), mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
-    : options_(), cluster_sdk_(sdk), mu_(), rand_(::baidu::common::timer::now_time()) {}
+    : options_(), is_cluster_mode_(sdk->IsClusterMode()), cluster_sdk_(sdk), mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
 
 bool SQLClusterRouter::Init() {
     if (cluster_sdk_ == nullptr) {
-        ClusterOptions coptions;
-        coptions.zk_cluster = options_.zk_cluster;
-        coptions.zk_path = options_.zk_path;
-        coptions.session_timeout = options_.session_timeout;
-        cluster_sdk_ = new ClusterSDK(coptions);
-        bool ok = cluster_sdk_->Init();
-        if (!ok) {
-            LOG(WARNING) << "fail to init cluster sdk";
-            return false;
+        if (is_cluster_mode_) {
+            ClusterOptions coptions;
+            coptions.zk_cluster = options_.zk_cluster;
+            coptions.zk_path = options_.zk_path;
+            coptions.session_timeout = options_.session_timeout;
+            cluster_sdk_ = new ClusterSDK(coptions);
+            bool ok = cluster_sdk_->Init();
+            if (!ok) {
+                LOG(WARNING) << "fail to init cluster sdk";
+                return false;
+            }
+        } else {
+            cluster_sdk_ = new ::openmldb::sdk::StandAloneSDK(standalone_options_.host, standalone_options_.port);
+            bool ok = cluster_sdk_->Init();
+            if (!ok) {
+                LOG(WARNING) << "fail to init standalone sdk";
+                return false;
+            }
         }
     }
     return true;
