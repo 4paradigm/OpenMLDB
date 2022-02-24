@@ -34,13 +34,21 @@
 namespace openmldb {
 namespace sdk {
 
-struct SQLRouterOptions {
-    std::string zk_cluster;
-    std::string zk_path;
+struct BasicRouterOptions {
     bool enable_debug = false;
     uint32_t session_timeout = 2000;
     uint32_t max_sql_cache_size = 10;
     uint32_t request_timeout = 60000;
+};
+
+struct SQLRouterOptions : BasicRouterOptions {
+    std::string zk_cluster;
+    std::string zk_path;
+};
+
+struct StandaloneOptions : BasicRouterOptions {
+    std::string host;
+    uint32_t port;
 };
 
 class ExplainInfo {
@@ -187,6 +195,8 @@ class SQLRouter {
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
+
+std::shared_ptr<SQLRouter> NewStandaloneSQLRouter(const StandaloneOptions& options);
 
 /*
  * return ddl statements
