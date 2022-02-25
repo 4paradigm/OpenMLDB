@@ -60,6 +60,7 @@ TEST_F(SystemTableTest, SystemTable) {
     ns_client.Init();
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
+    
     ASSERT_TRUE(ns_client.ShowTable("", INTERNAL_DB, false, tables, msg));
     ASSERT_EQ(2, tables.size());
     tables.clear();

@@ -5463,8 +5463,9 @@ void NameServerImpl::OnLocked() {
                 exit(1);
             }
         }
-        if (db_table_info_.find(INTERNAL_DB) != db_table_info_.end() && db_table_info_[INTERNAL_DB].empty()) {
-            if (FLAGS_system_table_replica_num > 0 && !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
+        if (databases_.find(INTERNAL_DB) != databases_.end() && db_table_info_[INTERNAL_DB].empty()) {
+            if (FLAGS_system_table_replica_num > 0 &&
+                !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
                 LOG(FATAL) << "create system table" << JOB_INFO_NAME << "failed";
                 exit(1);
             }
@@ -5474,7 +5475,7 @@ void NameServerImpl::OnLocked() {
                 exit(1);
             }
         }
-        if (db_table_info_.find(INFORMATION_SCHEMA_DB) != db_table_info_.end() &&
+        if (databases_.find(INFORMATION_SCHEMA_DB) != databases_.end() &&
             db_table_info_[INFORMATION_SCHEMA_DB].empty()) {
             if (FLAGS_system_table_replica_num > 0 &&
                 !CreateSystemTable(GLOBAL_VARIABLE_NAME, SystemTableType::kGlobalVariable).OK()) {
