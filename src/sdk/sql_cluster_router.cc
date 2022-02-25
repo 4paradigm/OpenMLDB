@@ -186,7 +186,7 @@ SQLClusterRouter::SQLClusterRouter(const StandaloneOptions& options)
     mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
-    : options_(), is_cluster_mode_(sdk->IsClusterMode()), cluster_sdk_(sdk),
+    : options_(), is_cluster_mode_(sdk->IsClusterMode()), interactive_(false), cluster_sdk_(sdk),
     mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
