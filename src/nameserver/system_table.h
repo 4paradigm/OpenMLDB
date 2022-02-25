@@ -35,7 +35,7 @@ constexpr const char* PRE_AGG_META_NAME = "PRE_AGG_META_INFO";
 
 
 constexpr const char* INFORMATION_SCHEMA_DB = "INFORMATION_SCHEMA";
-constexpr const char* GLOBAL_VARIABLE_NAME = "GLOBAL_VARIABLE";
+constexpr const char* GLOBAL_VARIABLE_NAME = "GLOBAL_VARIABLES";
 
 enum class SystemTableType {
     kJobInfo = 1,
