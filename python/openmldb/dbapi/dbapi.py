@@ -139,14 +139,12 @@ class ConnectionClosedException(Error):
 
 class Cursor(object):
 
-    def __init__(self, db, zk, zkPath, conn):
+    def __init__(self, db, conn):
         self.description = None
         self.rowcount = -1
         self.arraysize = 1
         self.connection = conn
         self.db = db
-        self.zk = zk
-        self.zkPath = zkPath
         self._connected = True
         self._resultSet = None
         self._resultSetMetadata = None
@@ -456,12 +454,15 @@ class Cursor(object):
 
 class Connection(object):
 
-    def __init__(self, db, zk, zkPath):
+    def __init__(self, db,is_cluster_mode=True, *args):
         self._connected = True
         self._db = db
-        self._zk = zk
-        self._zkPath = zkPath
-        options = sdk_module.OpenmldbSdkOptions(zk, zkPath)
+        self.zk_or_host = args[0]
+        self.zkPath_or_port = args[1]
+        if is_cluster_mode:
+            options = sdk_module.OpenmldbSdkOptions(zk, zkPath)
+        else:
+            options = sdk_module.OpenmldbStandaloneSdkOptions(args[0], args[1])
         sdk = sdk_module.OpenmldbSdk(options)
         ok = sdk.init()
         if not ok:
@@ -505,8 +506,8 @@ class Connection(object):
         raise NotSupportedError("Unsupported in OpenMLDB")
 
     def cursor(self):
-        return Cursor(self._db, self._zk, self._zkPath, self)
+        return Cursor(self._db, self)
 
 # Constructor for creating connection to db
-def connect(db, zk, zkPath):
-    return Connection(db, zk, zkPath)
+def connect(db,*args,is_cluster_mode=True):
+    return Connection(db, is_cluster_mode, args[0], args[1])
