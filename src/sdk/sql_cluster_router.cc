@@ -1001,10 +1001,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLRequest(co
     auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);
     return rs;
 }
-std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
-                                                                         ::hybridse::sdk::Status* status) {
-    return ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
-}
+
 std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParameterized(
     const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
     ::hybridse::sdk::Status* status) {
@@ -2064,7 +2061,13 @@ std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* sta
 
 bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(); }
 
-std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQL(const std::string& sql,
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& sql,
+        hybridse::sdk::Status* status) {
+    std::string db = GetDatabase();
+    return ExecuteSQL(db, sql, status);
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
         hybridse::sdk::Status* status) {
     if (status == nullptr) {
         return {};
@@ -2083,7 +2086,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQL(const std:
         *status = {::hybridse::common::StatusCode::kCmdError, "no nameserver exist"};
         return {};
     }
-    std::string db = GetDatabase();
     hybridse::node::PlanNode* node = plan_trees[0];
     std::string msg;
     switch (node->GetType()) {
@@ -2181,7 +2183,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQL(const std:
         case hybridse::node::kPlanTypeQuery: {
             if (IsOnlineMode()) {
                 // Run online query
-                return ExecuteSQL(db, sql, status);
+                return ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
             } else {
                 // Run offline query
                 ::openmldb::taskmanager::JobInfo job_info;
@@ -2205,7 +2207,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQL(const std:
             if (IsOnlineMode()) {
                 auto* select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode*>(node);
                 const std::string& query_sql = select_into_plan_node->QueryStr();
-                auto rs = ExecuteSQL(db, query_sql, status);
+                auto rs = ExecuteSQLParameterized(db, query_sql,
+                        std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
                 if (!rs) {
                     return {};
                 }

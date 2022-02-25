@@ -64,7 +64,7 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
 
 void HandleSQL(const std::string& sql) {
     hybridse::sdk::Status status;
-    auto result_set = sr->HandleSQL(sql, &status);
+    auto result_set = sr->ExecuteSQL(sql, &status);
     if (status.IsOK()) {
         if (result_set) {
             auto schema = result_set->GetSchema();
@@ -128,7 +128,7 @@ void Shell() {
     bool multi_line = false;
     while (true) {
         std::string buffer;
-        if (!FLAGS_interactive) {
+        if (!FLAGS_cmd.empty()) {
             buffer = FLAGS_cmd;
             std::string db = FLAGS_database;
             auto ns = cs->GetNsClient();

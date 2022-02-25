@@ -70,7 +70,7 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
-    router->HandleSQL("use " + db + ";", &status);
+    router->ExecuteSQL("use " + db + ";", &status);
     ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
     std::string ddl = "create table " + name +
                       "("
@@ -85,7 +85,7 @@ TEST_F(SqlCmdTest, select_into_outfile) {
 
     // True
     std::string select_into_sql = "select * from " + name + " into outfile '" + file_path + "'";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
     // Check file
     std::ifstream file;
@@ -102,12 +102,12 @@ TEST_F(SqlCmdTest, select_into_outfile) {
 
     // True
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 'overwrite')";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_TRUE(status.IsOK());
 
     // True
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 'append')";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_TRUE(status.IsOK());
 
     file.open(file_path);
@@ -123,50 +123,50 @@ TEST_F(SqlCmdTest, select_into_outfile) {
 
     // Fail - File exists
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 'error_if_exists')";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
     // Fail - Mode un-supported
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 'error')";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
     // False - Format un-supported
     select_into_sql =
         "select * from " + name + " into outfile '" + file_path + "' options (mode = 'overwrite', format = 'parquet')";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
     // False - File path error
     select_into_sql = "select * from " + name + " into outfile 'file:////tmp/data.csv'";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
     // False - Option un-supported
     select_into_sql =
         "select * from " + name + " into outfile '" + file_path + "' options (mode = 'overwrite', test = 'null')";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
     // False - Type un-supproted
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 1)";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
     // False - Type un-supproted
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (quote = '__')";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
     // False - Type un-supproted
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (delimiter = '')";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
     // False - Delimiter can't include quote
     select_into_sql =
         "select * from " + name + " into outfile '" + file_path + "' options (quote = '_', delimiter = '__')";
-    router->HandleSQL(select_into_sql, &status);
+    router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
     remove(file_path.c_str());
@@ -191,14 +191,14 @@ TEST_P(DBSDKTest, deploy) {
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 
     hybridse::sdk::Status status;
-    sr->HandleSQL(deploy_sql, &status);
+    sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
 
-    sr->HandleSQL(deploy_sql, &status);
+    sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_FALSE(status.IsOK());
 }
 
@@ -220,7 +220,7 @@ TEST_P(DBSDKTest, deploy_col) {
         "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     hybridse::sdk::Status status;
-    sr->HandleSQL(deploy_sql, &status);
+    sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
@@ -246,7 +246,7 @@ TEST_P(DBSDKTest, deploy_options) {
         "deploy demo OPTIONS(long_windows='w1:100') SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     hybridse::sdk::Status status;
-    sr->HandleSQL(deploy_sql, &status);
+    sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
@@ -264,7 +264,7 @@ TEST_P(DBSDKTest, create_without_index_col) {
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
         "c8 date, index(ts=c7));";
     hybridse::sdk::Status status;
-    sr->HandleSQL(create_sql, &status);
+    sr->ExecuteSQL(create_sql, &status);
     ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
@@ -288,15 +288,15 @@ TEST_P(DBSDKTest, load_data) {
     ofile << "1 --- --- -" << std::endl;
     ofile << "1 --- \" --- \" --- A" << std::endl;
 
-    HandleSQL("create database test1;");
-    HandleSQL("use test1;");
+    ExecuteSQL("create database test1;");
+    ExecuteSQL("use test1;");
 
     std::string create_sql = "create table t1 (c1 string, c2 string, c3 string);";
-    HandleSQL(create_sql);
+    ExecuteSQL(create_sql);
 
-    HandleSQL("load data infile '" + read_file_path +
+    ExecuteSQL("load data infile '" + read_file_path +
               "' into table t1 OPTIONS( header = false, delimiter = '---', quote = '\"');");
-    HandleSQL("select * from t1 into outfile '" + write_file_path + "';");
+    ExecuteSQL("select * from t1 into outfile '" + write_file_path + "';");
 
     ifile.open(write_file_path);
     ifile.seekg(0, ifile.end);

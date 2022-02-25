@@ -16,11 +16,12 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public boolean execute(String sql) throws SQLException {
+        checkClosed();
         Status status = new Status();
         if (resultSet != null) {
             resultSet.delete();
         }
-        resultSet = sqlRouter.HandleSQL(sql, status);
+        resultSet = sqlRouter.ExecuteSQL(sql, status);
         if (!status.IsOK()) {
             String msg = status.getMsg();
             status.delete();
@@ -43,6 +44,7 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public SQLResultSet executeQuery(String sql) throws SQLException {
+        checkClosed();
         Status status = new Status();
         resultSet = sqlRouter.ExecuteSQL("", sql, status);
         if (!status.IsOK()) {
@@ -56,8 +58,9 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public int executeUpdate(String sql) throws SQLException {
+        checkClosed();
         Status status = new Status();
-        com._4paradigm.openmldb.ResultSet rs = sqlRouter.HandleSQL(sql, status);
+        com._4paradigm.openmldb.ResultSet rs = sqlRouter.ExecuteSQL(sql, status);
         if (!status.IsOK()) {
             String msg = status.getMsg();
             status.delete();
@@ -75,6 +78,7 @@ public class Statement implements java.sql.Statement {
         sqlRouter = null;
         if (resultSet != null) {
             resultSet.delete();
+            resultSet = null;
         }
         closed = true;
     }
@@ -82,6 +86,12 @@ public class Statement implements java.sql.Statement {
     @Override
     public boolean isClosed() throws SQLException {
         return closed;
+    }
+
+    protected void checkClosed() throws SQLException {
+        if (closed) {
+            throw new SQLException("statement closed");
+        }
     }
 
     @Override

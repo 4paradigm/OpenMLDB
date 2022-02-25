@@ -36,6 +36,7 @@ public interface SqlExecutor {
     @Deprecated
     boolean executeDDL(String db, String sql);
 
+    @Deprecated
     boolean executeInsert(String db, String sql);
 
     boolean executeInsert(String db, String sql, SQLInsertRow row);
