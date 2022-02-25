@@ -59,8 +59,7 @@ class OpenmldbSdk(object):
             options.port = self.options.port
             self.sdk = sql_router_sdk.NewStandaloneSQLRouter(options)
             if not self.sdk:
-                logger.error("fail to init openmldb sdk with host %s and port %s" % (
-                options.host, options.port))
+                logger.error("fail to init openmldb sdk with host %s and port %s" % (options.host, options.port))
                 return False
             logger.info(
                 "init openmldb sdk done with host %s and port %s" % (options.host, options.port))
