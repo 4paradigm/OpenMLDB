@@ -9509,7 +9509,7 @@ void NameServerImpl::ShowDatabase(RpcController* controller, const GeneralReques
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& db : databases_) {
-            if (db != INTERNAL_DB) {
+            if (db != INTERNAL_DB && db != INFORMATION_SCHEMA_DB) {
                 response->add_db(db);
             }
         }
