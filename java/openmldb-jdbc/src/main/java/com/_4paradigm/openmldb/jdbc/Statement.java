@@ -16,29 +16,57 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public boolean execute(String sql) throws SQLException {
-        return true;
+        Status status = new Status();
+        if (resultSet != null) {
+            resultSet.delete();
+        }
+        resultSet = sqlRouter.HandleSQL(sql, status);
+        if (!status.IsOK()) {
+            String msg = status.getMsg();
+            status.delete();
+            throw new SQLException("executeSQL fail: " + msg);
+        }
+        status.delete();
+        if (resultSet != null) {
+            return true;
+        }
+        return false;
     }
 
     @Override
     public ResultSet getResultSet() throws SQLException {
+        if (resultSet == null) {
+            throw new SQLException("no result set");
+        }
         return new SQLResultSet(resultSet);
     }
 
     @Override
     public SQLResultSet executeQuery(String sql) throws SQLException {
         Status status = new Status();
-        com._4paradigm.openmldb.ResultSet rs = sqlRouter.ExecuteSQL("", sql, status);
-        if (status.getCode() != 0) {
+        resultSet = sqlRouter.ExecuteSQL("", sql, status);
+        if (!status.IsOK()) {
             String msg = status.getMsg();
             status.delete();
             throw new SQLException("executeSQL fail: " + msg);
         }
         status.delete();
-        return new SQLResultSet(rs);
+        return new SQLResultSet(resultSet);
     }
 
     @Override
     public int executeUpdate(String sql) throws SQLException {
+        Status status = new Status();
+        com._4paradigm.openmldb.ResultSet rs = sqlRouter.HandleSQL(sql, status);
+        if (!status.IsOK()) {
+            String msg = status.getMsg();
+            status.delete();
+            throw new SQLException("executeSQL fail: " + msg);
+        }
+        status.delete();
+        if (rs != null) {
+            rs.delete();
+        }
         return 0;
     }
 

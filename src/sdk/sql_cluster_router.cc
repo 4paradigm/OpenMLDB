@@ -1559,7 +1559,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
             // check if deployment, avoid deleting the normal procedure
             auto sp = cluster_sdk_->GetProcedureInfo(db, deploy_name, &msg);
             if (!sp || sp->GetType() != hybridse::sdk::kReqDeployment) {
-                *status = {::hybridse::common::StatusCode::kCmdError, sp ? "not a deployment" : "not found"};
+                *status = {::hybridse::common::StatusCode::kCmdError, sp ? "not a deployment" : "deployment not found"};
                 return {};
             }
             if (!CheckAnswerIfInteractive("deployment", deploy_name)) {
@@ -2172,6 +2172,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQL(const std:
         }
         case hybridse::node::kPlanTypeDeploy: {
             *status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
+            if (status->IsOK()) {
+                RefreshCatalog();
+            }
             return {};
         }
         case hybridse::node::kPlanTypeFuncDef:
