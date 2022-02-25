@@ -213,7 +213,7 @@ bool SQLClusterRouter::Init() {
             }
         }
     }
-    session_variables_.emplace("execute_mode", "online");
+    session_variables_.emplace("execute_mode", "offline");
     session_variables_.emplace("enable_trace", "false");
     return true;
 }
