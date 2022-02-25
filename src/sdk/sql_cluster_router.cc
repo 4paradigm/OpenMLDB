@@ -42,7 +42,6 @@
 #include "sdk/split.h"
 
 DECLARE_int32(request_timeout_ms);
-DEFINE_bool(interactive, true, "Set the interactive");
 
 namespace openmldb {
 namespace sdk {
@@ -179,11 +178,11 @@ class BatchQueryFutureImpl : public QueryFuture {
 };
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
-    : options_(options), is_cluster_mode_(true), cluster_sdk_(nullptr),
+    : options_(options), is_cluster_mode_(true), interactive_(false), cluster_sdk_(nullptr),
     mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::SQLClusterRouter(const StandaloneOptions& options)
-    : standalone_options_(options), is_cluster_mode_(false), cluster_sdk_(nullptr),
+    : standalone_options_(options), is_cluster_mode_(false), interactive_(false), cluster_sdk_(nullptr),
     mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
@@ -2342,7 +2341,7 @@ bool SQLClusterRouter::IsEnableTrace() const {
 }
 
 bool SQLClusterRouter::CheckAnswerIfInteractive(const std::string& drop_type, const std::string& name) {
-    if (FLAGS_interactive) {
+    if (interactive_) {
         printf("Drop %s %s? yes/no\n", drop_type.c_str(), name.c_str());
         std::string input;
         std::cin >> input;
@@ -2363,6 +2362,10 @@ std::string SQLClusterRouter::GetDatabase() {
 void SQLClusterRouter::SetDatabase(const std::string& db) {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     db_ = db;
+}
+
+void SQLClusterRouter::SetInteractive(bool value) {
+    interactive_ = value;
 }
 
 ::openmldb::base::Status SQLClusterRouter::SaveResultSet(const std::string& file_path,

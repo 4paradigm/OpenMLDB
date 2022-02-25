@@ -265,6 +265,7 @@ class SQLClusterRouter : public SQLRouter {
 
     std::string GetDatabase();
     void SetDatabase(const std::string& db);
+    void SetInteractive(bool value);
 
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
@@ -325,11 +326,12 @@ class SQLClusterRouter : public SQLRouter {
     hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
 
  private:
+    SQLRouterOptions options_;
+    StandaloneOptions standalone_options_;
     std::string db_;
     std::map<std::string, std::string> session_variables_;
     bool is_cluster_mode_;
-    SQLRouterOptions options_;
-    StandaloneOptions standalone_options_;
+    bool interactive_;
     DBSDK* cluster_sdk_;
     std::map<std::string,
              std::map<hybridse::vm::EngineMode,

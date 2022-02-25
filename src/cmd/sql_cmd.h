@@ -34,10 +34,10 @@
 #include "sdk/db_sdk.h"
 #include "sdk/sql_cluster_router.h"
 #include "version.h"  // NOLINT
+DEFINE_bool(interactive, true, "Set the interactive");
 DEFINE_string(database, "", "Set database");
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
-DECLARE_bool(interactive);
 DECLARE_string(cmd);
 // stand-alone mode
 DECLARE_string(host);
@@ -190,6 +190,7 @@ void ClusterSQLClient() {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
         return;
     }
+    sr->SetInteractive(FLAGS_interactive);
     Shell();
 }
 
@@ -210,6 +211,7 @@ bool StandAloneInit() {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
         return false;
     }
+    sr->SetInteractive(FLAGS_interactive);
     return true;
 }
 
