@@ -506,3 +506,10 @@ cases:
         +-node[CMD]
           +-cmd_type: show components
           +-args: []
+  - id: show_table_status
+    sql: SHOW table status;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show table status
+          +-args: []

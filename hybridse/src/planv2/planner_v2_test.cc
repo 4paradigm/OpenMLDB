@@ -2040,7 +2040,6 @@ TEST_F(PlannerV2Test, GetPlanLimitCnt) {
         R"(
         SELECT COL1 from t1 last join (SELECT COL1, COL2 FROM t2 LIMIT 5) as t22 on t1.col1 = t22.col1 LIMIT 10;
         )", 10);
-
 }
 }  // namespace plan
 }  // namespace hybridse
