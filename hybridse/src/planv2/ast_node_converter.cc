@@ -1979,18 +1979,21 @@ struct ShowTargetInfo {
 };
 
 static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap = {
-                {"DATABASES", {node::CmdType::kCmdShowDatabases}},
-                {"TABLES", {node::CmdType::kCmdShowTables}},
-                {"PROCEDURES", {node::CmdType::kCmdShowProcedures}},
-                {"PROCEDURE STATUS", {node::CmdType::kCmdShowProcedures}},
-                {"DEPLOYMENTS", {node::CmdType::kCmdShowDeployments}},
-                {"JOBS", {node::CmdType::kCmdShowJobs}},
-                {"VARIABLES", {node::CmdType::kCmdShowSessionVariables}},
-                {"SESSION VARIABLES", {node::CmdType::kCmdShowSessionVariables}},
-                {"GLOBAL VARIABLES", {node::CmdType::kCmdShowGlobalVariables}},
-                {"CREATE PROCEDURE", {node::CmdType::kCmdShowCreateSp, true}},
-                {"DEPLOYMENT", {node::CmdType::kCmdShowDeployment, true}},
-                {"JOB", {node::CmdType::kCmdShowJob, true}}};
+    {"DATABASES", {node::CmdType::kCmdShowDatabases}},
+    {"TABLES", {node::CmdType::kCmdShowTables}},
+    {"PROCEDURES", {node::CmdType::kCmdShowProcedures}},
+    {"PROCEDURE STATUS", {node::CmdType::kCmdShowProcedures}},
+    {"DEPLOYMENTS", {node::CmdType::kCmdShowDeployments}},
+    {"JOBS", {node::CmdType::kCmdShowJobs}},
+    {"VARIABLES", {node::CmdType::kCmdShowSessionVariables}},
+    {"SESSION VARIABLES", {node::CmdType::kCmdShowSessionVariables}},
+    {"GLOBAL VARIABLES", {node::CmdType::kCmdShowGlobalVariables}},
+    {"CREATE PROCEDURE", {node::CmdType::kCmdShowCreateSp, true}},
+    {"DEPLOYMENT", {node::CmdType::kCmdShowDeployment, true}},
+    {"JOB", {node::CmdType::kCmdShowJob, true}},
+    {"COMPONENTS", {node::CmdType::kCmdShowComponents}},
+    {"TABLE STATUS", {node::CmdType::kCmdShowTableStatus}},
+};
 
 base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, node::NodeManager* node_manager,
                              node::SqlNode** output) {

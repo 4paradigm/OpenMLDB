@@ -499,3 +499,10 @@ cases:
         +-node[CMD]
           +-cmd_type: show global variables
           +-args: []
+  - id: show_components
+    sql: SHOW COMPONENTS;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show components
+          +-args: []
