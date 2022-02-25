@@ -121,6 +121,9 @@ class SQLRouter {
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                                  hybridse::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> HandleSQL(const std::string& sql,
+            ::hybridse::sdk::Status* status) = 0;
+
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
         hybridse::sdk::Status* status) = 0;

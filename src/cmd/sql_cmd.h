@@ -29,6 +29,7 @@
 #include "absl/strings/match.h"
 #include "base/linenoise.h"
 #include "boost/regex.hpp"
+#include "base/texttable.h"
 #include "gflags/gflags.h"
 #include "sdk/db_sdk.h"
 #include "sdk/sql_cluster_router.h"

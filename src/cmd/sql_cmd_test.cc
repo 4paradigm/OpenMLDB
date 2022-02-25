@@ -58,25 +58,6 @@ class SqlCmdTest : public ::testing::Test {
 
 class DBSDKTest : public ::testing::TestWithParam<CLI*> {};
 
-static void ExecuteSelectInto(const std::string& db, const std::string& sql, std::shared_ptr<sdk::SQLRouter> router,
-                              ::openmldb::base::Status* openmldb_base_status) {
-    hybridse::node::NodeManager node_manager;
-    hybridse::base::Status hybridse_base_status;
-    hybridse::node::PlanNodeList plan_trees;
-    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, hybridse_base_status);
-    ASSERT_EQ(hybridse_base_status.code, 0);
-    hybridse::node::PlanNode* node = plan_trees[0];
-    auto* select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode*>(node);
-    const std::string& query_sql = select_into_plan_node->QueryStr();
-    const std::string& file_path = select_into_plan_node->OutFile();
-    const std::shared_ptr<hybridse::node::OptionsMap> options_map = select_into_plan_node->Options();
-    ASSERT_TRUE(!db.empty());
-    hybridse::sdk::Status hybridse_sdk_status;
-    auto rs = router->ExecuteSQL(db, query_sql, &hybridse_sdk_status);
-    ASSERT_EQ(hybridse_sdk_status.code, 0);
-    openmldb::cmd::SaveResultSet(rs.get(), file_path, options_map, openmldb_base_status);
-}
-
 TEST_F(SqlCmdTest, select_into_outfile) {
     sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
@@ -86,26 +67,26 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     std::string file_path = "/tmp/data" + GenRand() + ".csv";
-    ::hybridse::sdk::Status hybridse_sdk_status;
-    bool ok = router->CreateDB(db, &hybridse_sdk_status);
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
-    auto endpoints = mc_->GetTbEndpoint();
+    router->HandleSQL("use " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 int);";
-    ok = router->ExecuteDDL(db, ddl, &hybridse_sdk_status);
+    ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
 
     std::string insert = "insert into " + name + " (col1) " + " values('key1');";
-    ASSERT_TRUE(router->ExecuteInsert(db, insert, &hybridse_sdk_status));
+    ASSERT_TRUE(router->ExecuteInsert(db, insert, &status));
     ASSERT_TRUE(router->RefreshCatalog());
 
-    ::openmldb::base::Status openmldb_base_status;
     // True
     std::string select_into_sql = "select * from " + name + " into outfile '" + file_path + "'";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
     // Check file
     std::ifstream file;
     file.open(file_path);
@@ -121,13 +102,13 @@ TEST_F(SqlCmdTest, select_into_outfile) {
 
     // True
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 'overwrite')";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_TRUE(status.IsOK());
 
     // True
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 'append')";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_TRUE(status.IsOK());
 
     file.open(file_path);
     file.seekg(0, file.end);
@@ -142,51 +123,51 @@ TEST_F(SqlCmdTest, select_into_outfile) {
 
     // Fail - File exists
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 'error_if_exists')";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(!openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 
     // Fail - Mode un-supported
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 'error')";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(!openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 
     // False - Format un-supported
     select_into_sql =
         "select * from " + name + " into outfile '" + file_path + "' options (mode = 'overwrite', format = 'parquet')";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(!openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 
     // False - File path error
     select_into_sql = "select * from " + name + " into outfile 'file:////tmp/data.csv'";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(!openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 
     // False - Option un-supported
     select_into_sql =
         "select * from " + name + " into outfile '" + file_path + "' options (mode = 'overwrite', test = 'null')";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(!openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 
     // False - Type un-supproted
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 1)";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(!openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 
     // False - Type un-supproted
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (quote = '__')";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(!openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 
     // False - Type un-supproted
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (delimiter = '')";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(!openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 
     // False - Delimiter can't include quote
     select_into_sql =
         "select * from " + name + " into outfile '" + file_path + "' options (quote = '_', delimiter = '__')";
-    ExecuteSelectInto(db, select_into_sql, router, &openmldb_base_status);
-    ASSERT_TRUE(!openmldb_base_status.OK());
+    router->HandleSQL(select_into_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 
     remove(file_path.c_str());
 }
@@ -209,30 +190,16 @@ TEST_P(DBSDKTest, deploy) {
         "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 
-    hybridse::node::NodeManager node_manager;
-    hybridse::base::Status sql_status;
-    hybridse::node::PlanNodeList plan_trees;
-    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(deploy_sql, plan_trees, &node_manager, sql_status);
-    ASSERT_EQ(0, sql_status.code);
-    hybridse::node::PlanNode* node = plan_trees[0];
-    auto status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
-    ASSERT_TRUE(status.OK());
+    hybridse::sdk::Status status;
+    sr->HandleSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
 
-    create_sql =
-        "create table auto_uxJFNZMi( id int, c1 string, c3 int, c4 bigint, c5 float, c6 double, "
-        "c7 timestamp, c8 date, index(key=(c1),ts=c4));";
-    HandleSQL(create_sql);
-    deploy_sql =
-        "deploy deploy_auto_uxJFNZMi SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM auto_uxJFNZMi "
-        "WINDOW w1 AS (PARTITION BY auto_uxJFNZMi.c1 ORDER BY auto_uxJFNZMi.c7 "
-        "ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);";
-    status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
-    ASSERT_FALSE(status.OK());
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "auto_uxJFNZMi", msg));
+    sr->HandleSQL(deploy_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 }
 
 TEST_P(DBSDKTest, deploy_col) {
@@ -252,15 +219,9 @@ TEST_P(DBSDKTest, deploy_col) {
     std::string deploy_sql =
         "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-
-    hybridse::node::NodeManager node_manager;
-    hybridse::base::Status sql_status;
-    hybridse::node::PlanNodeList plan_trees;
-    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(deploy_sql, plan_trees, &node_manager, sql_status);
-    ASSERT_EQ(0, sql_status.code);
-    hybridse::node::PlanNode* node = plan_trees[0];
-    auto status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
-    ASSERT_TRUE(status.OK());
+    hybridse::sdk::Status status;
+    sr->HandleSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
@@ -284,18 +245,9 @@ TEST_P(DBSDKTest, deploy_options) {
     std::string deploy_sql =
         "deploy demo OPTIONS(long_windows='w1:100') SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-
-    hybridse::node::NodeManager node_manager;
-    hybridse::base::Status sql_status;
-    hybridse::node::PlanNodeList plan_trees;
-    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(deploy_sql, plan_trees, &node_manager, sql_status);
-
-    ASSERT_EQ(0, sql_status.code);
-    hybridse::node::DeployPlanNode* node = dynamic_cast<hybridse::node::DeployPlanNode*>(plan_trees[0]);
-    ASSERT_EQ(node->Options()->at("long_windows")->GetAsString(), "w1:100");
-
-    auto status = HandleDeploy(node);
-    ASSERT_TRUE(status.OK());
+    hybridse::sdk::Status status;
+    sr->HandleSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
@@ -311,15 +263,9 @@ TEST_P(DBSDKTest, create_without_index_col) {
     std::string create_sql =
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
         "c8 date, index(ts=c7));";
-    hybridse::node::NodeManager node_manager;
-    hybridse::base::Status sql_status;
-    hybridse::node::PlanNodeList plan_trees;
-    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(create_sql, plan_trees, &node_manager, sql_status);
-    ASSERT_EQ(0, sql_status.code);
-    hybridse::node::PlanNode* node = plan_trees[0];
-    auto status =
-        sr->HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), "test2", cs->GetNsClient());
-    ASSERT_TRUE(status.OK());
+    hybridse::sdk::Status status;
+    sr->HandleSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }

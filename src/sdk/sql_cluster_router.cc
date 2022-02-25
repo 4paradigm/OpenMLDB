@@ -179,13 +179,16 @@ class BatchQueryFutureImpl : public QueryFuture {
 };
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
-    : options_(options), is_cluster_mode_(true), cluster_sdk_(nullptr), mu_(), rand_(::baidu::common::timer::now_time()) {}
+    : options_(options), is_cluster_mode_(true), cluster_sdk_(nullptr),
+    mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::SQLClusterRouter(const StandaloneOptions& options)
-    : standalone_options_(options), is_cluster_mode_(false), cluster_sdk_(nullptr), mu_(), rand_(::baidu::common::timer::now_time()) {}
+    : standalone_options_(options), is_cluster_mode_(false), cluster_sdk_(nullptr),
+    mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
-    : options_(), is_cluster_mode_(sdk->IsClusterMode()), cluster_sdk_(sdk), mu_(), rand_(::baidu::common::timer::now_time()) {}
+    : options_(), is_cluster_mode_(sdk->IsClusterMode()), cluster_sdk_(sdk),
+    mu_(), rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
 

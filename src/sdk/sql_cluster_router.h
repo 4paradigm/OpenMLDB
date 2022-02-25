@@ -156,7 +156,7 @@ class SQLClusterRouter : public SQLRouter {
                                                                 hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> HandleSQL(const std::string& sql,
-                                                         ::hybridse::sdk::Status* status);
+                                                         ::hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                          ::hybridse::sdk::Status* status) override;
