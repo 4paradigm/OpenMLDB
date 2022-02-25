@@ -9536,7 +9536,7 @@ void NameServerImpl::DropDatabase(RpcController* controller, const DropDatabaseR
         PDLOG(WARNING, "cannot drop internal database");
         return;
     }
-    if (request->db() == INTERNAL_DB) {
+    if (request->db() == INTERNAL_DB || request->db() == INFORMATION_SCHEMA_DB) {
         response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
         response->set_msg("database not found");
         return;
