@@ -234,7 +234,7 @@ TEST_P(DBSDKTest, deploy_options) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
-    HandleCmd("Show GlobalVariables");
+    HandleCmd("Show Global Variables;");
     HandleSQL("create database test2;");
     HandleSQL("use test2;");
     std::string create_sql =
