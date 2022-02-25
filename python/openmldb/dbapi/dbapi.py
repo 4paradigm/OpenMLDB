@@ -460,7 +460,7 @@ class Connection(object):
         self.zk_or_host = args[0]
         self.zkPath_or_port = args[1]
         if is_cluster_mode:
-            options = sdk_module.OpenmldbSdkOptions(zk, zkPath)
+            options = sdk_module.OpenmldbClusterSdkOptions(args[0], args[1])
         else:
             options = sdk_module.OpenmldbStandaloneSdkOptions(args[0], args[1])
         sdk = sdk_module.OpenmldbSdk(options)
