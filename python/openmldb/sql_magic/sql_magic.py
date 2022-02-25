@@ -44,6 +44,7 @@ class SqlMagic(Magics):
             print("Success to execute sql")
             
 def register(db, test=False):
+    global get_ipython
     if test:
         from IPython.testing.globalipapp import get_ipython
     ip = get_ipython()
