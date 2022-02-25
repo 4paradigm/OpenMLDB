@@ -80,7 +80,7 @@ std::string db = "";  // NOLINT
 ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
 using VariableMap = std::map<std::string, std::string>;
 VariableMap session_variables = {
-    VariableMap::value_type("execute_mode", "online"),
+    VariableMap::value_type("execute_mode", "offline"),
     VariableMap::value_type("enable_trace", "false")
 };
 
