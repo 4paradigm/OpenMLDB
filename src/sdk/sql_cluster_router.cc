@@ -632,6 +632,7 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
         ret = HandleSQLCreateTable(dynamic_cast<hybridse::node::CreatePlanNode*>(node), db, ns_ptr);
     } else {
         HandleSQLCmd(dynamic_cast<hybridse::node::CmdPlanNode*>(node), db, status);
+        ret = {status->code, status->msg};
     }
     if (!ret.OK()) {
         status->msg = "fail to execute sql " + sql + " for error " + ret.msg;
@@ -1502,6 +1503,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
             }
             if (ns_ptr->DropProcedure(db, sp_name, msg)) {
                 *status = {};
+                RefreshCatalog();
             } else {
                 *status = {::hybridse::common::StatusCode::kCmdError, "Failed to drop, " + msg};
             }
@@ -1563,6 +1565,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
                 return {};
             }
             if (ns_ptr->DropProcedure(db, deploy_name, msg)) {
+                RefreshCatalog();
                 *status = {};
             } else {
                 *status = {::hybridse::common::StatusCode::kCmdError, "Failed to drop. error: " + msg};
