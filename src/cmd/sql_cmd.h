@@ -23,6 +23,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <boost/algorithm/string.hpp>
@@ -952,9 +953,9 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
             auto aggr_table = "pre_" + deploy_node->Name() + "_" +
                               lw.window_name_ + "_" + lw.aggr_func_ + "_" + lw.aggr_col_;
             ::hybridse::sdk::Status status;
-            std::string insert_sql = "insert into " + meta_db + "." + meta_table + " values(\"" + 
+            std::string insert_sql = "insert into " + meta_db + "." + meta_table + " values(\"" +
                                      aggr_table + "\", \"" + base_db + "\", \"" + base_table + "\", \"" +
-                                     lw.aggr_func_ + "\", \"" + lw.aggr_col_ + "\", \"" + lw.partition_col_ + 
+                                     lw.aggr_func_ + "\", \"" + lw.aggr_col_ + "\", \"" + lw.partition_col_ +
                                      "\", \"" + lw.order_col_ + "\", \"" + lw.bucket_size_ + "\");";
             bool ok = sr->ExecuteInsert(db, insert_sql, &status);
             if (!ok) {
@@ -967,7 +968,6 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
                 return {base::ReturnCode::kError, "create pre-aggr table failed"};
             }
         }
-
     }
 
 

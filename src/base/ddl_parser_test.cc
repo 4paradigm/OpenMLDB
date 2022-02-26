@@ -477,7 +477,7 @@ TEST_F(DDLParserTest, extractLongWindow) {
             "WINDOW w1 AS (PARTITION BY c1 ORDER BY c6 "
             "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 
-        std::unordered_map<std::string,std::string> window_map;
+        std::unordered_map<std::string, std::string> window_map;
         window_map["w1"] = "1000";
         auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
         ASSERT_EQ(window_infos.size(), 1);
@@ -496,7 +496,7 @@ TEST_F(DDLParserTest, extractLongWindow) {
             "WINDOW w1 AS (PARTITION BY c1 ORDER BY c6 "
             "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 
-        std::unordered_map<std::string,std::string> window_map;
+        std::unordered_map<std::string, std::string> window_map;
         window_map["w2"] = "1000";
         auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
         ASSERT_EQ(window_infos.size(), 0);
@@ -511,7 +511,7 @@ TEST_F(DDLParserTest, extractLongWindow) {
             "WINDOW w1 AS (PARTITION BY k1 ORDER BY k3 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW), "
             "w2 AS (PARTITION BY k2 ORDER BY k4 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW) ";
 
-        std::unordered_map<std::string,std::string> window_map;
+        std::unordered_map<std::string, std::string> window_map;
         window_map["w1"] = "1d";
         window_map["w2"] = "1000";
         auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
@@ -557,7 +557,6 @@ TEST_F(DDLParserTest, extractLongWindow) {
         ASSERT_EQ(window_infos[5].partition_col_, "k2");
         ASSERT_EQ(window_infos[5].order_col_, "k4");
         ASSERT_EQ(window_infos[5].bucket_size_, "1000");
-
     }
 
     {
@@ -569,7 +568,7 @@ TEST_F(DDLParserTest, extractLongWindow) {
             "WINDOW w1 AS (PARTITION BY k1 ORDER BY k3 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW), "
             "w2 AS (PARTITION BY k2,k3 ORDER BY k4 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW) ";
 
-        std::unordered_map<std::string,std::string> window_map;
+        std::unordered_map<std::string, std::string> window_map;
         window_map["w2"] = "1000";
         auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
         ASSERT_EQ(window_infos.size(), 3);
@@ -594,7 +593,6 @@ TEST_F(DDLParserTest, extractLongWindow) {
         ASSERT_EQ(window_infos[2].partition_col_, "k2,k3");
         ASSERT_EQ(window_infos[2].order_col_, "k4");
         ASSERT_EQ(window_infos[2].bucket_size_, "1000");
-
     }
 }
 }  // namespace openmldb::base
