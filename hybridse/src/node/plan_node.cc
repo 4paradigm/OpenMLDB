@@ -529,14 +529,6 @@ void WindowPlanNode::Print(std::ostream &output,
     PlanNode::Print(output, org_tab);
     output << "\n";
     PrintValue(output, org_tab, name, "window_name", true);
-    output << "\n";
-    if (keys_) {
-        keys_->Print(output, org_tab);
-        output << "\n";
-    }
-    if (orders_) {
-        orders_->Print(output, org_tab);
-    }
 }
 bool WindowPlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {

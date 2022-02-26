@@ -249,7 +249,7 @@ class SQLClusterRouter : public SQLRouter {
                                                const std::map<std::string, std::string>& config,
                                                const std::string& default_db,
                                                ::openmldb::taskmanager::JobInfo& job_info) override;
-    
+
     ::openmldb::base::Status CreatePreAggrTable(const std::string& aggr_db,
                                                 const std::string& aggr_table,
                                                 const ::openmldb::base::LongWindowInfo& window_info,
