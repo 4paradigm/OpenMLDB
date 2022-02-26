@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -209,7 +210,7 @@ std::string DDLParser::Explain(const std::string& sql, const ::hybridse::type::D
 }
 
 LongWindowInfos DDLParser::ExtractLongWindowInfos(const std::string& sql,
-                                                  std::unordered_map<std::string, std::string>& window_map) {
+                                                  const std::unordered_map<std::string, std::string>& window_map) {
     LongWindowInfos infos;
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
@@ -226,7 +227,7 @@ LongWindowInfos DDLParser::ExtractLongWindowInfos(const std::string& sql,
     std::cout << oss.str() << std::endl;
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeQuery: {
-            TraverseNode(node, window_map, infos);
+            TraverseNode(node, window_map, &infos);
             break;
         }
         default: {
@@ -239,8 +240,8 @@ LongWindowInfos DDLParser::ExtractLongWindowInfos(const std::string& sql,
 }
 
 void DDLParser::TraverseNode(hybridse::node::PlanNode* node,
-                                std::unordered_map<std::string, std::string>& window_map,
-                                LongWindowInfos& long_window_infos) {
+                                const std::unordered_map<std::string, std::string>& window_map,
+                                LongWindowInfos* long_window_infos) {
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeProject: {
             hybridse::node::ProjectPlanNode* project_plan_node = dynamic_cast<hybridse::node::ProjectPlanNode*>(node);
@@ -256,14 +257,14 @@ void DDLParser::TraverseNode(hybridse::node::PlanNode* node,
     return;
 }
 void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* project_plan_node,
-                                            std::unordered_map<std::string, std::string>& window_map,
-                                            LongWindowInfos& long_window_infos) {
+                                            const std::unordered_map<std::string, std::string>& window_map,
+                                            LongWindowInfos* long_window_infos) {
     for (const auto& project_list : project_plan_node->project_list_vec_) {
         if (project_list->GetType() != hybridse::node::kProjectList) {
             DLOG(ERROR) << "extract long window infos from project list failed";
             return;
         }
-        hybridse::node::ProjectListNode* project_list_node 
+        hybridse::node::ProjectListNode* project_list_node
             = dynamic_cast<hybridse::node::ProjectListNode*>(project_list);
         auto window = project_list_node->GetW();
         if (window == nullptr) {
@@ -329,8 +330,8 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             if (!aggr_col.empty()) {
                 aggr_col = aggr_col.substr(0, aggr_col.size() - 1);
             }
-            long_window_infos.emplace_back(window_name, aggr_name, aggr_col,
-                                           partition_col, order_by_col, window_map[window_name]);
+            (*long_window_infos).emplace_back(window_name, aggr_name, aggr_col,
+                                           partition_col, order_by_col, window_map.at(window_name));
         }
     }
 }

@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "node/plan_node.h"
 #include "proto/common.pb.h"
@@ -46,10 +47,10 @@ struct LongWindowInfo {
     std::string partition_col_;
     std::string order_col_;
     std::string bucket_size_;
-    LongWindowInfo(std::string window_name, std::string aggr_func, 
+    LongWindowInfo(std::string window_name, std::string aggr_func,
                    std::string aggr_col, std::string partition_col, std::string order_col,
                    std::string bucket_size) : window_name_(window_name), aggr_func_(aggr_func),
-                   aggr_col_(aggr_col), partition_col_(partition_col),order_col_(order_col),
+                   aggr_col_(aggr_col), partition_col_(partition_col), order_col_(order_col),
                    bucket_size_(bucket_size){}
 };
 using LongWindowInfos = std::vector<LongWindowInfo>;
@@ -75,7 +76,7 @@ class DDLParser {
         const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
 
     static LongWindowInfos ExtractLongWindowInfos(const std::string& sql,
-                                                  std::unordered_map<std::string, std::string>& window_map);
+                                                  const std::unordered_map<std::string, std::string>& window_map);
 
  private:
     // tables are in one db, and db name will be rewritten for simplicity
@@ -92,11 +93,11 @@ class DDLParser {
 
     // traverse plan tree to extract all long window infos
     static void TraverseNode(hybridse::node::PlanNode* node,
-                                std::unordered_map<std::string, std::string>& window_map,
-                                LongWindowInfos& long_window_infos);
+                                const std::unordered_map<std::string, std::string>& window_map,
+                                LongWindowInfos* long_window_infos);
     static void ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* project_plan_node,
-                                            std::unordered_map<std::string, std::string>& window_map,
-                                            LongWindowInfos& long_window_infos);
+                                            const std::unordered_map<std::string, std::string>& window_map,
+                                            LongWindowInfos* long_window_infos);
 };
 }  // namespace openmldb::base
 
