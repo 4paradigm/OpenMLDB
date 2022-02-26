@@ -1,9 +1,19 @@
-//
-// table_test.cc
-// Copyright (C) 2017 4paradigm.com
-// Author yangjun
-// Date 2018-01-07
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <gflags/gflags.h>
 #include <iostream>
 #include <utility>
@@ -112,6 +122,8 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
         ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
+    // some functions in disk table need to be implemented.
+    // refer to issue #1238
     //    ASSERT_EQ(0, table->GetRecordIdxCnt());
     //    ASSERT_EQ(0, table->GetRecordCnt());
 
@@ -127,7 +139,10 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     d2->set_idx(2);
     bool ok = table->Put(1, "yjtestvalue", dimensions);
     ASSERT_TRUE(ok);
+    // some functions in disk table need to be implemented.
+    // refer to issue #1238
     //    ASSERT_EQ(3, table->GetRecordIdxCnt());
+
     Ticket ticket;
     TableIterator* it = table->NewIterator(0, "yjdim0", ticket);
     it->SeekToFirst();
@@ -822,14 +837,12 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
     iter = table->NewIterator(0, "card0", ticket);
     iter->SeekToFirst();
     while (iter->Valid()) {
-        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
     iter = table->NewIterator(2, "mcc0", ticket);
     iter->SeekToFirst();
     while (iter->Valid()) {
-        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
@@ -878,47 +891,15 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_tid(12);
     table_meta.set_pid(1);
-    table_meta.set_ttl_type(::openmldb::type::TTLType::kLatestTime);
     table_meta.set_storage_mode(::openmldb::common::kHDD);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::openmldb::type::kLatestTime, 0, 3);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ::openmldb::type::kLatestTime, 0, 5);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kLatestTime, 0, 5);
     ::openmldb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
-    column_desc->set_name("card");
-    column_desc->set_data_type(::openmldb::type::kString);
-    ::openmldb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
-    column_desc1->set_name("mcc");
-    column_desc1->set_data_type(::openmldb::type::kString);
-    ::openmldb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
-    column_desc2->set_name("ts1");
-    column_desc2->set_data_type(::openmldb::type::kBigInt);
-    // column_desc2->set_is_ts_col(true);
-    // column_desc2->set_ttl(3);
-    ::openmldb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
-    column_desc3->set_name("ts2");
-    column_desc3->set_data_type(::openmldb::type::kBigInt);
-    // column_desc3->set_is_ts_col(true);
-    // column_desc3->set_ttl(5); 
-    ::openmldb::common::ColumnKey* column_key = table_meta.add_column_key();
-    column_key->set_index_name("card");
-    column_key->add_col_name("card");
-    column_key->set_ts_name("ts1");
-    auto ttl = column_key->mutable_ttl();
-    ttl->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
-    ttl->set_lat_ttl(3);
-    
-    ::openmldb::common::ColumnKey* column_key2 = table_meta.add_column_key();
-    column_key2->set_index_name("card1");
-    column_key2->add_col_name("card");
-    column_key2->set_ts_name("ts2");
-    auto ttl3 = column_key2->mutable_ttl();
-    ttl3->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
-    ttl3->set_lat_ttl(5);
-
-    ::openmldb::common::ColumnKey* column_key1 = table_meta.add_column_key();
-    column_key1->set_index_name("mcc");
-    column_key1->add_col_name("mcc");
-    column_key1->set_ts_name("ts2");
-    auto ttl2 = column_key1->mutable_ttl();
-    ttl2->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
-    ttl2->set_lat_ttl(5);
 
     DiskTable* table = new DiskTable(table_meta, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
@@ -946,14 +927,12 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     TableIterator* iter = table->NewIterator(0, "card0", ticket);
     iter->SeekToFirst();
     while (iter->Valid()) {
-        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
     iter = table->NewIterator(1, "mcc0", ticket);
     iter->SeekToFirst();
     while (iter->Valid()) {
-        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
@@ -963,10 +942,6 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
         for (int i = 0; i < 10; i++) {
             std::string e_value = "value" + std::to_string(i);
             std::string value;
-            // printf("idx:%d i:%d key:%s ts:%lu\n", idx, i, key.c_str(), ts -
-            // i); printf("idx:%d i:%d key:%s ts:%lu\n", idx, i, key1.c_str(),
-            // ts
-            // - i);
             if (idx == 50 && i > 2) {
                 ASSERT_FALSE(table->Get(0, key, cur_time - i, value));
                 ASSERT_FALSE(table->Get(1, key, cur_time - i, value));
@@ -984,14 +959,12 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     iter = table->NewIterator(0, "card0", ticket);
     iter->SeekToFirst();
     while (iter->Valid()) {
-        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
     iter = table->NewIterator(1, "mcc0", ticket);
     iter->SeekToFirst();
     while (iter->Valid()) {
-        // printf("key %s ts %lu\n", iter->GetPK().c_str(), iter->GetKey());
         iter->Next();
     }
     delete iter;
@@ -1001,8 +974,6 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
         for (int i = 0; i < 10; i++) {
             std::string e_value = "value" + std::to_string(i);
             std::string value;
-            // printf("idx:%d, i:%d, key:%s, ts:%lu\n", idx, i , key.c_str(),
-            // ts-i);
             if (idx == 50 && i > 2) {
                 ASSERT_FALSE(table->Get(0, key, cur_time - i, value));
                 ASSERT_FALSE(table->Get(1, key, cur_time - i, value));

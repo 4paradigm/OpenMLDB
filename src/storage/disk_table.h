@@ -1,7 +1,18 @@
-//
-// Copyright (C) 2017 4paradigm.com
-// Created by yangjun on 12/14/18.
-//
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 
@@ -313,12 +324,6 @@ class DiskTable : public Table {
     bool Put(uint64_t time, const std::string& value,
              const Dimensions& dimensions) override;
 
-    // bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions,
-    //          const std::string& value);
-
-    // bool Get(uint32_t idx, const std::string& pk, uint64_t ts, uint32_t ts_idx,
-    //          std::string& value);  // NOLINT
-
     bool Get(uint32_t idx, const std::string& pk, uint64_t ts,
              std::string& value);  // NOLINT
 
@@ -349,13 +354,7 @@ class DiskTable : public Table {
     TableIterator* NewIterator(uint32_t idx, const std::string& pk,
                                Ticket& ticket) override;
 
-    // TableIterator* NewIterator(uint32_t idx, int32_t ts_idx,
-    //                            const std::string& pk, Ticket& ticket);
-
     TableIterator* NewTraverseIterator(uint32_t idx) override;
-
-    // TableIterator* NewTraverseIterator(uint32_t idx, uint32_t ts_idx);
-
 
     ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx) {
         return NULL;
@@ -403,7 +402,6 @@ class DiskTable : public Table {
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
     std::string db_root_path_;
-    ::openmldb::storage::TTLType ttl_type_;
 };
 
 }  // namespace storage
