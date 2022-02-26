@@ -1783,7 +1783,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
 
     // keep ttl in pre-aggr table the same as base table
     auto ttl = index->mutable_ttl();
-    for(int i = 0; i < base_table_info.column_key_size(); i++) {
+    for (int i = 0; i < base_table_info.column_key_size(); i++) {
         const auto& column_key = base_table_info.column_key(i);
         std::string keys = "";
         for (int j = 0; j < column_key.col_name_size(); j++) {

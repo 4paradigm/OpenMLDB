@@ -437,7 +437,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
     ASSERT_TRUE(ns_ptr->ShowTable(base_table, base_db, false, tables, msg));
     ASSERT_EQ(tables.size(), 1);
 
-    ::openmldb::base::LongWindowInfo lw("w1", "sum", "col3", "col1","col2","1d");
+    ::openmldb::base::LongWindowInfo lw("w1", "sum", "col3", "col1", "col2", "1d");
     std::string aggr_table = "pre_test_sum_col3";
     auto cluster_router = dynamic_cast<SQLClusterRouter*>(router.get());
     auto create_status = cluster_router->CreatePreAggrTable(pre_aggr_db, aggr_table, lw, tables[0], ns_ptr);
