@@ -25,6 +25,7 @@
 #include <vector>
 #include <unordered_set>
 
+#include "base/ddl_parser.h"
 #include "base/random.h"
 #include "base/spinlock.h"
 #include "base/lru_cache.h"
@@ -248,6 +249,12 @@ class SQLClusterRouter : public SQLRouter {
                                                const std::map<std::string, std::string>& config,
                                                const std::string& default_db,
                                                ::openmldb::taskmanager::JobInfo& job_info) override;
+    
+    ::openmldb::base::Status CreatePreAggrTable(const std::string& aggr_db,
+                                                const std::string& aggr_table,
+                                                const ::openmldb::base::LongWindowInfo& window_info,
+                                                const ::openmldb::nameserver::TableInfo& base_table_info,
+                                                std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
 
     std::string GetJobLog(const int id, hybridse::sdk::Status* status) override;
 

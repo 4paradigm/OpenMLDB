@@ -23,6 +23,8 @@
 
 #include "codec/schema_codec.h"
 #include "common/timer.h"
+#include "node/node_manager.h"
+#include "plan/plan_api.h"
 #include "proto/common.pb.h"
 #include "proto/fe_type.pb.h"
 #include "sdk/base_impl.h"
@@ -204,6 +206,133 @@ std::string DDLParser::Explain(const std::string& sql, const ::hybridse::type::D
     std::ostringstream plan_oss;
     session.GetCompileInfo()->DumpPhysicalPlan(plan_oss, "\t");
     return plan_oss.str();
+}
+
+LongWindowInfos DDLParser::ExtractLongWindowInfos(const std::string& sql,
+                                                  std::unordered_map<std::string, std::string>& window_map) {
+    LongWindowInfos infos;
+    hybridse::node::NodeManager node_manager;
+    hybridse::base::Status sql_status;
+    hybridse::node::PlanNodeList plan_trees;
+    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
+
+    if (0 != sql_status.code) {
+        DLOG(ERROR) << sql_status.msg;
+        return infos;
+    }
+    hybridse::node::PlanNode* node = plan_trees[0];
+    std::ostringstream oss;
+    node->Print(oss, "");
+    std::cout << oss.str() << std::endl;
+    switch (node->GetType()) {
+        case hybridse::node::kPlanTypeQuery: {
+            TraverseNode(node, window_map, infos);
+            break;
+        }
+        default: {
+            DLOG(ERROR) << "only support extract long window infos from query";
+            return infos;
+        }
+    }
+
+    return infos;
+}
+
+void DDLParser::TraverseNode(hybridse::node::PlanNode* node,
+                                std::unordered_map<std::string, std::string>& window_map,
+                                LongWindowInfos& long_window_infos) {
+    switch (node->GetType()) {
+        case hybridse::node::kPlanTypeProject: {
+            hybridse::node::ProjectPlanNode* project_plan_node = dynamic_cast<hybridse::node::ProjectPlanNode*>(node);
+            ExtractInfosFromProjectPlan(project_plan_node, window_map, long_window_infos);
+            return;
+        }
+        default: {
+            for (int i = 0; i < node->GetChildrenSize(); ++i) {
+                TraverseNode(node->GetChildren()[i], window_map, long_window_infos);
+            }
+        }
+    }
+    return;
+}
+void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* project_plan_node,
+                                            std::unordered_map<std::string, std::string>& window_map,
+                                            LongWindowInfos& long_window_infos) {
+    for (const auto& project_list : project_plan_node->project_list_vec_) {
+        if (project_list->GetType() != hybridse::node::kProjectList) {
+            DLOG(ERROR) << "extract long window infos from project list failed";
+            return;
+        }
+        hybridse::node::ProjectListNode* project_list_node 
+            = dynamic_cast<hybridse::node::ProjectListNode*>(project_list);
+        auto window = project_list_node->GetW();
+        if (window == nullptr) {
+            continue;
+        }
+
+        std::string window_name = window->GetName();
+        // skip if window isn't long window
+        if (window_map.find(window_name) == window_map.end()) {
+            continue;
+        }
+        int partition_num = window->GetKeys()->GetChildNum();
+        std::string partition_col;
+        for (int i = 0; i < partition_num; i++) {
+            auto partition_key = window->GetKeys()->GetChild(i);
+            if (partition_key->GetExprType() != hybridse::node::kExprColumnRef) {
+                DLOG(ERROR) << "extract long window infos from window partition key failed";
+                return;
+            }
+            hybridse::node::ColumnRefNode* column_node = dynamic_cast<hybridse::node::ColumnRefNode*>(partition_key);
+            partition_col += column_node->GetExprString() + ",";
+        }
+        if (!partition_col.empty()) {
+            partition_col = partition_col.substr(0, partition_col.size() - 1);
+        }
+
+        std::string order_by_col;
+        auto order_exprs = window->GetOrders()->order_expressions();
+        for (int i = 0; i < order_exprs->GetChildNum(); i++) {
+            auto order_expr = order_exprs->GetChild(i);
+            if (order_expr->GetExprType() != hybridse::node::kExprOrderExpression) {
+                DLOG(ERROR) << "extract long window infos from window order by failed";
+                return;
+            }
+            auto order_node = dynamic_cast<hybridse::node::OrderExpression*>(order_expr);
+            order_by_col += order_node->expr()->GetExprString() + ",";
+        }
+        if (!order_by_col.empty()) {
+            order_by_col = order_by_col.substr(0, order_by_col.size() - 1);
+        }
+
+        for (const auto& project : project_list_node->GetProjects()) {
+            if (project->GetType() != hybridse::node::kProjectNode) {
+                DLOG(ERROR) << "extract long window infos from project failed";
+                return;
+            }
+            hybridse::node::ProjectNode* project_node = dynamic_cast<hybridse::node::ProjectNode*>(project);
+            if (!project_node->IsAgg()) {
+                continue;
+            }
+            auto project_expr = project_node->GetExpression();
+            if (project_expr->GetExprType() != hybridse::node::kExprCall) {
+                DLOG(ERROR) << "extract long window infos from agg func failed";
+                return;
+            }
+            hybridse::node::CallExprNode* agg_expr = dynamic_cast<hybridse::node::CallExprNode*>(project_expr);
+            std::string aggr_name = agg_expr->GetFnDef()->GetName();
+            std::string aggr_col;
+            for (uint32_t i = 0; i < agg_expr->GetChildNum(); i++) {
+                auto child_expr = agg_expr->GetChild(i);
+                aggr_col += child_expr->GetExprString() + ",";
+            }
+            if (!aggr_col.empty()) {
+                aggr_col = aggr_col.substr(0, aggr_col.size() - 1);
+            }
+            long_window_infos.emplace_back(window_name, aggr_name, aggr_col,
+                                           partition_col, order_by_col, window_map[window_name]);
+        }
+    }
 }
 
 IndexMap DDLParser::ExtractIndexes(const std::string& sql, const hybridse::type::Database& db,

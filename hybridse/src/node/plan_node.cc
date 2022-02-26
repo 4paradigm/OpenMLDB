@@ -529,6 +529,9 @@ void WindowPlanNode::Print(std::ostream &output,
     PlanNode::Print(output, org_tab);
     output << "\n";
     PrintValue(output, org_tab, name, "window_name", true);
+    output << "\n";
+    keys_->Print(output, org_tab);
+    orders_->Print(output, org_tab);
 }
 bool WindowPlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
@@ -677,8 +680,6 @@ void QueryPlanNode::Print(std::ostream &output,
         output << "\n";
         PrintValue(output, org_tab + INDENT, config_options_.get(), "config_options", false);
     }
-    output << "\n";
-    PrintPlanNode(output, org_tab + INDENT, children_[0], "", true);
 }
 bool QueryPlanNode::Equals(const PlanNode *node) const {
     return UnaryPlanNode::Equals(node);

@@ -24,6 +24,7 @@
 #include "brpc/channel.h"
 #include "common/timer.h"
 #include "glog/logging.h"
+#include "nameserver/system_table.h"
 #include "plan/plan_api.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
@@ -1749,6 +1750,58 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
         return {-1, "Fail to get TaskManager client"};
     }
     return taskmanager_client_ptr->ExportOfflineData(sql, config, default_db, job_info);
+}
+
+::openmldb::base::Status SQLClusterRouter::CreatePreAggrTable(const std::string& aggr_db,
+                                                const std::string& aggr_table,
+                                                const ::openmldb::base::LongWindowInfo& window_info,
+                                                const ::openmldb::nameserver::TableInfo& base_table_info,
+                                                std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
+    ::openmldb::nameserver::TableInfo table_info;
+    table_info.set_db(aggr_db);
+    table_info.set_name(aggr_table);
+    table_info.set_replica_num(base_table_info.replica_num());
+    table_info.set_partition_num(base_table_info.partition_num());
+    table_info.set_format_version(1);
+    auto SetColumnDesc = [](const std::string& name, openmldb::type::DataType type,
+                             openmldb::common::ColumnDesc* field) {
+        if (field != nullptr) {
+            field->set_name(name);
+            field->set_data_type(type);
+        }
+    };
+    SetColumnDesc("key", openmldb::type::DataType::kString, table_info.add_column_desc());
+    SetColumnDesc("ts_start", openmldb::type::DataType::kTimestamp, table_info.add_column_desc());
+    SetColumnDesc("ts_end", openmldb::type::DataType::kTimestamp, table_info.add_column_desc());
+    SetColumnDesc("num_rpws", openmldb::type::DataType::kInt, table_info.add_column_desc());
+    SetColumnDesc("agg_val", openmldb::type::DataType::kString, table_info.add_column_desc());
+    SetColumnDesc("binlog_offset", openmldb::type::DataType::kBigInt, table_info.add_column_desc());
+    auto index = table_info.add_column_key();
+    index->set_index_name("key_index");
+    index->add_col_name("key");
+    index->set_ts_name("ts_start");
+
+    // keep ttl in pre-aggr table the same as base table
+    auto ttl = index->mutable_ttl();
+    for(int i = 0; i < base_table_info.column_key_size(); i++) {
+        const auto& column_key = base_table_info.column_key(i);
+        std::string keys = "";
+        for (int j = 0; j < column_key.col_name_size(); j++) {
+            keys += column_key.col_name(j) + ",";
+        }
+        keys = keys.substr(0, keys.size() - 1);
+        std::string ts_name = column_key.ts_name();
+        if (keys == window_info.partition_col_ && ts_name == window_info.order_col_) {
+            ttl->CopyFrom(column_key.ttl());
+            break;
+        }
+    }
+    
+    std::string msg;
+    if (!ns_ptr->CreateTable(table_info, msg)) {
+        return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
+    }
+    return {};
 }
 
 std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* status) {

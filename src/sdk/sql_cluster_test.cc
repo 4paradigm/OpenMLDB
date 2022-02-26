@@ -407,6 +407,62 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
     ASSERT_TRUE(router->DropDB(db, &status));
 }
 
+TEST_F(SQLClusterTest, CreatePreAggrTable) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string base_table = "test" + GenRand();
+    std::string base_db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(base_db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + base_table +
+                      "("
+                      "col1 string, col2 bigint, col3 int"
+                      "index(key=col1, ts=col2,"
+                      "TTL_TYPE=latest, TTL=1)) options(partitionnum=8);";
+    ok = router->ExecuteDDL(base_db, ddl, &status);
+    ASSERT_TRUE(ok);
+    std::string pre_aggr_db = "aggr_db" + GenRand();
+    ok = router->CreateDB(pre_aggr_db, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    auto ns_client = mc_->GetNsClient();
+    std::shared_ptr<::openmldb::client::NsClient> ns_ptr(ns_client);
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    std::string msg;
+    ASSERT_TRUE(ns_ptr->ShowTable(base_table, base_db, false, tables, msg));
+    ASSERT_EQ(tables.size(), 1);
+
+    ::openmldb::base::LongWindowInfo lw("w1", "sum", "col3", "col1","col2","1d");
+    std::string aggr_table = "pre_test_sum_col3";
+    auto cluster_router = dynamic_cast<SQLClusterRouter*>(router.get());
+    auto create_status = cluster_router->CreatePreAggrTable(pre_aggr_db, aggr_table, lw, tables[0], ns_ptr);
+    ASSERT_TRUE(create_status.OK());
+
+    tables.clear();
+    ASSERT_TRUE(ns_ptr->ShowTable(aggr_table, pre_aggr_db, false, tables, msg));
+    ASSERT_EQ(tables.size(), 1);
+    ASSERT_EQ(tables[0].column_key_size(), 1);
+    ASSERT_EQ(tables[0].column_key(0).col_name(0), "key");
+    ASSERT_EQ(tables[0].column_key(0).ts_name(), "ts_start");
+    ASSERT_EQ(tables[0].column_key(0).ttl().ttl_type(), ::openmldb::type::TTLType::kLatestTime);
+    ASSERT_EQ(tables[0].column_key(0).ttl().lat_ttl(), 1);
+
+    ok = router->ExecuteDDL(pre_aggr_db, "drop table " + aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(pre_aggr_db, &status);
+    ASSERT_TRUE(ok);
+
+    ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
 static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();

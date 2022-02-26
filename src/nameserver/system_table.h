@@ -30,6 +30,7 @@ namespace openmldb {
 namespace nameserver {
 
 constexpr const char* INTERNAL_DB = "__INTERNAL_DB";
+constexpr const char* PRE_AGG_DB = "__PRE_AGG_DB";
 constexpr const char* JOB_INFO_NAME = "JOB_INFO";
 constexpr const char* PRE_AGG_META_NAME = "PRE_AGG_META_INFO";
 

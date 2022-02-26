@@ -2215,8 +2215,8 @@ class DeployNode : public SqlNode {
     const std::string name_;
     const SqlNode* stmt_ = nullptr;
     const std::string stmt_str_;
-    const bool if_not_exists_ = false;
     const std::shared_ptr<OptionsMap> options_;
+    const bool if_not_exists_ = false;
 };
 
 class FnParaNode : public FnNode {

@@ -5453,16 +5453,21 @@ void NameServerImpl::OnLocked() {
         }
         auto status = CreateDatabase(INTERNAL_DB);
         if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-            LOG(FATAL) << "create internal database failed";
+            LOG(FATAL) << "create internal database " << INTERNAL_DB << " failed";
+            exit(1);
+        }
+        status = CreateDatabase(PRE_AGG_DB);
+        if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+            LOG(FATAL) << "create internal database " << PRE_AGG_DB << " failed";
             exit(1);
         }
         if (FLAGS_system_table_replica_num > 0 && !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
-            LOG(FATAL) << "create system table" << JOB_INFO_NAME << "failed";
+            LOG(FATAL) << "create system table " << JOB_INFO_NAME << " failed";
             exit(1);
         }
         if (FLAGS_system_table_replica_num > 0 &&
             !CreateSystemTable(PRE_AGG_META_NAME, SystemTableType::KPreAggMetaInfo).OK()) {
-            LOG(FATAL) << "create system table" << PRE_AGG_META_NAME << "failed";
+            LOG(FATAL) << "create system table " << PRE_AGG_META_NAME << " failed";
             exit(1);
         }
     }

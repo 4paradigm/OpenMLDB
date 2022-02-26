@@ -25,6 +25,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <boost/algorithm/string.hpp>
 
 #include "../../hybridse/include/node/node_enum.h"
 #include "absl/strings/match.h"
@@ -39,6 +40,7 @@
 #include "cmd/split.h"
 #include "codec/schema_codec.h"
 #include "gflags/gflags.h"
+#include "nameserver/system_table.h"
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
 #include "proto/fe_type.pb.h"
@@ -53,6 +55,7 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_bool(interactive);
 DECLARE_string(cmd);
+DECLARE_string(mini_window_size);
 // stand-alone mode
 DECLARE_string(host);
 DECLARE_int32(port);
@@ -904,6 +907,69 @@ base::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
 
     sp_info.set_sql(str_stream.str());
     sp_info.set_type(::openmldb::type::ProcedureType::kReqDeployment);
+
+    // extract long windows info from select_sql
+    auto iter = deploy_node->Options()->find("long_windows");
+    std::string long_window_param = "";
+    if (iter != deploy_node->Options()->end()) {
+        long_window_param = iter->second->GetExprString();
+    }
+    std::unordered_map<std::string, std::string> long_window_map;
+    if (cs->IsClusterMode() && !long_window_param.empty()) {
+        if (table_pair.size() != 1) {
+            return {base::ReturnCode::kError, "unsupport multi tables with long window options"};
+        }
+        std::string base_db = table_pair.begin()->first;
+        std::string base_table = table_pair.begin()->second;
+        std::vector<std::string> windows;
+        boost::split(windows, long_window_param, boost::is_any_of(","));
+        for (auto& window : windows) {
+            std::vector<std::string> window_info;
+            boost::split(window_info, window, boost::is_any_of(":"));
+
+            if (window_info.size() == 2) {
+                long_window_map[window_info[0]] = window_info[1];
+            } else if (window_info.size() == 1) {
+                long_window_map[window_info[0]] = FLAGS_mini_window_size;
+            } else {
+                return {base::ReturnCode::kError, "illegal long window format"};
+            }
+        }
+        auto long_window_infos = base::DDLParser::ExtractLongWindowInfos(select_sql, long_window_map);
+
+        auto ns_client = cs->GetNsClient();
+        std::vector<::openmldb::nameserver::TableInfo> tables;
+        std::string msg;
+        ns_client->ShowTable(base_table, base_db, false, tables, msg);
+        if (tables.size() != 1) {
+            return {base::ReturnCode::kError, "table not found"};
+        }
+        std::string meta_db = openmldb::nameserver::INTERNAL_DB;
+        std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
+        std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
+        for (const auto& lw : long_window_infos) {
+            // insert pre-aggr meta info to meta table
+            auto aggr_table = "pre_" + deploy_node->Name() + "_" +
+                              lw.window_name_ + "_" + lw.aggr_func_ + "_" + lw.aggr_col_;
+            ::hybridse::sdk::Status status;
+            std::string insert_sql = "insert into " + meta_db + "." + meta_table + " values(\"" + 
+                                     aggr_table + "\", \"" + base_db + "\", \"" + base_table + "\", \"" +
+                                     lw.aggr_func_ + "\", \"" + lw.aggr_col_ + "\", \"" + lw.partition_col_ + 
+                                     "\", \"" + lw.order_col_ + "\", \"" + lw.bucket_size_ + "\");";
+            bool ok = sr->ExecuteInsert(db, insert_sql, &status);
+            if (!ok) {
+                return {base::ReturnCode::kError, "insert pre-aggr meta failed"};
+            }
+
+            // create pre-aggr table
+            auto create_status = sr->CreatePreAggrTable(aggr_db, aggr_table, lw, tables[0], ns_client);
+            if (!create_status.OK()) {
+                return {base::ReturnCode::kError, "create pre-aggr table failed"};
+            }
+        }
+
+    }
+
 
     // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
