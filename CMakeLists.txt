@@ -90,7 +90,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(BRPC_LIBS brpc protobuf glog gflags unwind ssl crypto leveldb z snappy dl pthread ${OS_LIB})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(OS_LIB 
+    set(OS_LIB
             ${CMAKE_THREAD_LIBS_INIT}
             "-framework CoreFoundation"
             "-framework CoreGraphics"
@@ -105,8 +105,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif ()
 
 if (SANITIZER_ENABLE)
-    set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-    set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
     message(STATUS "Enabled AddressSanitizer")
 endif()
 
@@ -139,14 +139,19 @@ endif()
 
 add_subdirectory(hybridse)
 
+set(Boost_NO_BOOST_CMAKE ON)
+set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
+
 set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags ${Boost_LIBRARIES})
 set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
+message(STATUS "Using LLVM components: ${LLVM_LIBS}")
 add_definitions(${LLVM_DEFINITIONS})
+
 set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
 find_package(SWIG REQUIRED)
 include(UseSWIG)
@@ -220,11 +225,17 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h")
 
 include_directories(
-  ${CMAKE_PREFIX_PATH}/include
   ${CMAKE_SOURCE_DIR}/hybridse/include
-  ${CMAKE_BINARY_DIR}/hybridse/src)
+  ${CMAKE_BINARY_DIR}/hybridse/src
+  ${LLVM_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
+  ${CMAKE_PREFIX_PATH}/include)
 
-link_directories(${CMAKE_PREFIX_PATH}/lib ${CMAKE_PREFIX_PATH}/lib64)
+link_directories(
+    ${LLVM_LIBRARY_DIRS}
+    ${Boost_LIBRARY_DIRS}
+    ${CMAKE_PREFIX_PATH}/lib
+    ${CMAKE_PREFIX_PATH}/lib64)
 
 add_subdirectory(src)
 

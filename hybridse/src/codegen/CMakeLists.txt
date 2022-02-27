@@ -42,7 +42,7 @@ add_library(hybridse_codegen STATIC
         context.cc memery_ir_builder.h memory_ir_builder.cc)
 if (TESTING_ENABLE)
 set(vm_deps_libs
-        hybridse_case boost_date_time boost_filesystem ${yaml_libs} ${VM_LIBS} hybridse_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+        hybridse_case ${Boost_date_time_LIBRARY} ${Boost_filesystem_LIBRARY} ${yaml_libs} ${VM_LIBS} hybridse_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
 target_link_libraries(ir_base_builder_test gtest ${vm_deps_libs})

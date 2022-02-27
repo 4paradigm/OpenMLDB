@@ -63,7 +63,7 @@ target_link_libraries(hybridse_flags gflags)
 # hybridse core library
 add_library(hybridse_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
 target_link_libraries(hybridse_core
-        ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB}  hybridse_flags)
+        ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_library(hybridse_core_shared SHARED ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
     target_link_libraries(hybridse_core_shared
