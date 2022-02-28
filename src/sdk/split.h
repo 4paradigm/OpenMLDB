@@ -18,8 +18,8 @@
 //     Split() API.
 //
 
-#ifndef SRC_CMD_SPLIT_H_
-#define SRC_CMD_SPLIT_H_
+#ifndef SRC_SDK_SPLIT_H_
+#define SRC_SDK_SPLIT_H_
 
 #include <string>
 #include <vector>
@@ -27,7 +27,7 @@
 #include "absl/strings/ascii.h"
 #include "glog/logging.h"
 
-namespace openmldb::cmd {
+namespace openmldb::sdk {
 // ----------------------------------------------------------------------
 // strdup_with_new()
 // strndup_with_new()
@@ -41,7 +41,7 @@ namespace openmldb::cmd {
 //    is useful when we want to copy a substring out of a string
 //    and didn't want to (or cannot) modify the string
 // ----------------------------------------------------------------------
-char* strndup_with_new(const char* the_string, int max_length) {
+static char* strndup_with_new(const char* the_string, int max_length) {
     if (the_string == nullptr) return nullptr;
 
     auto result = new char[max_length + 1];
@@ -49,7 +49,8 @@ char* strndup_with_new(const char* the_string, int max_length) {
     return strncpy(result, the_string, max_length);
 }
 
-char* strdup_with_new(const char* the_string) {
+__attribute__((unused))
+static char* strdup_with_new(const char* the_string) {
     if (the_string == nullptr) {
         return nullptr;
     } else {
@@ -93,7 +94,7 @@ char* strdup_with_new(const char* the_string) {
 // See //util/csv/parser.h for more complete documentation.
 //
 // ----------------------------------------------------------------------
-void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*>* cols, const char enclosed) {
+static void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*>* cols, const char enclosed) {
     char* end_of_line = line + strlen(line);
     char* end;
     char* start;
@@ -147,7 +148,7 @@ void SplitLineWithDelimiter(char* line, const char* delimiter, std::vector<char*
     }
 }
 
-void SplitLineWithDelimiterForStrings(const std::string& line, const std::string& delimiter,
+static void SplitLineWithDelimiterForStrings(const std::string& line, const std::string& delimiter,
                                       std::vector<std::string>* cols, const char enclosed) {
     // Unfortunately, the interface requires char* instead of const char*
     // which requires copying the string.
@@ -159,14 +160,17 @@ void SplitLineWithDelimiterForStrings(const std::string& line, const std::string
     }
     delete[] cline;
 }
-void SplitCSVLine(char* line, std::vector<char*>* cols, const char enclosed) {
+
+__attribute__((unused))
+static void SplitCSVLine(char* line, std::vector<char*>* cols, const char enclosed) {
     SplitLineWithDelimiter(line, ",", cols, enclosed);
 }
 
-void SplitCSVLineForStrings(const std::string& line, std::vector<std::string>* cols, const char enclosed) {
+__attribute__((unused))
+static void SplitCSVLineForStrings(const std::string& line, std::vector<std::string>* cols, const char enclosed) {
     SplitLineWithDelimiterForStrings(line, ",", cols, enclosed);
 }
 
-}  // namespace openmldb::cmd
+}  // namespace openmldb::sdk
 
-#endif  // SRC_CMD_SPLIT_H_
+#endif  // SRC_SDK_SPLIT_H_

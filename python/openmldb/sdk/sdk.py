@@ -45,6 +45,8 @@ class OpenmldbSdk(object):
             logger.error("fail to init openmldb sdk with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
             return False
         logger.info("init openmldb sdk done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+        status = sql_router_sdk.Status()
+        self.sdk.ExecuteSQL("SET @@execute_mode='online'", status)
         return True
 
     def getDatabases(self):
