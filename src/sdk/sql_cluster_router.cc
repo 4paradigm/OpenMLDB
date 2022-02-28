@@ -2291,6 +2291,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
 }
 
 bool SQLClusterRouter::IsOnlineMode() const {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find("execute_mode");
     if (it != session_variables_.end() && it->second == "online") {
         return true;
@@ -2298,6 +2299,7 @@ bool SQLClusterRouter::IsOnlineMode() const {
     return false;
 }
 bool SQLClusterRouter::IsEnableTrace() const {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find("enable_trace");
     if (it != session_variables_.end() && it->second == "true") {
         return true;
@@ -2311,6 +2313,7 @@ bool SQLClusterRouter::IsEnableTrace() const {
     }
     std::string key = node->Key();
     std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find(node->Key());
     if (it == session_variables_.end()) {
         return {::hybridse::common::StatusCode::kCmdError, "no session variable " + key};

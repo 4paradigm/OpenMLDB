@@ -72,6 +72,8 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     ASSERT_TRUE(ok);
     router->ExecuteSQL("use " + db + ";", &status);
     ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
+    router->ExecuteSQL("SET @@execute_mode='online';", &status);
+    ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 int);";
