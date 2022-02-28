@@ -4,6 +4,7 @@
 
 ### Features
 - Support timestamps in `long int` when importing a csv file (#1237 @vagetablechicken)
+- Change the default execution mode in CLI from `online` to `offline` (#1332 @dl239)
 - Enhancements for the Python SDK:
   - Support `fetchmany` and `fetchall` in Python SDK (#1215 @HuilinWu2)
   - Support fetching logs of TaskManager jobs in Python SDK and APIs (#1214 @tobegit3hub)
