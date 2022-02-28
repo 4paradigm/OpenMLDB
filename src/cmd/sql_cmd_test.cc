@@ -257,42 +257,6 @@ TEST_P(DBSDKTest, deploy_options) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
-TEST_P(DBSDKTest, deploy_long_window) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-    HandleSQL("create database test2;");
-    HandleSQL("use test2;");
-    std::string create_sql =
-        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-        "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute));";
-    HandleSQL(create_sql);
-
-    std::string deploy_sql =
-        "deploy demo1 OPTIONS(long_windows='w1') SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
-        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-
-    hybridse::node::NodeManager node_manager;
-    hybridse::base::Status sql_status;
-    hybridse::node::PlanNodeList plan_trees;
-    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(deploy_sql, plan_trees, &node_manager, sql_status);
-
-    ASSERT_EQ(0, sql_status.code);
-    hybridse::node::DeployPlanNode* node = dynamic_cast<hybridse::node::DeployPlanNode*>(plan_trees[0]);
-    ASSERT_EQ(node->Options()->at("long_windows")->GetAsString(), "w1");
-
-    auto status = HandleDeploy(node);
-    ASSERT_TRUE(status.OK());
-    auto ns_client = cs->GetNsClient();
-    std::vector<::openmldb::nameserver::TableInfo> tables;
-    std::string msg;
-    ns_client->ShowTable(openmldb::nameserver::PRE_AGG_DB, "demo1_w1_sum_c4", false, tables, msg);
-
-    ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-}
-
 TEST_P(DBSDKTest, create_without_index_col) {
     auto cli = GetParam();
     cs = cli->cs;
