@@ -461,7 +461,7 @@ class Connection(object):
             options = sdk_module.OpenmldbClusterSdkOptions(args[0], args[1])
         else:
             options = sdk_module.OpenmldbStandaloneSdkOptions(args[0], args[1])
-        sdk = sdk_module.OpenmldbSdk(options)
+        sdk = sdk_module.OpenmldbSdk(options, is_cluster_mode)
         ok = sdk.init()
         if not ok:
             raise Exception("init openmldb sdk erred")
