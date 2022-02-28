@@ -2290,7 +2290,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
     }
 }
 
-bool SQLClusterRouter::IsOnlineMode() const {
+bool SQLClusterRouter::IsOnlineMode() {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find("execute_mode");
     if (it != session_variables_.end() && it->second == "online") {
@@ -2298,7 +2298,7 @@ bool SQLClusterRouter::IsOnlineMode() const {
     }
     return false;
 }
-bool SQLClusterRouter::IsEnableTrace() const {
+bool SQLClusterRouter::IsEnableTrace() {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find("enable_trace");
     if (it != session_variables_.end() && it->second == "true") {
