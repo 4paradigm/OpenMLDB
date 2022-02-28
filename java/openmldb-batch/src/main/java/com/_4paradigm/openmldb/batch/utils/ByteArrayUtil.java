@@ -21,18 +21,7 @@ public class ByteArrayUtil {
     }
 
     public static byte[] intToOneByteArray(int value) {
-        return new byte[] { (byte)value };
-    }
-
-    public static void main(String[] args) {
-        System.out.println("start main");
-
-        int value = 2;
-        byte[] bytes = intToOneByteArray(value);
-        System.out.println(bytesToString(bytes));
-
-        System.out.println("end of main");
-
+        return new byte[] {(byte)value};
     }
 
 }
