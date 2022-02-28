@@ -59,10 +59,12 @@ TEST_F(SystemTableTest, SystemTable) {
     ::openmldb::client::NsClient ns_client("127.0.0.1:6530", "");
     ns_client.Init();
     std::vector<::openmldb::nameserver::TableInfo> tables;
-    std::string msg;    
+    std::string msg;
     ASSERT_TRUE(ns_client.ShowTable("", INTERNAL_DB, false, tables, msg));
     ASSERT_EQ(2, tables.size());
     tables.clear();
+    // deny drop system table
+    ASSERT_FALSE(ns_client.DropDatabase(INTERNAL_DB, msg));
 
     ASSERT_TRUE(ns_client.ShowTable(JOB_INFO_NAME, INTERNAL_DB, false, tables, msg));
     ASSERT_EQ(1, tables.size());
@@ -77,6 +79,7 @@ TEST_F(SystemTableTest, SystemTable) {
     ASSERT_TRUE(ns_client.ShowTable("", INFORMATION_SCHEMA_DB, false, tables, msg));
     ASSERT_EQ(1, tables.size());
     tables.clear();
+    ASSERT_FALSE(ns_client.DropDatabase(INFORMATION_SCHEMA_DB, msg));
 
     ASSERT_TRUE(ns_client.ShowTable(GLOBAL_VARIABLE_NAME, INFORMATION_SCHEMA_DB, false, tables, msg));
     ASSERT_EQ(1, tables.size());

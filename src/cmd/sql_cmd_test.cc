@@ -234,7 +234,6 @@ TEST_P(DBSDKTest, deploy_options) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
-    HandleSQL("show global variables;");
     HandleSQL("create database test2;");
     HandleSQL("use test2;");
     std::string create_sql =
@@ -271,6 +270,13 @@ TEST_P(DBSDKTest, create_without_index_col) {
     ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+}
+
+TEST_P(DBSDKTest, show) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("show global variables");
 }
 
 /* TODO: Only run test in standalone mode

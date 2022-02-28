@@ -5451,19 +5451,14 @@ void NameServerImpl::OnLocked() {
                        << FLAGS_system_table_replica_num;
             exit(1);
         }
-        if (db_table_info_.empty()) {
+        if (databases_.find(INTERNAL_DB) == databases_.end()) {
             auto status = CreateDatabase(INTERNAL_DB);
             if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
                 LOG(FATAL) << "create internal database failed";
                 exit(1);
             }
-            status = CreateDatabase(INFORMATION_SCHEMA_DB);
-            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-                LOG(FATAL) << "create information schema database failed";
-                exit(1);
-            }
         }
-        if (databases_.find(INTERNAL_DB) != databases_.end() && db_table_info_[INTERNAL_DB].empty()) {
+        if (db_table_info_[INTERNAL_DB].empty()) {
             if (FLAGS_system_table_replica_num > 0 &&
                 !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
                 LOG(FATAL) << "create system table" << JOB_INFO_NAME << "failed";
@@ -5475,8 +5470,14 @@ void NameServerImpl::OnLocked() {
                 exit(1);
             }
         }
-        if (databases_.find(INFORMATION_SCHEMA_DB) != databases_.end() &&
-            db_table_info_[INFORMATION_SCHEMA_DB].empty()) {
+        if (databases_.find(INFORMATION_SCHEMA_DB) == databases_.end()) {
+            auto status = CreateDatabase(INFORMATION_SCHEMA_DB);
+            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+                LOG(FATAL) << "create information schema database failed";
+                exit(1);
+            }
+        }
+        if (db_table_info_[INFORMATION_SCHEMA_DB].empty()) {
             if (FLAGS_system_table_replica_num > 0 &&
                 !CreateSystemTable(GLOBAL_VARIABLE_NAME, SystemTableType::kGlobalVariable).OK()) {
                 LOG(FATAL) << "create system table" << GLOBAL_VARIABLE_NAME << "failed";
