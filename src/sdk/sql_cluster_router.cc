@@ -20,6 +20,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 
 #include "base/ddl_parser.h"
@@ -2092,7 +2093,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
             break;
         }
     }
-    
+
     std::string msg;
     if (!ns_ptr->CreateTable(table_info, msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);

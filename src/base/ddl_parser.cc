@@ -222,9 +222,6 @@ LongWindowInfos DDLParser::ExtractLongWindowInfos(const std::string& sql,
         return infos;
     }
     hybridse::node::PlanNode* node = plan_trees[0];
-    std::ostringstream oss;
-    node->Print(oss, "");
-    std::cout << oss.str() << std::endl;
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeQuery: {
             TraverseNode(node, window_map, &infos);
@@ -271,11 +268,6 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             continue;
         }
 
-        std::string window_name = window->GetName();
-        // skip if window isn't long window
-        if (window_map.find(window_name) == window_map.end()) {
-            continue;
-        }
         int partition_num = window->GetKeys()->GetChildNum();
         std::string partition_col;
         for (int i = 0; i < partition_num; i++) {
@@ -293,7 +285,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
 
         std::string order_by_col;
         auto order_exprs = window->GetOrders()->order_expressions();
-        for (int i = 0; i < order_exprs->GetChildNum(); i++) {
+        for (uint32_t i = 0; i < order_exprs->GetChildNum(); i++) {
             auto order_expr = order_exprs->GetChild(i);
             if (order_expr->GetExprType() != hybridse::node::kExprOrderExpression) {
                 DLOG(ERROR) << "extract long window infos from window order by failed";
@@ -321,6 +313,11 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                 return;
             }
             hybridse::node::CallExprNode* agg_expr = dynamic_cast<hybridse::node::CallExprNode*>(project_expr);
+            auto window_name = agg_expr->GetOver() ? agg_expr->GetOver()->GetName() : "";
+            // skip if window isn't long window
+            if (window_map.find(window_name) == window_map.end()) {
+                continue;
+            }
             std::string aggr_name = agg_expr->GetFnDef()->GetName();
             std::string aggr_col;
             for (uint32_t i = 0; i < agg_expr->GetChildNum(); i++) {
@@ -334,6 +331,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                                            partition_col, order_by_col, window_map.at(window_name));
         }
     }
+    return;
 }
 
 IndexMap DDLParser::ExtractIndexes(const std::string& sql, const hybridse::type::Database& db,

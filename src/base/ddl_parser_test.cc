@@ -594,6 +594,50 @@ TEST_F(DDLParserTest, extractLongWindow) {
         ASSERT_EQ(window_infos[2].order_col_, "k4");
         ASSERT_EQ(window_infos[2].bucket_size_, "1000");
     }
+
+    {
+        // anonymous window
+        auto query =
+            "SELECT id, pk1, col1, std_ts,\n"
+            "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as "
+            "w1_col1_sum,\n"
+            "      sum(col1) OVER w2 as w2_col1_sum,\n"
+            "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as "
+            "w3_col1_sum\n"
+            "      FROM t1\n"
+            "      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w2"] = "1d";
+        auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
+        ASSERT_EQ(window_infos.size(), 1);
+
+        ASSERT_EQ(window_infos[0].window_name_, "w2");
+        ASSERT_EQ(window_infos[0].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[0].aggr_col_, "col1");
+        ASSERT_EQ(window_infos[0].partition_col_, "pk1");
+        ASSERT_EQ(window_infos[0].order_col_, "std_ts");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1d");
+    }
+
+    {
+        // with limit
+        std::string query =
+            "SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 "
+            "WINDOW w1 AS (PARTITION BY c1 ORDER BY c6 "
+            "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) limit 10;";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w1"] = "1000";
+        auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
+        ASSERT_EQ(window_infos.size(), 1);
+        ASSERT_EQ(window_infos[0].window_name_, "w1");
+        ASSERT_EQ(window_infos[0].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[0].aggr_col_, "c3");
+        ASSERT_EQ(window_infos[0].partition_col_, "c1");
+        ASSERT_EQ(window_infos[0].order_col_, "c6");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1000");
+    }
 }
 }  // namespace openmldb::base
 

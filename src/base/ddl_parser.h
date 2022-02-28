@@ -95,6 +95,7 @@ class DDLParser {
     static void TraverseNode(hybridse::node::PlanNode* node,
                                 const std::unordered_map<std::string, std::string>& window_map,
                                 LongWindowInfos* long_window_infos);
+
     static void ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* project_plan_node,
                                             const std::unordered_map<std::string, std::string>& window_map,
                                             LongWindowInfos* long_window_infos);

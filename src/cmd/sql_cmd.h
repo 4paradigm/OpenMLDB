@@ -23,10 +23,8 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <boost/algorithm/string.hpp>
 
 #include "absl/strings/match.h"
 #include "base/linenoise.h"
@@ -41,7 +39,6 @@ DEFINE_string(database, "", "Set database");
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_string(cmd);
-DECLARE_string(mini_window_size);
 // stand-alone mode
 DECLARE_string(host);
 DECLARE_int32(port);
