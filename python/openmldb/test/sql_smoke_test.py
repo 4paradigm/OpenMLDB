@@ -76,6 +76,7 @@ def test_smoke():
     ok, error = sdk.executeInsert(db_name, insert_placeholder, rows_builder)
     assert ok == True
 
+    ok, rs = sdk.executeQuery(db_name, "SET @@execute_mode='online'")
     # select
     select = "select * from " + table_name + ";"
     ok, rs = sdk.executeQuery(db_name, select)

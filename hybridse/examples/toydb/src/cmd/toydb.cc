@@ -18,9 +18,12 @@
 #include <sched.h>
 #include <signal.h>
 #include <unistd.h>
+
 #include <fstream>
 #include <iostream>
 #include <string>
+
+#include "absl/strings/str_cat.h"
 #include "base/fe_linenoise.h"
 #include "base/fe_strings.h"
 #include "base/texttable.h"
@@ -448,7 +451,7 @@ void HandleCmd(const hybridse::node::CmdPlanNode *cmd_node,
         }
         default: {
             status.code = hybridse::common::kUnSupport;
-            status.msg = "UnSupport Cmd " + hybridse::node::CmdTypeName(cmd_node->GetCmdType());
+            status.msg = absl::StrCat("UnSupport Cmd ", hybridse::node::CmdTypeName(cmd_node->GetCmdType()));
         }
     }
 }

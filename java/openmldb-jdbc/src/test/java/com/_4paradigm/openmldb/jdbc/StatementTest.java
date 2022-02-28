@@ -25,7 +25,8 @@ public class StatementTest {
     public void testExecute() {
         java.sql.Statement state = router.getStatement();
         try {
-            boolean ret = state.execute("create database testxx");
+            boolean ret = state.execute("SET @@execute_mode='online';");
+            ret = state.execute("create database testxx");
             Assert.assertFalse(ret);
             ret = state.execute("use testxx");
             Assert.assertFalse(ret);
@@ -63,7 +64,8 @@ public class StatementTest {
     public void testDeploy() {
         java.sql.Statement state = router.getStatement();
         try {
-            boolean ret = state.execute("create database testxx");
+            boolean ret = state.execute("SET @@execute_mode='online';");
+            ret = state.execute("create database testxx");
             Assert.assertFalse(ret);
             ret = state.execute("use testxx");
             Assert.assertFalse(ret);

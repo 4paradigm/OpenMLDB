@@ -41,15 +41,26 @@ import java.util.Random;
 public class SQLRouterSmokeTest {
 
     private final Random random = new Random(System.currentTimeMillis());
+    public static SqlExecutor router;
+
+    static {
+        try {
+            SdkOption option = new SdkOption();
+            option.setZkPath(TestConfig.ZK_PATH);
+            option.setZkCluster(TestConfig.ZK_CLUSTER);
+            option.setSessionTimeout(200000);
+            router = new SqlClusterExecutor(option);
+            java.sql.Statement state = router.getStatement();
+            state.execute("SET @@execute_mode='online';");
+            state.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     @Test
     public void testSmoke() {
-        SdkOption option = new SdkOption();
-        option.setZkPath(TestConfig.ZK_PATH);
-        option.setZkCluster(TestConfig.ZK_CLUSTER);
-        option.setSessionTimeout(200000);
         try {
-            SqlExecutor router = new SqlClusterExecutor(option);
             String dbname = "db" + random.nextInt(100000);
             // create db
             router.dropDB(dbname);
@@ -224,12 +235,7 @@ public class SQLRouterSmokeTest {
 
     @Test
     public void testParameterizedQueryFail() {
-        SdkOption option = new SdkOption();
-        option.setZkPath(TestConfig.ZK_PATH);
-        option.setZkCluster(TestConfig.ZK_CLUSTER);
-        option.setSessionTimeout(200000);
         try {
-            SqlExecutor router = new SqlClusterExecutor(option);
             String dbname = "db" + random.nextInt(100000);
             // create db
             router.dropDB(dbname);
@@ -256,16 +262,6 @@ public class SQLRouterSmokeTest {
 
     @Test
     public void testInsertMeta() {
-        SdkOption option = new SdkOption();
-        option.setZkPath(TestConfig.ZK_PATH);
-        option.setZkCluster(TestConfig.ZK_CLUSTER);
-        option.setSessionTimeout(200000);
-        SqlExecutor router = null;
-        try {
-            router = new SqlClusterExecutor(option);
-        } catch (Exception e) {
-            Assert.fail();
-        }
         String dbname = "db" + random.nextInt(100000);
         // create db
         router.dropDB(dbname);
@@ -307,12 +303,7 @@ public class SQLRouterSmokeTest {
 
     @Test
     public void testInsertPreparedState() {
-        SdkOption option = new SdkOption();
-        option.setZkPath(TestConfig.ZK_PATH);
-        option.setZkCluster(TestConfig.ZK_CLUSTER);
-        option.setSessionTimeout(200000);
         try {
-            SqlExecutor router = new SqlClusterExecutor(option);
             String dbname = "db" + random.nextInt(100000);
             // create db
             router.dropDB(dbname);
@@ -457,12 +448,7 @@ public class SQLRouterSmokeTest {
                         "insert into tsql1010 values(1010, 11, 'zhao', 2.0, null, 'z');",
                 }
         };
-        SdkOption option = new SdkOption();
-        option.setZkPath(TestConfig.ZK_PATH);
-        option.setZkCluster(TestConfig.ZK_CLUSTER);
-        option.setSessionTimeout(200000);
         try {
-            SqlExecutor router = new SqlClusterExecutor(option);
             String dbname = "db" + random.nextInt(100000);
             // create db
             router.dropDB(dbname);
