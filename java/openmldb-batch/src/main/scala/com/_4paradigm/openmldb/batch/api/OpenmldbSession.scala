@@ -273,14 +273,14 @@ class OpenmldbSession {
             } else {
               // Register empty df for table
               val tableInfo = catalogService.getTableInfo(dbName, tableName)
-              val columnDescList = tableInfo.getColumnDescList()
+              val columnDescList = tableInfo.getColumnDescList
 
               val schema = new StructType(columnDescList.asScala.map(colDesc => {
                 StructField(colDesc.getName, HybridseUtil.protoTypeToSparkType(colDesc.getDataType),
                   !colDesc.getNotNull)
               }).toArray)
 
-              logger.info(s"Register empty dataframe fof $dbName.$tableName with schema ${schema}")
+              logger.info(s"Register empty dataframe fof $dbName.$tableName with schema $schema")
               // Create empty df with schema
               val emptyDf = sparkSession.createDataFrame(sparkSession.emptyDataFrame.rdd, schema)
 
