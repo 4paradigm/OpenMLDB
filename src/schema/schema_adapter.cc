@@ -367,5 +367,15 @@ base::Status SchemaAdapter::CheckTableMeta(const ::openmldb::nameserver::TableIn
     return {};
 }
 
+PBSchema SchemaAdapter::BuildSchema(const std::vector<std::string>& fields) {
+    PBSchema schema;
+    for (const auto& field : fields) {
+        auto column = schema.Add();
+        column->set_name(field);
+        column->set_data_type(openmldb::type::kString);
+    }
+    return schema;
+}
+
 }  // namespace schema
 }  // namespace openmldb

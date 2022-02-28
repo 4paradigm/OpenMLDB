@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CMD_FILE_OPTION_PARSER_H_
-#define SRC_CMD_FILE_OPTION_PARSER_H_
+#ifndef SRC_SDK_FILE_OPTION_PARSER_H_
+#define SRC_SDK_FILE_OPTION_PARSER_H_
 
 #include <map>
 #include <memory>
@@ -26,7 +26,7 @@
 #include "node/node_manager.h"
 
 namespace openmldb {
-namespace cmd {
+namespace sdk {
 
 // TODO(zekai): refactor status and error code
 class FileOptionsParser {
@@ -45,7 +45,7 @@ class FileOptionsParser {
             boost::to_lower(key);
             auto pair = check_map_.find(key);
             if (pair == check_map_.end()) {
-                return {openmldb::base::kSQLCmdRunError, "ERROR: this option " + key + " is not currently supported"};
+                return {openmldb::base::kSQLCmdRunError, "this option " + key + " is not currently supported"};
             }
             auto status = GetOption(item.second, key, pair->second.first, pair->second.second);
             if (!status.OK()) {
@@ -54,7 +54,7 @@ class FileOptionsParser {
         }
         if (delimiter_.find_first_of(quote_) != std::string::npos) {
             return {openmldb::base::kSQLCmdRunError,
-                    "ERROR: delimiter[" + delimiter_ + "] can't include quote[" + quote_ + "]"};
+                    "delimiter[" + delimiter_ + "] can't include quote[" + quote_ + "]"};
         }
         return {};
     }
@@ -169,6 +169,6 @@ class WriteFileOptionsParser : public FileOptionsParser {
     }
 };
 
-}  // namespace cmd
+}  // namespace sdk
 }  // namespace openmldb
-#endif  // SRC_CMD_FILE_OPTION_PARSER_H_
+#endif  // SRC_SDK_FILE_OPTION_PARSER_H_

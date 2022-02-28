@@ -733,7 +733,8 @@ void SQLSDKBatchRequestQueryTest::DistributeRunBatchRequestProcedureModeSDK(
 }
 void SQLSDKClusterOnlineBatchQueryTest::DistributeRunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                                                   std::shared_ptr<SQLRouter> router,
-                                                                  const std::vector<std::string>& tbEndpoints, const int partition_num) {
+                                                                  const std::vector<std::string>& tbEndpoints,
+                                                                  const int partition_num) {
     hybridse::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router, partition_num);
