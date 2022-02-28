@@ -30,8 +30,6 @@ enum TableMode {
     kTableFollower = 2;
 }
 
-
-
 enum TableState {
     kTableUndefined = 0;
     kTableNormal = 1;
