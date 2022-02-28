@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "brpc/controller.h"
 #include "butil/iobuf.h"
 #include "sdk/base_impl.h"
 #include "sdk/codec_sdk.h"
@@ -29,7 +28,7 @@ namespace sdk {
 
 class ResultSetBase {
  public:
-    ResultSetBase(const std::shared_ptr<brpc::Controller>& cntl, uint32_t count, uint32_t buf_size,
+    ResultSetBase(const butil::IOBuf* buf, uint32_t count, uint32_t buf_size,
                   std::unique_ptr<::hybridse::sdk::RowIOBufView> row_view, const ::hybridse::vm::Schema& schema);
     ~ResultSetBase();
 
@@ -66,7 +65,7 @@ class ResultSetBase {
     inline int32_t Size() { return count_; }
 
  private:
-    std::shared_ptr<brpc::Controller> cntl_;
+    const butil::IOBuf* io_buf_;
     uint32_t count_;
     uint32_t buf_size_;
     std::unique_ptr<::hybridse::sdk::RowIOBufView> row_view_;

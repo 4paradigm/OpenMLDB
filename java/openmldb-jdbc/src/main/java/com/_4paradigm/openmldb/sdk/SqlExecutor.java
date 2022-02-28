@@ -21,17 +21,22 @@ import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.proto.NS;
 
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
 public interface SqlExecutor {
+    @Deprecated
     boolean createDB(String db);
 
+    @Deprecated
     boolean dropDB(String db);
 
+    @Deprecated
     boolean executeDDL(String db, String sql);
 
+    @Deprecated
     boolean executeInsert(String db, String sql);
 
     boolean executeInsert(String db, String sql, SQLInsertRow row);
@@ -40,6 +45,7 @@ public interface SqlExecutor {
 
     TableReader getTableReader();
 
+    @Deprecated
     java.sql.ResultSet executeSQL(String db, String sql);
 
     SQLInsertRow getInsertRow(String db, String sql);
@@ -47,6 +53,8 @@ public interface SqlExecutor {
     SQLInsertRows getInsertRows(String db, String sql);
 
     ResultSet executeSQLRequest(String db, String sql, SQLRequestRow row);
+
+    Statement getStatement();
 
     PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException;
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "cmd/split.h"
+#include "sdk/split.h"
 
 #include <memory>
 #include <vector>
@@ -25,7 +25,7 @@
 #include "vm/engine.h"
 
 namespace openmldb {
-namespace cmd {
+namespace sdk {
 
 struct SplitTestCase {
     std::vector<std::string> expect;
@@ -67,7 +67,7 @@ TEST_P(SplitTest, SplitLineWithDelimiterForStrings) {
     }
 }
 
-}  // namespace cmd
+}  // namespace sdk
 }  // namespace openmldb
 
 int main(int argc, char** argv) {

@@ -15,6 +15,8 @@
  */
 
 #include "client/taskmanager_client.h"
+#include <vector>
+#include <map>
 
 DECLARE_int32(request_timeout_ms);
 
