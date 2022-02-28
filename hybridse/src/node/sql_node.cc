@@ -1123,7 +1123,6 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
 }
 
 absl::string_view CmdTypeName(const CmdType type) {
-    const std::string default_value = "undefined cmd type";
     auto &map = GetCmdTypeNamesMap();
     auto it = map.find(type);
     if (it != map.end()) {

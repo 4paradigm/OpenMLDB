@@ -2021,6 +2021,7 @@ base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, no
                 node_manager->MakeCmdNode(cmd_type, std::string(path_list.front().data(), path_list.front().size()),
                                           std::string(path_list.back().data(), path_list.back().size()));
         }
+        // did not fail on else branch because ConvertTargetName above covered
     } else {
         *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(cmd_type));
     }
