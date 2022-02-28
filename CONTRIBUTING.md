@@ -24,7 +24,7 @@ Here is the general contribution workflow:
   - the commit messages follow our [commit convention](https://github.com/4paradigm/rfcs/blob/main/style-guide/commit-convention.md)
 
 - Push your commits to your forked repository
-- Submit a pull request to merge from your branch to the OpenMLDB's base branch
+- Submit a pull request to merge from your branch to the OpenMLDB's main branch
 - Address any comments from our community about your PR
 - The PR will be merged by our maintainers after all comments are addressed.
 
@@ -43,6 +43,7 @@ If you just would like to begin your journey to contribute to OpenMLDB community
 
 Please also stay tuned to our **Contributor Challenges** (with prize :gift: ) : 
 
+- [Collection 2, Mar 2022](https://github.com/4paradigm/OpenMLDB/issues/1344) (active)
 - [Collection 1, Dec 2021](https://github.com/4paradigm/OpenMLDB/issues/825)
 
 ## Contributors
