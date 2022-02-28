@@ -26,7 +26,7 @@ def test_smoke():
     print("hello")
     options = sdk_module.OpenmldbClusterSdkOptions(case_conf.FEDB_ZK_CLUSTER,
                                    case_conf.FEDB_ZK_PATH)
-    sdk = sdk_module.OpenmldbSdk(options)
+    sdk = sdk_module.OpenmldbSdk(options, True)
     assert sdk.init()
     db_name = "pydb" + str(time.time_ns()%100000)
     table_name = "pytable" + str(time.time_ns()%100000)
