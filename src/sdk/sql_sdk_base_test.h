@@ -111,9 +111,9 @@ class SQLSDKClusterOnlineBatchQueryTest : public SQLSDKTest {
     SQLSDKClusterOnlineBatchQueryTest() : SQLSDKTest() {}
     ~SQLSDKClusterOnlineBatchQueryTest() {}
     static void DistributeRunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
-                                          std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints,
+                                          std::shared_ptr<SQLRouter> router,
+                                          const std::vector<std::string>& tbEndpoints,
                                           int partition_num = 8);
-
 };
 }  // namespace sdk
 }  // namespace openmldb

@@ -36,6 +36,11 @@
 namespace openmldb {
 namespace sdk {
 
+static void SetOnlineMode(std::shared_ptr<SQLRouter> router) {
+    ::hybridse::sdk::Status status;
+    router->ExecuteSQL("SET @@execute_mode='online';", &status);
+}
+
 ::openmldb::sdk::MiniCluster* mc_;
 std::shared_ptr<SQLRouter> router_;
 
@@ -62,6 +67,7 @@ class SQLClusterDDLTest : public SQLClusterTest {
         sql_opt.zk_path = mc_->GetZkPath();
         router = NewClusterSQLRouter(sql_opt);
         ASSERT_TRUE(router != nullptr);
+        SetOnlineMode(router);
         db = "db" + GenRand();
         ::hybridse::sdk::Status status;
         ASSERT_TRUE(router->CreateDB(db, &status));
@@ -249,6 +255,7 @@ TEST_F(SQLClusterTest, ClusterInsert) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::hybridse::sdk::Status status;
@@ -297,6 +304,7 @@ TEST_F(SQLClusterTest, ClusterInsertWithColumnDefaultValue) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::hybridse::sdk::Status status;
@@ -375,6 +383,7 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
+    SetOnlineMode(router);
     std::string db = "gettabletclient;";
     hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
@@ -469,7 +478,9 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.session_timeout = 60000;
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
-    return NewClusterSQLRouter(sql_opt);
+    auto router = NewClusterSQLRouter(sql_opt);
+    SetOnlineMode(router);
+    return router;
 }
 static bool IsRequestSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
@@ -659,6 +670,7 @@ TEST_F(SQLClusterTest, CreateTable) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
     std::string db = "db" + GenRand();
     ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
@@ -703,6 +715,7 @@ TEST_F(SQLClusterTest, GetTableSchema) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
     std::string db = "db" + GenRand();
     std::string table = "test0";
     ::hybridse::sdk::Status status;

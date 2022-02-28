@@ -20,6 +20,7 @@
 #include <base/status.h>
 #include <proto/taskmanager.pb.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -34,13 +35,21 @@
 namespace openmldb {
 namespace sdk {
 
-struct SQLRouterOptions {
-    std::string zk_cluster;
-    std::string zk_path;
+struct BasicRouterOptions {
     bool enable_debug = false;
     uint32_t session_timeout = 2000;
     uint32_t max_sql_cache_size = 10;
     uint32_t request_timeout = 60000;
+};
+
+struct SQLRouterOptions : BasicRouterOptions {
+    std::string zk_cluster;
+    std::string zk_path;
+};
+
+struct StandaloneOptions : BasicRouterOptions {
+    std::string host;
+    uint32_t port;
 };
 
 class ExplainInfo {
@@ -71,7 +80,7 @@ class SQLRouter {
     virtual ~SQLRouter() {}
 
     virtual bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) = 0;
-    
+
     virtual std::vector<std::string> GetAllTables() = 0;
 
     virtual bool CreateDB(const std::string& db, hybridse::sdk::Status* status) = 0;
@@ -110,6 +119,9 @@ class SQLRouter {
         hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
+                                                                 hybridse::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& sql,
                                                                  hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(
@@ -153,33 +165,33 @@ class SQLRouter {
     virtual bool UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) = 0;
 
     virtual ::openmldb::base::Status ShowJobs(const bool only_unfinished,
-                                              std::vector<::openmldb::taskmanager::JobInfo>& job_infos) = 0;
+                                              std::vector<::openmldb::taskmanager::JobInfo>& job_infos) = 0; // NOLINT
 
     virtual ::openmldb::base::Status ShowJob(const int id,
-                                             ::openmldb::taskmanager::JobInfo& job_info) = 0;
+                                             ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
 
     virtual ::openmldb::base::Status StopJob(const int id,
-                                             ::openmldb::taskmanager::JobInfo& job_info) = 0;
+                                             ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
 
     virtual ::openmldb::base::Status ExecuteOfflineQuery(const std::string& sql,
                                                          const std::map<std::string, std::string>& config,
                                                          const std::string& default_db,
-                                                         ::openmldb::taskmanager::JobInfo& job_info) = 0;
+                                                         ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
 
     virtual ::openmldb::base::Status ImportOnlineData(const std::string& sql,
                                                       const std::map<std::string, std::string>& config,
                                                       const std::string& default_db,
-                                                      ::openmldb::taskmanager::JobInfo& job_info) = 0;
+                                                      ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
 
     virtual ::openmldb::base::Status ImportOfflineData(const std::string& sql,
                                                        const std::map<std::string, std::string>& config,
                                                        const std::string& default_db,
-                                                       ::openmldb::taskmanager::JobInfo& job_info) = 0;
+                                                       ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
 
     virtual ::openmldb::base::Status ExportOfflineData(const std::string& sql,
                                                        const std::map<std::string, std::string>& config,
                                                        const std::string& default_db,
-                                                       ::openmldb::taskmanager::JobInfo& job_info) = 0;
+                                                       ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
 
     virtual std::string GetJobLog(const int id, hybridse::sdk::Status* status) = 0;
 
@@ -187,6 +199,8 @@ class SQLRouter {
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
+
+std::shared_ptr<SQLRouter> NewStandaloneSQLRouter(const StandaloneOptions& options);
 
 /*
  * return ddl statements

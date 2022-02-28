@@ -297,7 +297,7 @@ std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> DBSDK::GetTables
     }
     return tables;
 }
-    
+
 std::vector<std::string> DBSDK::GetAllTables(){
     std::map<std::string, std::shared_ptr<nameserver::TableInfo>> table_map;
     std::vector<std::string> all_tables;

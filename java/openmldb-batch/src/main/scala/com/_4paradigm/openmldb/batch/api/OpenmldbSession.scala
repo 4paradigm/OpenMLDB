@@ -17,14 +17,17 @@
 package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
+import com._4paradigm.openmldb.batch.utils.HybridseUtil
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.apache.spark.{SPARK_VERSION, SparkConf}
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
+import scala.collection.JavaConverters.asScalaBufferConverter
 
 /**
  * The class to provide SparkSession-like API.
@@ -57,6 +60,8 @@ class OpenmldbSession {
     this.setDefaultSparkConfig()
 
     if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkRootPath.nonEmpty) {
+      logger.info(s"Try to connect OpenMLDB with zk ${this.config.openmldbZkCluster} and root path " +
+        s"${this.config.openmldbZkRootPath}")
       try {
         openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster,
           this.config.openmldbZkRootPath, config.openmldbJsdkLibraryPath)
@@ -64,7 +69,8 @@ class OpenmldbSession {
       } catch {
         case e: Exception => logger.warn("Fail to connect OpenMLDB cluster and register tables, " + e.getMessage)
       }
-
+    } else {
+      logger.warn("openmldb.zk.cluster or openmldb.zk.root.path is not set and do not register OpenMLDB tables")
     }
   }
 
@@ -266,9 +272,19 @@ class OpenmldbSession {
               registerTable(dbName, tableName, df)
             } else {
               // Register empty df for table
-              logger.info(s"Register empty dataframe fof $dbName.$tableName")
-              // TODO: Create empty df with schema
-              registerTable(dbName, tableName, sparkSession.emptyDataFrame)
+              val tableInfo = catalogService.getTableInfo(dbName, tableName)
+              val columnDescList = tableInfo.getColumnDescList()
+
+              val schema = new StructType(columnDescList.asScala.map(colDesc => {
+                StructField(colDesc.getName, HybridseUtil.protoTypeToSparkType(colDesc.getDataType),
+                  !colDesc.getNotNull)
+              }).toArray)
+
+              logger.info(s"Register empty dataframe fof $dbName.$tableName with schema ${schema}")
+              // Create empty df with schema
+              val emptyDf = sparkSession.createDataFrame(sparkSession.emptyDataFrame.rdd, schema)
+
+              registerTable(dbName, tableName, emptyDf)
             }
           } catch {
             case e: Exception => logger.warn(s"Fail to register table $dbName.$tableName, error: ${e.getMessage}")

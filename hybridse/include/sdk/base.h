@@ -29,6 +29,7 @@ struct Status {
     Status() : code(0), msg("ok") {}
     Status(int status_code, const std::string& msg_str)
         : code(status_code), msg(msg_str) {}
+    bool IsOK() const { return code == 0; }
     int code;
     std::string trace;
     std::string msg;
