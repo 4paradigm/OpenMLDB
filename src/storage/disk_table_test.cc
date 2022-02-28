@@ -522,7 +522,7 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
         "t1", 7, 1, mapping, 5, ::openmldb::type::TTLType::kAbsoluteTime,
         ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
-    
+
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 10; idx++) {
         std::string key = "test" + std::to_string(idx);

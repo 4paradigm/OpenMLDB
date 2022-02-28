@@ -56,7 +56,7 @@ void RemoveData(const std::string& path) {
     ::openmldb::base::RemoveDir(FLAGS_ssd_root_path);
 }
 
-using ::openmldb::codec::SchemaCodec; 
+using ::openmldb::codec::SchemaCodec;
 
 class DiskTestEnvironment : public ::testing::Environment{
     virtual void TearDown() {
@@ -197,7 +197,7 @@ void Release(::openmldb::common::StorageMode storageMode) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     int id = ++counter;
-    Table* table = Table::CreateTable("tx_log", id, 1, 8, mapping, 10, ::openmldb::type::kAbsoluteTime, 
+    Table* table = Table::CreateTable("tx_log", id, 1, 8, mapping, 10, ::openmldb::type::kAbsoluteTime,
         FLAGS_hdd_root_path, storageMode);
     table->Init();
     table->Put("test", 9537, "test", 4);
@@ -608,7 +608,7 @@ void TableIteratorRun(::openmldb::common::StorageMode storageMode) {
     // ASSERT_FALSE(it->Valid());
 
     it->Seek("none", 11111);
-    
+
     // disktable and memtable behave inconsistently when seeking with nonexistent pk
     // see issue #1241 for more information
     if (storageMode == ::openmldb::common::StorageMode::kMemory) {
@@ -616,7 +616,6 @@ void TableIteratorRun(::openmldb::common::StorageMode storageMode) {
     } else {
         ASSERT_FALSE(it->Valid());
     }
-    
 
     it->Seek("test", 30);
     ASSERT_TRUE(it->Valid());
@@ -625,7 +624,7 @@ void TableIteratorRun(::openmldb::common::StorageMode storageMode) {
 
     it->Seek("test", 20);
     ASSERT_FALSE(it->Valid());
-    
+
     delete it;
     delete table;
 
@@ -641,7 +640,7 @@ void TableIteratorRun(::openmldb::common::StorageMode storageMode) {
     table1->Put("test", 20, "test5", 5);
 
     TableIterator* it1 = table1->NewTraverseIterator(0);
-    
+
     it1->Seek("pk", 9528);
     ASSERT_TRUE(it1->Valid());
     ASSERT_STREQ("pk", it1->GetPK().c_str());
@@ -684,7 +683,7 @@ void TableIteratorNoPk(::openmldb::common::StorageMode storageMode) {
     // Ticket ticket;
     TableIterator* it = table->NewTraverseIterator(0);
     it->SeekToFirst();
-    
+
     ASSERT_STREQ("pk0", it->GetPK().c_str());
     ASSERT_EQ(9522, (int64_t)it->GetKey());
     it->Next();
@@ -695,9 +694,8 @@ void TableIteratorNoPk(::openmldb::common::StorageMode storageMode) {
     ASSERT_EQ(9523, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("pk4", it->GetPK().c_str());
-    ASSERT_EQ(9524, (int64_t)it->GetKey());
-        
-    
+    ASSERT_EQ(9524, (int64_t)it->GetKey());    
+
     delete it;
 
     it = table->NewTraverseIterator(0);
@@ -716,7 +714,7 @@ void TableIteratorNoPk(::openmldb::common::StorageMode storageMode) {
     it->Next();
     ASSERT_STREQ("pk8", it->GetPK().c_str());
     ASSERT_EQ(9526, (int64_t)it->GetKey());
-    
+
     delete it;
     delete table;
 }
@@ -760,7 +758,7 @@ void TableIteratorCount(::openmldb::common::StorageMode storageMode) {
         count++;
         it->Next();
     }
-    // We seek to pk500 9528. The next data is pk500 9527. 
+    // We seek to pk500 9528. The next data is pk500 9527.
     // Then all these records with pk greater than str(500) and both timestamps are traversed
     // So here the count is 55551
     ASSERT_EQ(55551, count);
@@ -783,7 +781,7 @@ void TableIteratorCount(::openmldb::common::StorageMode storageMode) {
             ASSERT_TRUE(cur_it->Valid());
         }
     }
-    
+
     delete cur_it;
     delete table;
 }
@@ -894,7 +892,7 @@ void TableIteratorTS(::openmldb::common::StorageMode storageMode) {
     } else {
         ASSERT_EQ(1, count);
     }
-    
+
     delete iter;
     iter = table->NewIterator(1, "card5", ticket);
     iter->SeekToFirst();
@@ -997,7 +995,7 @@ void TraverseIteratorCount(::openmldb::common::StorageMode storageMode) {
         ASSERT_EQ(100, count);
         ASSERT_EQ(100, (int64_t)it->GetCount());
     }
-    
+
     delete it;
 
     it = table->NewTraverseIterator(2);
@@ -1587,7 +1585,7 @@ TEST_F(TableTest, GcAbsAndLatMem) {
 void TraverseIteratorCountWithLimit(::openmldb::common::StorageMode storageMode) {
     uint32_t old_max_traverse = FLAGS_max_traverse_cnt;
     FLAGS_max_traverse_cnt = 50;
-    
+
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     int id = ++counter;
@@ -1648,7 +1646,7 @@ void TraverseIteratorCountWithLimit(::openmldb::common::StorageMode storageMode)
         ASSERT_EQ(49, count);
         ASSERT_EQ(50, (int64_t)it->GetCount());
     }
-    
+
     delete it;
 
     it = table->NewTraverseIterator(2);

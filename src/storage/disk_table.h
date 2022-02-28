@@ -381,14 +381,13 @@ class DiskTable : public Table {
     }
 
     int CreateCheckPoint(const std::string& checkpoint_dir);
-    
+
     bool DeleteIndex(const std::string& idx_name) override;
     uint64_t GetRecordIdxCnt() override;
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) override;
     uint64_t GetRecordPkCnt() override;
     inline uint64_t GetRecordByteSize() const override { 
-        // TODO
-        return 0; 
+        return 0;
     }
     uint64_t GetRecordIdxByteSize() override;
     uint64_t Release() override;
