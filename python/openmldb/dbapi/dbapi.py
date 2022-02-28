@@ -454,11 +454,9 @@ class Cursor(object):
 
 class Connection(object):
 
-    def __init__(self, db,is_cluster_mode=True, *args):
+    def __init__(self, db, is_cluster_mode=True, *args):
         self._connected = True
         self._db = db
-        self.zk_or_host = args[0]
-        self.zkPath_or_port = args[1]
         if is_cluster_mode:
             options = sdk_module.OpenmldbClusterSdkOptions(args[0], args[1])
         else:
@@ -509,5 +507,8 @@ class Connection(object):
         return Cursor(self._db, self)
 
 # Constructor for creating connection to db
-def connect(db,*args,is_cluster_mode=True):
-    return Connection(db, is_cluster_mode, args[0], args[1])
+def connect(db, zk=None, zkPath=None, host=None, port=None, is_cluster_mode=True):
+    if is_cluster_mode:
+        return Connection(db, is_cluster_mode, zk, zkPath)
+    else:
+        return Connection(db, is_cluster_mode, host, int(port))
