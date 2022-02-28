@@ -24,7 +24,7 @@ import time
 
 def test_smoke():
     print("hello")
-    options = sdk_module.OpenmldbSdkOptions(case_conf.FEDB_ZK_CLUSTER,
+    options = sdk_module.OpenmldbClusterSdkOptions(case_conf.FEDB_ZK_CLUSTER,
                                    case_conf.FEDB_ZK_PATH)
     sdk = sdk_module.OpenmldbSdk(options)
     assert sdk.init()
