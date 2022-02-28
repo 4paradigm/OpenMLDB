@@ -25,7 +25,7 @@ ExternalProject_Add(
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND ${MAKE_EXE} static_lib ${MAKEOPTS}
+  BUILD_COMMAND ${MAKE_EXE} USE_RTTI=1 static_lib ${MAKEOPTS}
   INSTALL_COMMAND bash -c "cp -rvf ./include/* <INSTALL_DIR>/include/"
     COMMAND mkdir -p <INSTALL_DIR>/lib > /dev/null 2>&1
     COMMAND cp -v librocksdb.a <INSTALL_DIR>/lib/)
