@@ -52,7 +52,6 @@ class OpenmldbSdk(object):
                 logger.error("fail to init openmldb sdk with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
                 return False
             logger.info("init openmldb sdk done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
-            return True
         else:
             options = sql_router_sdk.StandaloneOptions()
             options.host = self.options.host
@@ -63,7 +62,7 @@ class OpenmldbSdk(object):
                 return False
             logger.info(
                 "init openmldb sdk done with host %s and port %s" % (options.host, options.port))
-            return True
+        return True
 
     def getDatabases(self):
         if not self.sdk:
