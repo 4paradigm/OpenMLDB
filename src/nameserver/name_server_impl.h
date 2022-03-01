@@ -465,7 +465,7 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<Task> CreateLoadTableTask(const std::string& endpoint, uint64_t op_index,
                                               ::openmldb::api::OPType op_type, const std::string& name, uint32_t tid,
-                                              uint32_t pid, uint32_t seg_cnt, bool is_leader);
+                                              uint32_t pid, uint32_t seg_cnt, bool is_leader, ::openmldb::common::StorageMode storage_mode);
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(const std::string& alias, const std::string& name,
                                                     const std::string& db, const std::string& endpoint, uint32_t pid,
