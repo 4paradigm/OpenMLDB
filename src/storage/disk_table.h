@@ -40,8 +40,6 @@
 #include "storage/iterator.h"
 #include "storage/table.h"
 
-typedef google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> Dimensions;
-
 namespace openmldb {
 namespace storage {
 

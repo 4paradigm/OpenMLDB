@@ -36,8 +36,8 @@ Table::Table(::openmldb::common::StorageMode storage_mode, const std::string& na
       name_(name),
       id_(id),
       pid_(pid),
-      ttl_offset_(ttl_offset),
       is_leader_(is_leader),
+      ttl_offset_(ttl_offset),
       compress_type_(compress_type),
       version_schema_(),
       update_ttl_(std::make_shared<std::vector<::openmldb::storage::UpdateTTLMeta>>()) {

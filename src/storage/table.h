@@ -185,13 +185,13 @@ class Table {
     void UpdateTTL();
     bool InitFromMeta();
 
-    std::string name_;
     ::openmldb::common::StorageMode storage_mode_;
+    std::string name_;
     uint32_t id_;
     uint32_t pid_;
     std::atomic<uint64_t> diskused_;
-    uint64_t ttl_offset_;
     bool is_leader_;
+    uint64_t ttl_offset_;
     std::atomic<uint32_t> table_status_;
     TableIndex table_index_;
     ::openmldb::type::CompressType compress_type_;
