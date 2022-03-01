@@ -1361,7 +1361,7 @@ void HandleSQL(const std::string& sql) {
         }
         case hybridse::node::kPlanTypeSelectInto: {
             ::openmldb::base::Status status;
-            if (IsOnlineMode()) {
+            if (!cs->IsClusterMode() || IsOnlineMode()) {
                 auto* select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode*>(node);
                 const std::string& query_sql = select_into_plan_node->QueryStr();
                 ::hybridse::sdk::Status sdk_status;
