@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.4.2] - 2022-02-28
+## [0.4.2] - 2022-03-01
 
 ### Features
 - Support timestamps in `long int` when importing a csv file (#1237 @vagetablechicken)
