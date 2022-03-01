@@ -466,19 +466,22 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
     std::string meta_sql = "select * from " + meta_table + ";";
 
     auto rs = router->ExecuteSQL(meta_db, meta_sql, &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_EQ(1, rs->Size());
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("pre_test1_w1_sum_col3", rs->GetStringUnsafe(0));
-        ASSERT_EQ(base_db, rs->GetStringUnsafe(1));
-        ASSERT_EQ(base_table, rs->GetStringUnsafe(2));
-        ASSERT_EQ("sum", rs->GetStringUnsafe(3));
-        ASSERT_EQ("col3", rs->GetStringUnsafe(4));
-        ASSERT_EQ("col1", rs->GetStringUnsafe(5));
-        ASSERT_EQ("col2", rs->GetStringUnsafe(6));
-        ASSERT_EQ("1000", rs->GetStringUnsafe(7));
+    ASSERT_EQ(0, static_cast<int>(status.code));
+    ASSERT_EQ(1, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("pre_test1_w1_sum_col3", rs->GetStringUnsafe(0));
+    ASSERT_EQ(base_db, rs->GetStringUnsafe(1));
+    ASSERT_EQ(base_table, rs->GetStringUnsafe(2));
+    ASSERT_EQ("sum", rs->GetStringUnsafe(3));
+    ASSERT_EQ("col3", rs->GetStringUnsafe(4));
+    ASSERT_EQ("col1", rs->GetStringUnsafe(5));
+    ASSERT_EQ("col2", rs->GetStringUnsafe(6));
+    ASSERT_EQ("1000", rs->GetStringUnsafe(7));
 
     ASSERT_TRUE(mc_->GetNsClient()->DropProcedure(base_db, "test1", msg));
+    std::string pre_aggr_table = "pre_test1_w1_sum_col3";
+    ok = router->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
     ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(base_db, &status);
@@ -534,20 +537,20 @@ TEST_F(SQLClusterTest, PreAggrTableExist) {
 
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
-    std::string meta_sql = "select * from " + meta_table + ";";
+    std::string meta_sql = "select * from " + meta_table + " where base_db='" + base_db + "';";
 
     auto rs = router->ExecuteSQL(meta_db, meta_sql, &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_EQ(1, rs->Size());
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("pre_test1_w1_sum_col3", rs->GetStringUnsafe(0));
-        ASSERT_EQ(base_db, rs->GetStringUnsafe(1));
-        ASSERT_EQ(base_table, rs->GetStringUnsafe(2));
-        ASSERT_EQ("sum", rs->GetStringUnsafe(3));
-        ASSERT_EQ("col3", rs->GetStringUnsafe(4));
-        ASSERT_EQ("col1", rs->GetStringUnsafe(5));
-        ASSERT_EQ("col2", rs->GetStringUnsafe(6));
-        ASSERT_EQ("1000", rs->GetStringUnsafe(7));
+    ASSERT_EQ(0, static_cast<int>(status.code));
+    ASSERT_EQ(1, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("pre_test1_w1_sum_col3", rs->GetStringUnsafe(0));
+    ASSERT_EQ(base_db, rs->GetStringUnsafe(1));
+    ASSERT_EQ(base_table, rs->GetStringUnsafe(2));
+    ASSERT_EQ("sum", rs->GetStringUnsafe(3));
+    ASSERT_EQ("col3", rs->GetStringUnsafe(4));
+    ASSERT_EQ("col1", rs->GetStringUnsafe(5));
+    ASSERT_EQ("col2", rs->GetStringUnsafe(6));
+    ASSERT_EQ("1000", rs->GetStringUnsafe(7));
     ASSERT_TRUE(mc_->GetNsClient()->DropProcedure(base_db, "test2", msg));
     ASSERT_TRUE(mc_->GetNsClient()->DropProcedure(base_db, "test1", msg));
     ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
