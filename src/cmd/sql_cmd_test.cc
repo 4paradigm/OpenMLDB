@@ -272,6 +272,13 @@ TEST_P(DBSDKTest, create_without_index_col) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
+TEST_P(DBSDKTest, show) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("show global variables");
+}
+
 /* TODO: Only run test in standalone mode
 TEST_P(DBSDKTest, load_data) {
     auto cli = GetParam();
