@@ -193,31 +193,7 @@ TEST_F(TableTest, MultiDimissionPut0Disk) {
     MultiDimissionPut0(::openmldb::common::StorageMode::kHDD);
 }
 
-void Release(::openmldb::common::StorageMode storageMode) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    int id = ++counter;
-    Table* table = Table::CreateTable("tx_log", id, 1, 8, mapping, 10, ::openmldb::type::kAbsoluteTime,
-        FLAGS_hdd_root_path, storageMode);
-    table->Init();
-    table->Put("test", 9537, "test", 4);
-    table->Put("test2", 9537, "test", 4);
-    int64_t cnt = table->Release();
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(cnt, 2);
-    }
-    delete table;
-}
 
-TEST_F(TableTest, ReleaseMem) {
-    Release(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, ReleaseDisk) {
-    Release(::openmldb::common::StorageMode::kHDD);
-}
 
 void IsExpired(::openmldb::common::StorageMode storageMode) {
     std::map<std::string, uint32_t> mapping;
@@ -1682,6 +1658,19 @@ TEST_F(TableTest, TraverseIteratorCountWithLimitDisk) {
     TraverseIteratorCountWithLimit(::openmldb::common::StorageMode::kHDD);
 }
 
+// Release function is only in memtable
+TEST_F(TableTest, Release) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    int id = ++counter;
+    MemTable* table = new MemTable("tx_log", id, 1, 8, mapping, 10, ::openmldb::type::kAbsoluteTime);
+    table->Init();
+    table->Put("test", 9537, "test", 4);
+    table->Put("test2", 9537, "test", 4);
+    int64_t cnt = table->Release();
+    ASSERT_EQ(cnt, 2);
+    delete table;
+}
 
 }  // namespace storage
 }  // namespace openmldb

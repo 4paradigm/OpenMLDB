@@ -349,7 +349,6 @@ class DiskTable : public Table {
     uint64_t GetRecordPkCnt() override;
     inline uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
-    uint64_t Release() override;
 
  private:
     rocksdb::DB* db_;

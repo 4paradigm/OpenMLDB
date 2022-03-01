@@ -857,10 +857,5 @@ uint64_t DiskTable::GetRecordIdxByteSize() {
     return 0;
 }
 
-uint64_t DiskTable::Release() {
-    // TODO(litongxin)
-    return 0;
-}
-
 }  // namespace storage
 }  // namespace openmldb
