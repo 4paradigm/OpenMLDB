@@ -1581,8 +1581,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
             return ResultSetSQL::MakeResultSet({"Variable_name", "Value"}, items, status);
         }
         case hybridse::node::kCmdShowGlobalVariables: {
-            *status = {::hybridse::common::StatusCode::kCmdError, "global variable is unsupported now"};
-            return {};
+            std::string db_ = "INFORMATION_SCHEMA";
+            std::string sql = "select * from GLOBAL_VARIABLES";
+            ::hybridse::sdk::Status status;
+            auto rs = ExecuteSQL(db_, sql, &status);
+            if(status.code != 0) {
+                std::cout << "ERROR: " << status.msg << std::endl;
+                return {};
+            }
+            return rs;
         }
         case hybridse::node::kCmdExit: {
             exit(0);
