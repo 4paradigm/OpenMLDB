@@ -2919,9 +2919,10 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
                                               const std::string& bucket_size) {
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
-    std::string meta_info = "base_db = '" +  base_db +"' and base_table = '" + base_table + "' and aggr_func = '" + aggr_func +
-                             "' and aggr_col = '" + aggr_col + "' and partition_cols = '" + partition_col +
-                             "' and order_by_col = '" + order_col;
+    std::string meta_info = "base_db = '" +  base_db +"' and base_table = '" + base_table +
+                            "' and aggr_func = '" + aggr_func +
+                            "' and aggr_col = '" + aggr_col + "' and partition_cols = '" +
+                            partition_col + "' and order_by_col = '" + order_col;
     std::string select_sql = "select bucket_size from " + meta_db + "." + meta_table +
                              " where " + meta_info + "';";
     hybridse::sdk::Status status;
@@ -2931,7 +2932,7 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
     }
 
     // Check if the bucket_size equal to the one in meta table with the same meta info.
-    // Currently, we create pre-aggregated table for pre-aggr meta info that have different 
+    // Currently, we create pre-aggregated table for pre-aggr meta info that have different
     // bucket_size but the same other meta info.
     if (rs->Size() > 0) {
         while (rs->Next()) {
