@@ -602,7 +602,8 @@ TEST_F(DDLParserTest, extractLongWindow) {
             "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as "
             "w1_col1_sum,\n"
             "      sum(col1) OVER w2 as w2_col1_sum,\n"
-            "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as "
+            "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts"
+            " ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as "
             "w3_col1_sum\n"
             "      FROM t1\n"
             "      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
