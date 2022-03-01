@@ -46,7 +46,6 @@ option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
 option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
-option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
 
 set(DEPS_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/.deps/usr" CACHE PATH "Path prefix for finding dependencies")
 if (NOT DEFINED CMAKE_PREFIX_PATH)
@@ -62,12 +61,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-if (SANITIZER_ENABLE)
-    set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-    set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-    message(STATUS "Enabled AddressSanitizer")
-endif()
 
 set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
 # llvm dependency
@@ -86,6 +79,7 @@ else ()
     llvm_map_components_to_libnames(LLVM_LIBS
             support core orcjit nativecodegen)
 endif ()
+message(STATUS "Using LLVM components: ${LLVM_LIBS}")
 
 find_package(Threads)
 
@@ -155,11 +149,17 @@ add_definitions(${LLVM_DEFINITIONS})
 find_package(SWIG REQUIRED)
 include(UseSWIG)
 
-include_directories(${CMAKE_PREFIX_PATH}/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-link_directories(${CMAKE_PREFIX_PATH}/lib)
-link_directories(${CMAKE_PREFIX_PATH}/lib64)
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
+    ${CMAKE_PREFIX_PATH}/include)
 
+link_directories(
+    ${LLVM_LIBRARY_DIRS}
+    ${Boost_LIBRARY_DIRS}
+    ${CMAKE_PREFIX_PATH}/lib
+    ${CMAKE_PREFIX_PATH}/lib64)
 
 find_package(absl REQUIRED)
 # modify absl::time_zone INTERFACE_LINK_LIBRARIES

@@ -46,7 +46,7 @@ add_library(toydb_flags STATIC toydb_flags.cc)
 
 # toydb lib
 set(TOYDB_DEPS_LIBS hybridse_core hybridse_sdk hybridse_flags toydb_flags sqlite3
-        ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB})
+    ${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB})
 add_library(toydb_lib STATIC ${TOYDB_SRC_FILE_LIST})
 target_link_libraries(toydb_lib ${TOYDB_DEPS_LIBS})
 
