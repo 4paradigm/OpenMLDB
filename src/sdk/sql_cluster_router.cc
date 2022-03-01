@@ -2070,7 +2070,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     SetColumnDesc("key", openmldb::type::DataType::kString, table_info.add_column_desc());
     SetColumnDesc("ts_start", openmldb::type::DataType::kTimestamp, table_info.add_column_desc());
     SetColumnDesc("ts_end", openmldb::type::DataType::kTimestamp, table_info.add_column_desc());
-    SetColumnDesc("num_rpws", openmldb::type::DataType::kInt, table_info.add_column_desc());
+    SetColumnDesc("num_rows", openmldb::type::DataType::kInt, table_info.add_column_desc());
     SetColumnDesc("agg_val", openmldb::type::DataType::kString, table_info.add_column_desc());
     SetColumnDesc("binlog_offset", openmldb::type::DataType::kBigInt, table_info.add_column_desc());
     auto index = table_info.add_column_key();
@@ -2740,12 +2740,18 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
         std::string msg;
         ns_client->ShowTable(base_table, base_db, false, tables, msg);
         if (tables.size() != 1) {
-            return {base::ReturnCode::kError, "table not found"};
+            return {base::ReturnCode::kError, "base table not found"};
         }
         std::string meta_db = openmldb::nameserver::INTERNAL_DB;
         std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
         std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
         for (const auto& lw : long_window_infos) {
+            // check if pre-aggr table exists
+            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw.aggr_func_, lw.aggr_col_,
+                                                   lw.partition_col_, lw.order_col_, lw.bucket_size_);
+            if (is_exist) {
+                continue;
+            }
             // insert pre-aggr meta info to meta table
             auto aggr_table = "pre_" + deploy_node->Name() + "_" +
                               lw.window_name_ + "_" + lw.aggr_func_ + "_" + lw.aggr_col_;
@@ -2900,5 +2906,38 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
     return {};
 }
 
+bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
+                                              const std::string& aggr_func, const std::string& aggr_col,
+                                              const std::string& partition_col, const std::string& order_col,
+                                              const std::string& bucket_size) {
+    std::string meta_db = openmldb::nameserver::INTERNAL_DB;
+    std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
+    std::string meta_info = "base_db = '" +  base_db +"' and base_table = '" + base_table + "' and aggr_func = '" + aggr_func +
+                             "' and aggr_col = '" + aggr_col + "' and partition_cols = '" + partition_col +
+                             "' and order_by_col = '" + order_col;
+    std::string select_sql = "select bucket_size from " + meta_db + "." + meta_table +
+                             " where " + meta_info + "';";
+    hybridse::sdk::Status status;
+    auto rs = ExecuteSQL("", select_sql, &status);
+    if (!status.IsOK()) {
+        return false;
+    }
+
+    // Check if the bucket_size equal to the one in meta table with the same meta info.
+    // Currently, we create pre-aggregated table for pre-aggr meta info that have different 
+    // bucket_size but the same other meta info.
+    if (rs->Size() > 0) {
+        while (rs->Next()) {
+            std::string exist_bucket_size;
+            rs->GetString(0, &exist_bucket_size);
+            if (exist_bucket_size == bucket_size) {
+                LOG(INFO) << "Pre-aggregated table with same meta info already exist: " << meta_info;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 }  // namespace sdk
 }  // namespace openmldb

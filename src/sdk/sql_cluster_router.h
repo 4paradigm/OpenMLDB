@@ -332,6 +332,11 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
 
+    bool CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
+                                const std::string& aggr_func, const std::string& aggr_col,
+                                const std::string& partition_col, const std::string& order_col,
+                                const std::string& bucket_size);
+
  private:
     SQLRouterOptions options_;
     StandaloneOptions standalone_options_;
