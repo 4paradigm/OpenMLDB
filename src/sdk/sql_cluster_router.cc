@@ -1585,7 +1585,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
             std::string sql = "select * from GLOBAL_VARIABLES";
             ::hybridse::sdk::Status status;
             auto rs = ExecuteSQL(db_, sql, &status);
-            if(status.code != 0) {
+            if (status.code != 0) {
                 std::cout << "ERROR: " << status.msg << std::endl;
                 return {};
             }
