@@ -95,11 +95,20 @@ object WindowAggPlan {
       val internalRowRdd = repartitionDf.queryExecution.toRdd
       val zippedRdd = rowRdd.zip(internalRowRdd)
 
-      val outputInternalRowRdd = zippedRdd.mapPartitionsWithIndex {
-        case (partitionIndex, iter) =>
-          val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
-          unsafeWindowAggIter(computer, iter, sparkFeConfig, windowAggConfig, outputSchema)
+      val outputInternalRowRdd = if (isWindowWithUnion) {
+        zippedRdd.mapPartitionsWithIndex {
+          case (partitionIndex, iter) =>
+            val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
+            unsafeWindowAggIterWithUnionFlag(computer, iter, sparkFeConfig, windowAggConfig, outputSchema)
+        }
+      } else {
+        zippedRdd.mapPartitionsWithIndex {
+          case (partitionIndex, iter) =>
+            val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
+            unsafeWindowAggIter(computer, iter, sparkFeConfig, windowAggConfig, outputSchema)
+        }
       }
+
       SparkUtil.rddInternalRowToDf(ctx.getSparkSession, outputInternalRowRdd, outputSchema)
 
     } else { // isUnsafeRowOptimization is false
@@ -429,6 +438,92 @@ object WindowAggPlan {
       computer.delete()
     }
   }
+
+  def unsafeWindowAggIterWithUnionFlag(computer: WindowComputer,
+                                       inputIter: Iterator[(Row, InternalRow)],
+                                       sqlConfig: OpenmldbBatchConfig,
+                                       config: WindowAggConfig,
+                                       outputSchema: StructType): Iterator[InternalRow] = {
+    val flagIdx = config.unionFlagIdx
+    var lastRow: Row = null
+
+    // Take the iterator if the limit has been set
+    val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
+
+    if (config.partIdIdx != 0) {
+      val skewGroups = config.groupIdxs :+ config.partIdIdx
+      computer.resetGroupKeyComparator(skewGroups)
+    }
+
+    val resIter = if (sqlConfig.enableWindowSkewOpt) {
+      limitInputIter.flatMap(zippedRow => {
+
+        val row = zippedRow._1
+        val internalRow = zippedRow._2
+
+        if (lastRow != null) {
+          computer.checkPartition(row, lastRow)
+        }
+        lastRow = row
+
+        val orderKey = computer.extractKey(row)
+        val expandedFlag = row.getBoolean(config.expandedFlagIdx)
+        if (!isValidOrder(orderKey)) {
+          None
+        } else if (!expandedFlag) {
+          Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema))
+        } else {
+          computer.bufferRowOnly(row, orderKey)
+          None
+        }
+      })
+    } else {
+      limitInputIter.flatMap(zippedRow => {
+
+        val row = zippedRow._1
+        val internalRow = zippedRow._2
+
+        if (lastRow != null) {
+          computer.checkPartition(row, lastRow)
+        }
+        lastRow = row
+
+        val orderKey = computer.extractKey(row)
+        if (isValidOrder(orderKey)) {
+
+          val unionFlag = row.getBoolean(flagIdx)
+          if (unionFlag) {
+            if (sqlConfig.enableWindowSkewOpt) {
+              val expandedFlag = row.getBoolean(config.expandedFlagIdx)
+              if (!expandedFlag) {
+                Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx,
+                  outputSchema))
+              } else {
+                if (!config.instanceNotInWindow) {
+                  computer.bufferRowOnly(row, orderKey)
+                }
+                None
+              }
+            } else {
+              Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx,
+                outputSchema))
+            }
+          } else {
+            // secondary
+            computer.bufferRowOnly(row, orderKey)
+            None
+          }
+        } else {
+          None
+        }
+      })
+    }
+    AutoDestructibleIterator(resIter) {
+      computer.delete()
+    }
+  }
+
+
 
   def isValidOrder(key: Long): Boolean = {
     // TODO: Ignore the null value, maybe handle null in the future

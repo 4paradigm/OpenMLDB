@@ -39,9 +39,16 @@ object UnsafeRowUtil {
     val inputRowBytes = unsafeRow.getBytes
     val inputRowSize = inputRowBytes.size
 
-    // Add the header and memcpy bytes for input row, no need to set version and size in header
-    val hybridseRowHeaderBytes = ByteBuffer.allocate(HybridseRowHeaderSize)
-    ByteBuffer.allocate(HybridseRowHeaderSize + inputRowSize).put(hybridseRowHeaderBytes).put(inputRowBytes).array()
+    // FVersion
+    val fversionBytes = ByteArrayUtil.intToOneByteArray(1)
+    // SVersion
+    val sversionBytes = ByteArrayUtil.intToOneByteArray(1)
+    // Size
+    val sizeBytes = ByteArrayUtil.intToByteArray(HybridseRowHeaderSize + inputRowSize)
+
+    // Add the header and memcpy bytes for input row
+    ByteBuffer.allocate(HybridseRowHeaderSize + inputRowSize).put(fversionBytes).put(sversionBytes).put(sizeBytes)
+      .put(inputRowBytes).array()
   }
 
 
