@@ -54,14 +54,14 @@ public class FedbTest extends BaseTest {
         }else{
             FedbGlobalVar.mainInfo = FEDBInfo.builder()
                     .deployType(OpenMLDBDeployType.CLUSTER)
-                    .basePath("/home/zhaowei01/fedb-auto-test/tmp")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
-                    .zk_cluster("172.24.4.55:10000")
+                    .basePath("/home/wangkaidong/fedb-auto-test/tmp")
+                    .fedbPath("/home/wangkaidong/fedb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
+                    .zk_cluster("172.24.4.55:10009")
                     .zk_root_path("/openmldb")
                     .nsNum(2).tabletNum(3)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10004", "172.24.4.55:10005"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10001", "172.24.4.55:10002", "172.24.4.55:10003"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10006"))
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10013", "172.24.4.55:10014"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10010", "172.24.4.55:10011", "172.24.4.55:10012"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10015"))
                     .build();
             FedbGlobalVar.env = "cluster";
 

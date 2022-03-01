@@ -62,7 +62,7 @@ public class DDLTest extends FedbTest {
     }
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_create.yaml")
+    @Yaml(filePaths = "function/ddl/test_create.yaml")//7 表名为非保留关键字 没过
     @Story("create")
     public void testCreateByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();

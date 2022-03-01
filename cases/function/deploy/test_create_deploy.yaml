@@ -34,11 +34,11 @@ cases:
         name: deploy_{0}
         dbName: test_zw
         sql: |
-          CREATE PROCEDURE deploy_{0} (c1 varchar, c2 smallInt, c3 int, c4 bigInt, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT
+          DEPLOY deploy_{0} SELECT
           *
           FROM
           {0}
-          ; END;
+          ;
         inColumns:
           - 1,c1,kVarchar,NO
           - 2,c2,kInt16,NO
@@ -77,7 +77,7 @@ cases:
         name: deploy_{0}
         dbName: test_zw
         sql: |
-          CREATE PROCEDURE deploy_{0} (c1 varchar, c2 int, c3 bigInt, c4 timestamp) BEGIN SELECT
+          DEPLOY deploy_{0} SELECT
           {0}.c1,
           {0}.c2,
           {1}.c4,
@@ -92,7 +92,7 @@ cases:
           {2}
           ORDER BY {2}.c4
           ON {0}.c1 = {2}.c1
-          ; END;
+          ;
         inColumns:
           - 1,c1,kVarchar,NO
           - 2,c2,kInt32,NO
@@ -126,7 +126,7 @@ cases:
         name: deploy_{0}
         dbName: test_zw
         sql: |
-          CREATE PROCEDURE deploy_{0} (id int, c1 varchar, c3 int, c4 bigInt, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT
+          DEPLOY deploy_{0} SELECT
           id,
           c1,
           sum(c4) OVER (w1) AS w1_c4_sum
@@ -134,7 +134,7 @@ cases:
           {0}
           WINDOW w1 AS (PARTITION BY {0}.c1
           ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING)
-          ; END;
+          ;
         inColumns:
           - 1,id,kInt32,NO
           - 2,c1,kVarchar,NO
@@ -171,7 +171,7 @@ cases:
         name: deploy_{0}
         dbName: test_zw
         sql: |
-          CREATE PROCEDURE deploy_{0} (id int, c1 varchar, c3 int, c4 bigInt, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT
+          DEPLOY deploy_{0} SELECT
           id,
           c1,
           sum(c4) OVER (w1) AS w1_c4_sum
@@ -179,7 +179,7 @@ cases:
           {0}
           WINDOW w1 AS (PARTITION BY {0}.c1
           ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING)
-          ; END;
+          ;
         inColumns:
           - 1,id,kInt32,NO
           - 2,c1,kVarchar,NO
@@ -214,7 +214,7 @@ cases:
         name: deploy_{0}
         dbName: test_zw
         sql: |
-          CREATE PROCEDURE deploy_{0} (c1 varchar, c2 int, c3 bigInt, c4 timestamp) BEGIN SELECT
+          DEPLOY deploy_{0} SELECT
           v2,
           v3
           FROM
@@ -225,7 +225,7 @@ cases:
           FROM
           {0}
           ) AS t
-          ; END;
+          ;
         inColumns:
           - 1,c1,kVarchar,NO
           - 2,c2,kInt32,NO
@@ -267,7 +267,7 @@ cases:
         name: deploy_{0}
         dbName: test_zw
         sql: |
-          CREATE PROCEDURE deploy_{0} (id int, card_no varchar, merchant_id int, trx_time timestamp, trx_amt float) BEGIN SELECT
+          DEPLOY deploy_{0} SELECT
           *
           FROM
           (
@@ -288,7 +288,7 @@ cases:
           {1}
           ORDER BY {1}.crd_lst_isu_dte
           ON trx_fe.card_no = {1}.crd_nbr AND trx_fe.trx_time >= {1}.crd_lst_isu_dte
-          ; END;
+          ;
         inColumns:
           - 1,id,kInt32,NO
           - 2,card_no,kVarchar,NO
