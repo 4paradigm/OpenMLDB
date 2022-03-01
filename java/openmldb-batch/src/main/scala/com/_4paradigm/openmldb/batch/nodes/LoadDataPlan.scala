@@ -23,7 +23,7 @@ import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.proto.NS.OfflineTableInfo
 import com._4paradigm.openmldb.proto.{Common, Type}
 import org.apache.spark.sql.functions.{col, first}
-import org.apache.spark.sql.types.{StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{DataType, LongType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, DataFrameReader}
 import org.slf4j.LoggerFactory
 
@@ -34,53 +34,83 @@ import scala.collection.mutable
 object LoadDataPlan {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def autoLoad(columns: util.List[Common.ColumnDesc], reader: DataFrameReader, file: String): DataFrame = {
-    var struct = new StructType
+  def extractOriginAndReadSchema(columns: util.List[Common.ColumnDesc]): (StructType, StructType, List[String]) = {
+    var oriSchema = new StructType
+    var readSchema = new StructType
     val tsCols = mutable.ArrayBuffer[String]()
-
     columns.foreach(col => {
       var ty = col.getDataType
+      oriSchema = oriSchema.add(col.getName, SparkRowUtil.protoTypeToScalaType(ty), !col
+        .getNotNull)
       if (col.getDataType.equals(Type.DataType.kTimestamp)) {
         tsCols += col.getName
         // use string to parse ts column, to avoid getting null(parse wrong format), can't distinguish between the
         // parsed null and the real `null`.
         ty = Type.DataType.kString
       }
-      struct = struct.add(col.getName, SparkRowUtil.protoTypeToScalaType(ty), !col
+      readSchema = readSchema.add(col.getName, SparkRowUtil.protoTypeToScalaType(ty), !col
         .getNotNull)
     }
     )
+    (oriSchema, readSchema, tsCols.toList)
+  }
+
+  def parseLongTsCols(reader: DataFrameReader, readSchema: StructType, tsCols: List[String], file: String)
+  : List[String] = {
     val longTsCols = mutable.ArrayBuffer[String]()
     if (tsCols.nonEmpty) {
       // normal timestamp format is TimestampType(Y-M-D H:M:S...)
       // and we support one more timestamp format LongType(ms)
       // read one row to auto detect the format, if int64, use LongType to read file, then convert it to TimestampType
       // P.S. don't use inferSchema, cuz we just need to read the first non-null row, not all
-      val df = reader.schema(struct).load(file)
+      val df = reader.schema(readSchema).load(file)
       // check timestamp cols
       for (col <- tsCols) {
+        val i = readSchema.fieldIndex(col)
+        var ty: DataType = LongType
         try {
-          // value is string, parse to long
+          // value is string, try to parse to long
           df.select(first(df.col(col), ignoreNulls = true)).first().getString(0).toLong
           longTsCols.append(col)
         } catch {
           case e: Any =>
             logger.debug(s"col '$col' parse long failed, use TimestampType to read", e)
-            val i = struct.fieldIndex(col)
-            val newField = StructField(struct.fields(i).name, TimestampType, struct.fields(i).nullable)
-            struct.fields(i) = newField
+            ty = TimestampType
         }
+
+        val newField = StructField(readSchema.fields(i).name, ty, readSchema.fields(i).nullable)
+        readSchema.fields(i) = newField
       }
     }
-    logger.info("read schema: {}", struct)
-    var df = reader.schema(struct).load(file)
+    longTsCols.toList
+  }
+
+  // We want df with oriSchema, but
+  // 1. we support two format of timestamp
+  // 2. spark read may change the schema to all nullable
+  def autoLoad(columns: util.List[Common.ColumnDesc], reader: DataFrameReader, file: String): DataFrame = {
+    val (oriSchema, readSchema, tsCols) = extractOriginAndReadSchema(columns)
+
+    // auto detect timestamp format
+    // use string to read, then infer the format by the first non-null value of the ts column
+    val longTsCols = parseLongTsCols(reader, readSchema, tsCols, file)
+    logger.info(s"read schema: $readSchema")
+    var df = reader.schema(readSchema).load(file)
     if (longTsCols.nonEmpty) {
       // convert long type to timestamp type
       for (tsCol <- longTsCols) {
         df = df.withColumn(tsCol, (col(tsCol) / 1000).cast("timestamp"))
       }
     }
-    logger.info("final schema {}", df.schema)
+
+    // if we read non-streaming files, the df schema fields will be set as all nullable.
+    // so we need to set it right
+    logger.info(s"after read schema: ${df.schema}")
+    if (!df.schema.equals(oriSchema)) {
+      df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
+    }
+
+    require(df.schema == oriSchema, "df schema must == table schema")
     if (logger.isDebugEnabled()) {
       logger.debug("read dataframe count: {}", df.count())
       df.show(10)
