@@ -31,7 +31,8 @@ class TestWrite extends FunSuite {
       .schema("c1 boolean, c2 smallint, c3 int, c4 bigint, c5 float, c6 double,c7 string, c8 date, c9 timestamp, " +
         "c10_str string")
       .csv(readFilePath.toString)
-    df.show()
+    df.show(false)
+
     // check if nullValue option works
     val nullRow = df.collect()(1)
     println(nullRow)
