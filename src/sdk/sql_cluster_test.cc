@@ -860,7 +860,8 @@ TEST_F(SQLClusterTest, GlobalVariable) {
     ASSERT_TRUE(ns_client->ShowTable("", nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
     ASSERT_EQ(1, tables.size());
     tables.clear();
-    ASSERT_TRUE(ns_client->ShowTable(nameserver::GLOBAL_VARIABLE_NAME, nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
+    ASSERT_TRUE(
+        ns_client->ShowTable(nameserver::GLOBAL_VARIABLE_NAME, nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
     ASSERT_EQ(1, tables.size());
     ASSERT_STREQ(nameserver::GLOBAL_VARIABLE_NAME, tables[0].name().c_str());
     tables.clear();

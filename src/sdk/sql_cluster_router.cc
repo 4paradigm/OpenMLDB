@@ -2414,7 +2414,6 @@ bool SQLClusterRouter::IsEnableTrace() {
     std::string key = node->Key();
     std::transform(key.begin(), key.end(), key.begin(), ::tolower);
     if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
-        std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
         std::string value = node->Value()->GetExprString();
         std::transform(value.begin(), value.end(), value.begin(), ::tolower);
         if (key != "execute_mode" && key != "enable_trace") {
@@ -2431,9 +2430,8 @@ bool SQLClusterRouter::IsEnableTrace() {
         }
         hybridse::sdk::Status status;
         std::string sql = "INSERT INTO GLOBAL_VARIABLES values(" + key + ", " + value + ");";
-        ExecuteInsert("INFORMATION_SCHEMA", sql, &status);
-        if (status.code != 0) {
-            std::cout << "ERROR:" << status.msg << std::endl;
+        if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {
+            return {::hybridse::common::StatusCode::kCmdError, "set global variable failed"};
         }
         return {};
     }

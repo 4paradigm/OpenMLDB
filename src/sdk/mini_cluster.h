@@ -184,6 +184,9 @@ class MiniCluster {
         std::string tb_endpoint = "127.0.0.1:" + GenRand();
         tb_endpoints_.push_back(tb_endpoint);
         ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
+        if (zk_cluster_.empty() || zk_path_.empty()) {
+            return false;
+        }
         bool ok = tablet->Init(zk_cluster_, zk_path_, tb_endpoint, "");
         if (!ok) {
             return false;
