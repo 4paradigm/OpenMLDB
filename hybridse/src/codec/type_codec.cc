@@ -84,7 +84,7 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
 
     // Support Spark UnsafeRow format
     if (FLAGS_enable_spark_unsaferow_format) {
-        // For UnsafeRow opt, str_start_offset is the nullbitmap size
+        // Notice that for UnsafeRowOpt str_start_offset should be passed as the nullbitmap size
         const uint32_t bitmap_size = str_start_offset;
         const int8_t* row_with_col_offset = row + HEADER_LENGTH + bitmap_size + col_idx * 8;
 
