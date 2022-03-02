@@ -233,7 +233,7 @@ enum JoinType {
 enum UnionType { kUnionTypeDistinct, kUnionTypeAll };
 
 enum CmdType {
-    kCmdCreateDatabase,
+    kCmdCreateDatabase = 0,
     kCmdUseDatabase,
     kCmdShowDatabases,
     kCmdShowTables,
@@ -254,7 +254,10 @@ enum CmdType {
     kCmdStopJob,
     kCmdShowGlobalVariables,
     kCmdShowSessionVariables,
-    kCmdUnknown = -1
+    kCmdShowComponents,
+    kCmdShowTableStatus,
+    kCmdFake,  // not a real cmd, for testing purpose only
+    kLastCmd = kCmdFake,
 };
 enum ExplainType {
     kExplainLogical,

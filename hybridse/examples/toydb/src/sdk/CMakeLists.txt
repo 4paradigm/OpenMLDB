@@ -18,7 +18,7 @@ include_directories(${INCLUDE_DIRECTORIES}
 		${PROJECT_SOURCE_DIR}/examples/toydb/src)
 
 set(SDK_DEPS_LIBS hybridse_core hybridse_flags hybridse_sdk
-	${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+	${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
 
 # split sdk test and bm
 set(SDK_SRC_FILE_LIST)

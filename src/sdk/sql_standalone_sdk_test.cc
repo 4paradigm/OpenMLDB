@@ -826,6 +826,8 @@ int main(int argc, char** argv) {
         LOG(WARNING) << "Fail to init standalone sql router";
         return -1;
     }
+    ::hybridse::sdk::Status status;
+    router->ExecuteSQL("SET @@execute_mode='online';", &status);
     ::openmldb::sdk::router_ = router;
 
     ::google::ParseCommandLineFlags(&argc, &argv, true);

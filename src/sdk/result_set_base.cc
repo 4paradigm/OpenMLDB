@@ -21,10 +21,10 @@
 namespace openmldb {
 namespace sdk {
 
-ResultSetBase::ResultSetBase(const std::shared_ptr<brpc::Controller>& cntl, uint32_t count, uint32_t buf_size,
+ResultSetBase::ResultSetBase(const butil::IOBuf* buf, uint32_t count, uint32_t buf_size,
                              std::unique_ptr<::hybridse::sdk::RowIOBufView> row_view,
                              const ::hybridse::vm::Schema& schema)
-    : cntl_(cntl),
+    : io_buf_(buf),
       count_(count),
       buf_size_(buf_size),
       row_view_(std::move(row_view)),
@@ -47,10 +47,10 @@ bool ResultSetBase::Next() {
     if (index_ < static_cast<int32_t>(count_) && position_ < buf_size_) {
         // get row size
         uint32_t row_size = 0;
-        cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&row_size), 4, position_ + 2);
+        io_buf_->copy_to(reinterpret_cast<void*>(&row_size), 4, position_ + 2);
         DLOG(INFO) << "row size " << row_size << " position " << position_ << " byte size " << buf_size_;
         butil::IOBuf tmp;
-        cntl_->response_attachment().append_to(&tmp, row_size, position_);
+        io_buf_->append_to(&tmp, row_size, position_);
         position_ += row_size;
         bool ok = row_view_->Reset(tmp);
         if (!ok) {

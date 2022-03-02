@@ -16,8 +16,10 @@
 
 package com._4paradigm.openmldb.batch.end2end
 
-import org.apache.spark.sql.types.{IntegerType, LongType, StringType, StructField, StructType}
+import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType,
+  StringType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import java.sql.{Date, Timestamp}
 
 object DataUtil {
 
@@ -45,6 +47,24 @@ object DataUtil {
       StructField("name", StringType),
       StructField("trans_amount", LongType),
       StructField("trans_time", IntegerType)))
+    spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
+  }
+
+  def getAllTypesDfWithNull(spark: SparkSession): DataFrame = {
+    val data = Seq(
+      Row(true, 1.toShort, 1, 1L, 1.0F, 1.0D, new Timestamp(1), new Date(1), "string1"),
+      Row(null, null, null, null, null, null, null, null, null))
+    val schema = StructType(List(
+      StructField("bool_col", BooleanType),
+      StructField("short_col", ShortType),
+      StructField("int_col", IntegerType),
+      StructField("long_col", LongType),
+      StructField("float_col", FloatType),
+      StructField("double_col", DoubleType),
+      StructField("timestamp_col", TimestampType),
+      StructField("date_col", DateType),
+      StructField("string_col", StringType)
+    ))
     spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
   }
 

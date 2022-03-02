@@ -15,9 +15,11 @@
  */
 
 #include "planv2/planner_v2.h"
+
 #include <memory>
 #include <utility>
 #include <vector>
+
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "plan/plan_api.h"
@@ -1784,21 +1786,20 @@ class PlannerV2ErrorTest : public ::testing::TestWithParam<SqlCase> {
     NodeManager *manager_;
 };
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PlannerV2ErrorTest);
+
 INSTANTIATE_TEST_SUITE_P(SqlErrorQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(SqlUnsupporQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_unsupport_sql.yaml", FILTERS)));
-
 INSTANTIATE_TEST_SUITE_P(SqlErrorRequestQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_request_query.yaml", FILTERS)));
 
 TEST_P(PlannerV2ErrorTest, RequestModePlanErrorTest) {
-    auto sql_case = GetParam();
-    std::string sqlstr = sql_case.sql_str();
-    std::cout << sqlstr << std::endl;
+    auto &sql_case = GetParam();
+    auto &sqlstr = sql_case.sql_str();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "request-unsupport")) {
-        LOG(INFO) << "Skip mode " << sql_case.mode();
+        LOG(INFO) << "Skip mode " << sql_case.mode() << " for request mode error test";
         return;
     }
     base::Status status;
@@ -1806,13 +1807,12 @@ TEST_P(PlannerV2ErrorTest, RequestModePlanErrorTest) {
     ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, false)) << status;
 }
 TEST_P(PlannerV2ErrorTest, ClusterRequestModePlanErrorTest) {
-    auto sql_case = GetParam();
-    std::string sqlstr = sql_case.sql_str();
-    std::cout << sqlstr << std::endl;
+    auto& sql_case = GetParam();
+    auto& sqlstr = sql_case.sql_str();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "request-unsupport") ||
         boost::contains(sql_case.mode(), "cluster-unsupport")) {
-        LOG(INFO) << "Skip mode " << sql_case.mode();
+        LOG(INFO) << "Skip mode " << sql_case.mode() << " for cluster request mode error test";
         return;
     }
     base::Status status;
@@ -1820,18 +1820,16 @@ TEST_P(PlannerV2ErrorTest, ClusterRequestModePlanErrorTest) {
     ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true)) << status;
 }
 TEST_P(PlannerV2ErrorTest, BatchModePlanErrorTest) {
-    auto sql_case = GetParam();
-    std::string sqlstr = sql_case.sql_str();
-    std::cout << sqlstr << std::endl;
+    auto& sql_case = GetParam();
+    auto& sqlstr = sql_case.sql_str();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "batch-unsupport")) {
-        LOG(INFO) << "Skip mode " << sql_case.mode();
+        LOG(INFO) << "Skip mode " << sql_case.mode() << " for batch mode error test";
         return;
     }
     base::Status status;
     node::PlanNodeList plan_trees;
     ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, true)) << status;
-    LOG(INFO) << status;
 }
 
 TEST_F(PlannerV2ErrorTest, SqlSyntaxErrorTest) {
@@ -2040,7 +2038,6 @@ TEST_F(PlannerV2Test, GetPlanLimitCnt) {
         R"(
         SELECT COL1 from t1 last join (SELECT COL1, COL2 FROM t2 LIMIT 5) as t22 on t1.col1 = t22.col1 LIMIT 10;
         )", 10);
-
 }
 }  // namespace plan
 }  // namespace hybridse

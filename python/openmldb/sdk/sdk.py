@@ -62,6 +62,8 @@ class OpenmldbSdk(object):
                 return False
             logger.info(
                 "init openmldb sdk done with host %s and port %s" % (options.host, options.port))
+        status = sql_router_sdk.Status()
+        self.sdk.ExecuteSQL("SET @@execute_mode='online'", status)
         return True
 
     def getDatabases(self):

@@ -141,9 +141,9 @@ if(SQL_JAVASDK_ENABLE)
 
     add_dependencies(sql_jsdk hybridse_jsdk_core_static)
     if(APPLE)
-        target_link_libraries(sql_jsdk PRIVATE "-Wl,-force_load $<TARGET_FILE:hybridse_jsdk_core_static>" ${SDK_LIBS} boost_filesystem)
+        target_link_libraries(sql_jsdk PRIVATE "-Wl,-force_load $<TARGET_FILE:hybridse_jsdk_core_static>" ${SDK_LIBS} ${Boost_filesystem_LIBRARY})
     else()
-        target_link_libraries(sql_jsdk PRIVATE "-Wl,--whole-archive $<TARGET_FILE:hybridse_jsdk_core_static> -Wl,--no-whole-archive" ${SDK_LIBS} boost_filesystem)
+        target_link_libraries(sql_jsdk PRIVATE "-Wl,--whole-archive $<TARGET_FILE:hybridse_jsdk_core_static> -Wl,--no-whole-archive" ${SDK_LIBS} ${Boost_filesystem_LIBRARY})
     endif()
 
     if(APPLE)
