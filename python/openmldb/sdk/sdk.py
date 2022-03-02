@@ -23,20 +23,20 @@ from datetime import datetime
 from prettytable import PrettyTable
 # fmt:on
 sys.path.append(os.path.dirname(__file__) + "/..")
-logger = logging.getLogger("openmldb_sdk")
+logger = logging.getLogger("OpenMLDB_sdk")
 
-class OpenmldbClusterSdkOptions(object):
+class OpenMLDBClusterSdkOptions(object):
     def __init__(self, zk_cluster, zk_path, session_timeout = 3000):
         self.zk_cluster = zk_cluster
         self.zk_path = zk_path
         self.session_timeout = session_timeout
 
-class OpenmldbStandaloneSdkOptions(object):
+class OpenMLDBStandaloneSdkOptions(object):
     def __init__(self, host, port):
         self.host = host
         self.port = port
 
-class OpenmldbSdk(object):
+class OpenMLDBSdk(object):
     def __init__(self, options, is_cluster_mode):
         self.is_cluster_mode = is_cluster_mode
         self.options = options
@@ -49,16 +49,16 @@ class OpenmldbSdk(object):
             options.zk_path = self.options.zk_path
             self.sdk = sql_router_sdk.NewClusterSQLRouter(options)
             if not self.sdk:
-                logger.error("fail to init openmldb sdk with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+                logger.error("fail to init OpenMLDB sdk with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
                 return False
-            logger.info("init openmldb sdk done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+            logger.info("init OpenMLDB sdk done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
         else:
             options = sql_router_sdk.StandaloneOptions()
             options.host = self.options.host
             options.port = self.options.port
             self.sdk = sql_router_sdk.NewStandaloneSQLRouter(options)
             if not self.sdk:
-                logger.error("fail to init openmldb sdk with host %s and port %s" % (options.host, options.port))
+                logger.error("fail to init OpenMLDB sdk with host %s and port %s" % (options.host, options.port))
                 return False
             logger.info(
                 "init openmldb sdk done with host %s and port %s" % (options.host, options.port))
