@@ -458,9 +458,9 @@ class Connection(object):
         self._connected = True
         self._db = db
         if is_cluster_mode:
-            options = sdk_module.OpenmldbClusterSdkOptions(args[0], args[1])
+            options = sdk_module.OpenMLDBClusterSdkOptions(args[0], args[1])
         else:
-            options = sdk_module.OpenmldbStandaloneSdkOptions(args[0], args[1])
+            options = sdk_module.OpenMLDBStandaloneSdkOptions(args[0], args[1])
         sdk = sdk_module.OpenmldbSdk(options, is_cluster_mode)
         ok = sdk.init()
         if not ok:
