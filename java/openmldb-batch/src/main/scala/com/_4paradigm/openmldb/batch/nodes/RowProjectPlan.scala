@@ -71,7 +71,7 @@ object RowProjectPlan {
 
     val openmldbJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
 
-    val outputDf = if (ctx.getConf.enableUnsafeRowOptimization) { // Use UnsafeRow optimization
+    val outputDf = if (ctx.getConf.enableUnsafeRowOptForProject) { // Use UnsafeRow optimization
 
       val outputInternalRowRdd = inputDf.queryExecution.toRdd.mapPartitions(partitionIter => {
         val tag = projectConfig.moduleTag

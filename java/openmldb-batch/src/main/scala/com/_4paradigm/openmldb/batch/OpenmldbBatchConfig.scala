@@ -122,6 +122,12 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "openmldb.unsaferow.opt", doc = "Enable UnsafeRow optimization or not")
   var enableUnsafeRowOptimization = false
 
+  @ConfigOption(name = "openmldb.opt.unsaferow.project", doc = "Enable UnsafeRow optimization for project")
+  var enableUnsafeRowOptForProject = false
+
+  @ConfigOption(name = "openmldb.opt.unsaferow.window", doc = "Enable UnsafeRow optimization for window")
+  var enableUnsafeRowOptForWindow = false
+
   // Switch for disable OpenMLDB
   @ConfigOption(name = "openmldb.disable", doc = "Disable OpenMLDB optimization or not")
   var disableOpenmldb = false
