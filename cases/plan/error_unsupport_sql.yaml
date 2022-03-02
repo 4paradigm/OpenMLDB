@@ -75,6 +75,9 @@ cases:
   - id: set_statement
     desc: unsupported value type
     sql: SET SELECT_MODE = 1 + 2;
+  - id: set_global_to_expr
+    desc: unsupported value type
+    sql: SET GLOBAL xxx = 1 + 1;
   - id: group_complex_expression
     desc: SELECT GROUP BY complex expression is unsupport
     sql: SELECT COL1+COL2 FROM t1 group by COL1+COL2;
