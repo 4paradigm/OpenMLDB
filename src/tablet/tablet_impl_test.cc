@@ -53,8 +53,8 @@ DECLARE_uint32(max_traverse_cnt);
 DECLARE_bool(recycle_bin_enabled);
 DECLARE_string(db_root_path);
 DECLARE_string(recycle_bin_root_path);
-DECLARE_string(recycle_ssd_bin_root_path);
-DECLARE_string(recycle_hdd_bin_root_path);
+DECLARE_string(recycle_bin_ssd_root_path);
+DECLARE_string(recycle_bin_hdd_root_path);
 DECLARE_string(endpoint);
 DECLARE_uint32(recycle_ttl);
 
@@ -1271,7 +1271,14 @@ void CreateTable(::openmldb::common::StorageMode storage_mode) {
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        std::string file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        std::string file;
+        if (storage_mode == ::openmldb::common::kMemory) {
+            file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        } else if (storage_mode == ::openmldb::common::kHDD){
+            file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        } else {
+            file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        }
         int fd = open(file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -2153,8 +2160,7 @@ TEST_F(TabletImplTest, DropTableMem) {
     DropTable(::openmldb::common::StorageMode::kMemory);
 }
 
-// TODO(litongxin): may need to change root path for this test
-void DropTableNoRecycle(::openmldb::common::StorageMode storage_mode) {
+TEST_F (TabletImplTest, DropTableNoRecycleMem) {
     bool tmp_recycle_bin_enabled = FLAGS_recycle_bin_enabled;
     std::string tmp_db_root_path = FLAGS_db_root_path;
     std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
@@ -2162,6 +2168,63 @@ void DropTableNoRecycle(::openmldb::common::StorageMode storage_mode) {
     FLAGS_recycle_bin_enabled = false;
     FLAGS_db_root_path = "/tmp/gtest/db";
     FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
+    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
+    TabletImpl tablet;
+    uint32_t id = counter++;
+    tablet.Init("");
+    MockClosure closure;
+    ::openmldb::api::DropTableRequest dr;
+    dr.set_tid(id);
+    dr.set_pid(1);
+    ::openmldb::api::DropTableResponse drs;
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(100, drs.code());
+
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_storage_mode(openmldb::common::kMemory);
+    AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+    ::openmldb::api::CreateTableResponse response;
+    tablet.CreateTable(NULL, &request, &response, &closure);
+    ASSERT_EQ(0, response.code());
+
+    ::openmldb::api::PutRequest prequest;
+    PackDefaultDimension("test1", &prequest);
+    prequest.set_time(9527);
+    prequest.set_value(::openmldb::test::EncodeKV("test1", "test0"));
+    prequest.set_tid(id);
+    prequest.set_pid(1);
+    ::openmldb::api::PutResponse presponse;
+    tablet.Put(NULL, &prequest, &presponse, &closure);
+    ASSERT_EQ(0, presponse.code());
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(0, drs.code());
+    sleep(1);
+    ::openmldb::base::GetChildFileName(FLAGS_db_root_path, file_vec);
+    ASSERT_TRUE(file_vec.empty());
+    file_vec.clear();
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ASSERT_TRUE(file_vec.empty());
+    tablet.CreateTable(NULL, &request, &response, &closure);
+    ASSERT_EQ(0, response.code());
+    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
+    FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
+    FLAGS_db_root_path = tmp_db_root_path;
+    FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
+}
+
+TEST_F (TabletImplTest, DropTableNoRecycleDisk) {
+    bool tmp_recycle_bin_enabled = FLAGS_recycle_bin_enabled;
+    std::string tmp_hdd_root_path = FLAGS_hdd_root_path;
+    std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;
+    std::vector<std::string> file_vec;
+    FLAGS_recycle_bin_enabled = false;
+    FLAGS_hdd_root_path = "/tmp/gtest/db/hdd";
+    FLAGS_recycle_bin_hdd_root_path = "/tmp/gtest/recycle/hdd";
     ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     TabletImpl tablet;
     uint32_t id = counter++;
@@ -2197,17 +2260,17 @@ void DropTableNoRecycle(::openmldb::common::StorageMode storage_mode) {
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(0, drs.code());
     sleep(1);
-    ::openmldb::base::GetChildFileName(FLAGS_db_root_path, file_vec);
+    ::openmldb::base::GetChildFileName(FLAGS_hdd_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());
     file_vec.clear();
-    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
-    FLAGS_db_root_path = tmp_db_root_path;
-    FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
+    FLAGS_hdd_root_path = tmp_hdd_root_path;
+    FLAGS_recycle_bin_hdd_root_path = tmp_recycle_bin_hdd_root_path;
 }
 
 void Recover(::openmldb::common::StorageMode storage_mode) {

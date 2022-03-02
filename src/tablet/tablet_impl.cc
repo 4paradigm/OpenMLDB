@@ -83,8 +83,8 @@ DECLARE_uint32(make_snapshot_offline_interval);
 DECLARE_bool(recycle_bin_enabled);
 DECLARE_uint32(recycle_ttl);
 DECLARE_string(recycle_bin_root_path);
-DECLARE_string(recycle_ssd_bin_root_path);
-DECLARE_string(recycle_hdd_bin_root_path);
+DECLARE_string(recycle_bin_ssd_root_path);
+DECLARE_string(recycle_bin_hdd_root_path);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
@@ -167,9 +167,9 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 
     ::openmldb::base::SplitString(FLAGS_recycle_bin_root_path, ",",
                                   mode_recycle_root_paths_[::openmldb::common::kMemory]);
-    ::openmldb::base::SplitString(FLAGS_recycle_ssd_bin_root_path, ",",
+    ::openmldb::base::SplitString(FLAGS_recycle_bin_ssd_root_path, ",",
                                   mode_recycle_root_paths_[::openmldb::common::kSSD]);
-    ::openmldb::base::SplitString(FLAGS_recycle_hdd_bin_root_path, ",",
+    ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",",
                                   mode_recycle_root_paths_[::openmldb::common::kHDD]);
     if (!zk_cluster.empty()) {
         zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
@@ -234,13 +234,13 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 
     if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kSSD])) {
         PDLOG(WARNING, "fail to create recycle ssd bin root path %s",
-              FLAGS_recycle_ssd_bin_root_path.c_str());
+              FLAGS_recycle_bin_ssd_root_path.c_str());
         return false;
     }
 
     if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kHDD])) {
         PDLOG(WARNING, "fail to create recycle bin root path %s",
-              FLAGS_recycle_hdd_bin_root_path.c_str());
+              FLAGS_recycle_bin_hdd_root_path.c_str());
         return false;
     }
 

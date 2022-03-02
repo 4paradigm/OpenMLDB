@@ -119,8 +119,8 @@ DEFINE_int32(snapshot_pool_size, 1, "the size of tablet thread pool for making s
 DEFINE_uint32(load_index_max_wait_time, 120 * 60 * 1000, "config the max wait time of load index");
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
-DEFINE_string(recycle_ssd_bin_root_path, "/tmp/recycle/ssd/", "specify the root path of recycle bin in ssd");
-DEFINE_string(recycle_hdd_bin_root_path, "/tmp/recycle/hdd/", "specify the root path of recycle bin in hdd");
+DEFINE_string(recycle_bin_ssd_root_path, "/tmp/recycle/ssd/", "specify the root path of recycle bin in ssd");
+DEFINE_string(recycle_bin_hdd_root_path, "/tmp/recycle/hdd/", "specify the root path of recycle bin in hdd");
 DEFINE_bool(recycle_bin_enabled, true, "enable the recycle bin storage");
 DEFINE_uint32(recycle_ttl, 0, "ttl of recycle in minute");
 
