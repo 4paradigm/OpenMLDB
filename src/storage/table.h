@@ -91,7 +91,9 @@ class Table {
         }
         return "";
     }
-
+    inline ::openmldb::common::StorageMode GetStorageMode() const {
+        return storage_mode_;
+    }
     inline uint32_t GetId() const { return id_; }
 
     inline uint32_t GetIdxCnt() const { return table_index_.Size(); }
@@ -180,6 +182,7 @@ class Table {
     virtual inline uint64_t GetRecordByteSize() const = 0;
     virtual uint64_t GetRecordIdxByteSize() = 0;
     virtual uint64_t Release() = 0;
+    virtual bool LoadTable() { return false; }
 
  protected:
     void UpdateTTL();
