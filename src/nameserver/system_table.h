@@ -75,6 +75,7 @@ class SystemTable {
             case SystemTableType::KPreAggMetaInfo: {
                 table_info->set_db(INTERNAL_DB);
                 SetColumnDesc("aggr_table", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("aggr_db", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("base_db", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("base_table", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("aggr_func", openmldb::type::DataType::kString, table_info->add_column_desc());

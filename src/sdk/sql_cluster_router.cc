@@ -2763,10 +2763,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
             auto aggr_table = "pre_" + deploy_node->Name() + "_" +
                               lw.window_name_ + "_" + lw.aggr_func_ + "_" + lw.aggr_col_;
             ::hybridse::sdk::Status status;
-            std::string insert_sql = "insert into " + meta_db + "." + meta_table + " values(\"" +
-                                     aggr_table + "\", \"" + base_db + "\", \"" + base_table + "\", \"" +
-                                     lw.aggr_func_ + "\", \"" + lw.aggr_col_ + "\", \"" + lw.partition_col_ +
-                                     "\", \"" + lw.order_col_ + "\", \"" + lw.bucket_size_ + "\");";
+            std::string insert_sql = "insert into " + meta_db + "." + meta_table + " values('" +
+                                     aggr_table + "', '" + aggr_db + "', '" + base_db + "', '" +
+                                    base_table + "', '" + lw.aggr_func_ + "', '" + lw.aggr_col_ + "', '" +
+                                    lw.partition_col_ + "', '" + lw.order_col_ + "', '" + lw.bucket_size_ + "');";
             bool ok = ExecuteInsert(db, insert_sql, &status);
             if (!ok) {
                 return {base::ReturnCode::kError, "insert pre-aggr meta failed"};

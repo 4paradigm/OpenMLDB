@@ -277,12 +277,19 @@ TEST_F(SQLClusterTest, ClusterInsert) {
         uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key) % 8);
         key_map[pid].push_back(key);
     }
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    auto ns = mc_->GetNsClient();
+    auto ret = ns->ShowDBTable(db, &tables);
+    ASSERT_TRUE(ret.OK());
+    ASSERT_EQ(tables.size(), 1);
+    auto tid = tables[0].tid();
     auto endpoints = mc_->GetTbEndpoint();
     uint32_t count = 0;
     for (const auto& endpoint : endpoints) {
         ::openmldb::tablet::TabletImpl* tb1 = mc_->GetTablet(endpoint);
         ::openmldb::api::GetTableStatusRequest request;
         ::openmldb::api::GetTableStatusResponse response;
+        request.set_tid(tid);
         MockClosure closure;
         tb1->GetTableStatus(NULL, &request, &response, &closure);
         for (const auto& table_status : response.all_table_status()) {
@@ -347,12 +354,19 @@ TEST_F(SQLClusterTest, ClusterInsertWithColumnDefaultValue) {
     sql = "insert into " + name + "(col2) values(4);";
     ASSERT_FALSE(router->ExecuteInsert(db, sql, &status));
 
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    auto ns = mc_->GetNsClient();
+    auto ret = ns->ShowDBTable(db, &tables);
+    ASSERT_TRUE(ret.OK());
+    ASSERT_EQ(tables.size(), 1);
+    auto tid = tables[0].tid();
     auto endpoints = mc_->GetTbEndpoint();
     uint32_t count = 0;
     for (const auto& endpoint : endpoints) {
         ::openmldb::tablet::TabletImpl* tb1 = mc_->GetTablet(endpoint);
         ::openmldb::api::GetTableStatusRequest request;
         ::openmldb::api::GetTableStatusResponse response;
+        request.set_tid(tid);
         MockClosure closure;
         tb1->GetTableStatus(NULL, &request, &response, &closure);
         for (const auto& table_status : response.all_table_status()) {
