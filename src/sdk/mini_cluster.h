@@ -84,6 +84,10 @@ class MiniCluster {
         if (tablet_num > MAX_TABLET_NUM) {
             return false;
         }
+<<<<<<< HEAD
+=======
+        zk_path_ = "/mini_cluster_" + GenRand();
+>>>>>>> 0ff53d43c (update ut)
         FLAGS_system_table_replica_num = 1;
         // lower diskused pull interval needed by SHOW TABLE STATUS tests
         FLAGS_get_table_diskused_interval = 5000;
@@ -91,8 +95,14 @@ class MiniCluster {
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
         FLAGS_zk_cluster = zk_cluster_;
+        tablet_num_ = tablet_num;
+        for (int i = 0; i < tablet_num; i++) {
+            if (!StartTablet(&tb_servers_[i])) {
+                LOG(WARNING) << "fail to start tablet";
+                return false;
+            }
+        }
         std::string ns_endpoint = "127.0.0.1:" + GenRand();
-        zk_path_ = "/mini_cluster_" + GenRand();
         sleep(1);
         LOG(INFO) << "zk cluster " << zk_cluster_ << " zk path " << zk_path_
                   << " enable_distsql = " << FLAGS_enable_distsql;

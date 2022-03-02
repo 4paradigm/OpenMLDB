@@ -853,11 +853,22 @@ TEST_F(SQLClusterTest, GlobalVariable) {
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
     SetOnlineMode(router);
-    std::string db = "db" + GenRand();
+
+    auto ns_client = mc_->GetNsClient();
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    std::string msg;
+    ASSERT_TRUE(ns_client->ShowTable("", nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
+    ASSERT_EQ(1, tables.size());
+    tables.clear();
+    ASSERT_TRUE(ns_client->ShowTable(nameserver::GLOBAL_VARIABLE_NAME, nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
+    ASSERT_EQ(1, tables.size());
+    ASSERT_STREQ(nameserver::GLOBAL_VARIABLE_NAME, tables[0].name().c_str());
+    tables.clear();
+
     ::hybridse::sdk::Status status;
-    ASSERT_TRUE(router->ExecuteDDL(db, "show global variables", &status));
-    std::string ddl = "SET @@global.enable_trace='true';";
-    auto res = router->ExecuteSQL(db, ddl, &status);
+    ASSERT_TRUE(router->ExecuteSQL("show global variables", &status));
+    std::string sql = "SET @@global.enable_trace='true';";
+    auto res = router->ExecuteSQL(sql, &status);
     ASSERT_TRUE(res);
 }
 
