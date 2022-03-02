@@ -39,12 +39,12 @@ static bool options_template_initialized = false;
 
 DiskTable::DiskTable(const std::string& name, uint32_t id, uint32_t pid, const std::map<std::string, uint32_t>& mapping,
                      uint64_t ttl, ::openmldb::type::TTLType ttl_type, ::openmldb::common::StorageMode storage_mode,
-                     const std::string& db_root_path)
+                     const std::string& table_path)
     : Table(storage_mode, name, id, pid, ttl * 60 * 1000, true, 0, mapping, ttl_type,
             ::openmldb::type::CompressType::kNoCompress),
       write_opts_(),
       offset_(0),
-      db_root_path_(db_root_path) {
+      table_path_(table_path) {
     if (!options_template_initialized) {
         initOptionTemplate();
     }
@@ -52,13 +52,13 @@ DiskTable::DiskTable(const std::string& name, uint32_t id, uint32_t pid, const s
     db_ = nullptr;
 }
 
-DiskTable::DiskTable(const ::openmldb::api::TableMeta& table_meta, const std::string& db_root_path)
+DiskTable::DiskTable(const ::openmldb::api::TableMeta& table_meta, const std::string& table_path)
     : Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 0,
             std::map<std::string, uint32_t>(), ::openmldb::type::TTLType::kAbsoluteTime,
             ::openmldb::type::CompressType::kNoCompress),
       write_opts_(),
       offset_(0),
-      db_root_path_(db_root_path) {
+      table_path_(table_path) {
     if (!options_template_initialized) {
         initOptionTemplate();
     }
@@ -179,7 +179,7 @@ bool DiskTable::Init() {
         return false;
     }
     InitColumnFamilyDescriptor();
-    std::string path = db_root_path_ + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
+    std::string path = table_path_ + "/data";
     if (!::openmldb::base::MkdirRecur(path)) {
         PDLOG(WARNING, "fail to create path %s", path.c_str());
         return false;
@@ -298,7 +298,7 @@ bool DiskTable::LoadTable() {
         return false;
     }
     InitColumnFamilyDescriptor();
-    std::string path = db_root_path_ + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
+    std::string path = table_path_ + "/data";
     if (!openmldb::base::IsExists(path)) {
         return false;
     }

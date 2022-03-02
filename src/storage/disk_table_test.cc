@@ -80,8 +80,9 @@ TEST_F(DiskTableTest, ParseKeyAndTs) {
 TEST_F(DiskTableTest, Put) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
+    std::string table_path = FLAGS_hdd_root_path + "/1_1";
     DiskTable* table = new DiskTable("yjtable1", 1, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -106,8 +107,7 @@ TEST_F(DiskTableTest, Put) {
     ASSERT_FALSE(it->Valid());
     delete it;
     delete table;
-    std::string path = FLAGS_hdd_root_path + "/1_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, MultiDimensionPut) {
@@ -115,8 +115,9 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
+    std::string table_path = FLAGS_hdd_root_path + "/2_1";
     DiskTable* table = new DiskTable("yjtable2", 2, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
     // some functions in disk table need to be implemented.
@@ -232,16 +233,16 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     delete it;
 
     delete table;
-    std::string path = FLAGS_hdd_root_path + "/2_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, LongPut) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
+    std::string table_path = FLAGS_ssd_root_path + "/3_1";
     DiskTable* table = new DiskTable("yjtable3", 3, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kSSD, FLAGS_ssd_root_path);
+                                     ::openmldb::common::StorageMode::kSSD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
         Dimensions dimensions;
@@ -288,8 +289,7 @@ TEST_F(DiskTableTest, LongPut) {
         delete it1;
     }
     delete table;
-    std::string path = FLAGS_ssd_root_path + "/3_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, Delete) {
@@ -297,8 +297,9 @@ TEST_F(DiskTableTest, Delete) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
+    std::string table_path = FLAGS_hdd_root_path + "/4_1";
     DiskTable* table = new DiskTable("yjtable2", 4, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -326,15 +327,15 @@ TEST_F(DiskTableTest, Delete) {
     delete it;
 
     delete table;
-    std::string path = FLAGS_hdd_root_path + "/4_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, TraverseIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
+    std::string table_path = FLAGS_hdd_root_path + "/5_1";
     DiskTable* table = new DiskTable("t1", 5, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -415,8 +416,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     ASSERT_EQ("valu8", val);
     delete it;
     delete table;
-    std::string path = FLAGS_hdd_root_path + "/5_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, TraverseIteratorCount) {
@@ -424,8 +424,9 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     FLAGS_max_traverse_cnt = 50;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
+    std::string table_path = FLAGS_hdd_root_path + "/6_1";
     DiskTable* table = new DiskTable("t1", 6, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -493,8 +494,7 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     delete it;
     delete table;
     FLAGS_max_traverse_cnt = old_max_traverse;
-    std::string path = FLAGS_hdd_root_path + "/6_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
@@ -502,8 +502,9 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     FLAGS_max_traverse_cnt = 50;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
+    std::string table_path = FLAGS_hdd_root_path + "/7_1";
     DiskTable* table = new DiskTable("t1", 7, 1, mapping, 5, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -548,15 +549,15 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     delete it;
     delete table;
     FLAGS_max_traverse_cnt = old_max_traverse;
-    std::string path = FLAGS_hdd_root_path + "/7_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, TraverseIteratorLatest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
+    std::string table_path = FLAGS_hdd_root_path + "/8_1";
     DiskTable* table = new DiskTable("t1", 8, 1, mapping, 3, ::openmldb::type::TTLType::kLatestTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -619,15 +620,15 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     ASSERT_EQ(27, count);
     delete it;
     delete table;
-    std::string path = FLAGS_hdd_root_path + "/8_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, Load) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
+    std::string table_path = FLAGS_hdd_root_path + "/9_1";
     DiskTable* table = new DiskTable("t1", 9, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -654,7 +655,7 @@ TEST_F(DiskTableTest, Load) {
     delete table;
 
     table = new DiskTable("t1", 9, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
-                          ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                          ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->LoadTable());
     raw_key = "test35";
     it = table->NewIterator(raw_key, ticket);
@@ -672,15 +673,15 @@ TEST_F(DiskTableTest, Load) {
     delete it;
     delete table;
 
-    std::string path = FLAGS_hdd_root_path + "/9_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, CompactFilter) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
+    std::string table_path = FLAGS_hdd_root_path + "/10_1";
     DiskTable* table = new DiskTable("t1", 10, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
@@ -723,8 +724,7 @@ TEST_F(DiskTableTest, CompactFilter) {
         }
     }
     delete table;
-    std::string path = FLAGS_hdd_root_path + "/10_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, CompactFilterMulTs) {
@@ -740,7 +740,8 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
     SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
 
-    DiskTable* table = new DiskTable(table_meta, FLAGS_hdd_root_path);
+    std::string table_path = FLAGS_hdd_root_path + "/11_1";
+    DiskTable* table = new DiskTable(table_meta, table_path);
     ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
@@ -856,8 +857,7 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
         }
     }
     delete table;
-    std::string path = FLAGS_hdd_root_path + "/11_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, GcHeadMulTs) {
@@ -874,7 +874,8 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kLatestTime, 0, 5);
     ::openmldb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
 
-    DiskTable* table = new DiskTable(table_meta, FLAGS_hdd_root_path);
+    std::string table_path = FLAGS_hdd_root_path + "/12_1";
+    DiskTable* table = new DiskTable(table_meta, table_path);
     ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
@@ -970,15 +971,15 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
         }
     }
     delete table;
-    std::string path = FLAGS_hdd_root_path + "/12_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, GcHead) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
+    std::string table_path = FLAGS_hdd_root_path + "/13_1";
     DiskTable* table = new DiskTable("t1", 13, 1, mapping, 3, ::openmldb::type::TTLType::kLatestTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -1023,15 +1024,15 @@ TEST_F(DiskTableTest, GcHead) {
         }
     }
     delete table;
-    std::string path = FLAGS_hdd_root_path + "/13_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 TEST_F(DiskTableTest, CheckPoint) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
+    std::string table_path = FLAGS_hdd_root_path + "/15_1";
     DiskTable* table = new DiskTable("t1", 15, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -1066,7 +1067,7 @@ TEST_F(DiskTableTest, CheckPoint) {
     ::openmldb::base::Rename(snapshot_path, data_path);
 
     table = new DiskTable("t1", 15, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
-                          ::openmldb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
+                          ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->LoadTable());
     raw_key = "test35";
     it = table->NewIterator(raw_key, ticket);
@@ -1096,8 +1097,7 @@ TEST_F(DiskTableTest, CheckPoint) {
     delete it;
     delete table;
 
-    std::string path = FLAGS_hdd_root_path + "/15_1";
-    RemoveData(path);
+    RemoveData(table_path);
 }
 
 }  // namespace storage
@@ -1108,5 +1108,7 @@ int main(int argc, char** argv) {
     ::openmldb::base::SetLogLevel(INFO);
     FLAGS_hdd_root_path = "/tmp/" + std::to_string(::openmldb::storage::GenRand());
     FLAGS_ssd_root_path = "/tmp/" + std::to_string(::openmldb::storage::GenRand());
+    // FLAGS_hdd_root_path = "/tmp/1";
+    // FLAGS_ssd_root_path = "/tmp/1";
     return RUN_ALL_TESTS();
 }
