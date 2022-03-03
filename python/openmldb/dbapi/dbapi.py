@@ -454,13 +454,13 @@ class Cursor(object):
 
 class Connection(object):
 
-    def __init__(self, db, is_cluster_mode=True, *args):
+    def __init__(self, db, is_cluster_mode, zk_or_host, zkPath_or_port):
         self._connected = True
         self._db = db
         if is_cluster_mode:
-            options = sdk_module.OpenMLDBClusterSdkOptions(args[0], args[1])
+            options = sdk_module.OpenMLDBClusterSdkOptions(zk_or_host, zkPath_or_port)
         else:
-            options = sdk_module.OpenMLDBStandaloneSdkOptions(args[0], args[1])
+            options = sdk_module.OpenMLDBStandaloneSdkOptions(zk_or_host, zkPath_or_port)
         sdk = sdk_module.OpenMLDBSdk(options, is_cluster_mode)
         ok = sdk.init()
         if not ok:
@@ -507,8 +507,13 @@ class Connection(object):
         return Cursor(self._db, self)
 
 # Constructor for creating connection to db
-def connect(db, zk=None, zkPath=None, host=None, port=None, is_cluster_mode=True):
-    if is_cluster_mode:
-        return Connection(db, is_cluster_mode, zk, zkPath)
-    else:
-        return Connection(db, is_cluster_mode, host, int(port))
+def connect(db, zk=None, zkPath=None, host=None, port=None):
+    # standalone
+    if type(zkPath) is int:
+        host, port = zk, zkPath
+        return Connection(db, False, host, port)
+    # cluster
+    elif type(zkPath) is str:
+        return Connection(db, True, zk, zkPath)
+    elif zkPath is None:
+        return Connection(db, False, host, int(port))
