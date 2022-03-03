@@ -976,13 +976,17 @@ bool RowFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
     auto ty = base_col_info.type;
     uint32_t col_idx = base_col_info.idx;
     uint32_t offset = base_col_info.offset;
-    uint32_t next_offset;
+    uint32_t next_offset = -1;
     auto nit = next_str_pos_.find(offset);
     if (nit != next_str_pos_.end()) {
         next_offset = nit->second;
     } else {
-        LOG(WARNING) << "fail to get string field next offset";
-        return false;
+        if (FLAGS_enable_spark_unsaferow_format) {
+            // Do not need to get next offset for UnsafeRowOpt
+        } else {
+            LOG(WARNING) << "fail to get string field next offset";
+            return false;
+        }
     }
     DLOG(INFO) << "get string with offset " << offset << " next offset "
                << next_offset << " str_field_start_offset "
