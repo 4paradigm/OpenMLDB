@@ -1394,8 +1394,6 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip_mem) {
     Scan_with_duplicate_skip(::openmldb::common::StorageMode::kMemory);
 }
 
-// TODO(litongxin): from here, all tests are not run
-
 void Scan_with_latestN(::openmldb::common::StorageMode storage_mode) {
     TabletImpl tablet;
     uint32_t id = counter++;
@@ -5708,8 +5706,7 @@ TEST_F(TabletImplTest, AbsOrLatMem) {
     AbsOrLat(::openmldb::common::StorageMode::kMemory);
 }
 
-// TODO(litongxin): meaning and how disk version 
-TEST_F(TabletImplTest, DelRecycle) {
+TEST_F(TabletImplTest, DelRecycleMem) {
     uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
     std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
     FLAGS_recycle_ttl = 1;
@@ -5751,6 +5748,50 @@ TEST_F(TabletImplTest, DelRecycle) {
     ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_ttl = tmp_recycle_ttl;
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
+}
+
+TEST_F(TabletImplTest, DelRecycleDisk) {
+    uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
+    std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;
+    FLAGS_recycle_ttl = 1;
+    FLAGS_recycle_bin_hdd_root_path = "/tmp/gtest/recycle/hdd";
+    std::string tmp_recycle_path = "/tmp/gtest/recycle/hdd";
+    ::openmldb::base::RemoveDirRecursive(FLAGS_recycle_bin_hdd_root_path);
+    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/hdd/99_1_binlog_20191111070955/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/hdd/100_2_20191111115149/binlog/");
+    TabletImpl tablet;
+    tablet.Init("");
+
+    std::vector<std::string> file_vec;
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
+    ASSERT_EQ(2, (signed)file_vec.size());
+    std::cout << "sleep for 30s" << std::endl;
+    sleep(30);
+
+    std::string now_time = ::openmldb::base::GetNowTime();
+    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/hdd/99_3_" + now_time + "/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/hdd/100_4_binlog_" + now_time + "/binlog/");
+    file_vec.clear();
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
+    ASSERT_EQ(4, (signed)file_vec.size());
+
+    std::cout << "sleep for 35s" << std::endl;
+    sleep(35);
+
+    file_vec.clear();
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
+    ASSERT_EQ(2, (signed)file_vec.size());
+
+    std::cout << "sleep for 65s" << std::endl;
+    sleep(65);
+
+    file_vec.clear();
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
+    ASSERT_EQ(0, (signed)file_vec.size());
+
+    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
+    FLAGS_recycle_ttl = tmp_recycle_ttl;
+    FLAGS_recycle_bin_hdd_root_path = tmp_recycle_bin_hdd_root_path;
 }
 
 void DumpIndex(::openmldb::common::StorageMode storage_mode) {
