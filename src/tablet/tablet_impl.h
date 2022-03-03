@@ -28,7 +28,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/set.h"
 #include "base/spinlock.h"
 #include "catalog/tablet_catalog.h"
 #include "common/thread_pool.h"
