@@ -209,9 +209,9 @@ std::string DDLParser::Explain(const std::string& sql, const ::hybridse::type::D
     return plan_oss.str();
 }
 
-LongWindowInfos DDLParser::ExtractLongWindowInfos(const std::string& sql,
-                                                  const std::unordered_map<std::string, std::string>& window_map) {
-    LongWindowInfos infos;
+hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
+                                                  const std::unordered_map<std::string, std::string>& window_map,
+                                                  LongWindowInfos* infos) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
     hybridse::node::PlanNodeList plan_trees;
@@ -219,21 +219,22 @@ LongWindowInfos DDLParser::ExtractLongWindowInfos(const std::string& sql,
 
     if (0 != sql_status.code) {
         DLOG(ERROR) << sql_status.msg;
-        return infos;
+        return hybridse::sdk::Status(base::ReturnCode::kError, sql_status.msg);
     }
     hybridse::node::PlanNode* node = plan_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeQuery: {
-            TraverseNode(node, window_map, &infos);
+            TraverseNode(node, window_map, infos);
             break;
         }
         default: {
             DLOG(ERROR) << "only support extract long window infos from query";
-            return infos;
+            return hybridse::sdk::Status(base::ReturnCode::kError,
+                                         "only support extract long window infos from query");
         }
     }
 
-    return infos;
+    return {};
 }
 
 void DDLParser::TraverseNode(hybridse::node::PlanNode* node,
@@ -280,7 +281,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             partition_col += column_node->GetExprString() + ",";
         }
         if (!partition_col.empty()) {
-            partition_col = partition_col.substr(0, partition_col.size() - 1);
+            partition_col.pop_back();
         }
 
         std::string order_by_col;
@@ -295,7 +296,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             order_by_col += order_node->expr()->GetExprString() + ",";
         }
         if (!order_by_col.empty()) {
-            order_by_col = order_by_col.substr(0, order_by_col.size() - 1);
+            order_by_col.pop_back();
         }
 
         for (const auto& project : project_list_node->GetProjects()) {
@@ -325,7 +326,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                 aggr_col += child_expr->GetExprString() + ",";
             }
             if (!aggr_col.empty()) {
-                aggr_col = aggr_col.substr(0, aggr_col.size() - 1);
+                aggr_col.pop_back();
             }
             (*long_window_infos).emplace_back(window_name, aggr_name, aggr_col,
                                            partition_col, order_by_col, window_map.at(window_name));

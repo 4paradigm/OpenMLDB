@@ -479,7 +479,9 @@ TEST_F(DDLParserTest, extractLongWindow) {
 
         std::unordered_map<std::string, std::string> window_map;
         window_map["w1"] = "1000";
-        auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
         ASSERT_EQ(window_infos.size(), 1);
         ASSERT_EQ(window_infos[0].window_name_, "w1");
         ASSERT_EQ(window_infos[0].aggr_func_, "sum");
@@ -498,7 +500,9 @@ TEST_F(DDLParserTest, extractLongWindow) {
 
         std::unordered_map<std::string, std::string> window_map;
         window_map["w2"] = "1000";
-        auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
         ASSERT_EQ(window_infos.size(), 0);
     }
 
@@ -514,7 +518,9 @@ TEST_F(DDLParserTest, extractLongWindow) {
         std::unordered_map<std::string, std::string> window_map;
         window_map["w1"] = "1d";
         window_map["w2"] = "1000";
-        auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
         ASSERT_EQ(window_infos.size(), 6);
         ASSERT_EQ(window_infos[0].window_name_, "w1");
         ASSERT_EQ(window_infos[0].aggr_func_, "sum");
@@ -570,7 +576,9 @@ TEST_F(DDLParserTest, extractLongWindow) {
 
         std::unordered_map<std::string, std::string> window_map;
         window_map["w2"] = "1000";
-        auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
         ASSERT_EQ(window_infos.size(), 3);
 
         ASSERT_EQ(window_infos[0].window_name_, "w2");
@@ -610,7 +618,9 @@ TEST_F(DDLParserTest, extractLongWindow) {
 
         std::unordered_map<std::string, std::string> window_map;
         window_map["w2"] = "1d";
-        auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
         ASSERT_EQ(window_infos.size(), 1);
 
         ASSERT_EQ(window_infos[0].window_name_, "w2");
@@ -630,7 +640,9 @@ TEST_F(DDLParserTest, extractLongWindow) {
 
         std::unordered_map<std::string, std::string> window_map;
         window_map["w1"] = "1000";
-        auto window_infos = DDLParser::ExtractLongWindowInfos(query, window_map);
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
         ASSERT_EQ(window_infos.size(), 1);
         ASSERT_EQ(window_infos[0].window_name_, "w1");
         ASSERT_EQ(window_infos[0].aggr_func_, "sum");

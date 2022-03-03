@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "absl/strings/str_cat.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "boost/none.hpp"
@@ -2713,71 +2714,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
     sp_info.set_sql(str_stream.str());
     sp_info.set_type(::openmldb::type::ProcedureType::kReqDeployment);
 
-    // extract long windows info from select_sql
-    auto iter = deploy_node->Options()->find("long_windows");
-    std::string long_window_param = "";
-    if (iter != deploy_node->Options()->end()) {
-        long_window_param = iter->second->GetExprString();
-    }
-    std::unordered_map<std::string, std::string> long_window_map;
-    if (cluster_sdk_->IsClusterMode() && !long_window_param.empty()) {
-        if (table_pair.size() != 1) {
-            return {base::ReturnCode::kError, "unsupport multi tables with long window options"};
-        }
-        std::string base_db = table_pair.begin()->first;
-        std::string base_table = table_pair.begin()->second;
-        std::vector<std::string> windows;
-        boost::split(windows, long_window_param, boost::is_any_of(","));
-        for (auto& window : windows) {
-            std::vector<std::string> window_info;
-            boost::split(window_info, window, boost::is_any_of(":"));
-
-            if (window_info.size() == 2) {
-                long_window_map[window_info[0]] = window_info[1];
-            } else if (window_info.size() == 1) {
-                long_window_map[window_info[0]] = FLAGS_mini_window_size;
-            } else {
-                return {base::ReturnCode::kError, "illegal long window format"};
-            }
-        }
-        auto long_window_infos = base::DDLParser::ExtractLongWindowInfos(select_sql, long_window_map);
-
-        auto ns_client = cluster_sdk_->GetNsClient();
-        std::vector<::openmldb::nameserver::TableInfo> tables;
-        std::string msg;
-        ns_client->ShowTable(base_table, base_db, false, tables, msg);
-        if (tables.size() != 1) {
-            return {base::ReturnCode::kError, "base table not found"};
-        }
-        std::string meta_db = openmldb::nameserver::INTERNAL_DB;
-        std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
-        std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
-        for (const auto& lw : long_window_infos) {
-            // check if pre-aggr table exists
-            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw.aggr_func_, lw.aggr_col_,
-                                                   lw.partition_col_, lw.order_col_, lw.bucket_size_);
-            if (is_exist) {
-                continue;
-            }
-            // insert pre-aggr meta info to meta table
-            auto aggr_table = "pre_" + deploy_node->Name() + "_" +
-                              lw.window_name_ + "_" + lw.aggr_func_ + "_" + lw.aggr_col_;
-            ::hybridse::sdk::Status status;
-            std::string insert_sql = "insert into " + meta_db + "." + meta_table + " values('" +
-                                     aggr_table + "', '" + aggr_db + "', '" + base_db + "', '" +
-                                    base_table + "', '" + lw.aggr_func_ + "', '" + lw.aggr_col_ + "', '" +
-                                    lw.partition_col_ + "', '" + lw.order_col_ + "', '" + lw.bucket_size_ + "');";
-            bool ok = ExecuteInsert(db, insert_sql, &status);
-            if (!ok) {
-                return {base::ReturnCode::kError, "insert pre-aggr meta failed"};
-            }
-
-            // create pre-aggr table
-            auto create_status = CreatePreAggrTable(aggr_db, aggr_table, lw, tables[0], ns_client);
-            if (!create_status.OK()) {
-                return {base::ReturnCode::kError, "create pre-aggr table failed"};
-            }
-        }
+    auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
+    if (!lw_status.IsOK()) {
+        return lw_status;
     }
 
     // extract index from sql
@@ -2913,18 +2852,94 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
     return {};
 }
 
+hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(const hybridse::node::DeployPlanNode* deploy_node,
+                                                          std::set<std::pair<std::string, std::string>>& table_pair,
+                                                          std::string& select_sql) {
+    auto iter = deploy_node->Options()->find("long_windows");
+    std::string long_window_param = "";
+    if (iter != deploy_node->Options()->end()) {
+        long_window_param = iter->second->GetExprString();
+    } else {
+        return {};
+    }
+    std::unordered_map<std::string, std::string> long_window_map;
+    if (cluster_sdk_->IsClusterMode() && !long_window_param.empty()) {
+        if (table_pair.size() != 1) {
+            return {base::ReturnCode::kError, "unsupport multi tables with long window options"};
+        }
+        std::string base_db = table_pair.begin()->first;
+        std::string base_table = table_pair.begin()->second;
+        std::vector<std::string> windows;
+        boost::split(windows, long_window_param, boost::is_any_of(","));
+        for (auto& window : windows) {
+            std::vector<std::string> window_info;
+            boost::split(window_info, window, boost::is_any_of(":"));
+
+            if (window_info.size() == 2) {
+                long_window_map[window_info[0]] = window_info[1];
+            } else if (window_info.size() == 1) {
+                long_window_map[window_info[0]] = FLAGS_mini_window_size;
+            } else {
+                return {base::ReturnCode::kError, "illegal long window format"};
+            }
+        }
+        // extract long windows info from select_sql
+        openmldb::base::LongWindowInfos long_window_infos;
+        auto extract_status = base::DDLParser::ExtractLongWindowInfos(select_sql, long_window_map, &long_window_infos);
+        if (!extract_status.IsOK()) {
+            return extract_status;
+        }
+        auto ns_client = cluster_sdk_->GetNsClient();
+        std::vector<::openmldb::nameserver::TableInfo> tables;
+        std::string msg;
+        ns_client->ShowTable(base_table, base_db, false, tables, msg);
+        if (tables.size() != 1) {
+            return {base::ReturnCode::kError, "base table not found"};
+        }
+        std::string meta_db = openmldb::nameserver::INTERNAL_DB;
+        std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
+        std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
+        for (const auto& lw : long_window_infos) {
+            // check if pre-aggr table exists
+            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw.aggr_func_, lw.aggr_col_,
+                                                   lw.partition_col_, lw.order_col_, lw.bucket_size_);
+            if (is_exist) {
+                continue;
+            }
+            // insert pre-aggr meta info to meta table
+            auto aggr_table = absl::StrCat("pre_", deploy_node->Name(), "_", lw.window_name_,
+                                           "_", lw.aggr_func_, "_", lw.aggr_col_);
+            ::hybridse::sdk::Status status;
+            std::string insert_sql = absl::StrCat("insert into ", meta_db, ".", meta_table, " values('" +
+                                     aggr_table, "', '", aggr_db, "', '", base_db, "', '",
+                                    base_table, "', '", lw.aggr_func_, "', '", lw.aggr_col_, "', '",
+                                    lw.partition_col_, "', '", lw.order_col_, "', '", lw.bucket_size_, "');");
+            bool ok = ExecuteInsert("", insert_sql, &status);
+            if (!ok) {
+                return {base::ReturnCode::kError, "insert pre-aggr meta failed"};
+            }
+
+            // create pre-aggr table
+            auto create_status = CreatePreAggrTable(aggr_db, aggr_table, lw, tables[0], ns_client);
+            if (!create_status.OK()) {
+                return {base::ReturnCode::kError, "create pre-aggr table failed"};
+            }
+        }
+    }
+    return {};
+}
+
 bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
                                               const std::string& aggr_func, const std::string& aggr_col,
                                               const std::string& partition_col, const std::string& order_col,
                                               const std::string& bucket_size) {
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
-    std::string meta_info = "base_db = '" +  base_db +"' and base_table = '" + base_table +
-                            "' and aggr_func = '" + aggr_func +
-                            "' and aggr_col = '" + aggr_col + "' and partition_cols = '" +
-                            partition_col + "' and order_by_col = '" + order_col;
-    std::string select_sql = "select bucket_size from " + meta_db + "." + meta_table +
-                             " where " + meta_info + "';";
+    std::string meta_info = absl::StrCat("base_db = '",  base_db, "' and base_table = '", base_table,
+                            "' and aggr_func = '", aggr_func, "' and aggr_col = '", aggr_col,
+                            "' and partition_cols = '", partition_col, "' and order_by_col = '", order_col);
+    std::string select_sql = absl::StrCat("select bucket_size from ", meta_db, ".", meta_table,
+                             " where ", meta_info, "';");
     hybridse::sdk::Status status;
     auto rs = ExecuteSQL("", select_sql, &status);
     if (!status.IsOK()) {
@@ -2934,14 +2949,12 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
     // Check if the bucket_size equal to the one in meta table with the same meta info.
     // Currently, we create pre-aggregated table for pre-aggr meta info that have different
     // bucket_size but the same other meta info.
-    if (rs->Size() > 0) {
-        while (rs->Next()) {
-            std::string exist_bucket_size;
-            rs->GetString(0, &exist_bucket_size);
-            if (exist_bucket_size == bucket_size) {
-                LOG(INFO) << "Pre-aggregated table with same meta info already exist: " << meta_info;
-                return true;
-            }
+    while (rs->Next()) {
+        std::string exist_bucket_size;
+        rs->GetString(0, &exist_bucket_size);
+        if (exist_bucket_size == bucket_size) {
+            LOG(INFO) << "Pre-aggregated table with same meta info already exist: " << meta_info;
+            return true;
         }
     }
 

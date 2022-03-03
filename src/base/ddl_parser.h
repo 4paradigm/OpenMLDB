@@ -75,8 +75,9 @@ class DDLParser {
     static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(
         const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
 
-    static LongWindowInfos ExtractLongWindowInfos(const std::string& sql,
-                                                  const std::unordered_map<std::string, std::string>& window_map);
+    static hybridse::sdk::Status ExtractLongWindowInfos(const std::string& sql,
+                                                  const std::unordered_map<std::string, std::string>& window_map,
+                                                  LongWindowInfos* infos);
 
  private:
     // tables are in one db, and db name will be rewritten for simplicity
