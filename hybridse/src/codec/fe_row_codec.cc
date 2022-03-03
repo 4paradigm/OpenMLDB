@@ -185,11 +185,17 @@ void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length,
 bool RowBuilder::AppendNULL() {
     int8_t* ptr = buf_ + HEADER_LENGTH + (cnt_ >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
-    const ::hybridse::type::ColumnDef& column = schema_.Get(cnt_);
-    if (column.type() == ::hybridse::type::kVarchar) {
-        FillNullStringOffset(buf_, str_field_start_offset_, str_addr_length_,
-                             offset_vec_[cnt_], str_offset_);
+
+    if (FLAGS_enable_spark_unsaferow_format) {
+        // Do not fill null for UnsafeRowOpt
+    } else {
+        const ::hybridse::type::ColumnDef& column = schema_.Get(cnt_);
+        if (column.type() == ::hybridse::type::kVarchar) {
+            FillNullStringOffset(buf_, str_field_start_offset_, str_addr_length_,
+                                 offset_vec_[cnt_], str_offset_);
+        }
     }
+
     cnt_++;
     return true;
 }
@@ -912,7 +918,6 @@ RowFormat::RowFormat(const hybridse::codec::Schema* schema)
     for (int32_t i = 0; i < schema_->size(); i++) {
         const ::hybridse::type::ColumnDef& column = schema_->Get(i);
         if (column.type() == ::hybridse::type::kVarchar) {
-
             if (FLAGS_enable_spark_unsaferow_format) {
                 infos_.push_back(
                     ColInfo(column.name(), column.type(), i, offset));
