@@ -55,9 +55,9 @@ function(compile_test DIR)
             add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:openmldb_proto>)
             list(APPEND test_list ${TEST_TARGET_NAME})
             if (${TEST_TARGET_NAME} STREQUAL "tablet_impl_mem_test")
-                target_link_libraries(${TEST_TARGET_NAME} tcmalloc ${TEST_LIBS} gtest)
+                target_link_libraries(${TEST_TARGET_NAME} tcmalloc ${TEST_LIBS} ${GTEST_LIBRARIES})
             else()
-                target_link_libraries(${TEST_TARGET_NAME} ${TEST_LIBS} gtest)
+                target_link_libraries(${TEST_TARGET_NAME} ${TEST_LIBS} ${GTEST_LIBRARIES})
             endif()
             set_target_properties(${TEST_TARGET_NAME}
                 PROPERTIES
@@ -120,7 +120,7 @@ endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
 
-set(LINK_LIBS log openmldb_proto base protobuf glog gflags ssl crypto z snappy dl pthread)
+set(LINK_LIBS log openmldb_proto base ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_SSL_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND LINK_LIBS unwind)
 endif()
