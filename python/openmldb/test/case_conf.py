@@ -20,4 +20,4 @@
 """
 
 OpenMLDB_ZK_CLUSTER="127.0.0.1:6181"
-OpebMLDB_ZK_PATH="/onebox"
+OpenMLDB_ZK_PATH="/onebox"
