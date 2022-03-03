@@ -473,16 +473,9 @@ std::string RowView::GetStringUnsafe(uint32_t idx) {
     const char* val;
     uint32_t length;
 
-    if (FLAGS_enable_spark_unsaferow_format) {
-        v1::GetStrFieldUnsafe(row_, idx, field_offset, next_str_field_offset,
-                              BitMapSize(schema_.size()), str_addr_length_, &val,
-                              &length);
-    } else {
-        v1::GetStrFieldUnsafe(row_, idx, field_offset, next_str_field_offset,
-                              str_field_start_offset_, str_addr_length_, &val,
-                              &length);
-    }
-
+    v1::GetStrFieldUnsafe(row_, idx, field_offset, next_str_field_offset,
+                          str_field_start_offset_, str_addr_length_, &val,
+                          &length);
     return std::string(val, length);
 }
 
@@ -878,15 +871,9 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, const char** val,
         next_str_field_offset = field_offset + 1;
     }
 
-    if (FLAGS_enable_spark_unsaferow_format) {
-        return v1::GetStrFieldUnsafe(row, idx, field_offset, next_str_field_offset,
-                                     BitMapSize(schema_.size()), GetAddrLength(size),
-                                     val, length);
-    } else {
-        return v1::GetStrFieldUnsafe(row, idx, field_offset, next_str_field_offset,
-                                     str_field_start_offset_, GetAddrLength(size),
-                                     val, length);
-    }
+    return v1::GetStrFieldUnsafe(row, idx, field_offset, next_str_field_offset,
+                                 str_field_start_offset_, GetAddrLength(size),
+                                 val, length);
 }
 
 int32_t RowView::GetString(uint32_t idx, const char** val, uint32_t* length) {
@@ -910,15 +897,9 @@ int32_t RowView::GetString(uint32_t idx, const char** val, uint32_t* length) {
     if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
         next_str_field_offset = field_offset + 1;
     }
-    if (FLAGS_enable_spark_unsaferow_format) {
-        return v1::GetStrFieldUnsafe(row_, idx, field_offset, next_str_field_offset,
-                                     BitMapSize(schema_.size()), str_addr_length_, val,
-                                     length);
-    } else {
-        return v1::GetStrFieldUnsafe(row_, idx, field_offset, next_str_field_offset,
-                                     str_field_start_offset_, str_addr_length_, val,
-                                     length);
-    }
+    return v1::GetStrFieldUnsafe(row_, idx, field_offset, next_str_field_offset,
+                                 str_field_start_offset_, str_addr_length_, val,
+                                 length);
 }
 
 RowFormat::RowFormat(const hybridse::codec::Schema* schema)
@@ -1002,14 +983,8 @@ bool RowFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
                << next_offset << " str_field_start_offset "
                << str_field_start_offset_ << " for col " << base_col_info.name;
 
-    if (FLAGS_enable_spark_unsaferow_format) {
-        // Notice that we pass the nullbitmap size as str_field_start_offset
-        *res = StringColInfo(base_col_info.name, ty, col_idx, offset, next_offset,
-                            BitMapSize(schema_->size()));
-    } else {
-        *res = StringColInfo(base_col_info.name, ty, col_idx, offset, next_offset,
-                            str_field_start_offset_);
-    }
+    *res = StringColInfo(base_col_info.name, ty, col_idx, offset, next_offset,
+                        str_field_start_offset_);
     return true;
 }
 
