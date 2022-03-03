@@ -53,13 +53,8 @@ fetype_to_py = {
     sql_router_sdk.kTypeTimestamp: Type.Timestamp,
 }
 
-createTableRE = re.compile("^create\s+table", re.I)
-createDBRE = re.compile("^create\s+database", re.I)
-createProduce = re.compile("^create\s+procedure", re.I)
 insertRE = re.compile("^insert", re.I)
 selectRE = re.compile("^select", re.I)
-dropTable = re.compile("^drop\s+table", re.I)
-dropProduce = re.compile("^drop\s+procedure", re.I)
 
 
 # Exceptions module
