@@ -931,8 +931,15 @@ RowFormat::RowFormat(const hybridse::codec::Schema* schema)
     for (int32_t i = 0; i < schema_->size(); i++) {
         const ::hybridse::type::ColumnDef& column = schema_->Get(i);
         if (column.type() == ::hybridse::type::kVarchar) {
-            infos_.push_back(
-                ColInfo(column.name(), column.type(), i, string_field_cnt));
+
+            if (FLAGS_enable_spark_unsaferow_format) {
+                infos_.push_back(
+                    ColInfo(column.name(), column.type(), i, offset));
+            } else {
+                infos_.push_back(
+                    ColInfo(column.name(), column.type(), i, string_field_cnt));
+            }
+
             infos_dict_[column.name()] = i;
             next_str_pos_.insert(
                 std::make_pair(string_field_cnt, string_field_cnt));
