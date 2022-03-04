@@ -159,6 +159,7 @@ class ClusterSDK : public DBSDK {
     bool TriggerNotify() const override;
 
     zk::ZkClient* GetZkClient() override { return zk_client_; }
+    const ClusterOptions& GetClusterOptions() const { return options_; }
 
  protected:
     bool BuildCatalog() override;
@@ -194,6 +195,10 @@ class StandAloneSDK : public DBSDK {
     bool IsClusterMode() const override { return false; }
 
     bool TriggerNotify() const override { return false; }
+
+    const std::string& GetHost() const { return host_; }
+
+    int GetPort() const { return port_; }
 
  protected:
     // Before connecting to ns, we only have the host&port

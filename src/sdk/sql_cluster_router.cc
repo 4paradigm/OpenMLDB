@@ -199,6 +199,7 @@ SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
 
 bool SQLClusterRouter::Init() {
     if (cluster_sdk_ == nullptr) {
+        // init cluster_sdk_, require options_ or standalone_options_ is set
         if (is_cluster_mode_) {
             ClusterOptions coptions;
             coptions.zk_cluster = options_.zk_cluster;
@@ -216,6 +217,26 @@ bool SQLClusterRouter::Init() {
             if (!ok) {
                 LOG(WARNING) << "fail to init standalone sdk";
                 return false;
+            }
+        }
+    } else {
+        // init options_ or standalone_options_ if fileds not filled, they should be consistent with cluster_sdk_
+        //
+        // might better to refactor constructors & fileds for SQLClusterRouter
+        // but will introduce breaking changes as well
+        if (is_cluster_mode_) {
+            if (options_.zk_cluster.empty() || options_.zk_path.empty()) {
+                auto* cluster_sdk = dynamic_cast<ClusterSDK*>(cluster_sdk_);
+                DCHECK(cluster_sdk != nullptr);
+                options_.zk_cluster = cluster_sdk->GetClusterOptions().zk_cluster;
+                options_.zk_path = cluster_sdk->GetClusterOptions().zk_path;
+            }
+        } else {
+            if (standalone_options_.host.empty() || standalone_options_.port == 0) {
+                auto* standalone_sdk = dynamic_cast<StandAloneSDK*>(cluster_sdk_);
+                DCHECK(standalone_sdk != nullptr);
+                standalone_options_.host = standalone_sdk->GetHost();
+                standalone_options_.port = standalone_sdk->GetPort();
             }
         }
     }
@@ -2979,8 +3000,9 @@ static const std::initializer_list<std::string> GetComponetSchema() {
 //                 CONNECT_TIME: int64, STATUS: string, NS_ROLE: string)
 // where
 // - ROLE can be 'tablet', 'nameserver', 'taskmanager'
-// - STATUS can be 'online', 'offline', 'removed'
-// - NS_ROLE can be 'master', 'standby', or empty string (for non-namespace component)
+// - CONNECT_TIME uptime time in milliseconds from epoch
+// - STATUS can be 'online', 'offline' or 'NULL' (otherwise)
+// - NS_ROLE can be 'master', 'standby', or 'NULL' (for non-namespace component)
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponents(hybridse::sdk::Status* status) {
     DCHECK(status != nullptr);
     std::vector<std::shared_ptr<ResultSetSQL>> data;
@@ -2993,13 +3015,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponent
 
     auto nameservers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowNameServers(status));
     if (nameservers == nullptr || !status->IsOK()) {
-        return {};
+        return MultipleResultSetSQL::MakeResultSet(data, 0, status);
     }
     data.push_back(std::move(nameservers));
 
     auto task_managers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTaskManagers(status));
     if (task_managers == nullptr || !status->IsOK()) {
-        return {};
+        return MultipleResultSetSQL::MakeResultSet(data, 0, status);
     }
     data.push_back(std::move(task_managers));
 
@@ -3009,38 +3031,42 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponent
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServers(hybridse::sdk::Status* status) {
     DCHECK(status != nullptr);
 
-    std::string node_path = absl::StrCat(options_.zk_path, "/leader");
     auto zk_client = cluster_sdk_->GetZkClient();
     if (!cluster_sdk_->IsClusterMode() || zk_client == nullptr) {
         // standalone mode
         return {};
     }
 
+    std::string node_path = absl::StrCat(options_.zk_path, "/leader");
     std::vector<std::string> children;
     if (!zk_client->GetChildren(node_path, children) || children.empty()) {
         std::cout << "get children failed" << std::endl;
         return {};
     }
-    std::set<std::string> endpoint_set;
+
+    // endponit => create time (time in milliseconds from epoch)
+    std::map<std::string, int64_t> endpoint_set;
     for (const auto& path : children) {
         std::string real_path = absl::StrCat(node_path, "/", path);
         std::string endpoint;
-        if (!zk_client->GetNodeValue(real_path, endpoint)) {
+        Stat stat;
+        if (!zk_client->GetNodeValueAndStat(real_path.c_str(), &endpoint, &stat)) {
             status->code = hybridse::common::kRunError;
-            status->msg = absl::StrCat("get endpoint failed for path=", real_path);
+            status->msg = absl::StrCat("get endpoint failed for path: ", real_path);
             return {};
         }
-        endpoint_set.insert(endpoint);
+        endpoint_set[endpoint] = stat.ctime;
     }
 
     const auto& schema = GetComponetSchema();
 
     std::vector<std::vector<std::string>> data(endpoint_set.size(), std::vector<std::string>(schema.size(), ""));
 
-    auto it = endpoint_set.cbegin();
+    auto begin = endpoint_set.cbegin();
     for (size_t i = 0; i < endpoint_set.size(); i++) {
+        auto it = std::next(begin, i);
         // endpoint
-        data[i][0] = *std::next(it, i);
+        data[i][0] = it->first;
         // role
         data[i][1] = "nameserver";
 
@@ -3048,7 +3074,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
         // TODO(aceforeverd): impl real_endpoint
 
         // connect time
-        // TODO(aceforeverd): impl connect time
+        data[i][3] = std::to_string(it->second);
 
         // status
         // offlined nameserver won't register in zookeeper, so there is only online
@@ -3086,9 +3112,17 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTablets(h
         data[i][0] = tablets[i].endpoint;  // endpoint
         data[i][1] = "tablet";  // role
         data[i][2] = tablets[i].real_endpoint;  // real_endpoint
-        data[i][3] = ::openmldb::base::HumanReadableTime(tablets[i].age);  // connect time
-        data[i][4] = tablets[i].state;  // state
-        // ns_role is empty
+        data[i][3] = std::to_string(tablets[i].age);  // connect time
+
+        // state
+        if (tablets[i].state == "kHealthy") {
+            data[i][4] = "online";
+        } else if (tablets[i].state == "kOffline") {
+            data[i][4] = "offline";
+        } else {
+            data[i][4] = "NULL";
+        }
+        data[i][5] = "NULL";  // ns_role
     }
 
     return ResultSetSQL::MakeResultSet(schema, data, status);

@@ -170,9 +170,7 @@ class SQLClusterRouter : public SQLRouter {
                                                                      std::shared_ptr<SQLRequestRowBatch> row_batch,
                                                                      ::hybridse::sdk::Status* status) override;
 
-    /**
-     * utility functions to query registered components in the current DBMS
-     */
+    /// utility functions to query registered components in the current DBMS
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowNameServers(hybridse::sdk::Status* status);
 
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTablets(hybridse::sdk::Status* status);
@@ -351,13 +349,13 @@ class SQLClusterRouter : public SQLRouter {
                                 const std::string& aggr_func, const std::string& aggr_col,
                                 const std::string& partition_col, const std::string& order_col,
                                 const std::string& bucket_size);
-    /**
-    * Query all registered components, aka tablet, nameserver, api server or task manager,
-    * which is required by `SHOW COMPONENTS` statement
-    *
-    * @param status result status
-    * @return ResultSet represent all components, each row represent one component
-    */
+
+    ///
+    /// \brief Query all registered components, aka tablet, nameserver, task manager,
+    /// which is required by `SHOW COMPONENTS` statement
+    ///
+    /// \param status result status
+    /// \return ResultSet represent all components, each row represent one component
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowComponents(hybridse::sdk::Status* status);
 
  private:
