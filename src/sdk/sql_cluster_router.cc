@@ -2433,6 +2433,9 @@ bool SQLClusterRouter::IsEnableTrace() {
         if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {
             return {::hybridse::common::StatusCode::kCmdError, "set global variable failed"};
         }
+        if (!cluster_sdk_->GlobalVarNotify()) {
+            return {::hybridse::common::StatusCode::kCmdError, "zk globlvar node not update"};
+        }
         return {};
     }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);

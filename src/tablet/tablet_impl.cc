@@ -131,6 +131,7 @@ TabletImpl::TabletImpl()
       endpoint_(),
       sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
       notify_path_(),
+      globalvar_changed_notify_path_(),
       startup_mode_(::openmldb::type::StartupMode::kStandalone) {}
 
 TabletImpl::~TabletImpl() {
@@ -153,6 +154,9 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     endpoint_ = endpoint;
     notify_path_ = zk_path + "/table/notify";
     sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
+    globalvar_changed_notify_path_ = zk_path + "/global_variable/changed";
+    global_variables_.emplace("execute", "offline");
+    global_variables_.emplace("enable_trace", "false");
     ::openmldb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_);
     ::openmldb::base::SplitString(FLAGS_recycle_bin_root_path, ",", mode_recycle_root_paths_);
     if (!zk_cluster.empty()) {
@@ -297,6 +301,13 @@ bool TabletImpl::RegisterZK() {
         PDLOG(INFO, "tablet with endpoint %s register to zk cluster %s ok", endpoint_.c_str(), zk_cluster_.c_str());
         if (zk_client_->IsExistNode(notify_path_) != 0) {
             zk_client_->CreateNode(notify_path_, "1");
+        }
+        if (zk_client_->IsExistNode(globalvar_changed_notify_path_) != 0) {
+            zk_client_->CreateNode(globalvar_changed_notify_path_, "1");
+        }
+        if (!zk_client_->WatchItem(globalvar_changed_notify_path_, boost::bind(&TabletImpl::UpdateGlobalVarTable, this))) {
+            LOG(WARNING) << "add global var changed watcher failed";
+            return false;
         }
         if (!zk_client_->WatchItem(notify_path_, boost::bind(&TabletImpl::RefreshTableInfo, this))) {
             LOG(WARNING) << "add notify watcher failed";
@@ -3793,6 +3804,28 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
         return false;
     }
     return catalog_->UpdateTableInfo(table_info);
+}
+
+void TabletImpl::UpdateGlobalVarTable() {
+    // todo: should support distribute iterate
+    auto table_handler = catalog_->GetTable("INFORMATION_SCHEMA", "GLOBAL_VARIABLES");
+    auto sc = table_handler->GetSchema();
+    auto iter = table_handler->GetIterator();
+    Schema* schema;
+    schema::SchemaAdapter::ConvertSchema(*sc, schema);
+    while (iter->Valid()) {
+        codec::RowView view(*schema);
+        char* ch = NULL;
+        uint32_t length = 0;
+        view.GetValue((iter->GetValue().buf()), 0, &ch, &length);
+        std::string key(ch, length);
+        ch = NULL;
+        length = 0;
+        view.GetValue((iter->GetValue().buf()), 1, &ch, &length);
+        std::string value(ch, length);
+        global_variables_[key] = value;
+        iter->Next();
+    }
 }
 
 void TabletImpl::RefreshTableInfo() {

@@ -123,6 +123,7 @@ class DBSDK {
                                                                    std::string* msg);
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
     virtual bool TriggerNotify() const = 0;
+    virtual bool GlobalVarNotify() const = 0;
 
     virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
 
@@ -158,6 +159,7 @@ class ClusterSDK : public DBSDK {
     bool Init() override;
     bool IsClusterMode() const override { return true; }
     bool TriggerNotify() const override;
+    bool GlobalVarNotify() const override;
 
     zk::ZkClient* GetZkClient() override { return zk_client_; }
     const ClusterOptions& GetClusterOptions() const { return options_; }
@@ -181,6 +183,7 @@ class ClusterSDK : public DBSDK {
     std::string table_root_path_;
     std::string sp_root_path_;
     std::string notify_path_;
+    std::string globalvar_changed_notify_path_;
     ::openmldb::zk::ZkClient* zk_client_;
     ::baidu::common::ThreadPool pool_;
 };
@@ -202,6 +205,9 @@ class StandAloneSDK : public DBSDK {
 
     int GetPort() const { return port_; }
 
+    bool GlobalVarNotify() const override { return false; }
+
+ protected:
     // Before connecting to ns, we only have the host&port
     // NOTICE: when we call this method, we do not have the correct ns client, do not GetNsClient.
     bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override {
