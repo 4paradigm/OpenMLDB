@@ -88,7 +88,7 @@ void RemoveData(const std::string& path) {
 
 class DiskTestEnvironment : public ::testing::Environment{
     virtual void SetUp() {
-        for (int i = 1; i <= 50; i++) {
+        for (int i = 1; i <= 200; i++) {
             std::string path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_0";
             RemoveData(path);
             path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_1";
@@ -96,7 +96,7 @@ class DiskTestEnvironment : public ::testing::Environment{
         }
     }
     virtual void TearDown() {
-        for (int i = 1; i <= 50; i++) {
+        for (int i = 1; i <= 200; i++) {
             std::string path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_0";
             RemoveData(path);
             path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_1";
@@ -601,6 +601,7 @@ void Get(::openmldb::common::StorageMode storage_mode) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -732,6 +733,7 @@ void Get(::openmldb::common::StorageMode storage_mode) {
         table_meta->set_name("t1");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         AddDefaultSchema(0, 5, ::openmldb::type::TTLType::kLatestTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -1086,6 +1088,7 @@ void CreateTableWithSchema(::openmldb::common::StorageMode storage_mode) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         auto column = table_meta->add_column_desc();
         column->set_name("card");
@@ -1289,12 +1292,14 @@ void CreateTable(::openmldb::common::StorageMode storage_mode) {
         ASSERT_STREQ(table_meta_test.name().c_str(), "t0");
 
         table_meta->set_name("");
+        table_meta->set_storage_mode(storage_mode);
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(129, response.code());
     }
     {
         ::openmldb::api::CreateTableRequest request;
         ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_name("t0");
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -1504,6 +1509,7 @@ TEST_F(TabletImplTest, TraverseMem) {
     Traverse(::openmldb::common::StorageMode::kMemory);
 }
 
+// TODO(tongxin): figure out how max_traverse_cnt affect this
 void TraverseTTL(::openmldb::common::StorageMode storage_mode) {
     uint32_t old_max_traverse = FLAGS_max_traverse_cnt;
     FLAGS_max_traverse_cnt = 50;
@@ -1559,28 +1565,47 @@ void TraverseTTL(::openmldb::common::StorageMode storage_mode) {
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(0, (signed)srp->count());
-    ASSERT_EQ("test10050", srp->pk());
+    if (storage_mode == openmldb::common::kMemory) {
+        ASSERT_EQ("test10050", srp->pk());
+    } else {
+        ASSERT_EQ("test10048", srp->pk());
+    }
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(0, (signed)srp->count());
-    ASSERT_EQ("test10099", srp->pk());
+    if (storage_mode == openmldb::common::kMemory) {
+        ASSERT_EQ("test10099", srp->pk());
+    } else {
+        ASSERT_EQ("test10096", srp->pk());
+    }
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(25, (signed)srp->count());
-    ASSERT_EQ("test21024", srp->pk());
+    if (storage_mode == openmldb::common::kMemory) {
+        ASSERT_EQ(25, (signed)srp->count());
+        ASSERT_EQ("test21024", srp->pk());
+    } else {
+        ASSERT_EQ(45, (signed)srp->count());
+        ASSERT_EQ("test21045", srp->pk());
+    }
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(25, (signed)srp->count());
-    ASSERT_EQ("test21049", srp->pk());
+    if (storage_mode == openmldb::common::kMemory) {
+        ASSERT_EQ(25, (signed)srp->count());
+        ASSERT_EQ("test21049", srp->pk());
+    } else {
+        ASSERT_EQ(48, (signed)srp->count());
+        ASSERT_EQ("test21092", srp->pk());
+    }
+
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
@@ -2240,6 +2265,7 @@ TEST_F (TabletImplTest, DropTableNoRecycleDisk) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(::openmldb::common::kHDD);
     AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     ::openmldb::api::CreateTableResponse response;
@@ -2310,6 +2336,7 @@ void Recover(::openmldb::common::StorageMode storage_mode) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_seg_cnt(64);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->add_replicas("127.0.0.1:9530");
         table_meta->add_replicas("127.0.0.1:9531");
         ::openmldb::api::GeneralResponse response;
@@ -3038,6 +3065,7 @@ void Snapshot(openmldb::common::StorageMode storage_mode) {
     ::openmldb::api::GeneralResponse gresponse;
     grequest.set_tid(id);
     grequest.set_pid(1);
+    grequest.set_storage_mode(storage_mode);
     tablet.PauseSnapshot(NULL, &grequest, &gresponse, &closure);
     ASSERT_EQ(0, gresponse.code());
 
@@ -3357,6 +3385,7 @@ void GetTermPair(::openmldb::common::StorageMode storage_mode) {
         ::openmldb::api::GeneralResponse gresponse;
         grequest.set_tid(id);
         grequest.set_pid(1);
+        grequest.set_storage_mode(storage_mode);
         tablet.MakeSnapshot(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
         sleep(1);
@@ -3365,6 +3394,7 @@ void GetTermPair(::openmldb::common::StorageMode storage_mode) {
         ::openmldb::api::GetTermPairResponse pair_response;
         pair_request.set_tid(id);
         pair_request.set_pid(1);
+        pair_request.set_storage_mode(storage_mode);
         tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
         ASSERT_EQ(0, pair_response.code());
         ASSERT_TRUE(pair_response.has_table());
@@ -3376,6 +3406,7 @@ void GetTermPair(::openmldb::common::StorageMode storage_mode) {
     ::openmldb::api::GetTermPairResponse pair_response;
     pair_request.set_tid(id);
     pair_request.set_pid(1);
+    pair_request.set_storage_mode(storage_mode);
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
@@ -3496,6 +3527,7 @@ void MakeSnapshotThreshold(::openmldb::common::StorageMode storage_mode) {
         ::openmldb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
+        grq.set_storage_mode(storage_mode);
         ::openmldb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
@@ -6016,6 +6048,7 @@ void DumpIndex(::openmldb::common::StorageMode storage_mode) {
     ::openmldb::api::GeneralRequest grq;
     grq.set_tid(id);
     grq.set_pid(1);
+    grq.set_storage_mode(storage_mode);
     ::openmldb::api::GeneralResponse grp;
     grp.set_code(-1);
     tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
