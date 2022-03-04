@@ -54,7 +54,7 @@ object WindowAggPlan {
     // Check if we should keep the index column
     val isKeepIndexColumn = SparkInstance.keepIndexColumn(ctx, physicalNode.GetNodeId())
     // Check if use UnsafeRow optimizaiton or not
-    val isUnsafeRowOptimization = ctx.getConf.enableUnsafeRowOptimization
+    val isUnsafeRowOptimization = ctx.getConf.enableUnsafeRowOptForWindow
     // Check if we should keep the index column
     val isWindowSkewOptimization = ctx.getConf.enableWindowSkewOpt
 
