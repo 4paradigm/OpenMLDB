@@ -171,6 +171,9 @@ class SQLClusterRouter : public SQLRouter {
                                                                      ::hybridse::sdk::Status* status) override;
 
     /// utility functions to query registered components in the current DBMS
+    //
+    /// \param status result status, will set status.code to error if error happens
+    /// \return ResultSet of components of that type, or empty ResultSet if error happend
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowNameServers(hybridse::sdk::Status* status);
 
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTablets(hybridse::sdk::Status* status);

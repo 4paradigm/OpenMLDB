@@ -2996,6 +2996,11 @@ static const std::initializer_list<std::string> GetComponetSchema() {
                                                               "CONNECT_TIME", "STATUS", "NS_ROLE"};
     return schema;
 }
+
+// Implementation for SHOW COMPONENTS
+// it do not set status to fail even e.g. some zk query internally failed
+// which produce partial or empty result on internal error
+//
 // output schema: (ENDPOINT: string, ROLE: string, REAL_ENDPOINT: string,
 //                 CONNECT_TIME: int64, STATUS: string, NS_ROLE: string)
 // where
@@ -3008,23 +3013,27 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponent
     std::vector<std::shared_ptr<ResultSetSQL>> data;
 
     auto tablets = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTablets(status));
-    if (tablets == nullptr || !status->IsOK()) {
-        return {};
+    if (tablets != nullptr && status->IsOK()) {
+        data.push_back(std::move(tablets));
+    } else {
+        LOG(WARNING) << "[WARN]: show tablets, code: " << status->code << ", msg: " << status->msg;
     }
-    data.push_back(std::move(tablets));
 
     auto nameservers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowNameServers(status));
-    if (nameservers == nullptr || !status->IsOK()) {
-        return MultipleResultSetSQL::MakeResultSet(data, 0, status);
+    if (nameservers != nullptr && status->IsOK()) {
+        data.push_back(std::move(nameservers));
+    } else {
+        LOG(WARNING) << "[WARN]: show nameservers, code: " << status->code << ", msg: " << status->msg;
     }
-    data.push_back(std::move(nameservers));
 
     auto task_managers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTaskManagers(status));
-    if (task_managers == nullptr || !status->IsOK()) {
-        return MultipleResultSetSQL::MakeResultSet(data, 0, status);
+    if (task_managers != nullptr && status->IsOK()) {
+        data.push_back(std::move(task_managers));
+    } else {
+        LOG(WARNING) << "[WARN]: show taskmanagers, code: " << status->code << ", msg: " << status->msg;
     }
-    data.push_back(std::move(task_managers));
 
+    status->code = 0;
     return MultipleResultSetSQL::MakeResultSet(data, 0, status);
 }
 
@@ -3034,13 +3043,16 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
     auto zk_client = cluster_sdk_->GetZkClient();
     if (!cluster_sdk_->IsClusterMode() || zk_client == nullptr) {
         // standalone mode
+        status->code = hybridse::common::kRunError;
+        status->msg = "show nameservers not support in standalone mode";
         return {};
     }
 
     std::string node_path = absl::StrCat(options_.zk_path, "/leader");
     std::vector<std::string> children;
     if (!zk_client->GetChildren(node_path, children) || children.empty()) {
-        std::cout << "get children failed" << std::endl;
+        status->code = hybridse::common::kRunError;
+        status->msg = "get nameserver children failed";
         return {};
     }
 
@@ -3055,7 +3067,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
             status->msg = absl::StrCat("get endpoint failed for path: ", real_path);
             return {};
         }
-        endpoint_set[endpoint] = stat.ctime;
+        if (endpoint_set.find(endpoint) == endpoint_set.end()) {
+            endpoint_set[endpoint] = stat.ctime;
+        } else {
+            endpoint_set[endpoint] = std::min(stat.ctime, endpoint_set[endpoint]);
+        }
     }
 
     const auto& schema = GetComponetSchema();
@@ -3130,7 +3146,32 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTablets(h
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManagers(hybridse::sdk::Status* status) {
     DCHECK(status != nullptr);
-    return {};
+
+    auto zk_client = cluster_sdk_->GetZkClient();
+    if (!cluster_sdk_->IsClusterMode() || zk_client == nullptr) {
+        // standalone mode
+        status->code = hybridse::common::kRunError;
+        status->msg = "show taskmanagers not support in standalone mode";
+        return {};
+    }
+
+    std::string node_path = absl::StrCat(options_.zk_path, "/taskmanager/leader");
+    std::string endpoint;
+    Stat stat;
+    if (!zk_client->GetNodeValueAndStat(node_path.c_str(), &endpoint, &stat)) {
+        status->code = hybridse::common::kRunError;
+        status->msg = "query taskmanager from zk failed";
+        return {};
+    }
+
+    // taskmanager only registered leader on zk, return one row only currently
+    // TODO(aceforeverd): return multiple rows
+    const auto& schema = GetComponetSchema();
+    std::vector<std::vector<std::string>> data = {
+        { endpoint, "taskmanager", "", std::to_string(stat.ctime), "online", "NULL"}
+    };
+
+    return ResultSetSQL::MakeResultSet(schema, data, status);
 }
 
 }  // namespace sdk
