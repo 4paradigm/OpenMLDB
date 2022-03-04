@@ -30,6 +30,7 @@ namespace openmldb {
 namespace nameserver {
 
 constexpr const char* INTERNAL_DB = "__INTERNAL_DB";
+constexpr const char* PRE_AGG_DB = "__PRE_AGG_DB";
 constexpr const char* JOB_INFO_NAME = "JOB_INFO";
 constexpr const char* PRE_AGG_META_NAME = "PRE_AGG_META_INFO";
 
@@ -74,6 +75,7 @@ class SystemTable {
             case SystemTableType::KPreAggMetaInfo: {
                 table_info->set_db(INTERNAL_DB);
                 SetColumnDesc("aggr_table", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("aggr_db", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("base_db", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("base_table", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("aggr_func", openmldb::type::DataType::kString, table_info->add_column_desc());

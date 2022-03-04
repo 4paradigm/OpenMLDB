@@ -25,6 +25,7 @@
 #include <vector>
 #include <unordered_set>
 
+#include "base/ddl_parser.h"
 #include "base/random.h"
 #include "base/spinlock.h"
 #include "base/lru_cache.h"
@@ -256,6 +257,12 @@ class SQLClusterRouter : public SQLRouter {
                                                const std::string& default_db,
                                                ::openmldb::taskmanager::JobInfo& job_info) override;
 
+    ::openmldb::base::Status CreatePreAggrTable(const std::string& aggr_db,
+                                                const std::string& aggr_table,
+                                                const ::openmldb::base::LongWindowInfo& window_info,
+                                                const ::openmldb::nameserver::TableInfo& base_table_info,
+                                                std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
+
     std::string GetJobLog(const int id, hybridse::sdk::Status* status) override;
 
     bool NotifyTableChange() override;
@@ -324,6 +331,16 @@ class SQLClusterRouter : public SQLRouter {
             const std::string& null_value, const std::vector<std::string>& cols);
 
     hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
+
+    hybridse::sdk::Status HandleLongWindows(const hybridse::node::DeployPlanNode* deploy_node,
+                                            const std::set<std::pair<std::string, std::string>>& table_pair,
+                                            const std::string& select_sql);
+
+
+    bool CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
+                                const std::string& aggr_func, const std::string& aggr_col,
+                                const std::string& partition_col, const std::string& order_col,
+                                const std::string& bucket_size);
 
  private:
     SQLRouterOptions options_;

@@ -5470,6 +5470,13 @@ void NameServerImpl::OnLocked() {
                 exit(1);
             }
         }
+        if (databases_.find(PRE_AGG_DB) == databases_.end()) {
+            auto status = CreateDatabase(PRE_AGG_DB);
+            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+                LOG(FATAL) << "create pre-agg database failed";
+                exit(1);
+            }
+        }
         if (databases_.find(INFORMATION_SCHEMA_DB) == databases_.end()) {
             auto status = CreateDatabase(INFORMATION_SCHEMA_DB);
             if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
@@ -9519,7 +9526,7 @@ void NameServerImpl::ShowDatabase(RpcController* controller, const GeneralReques
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& db : databases_) {
-            if (db != INTERNAL_DB && db != INFORMATION_SCHEMA_DB) {
+            if (db != INTERNAL_DB && db != INFORMATION_SCHEMA_DB && db!= PRE_AGG_DB) {
                 response->add_db(db);
             }
         }

@@ -69,7 +69,7 @@ class MiniCluster {
         if (tablet_num > MAX_TABLET_NUM) {
             return false;
         }
-        FLAGS_system_table_replica_num = 0;
+        FLAGS_system_table_replica_num = 1;
         srand(time(NULL));
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
@@ -79,6 +79,13 @@ class MiniCluster {
         sleep(1);
         LOG(INFO) << "zk cluster " << zk_cluster_ << " zk path " << zk_path_
                   << " enable_distsql = " << FLAGS_enable_distsql;
+        tablet_num_ = tablet_num;
+        for (int i = 0; i < tablet_num; i++) {
+            if (!StartTablet(&tb_servers_[i])) {
+                LOG(WARNING) << "fail to start tablet";
+                return false;
+            }
+        }
         ::openmldb::nameserver::NameServerImpl* nameserver = new ::openmldb::nameserver::NameServerImpl();
         bool ok = nameserver->Init(zk_cluster_, zk_path_, ns_endpoint, "");
         if (!ok) {
@@ -97,13 +104,6 @@ class MiniCluster {
         if (ns_client_->Init() != 0) {
             LOG(WARNING) << "fail to init ns client";
             return false;
-        }
-        tablet_num_ = tablet_num;
-        for (int i = 0; i < tablet_num; i++) {
-            if (!StartTablet(&tb_servers_[i])) {
-                LOG(WARNING) << "fail to start tablet";
-                return false;
-            }
         }
         LOG(INFO) << "start mini cluster with zk cluster " << zk_cluster_ << " and zk path " << zk_path_;
         LOG(INFO) << "----- ns " << ns_endpoint;

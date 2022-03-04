@@ -677,8 +677,6 @@ void QueryPlanNode::Print(std::ostream &output,
         output << "\n";
         PrintValue(output, org_tab + INDENT, config_options_.get(), "config_options", false);
     }
-    output << "\n";
-    PrintPlanNode(output, org_tab + INDENT, children_[0], "", true);
 }
 bool QueryPlanNode::Equals(const PlanNode *node) const {
     return UnaryPlanNode::Equals(node);

@@ -57,6 +57,7 @@ DEFINE_bool(use_name, false, "enable or disable use server name");
 DEFINE_string(data_dir, "./data", "the path of data dir");
 DEFINE_bool(enable_distsql, false, "enable or disable distribute sql");
 DEFINE_bool(enable_localtablet, true, "enable or disable local tablet opt when distribute sql circumstance");
+DEFINE_string(mini_window_size, "1d", "the default mini window size in pre-aggr table");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
