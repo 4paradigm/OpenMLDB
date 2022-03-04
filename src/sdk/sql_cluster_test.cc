@@ -874,7 +874,7 @@ TEST_F(SQLClusterTest, GlobalVariable) {
     res = router->ExecuteSQL(nameserver::GLOBAL_VARIABLE_NAME,
                              "select * from GLOBAL_VARIABLES where Variable_name = enable_trace", &status);
     ASSERT_TRUE(res);
-    ASSERT_EQ("true", res->GerRowString());
+    ASSERT_EQ("true", res->GetRowString());
 }
 
 TEST_P(SQLSDKClusterOnlineBatchQueryTest, SqlSdkDistributeBatchTest) {
