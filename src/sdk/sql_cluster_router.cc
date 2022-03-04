@@ -49,7 +49,9 @@ DECLARE_string(mini_window_size);
 
 namespace openmldb {
 namespace sdk {
+
 using hybridse::plan::PlanAPI;
+
 class ExplainInfoImpl : public ExplainInfo {
  public:
     ExplainInfoImpl(const ::hybridse::sdk::SchemaImpl& input_schema, const ::hybridse::sdk::SchemaImpl& output_schema,
@@ -1699,6 +1701,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
             ret == true ? *status = {} : *status = {::hybridse::common::StatusCode::kCmdError, msg};
             return {};
         }
+        case hybridse::node::kCmdShowComponents: {
+            return ExecuteShowComponents(status);
+        }
+        case hybridse::node::kCmdShowTableStatus: {
+            *status = {::hybridse::common::StatusCode::kCmdError, "SHOW TABLE STATUS is not supported yet"};
+            break;
+        }
         default: {
             *status = {::hybridse::common::StatusCode::kCmdError, "fail to execute script with unsupported type"};
         }
@@ -2960,5 +2969,135 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
 
     return false;
 }
+
+static const std::initializer_list<std::string> GetComponetSchema() {
+    static const std::initializer_list<std::string> schema = {"ENDPOINT",     "ROLE",   "REAL_ENDPOINT",
+                                                              "CONNECT_TIME", "STATUS", "NS_ROLE"};
+    return schema;
+}
+// output schema: (ENDPOINT: string, ROLE: string, REAL_ENDPOINT: string,
+//                 CONNECT_TIME: int64, STATUS: string, NS_ROLE: string)
+// where
+// - ROLE can be 'tablet', 'nameserver', 'taskmanager'
+// - STATUS can be 'online', 'offline', 'removed'
+// - NS_ROLE can be 'master', 'standby', or empty string (for non-namespace component)
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponents(hybridse::sdk::Status* status) {
+    DCHECK(status != nullptr);
+    std::vector<std::shared_ptr<ResultSetSQL>> data;
+
+    auto tablets = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTablets(status));
+    if (tablets == nullptr || !status->IsOK()) {
+        return {};
+    }
+    data.push_back(std::move(tablets));
+
+    auto nameservers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowNameServers(status));
+    if (nameservers == nullptr || !status->IsOK()) {
+        return {};
+    }
+    data.push_back(std::move(nameservers));
+
+    auto task_managers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTaskManagers(status));
+    if (task_managers == nullptr || !status->IsOK()) {
+        return {};
+    }
+    data.push_back(std::move(task_managers));
+
+    return MultipleResultSetSQL::MakeResultSet(data, 0, status);
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServers(hybridse::sdk::Status* status) {
+    DCHECK(status != nullptr);
+
+    std::string node_path = absl::StrCat(options_.zk_path, "/leader");
+    auto zk_client = cluster_sdk_->GetZkClient();
+    if (!cluster_sdk_->IsClusterMode() || zk_client == nullptr) {
+        // standalone mode
+        return {};
+    }
+
+    std::vector<std::string> children;
+    if (!zk_client->GetChildren(node_path, children) || children.empty()) {
+        std::cout << "get children failed" << std::endl;
+        return {};
+    }
+    std::set<std::string> endpoint_set;
+    for (const auto& path : children) {
+        std::string real_path = absl::StrCat(node_path, "/", path);
+        std::string endpoint;
+        if (!zk_client->GetNodeValue(real_path, endpoint)) {
+            status->code = hybridse::common::kRunError;
+            status->msg = absl::StrCat("get endpoint failed for path=", real_path);
+            return {};
+        }
+        endpoint_set.insert(endpoint);
+    }
+
+    const auto& schema = GetComponetSchema();
+
+    std::vector<std::vector<std::string>> data(endpoint_set.size(), std::vector<std::string>(schema.size(), ""));
+
+    auto it = endpoint_set.cbegin();
+    for (size_t i = 0; i < endpoint_set.size(); i++) {
+        // endpoint
+        data[i][0] = *std::next(it, i);
+        // role
+        data[i][1] = "nameserver";
+
+        // real_endpoint
+        // TODO(aceforeverd): impl real_endpoint
+
+        // connect time
+        // TODO(aceforeverd): impl connect time
+
+        // status
+        // offlined nameserver won't register in zookeeper, so there is only online
+        data[i][4] = "online";
+
+        // ns_role
+        // NSs runs as mater/standby mode
+        if (i == 0) {
+            data[i][5] = "leader";
+        } else {
+            data[i][5] = "standby";
+        }
+    }
+
+    return ResultSetSQL::MakeResultSet(schema, data, status);
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTablets(hybridse::sdk::Status* status) {
+    DCHECK(status != nullptr);
+    const auto& schema = GetComponetSchema();
+    auto ns_client = cluster_sdk_->GetNsClient();
+
+    std::vector<::openmldb::client::TabletInfo> tablets;
+    std::string msg;
+    bool ok = ns_client->ShowTablet(tablets, msg);
+    if (!ok) {
+        status->code = hybridse::common::StatusCode::kRunError;
+        status->msg = absl::StrCat("Fail to show tablets. error msg: ", msg);
+        return {};
+    }
+
+    std::vector<std::vector<std::string>> data(tablets.size(), std::vector<std::string>(schema.size(), ""));
+
+    for (size_t i = 0; i < tablets.size(); i++) {
+        data[i][0] = tablets[i].endpoint;  // endpoint
+        data[i][1] = "tablet";  // role
+        data[i][2] = tablets[i].real_endpoint;  // real_endpoint
+        data[i][3] = ::openmldb::base::HumanReadableTime(tablets[i].age);  // connect time
+        data[i][4] = tablets[i].state;  // state
+        // ns_role is empty
+    }
+
+    return ResultSetSQL::MakeResultSet(schema, data, status);
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManagers(hybridse::sdk::Status* status) {
+    DCHECK(status != nullptr);
+    return {};
+}
+
 }  // namespace sdk
 }  // namespace openmldb

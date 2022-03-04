@@ -51,6 +51,9 @@ class DBSDK {
     virtual bool Init() = 0;
 
     virtual bool IsClusterMode() const = 0;
+
+    virtual zk::ZkClient* GetZkClient() = 0;
+
     bool Refresh() { return BuildCatalog(); }
 
     inline uint64_t GetClusterVersion() { return cluster_version_.load(std::memory_order_relaxed); }
@@ -155,6 +158,8 @@ class ClusterSDK : public DBSDK {
     bool IsClusterMode() const override { return true; }
     bool TriggerNotify() const override;
 
+    zk::ZkClient* GetZkClient() override { return zk_client_; }
+
  protected:
     bool BuildCatalog() override;
     bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override;
@@ -183,6 +188,8 @@ class StandAloneSDK : public DBSDK {
 
     ~StandAloneSDK() override { pool_.Stop(false); }
     bool Init() override;
+
+    zk::ZkClient* GetZkClient() override { return nullptr; }
 
     bool IsClusterMode() const override { return false; }
 
