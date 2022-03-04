@@ -49,7 +49,7 @@ if(TESTING_ENABLE)
     target_link_libraries(mini_cluster_request_bm mini_cluster_bm_common benchmark_main benchmark ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 endif()
 
-set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${ZETASQL_LIBS})
+set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt)
 
 if(SQL_PYSDK_ENABLE)
     find_package(Python3 COMPONENTS Interpreter Development)
