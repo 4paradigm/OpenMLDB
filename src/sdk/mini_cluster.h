@@ -84,10 +84,7 @@ class MiniCluster {
         if (tablet_num > MAX_TABLET_NUM) {
             return false;
         }
-<<<<<<< HEAD
-=======
         zk_path_ = "/mini_cluster_" + GenRand();
->>>>>>> 0ff53d43c (update ut)
         FLAGS_system_table_replica_num = 1;
         // lower diskused pull interval needed by SHOW TABLE STATUS tests
         FLAGS_get_table_diskused_interval = 5000;
@@ -184,9 +181,6 @@ class MiniCluster {
         std::string tb_endpoint = "127.0.0.1:" + GenRand();
         tb_endpoints_.push_back(tb_endpoint);
         ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
-        if (zk_cluster_.empty() || zk_path_.empty()) {
-            return false;
-        }
         bool ok = tablet->Init(zk_cluster_, zk_path_, tb_endpoint, "");
         if (!ok) {
             return false;
