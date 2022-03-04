@@ -3320,8 +3320,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTestSpecifyMem) {
     CreateTableAbsAndLatTestSpecify(::openmldb::common::StorageMode::kMemory);
 }
 
-// TODO(tongxin)
-TEST_F(TabletImplTest, GetTermPair) {
+void GetTermPair(::openmldb::common::StorageMode storage_mode) {
     uint32_t id = counter++;
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
@@ -3336,6 +3335,7 @@ TEST_F(TabletImplTest, GetTermPair) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_mode(::openmldb::api::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
@@ -3381,14 +3381,26 @@ TEST_F(TabletImplTest, GetTermPair) {
     ASSERT_FALSE(pair_response.has_table());
     ASSERT_EQ(1, (signed)pair_response.offset());
 
-    std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+    std::string manifest_file;
+    if (storage_mode == openmldb::common::kMemory) {
+        manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+    } else {
+        manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+    }
+    
     int fd = open(manifest_file.c_str(), O_RDONLY);
     ASSERT_GT(fd, 0);
     google::protobuf::io::FileInputStream fileInput(fd);
     fileInput.SetCloseOnDelete(true);
     ::openmldb::api::Manifest manifest;
     google::protobuf::TextFormat::Parse(&fileInput, &manifest);
-    std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+
+    std::string snapshot_file;
+    if (storage_mode == openmldb::common::kMemory) {
+        snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+    } else {
+        snapshot_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+    }
     unlink(snapshot_file.c_str());
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
@@ -3397,7 +3409,15 @@ TEST_F(TabletImplTest, GetTermPair) {
     FLAGS_make_snapshot_threshold_offset = offset;
 }
 
-TEST_F(TabletImplTest, MakeSnapshotThreshold) {
+TEST_F(TabletImplTest, GetTermPairDisk) {
+    GetTermPair(::openmldb::common::StorageMode::kHDD);
+}
+
+TEST_F(TabletImplTest, GetTermPairMem) {
+    GetTermPair(::openmldb::common::StorageMode::kMemory);
+}
+
+void MakeSnapshotThreshold(::openmldb::common::StorageMode storage_mode) {
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
@@ -3411,6 +3431,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
@@ -3438,7 +3459,12 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
         sleep(1);
-        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        std::string manifest_file;
+        if (storage_mode == openmldb::common::kMemory) {
+            manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        } else {
+            manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        }
         int fd = open(manifest_file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -3475,7 +3501,12 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
         sleep(1);
-        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        std::string manifest_file;
+        if (storage_mode == openmldb::common::kMemory) {
+            manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        } else {
+            manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        }
         int fd = open(manifest_file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -3483,10 +3514,23 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ::openmldb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(1, (signed)manifest.offset());
-        std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+        std::string snapshot_file;
+        if (storage_mode == openmldb::common::kMemory) {
+            snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+        } else {
+            snapshot_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+        }
         unlink(snapshot_file.c_str());
         FLAGS_make_snapshot_threshold_offset = offset;
     }
+}
+
+TEST_F(TabletImplTest, MakeSnapshotThresholdDisk) {
+    MakeSnapshotThreshold(::openmldb::common::StorageMode::kHDD);
+}
+
+TEST_F(TabletImplTest, MakeSnapshotThresholdMem) {
+    MakeSnapshotThreshold(::openmldb::common::StorageMode::kMemory);
 }
 
 void UpdateTTLAbsAndLat(::openmldb::common::StorageMode storage_mode) {
