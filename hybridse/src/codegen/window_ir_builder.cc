@@ -127,6 +127,9 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(size_t schema_idx, size_t col_idx,
                      << col_idx;
         return false;
     }
+
+    auto row_format_corrected_col_idx = col_info->idx;
+
     if (!SchemaType2DataType(col_info->type, &data_type)) {
         LOG(WARNING) << "unrecognized data type " +
                             hybridse::type::Type_Name(col_info->type);
@@ -143,7 +146,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(size_t schema_idx, size_t col_idx,
         case ::hybridse::node::kTimestamp:
         case ::hybridse::node::kDate: {
             return BuildGetPrimaryCol("hybridse_storage_get_col", window_ptr,
-                                      schema_idx, col_idx, col_info->offset,
+                                      schema_idx, row_format_corrected_col_idx, col_info->offset,
                                       &data_type, output);
         }
         case ::hybridse::node::kVarchar: {
