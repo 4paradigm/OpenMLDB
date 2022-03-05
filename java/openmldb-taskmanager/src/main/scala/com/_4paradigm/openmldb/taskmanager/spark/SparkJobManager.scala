@@ -78,7 +78,8 @@ object SparkJobManager {
       launcher.setConf("spark.eventLog.dir", TaskManagerConfig.SPARK_EVENTLOG_DIR)
     }
 
-    if ((TaskManagerConfig.SPARK_YARN_MAXAPPATTEMPTS : java.lang.Integer) != null) {
+    if ((TaskManagerConfig.SPARK_YARN_MAXAPPATTEMPTS) >= 1 ) {
+      setConf
       launcher.setConf("spark.yarn.maxAppAttempts", TaskManagerConfig.SPARK_YARN_MAXAPPATTEMPTS.toString)
     }
 
