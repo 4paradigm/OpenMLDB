@@ -267,7 +267,7 @@ class SchemasContext {
     std::vector<SchemaSource*> schema_sources_;
 
     // detailed schema format info
-    const codec::RowFormat* row_format_ = nullptr;
+    codec::RowFormat* row_format_ = nullptr;
 
     // owned schema object
     codec::Schema owned_concat_output_schema_;

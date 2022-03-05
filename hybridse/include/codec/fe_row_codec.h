@@ -263,6 +263,7 @@ class SingleSliceRowFormat : public RowFormat {
     }
 
     SingleSliceRowFormat(std::vector<const Schema*> schemas) {
+        // TODO: Release merge_schema
         Schema merge_schema;
         int offset = 0;
         for (auto schema: schemas) {

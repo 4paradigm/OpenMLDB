@@ -673,19 +673,20 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         ::llvm::FunctionType::get(int64_ty, {ptr_ty, int64_ty}, false));
     std::unordered_map<size_t, std::pair<::llvm::Value*, ::llvm::Value*>>
         used_slices;
-
+    
     // compute current row's slices
     for (auto& pair : agg_col_infos_) {
         size_t schema_idx = pair.second.schema_idx;
+        size_t slice_idx = schema_context_->GetRowFormat()->GetSliceId(schema_idx);
         auto iter = used_slices.find(schema_idx);
         if (iter == used_slices.end()) {
             ::llvm::Value* idx_value =
-                llvm::ConstantInt::get(int64_ty, schema_idx, true);
+                llvm::ConstantInt::get(int64_ty, slice_idx, true);
             ::llvm::Value* buf_ptr =
                 builder.CreateCall(get_slice_func, {iter_ptr, idx_value});
             ::llvm::Value* buf_size =
                 builder.CreateCall(get_slice_size_func, {iter_ptr, idx_value});
-            used_slices[schema_idx] = {buf_ptr, buf_size};
+            used_slices[slice_idx] = {buf_ptr, buf_size};
         }
     }
 

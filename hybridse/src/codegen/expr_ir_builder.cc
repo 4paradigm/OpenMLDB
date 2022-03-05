@@ -1034,7 +1034,8 @@ Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const 
 
     ::llvm::Module* module = ctx_->GetModule();
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-    auto slice_idx_value = builder.getInt64(schema_idx);
+    size_t slice_idx = ctx_->schemas_context()->GetRowFormat()->GetSliceId(schema_idx);
+    auto slice_idx_value = builder.getInt64(slice_idx);
     auto get_slice_func = module->getOrInsertFunction(
         "hybridse_storage_get_row_slice",
         ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));
