@@ -200,8 +200,6 @@ struct StringColInfo : public ColInfo {
           str_start_offset(str_start_offset) {}
 };
 
-
-
 class SliceFormat {
  public:
     explicit SliceFormat(const hybridse::codec::Schema* schema);
@@ -219,7 +217,6 @@ class SliceFormat {
     uint32_t str_field_start_offset_;
 };
 
-
 class RowFormat {
  public:
     virtual bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const = 0;
@@ -229,16 +226,20 @@ class RowFormat {
 
 class MultiSlicesRowFormat : public RowFormat {
  public:
-    MultiSlicesRowFormat(const Schema* schema) {
-        slice_formats_.push_back(SliceFormat(schema));
+    explicit MultiSlicesRowFormat(const Schema* schema) {
+        slice_formats_.emplace_back(SliceFormat(schema));
     }
 
-    MultiSlicesRowFormat(std::vector<const Schema*> schemas) {
-        for (auto schema: schemas) {
-            slice_formats_.push_back(SliceFormat(schema));
+    ~MultiSlicesRowFormat() {
+        slice_formats_.clear();
+    }
+
+    explicit MultiSlicesRowFormat(std::vector<const Schema*> schemas) {
+        for (auto schema : schemas) {
+            slice_formats_.emplace_back(SliceFormat(schema));
         }
-
     }
+
     bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const override {
         return slice_formats_[schema_idx].GetStringColumnInfo(idx, res);
     }
@@ -257,19 +258,25 @@ class MultiSlicesRowFormat : public RowFormat {
 
 class SingleSliceRowFormat : public RowFormat {
  public:
-    // TODO: Add deconstructor
-    SingleSliceRowFormat(const Schema* schema) {
+    explicit SingleSliceRowFormat(const Schema* schema) {
         slice_format_ = new SliceFormat(schema);
     }
 
-    SingleSliceRowFormat(std::vector<const Schema*> schemas) {
+    ~SingleSliceRowFormat() {
+        offsets_.clear();
+        if (slice_format_) {
+            delete slice_format_;
+        }
+    }
+
+    explicit SingleSliceRowFormat(std::vector<const Schema*> schemas) {
         // TODO: Release merge_schema
         Schema merge_schema;
         int offset = 0;
-        for (auto schema: schemas) {
-            offsets_.push_back(offset);
+        for (auto schema : schemas) {
+            offsets_.emplace_back(offset);
             offset += schema->size();
-            // TODO: Merge schema
+            // TODO(tobe): Merge schema
             //merge_schema.MergeFrom(schema);
         }
 

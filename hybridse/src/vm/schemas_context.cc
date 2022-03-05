@@ -141,8 +141,10 @@ void SchemasContext::Clear() {
         delete ptr;
     }
     schema_sources_.clear();
-    // TODO(tobe): release row_format
-    //row_format_.clear();
+    if (row_format_) {
+        delete row_format_;
+        row_format_ = nullptr;
+    }
     delete row_format_;
     owned_concat_output_schema_.Clear();
 }
@@ -517,14 +519,16 @@ bool SchemasContext::CheckBuild() const {
 
 void SchemasContext::Build() {
     // initialize detailed formats
-    //row_formats_.clear();
+    if (row_format_) {
+        delete row_format_;
+    }
     std::vector<const hybridse::codec::Schema*> schemas;
     for (const auto& source : schema_sources_) {
         if (source->GetSchema() == nullptr) {
             LOG(WARNING) << "Source schema is null";
             return;
         }
-        schemas.push_back(source->GetSchema());
+        schemas.emplace_back(source->GetSchema());
     }
     row_format_ = new codec::MultiSlicesRowFormat(schemas);
 
