@@ -512,8 +512,7 @@ const codec::Schema* SchemasContext::GetOutputSchema() const {
 }
 
 bool SchemasContext::CheckBuild() const {
-    //return row_formats_.size() == schema_sources_.size();
-    return row_format_ == nullptr;
+    return row_format_ != nullptr;
 }
 
 void SchemasContext::Build() {
