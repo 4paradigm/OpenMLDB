@@ -44,7 +44,7 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr, :
     }
 
     node::TypeNode data_type;
-    const codec::ColInfo* col_info = format_->GetColumnInfo(col_idx);
+    const codec::ColInfo* col_info = format_->GetColumnInfo(schema_idx_, col_idx);
     if (col_info == nullptr) {
         LOG(WARNING) << "fail to resolve field info at " << col_idx;
         return false;
@@ -113,7 +113,7 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr, :
 
         case ::hybridse::node::kVarchar: {
             codec::StringColInfo str_info;
-            if (!format_->GetStringColumnInfo(col_idx, &str_info)) {
+            if (!format_->GetStringColumnInfo(schema_idx_, col_idx, &str_info)) {
                 LOG(WARNING) << "fail to get string filed offset and next offset" << col_info->name;
             }
             DLOG(INFO) << "get string with offset " << offset << " next offset " << str_info.str_next_offset

@@ -94,8 +94,8 @@ bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
                 return false;
             }
             const codec::ColInfo& col_info =
-                *schema_context_->GetRowFormat(schema_idx)
-                     ->GetColumnInfo(col_idx);
+                *schema_context_->GetRowFormat()
+                     ->GetColumnInfo(schema_idx, col_idx);
             auto col_type = col_info.type;
             uint32_t offset = col_info.offset;
 
@@ -700,7 +700,7 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
 
             ScopeVar dummy_scope_var;
             BufNativeIRBuilder buf_builder(
-                schema_idx, schema_context_->GetRowFormat(schema_idx),
+                schema_idx, schema_context_->GetRowFormat(),
                 body_block, &dummy_scope_var);
             NativeValue field_value;
             CHECK_TRUE(buf_builder.BuildGetField(info.col_idx, slice_info.first, slice_info.second, &field_value),

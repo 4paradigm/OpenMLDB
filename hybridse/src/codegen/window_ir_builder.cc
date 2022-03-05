@@ -116,12 +116,12 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(size_t schema_idx, size_t col_idx,
         return false;
     }
     ::hybridse::node::TypeNode data_type;
-    auto row_format = schemas_context_->GetRowFormat(schema_idx);
+    auto row_format = schemas_context_->GetRowFormat();
     if (row_format == nullptr) {
         LOG(WARNING) << "fail to get row format at " << schema_idx;
         return false;
     }
-    const codec::ColInfo* col_info = row_format->GetColumnInfo(col_idx);
+    const codec::ColInfo* col_info = row_format->GetColumnInfo(schema_idx, col_idx);
     if (col_info == nullptr) {
         LOG(WARNING) << "fail to get column info at " << schema_idx << ":"
                      << col_idx;
@@ -148,8 +148,8 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(size_t schema_idx, size_t col_idx,
         }
         case ::hybridse::node::kVarchar: {
             codec::StringColInfo str_col_info;
-            if (!schemas_context_->GetRowFormat(schema_idx)
-                     ->GetStringColumnInfo(col_idx, &str_col_info)) {
+            if (!schemas_context_->GetRowFormat()
+                     ->GetStringColumnInfo(schema_idx, col_idx, &str_col_info)) {
                 LOG(WARNING)
                     << "fail to get string filed offset and next offset"
                     << " at " << col_idx;
