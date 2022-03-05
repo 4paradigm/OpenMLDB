@@ -260,6 +260,7 @@ class SingleSliceRowFormat : public RowFormat {
  public:
     explicit SingleSliceRowFormat(const Schema* schema) {
         slice_format_ = new SliceFormat(schema);
+        offsets_.emplace_back(0);
     }
 
     ~SingleSliceRowFormat() {
@@ -270,17 +271,15 @@ class SingleSliceRowFormat : public RowFormat {
     }
 
     explicit SingleSliceRowFormat(std::vector<const Schema*> schemas) {
-        // TODO: Release merge_schema
-        Schema merge_schema;
         int offset = 0;
         for (auto schema : schemas) {
             offsets_.emplace_back(offset);
             offset += schema->size();
-            // TODO(tobe): Merge schema
-            //merge_schema.MergeFrom(schema);
+            // TODO(tobe): Merge schema and make sure it is appended
+            merged_schema_.MergeFrom(*schema);
         }
 
-        slice_format_ = new SliceFormat(&merge_schema);
+        slice_format_ = new SliceFormat(&merged_schema_);
     }
 
     bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const override {
@@ -298,8 +297,8 @@ class SingleSliceRowFormat : public RowFormat {
  private:
     std::vector<size_t> offsets_;
     SliceFormat* slice_format_;
+    Schema merged_schema_;
 };
-
 
 }  // namespace codec
 }  // namespace hybridse

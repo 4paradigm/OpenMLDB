@@ -115,6 +115,7 @@ class CodeGenContext {
     CodeGenContext(::llvm::Module*, const vm::SchemasContext* schemas_context,
                    const codec::Schema* parameter_types,
                    node::NodeManager* node_manager);
+    ~CodeGenContext();
 
     ::llvm::Function* GetCurrentFunction() const;
     void SetCurrentFunction(::llvm::Function*);

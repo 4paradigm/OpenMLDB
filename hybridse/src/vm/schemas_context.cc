@@ -19,6 +19,8 @@
 #include "passes/physical/physical_pass.h"
 #include "vm/physical_op.h"
 
+DECLARE_bool(enable_spark_unsaferow_format);
+
 namespace hybridse {
 namespace vm {
 
@@ -530,7 +532,12 @@ void SchemasContext::Build() {
         }
         schemas.emplace_back(source->GetSchema());
     }
-    row_format_ = new codec::MultiSlicesRowFormat(schemas);
+
+    if (FLAGS_enable_spark_unsaferow_format) {
+        row_format_ = new codec::SingleSliceRowFormat(schemas);
+    } else {
+        row_format_ = new codec::MultiSlicesRowFormat(schemas);
+    }
 
     // initialize mappings
     column_id_map_.clear();
