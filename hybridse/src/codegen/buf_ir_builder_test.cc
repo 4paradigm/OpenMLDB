@@ -248,7 +248,7 @@ void LoadValue(T* result, bool* is_null,
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
-    codec::RowFormat buf_format(&table.columns());
+    codec::MultiSlicesRowFormat buf_format(&table.columns());
     BufNativeIRBuilder buf_builder(0, &buf_format, entry_block, &sv);
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
