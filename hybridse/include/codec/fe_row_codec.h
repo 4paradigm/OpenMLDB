@@ -275,7 +275,7 @@ class SingleSliceRowFormat : public RowFormat {
         for (auto schema : schemas) {
             offsets_.emplace_back(offset);
             offset += schema->size();
-            // TODO(tobe): Merge schema and make sure it is appended
+            // Merge schema and make sure it is appended
             merged_schema_.MergeFrom(*schema);
         }
 

@@ -36,19 +36,26 @@ BufNativeIRBuilder::BufNativeIRBuilder(const size_t schema_idx, const codec::Row
 
 BufNativeIRBuilder::~BufNativeIRBuilder() {}
 
-bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr, ::llvm::Value* row_size,
+bool BufNativeIRBuilder::BuildGetField(size_t param_col_idx, ::llvm::Value* slice_ptr, ::llvm::Value* slice_size,
                                        NativeValue* output) {
+    auto row_ptr = slice_ptr;
+    auto row_size = slice_size;
+
     if (row_ptr == NULL || row_size == NULL || output == NULL) {
         LOG(WARNING) << "input args have null";
         return false;
     }
 
     node::TypeNode data_type;
-    const codec::ColInfo* col_info = format_->GetColumnInfo(schema_idx_, col_idx);
+    const codec::ColInfo* col_info = format_->GetColumnInfo(schema_idx_, param_col_idx);
     if (col_info == nullptr) {
-        LOG(WARNING) << "fail to resolve field info at " << col_idx;
+        LOG(WARNING) << "fail to resolve field info at " << param_col_idx;
         return false;
     }
+
+    // Get the corrected column index from RowFormat
+    auto col_idx = col_info->idx;
+
     if (!SchemaType2DataType(col_info->type, &data_type)) {
         LOG(WARNING) << "unrecognized data type " + hybridse::type::Type_Name(col_info->type);
         return false;
