@@ -42,8 +42,9 @@ object RowProjectPlan {
     val isKeepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
 
     // Get schema info from physical node
-    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node.GetProducer(0))
-    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node)
+    val isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
+    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node.GetProducer(0), isUnsafeRowOpt)
+    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node, isUnsafeRowOpt)
 
     val projectConfig = ProjectConfig(
       functionName = node.project().fn_info().fn_name(),
