@@ -120,7 +120,7 @@ endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
 
-set(LINK_LIBS log openmldb_proto base ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_SSL_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread)
+set(LINK_LIBS log openmldb_proto base ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND LINK_LIBS unwind)
 endif()
