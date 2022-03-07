@@ -558,11 +558,14 @@ TEST_F(TabletCatalogTest, aggr_table_test) {
     ASSERT_TRUE(catalog->Init());
 
     std::vector<::hybridse::vm::AggrTableInfo> infos;
-    ::hybridse::vm::AggrTableInfo info1 = {"aggr_t1", "aggr_db", "base_db", "base_t1", "sum", "col1", "col2", "col3", "1000"};
+    ::hybridse::vm::AggrTableInfo info1 = {"aggr_t1", "aggr_db", "base_db", "base_t1",
+                                           "sum", "col1", "col2", "col3", "1000"};
     infos.push_back(info1);
-    ::hybridse::vm::AggrTableInfo info2 = {"aggr_t2", "aggr_db", "base_db", "base_t1", "sum", "col1", "col2", "col3", "1h"};
+    ::hybridse::vm::AggrTableInfo info2 = {"aggr_t2", "aggr_db", "base_db", "base_t1",
+                                           "sum", "col1", "col2", "col3", "1h"};
     infos.push_back(info2);
-    ::hybridse::vm::AggrTableInfo info3 = {"aggr_t3", "aggr_db", "base_db", "base_t1", "avg", "col1", "col2,col4", "col3", "1h"};
+    ::hybridse::vm::AggrTableInfo info3 = {"aggr_t3", "aggr_db", "base_db", "base_t1",
+                                           "avg", "col1", "col2,col4", "col3", "1h"};
     infos.push_back(info3);
 
     catalog->RefreshAggrTables(infos);

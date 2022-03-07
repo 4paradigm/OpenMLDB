@@ -868,9 +868,11 @@ TEST_F(SQLClusterTest, GetPreAggrTable) {
 
     ::hybridse::sdk::Status status;
     std::vector<::hybridse::vm::AggrTableInfo> table_infos;
-    ::hybridse::vm::AggrTableInfo info = {"aggr_t1", "aggr_db", "base_db", "base_t1", "sum", "col1", "col2", "col3", "1000"};
+    ::hybridse::vm::AggrTableInfo info = {"aggr_t1", "aggr_db", "base_db", "base_t1",
+                                          "sum", "col1", "col2", "col3", "1000"};
     table_infos.emplace_back(info);
-    info = {"aggr_t1", "aggr_db", "base_db", "base_t2", "sum", "col1", "col2", "col3", "1000"};
+    info = {"aggr_t1", "aggr_db", "base_db", "base_t2", "sum",
+            "col1", "col2", "col3", "1000"};
     table_infos.emplace_back(info);
 
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
@@ -886,7 +888,7 @@ TEST_F(SQLClusterTest, GetPreAggrTable) {
     }
 
     auto res = router->GetAggrTables();
-    ASSERT_TRUE(res.size() >= 2);
+    ASSERT_GE(res.size(), 2);
     for (const auto& info : table_infos) {
         bool found = false;
         for (const auto& res_info : res) {

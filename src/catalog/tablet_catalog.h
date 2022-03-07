@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 
 #include "base/spinlock.h"
 #include "catalog/client_manager.h"
@@ -311,7 +312,8 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 
     struct AggrTableKeyHash {
         std::size_t operator()(const AggrTableKey& key) const {
-            return std::hash<std::string>()(key.base_db + key.base_table + key.aggr_func + key.aggr_col + key.partition_cols + key.order_by_col);
+            return std::hash<std::string>()(key.base_db + key.base_table + key.aggr_func +
+                                            key.aggr_col + key.partition_cols + key.order_by_col);
         }
     };
 
@@ -326,7 +328,10 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
         }
     };
 
-    using AggrTableMap = std::unordered_map<AggrTableKey, std::vector<::hybridse::vm::AggrTableInfo>, AggrTableKeyHash, AggrTableKeyEqual>;
+    using AggrTableMap = std::unordered_map<AggrTableKey,
+                                            std::vector<::hybridse::vm::AggrTableInfo>,
+                                            AggrTableKeyHash,
+                                            AggrTableKeyEqual>;
 
     ::openmldb::base::SpinMutex mu_;
     TabletTables tables_;

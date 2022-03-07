@@ -43,8 +43,6 @@
 #include "sdk/result_set_sql.h"
 #include "sdk/file_option_parser.h"
 #include "sdk/split.h"
-#include "nameserver/system_table.h"
-#include "absl/strings/str_cat.h"
 
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(mini_window_size);
