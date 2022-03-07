@@ -86,9 +86,20 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 if (MAC_TABLET_ENABLE)
     add_compile_definitions(__mac_tablet__=1)
 endif ()
+
+find_package(OpenSSL REQUIRED)
+find_library(BRPC_LIBRARY brpc)
+find_library(PROTOBUF_LIBRARY protobuf)
+find_library(GLOG_LIBRARY glog)
+find_library(GFLAGS_LIBRARY gflags)
+find_library(UNWIND_LIBRARY unwind)
+find_library(LEVELDB_LIBRARY leveldb)
+find_library(Z_LIBRARY z)
+find_library(SNAPPY_LIBRARY snappy)
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(BRPC_LIBS brpc protobuf glog gflags unwind ssl crypto leveldb z snappy dl pthread ${OS_LIB})
+    set(BRPC_LIBS ${BRPC_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
             ${CMAKE_THREAD_LIBS_INIT}
@@ -101,7 +112,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
-    set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
+          set(BRPC_LIBS ${BRPC_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
 endif ()
 
 if (SANITIZER_ENABLE)
