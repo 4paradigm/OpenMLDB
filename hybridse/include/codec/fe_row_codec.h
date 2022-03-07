@@ -219,6 +219,7 @@ class SliceFormat {
 
 class RowFormat {
  public:
+    virtual ~RowFormat() {};
     virtual bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const = 0;
     virtual const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const = 0;
     virtual size_t GetSliceId(size_t schema_idx) const = 0;
@@ -234,7 +235,7 @@ class MultiSlicesRowFormat : public RowFormat {
         slice_formats_.clear();
     }
 
-    explicit MultiSlicesRowFormat(std::vector<const Schema*> schemas) {
+    explicit MultiSlicesRowFormat(const std::vector<const Schema*>& schemas) {
         for (auto schema : schemas) {
             slice_formats_.emplace_back(SliceFormat(schema));
         }
@@ -270,7 +271,7 @@ class SingleSliceRowFormat : public RowFormat {
         }
     }
 
-    explicit SingleSliceRowFormat(std::vector<const Schema*> schemas) {
+    explicit SingleSliceRowFormat(const std::vector<const Schema*>& schemas) {
         int offset = 0;
         for (auto schema : schemas) {
             offsets_.emplace_back(offset);

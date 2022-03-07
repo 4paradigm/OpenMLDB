@@ -147,7 +147,6 @@ void SchemasContext::Clear() {
         delete row_format_;
         row_format_ = nullptr;
     }
-    delete row_format_;
     owned_concat_output_schema_.Clear();
 }
 
