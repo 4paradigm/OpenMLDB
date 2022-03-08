@@ -53,13 +53,8 @@ fetype_to_py = {
     sql_router_sdk.kTypeTimestamp: Type.Timestamp,
 }
 
-createTableRE = re.compile("^create\s+table", re.I)
-createDBRE = re.compile("^create\s+database", re.I)
-createProduce = re.compile("^create\s+procedure", re.I)
 insertRE = re.compile("^insert", re.I)
 selectRE = re.compile("^select", re.I)
-dropTable = re.compile("^drop\s+table", re.I)
-dropProduce = re.compile("^drop\s+procedure", re.I)
 
 
 # Exceptions module
@@ -209,20 +204,7 @@ class Cursor(object):
         command = operation.strip(' \t\n\r') if operation else None
         if command is None:
             raise Exception("None operation")
-        semicolonCount = command.count(';')
-        escapeSemicolonCount = command.count("\;")
-        if createTableRE.match(command):
-            if escapeSemicolonCount > 1:
-                raise Exception("invalid table name")
-            ok, error = self.connection._sdk.executeDDL(self.db, command)
-            if not ok:
-                raise DatabaseError(error)
-        elif createDBRE.match(command):
-            db = command.split()[-1].rstrip(";")
-            ok, error = self.connection._sdk.createDB(db)
-            if not ok:
-                raise DatabaseError(error)
-        elif insertRE.match(command):
+        if insertRE.match(command):
             questionMarkCount = command.count('?');
             if questionMarkCount > 0:
                 if len(parameters) != questionMarkCount:
@@ -312,20 +294,10 @@ class Cursor(object):
                 raise DatabaseError("execute select fail, msg: {}".format(rs))
             self._pre_process_result(rs)
             return self
-        elif createProduce.match(command):
-            ok, error = self.connection._sdk.executeDDL(self.db, command)
-            if not ok:
-                raise DatabaseError(error)
-        elif dropTable.match(command):
-            ok, error = self.connection._sdk.executeDDL(self.db, command)
-            if not ok:
-                raise DatabaseError(error)
-        elif dropProduce.match(command):
-            ok, error = self.connection._sdk.executeDDL(self.db, command)
-            if not ok:
-                raise DatabaseError(error)
         else:
-            raise DatabaseError("unsupport sql")
+            ok, rs = self.connection._sdk.execute_sql(self.db, command)
+            if not ok:
+                raise DatabaseError(rs)
 
     @connected
     def executemany(self, operation, parameters=()):
