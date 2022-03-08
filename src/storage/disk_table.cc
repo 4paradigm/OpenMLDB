@@ -223,16 +223,32 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
                   id_, pid_);
             return false;
         }
+        const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+        uint8_t version = codec::RowView::GetSchemaVersion(data);
+        auto decoder = GetVersionDecoder(version);
+        if (decoder == nullptr) {
+            PDLOG(WARNING, "invalid schema version %u, tid %u pid %u", version, id_, pid_);
+            return false;
+        }
         auto inner_index = table_index_.GetInnerIndex(inner_pos);
         auto ts_col = index_def->GetTsColumn();
         std::string combine_key;
-        if (inner_index->GetIndex().size() > 1 && ts_col) {
-            combine_key = CombineKeyTs(it->key(), time, ts_col->GetId());
-        } else {
-            combine_key = CombineKeyTs(it->key(), time);
+        if (ts_col) {
+            int64_t ts = 0;
+            if (ts_col->IsAutoGenTs()) {
+                ts = time;
+            } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
+                PDLOG(WARNING, "get ts failed. tid %u pid %u", id_, pid_);
+                return false;
+            }
+            if (inner_index->GetIndex().size() > 1) {
+                combine_key = CombineKeyTs(it->key(), ts, ts_col->GetId());
+            } else {
+                combine_key = CombineKeyTs(it->key(), ts);
+            }
+            rocksdb::Slice spk = rocksdb::Slice(combine_key);
+            batch.Put(cf_hs_[inner_pos + 1], spk, value);
         }
-        rocksdb::Slice spk = rocksdb::Slice(combine_key);
-        batch.Put(cf_hs_[inner_pos + 1], spk, value);
     }
     s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
