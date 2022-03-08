@@ -323,13 +323,13 @@ inline void ExpectResultSetStrEq(const std::vector<std::vector<std::optional<std
     size_t idx = 0;
     // schema check
     ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());
-    for (int i = 0; i < expect[idx].size(); ++i) {
+    for (size_t i = 0; i < expect[idx].size(); ++i) {
         ASSERT_TRUE(expect[idx][i].has_value());
         EXPECT_EQ(expect[idx][i].value(), rs->GetSchema()->GetColumnName(i));
     }
 
     while (++idx < expect.size() && rs->Next()) {
-        for (int i = 0; i < expect[idx].size(); ++i) {
+        for (size_t i = 0; i < expect[idx].size(); ++i) {
             if (expect[idx][i].has_value()) {
                 std::string val;
                 EXPECT_TRUE(rs->GetAsString(i, val));
@@ -350,15 +350,27 @@ TEST_P(DBSDKTest, ShowComponents) {
 
     if (cs->IsClusterMode()) {
         ASSERT_EQ(2, rs->Size());
-        ASSERT_EQ(6, rs->GetSchema()->GetColumnCnt());
+        ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
         auto& tablet_eps = mc_->GetTbEndpoint();
         auto& ns_ep = mc_->GetNsEndpoint();
         ASSERT_EQ(1, tablet_eps.size());
         ExpectResultSetStrEq(
             {
-                {"ENDPOINT", "ROLE", "REAL_ENDPOINT", "CONNECT_TIME", "STATUS", "NS_ROLE"},
-                {tablet_eps[0], "tablet", {}, {}, "online", "NULL"},
-                {ns_ep, "nameserver", {}, {}, "online", "master"}
+                {"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
+                {tablet_eps.at(0), "tablet", {}, "online", "NULL"},
+                {ns_ep, "nameserver", {}, "online", "master"}
+            },
+            rs.get());
+    } else {
+        ASSERT_EQ(2, rs->Size());
+        ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
+        const auto& tablet_ep = env.GetTbEndpoint();
+        const auto& ns_ep = env.GetNsEndpoint();
+        ExpectResultSetStrEq(
+            {
+                {"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
+                {tablet_ep, "tablet", {}, "online", "NULL"},
+                {ns_ep, "nameserver", {}, "online", "master"}
             },
             rs.get());
     }

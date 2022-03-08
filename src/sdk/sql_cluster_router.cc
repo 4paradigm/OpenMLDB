@@ -2992,8 +2992,7 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
 }
 
 static const std::initializer_list<std::string> GetComponetSchema() {
-    static const std::initializer_list<std::string> schema = {"ENDPOINT",     "ROLE",   "REAL_ENDPOINT",
-                                                              "CONNECT_TIME", "STATUS", "NS_ROLE"};
+    static const std::initializer_list<std::string> schema = {"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"};
     return schema;
 }
 
@@ -3001,9 +3000,10 @@ static const std::initializer_list<std::string> GetComponetSchema() {
 // it do not set status to fail even e.g. some zk query internally failed
 // which produce partial or empty result on internal error
 //
-// output schema: (ENDPOINT: string, ROLE: string, REAL_ENDPOINT: string,
+// output schema: (ENDPOINT: string, ROLE: string,
 //                 CONNECT_TIME: int64, STATUS: string, NS_ROLE: string)
 // where
+// - ENDPOINT: IP:PORT or DOMAIN:PORT
 // - ROLE can be 'tablet', 'nameserver', 'taskmanager'
 // - CONNECT_TIME uptime time in milliseconds from epoch
 // - STATUS can be 'online', 'offline' or 'NULL' (otherwise)
@@ -3033,20 +3033,30 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponent
         LOG(WARNING) << "[WARN]: show taskmanagers, code: " << status->code << ", msg: " << status->msg;
     }
 
-    status->code = 0;
+    status->code = hybridse::common::kOk;
     return MultipleResultSetSQL::MakeResultSet(data, 0, status);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServers(hybridse::sdk::Status* status) {
     DCHECK(status != nullptr);
 
+    const auto& schema = GetComponetSchema();
+
     auto zk_client = cluster_sdk_->GetZkClient();
     if (!cluster_sdk_->IsClusterMode() || zk_client == nullptr) {
         // standalone mode
-        // TODO(aceforeverd): get ns in standalone mode
-        status->code = hybridse::common::kRunError;
-        status->msg = "show nameservers not support in standalone mode";
-        return {};
+        std::string endpoint, real_endpoint;
+        if (!cluster_sdk_->GetNsAddress(&endpoint, &real_endpoint)) {
+            status->code = hybridse::common::kRunError;
+            status->msg = "fail to get ns address";
+            return {};
+        }
+
+        std::vector<std::vector<std::string>> data = {
+            {endpoint, "nameserver", "ctime(fixme)", "online", "master"}
+        };
+
+        return ResultSetSQL::MakeResultSet(schema, data, status);
     }
 
     std::string node_path = absl::StrCat(options_.zk_path, "/leader");
@@ -3058,7 +3068,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
     }
 
     // endponit => create time (time in milliseconds from epoch)
-    std::map<std::string, int64_t> endpoint_set;
+    std::map<std::string, int64_t> endpoint_map;
     for (const auto& path : children) {
         std::string real_path = absl::StrCat(node_path, "/", path);
         std::string endpoint;
@@ -3068,41 +3078,37 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
             status->msg = absl::StrCat("get endpoint failed for path: ", real_path);
             return {};
         }
-        if (endpoint_set.find(endpoint) == endpoint_set.end()) {
-            endpoint_set[endpoint] = stat.ctime;
+        if (endpoint_map.find(endpoint) == endpoint_map.end()) {
+            endpoint_map[endpoint] = stat.ctime;
         } else {
-            endpoint_set[endpoint] = std::min(stat.ctime, endpoint_set[endpoint]);
+            // pickup the latest register time
+            endpoint_map[endpoint] = std::max(stat.ctime, endpoint_map[endpoint]);
         }
     }
 
-    const auto& schema = GetComponetSchema();
+    std::vector<std::vector<std::string>> data(endpoint_map.size(), std::vector<std::string>(schema.size(), ""));
 
-    std::vector<std::vector<std::string>> data(endpoint_set.size(), std::vector<std::string>(schema.size(), ""));
-
-    auto begin = endpoint_set.cbegin();
-    for (size_t i = 0; i < endpoint_set.size(); i++) {
+    auto begin = endpoint_map.cbegin();
+    for (size_t i = 0; i < endpoint_map.size(); i++) {
         auto it = std::next(begin, i);
         // endpoint
         data[i][0] = it->first;
         // role
         data[i][1] = "nameserver";
 
-        // real_endpoint
-        // TODO(aceforeverd): impl real_endpoint
-
         // connect time
-        data[i][3] = std::to_string(it->second);
+        data[i][2] = std::to_string(::baidu::common::timer::get_micros() / 1000 - it->second);
 
         // status
         // offlined nameserver won't register in zookeeper, so there is only online
-        data[i][4] = "online";
+        data[i][3] = "online";
 
         // ns_role
         // NSs runs as mater/standby mode
         if (i == 0) {
-            data[i][5] = "master";
+            data[i][4] = "master";
         } else {
-            data[i][5] = "standby";
+            data[i][4] = "standby";
         }
     }
 
@@ -3128,18 +3134,19 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTablets(h
     for (size_t i = 0; i < tablets.size(); i++) {
         data[i][0] = tablets[i].endpoint;  // endpoint
         data[i][1] = "tablet";  // role
-        data[i][2] = tablets[i].real_endpoint;  // real_endpoint
-        data[i][3] = std::to_string(tablets[i].age);  // connect time
+
+        // connect time in milliseconds
+        data[i][2] = std::to_string(tablets[i].age);
 
         // state
         if (tablets[i].state == "kHealthy") {
-            data[i][4] = "online";
+            data[i][3] = "online";
         } else if (tablets[i].state == "kOffline") {
-            data[i][4] = "offline";
+            data[i][3] = "offline";
         } else {
-            data[i][4] = "NULL";
+            data[i][3] = "NULL";
         }
-        data[i][5] = "NULL";  // ns_role
+        data[i][4] = "NULL";  // ns_role
     }
 
     return ResultSetSQL::MakeResultSet(schema, data, status);
@@ -3169,7 +3176,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
     // TODO(aceforeverd): return multiple rows
     const auto& schema = GetComponetSchema();
     std::vector<std::vector<std::string>> data = {
-        { endpoint, "taskmanager", "", std::to_string(stat.ctime), "online", "NULL"}
+        { endpoint, "taskmanager", std::to_string(::baidu::common::timer::get_micros() / 1000 - stat.ctime), "online", "NULL"}
     };
 
     return ResultSetSQL::MakeResultSet(schema, data, status);
