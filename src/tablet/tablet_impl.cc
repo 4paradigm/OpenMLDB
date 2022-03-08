@@ -3642,7 +3642,13 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         msg.assign("table exists");
         return -1;
     }
-    Table* table_ptr = Table::CreateTable(*table_meta, db_root_path);
+    std::string table_db_path = GetDBPath(db_root_path, tid, pid);
+    Table* table_ptr;
+    if (table_meta->storage_mode() == openmldb::common::kMemory) {
+        table_ptr = new MemTable(*table_meta);
+    } else {
+        table_ptr = new DiskTable(*table_meta, table_db_path);
+    }
     table.reset(table_ptr);
 
     if (table_meta->storage_mode() != openmldb::common::StorageMode::kMemory && is_load) {
@@ -3658,8 +3664,7 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         }
         PDLOG(INFO, "create table. tid %u pid %u", tid, pid);
     }
-
-    std::string table_db_path = GetDBPath(db_root_path, tid, pid);
+    
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
         replicator =
