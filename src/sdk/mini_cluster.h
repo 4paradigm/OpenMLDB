@@ -64,7 +64,14 @@ class MiniCluster {
  public:
     explicit MiniCluster(int32_t zk_port)
         : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {}
-    ~MiniCluster() = default;
+    ~MiniCluster() {
+        for (const auto& kv : tb_clients_) {
+            delete kv.second;
+        }
+        if (ns_client_) {
+            delete ns_client_;
+        }
+    }
 
     bool SetUp(int tablet_num = 2) {
         if (tablet_num > MAX_TABLET_NUM) {
@@ -119,9 +126,6 @@ class MiniCluster {
         ns_.Stop(10);
         for (int i = 0; i < tablet_num_; i++) {
             tb_servers_[i].Stop(10);
-        }
-        for (const auto& kv : tb_clients_) {
-            delete kv.second;
         }
     }
 
@@ -203,7 +207,14 @@ class MiniCluster {
 class StandaloneEnv {
  public:
     StandaloneEnv() : ns_(), ns_client_(nullptr), tb_client_(nullptr) {}
-    ~StandaloneEnv() = default;
+    ~StandaloneEnv() {
+        if (tb_client_) {
+            delete tb_client_;
+        }
+        if (ns_client_) {
+            delete ns_client_;
+        }
+    }
     bool SetUp() {
         srand(time(nullptr));
         FLAGS_db_root_path = "/tmp/mini_cluster" + std::to_string(GenRand());
@@ -244,7 +255,6 @@ class StandaloneEnv {
     void Close() {
         ns_.Stop(10);
         tb_server_.Stop(10);
-        delete tb_client_;
     }
 
     ::openmldb::client::NsClient* GetNsClient() { return ns_client_; }

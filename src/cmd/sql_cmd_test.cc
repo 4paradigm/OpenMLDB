@@ -339,7 +339,6 @@ inline void ExpectResultSetStrEq(const std::vector<std::vector<std::optional<std
     }
 }
 
-
 TEST_P(DBSDKTest, ShowComponents) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -354,25 +353,19 @@ TEST_P(DBSDKTest, ShowComponents) {
         auto& tablet_eps = mc_->GetTbEndpoint();
         auto& ns_ep = mc_->GetNsEndpoint();
         ASSERT_EQ(1, tablet_eps.size());
-        ExpectResultSetStrEq(
-            {
-                {"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
-                {tablet_eps.at(0), "tablet", {}, "online", "NULL"},
-                {ns_ep, "nameserver", {}, "online", "master"}
-            },
-            rs.get());
+        ExpectResultSetStrEq({{"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
+                              {tablet_eps.at(0), "tablet", {}, "online", "NULL"},
+                              {ns_ep, "nameserver", {}, "online", "master"}},
+                             rs.get());
     } else {
         ASSERT_EQ(2, rs->Size());
         ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
         const auto& tablet_ep = env.GetTbEndpoint();
         const auto& ns_ep = env.GetNsEndpoint();
-        ExpectResultSetStrEq(
-            {
-                {"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
-                {tablet_ep, "tablet", {}, "online", "NULL"},
-                {ns_ep, "nameserver", {}, "online", "master"}
-            },
-            rs.get());
+        ExpectResultSetStrEq({{"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
+                              {tablet_ep, "tablet", {}, "online", "NULL"},
+                              {ns_ep, "nameserver", {}, "online", "master"}},
+                             rs.get());
     }
 
     HandleSQL("show components");
