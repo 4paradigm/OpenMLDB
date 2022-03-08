@@ -2516,7 +2516,11 @@ void LoadWithDeletedKey(::openmldb::common::StorageMode storage_mode) {
         sr.set_et(1000);
         ::openmldb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(108, srp.code());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(108, srp.code());
+        } else {
+            ASSERT_EQ(0, srp.code());
+        }
         sr.set_pk("card0");
         sr.set_idx_name("card");
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -3113,7 +3117,9 @@ void CreateTableLatestTestDefault(openmldb::common::StorageMode storage_mode) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(1, (signed)ts.skiplist_height());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(1, (signed)ts.skiplist_height());
+        }
     }
 }
 
@@ -3151,7 +3157,9 @@ void CreateTableLatestTestSpecify(::openmldb::common::StorageMode storage_mode) 
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(2, (signed)ts.skiplist_height());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(2, (signed)ts.skiplist_height());
+        }
     }
 }
 
@@ -3188,7 +3196,9 @@ void CreateTableAbsoluteTestDefault(openmldb::common::StorageMode storage_mode) 
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(4, (signed)ts.skiplist_height());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(4, (signed)ts.skiplist_height());
+        }
     }
 }
 
@@ -3226,7 +3236,9 @@ void CreateTableAbsoluteTestSpecify(::openmldb::common::StorageMode storage_mode
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(8, (signed)ts.skiplist_height());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(8, (signed)ts.skiplist_height());
+        }
     }
 }
 
@@ -3336,7 +3348,9 @@ void CreateTableAbsAndLatTestSpecify(::openmldb::common::StorageMode storage_mod
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(8, (signed)ts.skiplist_height());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(8, (signed)ts.skiplist_height());
+        }
     }
 }
 
@@ -4196,9 +4210,10 @@ void AbsAndLat(::openmldb::common::StorageMode storage_mode) {
         ::openmldb::api::PutRequest prequest;
         ::openmldb::api::Dimension* dim = prequest.add_dimensions();
         dim->set_idx(0);
-        dim->set_key("test" + std::to_string(i % 10));
+        dim->set_key("test" + std::to_string(i));
         uint64_t ts = now - (99 - i) * 60 * 1000;
         std::string ts_str = std::to_string(ts);
+        PDLOG(ERROR, "puting row ts_col is %u", ts);
         std::vector<std::string> row = {"test" + std::to_string(i % 10), ts_str, ts_str,
             ts_str, ts_str, ts_str, ts_str};
         auto value = prequest.mutable_value();
