@@ -92,10 +92,11 @@ coverage: coverage-cpp coverage-java
 coverage-cpp: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 
+# scoverage may conflicts with jacoco, so we run it separately
 coverage-java: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target cp_native_so -- -j$(NPROC)
 	cd java && ./mvnw --batch-mode prepare-package
-	cd java && ./mvnw --batch-mode clean scoverage:report
+	cd java && ./mvnw --batch-mode scoverage:report
 
 coverage-configure:
 	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
