@@ -318,7 +318,8 @@ TEST_P(DBSDKTest, ShowGlobalVaraibles) {
 
 // expect the output of a ResultSet, first row is schema, all compared in string
 // if expect[i][j] is not set, assert will skip
-inline void ExpectResultSetStrEq(const std::vector<std::vector<std::optional<std::string>>>& expect, hybridse::sdk::ResultSet* rs) {
+inline void ExpectResultSetStrEq(const std::vector<std::vector<std::optional<std::string>>>& expect,
+                                 hybridse::sdk::ResultSet* rs) {
     ASSERT_EQ(expect.size(), rs->Size() + 1);
     size_t idx = 0;
     // schema check

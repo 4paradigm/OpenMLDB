@@ -64,6 +64,7 @@ class MiniCluster {
  public:
     explicit MiniCluster(int32_t zk_port)
         : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {}
+
     ~MiniCluster() {
         for (const auto& kv : tb_clients_) {
             delete kv.second;
@@ -259,9 +260,7 @@ class StandaloneEnv {
 
     ::openmldb::client::NsClient* GetNsClient() { return ns_client_; }
 
-    ::openmldb::client::TabletClient* GetTabletClient() {
-        return tb_client_;
-    }
+    ::openmldb::client::TabletClient* GetTabletClient() { return tb_client_; }
 
     uint64_t GetNsPort() const { return ns_port_; }
 
