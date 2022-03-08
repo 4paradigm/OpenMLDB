@@ -126,7 +126,6 @@ class OpenMLDBSdk(object):
         if status.code != 0:
             return False, status.msg
         else:
-            self.sdk.RefreshCatalog()
             return True, rs
 
     def getParameterBuilder(self, data):
