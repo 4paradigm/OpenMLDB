@@ -26,7 +26,6 @@
 #include "gflags/gflags.h"
 #include "storage/record.h"
 
-DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(key_entry_max_height);

@@ -177,7 +177,7 @@ class MemTable : public Table {
     ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index);
 
     // release all memory allocated
-    uint64_t Release() override;
+    uint64_t Release();
 
     void SchedGc() override;
 

@@ -40,8 +40,6 @@
 #include "storage/iterator.h"
 #include "storage/table.h"
 
-typedef google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> Dimensions;
-
 namespace openmldb {
 namespace storage {
 
@@ -276,9 +274,9 @@ class DiskTable : public Table {
  public:
     DiskTable(const std::string& name, uint32_t id, uint32_t pid, const std::map<std::string, uint32_t>& mapping,
               uint64_t ttl, ::openmldb::type::TTLType ttl_type, ::openmldb::common::StorageMode storage_mode,
-              const std::string& db_root_path);
+              const std::string& table_path);
 
-    DiskTable(const ::openmldb::api::TableMeta& table_meta, const std::string& db_root_path);
+    DiskTable(const ::openmldb::api::TableMeta& table_meta, const std::string& table_path);
     DiskTable(const DiskTable&) = delete;
     DiskTable& operator=(const DiskTable&) = delete;
 
@@ -351,7 +349,6 @@ class DiskTable : public Table {
     uint64_t GetRecordPkCnt() override;
     inline uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
-    uint64_t Release() override;
 
  private:
     rocksdb::DB* db_;
@@ -361,7 +358,7 @@ class DiskTable : public Table {
     rocksdb::Options options_;
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
-    std::string db_root_path_;
+    std::string table_path_;
 };
 
 }  // namespace storage
