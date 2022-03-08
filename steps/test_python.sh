@@ -24,9 +24,9 @@ THIRDSRC=${THIRD_PARTY_SRC_DIR:-thirdsrc}
 test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
 cp steps/zoo.cfg "$THIRDSRC/zookeeper-3.4.14/conf"
 cd "$THIRDSRC/zookeeper-3.4.14"
-if [`uname` == 'Darwin']; then
+if [[`uname` == 'Darwin']]; then
   netstat | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
-elif[`uname` == 'Linux']; then
+elif [[`uname` == 'Linux']]; then
   netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
 fi
 ./bin/zkServer.sh start && cd "$ROOT_DIR"
