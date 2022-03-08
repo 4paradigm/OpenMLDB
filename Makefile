@@ -95,6 +95,7 @@ coverage-cpp: coverage-configure
 coverage-java: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target cp_native_so -- -j$(NPROC)
 	cd java && ./mvnw --batch-mode prepare-package
+	cd java && ./mvnw --batch-mode clean scoverage:report
 
 coverage-configure:
 	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
@@ -167,7 +168,7 @@ thirdpartysrc-clean:
 HYBRIDSE_BUILD_DIR := $(MAKEFILE_DIR)/hybridse/build
 HYBRIDSE_INSTALL_DIR := $(THIRD_PARTY_DIR)/hybridse
 
-.PHONY: hybridse hybridse-build hybridse-test hybridse-configure hybridse-coverage hybridse-coverage-configure hybridse-clean
+.PHONY: hybridse hybridse-build hybridse-test hybridse-configure hybridse-clean
 
 # hybridse* target reserved for those like to compile in the old way
 hybridse: hybridse-build
@@ -183,13 +184,6 @@ hybridse-build: hybridse-configure
 
 hybridse-configure: thirdparty-fast
 	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_INSTALL_PREFIX=$(HYBRIDSE_INSTALL_DIR) $(HYBRIDSE_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
-
-hybridse-coverage: hybridse-coverage-configure
-	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
-	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
-
-hybridse-coverage-configure:
-	$(MAKE) hybridse-configure CMAKE_BUILD_TYPE=Debug COVERAGE_ENABLE=ON
 
 hybridse-clean:
 	rm -rf "$(HYBRIDSE_BUILD_DIR)"
