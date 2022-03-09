@@ -13,7 +13,7 @@
 # limitations under the License.
 
 set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
-set(ZETASQL_VERSION 0.2.8)
+set(ZETASQL_VERSION 0.2.9)
 set(ZETASQL_TAG 2e548a0e656d050d2b0fb97b3caab122cb3a6ea6) # the commit hash for v0.2.7
 
 function(init_zetasql_urls)
@@ -22,6 +22,7 @@ function(init_zetasql_urls)
 
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
       # there is experimental build for centos7 on aarch64, for others zetasql need compile from source
+      message(WARNING "pre-compiled zetasql for arm64 may out-of-date, consider build from source by -DBUILD_BUNDLED_ZETASQL=ON")
       if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
         set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-aarch64-centos.tar.gz" PARENT_SCOPE)
         set(ZETASQL_HASH d504ade9973f28507154aa88bf0565939fbf14b4114040f4133c217cdebc93ed PARENT_SCOPE)
@@ -32,16 +33,16 @@ function(init_zetasql_urls)
 
     if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz" PARENT_SCOPE)
-      set(ZETASQL_HASH a00c4359b8a1a1bdfbbdd0606f66e0b480d6abb4dcdde731899cfcc808a8f30e PARENT_SCOPE)
+      set(ZETASQL_HASH 32c70da94a1a7c9379c85ac80b2c07ea2654d5b65513824746fe6d81cf353c7d PARENT_SCOPE)
     elseif(LSB_RELEASE_ID_SHORT STREQUAL "ubuntu")
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-ubuntu.tar.gz" PARENT_SCOPE)
-      set(ZETASQL_HASH 875f809f3e0e98fe0ac8397a5f4e7a61400b3e79a656ce7ac5d31280e47397ac PARENT_SCOPE)
+      set(ZETASQL_HASH cb7a752d3a0df92e71d5b3876abde99ce8997c2111cefb2f400b7b312a867942 PARENT_SCOPE)
     else()
       message(FATAL_ERROR "no pre-compiled zetasql for ${LSB_RELEASE_ID_SHORT}, try compile zetasql from source with '-DBUILD_BUNDLED_ZETASQL=ON'")
     endif()
   elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz" PARENT_SCOPE)
-    set(ZETASQL_HASH e4d9d7d0393bb308e82864e2064a31b324e217991f2834dab71ec103c4d2660d PARENT_SCOPE)
+    set(ZETASQL_HASH 5ce0904cb947b9e83b33513d3a1a908d03fb52011e3f702ec193cedc76e37a84 PARENT_SCOPE)
   endif()
 endfunction()
 
