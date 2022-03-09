@@ -376,21 +376,32 @@ struct AvgWhereDef {
 template <typename T>
 struct MinWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T, bool>()
-            .const_init(DataTypeTrait<T>::maximum_value())
-            .update([](UdfResolveContext* ctx, ExprNode* min, ExprNode* elem,
+        helper.templates<T, Tuple<bool, T>, T, bool>()
+            .const_init(MakeTuple(true, DataTypeTrait<T>::maximum_value()))
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem,
                        ExprNode* cond) {
                 auto nm = ctx->node_manager();
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
                     elem = nm->MakeCastNode(node::kInt64, elem);
                 }
-                auto condition =
-                    nm->MakeBinaryExprNode(min, elem, node::kFnOpGt);
-                ExprNode* new_min = nm->MakeCondExpr(condition, elem, min);
-                ExprNode* update = nm->MakeCondExpr(cond, new_min, min);
+                auto acc_is_null = nm->MakeGetFieldExpr(acc, 0);
+                auto elem_is_null = nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
+                auto acc_min = nm->MakeGetFieldExpr(acc, 1);
+                auto elem_lt_acc_and_not_null = nm->MakeBinaryExprNode(elem, acc_min, node::kFnOpLt);
+
+                auto elem_as_tuple = nm->MakeFuncNode("make_tuple", {elem_is_null, elem}, nullptr);
+                ExprNode* new_acc = nm->MakeCondExpr(acc_is_null, elem_as_tuple,
+                                                     nm->MakeCondExpr(elem_lt_acc_and_not_null, elem_as_tuple, acc));
+                ExprNode* update = nm->MakeCondExpr(cond, new_acc, acc);
                 return update;
             })
-            .output("identity");
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto nm = ctx->node_manager();
+                auto flag = nm->MakeGetFieldExpr(acc, 0);
+                auto cur_max = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(flag, nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(), nm->MakeConstNode()),
+                                        cur_max);
+            });
     }
 };
 
@@ -407,11 +418,11 @@ struct MaxWhereDef {
                 auto acc_is_null = nm->MakeGetFieldExpr(acc, 0);
                 auto elem_is_null = nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
                 auto acc_max = nm->MakeGetFieldExpr(acc, 1);
-                auto acc_lt_elem = nm->MakeBinaryExprNode(acc_max, elem, node::kFnOpLt);
+                auto elem_gt_acc_and_not_null = nm->MakeBinaryExprNode(elem, acc_max, node::kFnOpGt);
 
                 auto elem_as_tuple = nm->MakeFuncNode("make_tuple", {elem_is_null, elem}, nullptr);
-                ExprNode* new_acc =
-                    nm->MakeCondExpr(acc_is_null, elem_as_tuple, nm->MakeCondExpr(acc_lt_elem, elem_as_tuple, acc));
+                ExprNode* new_acc = nm->MakeCondExpr(acc_is_null, elem_as_tuple,
+                                                     nm->MakeCondExpr(elem_gt_acc_and_not_null, elem_as_tuple, acc));
                 ExprNode* update = nm->MakeCondExpr(cond, new_acc, acc);
                 return update;
             })
