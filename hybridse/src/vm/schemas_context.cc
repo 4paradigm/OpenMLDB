@@ -522,6 +522,7 @@ void SchemasContext::Build() {
     // initialize detailed formats
     if (row_format_) {
         delete row_format_;
+        row_format_ = nullptr;
     }
     std::vector<const hybridse::codec::Schema*> schemas;
     for (const auto& source : schema_sources_) {

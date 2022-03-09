@@ -87,6 +87,7 @@ object WindowAggPlan {
       HybridseUtil.getSparkSchema(physicalNode.GetOutputSchema())
     }
 
+
     // Do window agg with UnsafeRow optimization or not
     val outputDf = if (isUnsafeRowOptimization) {
 
@@ -116,13 +117,13 @@ object WindowAggPlan {
         repartitionDf.rdd.mapPartitionsWithIndex {
           case (partitionIndex, iter) =>
             val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
-            windowAggIterWithUnionFlag(computer, iter, sparkFeConfig, windowAggConfig)
+            windowAggIterWithUnionFlag(computer, iter, sparkFeConfig, windowAggConfig, outputSchema)
         }
       } else {
         repartitionDf.rdd.mapPartitionsWithIndex {
           case (partitionIndex, iter) =>
             val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
-            windowAggIter(computer, iter, sparkFeConfig, windowAggConfig)
+            windowAggIter(computer, iter, sparkFeConfig, windowAggConfig, outputSchema)
         }
       }
       // Create dataframe from rdd row and schema
@@ -305,7 +306,8 @@ object WindowAggPlan {
         if (!isValidOrder(orderKey)) {
           None
         } else if (!expandedFlag) {
-          Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema))
+          Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema,
+            sqlConfig.enableUnsafeRowOptimization))
         } else {
           computer.bufferRowOnly(row, orderKey)
           None
@@ -323,7 +325,8 @@ object WindowAggPlan {
         lastRow = row
         val orderKey = computer.extractKey(row)
         if (isValidOrder(orderKey)) {
-          Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema))
+          Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema,
+            sqlConfig.enableUnsafeRowOptimization))
         } else {
           None
         }
@@ -337,7 +340,8 @@ object WindowAggPlan {
   def windowAggIter(computer: WindowComputer,
                     inputIter: Iterator[Row],
                     sqlConfig: OpenmldbBatchConfig,
-                    config: WindowAggConfig): Iterator[Row] = {
+                    config: WindowAggConfig,
+                    outputSchema: StructType): Iterator[Row] = {
     var lastRow: Row = null
 
     // Take the iterator if the limit has been set
@@ -361,7 +365,8 @@ object WindowAggPlan {
         if (!isValidOrder(orderKey)) {
           None
         } else if (!expandedFlag) {
-          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx, config.inputSchema.length))
+          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx, config.inputSchema.length,
+            outputSchema, sqlConfig.enableUnsafeRowOptimization))
         } else {
           computer.bufferRowOnly(row, orderKey)
           None
@@ -376,7 +381,8 @@ object WindowAggPlan {
         lastRow = row
         val orderKey = computer.extractKey(row)
         if (isValidOrder(orderKey)) {
-          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx, config.inputSchema.length))
+          Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx, config.inputSchema.length,
+            outputSchema, sqlConfig.enableUnsafeRowOptimization))
         } else {
           None
         }
@@ -390,7 +396,8 @@ object WindowAggPlan {
   def windowAggIterWithUnionFlag(computer: WindowComputer,
                                  inputIter: Iterator[Row],
                                  sqlConfig: OpenmldbBatchConfig,
-                                 config: WindowAggConfig): Iterator[Row] = {
+                                 config: WindowAggConfig,
+                                 outputSchema: StructType): Iterator[Row] = {
     val flagIdx = config.unionFlagIdx
     var lastRow: Row = null
     if (config.partIdIdx != 0) {
@@ -413,7 +420,7 @@ object WindowAggPlan {
             val expandedFlag = row.getBoolean(config.expandedFlagIdx)
             if (!expandedFlag) {
               Some(computer.compute(row, orderKey, config.keepIndexColumn,
-                config.unionFlagIdx, config.inputSchema.length))
+                config.unionFlagIdx, config.inputSchema.length, outputSchema, sqlConfig.enableUnsafeRowOptimization))
             } else {
               if (!config.instanceNotInWindow) {
                 computer.bufferRowOnly(row, orderKey)
@@ -422,7 +429,7 @@ object WindowAggPlan {
             }
           } else {
             Some(computer.compute(row, orderKey, config.keepIndexColumn,
-              config.unionFlagIdx, config.inputSchema.length))
+              config.unionFlagIdx, config.inputSchema.length, outputSchema, sqlConfig.enableUnsafeRowOptimization))
           }
         } else {
           // secondary
@@ -471,7 +478,8 @@ object WindowAggPlan {
         if (!isValidOrder(orderKey)) {
           None
         } else if (!expandedFlag) {
-          Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema))
+          Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema,
+            sqlConfig.enableUnsafeRowOptimization))
         } else {
           computer.bufferRowOnly(row, orderKey)
           None
@@ -497,7 +505,7 @@ object WindowAggPlan {
               val expandedFlag = row.getBoolean(config.expandedFlagIdx)
               if (!expandedFlag) {
                 Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx,
-                  outputSchema))
+                  outputSchema, sqlConfig.enableUnsafeRowOptimization))
               } else {
                 if (!config.instanceNotInWindow) {
                   computer.bufferRowOnly(row, orderKey)
@@ -506,7 +514,7 @@ object WindowAggPlan {
               }
             } else {
               Some(computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx,
-                outputSchema))
+                outputSchema, sqlConfig.enableUnsafeRowOptimization))
             }
           } else {
             // secondary
