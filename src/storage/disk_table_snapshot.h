@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+
 #include "proto/common.pb.h"
 #include "storage/disk_table.h"
 #include "storage/snapshot.h"
