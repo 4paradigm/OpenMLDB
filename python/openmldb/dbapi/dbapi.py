@@ -344,8 +344,8 @@ class Cursor(object):
             raise DatabaseError("unsupport sql")
 
     def __insert_rows(self, rows: List[Union[tuple, dict]], hold_idxs, schema, rows_builder, command):
-        tmp_builder = rows_builder.NewRow()
         for row in rows:
+            tmp_builder = rows_builder.NewRow()
             str_size = 0
             for i in range(len(hold_idxs)):
                 idx = hold_idxs[i]
