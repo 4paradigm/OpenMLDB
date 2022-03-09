@@ -425,8 +425,12 @@ class Cursor(object):
                 ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(self.db, command)
                 if not ok:
                     raise DatabaseError("get insert builder fail")
-                schema = batch_builder.GetSchema()
-                hold_idxs = batch_builder.GetHoleIdx()
+                # 因为getInsertBatchBuilder获得的对象没有GetSchema方法，所以使用getInsertBatchBuilder获得的对象
+                ok, builder = self.connection._sdk.getInsertBuilder(self.db, command)
+                if not ok:
+                    raise DatabaseError("get insert builder fail")
+                schema = builder.GetSchema()
+                hold_idxs = builder.GetHoleIdx()
                 for i in range(0, len(parameters), batch_number):
                     rows = parameters[i: i + batch_number]
                     self.__insert_rows(rows, hold_idxs, schema, batch_builder, command)
