@@ -221,7 +221,7 @@ public class Importer {
                     generators.get(pid).feed(new BulkLoadGenerator.FeedItem(dims, tsIdxSet, record));
                 }
             }
-            logger.debug("Total rows of " {} : {}", record, rows);
+            logger.debug("total rows of " {} : {}", record, rows);
         } catch (Exception e) {
             logger.error("feeding failed, {}", e.getMessage());
         }
